@@ -1,4 +1,4 @@
-package com.lifemap
+package com.sunrio.lifemap
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate

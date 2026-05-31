@@ -40,6 +40,7 @@ local.properties
 node_modules/
 .jdk/
 npm-debug.log
+pnpm-debug.log*
 yarn-error.log
 
 # fastlane

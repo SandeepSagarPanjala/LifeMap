@@ -8,40 +8,46 @@ Personal life timeline app — remember where you were, privately.
 - **NativeWind v4** + Tailwind CSS v3 (light + dark via system appearance)
 - **React Native Reusables** + Lucide icons
 - **React Navigation** (custom bottom tabs)
+- **pnpm** package manager
 
 ## Getting started
 
+Requires [pnpm](https://pnpm.io/installation) (`corepack enable` or `npm install -g pnpm`).
+
 ```bash
 cd LifeMap
-npm install
+pnpm install
 
 # iOS (requires full Xcode, not just Command Line Tools)
-npm run pod-install
-npm start
+pnpm pod-install
+pnpm start
+pnpm ios              # physical iPhone (default)
 ```
+
+### iOS — physical device (default)
+
+Your iPhone appears in Xcode as **SandY Earth 🌎** (model can be iPhone 17 Pro Max — the name is whatever you set in Settings → General → About).
+
+1. Connect your iPhone via USB and trust this Mac.
+2. On the iPhone: **Settings → Privacy & Security → Developer Mode** → on (restart if prompted).
+3. In Xcode → open `ios/LifeMap.xcworkspace` → **Signing & Capabilities** → select your Apple Developer team.
+4. Metro in one terminal (`pnpm start`), then:
+
+```bash
+pnpm ios
+# or explicitly:
+pnpm ios:device
+```
+
+To target a different phone, update `IOS_PHYSICAL_DEVICE_UDID` in `src/lib/constants.ts` and `scripts/run-ios-device.sh`.
 
 ### iOS — simulator
 
-Uses **iPhone 17 Pro Max** (closest match in the current Xcode simulator runtime; your iPhone 16 Pro Max physical device is the best match for real hardware).
-
 ```bash
-npm run ios:sim
-# or
-npm run ios
+pnpm ios:sim
 ```
 
-### iOS — physical device (iPhone 16 Pro Max)
-
-1. Connect your iPhone via USB and trust the Mac.
-2. In Xcode → **Signing & Capabilities**, select your Apple Developer team for the LifeMap target.
-3. Ensure Metro is running (`npm start`).
-4. Run:
-
-```bash
-npm run ios:device
-```
-
-If your phone has a different name, update `IOS_PHYSICAL_DEVICE_NAME` in `src/lib/constants.ts` and the `ios:device` script in `package.json`.
+Uses **iPhone 17 Pro Max** simulator (not your physical device).
 
 ### Android
 
@@ -69,19 +75,19 @@ yes | sdkmanager --licenses
 sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0" "ndk;27.1.12297006" "cmake;3.22.1"
 sdkmanager "emulator" "system-images;android-36;google_apis;arm64-v8a"
 echo "no" | avdmanager create avd -n LifeMap_Emulator -k "system-images;android-36;google_apis;arm64-v8a" -d pixel_7_pro --force
-# Or: npm run android:create-emulator
+# Or: pnpm android:create-emulator
 ```
 
 **Run on emulator:**
 
 ```bash
-npm start                    # Metro in one terminal
-npm run android:emulator     # Pixel 7 Pro AVD (LifeMap_Emulator) — keep terminal open
-npm run android              # build + install when emulator shows home screen
-npm run android:build        # compile APK only (no device needed)
+pnpm start                    # Metro in one terminal
+pnpm android:emulator         # Pixel 7 Pro AVD (LifeMap_Emulator) — keep terminal open
+pnpm android                  # build + install when emulator shows home screen
+pnpm android:build            # compile APK only (no device needed)
 ```
 
-**Physical Android device:** enable **Developer options → USB debugging**, connect via USB, then `npm run android`.
+**Physical Android device:** enable **Developer options → USB debugging**, connect via USB, then `pnpm android`.
 
 Verified: `assembleDebug` builds successfully (`android/app/build/outputs/apk/debug/app-debug.apk`).
 

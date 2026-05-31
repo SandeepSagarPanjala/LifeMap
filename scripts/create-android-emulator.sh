@@ -20,5 +20,5 @@ echo "no" | avdmanager create avd -n "$AVD_NAME" -k "$SYSTEM_IMAGE" -d "$DEVICE"
 
 echo ""
 echo "Done. Launch with:"
-echo "  npm run android:emulator"
-echo "  # or: npm run android:emulator -- $AVD_NAME"
+echo "  pnpm android:emulator"
+echo "  # or: pnpm android:emulator -- $AVD_NAME"

@@ -1,4 +1,4 @@
-package com.lifemap
+package com.sunrio.lifemap
 
 import android.app.Application
 import com.facebook.react.PackageList

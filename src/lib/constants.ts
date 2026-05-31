@@ -47,8 +47,14 @@ export const TAB_ROUTES: {name: TabRoute; label: string}[] = [
   {name: 'Settings', label: 'Settings'},
 ];
 
-/** Physical device name — update if you rename your iPhone in Finder/Xcode */
+/** App bundle ID — Sunrio (company) · LifeMap (app) */
+export const APP_BUNDLE_ID = 'com.sunrio.lifemap';
+
+/** Physical iPhone (Settings → General → About → Name) */
 export const IOS_PHYSICAL_DEVICE_NAME = 'SandY Earth 🌎';
 
-/** Default iOS simulator (closest to iPhone 16 Pro Max in current Xcode runtime) */
+/** USB UDID — used by `pnpm ios` (no device name needed in the command) */
+export const IOS_PHYSICAL_DEVICE_UDID = '00008140-000C75AC3C88801C';
+
+/** Default iOS simulator */
 export const IOS_SIMULATOR_NAME = 'iPhone 17 Pro Max';
