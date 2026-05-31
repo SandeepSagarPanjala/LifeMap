@@ -4,6 +4,7 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 
 import {Icon} from '@/components/ui/icon';
 import {Text} from '@/components/ui/text';
+import {AccentThemePicker} from '@/components/settings/accent-theme-picker';
 import {useThemeColors} from '@/hooks/use-theme-colors';
 
 export function SettingsScreen() {
@@ -19,7 +20,11 @@ export function SettingsScreen() {
           Settings
         </Text>
 
-        <View className="bg-card border-border mt-6 rounded-2xl border p-4">
+        <View className="mt-6">
+          <AccentThemePicker />
+        </View>
+
+        <View className="bg-card border-border mt-4 rounded-2xl border p-4">
           <View className="flex-row items-center gap-3">
             <Icon as={LocateFixed} size={20} color={colors.primary} />
             <View className="flex-1">

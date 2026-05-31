@@ -1,8 +1,17 @@
 import {useColorScheme} from 'react-native';
 
-import {THEME, type ThemeColors} from '@/lib/constants';
+import {
+  ACCENT_THEMES,
+  themeTokensToColors,
+  type ResolvedThemeColors,
+} from '@/lib/color-themes';
+import {useAppStore} from '@/stores/app-store';
 
-export function useThemeColors(): ThemeColors {
+export function useThemeColors(): ResolvedThemeColors {
   const colorScheme = useColorScheme();
-  return colorScheme === 'dark' ? THEME.dark : THEME.light;
+  const accentTheme = useAppStore(state => state.accentTheme);
+  const tokens =
+    ACCENT_THEMES[accentTheme][colorScheme === 'dark' ? 'dark' : 'light'];
+
+  return themeTokensToColors(tokens);
 }
