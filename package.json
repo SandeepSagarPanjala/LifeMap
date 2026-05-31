@@ -3,8 +3,10 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "android": "react-native run-android",
-    "android:build": "cd android && ./gradlew assembleDebug",
+    "android": "bash scripts/run-android.sh",
+    "android:build": "bash -c 'source scripts/android-env.sh && cd android && ./gradlew assembleDebug'",
+    "android:emulator": "bash scripts/start-android-emulator.sh",
+    "android:create-emulator": "bash scripts/create-android-emulator.sh",
     "ios": "react-native run-ios --simulator \"iPhone 17 Pro Max\"",
     "ios:sim": "react-native run-ios --simulator \"iPhone 17 Pro Max\"",
     "ios:device": "react-native run-ios --device \"SandY Earth 🌎\"",

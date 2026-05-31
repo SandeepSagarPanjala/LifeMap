@@ -45,20 +45,45 @@ If your phone has a different name, update `IOS_PHYSICAL_DEVICE_NAME` in `src/li
 
 ### Android
 
-React Native Android builds require **JDK 17**. If you only have JDK 25 installed, download a portable JDK 17 into `.jdk/` (gitignored):
+Android tooling is set up via Homebrew (`android-commandlinetools`, `android-platform-tools`). Add this to your `~/.zshrc` so every terminal session can find the SDK:
 
 ```bash
-mkdir -p .jdk && cd .jdk
-curl -L -o jdk17.tar.gz "https://api.adoptium.net/v3/binary/latest/17/ga/mac/aarch64/jdk/hotspot/normal/eclipse?project=jdk"
-tar xzf jdk17.tar.gz && rm jdk17.tar.gz
+export ANDROID_HOME=/opt/homebrew/share/android-commandlinetools
+export PATH=$PATH:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator
 ```
 
-`android/gradle.properties` points Gradle at `.jdk/jdk-17.0.19+10/Contents/Home` (adjust the path if your extracted folder name differs).
+Or source the project helper before Android commands:
 
 ```bash
-npm run android          # build + install on emulator/device
-npm run android:build    # assembleDebug only
+source scripts/android-env.sh
 ```
+
+**JDK 17** is required (Gradle 9 breaks on JDK 25). A portable copy lives in `.jdk/` (gitignored); `android/gradle.properties` points Gradle at it.
+
+**First-time SDK install** (already done on this machine — keep for reference):
+
+```bash
+brew install --cask android-commandlinetools android-platform-tools
+source scripts/android-env.sh
+yes | sdkmanager --licenses
+sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0" "ndk;27.1.12297006" "cmake;3.22.1"
+sdkmanager "emulator" "system-images;android-36;google_apis;arm64-v8a"
+echo "no" | avdmanager create avd -n LifeMap_Emulator -k "system-images;android-36;google_apis;arm64-v8a" -d pixel_7_pro --force
+# Or: npm run android:create-emulator
+```
+
+**Run on emulator:**
+
+```bash
+npm start                    # Metro in one terminal
+npm run android:emulator     # Pixel 7 Pro AVD (LifeMap_Emulator) — keep terminal open
+npm run android              # build + install when emulator shows home screen
+npm run android:build        # compile APK only (no device needed)
+```
+
+**Physical Android device:** enable **Developer options → USB debugging**, connect via USB, then `npm run android`.
+
+Verified: `assembleDebug` builds successfully (`android/app/build/outputs/apk/debug/app-debug.apk`).
 
 ### Light / dark mode
 
