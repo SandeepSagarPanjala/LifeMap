@@ -16,7 +16,7 @@ function App() {
   );
 
   return (
-    <GestureHandlerRootView className="flex-1">
+    <GestureHandlerRootView className="bg-background flex-1">
       <SafeAreaProvider>
         <StatusBar
           barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'}

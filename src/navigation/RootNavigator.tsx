@@ -5,18 +5,25 @@ import {useColorScheme} from 'react-native';
 import {MainTabNavigator} from '@/navigation/MainTabNavigator';
 import type {RootStackParamList} from '@/navigation/types';
 import {DayDetailScreen} from '@/screens/DayDetailScreen';
+import {THEME} from '@/lib/constants';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+function navThemeFromColors(colors: (typeof THEME)['light']) {
+  return {
+    background: colors.background,
+    card: colors.card,
+    text: colors.foreground,
+    border: colors.border,
+    primary: colors.primary,
+  };
+}
 
 const LightNavTheme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
-    background: 'hsl(30 33% 98%)',
-    card: 'hsl(0 0% 100%)',
-    text: 'hsl(24 10% 10%)',
-    border: 'hsl(30 12% 88%)',
-    primary: 'hsl(16 65% 45%)',
+    ...navThemeFromColors(THEME.light),
   },
 };
 
@@ -24,11 +31,7 @@ const DarkNavTheme = {
   ...DarkTheme,
   colors: {
     ...DarkTheme.colors,
-    background: 'hsl(24 10% 8%)',
-    card: 'hsl(24 10% 11%)',
-    text: 'hsl(30 20% 96%)',
-    border: 'hsl(24 8% 20%)',
-    primary: 'hsl(16 70% 55%)',
+    ...navThemeFromColors(THEME.dark),
   },
 };
 

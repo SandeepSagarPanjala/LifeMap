@@ -4,7 +4,10 @@
   "private": true,
   "scripts": {
     "android": "react-native run-android",
-    "ios": "react-native run-ios --simulator \"iPhone 17 Pro\"",
+    "android:build": "cd android && ./gradlew assembleDebug",
+    "ios": "react-native run-ios --simulator \"iPhone 17 Pro Max\"",
+    "ios:sim": "react-native run-ios --simulator \"iPhone 17 Pro Max\"",
+    "ios:device": "react-native run-ios --device \"SandY Earth 🌎\"",
     "pod-install": "cd ios && bundle exec pod install",
     "lint": "eslint .",
     "start": "react-native start",

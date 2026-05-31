@@ -2,41 +2,42 @@
 module.exports = {
   content: ['./App.tsx', './src/**/*.{ts,tsx}'],
   presets: [require('nativewind/preset')],
+  darkMode: 'media',
   theme: {
     extend: {
       colors: {
-        border: 'hsl(30 12% 88%)',
-        input: 'hsl(30 12% 88%)',
-        ring: 'hsl(16 65% 45%)',
-        background: 'hsl(30 33% 98%)',
-        foreground: 'hsl(24 10% 10%)',
+        border: 'hsl(var(--border))',
+        input: 'hsl(var(--input))',
+        ring: 'hsl(var(--ring))',
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
         primary: {
-          DEFAULT: 'hsl(16 65% 45%)',
-          foreground: 'hsl(0 0% 100%)',
+          DEFAULT: 'hsl(var(--primary))',
+          foreground: 'hsl(var(--primary-foreground))',
         },
         secondary: {
-          DEFAULT: 'hsl(30 20% 94%)',
-          foreground: 'hsl(24 10% 10%)',
+          DEFAULT: 'hsl(var(--secondary))',
+          foreground: 'hsl(var(--secondary-foreground))',
         },
         destructive: {
-          DEFAULT: 'hsl(0 72% 51%)',
-          foreground: 'hsl(0 0% 100%)',
+          DEFAULT: 'hsl(var(--destructive))',
+          foreground: 'hsl(var(--destructive-foreground))',
         },
         muted: {
-          DEFAULT: 'hsl(30 15% 92%)',
-          foreground: 'hsl(24 8% 45%)',
+          DEFAULT: 'hsl(var(--muted))',
+          foreground: 'hsl(var(--muted-foreground))',
         },
         accent: {
-          DEFAULT: 'hsl(16 55% 92%)',
-          foreground: 'hsl(16 65% 35%)',
+          DEFAULT: 'hsl(var(--accent))',
+          foreground: 'hsl(var(--accent-foreground))',
         },
         card: {
-          DEFAULT: 'hsl(0 0% 100%)',
-          foreground: 'hsl(24 10% 10%)',
+          DEFAULT: 'hsl(var(--card))',
+          foreground: 'hsl(var(--card-foreground))',
         },
         popover: {
-          DEFAULT: 'hsl(0 0% 100%)',
-          foreground: 'hsl(24 10% 10%)',
+          DEFAULT: 'hsl(var(--popover))',
+          foreground: 'hsl(var(--popover-foreground))',
         },
       },
       borderRadius: {

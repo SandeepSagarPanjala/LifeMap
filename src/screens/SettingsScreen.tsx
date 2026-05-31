@@ -4,8 +4,11 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 
 import {Icon} from '@/components/ui/icon';
 import {Text} from '@/components/ui/text';
+import {useThemeColors} from '@/hooks/use-theme-colors';
 
 export function SettingsScreen() {
+  const colors = useThemeColors();
+
   return (
     <SafeAreaView className="bg-background flex-1" edges={['top']}>
       <ScrollView
@@ -18,7 +21,7 @@ export function SettingsScreen() {
 
         <View className="bg-card border-border mt-6 rounded-2xl border p-4">
           <View className="flex-row items-center gap-3">
-            <Icon as={LocateFixed} size={20} color="hsl(16 65% 45%)" />
+            <Icon as={LocateFixed} size={20} color={colors.primary} />
             <View className="flex-1">
               <Text className="font-medium">Tracking interval</Text>
               <Text variant="muted" className="mt-1">
@@ -30,7 +33,7 @@ export function SettingsScreen() {
 
         <View className="bg-card border-border mt-3 rounded-2xl border p-4">
           <View className="flex-row items-center gap-3">
-            <Icon as={Shield} size={20} color="hsl(16 65% 45%)" />
+            <Icon as={Shield} size={20} color={colors.primary} />
             <View className="flex-1">
               <Text className="font-medium">Privacy & encryption</Text>
               <Text variant="muted" className="mt-1">

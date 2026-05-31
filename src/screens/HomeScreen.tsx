@@ -5,8 +5,10 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 
 import {Icon} from '@/components/ui/icon';
 import {Text} from '@/components/ui/text';
+import {useThemeColors} from '@/hooks/use-theme-colors';
 
 export function HomeScreen() {
+  const colors = useThemeColors();
   const today = new Date();
   const formattedDate = format(today, 'EEEE, MMMM d, yyyy');
 
@@ -25,7 +27,7 @@ export function HomeScreen() {
 
         <View className="bg-card border-border mt-6 rounded-2xl border p-5">
           <View className="flex-row items-center gap-2">
-            <Icon as={CalendarHeart} size={20} color="hsl(16 65% 45%)" />
+            <Icon as={CalendarHeart} size={20} color={colors.primary} />
             <Text className="font-semibold">One year ago today</Text>
           </View>
           <Text variant="muted" className="mt-3 leading-6">
@@ -36,7 +38,7 @@ export function HomeScreen() {
 
         <View className="bg-card border-border mt-4 rounded-2xl border p-5">
           <View className="flex-row items-center gap-2">
-            <Icon as={MapPin} size={20} color="hsl(16 65% 45%)" />
+            <Icon as={MapPin} size={20} color={colors.primary} />
             <Text className="font-semibold">Today&apos;s path</Text>
           </View>
           <Text variant="muted" className="mt-3 leading-6">

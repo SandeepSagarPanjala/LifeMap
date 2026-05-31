@@ -5,6 +5,7 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import {Button} from '@/components/ui/button';
 import {Icon} from '@/components/ui/icon';
 import {Text} from '@/components/ui/text';
+import {useThemeColors} from '@/hooks/use-theme-colors';
 import {useAppStore} from '@/stores/app-store';
 
 const PRIVACY_POINTS = [
@@ -26,6 +27,7 @@ const PRIVACY_POINTS = [
 ] as const;
 
 export function PrivacyOnboardingScreen() {
+  const colors = useThemeColors();
   const completePrivacyOnboarding = useAppStore(state => state.completePrivacyOnboarding);
 
   return (
@@ -45,7 +47,7 @@ export function PrivacyOnboardingScreen() {
           {PRIVACY_POINTS.map(point => (
             <View key={point.title} className="flex-row gap-4">
               <View className="bg-accent mt-0.5 h-10 w-10 items-center justify-center rounded-full">
-                <Icon as={point.icon} size={20} color="hsl(16 65% 35%)" />
+                <Icon as={point.icon} size={20} color={colors.accentForeground} />
               </View>
               <View className="flex-1">
                 <Text className="text-base font-semibold">{point.title}</Text>

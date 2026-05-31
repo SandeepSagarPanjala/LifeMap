@@ -3,6 +3,7 @@ import {Clock, Map as MapIcon, Settings, Sparkles, type LucideIcon} from 'lucide
 import {Pressable, View} from 'react-native';
 
 import {Text} from '@/components/ui/text';
+import {useThemeColors} from '@/hooks/use-theme-colors';
 import type {TabRoute} from '@/lib/constants';
 import {cn} from '@/lib/utils';
 
@@ -21,6 +22,8 @@ const TAB_LABELS: Record<TabRoute, string> = {
 };
 
 export function CustomTabBar({state, navigation, insets}: BottomTabBarProps) {
+  const colors = useThemeColors();
+
   return (
     <View
       className="border-border bg-card flex-row border-t px-2 pt-2"
@@ -52,7 +55,7 @@ export function CustomTabBar({state, navigation, insets}: BottomTabBarProps) {
             className="flex-1 items-center justify-center gap-1 py-2">
             <Icon
               size={22}
-              color={isFocused ? 'hsl(16 65% 45%)' : 'hsl(24 8% 45%)'}
+              color={isFocused ? colors.primary : colors.mutedForeground}
               strokeWidth={isFocused ? 2.5 : 2}
             />
             <Text
