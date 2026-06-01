@@ -86,17 +86,18 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.2'
-          bundler-version: '2.5.23'
-
-      - name: Install Ruby gems
-        run: bundle install --jobs 4 --retry 3
 
       - name: Install JS dependencies
         run: pnpm install --frozen-lockfile
 
+      # Gemfile.lock pins Bundler 1.17 (macOS system Ruby) — incompatible with Ruby 3.2.
+      # CI installs CocoaPods directly; local dev still uses `bundle exec pod install`.
       - name: Install CocoaPods
+        run: gem install cocoapods -v 1.15.2 --no-document
+
+      - name: Pod install
         working-directory: ios
-        run: bundle exec pod install
+        run: pod install
 
       - name: Build for iOS Simulator
         run: |
