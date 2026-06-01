@@ -1922,6 +1922,29 @@ PODS:
     - React-utils (= 0.84.1)
     - ReactNativeDependencies
   - ReactNativeDependencies (0.84.1)
+  - RNBackgroundGeolocation (5.1.1):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - TSLocationManager (~> 4.1.0)
+    - Yoga
   - RNGestureHandler (3.0.0):
     - hermes-engine
     - RCTRequired
@@ -2230,6 +2253,9 @@ PODS:
   - Sentry (9.15.0):
     - Sentry/Core (= 9.15.0)
   - Sentry/Core (9.15.0)
+  - TSBackgroundFetch (4.1.1)
+  - TSLocationManager (4.1.7):
+    - TSBackgroundFetch (~> 4.1.0)
   - Yoga (0.0.0)
 
 DEPENDENCIES:
@@ -2310,6 +2336,7 @@ DEPENDENCIES:
   - ReactCodegen (from `build/generated/ios/ReactCodegen`)
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
   - ReactNativeDependencies (from `../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec`)
+  - RNBackgroundGeolocation (from `../node_modules/react-native-background-geolocation`)
   - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
   - RNKeychain (from `../node_modules/react-native-keychain`)
   - RNReanimated (from `../node_modules/react-native-reanimated`)
@@ -2323,6 +2350,8 @@ SPEC REPOS:
   trunk:
     - lottie-ios
     - Sentry
+    - TSBackgroundFetch
+    - TSLocationManager
 
 EXTERNAL SOURCES:
   AsyncStorage:
@@ -2478,6 +2507,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon"
   ReactNativeDependencies:
     :podspec: "../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec"
+  RNBackgroundGeolocation:
+    :path: "../node_modules/react-native-background-geolocation"
   RNGestureHandler:
     :path: "../node_modules/react-native-gesture-handler"
   RNKeychain:
@@ -2573,6 +2604,7 @@ SPEC CHECKSUMS:
   ReactCodegen: 4fa1b291ad275013e39212f2463c46480fb53afe
   ReactCommon: 309419492d417c4cbb87af06f67735afa40ecb9d
   ReactNativeDependencies: dc9f6fff588cce4d4c78702ca7c82ff4202099e8
+  RNBackgroundGeolocation: c79e8f7b187522805baf849a04e0b554b564a4b9
   RNGestureHandler: 0d11f2db07ad290163036896cb2a2a922150d355
   RNKeychain: 91be81cd32b30c7d4c2569dcad29b472d9b93982
   RNReanimated: bfe71d65ce0aa482eeeae790d5db7838f2c025b0
@@ -2581,6 +2613,8 @@ SPEC CHECKSUMS:
   RNSVG: 7f2453d6a1cb84b5fbc9144f6e6333c196ef784b
   RNWorklets: 4dba1eb7cbfc3e8db49e5cce18a1a471fd2ed696
   Sentry: d5b72948d692d369ded835e2e77baadcd3c492dd
+  TSBackgroundFetch: 18918b6449a1e3f01eb0f5b44d6d79ce6160a5a5
+  TSLocationManager: 0c1b8ed109ae05ea4247def2992b3e4e3f49f839
   Yoga: 7c1c3b93e408ac46c7ed64b5641ca7161747378d
 
 PODFILE CHECKSUM: d4e0fbcc1763fd02759f50b05f602f54d6130ab9

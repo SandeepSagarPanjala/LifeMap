@@ -12,6 +12,7 @@ import {RootNavigator} from '@/navigation/RootNavigator';
 import {AnimatedSplashScreen} from '@/components/splash/AnimatedSplashScreen';
 import {OnboardingScreen} from '@/screens/OnboardingScreen';
 import {ThemeProvider} from '@/components/theme/theme-provider';
+import {AppBootstrap} from '@/components/AppBootstrap';
 import {AppErrorBoundary} from '@/components/error-boundary';
 import {useAppStore} from '@/stores/app-store';
 
@@ -45,9 +46,12 @@ function App() {
     setOnboardingDismissed(true);
   }, [completePrivacyOnboarding]);
 
+  const enableLocationTracking = activeScreen === 'main';
+
   return (
     <AppErrorBoundary>
       <GestureHandlerRootView className="flex-1">
+        <AppBootstrap enableLocationTracking={enableLocationTracking}>
         <ThemeProvider>
           <SafeAreaProvider>
             <StatusBar
@@ -80,6 +84,7 @@ function App() {
             <PortalHost />
           </SafeAreaProvider>
         </ThemeProvider>
+        </AppBootstrap>
       </GestureHandlerRootView>
     </AppErrorBoundary>
   );

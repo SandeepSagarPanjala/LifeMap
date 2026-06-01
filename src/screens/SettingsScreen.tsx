@@ -1,10 +1,11 @@
-import {Shield, LocateFixed, TimerReset, BookOpen} from 'lucide-react-native';
+import {Shield, TimerReset, BookOpen} from 'lucide-react-native';
 import {Pressable, ScrollView, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 
 import {Icon} from '@/components/ui/icon';
 import {Text} from '@/components/ui/text';
 import {AccentThemePicker} from '@/components/settings/accent-theme-picker';
+import {TrackingSettings} from '@/components/settings/tracking-settings';
 import {useThemeColors} from '@/hooks/use-theme-colors';
 import {useAppStore} from '@/stores/app-store';
 
@@ -29,16 +30,8 @@ export function SettingsScreen() {
           <AccentThemePicker />
         </View>
 
-        <View className="bg-card border-border mt-4 rounded-2xl border p-4">
-          <View className="flex-row items-center gap-3">
-            <Icon as={LocateFixed} size={20} color={colors.primary} />
-            <View className="flex-1">
-              <Text className="font-medium">Tracking interval</Text>
-              <Text variant="muted" className="mt-1">
-                TransistorSoft integration — Phase 2
-              </Text>
-            </View>
-          </View>
+        <View className="mt-4">
+          <TrackingSettings />
         </View>
 
         <View className="bg-card border-border mt-3 rounded-2xl border p-4">
@@ -47,7 +40,7 @@ export function SettingsScreen() {
             <View className="flex-1">
               <Text className="font-medium">Privacy & encryption</Text>
               <Text variant="muted" className="mt-1">
-                SQLCipher local database — Phase 1
+                Location history is encrypted on this device with SQLCipher.
               </Text>
             </View>
           </View>

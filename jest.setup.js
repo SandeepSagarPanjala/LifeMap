@@ -50,6 +50,43 @@ jest.mock('@sentry/react-native', () => {
 
 jest.mock('lottie-react-native', () => 'LottieView');
 
+jest.mock('react-native-background-geolocation', () => {
+  const AuthorizationStatus = {
+    NotDetermined: 0,
+    Restricted: 1,
+    Denied: 2,
+    Always: 3,
+    WhenInUse: 4,
+  };
+
+  const DesiredAccuracy = {High: -1};
+  const LogLevel = {Verbose: 5, Off: 0};
+
+  class BackgroundGeolocation {
+    static AuthorizationStatus = AuthorizationStatus;
+    static DesiredAccuracy = DesiredAccuracy;
+    static LogLevel = LogLevel;
+    static AUTHORIZATION_STATUS_ALWAYS = AuthorizationStatus.Always;
+    static AUTHORIZATION_STATUS_WHEN_IN_USE = AuthorizationStatus.WhenInUse;
+    static AUTHORIZATION_STATUS_DENIED = AuthorizationStatus.Denied;
+    static AUTHORIZATION_STATUS_RESTRICTED = AuthorizationStatus.Restricted;
+
+    static onLocation = jest.fn(() => ({remove: jest.fn()}));
+    static ready = jest.fn().mockResolvedValue({enabled: false});
+    static requestPermission = jest.fn().mockResolvedValue(AuthorizationStatus.Always);
+    static getState = jest.fn().mockResolvedValue({enabled: false});
+    static getProviderState = jest.fn().mockResolvedValue({status: AuthorizationStatus.Always});
+    static start = jest.fn().mockResolvedValue(undefined);
+    static stop = jest.fn().mockResolvedValue(undefined);
+    static setConfig = jest.fn().mockResolvedValue(undefined);
+  }
+
+  return {
+    __esModule: true,
+    default: BackgroundGeolocation,
+  };
+});
+
 jest.mock('react-native-svg', () => {
   const {View} = require('react-native');
   return {

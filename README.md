@@ -111,8 +111,8 @@ src/
 
 ## Roadmap
 
-- **Phase 1:** SQLCipher + Drizzle (`moments` table from day 1)
-- **Phase 2:** TransistorSoft background location
+- **Phase 1:** SQLCipher + Drizzle (`moments` table from day 1) — done
+- **Phase 2:** TransistorSoft background location — in progress (native rebuild required)
 - **Phase 3:** Map + timeline MVP
 - **Phase 4:** Photos via `moments`
 - **Phase 5:** 30-day dogfood gate → TestFlight

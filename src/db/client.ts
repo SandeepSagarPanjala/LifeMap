@@ -25,8 +25,7 @@ async function initDatabase(): Promise<Database> {
 
   const db = drizzle(sqlite);
 
-  // Run migrations idempotently on startup.
-  await (migrate as any)(db as any, { migrations } as any);
+  await migrate(db, migrations);
 
   return db;
 }
