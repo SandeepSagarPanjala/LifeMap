@@ -34,7 +34,11 @@
 		<true/>
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>This app is all about location tracking and history</string>
+	<string>LifeMap uses your location to build your private life timeline on this device. Routes are stored locally and encrypted—we never upload your location history.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>LifeMap records your daily path in the background so your timeline stays complete, even when the app is closed. All data stays on your phone, encrypted. You can pause tracking anytime in Settings.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>LifeMap uses motion activity to record your route efficiently and reduce battery use while building your private timeline.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

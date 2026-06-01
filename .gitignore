@@ -43,6 +43,11 @@ npm-debug.log
 pnpm-debug.log*
 yarn-error.log
 
+# Local secrets (copy from src/config/env.local.example.ts)
+src/config/env.local.ts
+.env
+.env.local
+
 # fastlane
 #
 # It is recommended to not store the screenshots in the git repo. Instead, use fastlane to re-generate the

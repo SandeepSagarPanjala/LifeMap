@@ -39,3 +39,12 @@ jest.mock('react-native-gesture-handler', () => {
     Directions: {},
   };
 });
+
+jest.mock('@sentry/react-native', () => {
+  const React = require('react');
+  return {
+    init: jest.fn(),
+    captureException: jest.fn(),
+    ErrorBoundary: ({children}: {children: React.ReactNode}) => children,
+  };
+});

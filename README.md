@@ -9,6 +9,8 @@ Personal life timeline app — remember where you were, privately.
 - **React Native Reusables** + Lucide icons
 - **React Navigation** (custom bottom tabs)
 - **pnpm** package manager
+- **GitHub Actions** CI (lint, typecheck, test)
+- **Sentry** (optional — crash reporting when DSN configured)
 
 ## Getting started
 
@@ -118,3 +120,21 @@ src/
 ## Privacy
 
 LifeMap stores data locally on device. Privacy onboarding explains encryption and tracking before first use.
+
+## Development
+
+```bash
+pnpm lint          # ESLint
+pnpm typecheck     # TypeScript
+pnpm test          # Jest
+```
+
+CI runs the same checks on every push to `main` (see `.github/workflows/ci.yml`).
+
+### Sentry (optional)
+
+1. Create a project at [sentry.io](https://sentry.io)
+2. Copy `src/config/env.local.example.ts` → `src/config/env.local.ts`
+3. Paste your DSN into `SENTRY_DSN`
+
+Without a DSN, the app runs normally — crashes are only logged locally in dev.

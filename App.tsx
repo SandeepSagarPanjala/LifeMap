@@ -8,6 +8,7 @@ import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {RootNavigator} from '@/navigation/RootNavigator';
 import {PrivacyOnboardingScreen} from '@/screens/PrivacyOnboardingScreen';
 import {ThemeProvider} from '@/components/theme/theme-provider';
+import {AppErrorBoundary} from '@/components/error-boundary';
 import {useAppStore} from '@/stores/app-store';
 
 function App() {
@@ -17,19 +18,21 @@ function App() {
   );
 
   return (
-    <GestureHandlerRootView className="flex-1">
-      <ThemeProvider>
-        <SafeAreaProvider>
-          <StatusBar
-            barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'}
-            backgroundColor="transparent"
-            translucent
-          />
-          {hasCompletedPrivacyOnboarding ? <RootNavigator /> : <PrivacyOnboardingScreen />}
-          <PortalHost />
-        </SafeAreaProvider>
-      </ThemeProvider>
-    </GestureHandlerRootView>
+    <AppErrorBoundary>
+      <GestureHandlerRootView className="flex-1">
+        <ThemeProvider>
+          <SafeAreaProvider>
+            <StatusBar
+              barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'}
+              backgroundColor="transparent"
+              translucent
+            />
+            {hasCompletedPrivacyOnboarding ? <RootNavigator /> : <PrivacyOnboardingScreen />}
+            <PortalHost />
+          </SafeAreaProvider>
+        </ThemeProvider>
+      </GestureHandlerRootView>
+    </AppErrorBoundary>
   );
 }
 

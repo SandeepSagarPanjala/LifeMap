@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">LifeMap</string>
+    <string name="location_when_in_use_rationale">LifeMap uses your location to build your private life timeline on this device. Routes are stored locally and encrypted—we never upload your location history.</string>
+    <string name="location_background_rationale">LifeMap records your daily path in the background so your timeline stays complete. All data stays on your phone, encrypted. You can pause tracking anytime in Settings.</string>
 </resources>

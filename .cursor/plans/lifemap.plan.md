@@ -1,10 +1,10 @@
 ---
 name: LifeMap RN Foundation
-overview: "Bare RN 0.81+ life-timeline app with NativeWind v5, Reusables, encrypted local storage (moments from day 1), map/timeline/On-this-day MVP, 30-day dogfood gate, privacy-first onboarding."
+overview: "Bare RN 0.84 life-timeline app (Sunrio). NativeWind v4, Reusables, encrypted local storage (moments from day 1), map/timeline/On-this-day MVP, 30-day dogfood gate, privacy-first onboarding. Phase 0 complete."
 todos:
   - id: scaffold-rn
-    content: Scaffold bare RN CLI app (RN 0.81+, New Arch, NativeWind v5 + Reusables + Lucide, iOS/Android)
-    status: pending
+    content: Scaffold bare RN CLI app (RN 0.84, New Arch, NativeWind v4 + Reusables + Lucide, iOS/Android)
+    status: completed
   - id: encrypted-db
     content: Set up op-sqlite + SQLCipher + Drizzle schema (location_points, moments, settings) — moments table from day 1
     status: pending
@@ -749,14 +749,17 @@ lifemap/
 
 ## Implementation phases
 
-### Phase 0 — Foundation (week 1–2)
-- Init bare RN **0.81+** with New Architecture enabled
-- NativeWind v5: `nativewind@preview`, `react-native-css`, Tailwind v4 PostCSS, metro/babel config
-- Pin `lightningcss: 1.30.1` in package.json overrides
-- React Native Reusables (`--styling-library nativewind`) + Lucide
-- React Navigation: stack + **custom bottom tab bar** (NativeWind + Lucide)
-- Design tokens in `global.css` `@theme` + warm palette
-- Privacy onboarding placeholder screen
+### Phase 0 — Foundation ✅ complete
+- Init bare RN **0.84** with New Architecture enabled
+- **NativeWind v4** + Tailwind v3 (intentional — stable; not v5 preview)
+- React Native Reusables + Lucide
+- React Navigation: stack + **custom bottom tab bar**
+- Design tokens in `global.css` + **3 user accent themes** (Verdant Path default)
+- Privacy onboarding screen
+- Light/dark via system appearance
+- Branding: **Sunrio** / `com.sunrio.lifemap`, app icon
+- pnpm, GitHub Actions CI, Sentry-ready error boundary, App Store–quality location permission copy
+- iOS physical device + Android emulator build verified
 
 ### Phase 1 — Data layer (week 2)
 - op-sqlite + SQLCipher + Drizzle (`op-sqlite` config in `package.json`)
