@@ -129,7 +129,18 @@ pnpm typecheck     # TypeScript
 pnpm test          # Jest
 ```
 
-CI runs the same checks on every push to `main` (see `.github/workflows/ci.yml`).
+### CI (automatic vs manual)
+
+| Workflow | Trigger | What it checks | Why |
+|----------|---------|----------------|-----|
+| **CI** | Every push/PR to `main` | lint, typecheck, test | Fast (~2 min), free — catches broken TS/tests before merge |
+| **Mobile build (manual)** | Actions → Run workflow button | Android APK and/or iOS simulator compile | Slower, uses Android SDK + macOS minutes — run before releases or after native changes |
+
+**Run mobile builds manually:** GitHub → **Actions** → **Mobile build (manual)** → **Run workflow** → pick `android`, `ios`, or `both`.
+
+Android job uploads `app-debug.apk` as a downloadable artifact. iOS job verifies Xcode compiles with `CODE_SIGNING_ALLOWED=NO` (no Apple certificates needed).
+
+Future (not wired yet): Maestro smoke tests (manual or nightly), Fastlane TestFlight (manual + secrets).
 
 ### Sentry (optional)
 
