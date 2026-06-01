@@ -15,7 +15,12 @@ function renderTabBar(props: BottomTabBarProps) {
 
 export function MainTabNavigator() {
   return (
-    <Tab.Navigator tabBar={renderTabBar} screenOptions={{headerShown: false}}>
+    <Tab.Navigator
+      tabBar={renderTabBar}
+      screenOptions={{
+        headerShown: false,
+        animation: 'fade',
+      }}>
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Map" component={MapScreen} />
       <Tab.Screen name="Timeline" component={TimelineScreen} />

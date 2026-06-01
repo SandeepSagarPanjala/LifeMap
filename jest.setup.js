@@ -41,10 +41,24 @@ jest.mock('react-native-gesture-handler', () => {
 });
 
 jest.mock('@sentry/react-native', () => {
-  const React = require('react');
   return {
     init: jest.fn(),
     captureException: jest.fn(),
-    ErrorBoundary: ({children}: {children: React.ReactNode}) => children,
+    ErrorBoundary: ({children}) => children,
+  };
+});
+
+jest.mock('lottie-react-native', () => 'LottieView');
+
+jest.mock('react-native-svg', () => {
+  const {View} = require('react-native');
+  return {
+    __esModule: true,
+    default: View,
+    Svg: View,
+    Defs: View,
+    LinearGradient: View,
+    Stop: View,
+    Rect: View,
   };
 });
