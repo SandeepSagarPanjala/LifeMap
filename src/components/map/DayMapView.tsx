@@ -1,9 +1,10 @@
 import {useMemo} from 'react';
 import {Platform, StyleSheet, View} from 'react-native';
-import MapView, {Marker, Polyline, PROVIDER_DEFAULT} from 'react-native-maps';
+import MapView, {Marker, Polyline, PROVIDER_DEFAULT, PROVIDER_GOOGLE} from 'react-native-maps';
 
 import type {LocationPointRow} from '@/db/repositories/location-days';
 import {regionForCoordinates, toMapCoordinates} from '@/lib/location-geo';
+import {useAppStore} from '@/stores/app-store';
 import {useThemeColors} from '@/hooks/use-theme-colors';
 
 type DayMapViewProps = {
@@ -11,6 +12,7 @@ type DayMapViewProps = {
   selectedPointId?: number | null;
   onSelectPoint?: (point: LocationPointRow) => void;
   className?: string;
+  playbackIndex?: number | null;
 };
 
 const MAX_MARKERS = 40;
@@ -20,10 +22,20 @@ export function DayMapView({
   selectedPointId = null,
   onSelectPoint,
   className,
+  playbackIndex = null,
 }: DayMapViewProps) {
   const colors = useThemeColors();
+  const preferredMapApp = useAppStore(state => state.preferredMapApp);
   const coordinates = useMemo(() => toMapCoordinates(points), [points]);
   const initialRegion = useMemo(() => regionForCoordinates(coordinates), [coordinates]);
+  const provider = useMemo(() => {
+    // iOS needs additional Google Maps native setup; fallback to Apple provider
+    // to avoid runtime crashes when Google provider is selected in Settings.
+    if (Platform.OS === 'android' && preferredMapApp === 'google') {
+      return PROVIDER_GOOGLE;
+    }
+    return PROVIDER_DEFAULT;
+  }, [preferredMapApp]);
 
   const mapKey = useMemo(() => {
     if (points.length === 0) {
@@ -45,6 +57,21 @@ export function DayMapView({
     return [first, ...sampled.filter(p => p.id !== first.id && p.id !== last.id), last];
   }, [points]);
 
+  const playbackCoordinates = useMemo(() => {
+    if (playbackIndex == null || playbackIndex < 0) {
+      return coordinates;
+    }
+    const endIndex = Math.min(playbackIndex + 1, coordinates.length);
+    return coordinates.slice(0, endIndex);
+  }, [coordinates, playbackIndex]);
+
+  const playbackPoint = useMemo(() => {
+    if (playbackIndex == null || playbackIndex < 0 || playbackIndex >= points.length) {
+      return null;
+    }
+    return points[playbackIndex] ?? null;
+  }, [points, playbackIndex]);
+
   if (points.length === 0) {
     return <View className={`bg-muted rounded-2xl ${className ?? ''}`} style={styles.empty} />;
   }
@@ -53,16 +80,23 @@ export function DayMapView({
     <View className={`overflow-hidden rounded-2xl ${className ?? ''}`} style={styles.mapWrap}>
       <MapView
         key={mapKey}
-        provider={Platform.OS === 'ios' ? PROVIDER_DEFAULT : undefined}
+        provider={provider}
         style={StyleSheet.absoluteFill}
         initialRegion={initialRegion}
         showsUserLocation
         showsMyLocationButton={Platform.OS === 'android'}>
-        {coordinates.length > 1 ? (
+        {playbackCoordinates.length > 1 ? (
           <Polyline
-            coordinates={coordinates}
+            coordinates={playbackCoordinates}
             strokeColor={colors.primary}
             strokeWidth={4}
+          />
+        ) : null}
+
+        {playbackPoint ? (
+          <Marker
+            coordinate={{latitude: playbackPoint.lat, longitude: playbackPoint.lng}}
+            pinColor={colors.primary}
           />
         ) : null}
 
@@ -71,7 +105,15 @@ export function DayMapView({
             key={point.id}
             coordinate={{latitude: point.lat, longitude: point.lng}}
             pinColor={selectedPointId === point.id ? colors.primary : undefined}
-            opacity={selectedPointId == null || selectedPointId === point.id ? 1 : 0.5}
+            opacity={
+              playbackPoint
+                ? point.id === playbackPoint.id
+                  ? 1
+                  : 0
+                : selectedPointId == null || selectedPointId === point.id
+                  ? 1
+                  : 0.5
+            }
             onPress={() => onSelectPoint?.(point)}
           />
         ))}
@@ -82,9 +124,9 @@ export function DayMapView({
 
 const styles = StyleSheet.create({
   mapWrap: {
-    height: 320,
+    flex: 1,
   },
   empty: {
-    height: 320,
+    flex: 1,
   },
 });

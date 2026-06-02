@@ -13,10 +13,12 @@ import {useHomeLocationData} from '@/hooks/use-location-days';
 import {getOneYearAgoDateKey, getTodayDateKey} from '@/lib/day-utils';
 import {calculatePathDistanceKm, formatDistance} from '@/lib/location-geo';
 import type {RootStackParamList} from '@/navigation/types';
+import {useAppStore} from '@/stores/app-store';
 import {useThemeColors} from '@/hooks/use-theme-colors';
 
 export function HomeScreen() {
   const colors = useThemeColors();
+  const distanceUnit = useAppStore(state => state.distanceUnit);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const today = new Date();
   const formattedDate = format(today, 'EEEE, MMMM d, yyyy');
@@ -27,8 +29,8 @@ export function HomeScreen() {
   const {daySummaries, todayPoints, onThisDaySummaries: onThisDay} = homeData;
 
   const todayDistance = useMemo(
-    () => formatDistance(calculatePathDistanceKm(todayPoints)),
-    [todayPoints],
+    () => formatDistance(calculatePathDistanceKm(todayPoints), distanceUnit),
+    [distanceUnit, todayPoints],
   );
 
   const oneYearAgoSummary = onThisDay.find(day => day.dateKey === oneYearAgoKey) ?? onThisDay[0];
@@ -60,7 +62,7 @@ export function HomeScreen() {
                 {format(parseISO(oneYearAgoSummary.dateKey), 'MMMM d, yyyy')} —{' '}
                 {oneYearAgoSummary.pointCount} points
                 {oneYearAgoSummary.distanceKm > 0
-                  ? `, ${formatDistance(oneYearAgoSummary.distanceKm)} traveled`
+                  ? `, ${formatDistance(oneYearAgoSummary.distanceKm, distanceUnit)} traveled`
                   : ''}
               </Text>
               <Pressable
@@ -105,7 +107,7 @@ export function HomeScreen() {
             <View className="mt-3">
               <Text variant="muted" className="leading-6">
                 {todayPoints.length} point{todayPoints.length === 1 ? '' : 's'}
-                {todayDistance !== '0 m' ? ` · ${todayDistance}` : ''}
+                {todayDistance !== (distanceUnit === 'mi' ? '0 ft' : '0 m') ? ` · ${todayDistance}` : ''}
               </Text>
               <Pressable
                 accessibilityRole="button"

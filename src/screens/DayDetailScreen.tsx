@@ -10,9 +10,11 @@ import type {LocationPointRow} from '@/db/repositories/location-days';
 import {useLocationPointsForDay} from '@/hooks/use-location-days';
 import {calculatePathDistanceKm, formatDistance} from '@/lib/location-geo';
 import type {RootStackScreenProps} from '@/navigation/types';
+import {useAppStore} from '@/stores/app-store';
 import {Text} from '@/components/ui/text';
 
 export function DayDetailScreen({route}: RootStackScreenProps<'DayDetail'>) {
+  const distanceUnit = useAppStore(state => state.distanceUnit);
   const dateKey = route.params.date;
   const date = parseISO(dateKey);
   const formattedDate = format(date, 'EEEE, MMMM d, yyyy');
@@ -20,7 +22,7 @@ export function DayDetailScreen({route}: RootStackScreenProps<'DayDetail'>) {
   const [selectedPoint, setSelectedPoint] = useState<LocationPointRow | null>(null);
 
   const distanceLabel =
-    points.length >= 2 ? formatDistance(calculatePathDistanceKm(points)) : null;
+    points.length >= 2 ? formatDistance(calculatePathDistanceKm(points), distanceUnit) : null;
 
   return (
     <SafeAreaView className="bg-background flex-1" edges={['bottom']}>

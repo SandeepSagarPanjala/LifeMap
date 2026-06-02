@@ -4,6 +4,7 @@ import {Pressable, View} from 'react-native';
 
 import type {DaySummary} from '@/db/repositories/location-days';
 import {formatDistance} from '@/lib/location-geo';
+import {useAppStore} from '@/stores/app-store';
 import {Icon} from '@/components/ui/icon';
 import {Text} from '@/components/ui/text';
 import {useThemeColors} from '@/hooks/use-theme-colors';
@@ -16,6 +17,7 @@ type DaySummaryCardProps = {
 
 export function DaySummaryCard({summary, onPress, compact = false}: DaySummaryCardProps) {
   const colors = useThemeColors();
+  const distanceUnit = useAppStore(state => state.distanceUnit);
   const date = parseISO(summary.dateKey);
 
   const timeRange =
@@ -35,7 +37,7 @@ export function DaySummaryCard({summary, onPress, compact = false}: DaySummaryCa
           </Text>
           <Text variant="muted" className="mt-1 text-sm">
             {summary.pointCount} point{summary.pointCount === 1 ? '' : 's'}
-            {summary.distanceKm > 0 ? ` · ${formatDistance(summary.distanceKm)}` : ''}
+            {summary.distanceKm > 0 ? ` · ${formatDistance(summary.distanceKm, distanceUnit)}` : ''}
           </Text>
           {!compact ? (
             <Text variant="muted" className="mt-1 text-sm">

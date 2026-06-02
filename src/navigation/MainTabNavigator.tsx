@@ -21,8 +21,8 @@ export function MainTabNavigator() {
         headerShown: false,
         animation: 'fade',
       }}>
-      <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Map" component={MapScreen} />
+      <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Timeline" component={TimelineScreen} />
       <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>

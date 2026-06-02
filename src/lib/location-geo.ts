@@ -9,6 +9,7 @@ export type LocationPointLike = {
   lat: number;
   lng: number;
 };
+export type DistanceUnit = 'km' | 'mi';
 
 const EARTH_RADIUS_KM = 6371;
 
@@ -95,7 +96,16 @@ export function regionForCoordinates(
   return {latitude, longitude, latitudeDelta, longitudeDelta};
 }
 
-export function formatDistance(km: number): string {
+export function formatDistance(km: number, unit: DistanceUnit = 'km'): string {
+  if (unit === 'mi') {
+    const miles = km * 0.621371;
+    if (miles < 1) {
+      const feet = Math.round(miles * 5280);
+      return `${feet} ft`;
+    }
+    return `${miles.toFixed(1)} mi`;
+  }
+
   if (km < 1) {
     return `${Math.round(km * 1000)} m`;
   }
