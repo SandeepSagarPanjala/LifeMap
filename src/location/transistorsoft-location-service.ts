@@ -5,10 +5,12 @@ import BackgroundGeolocation, {
 
 import {insertLocationPoint} from '@/db/repositories/location-points';
 import {getSetting, setSetting} from '@/db/repositories/settings';
+import {LocationPersistScheduler} from '@/lib/location-persist-scheduler';
 import {
   DEFAULT_TRACKING_PRESET,
   getTrackingPresetConfig,
-  isTrackingPresetId,
+  normalizeTrackingPresetId,
+  TRACKING_PRESETS,
   SETTINGS_KEY_TRACKING_ENABLED,
   SETTINGS_KEY_TRACKING_PRESET,
   type TrackingPresetId,
@@ -38,54 +40,101 @@ function locationTimestamp(location: Location): Date {
   return value instanceof Date ? value : new Date(value);
 }
 
-async function persistLocation(location: Location): Promise<void> {
-  const {coords} = location;
-
-  await insertLocationPoint({
-    timestamp: locationTimestamp(location),
-    lat: coords.latitude,
-    lng: coords.longitude,
-    accuracy: coords.accuracy >= 0 ? coords.accuracy : null,
-    altitude: coords.altitude,
-    speed: coords.speed != null && coords.speed >= 0 ? coords.speed : null,
-    source: 'gps',
-  });
-}
-
-async function readStoredPreset(): Promise<TrackingPresetId> {
-  const stored = await getSetting(SETTINGS_KEY_TRACKING_PRESET);
-  return isTrackingPresetId(stored) ? stored : DEFAULT_TRACKING_PRESET;
-}
-
-async function readStoredEnabled(): Promise<boolean> {
-  const stored = await getSetting(SETTINGS_KEY_TRACKING_ENABLED);
-  if (stored === null) {
-    return true;
-  }
-  return stored === 'true';
-}
-
 export class TransistorSoftLocationService implements LocationService {
   private configured = false;
   private subscriptions: Subscription[] = [];
+  private activePresetId: TrackingPresetId = DEFAULT_TRACKING_PRESET;
+  private latestLocation: Location | null = null;
+  private persistScheduler: LocationPersistScheduler | null = null;
+
+  private rebuildPersistScheduler(): void {
+    const preset = TRACKING_PRESETS[this.activePresetId];
+    this.persistScheduler?.reset();
+
+    if (preset.maxPersistIntervalMs <= 0) {
+      this.persistScheduler = null;
+      return;
+    }
+
+    this.persistScheduler = new LocationPersistScheduler(
+      preset.maxPersistIntervalMs,
+      async () => {
+        if (this.latestLocation) {
+          await this.writeLocationToDatabase(this.latestLocation);
+        }
+      },
+    );
+  }
+
+  private async persistLocation(location: Location): Promise<void> {
+    this.latestLocation = location;
+    const preset = TRACKING_PRESETS[this.activePresetId];
+
+    if (preset.maxPersistIntervalMs <= 0) {
+      await this.writeLocationToDatabase(location);
+      return;
+    }
+
+    const timestampMs = locationTimestamp(location).getTime();
+    this.persistScheduler?.enqueue(timestampMs);
+  }
+
+  private async writeLocationToDatabase(location: Location): Promise<void> {
+    const timestamp = locationTimestamp(location);
+    const {coords} = location;
+
+    await insertLocationPoint({
+      timestamp,
+      lat: coords.latitude,
+      lng: coords.longitude,
+      accuracy: coords.accuracy >= 0 ? coords.accuracy : null,
+      altitude: coords.altitude,
+      speed: coords.speed != null && coords.speed >= 0 ? coords.speed : null,
+      source: 'gps',
+    });
+  }
+
+  private async refreshHeartbeatLocation(): Promise<void> {
+    const preset = TRACKING_PRESETS[this.activePresetId];
+    if (!preset.useHeartbeatFloor) {
+      return;
+    }
+
+    try {
+      const location = await BackgroundGeolocation.getCurrentPosition({
+        samples: 1,
+        persist: false,
+        timeout: 30,
+      });
+      await this.persistLocation(location);
+    } catch (error) {
+      if (__DEV__) {
+        console.warn('[LifeMap] Heartbeat getCurrentPosition failed', error);
+      }
+    }
+  }
 
   async configure(): Promise<void> {
     if (this.configured) {
       return;
     }
 
-    const presetId = await readStoredPreset();
-    const presetConfig = getTrackingPresetConfig(presetId);
+    this.activePresetId = await readStoredPreset();
+    this.rebuildPersistScheduler();
+    const presetConfig = getTrackingPresetConfig(this.activePresetId);
 
     this.subscriptions.push(
       BackgroundGeolocation.onLocation(async location => {
         try {
-          await persistLocation(location);
+          await this.persistLocation(location);
         } catch (error) {
           if (__DEV__) {
             console.warn('[LifeMap] Failed to persist location', error);
           }
         }
+      }),
+      BackgroundGeolocation.onHeartbeat(() => {
+        void this.refreshHeartbeatLocation();
       }),
     );
 
@@ -109,11 +158,14 @@ export class TransistorSoftLocationService implements LocationService {
         positiveAction: 'Change to Always',
         negativeAction: 'Cancel',
       },
-      debug: __DEV__,
-      logLevel: __DEV__
-        ? BackgroundGeolocation.LogLevel.Verbose
-        : BackgroundGeolocation.LogLevel.Off,
+      debug: false,
+      logLevel: BackgroundGeolocation.LogLevel.Warning,
     } as Parameters<typeof BackgroundGeolocation.ready>[0]);
+
+    await BackgroundGeolocation.setConfig({
+      debug: false,
+      logLevel: BackgroundGeolocation.LogLevel.Warning,
+    } as Parameters<typeof BackgroundGeolocation.setConfig>[0]);
 
     this.configured = true;
   }
@@ -145,6 +197,9 @@ export class TransistorSoftLocationService implements LocationService {
   }
 
   async setPreset(presetId: TrackingPresetId): Promise<void> {
+    this.activePresetId = presetId;
+    this.latestLocation = null;
+    this.rebuildPersistScheduler();
     await setSetting(SETTINGS_KEY_TRACKING_PRESET, presetId);
     await BackgroundGeolocation.setConfig(getTrackingPresetConfig(presetId));
   }
@@ -173,8 +228,24 @@ export class TransistorSoftLocationService implements LocationService {
   dispose(): void {
     this.subscriptions.forEach(subscription => subscription.remove());
     this.subscriptions = [];
+    this.persistScheduler?.reset();
+    this.persistScheduler = null;
+    this.latestLocation = null;
     this.configured = false;
   }
+}
+
+async function readStoredPreset(): Promise<TrackingPresetId> {
+  const stored = await getSetting(SETTINGS_KEY_TRACKING_PRESET);
+  return normalizeTrackingPresetId(stored);
+}
+
+async function readStoredEnabled(): Promise<boolean> {
+  const stored = await getSetting(SETTINGS_KEY_TRACKING_ENABLED);
+  if (stored === null) {
+    return true;
+  }
+  return stored === 'true';
 }
 
 let locationService: TransistorSoftLocationService | null = null;

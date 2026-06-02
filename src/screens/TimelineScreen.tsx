@@ -1,25 +1,55 @@
-import {Clock} from 'lucide-react-native';
-import {View} from 'react-native';
+import {FlashList} from '@shopify/flash-list';
+import {ActivityIndicator, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import {useNavigation} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 
-import {Icon} from '@/components/ui/icon';
+import {DaySummaryCard} from '@/components/timeline/DaySummaryCard';
+import type {DaySummary} from '@/db/repositories/location-days';
+import {useDaySummaries} from '@/hooks/use-location-days';
+import type {RootStackParamList} from '@/navigation/types';
 import {Text} from '@/components/ui/text';
-import {useThemeColors} from '@/hooks/use-theme-colors';
 
 export function TimelineScreen() {
-  const colors = useThemeColors();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const {data: summaries, loading} = useDaySummaries();
 
   return (
     <SafeAreaView className="bg-background flex-1" edges={['top']}>
-      <View className="flex-1 items-center justify-center px-8">
-        <View className="bg-muted mb-4 h-16 w-16 items-center justify-center rounded-full">
-          <Icon as={Clock} size={32} color={colors.primary} />
-        </View>
-        <Text variant="h4">Timeline</Text>
-        <Text variant="muted" className="mt-2 text-center leading-6">
-          Scroll through every day of your life. FlashList timeline + date scrubber coming in Phase
-          3.
+      <View className="flex-1 px-5 pt-4">
+        <Text variant="h3" className="text-left">
+          Timeline
         </Text>
+        <Text variant="muted" className="mt-1">
+          Every day LifeMap has recorded
+        </Text>
+
+        {loading ? (
+          <View className="flex-1 items-center justify-center">
+            <ActivityIndicator />
+          </View>
+        ) : summaries.length === 0 ? (
+          <View className="bg-card border-border mt-6 flex-1 items-center justify-center rounded-2xl border px-6">
+            <Text variant="muted" className="text-center leading-6">
+              Your timeline will fill in as location points are saved. Enable tracking in Settings
+              and take a walk.
+            </Text>
+          </View>
+        ) : (
+          <View className="mt-4 min-h-[200px] flex-1">
+            <FlashList
+              data={summaries}
+              keyExtractor={(item: DaySummary) => item.dateKey}
+              ItemSeparatorComponent={() => <View className="h-3" />}
+              renderItem={({item}) => (
+                <DaySummaryCard
+                  summary={item}
+                  onPress={() => navigation.navigate('DayDetail', {date: item.dateKey})}
+                />
+              )}
+            />
+          </View>
+        )}
       </View>
     </SafeAreaView>
   );

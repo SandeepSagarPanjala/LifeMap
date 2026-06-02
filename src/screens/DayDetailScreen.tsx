@@ -1,29 +1,64 @@
 import {format, parseISO} from 'date-fns';
-import {Calendar} from 'lucide-react-native';
-import {View} from 'react-native';
+import {ActivityIndicator, ScrollView, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import {useState} from 'react';
 
-import {Icon} from '@/components/ui/icon';
-import {Text} from '@/components/ui/text';
-import {useThemeColors} from '@/hooks/use-theme-colors';
+import {DayMapView} from '@/components/map/DayMapView';
+import {LocationPointList} from '@/components/map/LocationPointList';
+import {LocationPointSheet} from '@/components/map/LocationPointSheet';
+import type {LocationPointRow} from '@/db/repositories/location-days';
+import {useLocationPointsForDay} from '@/hooks/use-location-days';
+import {calculatePathDistanceKm, formatDistance} from '@/lib/location-geo';
 import type {RootStackScreenProps} from '@/navigation/types';
+import {Text} from '@/components/ui/text';
 
 export function DayDetailScreen({route}: RootStackScreenProps<'DayDetail'>) {
-  const colors = useThemeColors();
-  const date = parseISO(route.params.date);
+  const dateKey = route.params.date;
+  const date = parseISO(dateKey);
   const formattedDate = format(date, 'EEEE, MMMM d, yyyy');
+  const {data: points, loading} = useLocationPointsForDay(dateKey);
+  const [selectedPoint, setSelectedPoint] = useState<LocationPointRow | null>(null);
+
+  const distanceLabel =
+    points.length >= 2 ? formatDistance(calculatePathDistanceKm(points)) : null;
 
   return (
-    <SafeAreaView className="bg-background flex-1" edges={['top']}>
-      <View className="flex-1 items-center justify-center px-8">
-        <View className="bg-muted mb-4 h-16 w-16 items-center justify-center rounded-full">
-          <Icon as={Calendar} size={32} color={colors.primary} />
-        </View>
-        <Text variant="h4">{formattedDate}</Text>
-        <Text variant="muted" className="mt-2 text-center leading-6">
-          Day map and timeline entries will render here in Phase 3.
+    <SafeAreaView className="bg-background flex-1" edges={['bottom']}>
+      <ScrollView
+        className="flex-1"
+        contentContainerClassName="px-5 pb-8 pt-2"
+        showsVerticalScrollIndicator={false}>
+        <Text variant="muted" className="text-sm">
+          {points.length} point{points.length === 1 ? '' : 's'}
+          {distanceLabel ? ` · ${distanceLabel}` : ''}
         </Text>
-      </View>
+        <Text variant="h4" className="mt-1 border-0 pb-0">
+          {formattedDate}
+        </Text>
+
+        {loading ? (
+          <View className="mt-8 items-center">
+            <ActivityIndicator />
+          </View>
+        ) : (
+          <>
+            <DayMapView
+              className="mt-4"
+              points={points}
+              selectedPointId={selectedPoint?.id ?? null}
+              onSelectPoint={setSelectedPoint}
+            />
+            <Text className="mt-6 mb-3 font-semibold">Points</Text>
+            <LocationPointList
+              points={points}
+              selectedPointId={selectedPoint?.id ?? null}
+              onSelectPoint={setSelectedPoint}
+            />
+          </>
+        )}
+      </ScrollView>
+
+      <LocationPointSheet point={selectedPoint} onClose={() => setSelectedPoint(null)} />
     </SafeAreaView>
   );
 }

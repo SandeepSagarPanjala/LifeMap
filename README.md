@@ -112,7 +112,8 @@ src/
 ## Roadmap
 
 - **Phase 1:** SQLCipher + Drizzle (`moments` table from day 1) — done
-- **Phase 2:** TransistorSoft background location — in progress (native rebuild required)
+- **Phase 2:** TransistorSoft background location — done (Debug builds; license before store release)
+- **Phase 3:** Map day view, timeline, On this day home — done (`react-native-maps`; rebuild native after pull)
 - **Phase 3:** Map + timeline MVP
 - **Phase 4:** Photos via `moments`
 - **Phase 5:** 30-day dogfood gate → TestFlight

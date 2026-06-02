@@ -1,9 +1,11 @@
 import {useCallback, useEffect, useState} from 'react';
-import {ActivityIndicator, Pressable, View} from 'react-native';
+import {ActivityIndicator, Pressable, ScrollView, View} from 'react-native';
 
 import {formatDistanceToNow} from 'date-fns';
 
 import {countLocationPoints, getLatestLocationPoint} from '@/db/repositories/location-points';
+import {getLocationPointsForDay} from '@/db/repositories/location-days';
+import {getTodayDateKey} from '@/lib/day-utils';
 import {getLocationService} from '@/location/transistorsoft-location-service';
 import type {LocationAuthorizationStatus} from '@/location/types';
 import {
@@ -35,10 +37,11 @@ export function TrackingSettings() {
   const colors = useThemeColors();
   const [loading, setLoading] = useState(true);
   const [enabled, setEnabled] = useState(false);
-  const [presetId, setPresetId] = useState<TrackingPresetId>('balanced');
+  const [presetId, setPresetId] = useState<TrackingPresetId>('d25_mov');
   const [authorizationStatus, setAuthorizationStatus] =
     useState<LocationAuthorizationStatus>('not_determined');
   const [pointCount, setPointCount] = useState(0);
+  const [todayPointCount, setTodayPointCount] = useState(0);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
 
   const refresh = useCallback(async () => {
@@ -48,11 +51,13 @@ export function TrackingSettings() {
       const state = await service.getState();
       const count = await countLocationPoints();
       const latest = await getLatestLocationPoint();
+      const todayPoints = await getLocationPointsForDay(getTodayDateKey());
 
       setEnabled(state.enabled);
       setPresetId(state.presetId);
       setAuthorizationStatus(state.authorizationStatus);
       setPointCount(count);
+      setTodayPointCount(todayPoints.length);
       setLastSavedAt(latest?.timestamp ?? null);
     } finally {
       setLoading(false);
@@ -113,39 +118,46 @@ export function TrackingSettings() {
       </View>
 
       <Text variant="muted" className="mt-3 text-sm">
-        {pointCount} location point{pointCount === 1 ? '' : 's'} saved locally
+        {pointCount.toLocaleString()} saved locally
+        {todayPointCount > 0 ? ` · ${todayPointCount.toLocaleString()} today` : ''}
         {lastSavedAt
           ? ` · last ${formatDistanceToNow(lastSavedAt, {addSuffix: true})}`
           : ''}
       </Text>
       <Text variant="muted" className="mt-2 text-sm leading-5">
-        Points are recorded when you move, not every minute on a schedule. Still time (desk,
-        home, sleep) saves nothing — that is normal on Balanced.
+        Options show distance (when GPS may fire) and save cap (what LifeMap writes). If the SDK
+        sends many fixes in one window, only the latest is saved. Still at home saves almost
+        nothing. Android heartbeat is at least 60 s.
       </Text>
 
-      <View className="mt-4 gap-2">
-        {TRACKING_PRESET_ORDER.map(id => {
-          const preset = TRACKING_PRESETS[id];
-          const selected = presetId === id;
+      <ScrollView className="mt-4 max-h-96" nestedScrollEnabled showsVerticalScrollIndicator>
+        <View className="gap-2">
+          {TRACKING_PRESET_ORDER.map(id => {
+            const preset = TRACKING_PRESETS[id];
+            const selected = presetId === id;
 
-          return (
-            <Pressable
-              key={id}
-              accessibilityRole="button"
-              onPress={() => void handlePreset(id)}
-              className={`rounded-xl border px-3 py-3 ${
-                selected ? 'border-primary bg-primary/10' : 'border-border'
-              }`}>
-              <Text className={selected ? 'text-primary font-medium' : 'font-medium'}>
-                {preset.label}
-              </Text>
-              <Text variant="muted" className="mt-1 text-sm">
-                {preset.description}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+            return (
+              <Pressable
+                key={id}
+                accessibilityRole="button"
+                onPress={() => void handlePreset(id)}
+                className={`rounded-xl border px-3 py-3 ${
+                  selected ? 'border-primary bg-primary/10' : 'border-border'
+                }`}>
+                <Text className={selected ? 'text-primary font-medium' : 'font-medium'}>
+                  {preset.label}
+                </Text>
+                <Text variant="muted" className="mt-1 text-sm leading-5">
+                  {preset.saveRule}
+                </Text>
+                <Text variant="muted" className="mt-1 text-xs leading-4 opacity-80">
+                  SDK: {preset.sdkHint}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </ScrollView>
 
       {authorizationStatus === 'denied' || authorizationStatus === 'when_in_use' ? (
         <Pressable

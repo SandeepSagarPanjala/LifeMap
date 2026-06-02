@@ -50,6 +50,22 @@ jest.mock('@sentry/react-native', () => {
 
 jest.mock('lottie-react-native', () => 'LottieView');
 
+jest.mock('@shopify/flash-list', () => {
+  const {FlatList} = require('react-native');
+  return {FlashList: FlatList};
+});
+
+jest.mock('react-native-maps', () => {
+  const {View} = require('react-native');
+  return {
+    __esModule: true,
+    default: View,
+    Marker: View,
+    Polyline: View,
+    PROVIDER_DEFAULT: 'default',
+  };
+});
+
 jest.mock('react-native-background-geolocation', () => {
   const AuthorizationStatus = {
     NotDetermined: 0,

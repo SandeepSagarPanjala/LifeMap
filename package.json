@@ -41,6 +41,7 @@
     "react-native-background-geolocation": "^5.1.1",
     "react-native-gesture-handler": "^3.0.0",
     "react-native-keychain": "^10.0.0",
+    "react-native-maps": "^1.27.2",
     "react-native-reanimated": "^4.4.0",
     "react-native-safe-area-context": "^5.5.2",
     "react-native-screens": "^4.25.2",
