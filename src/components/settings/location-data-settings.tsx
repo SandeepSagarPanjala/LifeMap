@@ -88,11 +88,6 @@ export function LocationDataSettings() {
         <Icon as={Database} size={20} color={colors.primary} />
         <View className="flex-1">
           <Text className="font-medium">Export location data</Text>
-          <Text variant="muted" className="mt-1 text-sm leading-5">
-            Raw rows from the encrypted database table{' '}
-            <Text className="font-mono text-xs">location_points</Text> — share as
-            JSON or CSV (Notes, Mail, Files, or paste into a spreadsheet).
-          </Text>
         </View>
       </View>
 

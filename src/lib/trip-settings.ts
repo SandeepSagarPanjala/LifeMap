@@ -1,6 +1,8 @@
 export const DEFAULT_TRIP_GAP_MINUTES = 10;
 export const DEFAULT_TRIP_DWELL_MINUTES = 10;
-export const DEFAULT_TRIP_DWELL_RADIUS_METERS = 150;
+/** Fixed same-place radius for visit detection (not exposed in Settings). */
+export const HISTORY_SAME_PLACE_RADIUS_METERS = 25;
+export const DEFAULT_TRIP_DWELL_RADIUS_METERS = HISTORY_SAME_PLACE_RADIUS_METERS;
 
 /** Stops during a drive (Whataburger, charger, etc.) — lower than home dwell. */
 export const MIN_TRIP_STOP_MINUTES = 5;

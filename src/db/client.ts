@@ -1,4 +1,4 @@
-import { open } from '@op-engineering/op-sqlite';
+import { open, type DB } from '@op-engineering/op-sqlite';
 import { drizzle } from 'drizzle-orm/op-sqlite';
 import { migrate } from 'drizzle-orm/op-sqlite/migrator';
 import migrations from '../../drizzle/migrations';
@@ -7,15 +7,23 @@ import { getOrCreateDatabaseKey } from './keychain';
 export type Database = ReturnType<typeof drizzle>;
 
 let dbPromise: Promise<Database> | null = null;
+let sqlitePromise: Promise<DB> | null = null;
 
 export function getDatabase(): Promise<Database> {
   if (!dbPromise) {
-    dbPromise = initDatabase();
+    dbPromise = initDatabase().then(({ db }) => db);
   }
   return dbPromise;
 }
 
-async function initDatabase(): Promise<Database> {
+export function getSqlite(): Promise<DB> {
+  if (!sqlitePromise) {
+    sqlitePromise = initDatabase().then(({ sqlite }) => sqlite);
+  }
+  return sqlitePromise;
+}
+
+async function initDatabase(): Promise<{ db: Database; sqlite: DB }> {
   const key = await getOrCreateDatabaseKey();
 
   const sqlite = open({
@@ -27,6 +35,6 @@ async function initDatabase(): Promise<Database> {
 
   await migrate(db, migrations);
 
-  return db;
+  return { db, sqlite };
 }
 

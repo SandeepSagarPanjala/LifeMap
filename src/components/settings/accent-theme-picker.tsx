@@ -14,9 +14,9 @@ export function AccentThemePicker() {
 
   return (
     <View className="bg-card border-border rounded-2xl border p-4">
-      <Text className="font-medium">Accent color</Text>
+      <Text className="font-medium">Theme</Text>
       <Text variant="muted" className="mt-1 leading-5">
-        Choose the accent for tabs, icons, and highlights. Verdant Path is the default.
+        App accent for tabs, icons, and highlights. Verdant Path is the default.
       </Text>
 
       <View className="mt-4 gap-2">

@@ -1,23 +1,22 @@
 import {useMemo} from 'react';
 
 import {
-  buildTripDetectionConfigFromPreferences,
-  normalizeTripDwellMinutes,
-  normalizeTripRadiusMeters,
+  buildTripDetectionConfig,
+  DEFAULT_TRIP_DWELL_MINUTES,
+  DEFAULT_TRIP_GAP_MINUTES,
+  HISTORY_SAME_PLACE_RADIUS_METERS,
   type TripDetectionConfig,
 } from '@/lib/trip-settings';
-import {useAppStore} from '@/stores/app-store';
 
+/** Fixed visit/drive rules for map history (not user-configurable in Settings). */
 export function useTripDetectionConfig(): TripDetectionConfig {
-  const dwellMinutes = useAppStore(state =>
-    normalizeTripDwellMinutes(state.tripDwellMinutes),
-  );
-  const dwellRadiusMeters = useAppStore(state =>
-    normalizeTripRadiusMeters(state.tripDwellRadiusMeters),
-  );
-
   return useMemo(
-    () => buildTripDetectionConfigFromPreferences(dwellMinutes, dwellRadiusMeters),
-    [dwellMinutes, dwellRadiusMeters],
+    () =>
+      buildTripDetectionConfig(
+        DEFAULT_TRIP_GAP_MINUTES,
+        DEFAULT_TRIP_DWELL_MINUTES,
+        HISTORY_SAME_PLACE_RADIUS_METERS,
+      ),
+    [],
   );
 }

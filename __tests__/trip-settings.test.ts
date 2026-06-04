@@ -13,7 +13,7 @@ describe('trip-settings', () => {
 
   it('normalizes radius to allowed choices', () => {
     expect(normalizeTripRadiusMeters(50)).toBe(50);
-    expect(normalizeTripRadiusMeters(200)).toBe(150);
+    expect(normalizeTripRadiusMeters(200)).toBe(25);
   });
 
   it('builds detection config from preferences', () => {

@@ -9,6 +9,7 @@ import {PreferencesSettings} from '@/components/settings/preferences-settings';
 import {TrackingSettings} from '@/components/settings/tracking-settings';
 import {HistoryDetectionSettings} from '@/components/settings/history-detection-settings';
 import {LocationDataSettings} from '@/components/settings/location-data-settings';
+import {StorageSettings} from '@/components/settings/storage-settings';
 import {useThemeColors} from '@/hooks/use-theme-colors';
 import {useAppStore} from '@/stores/app-store';
 
@@ -20,16 +21,14 @@ export function SettingsScreen() {
   const setDevShowOnboarding = useAppStore(state => state.setDevShowOnboarding);
 
   return (
-    <SafeAreaView className="bg-background flex-1" edges={['top']}>
+    <SafeAreaView className="bg-background flex-1" edges={['bottom']}>
       <ScrollView
         className="flex-1"
         contentContainerClassName="px-5 pb-8 pt-4"
         showsVerticalScrollIndicator={false}>
-        <Text variant="h3" className="text-left">
-          Settings
-        </Text>
+        <StorageSettings />
 
-        <View className="mt-6">
+        <View className="mt-4">
           <AccentThemePicker />
         </View>
 
