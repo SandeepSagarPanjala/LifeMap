@@ -4,17 +4,12 @@ import {Pressable, StyleSheet} from 'react-native';
 import {useThemeColors} from '@/hooks/use-theme-colors';
 
 type MapLocateButtonProps = {
-  visible: boolean;
   bottom: number;
   onPress: () => void;
 };
 
-export function MapLocateButton({visible, bottom, onPress}: MapLocateButtonProps) {
+export function MapLocateButton({bottom, onPress}: MapLocateButtonProps) {
   const colors = useThemeColors();
-
-  if (!visible) {
-    return null;
-  }
 
   return (
     <Pressable

@@ -11,11 +11,10 @@ import MapView, {
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 import {MapLocateButton} from '@/components/map/MapLocateButton';
-import {
-  animateRecenterToUser,
-  centerMapOnUser,
-  isCoordinateInMapView,
-} from '@/lib/map-location-utils';
+import {RoutePathOverlay} from '@/components/map/RoutePathOverlay';
+import {useLocationPointsForDay} from '@/hooks/use-location-days';
+import {getTodayDateKey} from '@/lib/day-utils';
+import {animateRecenterToUser, centerMapOnUser} from '@/lib/map-location-utils';
 import type {RootStackParamList} from '@/navigation/types';
 import {useAppStore} from '@/stores/app-store';
 import {useThemeColors} from '@/hooks/use-theme-colors';
@@ -38,6 +37,8 @@ export function MapScreen() {
   const colorScheme = useColorScheme();
   const colors = useThemeColors();
   const preferredMapApp = useAppStore(state => state.preferredMapApp);
+  const todayKey = getTodayDateKey();
+  const {data: todayPoints} = useLocationPointsForDay(todayKey);
   const mapRef = useRef<MapView>(null);
   const hasCenteredOnOpenRef = useRef(false);
   const [mapRegion, setMapRegion] = useState<Region>(FALLBACK_REGION);
@@ -50,13 +51,6 @@ export function MapScreen() {
     Platform.OS === 'android' && preferredMapApp === 'google'
       ? PROVIDER_GOOGLE
       : PROVIDER_DEFAULT;
-
-  const showLocateButton = useMemo(() => {
-    if (!userCoordinate) {
-      return false;
-    }
-    return !isCoordinateInMapView(userCoordinate, mapRegion);
-  }, [mapRegion, userCoordinate]);
 
   const locateButtonBottom = insets.bottom + LOCATE_BUTTON_BOTTOM_GAP;
 
@@ -116,14 +110,11 @@ export function MapScreen() {
           if (coordinate) {
             handleUserLocation(coordinate);
           }
-        }}
-      />
+        }}>
+        <RoutePathOverlay points={todayPoints} />
+      </MapView>
 
-      <MapLocateButton
-        visible={showLocateButton}
-        bottom={locateButtonBottom}
-        onPress={goToCurrentLocation}
-      />
+      <MapLocateButton bottom={locateButtonBottom} onPress={goToCurrentLocation} />
 
       <View
         pointerEvents="box-none"
