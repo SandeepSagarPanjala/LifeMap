@@ -126,6 +126,135 @@ function isMeaningfulTravel(trip: DetectedTrip): boolean {
 
 const MAX_STAY_DEPARTURE_BRIDGE_MS = 5 * 60_000;
 
+/** Short gap + lot-sized move → one drive from the last visit save (776→779). */
+const SHORT_DEPARTURE_MAX_GAP_MS = 5 * 60_000;
+const SHORT_DEPARTURE_MIN_DIST_M = 80;
+const SHORT_DEPARTURE_MAX_DIST_M = 800;
+const MIN_DEPARTURE_SPEED_KMH = 2.5;
+const MAX_DEPARTURE_SPEED_KMH = 80;
+
+/** Long gap + tiny offset → still at previous place (#786→#787 wake). */
+const STALE_WAKE_MIN_GAP_MS = 10 * 60_000;
+const STALE_WAKE_MAX_DIST_M = 400;
+const STALE_WAKE_MAX_SPEED_KMH = 2;
+
+function impliedSpeedKmh(distM: number, gapMs: number): number {
+  if (gapMs <= 0) {
+    return 0;
+  }
+  return (distM / 1000) / (gapMs / 3_600_000);
+}
+
+/** @internal Exported for tests */
+export function isShortGapDeparture(
+  from: LocationPointRow,
+  to: LocationPointRow,
+): boolean {
+  const gapMs = to.timestamp.getTime() - from.timestamp.getTime();
+  const distM = distanceKm(from, to) * 1000;
+  if (gapMs <= 0 || gapMs > SHORT_DEPARTURE_MAX_GAP_MS) {
+    return false;
+  }
+  if (distM < SHORT_DEPARTURE_MIN_DIST_M || distM > SHORT_DEPARTURE_MAX_DIST_M) {
+    return false;
+  }
+  const speedKmh = impliedSpeedKmh(distM, gapMs);
+  return speedKmh >= MIN_DEPARTURE_SPEED_KMH && speedKmh <= MAX_DEPARTURE_SPEED_KMH;
+}
+
+/** @internal Exported for tests */
+export function isStaleWakeNotDeparture(
+  from: LocationPointRow,
+  to: LocationPointRow,
+): boolean {
+  const gapMs = to.timestamp.getTime() - from.timestamp.getTime();
+  const distM = distanceKm(from, to) * 1000;
+  if (gapMs < STALE_WAKE_MIN_GAP_MS || distM > STALE_WAKE_MAX_DIST_M) {
+    return false;
+  }
+  return impliedSpeedKmh(distM, gapMs) < STALE_WAKE_MAX_SPEED_KMH;
+}
+
+function trimStaleWakeLeading(
+  points: LocationPointRow[],
+  priorStayLast: LocationPointRow | null,
+): LocationPointRow[] {
+  if (!priorStayLast || points.length === 0) {
+    return points;
+  }
+
+  let start = 0;
+  while (
+    start < points.length - 1 &&
+    isStaleWakeNotDeparture(priorStayLast, points[start]!)
+  ) {
+    start += 1;
+  }
+
+  return points.slice(start);
+}
+
+/**
+ * When approach pings (779…) are clustered with the destination (784) as one stay,
+ * peel off the short hop from the previous visit as travel starting at #776.
+ */
+function splitStayAfterShortDeparture(
+  deduped: LocationPointRow[],
+  span: StaySpan,
+  priorStayEndIndex: number,
+  config: TripDetectionConfig,
+): {travelEnd: number; stay: StaySpan} {
+  const lastPrev = deduped[priorStayEndIndex]!;
+  const firstInSpan = deduped[span.start]!;
+
+  if (!isShortGapDeparture(lastPrev, firstInSpan)) {
+    return {travelEnd: span.start - 1, stay: span};
+  }
+
+  const destinationAnchor = deduped[span.end]!;
+  const radiusKm = config.dwellRadiusMeters / 1000;
+  let arriveIndex = span.start;
+
+  for (let index = span.start; index <= span.end; index += 1) {
+    if (distanceKm(destinationAnchor, deduped[index]!) <= radiusKm) {
+      arriveIndex = index;
+      break;
+    }
+  }
+
+  if (arriveIndex <= span.start) {
+    return {travelEnd: span.start - 1, stay: span};
+  }
+
+  return {
+    travelEnd: arriveIndex - 1,
+    stay: {start: arriveIndex, end: span.end},
+  };
+}
+
+function buildTravelSlice(
+  deduped: LocationPointRow[],
+  sliceStart: number,
+  sliceEnd: number,
+  priorStayEndIndex: number | null,
+): LocationPointRow[] {
+  let start = sliceStart;
+  if (
+    priorStayEndIndex != null &&
+    priorStayEndIndex < start &&
+    isShortGapDeparture(deduped[priorStayEndIndex]!, deduped[start]!)
+  ) {
+    start = priorStayEndIndex;
+  }
+
+  const priorLast =
+    priorStayEndIndex != null ? deduped[priorStayEndIndex]! : null;
+  return trimStaleWakeLeading(
+    deduped.slice(start, sliceEnd + 1),
+    priorLast,
+  );
+}
+
 /**
  * Visit ends when you leave: usually the next drive's start time. Mid-route stops
  * keep their last save when the next drive is far away in time (charger gap, etc.).
@@ -238,7 +367,8 @@ function growPlaceCluster(
  * Qualifies when span ≥ dwell minutes, last cluster (open visit), or a mid-route
  * stop (≥ {@link MIN_TRIP_STOP_MINUTES} between movement — e.g. food, charger).
  */
-function findStaySpans(
+/** @internal Test helper */
+export function findStaySpans(
   points: LocationPointRow[],
   config: TripDetectionConfig,
 ): StaySpan[] {
@@ -427,6 +557,23 @@ function findStopSpansInTravel(
   return spans;
 }
 
+function prependDeparturePoint(
+  slice: LocationPointRow[],
+  departFrom: LocationPointRow | null,
+): LocationPointRow[] {
+  if (
+    slice.length === 0 ||
+    departFrom == null ||
+    slice[0]!.id === departFrom.id
+  ) {
+    return slice;
+  }
+  if (isShortGapDeparture(departFrom, slice[0]!)) {
+    return [departFrom, ...slice];
+  }
+  return slice;
+}
+
 function splitTravelAtStops(
   travel: DetectedTrip,
   startTripIndex: number,
@@ -439,10 +586,12 @@ function splitTravelAtStops(
   const pieces: DetectedTrip[] = [];
   let tripIndex = startTripIndex;
   let cursor = 0;
+  let lastStopDepartFrom: LocationPointRow | null = null;
 
   for (const stop of stops) {
     if (stop.start > cursor) {
-      const slice = travel.points.slice(cursor, stop.start);
+      let slice = travel.points.slice(cursor, stop.start);
+      slice = prependDeparturePoint(slice, lastStopDepartFrom);
       if (slice.length > 0) {
         const leg = makeTrip(slice, 'travel', tripIndex);
         if (isMeaningfulTravel(leg)) {
@@ -456,11 +605,13 @@ function splitTravelAtStops(
       makeTrip(travel.points.slice(stop.start, stop.end + 1), 'stay', tripIndex),
     );
     tripIndex += 1;
+    lastStopDepartFrom = travel.points[stop.end]!;
     cursor = stop.end + 1;
   }
 
   if (cursor < travel.points.length) {
-    const tail = travel.points.slice(cursor);
+    let tail = travel.points.slice(cursor);
+    tail = prependDeparturePoint(tail, lastStopDepartFrom);
     if (tail.length > 0) {
       const leg = makeTrip(tail, 'travel', tripIndex);
       if (isMeaningfulTravel(leg)) {
@@ -539,11 +690,29 @@ export function detectTrips(
   let cursor = 0;
 
   for (let stayIndex = 0; stayIndex < stays.length; stayIndex += 1) {
-    const stay = stays[stayIndex]!;
-    const travelEnd = stay.start - 1;
+    let staySpan = stays[stayIndex]!;
+    let travelEnd = staySpan.start - 1;
+    const priorStayEnd =
+      stayIndex > 0 ? stays[stayIndex - 1]!.end : null;
+
+    if (priorStayEnd != null) {
+      const split = splitStayAfterShortDeparture(
+        deduped,
+        staySpan,
+        priorStayEnd,
+        config,
+      );
+      travelEnd = split.travelEnd;
+      staySpan = split.stay;
+    }
 
     if (travelEnd >= cursor) {
-      const travelPoints = deduped.slice(cursor, travelEnd + 1);
+      const travelPoints = buildTravelSlice(
+        deduped,
+        cursor,
+        travelEnd,
+        priorStayEnd,
+      );
       if (travelPoints.length > 0) {
         const travel = makeTrip(travelPoints, 'travel', tripIndex);
         if (isMeaningfulTravel(travel)) {
@@ -555,19 +724,28 @@ export function detectTrips(
 
     trips.push(
       makeTrip(
-        deduped.slice(stay.start, stay.end + 1),
+        deduped.slice(staySpan.start, staySpan.end + 1),
         'stay',
         tripIndex,
       ),
     );
     tripIndex += 1;
-    cursor = stay.end + 1;
+    cursor = staySpan.end + 1;
   }
 
   if (cursor < deduped.length) {
-    const travel = makeTrip(deduped.slice(cursor), 'travel', tripIndex);
-    if (isMeaningfulTravel(travel)) {
-      trips.push(travel);
+    const lastStay = stays[stays.length - 1]!;
+    const travelPoints = buildTravelSlice(
+      deduped,
+      cursor,
+      deduped.length - 1,
+      lastStay.end,
+    );
+    if (travelPoints.length > 0) {
+      const travel = makeTrip(travelPoints, 'travel', tripIndex);
+      if (isMeaningfulTravel(travel)) {
+        trips.push(travel);
+      }
     }
   }
 

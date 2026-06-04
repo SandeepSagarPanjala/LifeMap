@@ -3,6 +3,8 @@ import {
   dedupeLocationPoints,
   detectTrips,
   getTravelDisplayPoints,
+  isShortGapDeparture,
+  isStaleWakeNotDeparture,
   stayTripMarkerCoordinate,
 } from '../src/lib/trip-detection';
 import {buildTripDetectionConfig} from '../src/lib/trip-settings';
@@ -240,6 +242,67 @@ describe('stay / trip timeline', () => {
         trips[index + 1]?.kind === 'stay',
     );
     expect(between).toBeDefined();
+  });
+
+  it('classifies short gap + lot move as departure from last stay save', () => {
+    const wb = {lat: 33.23022, lng: -97.164};
+    const enRoute = {lat: 33.23108, lng: -97.16576};
+    const base = new Date('2026-06-04T09:18:08.000Z');
+    const row = (
+      offsetMin: number,
+      coords: {lat: number; lng: number},
+      id: number,
+    ): LocationPointRow => ({
+      id,
+      timestamp: new Date(base.getTime() + offsetMin * 60_000),
+      lat: coords.lat,
+      lng: coords.lng,
+      accuracy: 5,
+      altitude: null,
+      speed: null,
+      source: 'gps',
+    });
+
+    expect(isShortGapDeparture(row(0, wb, 1), row(2.4, enRoute, 2))).toBe(true);
+    expect(
+      isStaleWakeNotDeparture(row(0, wb, 1), row(19, {lat: 33.23077, lng: -97.16328}, 2)),
+    ).toBe(true);
+  });
+
+  it('includes last stay point when leaving for the next stop (Jun 4 export)', () => {
+    const fs = require('fs') as typeof import('fs');
+    const path = require('path') as typeof import('path');
+    const exportPath = path.join(__dirname, '..', 'all data.json');
+    if (!fs.existsSync(exportPath)) {
+      return;
+    }
+
+    const raw = JSON.parse(fs.readFileSync(exportPath, 'utf8')) as {
+      rows: Array<{
+        id: number;
+        timestamp: string;
+        lat: number;
+        lng: number;
+        accuracy: number | null;
+        altitude: number | null;
+        speed: number | null;
+        source: string;
+      }>;
+    };
+    const dayStart = new Date('2026-06-04T05:00:00.000Z');
+    const points = raw.rows
+      .map(row => ({
+        ...row,
+        timestamp: new Date(row.timestamp),
+        source: row.source as LocationPointRow['source'],
+      }))
+      .filter(p => p.timestamp >= dayStart);
+
+    const trips = detectTrips(points, buildTripDetectionConfig(10, 10, 25));
+    const hop = trips.find(t => t.kind === 'travel' && t.points.some(p => p.id === 776));
+
+    expect(hop?.points[0]?.id).toBe(776);
+    expect((hop?.distanceKm ?? 0) * 1000).toBeGreaterThan(200);
   });
 
   it('does not emit noise trips for jitter at one place', () => {
