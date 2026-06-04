@@ -10,20 +10,22 @@ import MapView, {
 } from 'react-native-maps';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
+import {HistoryDatePickerSheet} from '@/components/map/HistoryDatePickerSheet';
 import {HistoryEventCard} from '@/components/map/HistoryEventCard';
 import {HistoryTimelineBar} from '@/components/map/HistoryTimelineBar';
+import {MapCalendarButton} from '@/components/map/MapCalendarButton';
 import {MapHistoryButton} from '@/components/map/MapHistoryButton';
 import {MapLocateButton} from '@/components/map/MapLocateButton';
 import {DayJourneyOverlay} from '@/components/map/DayJourneyOverlay';
 import {StayAreasOverlay} from '@/components/map/StayAreasOverlay';
 import {StayDurationCallout} from '@/components/map/StayDurationCallout';
 import {TripRouteOverlay} from '@/components/map/TripRouteOverlay';
-import {useHistoryData} from '@/hooks/use-history-data';
+import {useDaySummaries} from '@/hooks/use-day-summaries';
+import {useHistoryForDay} from '@/hooks/use-history-data';
+import {countHistoryTimelineEvents} from '@/lib/history-timeline';
 import {useTripPlayback} from '@/hooks/use-trip-playback';
-import {useLocationPointsForDay} from '@/hooks/use-location-days';
 import {getTodayDateKey} from '@/lib/day-utils';
 import {
-  detectTrips,
   getTravelDisplayPoints,
   isPlayableTimelineEntry,
   stayBeforeEntryIndex,
@@ -49,6 +51,8 @@ const SETTINGS_TOP_GAP = 8;
 const SETTINGS_SIZE = 44;
 const LOCATE_BUTTON_BOTTOM_GAP = 20;
 const HISTORY_PANEL_HEIGHT = 218;
+const MAP_STACK_BUTTON_SIZE = 44;
+const MAP_STACK_BUTTON_GAP = 8;
 
 export function MapScreen() {
   const tripDetectionConfig = useTripDetectionConfig();
@@ -59,8 +63,12 @@ export function MapScreen() {
   const preferredMapApp = useAppStore(state => state.preferredMapApp);
   const distanceUnit = useAppStore(state => state.distanceUnit);
   const todayKey = getTodayDateKey();
-  const {data: todayPoints} = useLocationPointsForDay(todayKey);
-  const {data: historyData} = useHistoryData();
+  const [selectedDateKey, setSelectedDateKey] = useState(todayKey);
+  const [historyDatePickerOpen, setHistoryDatePickerOpen] = useState(false);
+  const {data: historyData, loading: historyLoading} =
+    useHistoryForDay(selectedDateKey);
+  const viewingToday = selectedDateKey === todayKey;
+  const {dateKeysWithData} = useDaySummaries();
   const mapRef = useRef<MapView>(null);
   const hasCenteredOnOpenRef = useRef(false);
   const [mapRegion, setMapRegion] = useState<Region>(FALLBACK_REGION);
@@ -69,29 +77,22 @@ export function MapScreen() {
     longitude: number;
   } | null>(null);
   const [historyPanelOpen, setHistoryPanelOpen] = useState(false);
-  const [historyFocusOnToday, setHistoryFocusOnToday] = useState(false);
+  const [historyFocusSnapToEnd, setHistoryFocusSnapToEnd] = useState(false);
   const [selectedHistoryIndex, setSelectedHistoryIndex] = useState(-1);
 
   const historyEntries = historyData.entries;
-  const historyVisitCount = useMemo(
-    () => historyEntries.filter(entry => entry.kind === 'stay').length,
+  const historyBadgeCount = useMemo(
+    () => countHistoryTimelineEvents(historyEntries),
     [historyEntries],
   );
 
-  const dayStays = useMemo((): DetectedTrip[] => {
-    const fromHistory = historyEntries.filter(
-      (entry): entry is DetectedTrip => entry.kind === 'stay',
-    );
-    if (fromHistory.length > 0) {
-      return fromHistory;
-    }
-    if (todayPoints.length === 0) {
-      return [];
-    }
-    return detectTrips(todayPoints, tripDetectionConfig).filter(
-      trip => trip.kind === 'stay',
-    );
-  }, [historyEntries, todayPoints, tripDetectionConfig]);
+  const dayStays = useMemo(
+    (): DetectedTrip[] =>
+      historyEntries.filter(
+        (entry): entry is DetectedTrip => entry.kind === 'stay',
+      ),
+    [historyEntries],
+  );
 
   const selectedEntry = useMemo(() => {
     if (selectedHistoryIndex < 0) {
@@ -159,15 +160,25 @@ export function MapScreen() {
     ? historyPanelBottom + 12
     : insets.bottom + LOCATE_BUTTON_BOTTOM_GAP;
   const historyButtonBottom = locateButtonBottom;
+  const calendarButtonBottom =
+    historyButtonBottom + MAP_STACK_BUTTON_SIZE + MAP_STACK_BUTTON_GAP;
+
+  const rightControlsBottom = historyPanelOpen
+    ? historyPanelBottom + 12
+    : locateButtonBottom;
 
   const mapPadding = useMemo(
     () => ({
       top: insets.top + SETTINGS_TOP_GAP + SETTINGS_SIZE,
       right: 12,
-      bottom: historyPanelOpen ? historyPanelBottom + 56 : locateButtonBottom + 52,
+      bottom:
+        rightControlsBottom +
+        MAP_STACK_BUTTON_SIZE * 2 +
+        MAP_STACK_BUTTON_GAP +
+        16,
       left: 12,
     }),
-    [insets.top, locateButtonBottom, historyPanelBottom, historyPanelOpen],
+    [insets.top, rightControlsBottom],
   );
 
   const onRegionChange = useCallback((region: Region) => {
@@ -213,10 +224,34 @@ export function MapScreen() {
   const selectHistoryIndex = useCallback(
     (index: number) => {
       playback.stop();
-      setHistoryFocusOnToday(focused => (focused ? false : focused));
+      setHistoryFocusSnapToEnd(focused => (focused ? false : focused));
       setSelectedHistoryIndex(index);
     },
     [playback],
+  );
+
+  const openHistoryDatePicker = useCallback(() => {
+    setHistoryDatePickerOpen(true);
+  }, []);
+
+  const handleSelectMapDate = useCallback(
+    (dateKey: string) => {
+      setSelectedDateKey(dateKey);
+      setSelectedHistoryIndex(-1);
+      setHistoryFocusSnapToEnd(dateKey === todayKey);
+      playback.stop();
+    },
+    [playback, todayKey],
+  );
+
+  const handleHistoryDateKeyChange = useCallback(
+    (dateKey: string) => {
+      setSelectedDateKey(dateKey);
+      setSelectedHistoryIndex(-1);
+      setHistoryFocusSnapToEnd(dateKey === todayKey);
+      playback.stop();
+    },
+    [playback, todayKey],
   );
 
   const handleToggleHistoryPanel = useCallback(() => {
@@ -224,15 +259,29 @@ export function MapScreen() {
       const next = !open;
       if (next) {
         setSelectedHistoryIndex(-1);
-        setHistoryFocusOnToday(true);
+        setHistoryFocusSnapToEnd(viewingToday);
       } else {
         playback.stop();
+        setSelectedDateKey(todayKey);
         setSelectedHistoryIndex(-1);
-        setHistoryFocusOnToday(false);
+        setHistoryFocusSnapToEnd(false);
       }
       return next;
     });
-  }, [playback]);
+  }, [playback, todayKey, viewingToday]);
+
+  useEffect(() => {
+    if (historyPanelOpen || historyLoading || !mapRef.current) {
+      return;
+    }
+    const coordinates = toMapCoordinates(historyData.points);
+    if (coordinates.length === 0) {
+      return;
+    }
+    const region = regionForCoordinates(coordinates);
+    mapRef.current.animateToRegion(region, 400);
+    setMapRegion(region);
+  }, [historyData.points, historyLoading, historyPanelOpen, selectedDateKey]);
 
   const handlePlayHistory = useCallback(() => {
     if (!selectedPlayable || selectedPlayable.kind !== 'travel') {
@@ -268,7 +317,8 @@ export function MapScreen() {
     historyPanelOpen &&
     ((playback.isPlaying && selectedPlayable != null) ||
       (scrubOnEvent && selectedPlayable != null));
-  const showUserLocation = !historyPanelOpen && !playback.isPlaying;
+  const showUserLocation =
+    !historyPanelOpen && !playback.isPlaying && viewingToday;
 
   return (
     <View className="bg-background flex-1">
@@ -278,7 +328,12 @@ export function MapScreen() {
         provider={provider}
         initialRegion={FALLBACK_REGION}
         mapPadding={mapPadding}
-        legalLabelInsets={{top: 0, right: 0, bottom: locateButtonBottom, left: 72}}
+        legalLabelInsets={{
+          top: 0,
+          right: 0,
+          bottom: calendarButtonBottom,
+          left: 72,
+        }}
         showsUserLocation={showUserLocation}
         showsMyLocationButton={false}
         userLocationPriority="high"
@@ -298,7 +353,7 @@ export function MapScreen() {
         }}>
         {showDayJourney ? (
           <DayJourneyOverlay
-            points={todayPoints}
+            points={historyData.points}
             stays={dayStays}
             tripConfig={tripDetectionConfig}
           />
@@ -333,29 +388,45 @@ export function MapScreen() {
       </MapView>
 
       <MapLocateButton bottom={locateButtonBottom} onPress={goToCurrentLocation} />
+      <MapCalendarButton
+        bottom={calendarButtonBottom}
+        onPress={openHistoryDatePicker}
+      />
       <MapHistoryButton
         bottom={historyButtonBottom}
         active={historyPanelOpen}
-        eventCount={historyVisitCount}
+        eventCount={historyBadgeCount}
         onPress={handleToggleHistoryPanel}
+      />
+
+      <HistoryDatePickerSheet
+        visible={historyDatePickerOpen}
+        selectedDateKey={selectedDateKey}
+        dateKeysWithData={dateKeysWithData}
+        onSelectDate={handleSelectMapDate}
+        onClose={() => setHistoryDatePickerOpen(false)}
       />
 
       {historyPanelOpen ? (
         <View style={[styles.historyPanelHost, {bottom: insets.bottom}]}>
           <HistoryEventCard
             entry={scrubOnEvent ? selectedEntry : null}
-            scrubOnEmpty={historyEntries.length > 0 && !scrubOnEvent}
+            scrubOnEmpty={
+              !historyLoading && historyEntries.length > 0 && !scrubOnEvent
+            }
             distanceUnit={distanceUnit}
             isPlaying={playback.isPlaying}
             onPlay={handlePlayHistory}
             onStop={playback.stop}
           />
           <HistoryTimelineBar
-            range={historyData.range}
+            dateKey={selectedDateKey}
             entries={historyEntries}
             selectedIndex={selectedHistoryIndex}
             onSelectIndex={selectHistoryIndex}
-            focusOnToday={historyFocusOnToday}
+            onDateKeyChange={handleHistoryDateKeyChange}
+            onOpenDatePicker={openHistoryDatePicker}
+            focusSnapToEnd={historyFocusSnapToEnd}
           />
         </View>
       ) : null}

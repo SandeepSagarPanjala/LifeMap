@@ -1,4 +1,7 @@
-import {prepareTodayHistoryTimeline} from '../src/lib/today-history';
+import {
+  prepareDayHistoryTimeline,
+  prepareTodayHistoryTimeline,
+} from '../src/lib/today-history';
 import {buildTripDetectionConfig} from '../src/lib/trip-settings';
 import type {LocationPointRow} from '../src/db/repositories/location-days';
 
@@ -44,6 +47,34 @@ describe('prepareTodayHistoryTimeline', () => {
       expect(stay.endAt).toEqual(now);
       expect(stay.openThroughNow).toBe(true);
       expect(stay.durationMs).toBe(now.getTime() - dayStart.getTime());
+    }
+  });
+
+  it('extends last stay through end of day on a past day with no later saves', () => {
+    const dayKey = '2026-06-03';
+    const dayStart = new Date('2026-06-03T05:00:00.000Z');
+    const lastPing = new Date('2026-06-04T04:12:13.000Z');
+    const now = new Date('2026-06-04T12:00:00.000Z');
+    const dayPoints = [
+      row('2026-06-03T23:49:00.000Z', 1),
+      row(lastPing.toISOString(), 2),
+    ];
+
+    const entries = prepareDayHistoryTimeline(
+      dayKey,
+      dayPoints,
+      [],
+      config,
+      now,
+    );
+    const stay = entries[entries.length - 1];
+    expect(stay?.kind).toBe('stay');
+    if (stay?.kind === 'stay') {
+      expect(stay.openThroughNow).toBeFalsy();
+      expect(stay.endAt.getTime()).toBeGreaterThan(lastPing.getTime());
+      expect(stay.endAt.getTime()).toBe(
+        new Date('2026-06-04T04:59:59.999Z').getTime(),
+      );
     }
   });
 

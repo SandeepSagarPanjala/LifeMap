@@ -8,7 +8,7 @@ import {
   startOfDay,
 } from 'date-fns';
 
-import {toDateKey} from '@/lib/day-utils';
+import {parseDateKey, toDateKey} from '@/lib/day-utils';
 import type {DayTimelineEntry} from '@/lib/trip-detection';
 import {isVisitOngoing} from '@/lib/trip-format';
 
@@ -262,6 +262,22 @@ export function formatDayRulerLabel(day: Date, referenceNow: Date): string {
   return format(day, 'MMM d');
 }
 
+/** Visits + drives shown on the history bar (excludes gaps). */
+export function countHistoryTimelineEvents(
+  entries: DayTimelineEntry[],
+): number {
+  return entries.filter(
+    entry => entry.kind === 'stay' || entry.kind === 'travel',
+  ).length;
+}
+
+export function formatHistoryDayTitle(
+  dateKey: string,
+  referenceNow: Date = new Date(),
+): string {
+  return formatDayRulerLabel(parseDateKey(dateKey), referenceNow);
+}
+
 /** Linear 12 AM → 12 AM (used in tests / helpers). */
 export function calendarTimeToRulerPx(
   time: Date,
@@ -310,10 +326,39 @@ export function buildRulerTicks(
   }
 
   const maxPx = barWidthPx;
-  return ticks.map(tick => ({
+  const clamped = ticks.map(tick => ({
     ...tick,
     leftPx: Math.min(maxPx, Math.max(0, tick.leftPx)),
   }));
+  return dedupeMajorTickLabels(clamped, 40);
+}
+
+/** Hide major hour labels that collapse to the same px on compressed timelines. */
+export function dedupeMajorTickLabels(
+  ticks: HistoryRulerTick[],
+  minGapPx: number,
+): HistoryRulerTick[] {
+  const majors = ticks.filter(tick => tick.label != null);
+  const hideHours = new Set<number>();
+
+  for (let i = 0; i < majors.length; i += 1) {
+    for (let j = i + 1; j < majors.length; j += 1) {
+      const a = majors[i]!;
+      const b = majors[j]!;
+      if (Math.abs(a.leftPx - b.leftPx) >= minGapPx) {
+        continue;
+      }
+      if (a.hour === 0 || b.hour === 0) {
+        hideHours.add(a.hour === 24 ? a.hour : b.hour === 24 ? b.hour : b.hour);
+      } else {
+        hideHours.add(b.hour);
+      }
+    }
+  }
+
+  return ticks.map(tick =>
+    hideHours.has(tick.hour) ? {...tick, label: null} : tick,
+  );
 }
 
 function clipEntryToDay(
@@ -354,6 +399,51 @@ function listCalendarDays(rangeStart: Date, rangeEnd: Date): Date[] {
   return days;
 }
 
+export function buildHistoryDayRuler(
+  entries: DayTimelineEntry[],
+  dateKey: string,
+  barWidthPx: number,
+  now: Date = new Date(),
+): HistoryDayRuler {
+  const day = parseDateKey(dateKey);
+  const dayStart = startOfDay(day);
+  const dayEnd = endOfDay(day);
+  const raw: HistoryDaySegment[] = [];
+
+  for (let index = 0; index < entries.length; index += 1) {
+    const entry = entries[index]!;
+    if (entry.endAt < dayStart || entry.startAt > dayEnd) {
+      continue;
+    }
+    const clipped = clipEntryToDay(entry, index, dayStart, dayEnd, now);
+    if (clipped) {
+      raw.push({
+        ...clipped,
+        leftPx: 0,
+        widthPx: 0,
+      });
+    }
+  }
+
+  const segments = layoutSegmentsOnFixedBar(raw, barWidthPx);
+  const breakpoints = buildTimeBreakpoints(
+    dayStart,
+    segments,
+    barWidthPx,
+    now,
+  );
+
+  return {
+    dateKey,
+    dayStart,
+    label: formatDayRulerLabel(day, now),
+    segments,
+    ticks: buildRulerTicks(dayStart, breakpoints, barWidthPx),
+    nowLeftPx: isToday(day) ? timeToBarPx(now, breakpoints) : null,
+    barWidthPx,
+  };
+}
+
 export function buildHistoryDayRulers(
   entries: DayTimelineEntry[],
   range: HistoryTimeRange,
@@ -362,44 +452,9 @@ export function buildHistoryDayRulers(
 ): HistoryDayRuler[] {
   const days = listCalendarDays(range.startAt, now);
 
-  return days.map(day => {
-    const dayStart = startOfDay(day);
-    const dayEnd = endOfDay(day);
-    const raw: HistoryDaySegment[] = [];
-
-    for (let index = 0; index < entries.length; index += 1) {
-      const entry = entries[index]!;
-      if (entry.endAt < dayStart || entry.startAt > dayEnd) {
-        continue;
-      }
-      const clipped = clipEntryToDay(entry, index, dayStart, dayEnd, now);
-      if (clipped) {
-        raw.push({
-          ...clipped,
-          leftPx: 0,
-          widthPx: 0,
-        });
-      }
-    }
-
-    const segments = layoutSegmentsOnFixedBar(raw, barWidthPx);
-    const breakpoints = buildTimeBreakpoints(
-      dayStart,
-      segments,
-      barWidthPx,
-      now,
-    );
-
-    return {
-      dateKey: toDateKey(day),
-      dayStart,
-      label: formatDayRulerLabel(day, now),
-      segments,
-      ticks: buildRulerTicks(dayStart, breakpoints, barWidthPx),
-      nowLeftPx: isToday(day) ? timeToBarPx(now, breakpoints) : null,
-      barWidthPx,
-    };
-  });
+  return days.map(day =>
+    buildHistoryDayRuler(entries, toDateKey(day), barWidthPx, now),
+  );
 }
 
 export function findEntryIndexAtTime(

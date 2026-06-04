@@ -1,6 +1,8 @@
 import {
+  addDays,
   endOfDay,
   format,
+  isAfter,
   parseISO,
   startOfDay,
   subYears,
@@ -26,4 +28,12 @@ export function getTodayDateKey(): string {
 
 export function getOneYearAgoDateKey(from: Date = new Date()): string {
   return toDateKey(subYears(startOfDay(from), 1));
+}
+
+export function shiftDateKey(dateKey: string, deltaDays: number): string {
+  return toDateKey(addDays(parseDateKey(dateKey), deltaDays));
+}
+
+export function isDateKeyAfterToday(dateKey: string, now: Date = new Date()): boolean {
+  return isAfter(parseDateKey(dateKey), startOfDay(now));
 }

@@ -2,9 +2,12 @@ import {
   ANCHOR_SIZE_PX,
   buildHistoryDayRulers,
   calendarTimeToRulerPx,
+  countHistoryTimelineEvents,
+  dedupeMajorTickLabels,
   layoutSegmentsOnFixedBar,
   rulerPxToCalendarTime,
   selectionAtAnchorPx,
+  type HistoryRulerTick,
 } from '../src/lib/history-timeline';
 import type {DayTimelineEntry} from '../src/lib/trip-detection';
 
@@ -64,6 +67,22 @@ describe('history day rulers', () => {
     const drive = today.segments.find(s => s.kind === 'travel')!;
     const px = drive.leftPx + drive.widthPx / 2;
     expect(selectionAtAnchorPx(today, px, entries)).toBe(1);
+  });
+
+  it('counts visits and drives for the history badge', () => {
+    expect(countHistoryTimelineEvents(entries)).toBe(2);
+  });
+
+  it('hides overlapping major tick labels on compressed bars', () => {
+    const ticks: HistoryRulerTick[] = [
+      {hour: 0, leftPx: 0, label: '12 AM', kind: 'major'},
+      {hour: 24, leftPx: 2, label: '12 AM', kind: 'major'},
+      {hour: 12, leftPx: 150, label: '12 PM', kind: 'major'},
+    ];
+    const deduped = dedupeMajorTickLabels(ticks, 40);
+    const labels = deduped.filter(t => t.label).map(t => t.hour);
+    expect(labels).toContain(0);
+    expect(labels).not.toContain(24);
   });
 
   it('returns -1 when scrub is on empty bar', () => {

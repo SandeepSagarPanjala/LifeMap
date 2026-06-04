@@ -1,5 +1,6 @@
-import {useCallback, useRef, useState} from 'react';
+import {useCallback, useState} from 'react';
 import {useFocusEffect} from '@react-navigation/native';
+import {endOfDay} from 'date-fns';
 
 import {
   getLocationPointsForDay,
@@ -10,48 +11,53 @@ import {getDayRange, getTodayDateKey} from '@/lib/day-utils';
 import type {DayTimelineEntry} from '@/lib/trip-detection';
 import type {HistoryTimeRange} from '@/lib/history-timeline';
 import {
-  getTodayHistoryLookbackStart,
-  prepareTodayHistoryTimeline,
+  getHistoryLookbackStart,
+  prepareDayHistoryTimeline,
 } from '@/lib/today-history';
 import {useTripDetectionConfig} from '@/hooks/use-trip-detection-config';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
 
 export type HistoryData = {
+  dateKey: string;
   points: LocationPointRow[];
   entries: DayTimelineEntry[];
   range: HistoryTimeRange;
 };
 
 const EMPTY: HistoryData = {
+  dateKey: getTodayDateKey(),
   points: [],
   entries: [],
   range: {startAt: new Date(), endAt: new Date()},
 };
 
-async function loadHistoryData(
+async function loadHistoryForDay(
+  dateKey: string,
   detectionConfig: TripDetectionConfig,
 ): Promise<HistoryData> {
-  const todayKey = getTodayDateKey();
-  const {start: dayStart} = getDayRange(todayKey);
-  const rangeEnd = new Date();
-  const lookbackStart = getTodayHistoryLookbackStart(dayStart);
-  const [todayPoints, lookbackPoints] = await Promise.all([
-    getLocationPointsForDay(todayKey),
+  const now = new Date();
+  const {start: dayStart} = getDayRange(dateKey);
+  const isToday = dateKey === getTodayDateKey();
+  const rangeEnd = isToday ? now : endOfDay(dayStart);
+  const lookbackStart = getHistoryLookbackStart(dayStart);
+  const [dayPoints, lookbackPoints] = await Promise.all([
+    getLocationPointsForDay(dateKey),
     getLocationPointsInRange(
       lookbackStart,
       new Date(dayStart.getTime() - 1),
     ),
   ]);
-  const entries = prepareTodayHistoryTimeline(
-    todayPoints,
+  const entries = prepareDayHistoryTimeline(
+    dateKey,
+    dayPoints,
     lookbackPoints,
-    dayStart,
-    rangeEnd,
     detectionConfig,
+    now,
   );
 
   return {
-    points: todayPoints,
+    dateKey,
+    points: dayPoints,
     entries,
     range: {
       startAt: dayStart,
@@ -60,7 +66,7 @@ async function loadHistoryData(
   };
 }
 
-export function useHistoryData(): {
+export function useHistoryForDay(dateKey: string): {
   data: HistoryData;
   loading: boolean;
   refresh: () => void;
@@ -71,19 +77,16 @@ export function useHistoryData(): {
 
   const refresh = useCallback(() => {
     setLoading(true);
-    void loadHistoryData(detectionConfig)
+    void loadHistoryForDay(dateKey, detectionConfig)
       .then(setData)
       .finally(() => setLoading(false));
-  }, [detectionConfig]);
-
-  const refreshRef = useRef(refresh);
-  refreshRef.current = refresh;
+  }, [dateKey, detectionConfig]);
 
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
       setLoading(true);
-      void loadHistoryData(detectionConfig)
+      void loadHistoryForDay(dateKey, detectionConfig)
         .then(result => {
           if (!cancelled) {
             setData(result);
@@ -97,8 +100,13 @@ export function useHistoryData(): {
       return () => {
         cancelled = true;
       };
-    }, [detectionConfig]),
+    }, [dateKey, detectionConfig]),
   );
 
   return {data, loading, refresh};
+}
+
+/** @deprecated Use useHistoryForDay */
+export function useHistoryData(): ReturnType<typeof useHistoryForDay> {
+  return useHistoryForDay(getTodayDateKey());
 }

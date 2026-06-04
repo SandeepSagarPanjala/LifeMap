@@ -23,7 +23,7 @@ export function MapHistoryButton({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={
-        eventCount > 0 ? `Show ${eventCount} visits` : 'Show history'
+        eventCount > 0 ? `Show ${eventCount} history events` : 'Show history'
       }
       onPress={onPress}
       style={[styles.button, {bottom}, active && styles.buttonActive]}>

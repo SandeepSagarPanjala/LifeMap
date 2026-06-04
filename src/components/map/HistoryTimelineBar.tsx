@@ -10,17 +10,19 @@ import {ChevronLeft, ChevronRight} from 'lucide-react-native';
 
 import type {DayTimelineEntry} from '@/lib/trip-detection';
 import {
+  getTodayDateKey,
+  shiftDateKey,
+} from '@/lib/day-utils';
+import {
   ANCHOR_SIZE_PX,
-  buildHistoryDayRulers,
+  buildHistoryDayRuler,
   clampAnchorPx,
+  formatHistoryDayTitle,
   HISTORY_COLORS,
   selectionAtAnchorPx,
-  type HistoryDayRuler,
-  type HistoryTimeRange,
 } from '@/lib/history-timeline';
 
 const HORIZONTAL_PADDING = 16;
-const SWIPE_DAY_THRESHOLD_PX = 56;
 const TRACK_HEIGHT = 36;
 const LABEL_HEIGHT = 14;
 const TICK_BAND_HEIGHT = 12;
@@ -32,40 +34,42 @@ type BarMeasure = {
 };
 
 type HistoryTimelineBarProps = {
-  range: HistoryTimeRange;
+  dateKey: string;
   entries: DayTimelineEntry[];
   selectedIndex: number;
   onSelectIndex: (index: number) => void;
-  focusOnToday?: boolean;
+  onDateKeyChange: (dateKey: string) => void;
+  onOpenDatePicker: () => void;
+  focusSnapToEnd?: boolean;
 };
 
 export function HistoryTimelineBar({
-  range,
+  dateKey,
   entries,
   selectedIndex,
   onSelectIndex,
-  focusOnToday = false,
+  onDateKeyChange,
+  onOpenDatePicker,
+  focusSnapToEnd = false,
 }: HistoryTimelineBarProps) {
   const scrubRef = useRef<View>(null);
   const [barMeasure, setBarMeasure] = useState<BarMeasure | null>(null);
   const barWidth = barMeasure?.width ?? FALLBACK_BAR_WIDTH;
-  const now = useMemo(() => new Date(), [entries, range.endAt.getTime()]);
+  const now = useMemo(() => new Date(), [entries, dateKey]);
 
-  const dayRulers = useMemo(
-    () => buildHistoryDayRulers(entries, range, barWidth, now),
-    [barWidth, entries, range, now],
+  const ruler = useMemo(
+    () => buildHistoryDayRuler(entries, dateKey, barWidth, now),
+    [barWidth, dateKey, entries, now],
   );
 
-  const [dayIndex, setDayIndex] = useState(() =>
-    Math.max(0, dayRulers.length - 1),
-  );
+  const dayTitle = formatHistoryDayTitle(dateKey, now);
+  const isToday = dateKey === getTodayDateKey();
+  const canGoNextDay = !isToday;
+
   const [anchorPx, setAnchorPx] = useState(barWidth / 2);
   const isDraggingRef = useRef(false);
   const hasManualScrubRef = useRef(false);
-  const initialSnapDoneRef = useRef(false);
-  const prevFocusOnTodayRef = useRef(false);
 
-  const ruler = dayRulers[dayIndex] ?? null;
   const trackTop = LABEL_HEIGHT + TICK_BAND_HEIGHT;
   const scrubHeight = trackTop + TRACK_HEIGHT;
 
@@ -96,9 +100,6 @@ export function HistoryTimelineBar({
 
   const applyAnchorPx = useCallback(
     (px: number) => {
-      if (!ruler) {
-        return;
-      }
       const clamped = clampAnchorPx(px, barWidth);
       setAnchorPx(clamped);
       onSelectIndex(selectionAtAnchorPx(ruler, clamped, entries));
@@ -106,77 +107,40 @@ export function HistoryTimelineBar({
     [barWidth, entries, onSelectIndex, ruler],
   );
 
-  useEffect(() => {
-    if (dayRulers.length === 0 || !ruler) {
-      return;
-    }
-    if (focusOnToday) {
-      setDayIndex(dayRulers.length - 1);
-    }
-  }, [dayRulers.length, focusOnToday, ruler]);
+  const snapPxForDay = useCallback(() => {
+    return (
+      ruler.nowLeftPx ??
+      (ruler.segments.length > 0
+        ? ruler.segments[ruler.segments.length - 1]!.leftPx +
+          ruler.segments[ruler.segments.length - 1]!.widthPx / 2
+        : barWidth / 2)
+    );
+  }, [barWidth, ruler]);
 
   useEffect(() => {
-    if (focusOnToday && !prevFocusOnTodayRef.current) {
-      initialSnapDoneRef.current = false;
-      hasManualScrubRef.current = false;
-    }
-    if (!focusOnToday && !prevFocusOnTodayRef.current) {
-      hasManualScrubRef.current = false;
-      initialSnapDoneRef.current = false;
-    }
-    prevFocusOnTodayRef.current = focusOnToday;
-  }, [focusOnToday]);
+    hasManualScrubRef.current = false;
+  }, [dateKey]);
 
   useEffect(() => {
-    const day = dayRulers[dayIndex];
-    if (
-      !day ||
-      isDraggingRef.current ||
-      hasManualScrubRef.current ||
-      !focusOnToday ||
-      initialSnapDoneRef.current
-    ) {
+    if (isDraggingRef.current || hasManualScrubRef.current) {
       return;
     }
-
-    const px =
-      day.nowLeftPx ??
-      (day.segments.length > 0
-        ? day.segments[day.segments.length - 1]!.leftPx +
-          day.segments[day.segments.length - 1]!.widthPx / 2
-        : barWidth / 2);
-    applyAnchorPx(px);
-    initialSnapDoneRef.current = true;
-  }, [applyAnchorPx, barWidth, dayIndex, dayRulers, focusOnToday]);
-
-  const prevDayIndexRef = useRef(dayIndex);
+    applyAnchorPx(snapPxForDay());
+  }, [applyAnchorPx, dateKey, snapPxForDay]);
 
   useEffect(() => {
-    if (prevDayIndexRef.current === dayIndex) {
+    if (!focusSnapToEnd || !isToday || isDraggingRef.current) {
       return;
     }
-    prevDayIndexRef.current = dayIndex;
-    const day = dayRulers[dayIndex];
-    if (!day || isDraggingRef.current) {
-      return;
-    }
-    const px =
-      day.nowLeftPx ??
-      (day.segments.length > 0
-        ? day.segments[day.segments.length - 1]!.leftPx +
-          day.segments[day.segments.length - 1]!.widthPx / 2
-        : barWidth / 2);
-    applyAnchorPx(px);
-  }, [applyAnchorPx, barWidth, dayIndex, dayRulers]);
-
-  const grantPageX = useRef(0);
+    hasManualScrubRef.current = false;
+    applyAnchorPx(snapPxForDay());
+  }, [applyAnchorPx, focusSnapToEnd, isToday, snapPxForDay]);
 
   const handleGrant = useCallback(
     (event: GestureResponderEvent) => {
       syncBarMeasure();
       isDraggingRef.current = true;
       hasManualScrubRef.current = true;
-      grantPageX.current = event.nativeEvent.pageX;
       applyAnchorPx(touchPageXToBarPx(event));
     },
     [applyAnchorPx, syncBarMeasure, touchPageXToBarPx],
@@ -195,35 +159,20 @@ export function HistoryTimelineBar({
     (event: GestureResponderEvent) => {
       isDraggingRef.current = false;
       hasManualScrubRef.current = true;
-      const delta = event.nativeEvent.pageX - grantPageX.current;
-      if (Math.abs(delta) >= SWIPE_DAY_THRESHOLD_PX) {
-        if (delta < 0 && dayIndex < dayRulers.length - 1) {
-          setDayIndex(dayIndex + 1);
-        } else if (delta > 0 && dayIndex > 0) {
-          setDayIndex(dayIndex - 1);
-        }
-        return;
-      }
       applyAnchorPx(touchPageXToBarPx(event));
     },
-    [applyAnchorPx, dayIndex, dayRulers.length, touchPageXToBarPx],
+    [applyAnchorPx, touchPageXToBarPx],
   );
 
   const goPrevDay = useCallback(() => {
-    setDayIndex(index => Math.max(0, index - 1));
-  }, []);
+    onDateKeyChange(shiftDateKey(dateKey, -1));
+  }, [dateKey, onDateKeyChange]);
 
   const goNextDay = useCallback(() => {
-    setDayIndex(index => Math.min(dayRulers.length - 1, index + 1));
-  }, [dayRulers.length]);
-
-  if (!ruler || dayRulers.length === 0) {
-    return (
-      <View style={styles.wrap}>
-        <Text style={styles.emptyHint}>No days in your history yet.</Text>
-      </View>
-    );
-  }
+    if (canGoNextDay) {
+      onDateKeyChange(shiftDateKey(dateKey, 1));
+    }
+  }, [canGoNextDay, dateKey, onDateKeyChange]);
 
   const anchorLeft = clampAnchorPx(anchorPx, barWidth);
   const anchorTop = trackTop + TRACK_HEIGHT / 2 - ANCHOR_SIZE_PX / 2;
@@ -234,21 +183,23 @@ export function HistoryTimelineBar({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Previous day"
-          disabled={dayIndex <= 0}
           onPress={goPrevDay}
-          style={[styles.dayNavBtn, dayIndex <= 0 && styles.dayNavBtnDisabled]}>
+          style={styles.dayNavBtn}>
           <ChevronLeft size={20} color={HISTORY_COLORS.playhead} />
         </Pressable>
-        <Text style={styles.dayTitle}>{ruler.label}</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${dayTitle}, choose date`}
+          onPress={onOpenDatePicker}
+          style={styles.dayTitleBtn}>
+          <Text style={styles.dayTitle}>{dayTitle}</Text>
+        </Pressable>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Next day"
-          disabled={dayIndex >= dayRulers.length - 1}
+          disabled={!canGoNextDay}
           onPress={goNextDay}
-          style={[
-            styles.dayNavBtn,
-            dayIndex >= dayRulers.length - 1 && styles.dayNavBtnDisabled,
-          ]}>
+          style={[styles.dayNavBtn, !canGoNextDay && styles.dayNavBtnDisabled]}>
           <ChevronRight size={20} color={HISTORY_COLORS.playhead} />
         </Pressable>
       </View>
@@ -384,15 +335,15 @@ const styles = StyleSheet.create({
   dayNavBtnDisabled: {
     opacity: 0.25,
   },
+  dayTitleBtn: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
   dayTitle: {
     fontSize: 15,
     fontWeight: '700',
     color: HISTORY_COLORS.playhead,
-  },
-  emptyHint: {
-    fontSize: 11,
-    color: HISTORY_COLORS.tickLabel,
-    textAlign: 'center',
   },
   scrubArea: {
     position: 'relative',
