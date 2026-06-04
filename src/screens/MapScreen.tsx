@@ -14,14 +14,22 @@ import {HistoryEventCard} from '@/components/map/HistoryEventCard';
 import {HistoryTimelineBar} from '@/components/map/HistoryTimelineBar';
 import {MapHistoryButton} from '@/components/map/MapHistoryButton';
 import {MapLocateButton} from '@/components/map/MapLocateButton';
-import {RoutePathOverlay} from '@/components/map/RoutePathOverlay';
+import {DayJourneyOverlay} from '@/components/map/DayJourneyOverlay';
+import {StayAreasOverlay} from '@/components/map/StayAreasOverlay';
 import {StayDurationCallout} from '@/components/map/StayDurationCallout';
 import {TripRouteOverlay} from '@/components/map/TripRouteOverlay';
 import {useHistoryData} from '@/hooks/use-history-data';
 import {useTripPlayback} from '@/hooks/use-trip-playback';
 import {useLocationPointsForDay} from '@/hooks/use-location-days';
 import {getTodayDateKey} from '@/lib/day-utils';
-import {isPlayableTimelineEntry} from '@/lib/trip-detection';
+import {
+  detectTrips,
+  getTravelDisplayPoints,
+  isPlayableTimelineEntry,
+  stayBeforeEntryIndex,
+  staysBeforeEntryIndex,
+  type DetectedTrip,
+} from '@/lib/trip-detection';
 import {useTripDetectionConfig} from '@/hooks/use-trip-detection-config';
 import {getTripPlaybackDurationMs} from '@/lib/trip-playback';
 import {regionForCoordinates, toMapCoordinates} from '@/lib/location-geo';
@@ -40,7 +48,7 @@ const FALLBACK_REGION: Region = {
 const SETTINGS_TOP_GAP = 8;
 const SETTINGS_SIZE = 44;
 const LOCATE_BUTTON_BOTTOM_GAP = 20;
-const HISTORY_PANEL_HEIGHT = 200;
+const HISTORY_PANEL_HEIGHT = 218;
 
 export function MapScreen() {
   const tripDetectionConfig = useTripDetectionConfig();
@@ -70,6 +78,21 @@ export function MapScreen() {
     [historyEntries],
   );
 
+  const dayStays = useMemo((): DetectedTrip[] => {
+    const fromHistory = historyEntries.filter(
+      (entry): entry is DetectedTrip => entry.kind === 'stay',
+    );
+    if (fromHistory.length > 0) {
+      return fromHistory;
+    }
+    if (todayPoints.length === 0) {
+      return [];
+    }
+    return detectTrips(todayPoints, tripDetectionConfig).filter(
+      trip => trip.kind === 'stay',
+    );
+  }, [historyEntries, todayPoints, tripDetectionConfig]);
+
   const selectedEntry = useMemo(() => {
     if (selectedHistoryIndex < 0) {
       return null;
@@ -81,6 +104,48 @@ export function MapScreen() {
     selectedEntry != null && isPlayableTimelineEntry(selectedEntry)
       ? selectedEntry
       : null;
+
+  const selectedTravelPoints = useMemo(() => {
+    if (selectedPlayable?.kind !== 'travel') {
+      return null;
+    }
+    return getTravelDisplayPoints(
+      selectedPlayable,
+      stayBeforeEntryIndex(historyEntries, selectedHistoryIndex),
+      staysBeforeEntryIndex(historyEntries, selectedHistoryIndex),
+      tripDetectionConfig,
+    );
+  }, [
+    historyEntries,
+    selectedHistoryIndex,
+    selectedPlayable,
+    tripDetectionConfig,
+  ]);
+
+  const inboundTravelPoints = useMemo(() => {
+    if (
+      selectedPlayable?.kind !== 'stay' ||
+      selectedHistoryIndex <= 0
+    ) {
+      return null;
+    }
+    const prior = historyEntries[selectedHistoryIndex - 1];
+    if (prior?.kind !== 'travel') {
+      return null;
+    }
+    const priorIndex = selectedHistoryIndex - 1;
+    return getTravelDisplayPoints(
+      prior,
+      stayBeforeEntryIndex(historyEntries, priorIndex),
+      staysBeforeEntryIndex(historyEntries, priorIndex),
+      tripDetectionConfig,
+    );
+  }, [
+    historyEntries,
+    selectedHistoryIndex,
+    selectedPlayable,
+    tripDetectionConfig,
+  ]);
 
   const playback = useTripPlayback();
 
@@ -134,10 +199,16 @@ export function MapScreen() {
     if (!mapRef.current || !selectedPlayable) {
       return;
     }
-    const region = regionForCoordinates(toMapCoordinates(selectedPlayable.points));
+    const routePoints =
+      selectedPlayable.kind === 'travel'
+        ? (selectedTravelPoints ?? selectedPlayable.points)
+        : inboundTravelPoints != null
+          ? [...inboundTravelPoints, ...selectedPlayable.points]
+          : selectedPlayable.points;
+    const region = regionForCoordinates(toMapCoordinates(routePoints));
     mapRef.current.animateToRegion(region, 400);
     setMapRegion(region);
-  }, [selectedPlayable]);
+  }, [inboundTravelPoints, selectedPlayable, selectedTravelPoints]);
 
   const selectHistoryIndex = useCallback(
     (index: number) => {
@@ -191,10 +262,12 @@ export function MapScreen() {
   const scrubOnEvent =
     historyPanelOpen && selectedHistoryIndex >= 0 && selectedEntry != null;
 
-  const showFullDayRoute = !historyPanelOpen && !playback.isPlaying;
-  const showSelectedHistory =
-    (playback.isPlaying && selectedPlayable != null) ||
-    (scrubOnEvent && selectedPlayable != null);
+  const showDayJourney =
+    !historyPanelOpen && !playback.isPlaying;
+  const showHistoryEvent =
+    historyPanelOpen &&
+    ((playback.isPlaying && selectedPlayable != null) ||
+      (scrubOnEvent && selectedPlayable != null));
   const showUserLocation = !historyPanelOpen && !playback.isPlaying;
 
   return (
@@ -223,19 +296,39 @@ export function MapScreen() {
             handleUserLocation(coordinate);
           }
         }}>
-        {showFullDayRoute ? (
-          <RoutePathOverlay points={todayPoints} tripConfig={tripDetectionConfig} />
-        ) : null}
-        {showSelectedHistory && selectedPlayable?.kind === 'travel' ? (
-          <TripRouteOverlay
-            points={selectedPlayable.points}
-            playbackProgress={playback.isPlaying ? playback.progress : null}
+        {showDayJourney ? (
+          <DayJourneyOverlay
+            points={todayPoints}
+            stays={dayStays}
+            tripConfig={tripDetectionConfig}
           />
         ) : null}
-        {scrubOnEvent &&
+        {showHistoryEvent &&
+        selectedPlayable?.kind === 'travel' &&
+        selectedTravelPoints != null ? (
+          <TripRouteOverlay
+            points={selectedTravelPoints}
+            playbackProgress={playback.isPlaying ? playback.progress : null}
+            emphasized
+          />
+        ) : null}
+        {showHistoryEvent &&
+        selectedPlayable?.kind === 'stay' &&
+        inboundTravelPoints != null &&
+        !playback.isPlaying ? (
+          <TripRouteOverlay points={inboundTravelPoints} emphasized />
+        ) : null}
+        {showHistoryEvent &&
         selectedPlayable?.kind === 'stay' &&
         !playback.isPlaying ? (
-          <StayDurationCallout trip={selectedPlayable} />
+          <>
+            <StayAreasOverlay
+              stays={[selectedPlayable]}
+              tripConfig={tripDetectionConfig}
+              emphasized
+            />
+            <StayDurationCallout trip={selectedPlayable} />
+          </>
         ) : null}
       </MapView>
 

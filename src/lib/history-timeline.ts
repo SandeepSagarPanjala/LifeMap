@@ -13,9 +13,12 @@ import type {DayTimelineEntry} from '@/lib/trip-detection';
 import {isVisitOngoing} from '@/lib/trip-format';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
-const MIN_SEGMENT_PX = 2;
+const MIN_GAP_SEGMENT_PX = 2;
 
 export const ANCHOR_SIZE_PX = 24;
+
+/** @deprecated Use ANCHOR_SIZE_PX */
+export const MIN_SEGMENT_TOUCH_PX = ANCHOR_SIZE_PX;
 
 export const HISTORY_COLORS = {
   track: '#FFFFFF',
@@ -47,14 +50,12 @@ export type HistoryDaySegment = {
 };
 
 export type HistoryRulerTick = {
-  /** Hour index on midnight→midnight scale (0 = 12 AM, 12 = 12 PM, 24 = 12 AM). */
   hour: number;
   leftPx: number;
   label: string | null;
   kind: 'major' | 'minor';
 };
 
-/** One calendar day on a fixed 12 AM → 12 AM ruler. */
 export type HistoryDayRuler = {
   dateKey: string;
   dayStart: Date;
@@ -62,7 +63,191 @@ export type HistoryDayRuler = {
   segments: HistoryDaySegment[];
   ticks: HistoryRulerTick[];
   nowLeftPx: number | null;
+  barWidthPx: number;
 };
+
+type TimeBreakpoint = {timeMs: number; px: number};
+
+function segmentEndAt(entry: DayTimelineEntry, now: Date): Date {
+  if (
+    entry.kind === 'stay' &&
+    isVisitOngoing(entry.endAt, now, {
+      openThroughNow: entry.openThroughNow,
+    })
+  ) {
+    return now;
+  }
+  return entry.endAt;
+}
+
+function minWidthForKind(kind: DayTimelineEntry['kind']): number {
+  return kind === 'gap' ? MIN_GAP_SEGMENT_PX : ANCHOR_SIZE_PX;
+}
+
+function segmentDurationMs(segment: HistoryDaySegment): number {
+  return Math.max(0, segment.endAt.getTime() - segment.startAt.getTime());
+}
+
+/**
+ * Fixed-width bar: each visit/drive is at least scrub-handle wide; extra width
+ * by duration. Clock gaps between events collapse (not drawn as empty track).
+ */
+export function layoutSegmentsOnFixedBar(
+  segments: HistoryDaySegment[],
+  barWidthPx: number,
+): HistoryDaySegment[] {
+  if (segments.length === 0) {
+    return [];
+  }
+
+  const sorted = [...segments].sort(
+    (a, b) => a.startAt.getTime() - b.startAt.getTime(),
+  );
+
+  const minSum = sorted.reduce(
+    (sum, segment) => sum + minWidthForKind(segment.kind),
+    0,
+  );
+
+  if (minSum >= barWidthPx) {
+    const slot = barWidthPx / sorted.length;
+    let left = 0;
+    return sorted.map(segment => {
+      const laid = {
+        ...segment,
+        leftPx: left,
+        widthPx: slot,
+      };
+      left += slot;
+      return laid;
+    });
+  }
+
+  const flexWidth = barWidthPx - minSum;
+  const playable = sorted.filter(segment => segment.kind !== 'gap');
+  const totalDurationMs = playable.reduce(
+    (sum, segment) => sum + segmentDurationMs(segment),
+    0,
+  );
+
+  let left = 0;
+  return sorted.map(segment => {
+    const minW = minWidthForKind(segment.kind);
+    let extra = 0;
+    if (
+      segment.kind !== 'gap' &&
+      totalDurationMs > 0 &&
+      flexWidth > 0
+    ) {
+      extra = (segmentDurationMs(segment) / totalDurationMs) * flexWidth;
+    }
+    const widthPx = minW + extra;
+    const laid = {...segment, leftPx: left, widthPx};
+    left += widthPx;
+    return laid;
+  });
+}
+
+function buildTimeBreakpoints(
+  dayStart: Date,
+  segments: HistoryDaySegment[],
+  barWidthPx: number,
+  now: Date,
+): TimeBreakpoint[] {
+  const dayEnd = endOfDay(dayStart);
+  const endMs = Math.min(now.getTime(), dayEnd.getTime());
+  const points: TimeBreakpoint[] = [{timeMs: dayStart.getTime(), px: 0}];
+
+  const sorted = [...segments].sort(
+    (a, b) => a.startAt.getTime() - b.startAt.getTime(),
+  );
+
+  for (const segment of sorted) {
+    points.push({timeMs: segment.startAt.getTime(), px: segment.leftPx});
+    points.push({
+      timeMs: segment.endAt.getTime(),
+      px: segment.leftPx + segment.widthPx,
+    });
+  }
+
+  points.push({timeMs: endMs, px: barWidthPx});
+
+  points.sort((a, b) => a.timeMs - b.timeMs);
+
+  const deduped: TimeBreakpoint[] = [];
+  for (const point of points) {
+    const last = deduped[deduped.length - 1];
+    if (last && last.timeMs === point.timeMs) {
+      deduped[deduped.length - 1] = point;
+    } else {
+      deduped.push(point);
+    }
+  }
+
+  return deduped;
+}
+
+export function timeToBarPx(
+  time: Date,
+  breakpoints: TimeBreakpoint[],
+): number {
+  const t = time.getTime();
+  if (breakpoints.length === 0) {
+    return 0;
+  }
+  if (t <= breakpoints[0]!.timeMs) {
+    return breakpoints[0]!.px;
+  }
+
+  const last = breakpoints[breakpoints.length - 1]!;
+  if (t >= last.timeMs) {
+    return last.px;
+  }
+
+  for (let index = 0; index < breakpoints.length - 1; index += 1) {
+    const a = breakpoints[index]!;
+    const b = breakpoints[index + 1]!;
+    if (t >= a.timeMs && t <= b.timeMs) {
+      const span = b.timeMs - a.timeMs;
+      if (span <= 0) {
+        return b.px;
+      }
+      const ratio = (t - a.timeMs) / span;
+      return a.px + ratio * (b.px - a.px);
+    }
+  }
+
+  return last.px;
+}
+
+export function barPxToTime(
+  px: number,
+  breakpoints: TimeBreakpoint[],
+): Date {
+  if (breakpoints.length === 0) {
+    return new Date();
+  }
+
+  const clampedPx = Math.max(
+    breakpoints[0]!.px,
+    Math.min(breakpoints[breakpoints.length - 1]!.px, px),
+  );
+
+  for (let index = 0; index < breakpoints.length - 1; index += 1) {
+    const a = breakpoints[index]!;
+    const b = breakpoints[index + 1]!;
+    if (clampedPx >= a.px && clampedPx <= b.px) {
+      const span = b.px - a.px;
+      if (span <= 0) {
+        return new Date(b.timeMs);
+      }
+      const ratio = (clampedPx - a.px) / span;
+      return new Date(a.timeMs + ratio * (b.timeMs - a.timeMs));
+    }
+  }
+
+  return new Date(breakpoints[breakpoints.length - 1]!.timeMs);
+}
 
 export function formatDayRulerLabel(day: Date, referenceNow: Date): string {
   if (isToday(day)) {
@@ -77,10 +262,7 @@ export function formatDayRulerLabel(day: Date, referenceNow: Date): string {
   return format(day, 'MMM d');
 }
 
-/**
- * Ruler runs 12 AM → 12 AM (calendar midnight to next midnight).
- * Left edge = start of day; right edge = end of day.
- */
+/** Linear 12 AM → 12 AM (used in tests / helpers). */
 export function calendarTimeToRulerPx(
   time: Date,
   dayStart: Date,
@@ -102,8 +284,11 @@ export function rulerPxToCalendarTime(
   return new Date(dayStart.getTime() + hoursFromMidnight * 3_600_000);
 }
 
-/** Major label every 6 h; minor tick every 1 h on 12 AM → 12 AM scale. */
-export function buildRulerTicks(barWidthPx: number): HistoryRulerTick[] {
+export function buildRulerTicks(
+  dayStart: Date,
+  breakpoints: TimeBreakpoint[],
+  barWidthPx: number,
+): HistoryRulerTick[] {
   const majorLabels: Record<number, string> = {
     0: '12 AM',
     6: '6 AM',
@@ -114,28 +299,21 @@ export function buildRulerTicks(barWidthPx: number): HistoryRulerTick[] {
   const ticks: HistoryRulerTick[] = [];
 
   for (let hour = 0; hour <= 24; hour += 1) {
+    const time = new Date(dayStart.getTime() + hour * 3_600_000);
     const isMajor = hour % 6 === 0;
     ticks.push({
       hour,
-      leftPx: (hour / 24) * barWidthPx,
+      leftPx: timeToBarPx(time, breakpoints),
       label: isMajor ? majorLabels[hour] ?? null : null,
       kind: isMajor ? 'major' : 'minor',
     });
   }
 
-  return ticks;
-}
-
-function segmentEndAt(entry: DayTimelineEntry, now: Date): Date {
-  if (
-    entry.kind === 'stay' &&
-    isVisitOngoing(entry.endAt, now, {
-      openThroughNow: entry.openThroughNow,
-    })
-  ) {
-    return now;
-  }
-  return entry.endAt;
+  const maxPx = barWidthPx;
+  return ticks.map(tick => ({
+    ...tick,
+    leftPx: Math.min(maxPx, Math.max(0, tick.leftPx)),
+  }));
 }
 
 function clipEntryToDay(
@@ -144,8 +322,7 @@ function clipEntryToDay(
   dayStart: Date,
   dayEnd: Date,
   now: Date,
-  barWidthPx: number,
-): HistoryDaySegment | null {
+): Omit<HistoryDaySegment, 'leftPx' | 'widthPx'> | null {
   const rawEnd = segmentEndAt(entry, now);
   const segStart = new Date(
     Math.max(entry.startAt.getTime(), dayStart.getTime()),
@@ -156,16 +333,11 @@ function clipEntryToDay(
     return null;
   }
 
-  const leftPx = calendarTimeToRulerPx(segStart, dayStart, barWidthPx);
-  const rightPx = calendarTimeToRulerPx(segEnd, dayStart, barWidthPx);
-
   return {
     entryIndex,
     kind: entry.kind,
     startAt: segStart,
     endAt: segEnd,
-    leftPx: Math.min(leftPx, rightPx),
-    widthPx: Math.max(MIN_SEGMENT_PX, Math.abs(rightPx - leftPx)),
   };
 }
 
@@ -193,35 +365,39 @@ export function buildHistoryDayRulers(
   return days.map(day => {
     const dayStart = startOfDay(day);
     const dayEnd = endOfDay(day);
-    const segments: HistoryDaySegment[] = [];
+    const raw: HistoryDaySegment[] = [];
 
     for (let index = 0; index < entries.length; index += 1) {
       const entry = entries[index]!;
       if (entry.endAt < dayStart || entry.startAt > dayEnd) {
         continue;
       }
-      const clipped = clipEntryToDay(
-        entry,
-        index,
-        dayStart,
-        dayEnd,
-        now,
-        barWidthPx,
-      );
+      const clipped = clipEntryToDay(entry, index, dayStart, dayEnd, now);
       if (clipped) {
-        segments.push(clipped);
+        raw.push({
+          ...clipped,
+          leftPx: 0,
+          widthPx: 0,
+        });
       }
     }
+
+    const segments = layoutSegmentsOnFixedBar(raw, barWidthPx);
+    const breakpoints = buildTimeBreakpoints(
+      dayStart,
+      segments,
+      barWidthPx,
+      now,
+    );
 
     return {
       dateKey: toDateKey(day),
       dayStart,
       label: formatDayRulerLabel(day, now),
       segments,
-      ticks: buildRulerTicks(barWidthPx),
-      nowLeftPx: isToday(day)
-        ? calendarTimeToRulerPx(now, dayStart, barWidthPx)
-        : null,
+      ticks: buildRulerTicks(dayStart, breakpoints, barWidthPx),
+      nowLeftPx: isToday(day) ? timeToBarPx(now, breakpoints) : null,
+      barWidthPx,
     };
   });
 }
@@ -271,13 +447,12 @@ export function findSegmentAtLocalPx(
 export function anchorPxForEntry(
   ruler: HistoryDayRuler,
   entryIndex: number,
-  barWidthPx: number,
 ): number {
   const segment = ruler.segments.find(s => s.entryIndex === entryIndex);
   if (segment) {
     return segment.leftPx + segment.widthPx / 2;
   }
-  return barWidthPx / 2;
+  return ruler.barWidthPx / 2;
 }
 
 export function clampAnchorPx(px: number, barWidthPx: number): number {
@@ -289,7 +464,6 @@ export function selectionAtAnchorPx(
   ruler: HistoryDayRuler,
   anchorPx: number,
   _entries: DayTimelineEntry[],
-  _barWidthPx: number,
 ): number {
   const direct = findSegmentAtLocalPx(ruler, anchorPx);
   if (direct) {
@@ -302,7 +476,12 @@ export function selectionAtAnchorPx(
 export function timestampAtDayOffsetPx(
   localPx: number,
   ruler: HistoryDayRuler,
-  barWidthPx: number,
 ): Date {
-  return rulerPxToCalendarTime(localPx, ruler.dayStart, barWidthPx);
+  const breakpoints = buildTimeBreakpoints(
+    ruler.dayStart,
+    ruler.segments,
+    ruler.barWidthPx,
+    new Date(),
+  );
+  return barPxToTime(localPx, breakpoints);
 }

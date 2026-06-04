@@ -2,6 +2,12 @@ export const DEFAULT_TRIP_GAP_MINUTES = 10;
 export const DEFAULT_TRIP_DWELL_MINUTES = 10;
 export const DEFAULT_TRIP_DWELL_RADIUS_METERS = 150;
 
+/** Stops during a drive (Whataburger, charger, etc.) — lower than home dwell. */
+export const MIN_TRIP_STOP_MINUTES = 5;
+
+/** Minimum radius when grouping pings at a stop (GPS drift in parking lots). */
+export const MIN_STOP_CLUSTER_RADIUS_METERS = 50;
+
 /** Minimum time at one place before it counts as a visit (stay). */
 export const TRIP_DWELL_CHOICES = [10, 20, 30, 40, 50, 60] as const;
 

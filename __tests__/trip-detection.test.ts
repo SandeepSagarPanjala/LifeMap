@@ -2,6 +2,7 @@ import {
   buildDayTimeline,
   dedupeLocationPoints,
   detectTrips,
+  getTravelDisplayPoints,
   stayTripMarkerCoordinate,
 } from '../src/lib/trip-detection';
 import {buildTripDetectionConfig} from '../src/lib/trip-settings';
@@ -190,6 +191,55 @@ describe('stay / trip timeline', () => {
     );
 
     expect(timeline.filter(e => e.kind === 'stay').length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('detects mid-route stops shorter than home dwell (5+ min)', () => {
+    const away = {lat: 33.23, lng: -97.164};
+    const timeline = buildDayTimeline(
+      makePoints([
+        {minutes: 0, ...HOME},
+        {minutes: 15, ...HOME},
+        {minutes: 20, lat: 33.22, lng: -97.14},
+        {minutes: 25, lat: 33.225, lng: -97.15},
+        {minutes: 33, ...away},
+        {minutes: 38, lat: away.lat + 0.00002, lng: away.lng},
+        {minutes: 45, lat: 33.235, lng: -97.165},
+        {minutes: 50, lat: 33.236, lng: -97.166},
+        {minutes: 58, ...HOME},
+        {minutes: 65, ...HOME},
+      ]),
+      buildTripDetectionConfig(10, 10, 50),
+    );
+
+    const kinds = timeline.map(e => e.kind);
+    expect(kinds).toContain('stay');
+    expect(kinds.filter(k => k === 'travel').length).toBeGreaterThanOrEqual(2);
+    expect(kinds.filter(k => k === 'stay').length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('keeps a short drive between stops when distance is hundreds of meters', () => {
+    const away = {lat: 33.23154, lng: -97.16641};
+    const trips = detectTrips(
+      makePoints([
+        {minutes: 0, ...HOME},
+        {minutes: 15, ...HOME},
+        {minutes: 20, lat: 33.23, lng: -97.164},
+        {minutes: 21, lat: 33.2308, lng: -97.165},
+        {minutes: 22, lat: 33.2312, lng: -97.1658},
+        {minutes: 23, ...away},
+        {minutes: 30, ...away},
+      ]),
+      buildTripDetectionConfig(10, 10, 25),
+    );
+
+    expect(trips.some(t => t.kind === 'travel')).toBe(true);
+    const between = trips.find(
+      (t, index) =>
+        t.kind === 'travel' &&
+        trips[index - 1]?.kind === 'stay' &&
+        trips[index + 1]?.kind === 'stay',
+    );
+    expect(between).toBeDefined();
   });
 
   it('does not emit noise trips for jitter at one place', () => {

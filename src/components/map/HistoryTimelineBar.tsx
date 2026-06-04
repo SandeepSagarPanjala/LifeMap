@@ -23,7 +23,7 @@ import {
 
 const HORIZONTAL_PADDING = 16;
 const SWIPE_DAY_THRESHOLD_PX = 56;
-const TRACK_HEIGHT = 24;
+const TRACK_HEIGHT = 36;
 const LABEL_HEIGHT = 14;
 const TICK_BAND_HEIGHT = 12;
 
@@ -70,7 +70,7 @@ export function HistoryTimelineBar({
       }
       const clamped = clampAnchorPx(px, barWidth);
       setAnchorPx(clamped);
-      const index = selectionAtAnchorPx(ruler, clamped, entries, barWidth);
+      const index = selectionAtAnchorPx(ruler, clamped, entries);
       onSelectIndex(index);
     },
     [barWidth, entries, onSelectIndex, ruler],
@@ -118,7 +118,7 @@ export function HistoryTimelineBar({
     const clamped = clampAnchorPx(px, barWidth);
     setAnchorPx(clamped);
     dragStartAnchor.current = clamped;
-    const index = selectionAtAnchorPx(day, clamped, entries, barWidth);
+    const index = selectionAtAnchorPx(day, clamped, entries);
     onSelectIndex(index);
     initialSnapDoneRef.current = true;
   }, [barWidth, dayIndex, dayRulers, entries, focusOnToday, onSelectIndex]);
@@ -129,11 +129,11 @@ export function HistoryTimelineBar({
     }
     const onThisDay = ruler.segments.some(s => s.entryIndex === selectedIndex);
     if (onThisDay) {
-      const px = anchorPxForEntry(ruler, selectedIndex, barWidth);
+      const px = anchorPxForEntry(ruler, selectedIndex);
       setAnchorPx(px);
       dragStartAnchor.current = px;
     }
-  }, [barWidth, ruler, selectedIndex]);
+  }, [ruler, selectedIndex]);
 
   const grantX = useRef(0);
 
@@ -288,10 +288,10 @@ export function HistoryTimelineBar({
                     width: segment.widthPx,
                     backgroundColor: color,
                     opacity: selected ? 1 : 0.88,
-                    borderTopLeftRadius: atLeftEdge ? edgeRadius : 0,
-                    borderBottomLeftRadius: atLeftEdge ? edgeRadius : 0,
-                    borderTopRightRadius: atRightEdge ? edgeRadius : 0,
-                    borderBottomRightRadius: atRightEdge ? edgeRadius : 0,
+                    borderTopLeftRadius: atLeftEdge ? edgeRadius : 4,
+                    borderBottomLeftRadius: atLeftEdge ? edgeRadius : 4,
+                    borderTopRightRadius: atRightEdge ? edgeRadius : 4,
+                    borderBottomRightRadius: atRightEdge ? edgeRadius : 4,
                   },
                 ]}
               />
@@ -317,7 +317,6 @@ export function HistoryTimelineBar({
           ]}
         />
       </View>
-
     </View>
   );
 }

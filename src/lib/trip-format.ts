@@ -87,7 +87,11 @@ export function formatStayVisitLabel(
     openThroughNow: options?.openThroughNow,
   });
   return {
-    title: formatVisitTimeRange(startAt, endAt, {now}),
+    title: formatVisitTimeRange(
+      startAt,
+      endAt,
+      ongoing ? {now} : undefined,
+    ),
     subtitle: formatTripDuration(durationMs),
     statusLine: ongoing ? 'Still here' : undefined,
   };

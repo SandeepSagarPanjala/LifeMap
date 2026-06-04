@@ -65,8 +65,8 @@ export function prepareTodayHistoryTimeline(
   config: TripDetectionConfig,
 ): DayTimelineEntry[] {
   const combined = dedupeLocationPoints([...lookbackPoints, ...todayPoints]);
-  const raw = buildDayTimeline(combined, config);
   const lastBeforeDay = lastPointBefore(combined, dayStart);
+  const raw = buildDayTimeline(dedupeLocationPoints(todayPoints), config);
   const openStayIndex = lastStayIndex(raw);
 
   const filtered = raw.filter(entry => overlapsToday(entry, dayStart, now));

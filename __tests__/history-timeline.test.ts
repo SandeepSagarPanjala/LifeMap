@@ -1,8 +1,8 @@
 import {
+  ANCHOR_SIZE_PX,
   buildHistoryDayRulers,
-  buildRulerTicks,
   calendarTimeToRulerPx,
-  findEntryIndexAtTime,
+  layoutSegmentsOnFixedBar,
   rulerPxToCalendarTime,
   selectionAtAnchorPx,
 } from '../src/lib/history-timeline';
@@ -38,16 +38,7 @@ const entries: DayTimelineEntry[] = [
 describe('history day rulers', () => {
   const now = new Date('2026-06-03T14:00:00');
 
-  it('has 25 ticks (hourly) with labels every 6 hours on 12 AM scale', () => {
-    const ticks = buildRulerTicks(BAR_WIDTH);
-    expect(ticks).toHaveLength(25);
-    expect(ticks.filter(t => t.label != null)).toHaveLength(5);
-    expect(ticks[0]?.label).toBe('12 AM');
-    expect(ticks[12]?.label).toBe('12 PM');
-    expect(ticks[24]?.label).toBe('12 AM');
-  });
-
-  it('maps 8 AM to the correct position on midnight→midnight ruler', () => {
+  it('maps 8 AM to the correct position on linear midnight scale', () => {
     const dayStart = new Date('2026-06-03T00:00:00');
     const px = calendarTimeToRulerPx(
       new Date('2026-06-03T08:00:00'),
@@ -64,6 +55,7 @@ describe('history day rulers', () => {
     expect(today.segments[0]?.kind).toBe('stay');
     expect(today.segments[1]?.kind).toBe('travel');
     expect(today.segments[0]!.leftPx).toBeLessThan(today.segments[1]!.leftPx);
+    expect(today.barWidthPx).toBe(BAR_WIDTH);
   });
 
   it('selects drive when anchor is on the blue segment', () => {
@@ -71,16 +63,77 @@ describe('history day rulers', () => {
     const today = rulers[rulers.length - 1]!;
     const drive = today.segments.find(s => s.kind === 'travel')!;
     const px = drive.leftPx + drive.widthPx / 2;
-    expect(selectionAtAnchorPx(today, px, entries, BAR_WIDTH)).toBe(1);
+    expect(selectionAtAnchorPx(today, px, entries)).toBe(1);
   });
 
   it('returns -1 when scrub is on empty bar', () => {
-    const rulers = buildHistoryDayRulers(entries, range, BAR_WIDTH, now);
+    const rulers = buildHistoryDayRulers([], range, BAR_WIDTH, now);
     const today = rulers[rulers.length - 1]!;
-    expect(selectionAtAnchorPx(today, 4, entries, BAR_WIDTH)).toBe(-1);
+    expect(selectionAtAnchorPx(today, BAR_WIDTH / 2, [])).toBe(-1);
   });
 
-  it('round-trips ruler position to calendar time', () => {
+  it('gives each visit/drive at least scrub-handle width on a fixed bar', () => {
+    const shortDrive: DayTimelineEntry = {
+      id: 'travel-short',
+      kind: 'travel',
+      points: [],
+      startAt: new Date('2026-06-03T10:00:00'),
+      endAt: new Date('2026-06-03T10:05:00'),
+      durationMs: 5 * 60_000,
+      distanceKm: 1,
+    };
+    const rulers = buildHistoryDayRulers(
+      [entries[0]!, shortDrive],
+      range,
+      BAR_WIDTH,
+      now,
+    );
+    const today = rulers[rulers.length - 1]!;
+    const drive = today.segments.find(s => s.kind === 'travel')!;
+    expect(drive!.widthPx).toBeGreaterThanOrEqual(ANCHOR_SIZE_PX);
+    expect(today.barWidthPx).toBe(BAR_WIDTH);
+    const totalWidth = today.segments.reduce((s, seg) => s + seg.widthPx, 0);
+    expect(totalWidth).toBeCloseTo(BAR_WIDTH, 0);
+  });
+
+  it('layoutSegmentsOnFixedBar packs segments to full bar width', () => {
+    const laid = layoutSegmentsOnFixedBar(
+      [
+        {
+          entryIndex: 0,
+          kind: 'stay',
+          startAt: new Date('2026-06-03T08:00:00'),
+          endAt: new Date('2026-06-03T10:00:00'),
+          leftPx: 0,
+          widthPx: 0,
+        },
+        {
+          entryIndex: 1,
+          kind: 'travel',
+          startAt: new Date('2026-06-03T10:00:00'),
+          endAt: new Date('2026-06-03T10:05:00'),
+          leftPx: 0,
+          widthPx: 0,
+        },
+      ],
+      BAR_WIDTH,
+    );
+    expect(laid[0]!.widthPx).toBeGreaterThanOrEqual(ANCHOR_SIZE_PX);
+    expect(laid[1]!.widthPx).toBeGreaterThanOrEqual(ANCHOR_SIZE_PX);
+    expect(laid[0]!.leftPx + laid[0]!.widthPx).toBeCloseTo(laid[1]!.leftPx, 0);
+    expect(laid[1]!.leftPx + laid[1]!.widthPx).toBeCloseTo(BAR_WIDTH, 0);
+  });
+
+  it('maps hour labels through event layout (compressed gaps)', () => {
+    const rulers = buildHistoryDayRulers(entries, range, BAR_WIDTH, now);
+    const today = rulers[rulers.length - 1]!;
+    const nineAm = today.ticks.find(t => t.hour === 9);
+    expect(nineAm?.label).toBeNull();
+    expect(nineAm!.leftPx).toBeGreaterThan(0);
+    expect(nineAm!.leftPx).toBeLessThan(BAR_WIDTH);
+  });
+
+  it('round-trips linear ruler position to calendar time', () => {
     const dayStart = new Date('2026-06-03T00:00:00');
     const original = new Date('2026-06-03T15:30:00');
     const px = calendarTimeToRulerPx(original, dayStart, BAR_WIDTH);

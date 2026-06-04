@@ -20,9 +20,15 @@ import {
 type TripRouteOverlayProps = {
   points: LocationPointRow[];
   playbackProgress?: number | null;
+  /** History scrub — solid route for the selected drive only. */
+  emphasized?: boolean;
 };
 
-export function TripRouteOverlay({points, playbackProgress = null}: TripRouteOverlayProps) {
+export function TripRouteOverlay({
+  points,
+  playbackProgress = null,
+  emphasized = false,
+}: TripRouteOverlayProps) {
   const coordinates = useMemo(() => toMapCoordinates(points), [points]);
   const denseSamples = useMemo(() => buildDensePlaybackSamples(points), [points]);
 
@@ -39,6 +45,8 @@ export function TripRouteOverlay({points, playbackProgress = null}: TripRouteOve
 
   const isPlaying = playbackProgress != null;
   const playedCoordinates = frame?.pathCoordinates ?? [];
+  const routeBorder = emphasized ? ROUTE_PATH_BORDER_SOLID : ROUTE_PATH_BORDER;
+  const routeFill = emphasized ? ROUTE_PATH_FILL_SOLID : ROUTE_PATH_FILL;
 
   return (
     <>
@@ -46,19 +54,19 @@ export function TripRouteOverlay({points, playbackProgress = null}: TripRouteOve
         <>
           <Polyline
             coordinates={coordinates}
-            strokeColor={ROUTE_PATH_BORDER}
+            strokeColor={routeBorder}
             strokeWidth={ROUTE_PATH_BORDER_WIDTH}
             lineCap="round"
             lineJoin="round"
-            zIndex={1}
+            zIndex={emphasized ? 3 : 1}
           />
           <Polyline
             coordinates={coordinates}
-            strokeColor={ROUTE_PATH_FILL}
+            strokeColor={routeFill}
             strokeWidth={ROUTE_PATH_FILL_WIDTH}
             lineCap="round"
             lineJoin="round"
-            zIndex={2}
+            zIndex={emphasized ? 4 : 2}
           />
         </>
       ) : null}
