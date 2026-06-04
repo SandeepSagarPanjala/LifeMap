@@ -72,6 +72,14 @@ describe('history day rulers', () => {
     expect(selectionAtAnchorPx(today, BAR_WIDTH / 2, [])).toBe(-1);
   });
 
+  it('selects nearest segment when anchor is past the last segment', () => {
+    const rulers = buildHistoryDayRulers(entries, range, BAR_WIDTH, now);
+    const today = rulers[rulers.length - 1]!;
+    const drive = today.segments.find(s => s.kind === 'travel')!;
+    const pastEnd = drive.leftPx + drive.widthPx + 8;
+    expect(selectionAtAnchorPx(today, pastEnd, entries)).toBe(1);
+  });
+
   it('gives each visit/drive at least scrub-handle width on a fixed bar', () => {
     const shortDrive: DayTimelineEntry = {
       id: 'travel-short',

@@ -213,7 +213,7 @@ export function MapScreen() {
   const selectHistoryIndex = useCallback(
     (index: number) => {
       playback.stop();
-      setHistoryFocusOnToday(false);
+      setHistoryFocusOnToday(focused => (focused ? false : focused));
       setSelectedHistoryIndex(index);
     },
     [playback],

@@ -469,7 +469,20 @@ export function selectionAtAnchorPx(
   if (direct) {
     return direct.entryIndex;
   }
-  return -1;
+  if (ruler.segments.length === 0) {
+    return -1;
+  }
+  let bestIndex = ruler.segments[0]!.entryIndex;
+  let bestDist = Number.POSITIVE_INFINITY;
+  for (const segment of ruler.segments) {
+    const center = segment.leftPx + segment.widthPx / 2;
+    const dist = Math.abs(anchorPx - center);
+    if (dist < bestDist) {
+      bestDist = dist;
+      bestIndex = segment.entryIndex;
+    }
+  }
+  return bestIndex;
 }
 
 /** @deprecated */
