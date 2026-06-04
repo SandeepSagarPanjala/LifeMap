@@ -96,6 +96,20 @@ export function regionForCoordinates(
   return {latitude, longitude, latitudeDelta, longitudeDelta};
 }
 
+/** Bearing from a → b in degrees (0 = north, clockwise). */
+export function bearingDegrees(a: LocationPointLike, b: LocationPointLike): number {
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const dLng = toRad(b.lng - a.lng);
+
+  const y = Math.sin(dLng) * Math.cos(lat2);
+  const x =
+    Math.cos(lat1) * Math.sin(lat2) -
+    Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+
+  return (Math.atan2(y, x) * 180) / Math.PI;
+}
+
 export function formatDistance(km: number, unit: DistanceUnit = 'km'): string {
   if (unit === 'mi') {
     const miles = km * 0.621371;

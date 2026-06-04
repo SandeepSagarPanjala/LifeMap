@@ -13,7 +13,7 @@ type RoutePathOverlayProps = {
   points: LocationPointRow[];
 };
 
-/** Continuous path through saved GPS points — gray fill, white border, no mid-line dots. */
+/** Continuous path through saved GPS points — blue fill, white border, no mid-line dots. */
 export function RoutePathOverlay({points}: RoutePathOverlayProps) {
   const coordinates = toMapCoordinates(points);
 

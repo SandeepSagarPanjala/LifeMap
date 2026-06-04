@@ -4,6 +4,7 @@ import BackgroundGeolocation, {
 } from 'react-native-background-geolocation';
 
 import {insertLocationPoint} from '@/db/repositories/location-points';
+import {distanceKm} from '@/lib/location-geo';
 import {getSetting, setSetting} from '@/db/repositories/settings';
 import {LocationPersistScheduler} from '@/lib/location-persist-scheduler';
 import {
@@ -46,6 +47,7 @@ export class TransistorSoftLocationService implements LocationService {
   private activePresetId: TrackingPresetId = DEFAULT_TRACKING_PRESET;
   private latestLocation: Location | null = null;
   private persistScheduler: LocationPersistScheduler | null = null;
+  private lastPersistedCoords: {lat: number; lng: number} | null = null;
 
   private rebuildPersistScheduler(): void {
     const preset = TRACKING_PRESETS[this.activePresetId];
@@ -66,12 +68,35 @@ export class TransistorSoftLocationService implements LocationService {
     );
   }
 
+  private movedEnoughSinceLastSave(
+    location: Location,
+    distanceFilterMeters: number,
+  ): boolean {
+    if (!this.lastPersistedCoords) {
+      return true;
+    }
+
+    const movedKm = distanceKm(this.lastPersistedCoords, {
+      lat: location.coords.latitude,
+      lng: location.coords.longitude,
+    });
+    return movedKm * 1000 >= distanceFilterMeters;
+  }
+
   private async persistLocation(location: Location): Promise<void> {
     this.latestLocation = location;
     const preset = TRACKING_PRESETS[this.activePresetId];
 
     if (preset.maxPersistIntervalMs <= 0) {
       await this.writeLocationToDatabase(location);
+      return;
+    }
+
+    if (this.movedEnoughSinceLastSave(location, preset.distanceFilter)) {
+      const timestampMs = locationTimestamp(location).getTime();
+      this.persistScheduler?.reset();
+      await this.writeLocationToDatabase(location);
+      this.persistScheduler?.markPersisted(timestampMs);
       return;
     }
 
@@ -92,6 +117,8 @@ export class TransistorSoftLocationService implements LocationService {
       speed: coords.speed != null && coords.speed >= 0 ? coords.speed : null,
       source: 'gps',
     });
+
+    this.lastPersistedCoords = {lat: coords.latitude, lng: coords.longitude};
   }
 
   private async refreshHeartbeatLocation(): Promise<void> {
@@ -199,6 +226,7 @@ export class TransistorSoftLocationService implements LocationService {
   async setPreset(presetId: TrackingPresetId): Promise<void> {
     this.activePresetId = presetId;
     this.latestLocation = null;
+    this.lastPersistedCoords = null;
     this.rebuildPersistScheduler();
     await setSetting(SETTINGS_KEY_TRACKING_PRESET, presetId);
     await BackgroundGeolocation.setConfig(getTrackingPresetConfig(presetId));
@@ -231,6 +259,7 @@ export class TransistorSoftLocationService implements LocationService {
     this.persistScheduler?.reset();
     this.persistScheduler = null;
     this.latestLocation = null;
+    this.lastPersistedCoords = null;
     this.configured = false;
   }
 }

@@ -22,6 +22,13 @@ export class LocationPersistScheduler {
     this.pendingTimestampMs = null;
   }
 
+  /** After an immediate save (e.g. moved 25 m), start the next window without re-flushing now. */
+  markPersisted(timestampMs: number): void {
+    this.clearTimer();
+    this.pendingTimestampMs = null;
+    this.lastPersistedMs = timestampMs;
+  }
+
   /**
    * @returns true if this location was accepted into the scheduler (always when interval > 0)
    */

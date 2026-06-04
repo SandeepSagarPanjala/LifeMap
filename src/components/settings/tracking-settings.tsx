@@ -125,9 +125,10 @@ export function TrackingSettings() {
           : ''}
       </Text>
       <Text variant="muted" className="mt-2 text-sm leading-5">
-        Options show distance (when GPS may fire) and save cap (what LifeMap writes). If the SDK
-        sends many fixes in one window, only the latest is saved. Still at home saves almost
-        nothing. Android heartbeat is at least 60 s.
+        Distance is when the SDK may fire; save cap is what LifeMap writes. With a time cap,
+        LifeMap also saves as soon as you move the preset distance (e.g. 25 m) so fast drives
+        do not draw long straight gaps. Still at home saves almost nothing. Android heartbeat
+        is at least 60 s.
       </Text>
 
       <ScrollView className="mt-4 max-h-96" nestedScrollEnabled showsVerticalScrollIndicator>
