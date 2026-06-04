@@ -108,14 +108,17 @@ export function HistoryTimelineBar({
   );
 
   const snapPxForDay = useCallback(() => {
-    return (
-      ruler.nowLeftPx ??
-      (ruler.segments.length > 0
-        ? ruler.segments[ruler.segments.length - 1]!.leftPx +
-          ruler.segments[ruler.segments.length - 1]!.widthPx / 2
-        : barWidth / 2)
-    );
-  }, [barWidth, ruler]);
+    if (isToday && focusSnapToEnd) {
+      return (
+        ruler.nowLeftPx ??
+        (ruler.segments.length > 0
+          ? ruler.segments[ruler.segments.length - 1]!.leftPx +
+            ruler.segments[ruler.segments.length - 1]!.widthPx / 2
+          : barWidth / 2)
+      );
+    }
+    return clampAnchorPx(0, barWidth);
+  }, [barWidth, focusSnapToEnd, isToday, ruler]);
 
   useEffect(() => {
     hasManualScrubRef.current = false;
@@ -126,15 +129,7 @@ export function HistoryTimelineBar({
       return;
     }
     applyAnchorPx(snapPxForDay());
-  }, [applyAnchorPx, dateKey, snapPxForDay]);
-
-  useEffect(() => {
-    if (!focusSnapToEnd || !isToday || isDraggingRef.current) {
-      return;
-    }
-    hasManualScrubRef.current = false;
-    applyAnchorPx(snapPxForDay());
-  }, [applyAnchorPx, focusSnapToEnd, isToday, snapPxForDay]);
+  }, [applyAnchorPx, dateKey, focusSnapToEnd, snapPxForDay]);
 
   const handleGrant = useCallback(
     (event: GestureResponderEvent) => {
