@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useState} from 'react';
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
   addMonths,
   eachDayOfInterval,
@@ -14,7 +14,14 @@ import {
   subMonths,
 } from 'date-fns';
 import {ChevronLeft, ChevronRight} from 'lucide-react-native';
-import {Modal, Pressable, StyleSheet, View} from 'react-native';
+import {
+  Animated,
+  Easing,
+  Modal,
+  Pressable,
+  StyleSheet,
+  View,
+} from 'react-native';
 
 import {Text} from '@/components/ui/text';
 import {
@@ -25,6 +32,7 @@ import {
 import {HISTORY_COLORS} from '@/lib/history-timeline';
 
 const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const SHEET_OFFSCREEN = 420;
 
 type HistoryDatePickerSheetProps = {
   visible: boolean;
@@ -45,6 +53,11 @@ export function HistoryDatePickerSheet({
   const today = useMemo(() => startOfDay(new Date()), []);
   const selectedDay = parseDateKey(selectedDateKey);
 
+  const [mounted, setMounted] = useState(visible);
+  const backdropOpacity = useRef(new Animated.Value(0)).current;
+  const sheetTranslateY = useRef(new Animated.Value(SHEET_OFFSCREEN)).current;
+  const closingRef = useRef(false);
+
   const [visibleMonth, setVisibleMonth] = useState(() =>
     startOfMonth(selectedDay),
   );
@@ -54,6 +67,80 @@ export function HistoryDatePickerSheet({
       setVisibleMonth(startOfMonth(parseDateKey(selectedDateKey)));
     }
   }, [visible, selectedDateKey]);
+
+  const animateIn = useCallback(() => {
+    backdropOpacity.setValue(0);
+    sheetTranslateY.setValue(SHEET_OFFSCREEN);
+    Animated.parallel([
+      Animated.timing(backdropOpacity, {
+        toValue: 1,
+        duration: 220,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(sheetTranslateY, {
+        toValue: 0,
+        duration: 320,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [backdropOpacity, sheetTranslateY]);
+
+  const animateOut = useCallback(
+    (onDone: () => void) => {
+      Animated.parallel([
+        Animated.timing(backdropOpacity, {
+          toValue: 0,
+          duration: 180,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(sheetTranslateY, {
+          toValue: SHEET_OFFSCREEN,
+          duration: 240,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start(({finished}) => {
+        if (finished) {
+          onDone();
+        }
+      });
+    },
+    [backdropOpacity, sheetTranslateY],
+  );
+
+  const dismiss = useCallback(() => {
+    if (closingRef.current) {
+      return;
+    }
+    closingRef.current = true;
+    animateOut(() => {
+      closingRef.current = false;
+      setMounted(false);
+      onClose();
+    });
+  }, [animateOut, onClose]);
+
+  useEffect(() => {
+    if (visible) {
+      closingRef.current = false;
+      setMounted(true);
+    } else if (mounted && !closingRef.current) {
+      closingRef.current = true;
+      animateOut(() => {
+        closingRef.current = false;
+        setMounted(false);
+      });
+    }
+  }, [animateOut, mounted, visible]);
+
+  useEffect(() => {
+    if (mounted && visible) {
+      animateIn();
+    }
+  }, [animateIn, mounted, visible]);
 
   const monthLabel = format(visibleMonth, 'MMMM yyyy');
 
@@ -71,22 +158,42 @@ export function HistoryDatePickerSheet({
       return;
     }
     onSelectDate(key);
-    onClose();
+    dismiss();
   };
 
   const goToToday = () => {
     onSelectDate(todayKey);
-    onClose();
+    dismiss();
   };
+
+  if (!mounted) {
+    return null;
+  }
 
   return (
     <Modal
-      visible={visible}
+      visible={mounted}
       transparent
-      animationType="slide"
-      onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={styles.sheet} onPress={event => event.stopPropagation()}>
+      animationType="none"
+      statusBarTranslucent
+      onRequestClose={dismiss}>
+      <View style={styles.root}>
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.backdrop, {opacity: backdropOpacity}]}
+        />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Close date picker"
+          style={styles.dismissTap}
+          onPress={dismiss}
+        />
+
+        <Animated.View
+          style={[
+            styles.sheet,
+            {transform: [{translateY: sheetTranslateY}]},
+          ]}>
           <View style={styles.handle} />
 
           <Pressable
@@ -172,25 +279,36 @@ export function HistoryDatePickerSheet({
               );
             })}
           </View>
-        </Pressable>
-      </Pressable>
+        </Animated.View>
+      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
+  root: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.32)',
+  },
+  dismissTap: {
+    ...StyleSheet.absoluteFillObject,
   },
   sheet: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     paddingHorizontal: 20,
     paddingBottom: 28,
     paddingTop: 10,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: -4},
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 24,
   },
   handle: {
     alignSelf: 'center',
