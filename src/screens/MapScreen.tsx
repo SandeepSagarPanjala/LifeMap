@@ -1,232 +1,163 @@
-import {useEffect, useMemo, useState} from 'react';
-import {ActivityIndicator, Pressable, View} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import {format, parseISO} from 'date-fns';
-import {ChevronLeft, ChevronRight, Play, RotateCcw} from 'lucide-react-native';
+import {useCallback, useMemo, useRef, useState} from 'react';
+import {useNavigation} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {Settings} from 'lucide-react-native';
+import {Platform, Pressable, StyleSheet, useColorScheme, View} from 'react-native';
+import MapView, {
+  PROVIDER_DEFAULT,
+  PROVIDER_GOOGLE,
+  type Region,
+} from 'react-native-maps';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
-import {DayMapView} from '@/components/map/DayMapView';
-import {LocationPointSheet} from '@/components/map/LocationPointSheet';
-import type {LocationPointRow} from '@/db/repositories/location-days';
-import {useDaySummaries, useLocationPointsForDay} from '@/hooks/use-location-days';
-import {getTodayDateKey} from '@/lib/day-utils';
-import {calculatePathDistanceKm, formatDistance} from '@/lib/location-geo';
+import {MapLocateButton} from '@/components/map/MapLocateButton';
+import {
+  animateRecenterToUser,
+  centerMapOnUser,
+  isCoordinateInMapView,
+} from '@/lib/map-location-utils';
+import type {RootStackParamList} from '@/navigation/types';
 import {useAppStore} from '@/stores/app-store';
-import {Text} from '@/components/ui/text';
 import {useThemeColors} from '@/hooks/use-theme-colors';
 
-const PLAYBACK_INTERVAL_MS = 90;
+/** Fallback before GPS fix (wide area — replaced when location arrives). */
+const FALLBACK_REGION: Region = {
+  latitude: 33.2148,
+  longitude: -97.1331,
+  latitudeDelta: 0.12,
+  longitudeDelta: 0.12,
+};
+
+const SETTINGS_TOP_GAP = 8;
+const SETTINGS_SIZE = 44;
+const LOCATE_BUTTON_BOTTOM_GAP = 20;
 
 export function MapScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
   const colors = useThemeColors();
-  const distanceUnit = useAppStore(state => state.distanceUnit);
-  const {data: daySummaries, loading: daysLoading} = useDaySummaries();
-  const todayKey = getTodayDateKey();
-  const [selectedDateKey, setSelectedDateKey] = useState(todayKey);
-  const [selectedPoint, setSelectedPoint] = useState<LocationPointRow | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [playbackIndex, setPlaybackIndex] = useState<number | null>(null);
+  const preferredMapApp = useAppStore(state => state.preferredMapApp);
+  const mapRef = useRef<MapView>(null);
+  const hasCenteredOnOpenRef = useRef(false);
+  const [mapRegion, setMapRegion] = useState<Region>(FALLBACK_REGION);
+  const [userCoordinate, setUserCoordinate] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
 
-  const dateKeys = useMemo(() => {
-    const keys = [todayKey, ...daySummaries.map(day => day.dateKey)];
-    return Array.from(new Set(keys)).sort((a, b) => b.localeCompare(a));
-  }, [daySummaries, todayKey]);
+  const provider =
+    Platform.OS === 'android' && preferredMapApp === 'google'
+      ? PROVIDER_GOOGLE
+      : PROVIDER_DEFAULT;
 
-  const effectiveDateKey = useMemo(
-    () => (dateKeys.includes(selectedDateKey) ? selectedDateKey : todayKey),
-    [dateKeys, selectedDateKey, todayKey],
+  const showLocateButton = useMemo(() => {
+    if (!userCoordinate) {
+      return false;
+    }
+    return !isCoordinateInMapView(userCoordinate, mapRegion);
+  }, [mapRegion, userCoordinate]);
+
+  const locateButtonBottom = insets.bottom + LOCATE_BUTTON_BOTTOM_GAP;
+
+  const mapPadding = useMemo(
+    () => ({
+      top: insets.top + SETTINGS_TOP_GAP + SETTINGS_SIZE,
+      right: 12,
+      bottom: locateButtonBottom + 52,
+      left: 12,
+    }),
+    [insets.top, locateButtonBottom],
   );
 
-  const selectedDateIndex = useMemo(
-    () => dateKeys.findIndex(dateKey => dateKey === effectiveDateKey),
-    [dateKeys, effectiveDateKey],
+  const onRegionChange = useCallback((region: Region) => {
+    setMapRegion(region);
+  }, []);
+
+  const goToCurrentLocation = useCallback(() => {
+    if (!userCoordinate || !mapRef.current) {
+      return;
+    }
+    animateRecenterToUser(mapRef.current, userCoordinate, mapRegion);
+  }, [mapRegion, userCoordinate]);
+
+  const handleUserLocation = useCallback(
+    (coordinate: {latitude: number; longitude: number}) => {
+      setUserCoordinate(coordinate);
+
+      if (hasCenteredOnOpenRef.current || !mapRef.current) {
+        return;
+      }
+      hasCenteredOnOpenRef.current = true;
+      const region = centerMapOnUser(mapRef.current, coordinate, true);
+      setMapRegion(region);
+    },
+    [],
   );
-
-  const {data: points, loading: pointsLoading} = useLocationPointsForDay(effectiveDateKey);
-
-  const distanceLabel = useMemo(() => {
-    if (points.length < 2) {
-      return null;
-    }
-    return formatDistance(calculatePathDistanceKm(points), distanceUnit);
-  }, [distanceUnit, points]);
-
-  const loading = daysLoading || pointsLoading;
-  const headerDate = format(parseISO(effectiveDateKey), 'EEEE, MMMM d');
-  const hasPlayback = points.length > 1;
-  const currentPlaybackPoint =
-    playbackIndex != null && playbackIndex >= 0 && playbackIndex < points.length
-      ? points[playbackIndex]
-      : null;
-
-  useEffect(() => {
-    if (!isPlaying || !hasPlayback) {
-      return;
-    }
-
-    const timer = setInterval(() => {
-      setPlaybackIndex(previous => {
-        const next = previous == null ? 0 : previous + 1;
-        if (next >= points.length) {
-          setIsPlaying(false);
-          return points.length - 1;
-        }
-        return next;
-      });
-    }, PLAYBACK_INTERVAL_MS);
-
-    return () => clearInterval(timer);
-  }, [hasPlayback, isPlaying, points.length]);
-
-  useEffect(() => {
-    setIsPlaying(false);
-    setPlaybackIndex(null);
-    setSelectedPoint(null);
-  }, [effectiveDateKey]);
-
-  const goToPreviousDay = () => {
-    if (selectedDateIndex >= dateKeys.length - 1 || isPlaying) {
-      return;
-    }
-    setSelectedDateKey(dateKeys[selectedDateIndex + 1]!);
-  };
-
-  const goToNextDay = () => {
-    if (selectedDateIndex <= 0 || isPlaying) {
-      return;
-    }
-    setSelectedDateKey(dateKeys[selectedDateIndex - 1]!);
-  };
-
-  const handlePlay = () => {
-    if (!hasPlayback) {
-      return;
-    }
-    if (isPlaying) {
-      return;
-    }
-    if (playbackIndex != null && playbackIndex >= points.length - 1) {
-      setPlaybackIndex(0);
-    } else if (playbackIndex == null) {
-      setPlaybackIndex(0);
-    }
-    setSelectedPoint(null);
-    setIsPlaying(true);
-  };
 
   return (
-    <SafeAreaView className="bg-background flex-1" edges={['top']}>
-      <View className="flex-1">
-        {loading ? (
-          <View className="flex-1 items-center justify-center">
-            <ActivityIndicator />
-          </View>
-        ) : points.length === 0 ? (
-          <View className="flex-1">
-            <DayMapView points={points} />
-            <View className="absolute inset-x-4 top-3 rounded-2xl bg-black/55 px-4 py-3">
-              <Text className="text-sm font-semibold text-white">{headerDate}</Text>
-              <Text className="mt-1 text-xs text-white/80">No points yet for this day.</Text>
-            </View>
-            <View className="absolute inset-x-4 bottom-4 rounded-2xl bg-black/60 px-4 py-3">
-              <Text variant="muted" className="text-center leading-6 text-white/85">
-                Start moving with tracking enabled to draw your journey.
-              </Text>
-              <View className="mt-3 flex-row items-center justify-between">
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={goToPreviousDay}
-                  disabled={selectedDateIndex >= dateKeys.length - 1}
-                  className="h-11 w-11 items-center justify-center rounded-full bg-white/15">
-                  <ChevronLeft
-                    size={22}
-                    color={
-                      selectedDateIndex >= dateKeys.length - 1 ? colors.mutedForeground : '#ffffff'
-                    }
-                  />
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={goToNextDay}
-                  disabled={selectedDateIndex <= 0}
-                  className="h-11 w-11 items-center justify-center rounded-full bg-white/15">
-                  <ChevronRight
-                    size={22}
-                    color={selectedDateIndex <= 0 ? colors.mutedForeground : '#ffffff'}
-                  />
-                </Pressable>
-                <View className="h-11 w-11 items-center justify-center rounded-full bg-white/10">
-                  <Play size={20} color={colors.mutedForeground} />
-                </View>
-              </View>
-            </View>
-          </View>
-        ) : (
-          <View className="flex-1">
-            <DayMapView
-              points={points}
-              playbackIndex={playbackIndex}
-              selectedPointId={selectedPoint?.id ?? null}
-              onSelectPoint={isPlaying ? undefined : setSelectedPoint}
-            />
+    <View className="bg-background flex-1">
+      <MapView
+        ref={mapRef}
+        style={StyleSheet.absoluteFill}
+        provider={provider}
+        initialRegion={FALLBACK_REGION}
+        mapPadding={mapPadding}
+        legalLabelInsets={{top: 0, right: 0, bottom: locateButtonBottom, left: 72}}
+        showsUserLocation
+        showsMyLocationButton={false}
+        userLocationPriority="high"
+        userInterfaceStyle={colorScheme === 'dark' ? 'dark' : 'light'}
+        followsUserLocation={false}
+        onRegionChange={onRegionChange}
+        onRegionChangeComplete={onRegionChange}
+        onUserLocationChange={event => {
+          const coordinate = event.nativeEvent.coordinate;
+          if (coordinate) {
+            handleUserLocation(coordinate);
+          }
+        }}
+      />
 
-            <View className="absolute inset-x-4 top-3 rounded-2xl bg-black/55 px-4 py-3">
-              <Text className="text-sm font-semibold text-white">
-                {headerDate}
-                {distanceLabel ? ` · ${distanceLabel}` : ''}
-              </Text>
-              {currentPlaybackPoint ? (
-                <Text className="mt-1 text-xs text-white/90">
-                  {format(currentPlaybackPoint.timestamp, 'h:mm:ss a')}
-                </Text>
-              ) : null}
-            </View>
+      <MapLocateButton
+        visible={showLocateButton}
+        bottom={locateButtonBottom}
+        onPress={goToCurrentLocation}
+      />
 
-            <View className="absolute inset-x-4 bottom-4 rounded-2xl bg-black/60 px-4 py-3">
-              <View className="flex-row items-center justify-between">
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={goToPreviousDay}
-                  disabled={selectedDateIndex >= dateKeys.length - 1 || isPlaying}
-                  className="h-11 w-11 items-center justify-center rounded-full bg-white/15">
-                  <ChevronLeft
-                    size={22}
-                    color={
-                      selectedDateIndex >= dateKeys.length - 1 || isPlaying
-                        ? colors.mutedForeground
-                        : '#ffffff'
-                    }
-                  />
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={goToNextDay}
-                  disabled={selectedDateIndex <= 0 || isPlaying}
-                  className="h-11 w-11 items-center justify-center rounded-full bg-white/15">
-                  <ChevronRight
-                    size={22}
-                    color={
-                      selectedDateIndex <= 0 || isPlaying ? colors.mutedForeground : '#ffffff'
-                    }
-                  />
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={handlePlay}
-                  disabled={!hasPlayback || isPlaying}
-                  className="h-11 w-11 items-center justify-center rounded-full bg-primary">
-                  {playbackIndex != null && playbackIndex >= points.length - 1 ? (
-                    <RotateCcw size={19} color="#ffffff" />
-                  ) : (
-                    <Play size={20} color={isPlaying || !hasPlayback ? colors.mutedForeground : '#ffffff'} />
-                  )}
-                </Pressable>
-              </View>
-            </View>
-          </View>
-        )}
+      <View
+        pointerEvents="box-none"
+        style={[styles.topBar, {paddingTop: insets.top + SETTINGS_TOP_GAP, paddingLeft: 16}]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Settings"
+          onPress={() => navigation.navigate('Settings')}
+          style={styles.settingsButton}>
+          <Settings size={22} color={colors.primary} strokeWidth={2.25} />
+        </Pressable>
       </View>
-
-      {!isPlaying ? <LocationPointSheet point={selectedPoint} onClose={() => setSelectedPoint(null)} /> : null}
-    </SafeAreaView>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  topBar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+  },
+  settingsButton: {
+    width: SETTINGS_SIZE,
+    height: SETTINGS_SIZE,
+    borderRadius: SETTINGS_SIZE / 2,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+});

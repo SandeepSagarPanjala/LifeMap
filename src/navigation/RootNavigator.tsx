@@ -3,9 +3,10 @@ import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {useColorScheme} from 'react-native';
 import {useMemo} from 'react';
 
-import {MainTabNavigator} from '@/navigation/MainTabNavigator';
 import type {RootStackParamList} from '@/navigation/types';
 import {DayDetailScreen} from '@/screens/DayDetailScreen';
+import {MapScreen} from '@/screens/MapScreen';
+import {SettingsScreen} from '@/screens/SettingsScreen';
 import {useThemeColors} from '@/hooks/use-theme-colors';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -26,16 +27,21 @@ export function RootNavigator() {
         primary: colors.primary,
       },
     }),
-    [colorScheme, colors]
+    [colorScheme, colors],
   );
 
   return (
     <NavigationContainer theme={navigationTheme}>
       <Stack.Navigator>
+        <Stack.Screen name="Map" component={MapScreen} options={{headerShown: false}} />
         <Stack.Screen
-          name="MainTabs"
-          component={MainTabNavigator}
-          options={{headerShown: false}}
+          name="Settings"
+          component={SettingsScreen}
+          options={{
+            title: 'Settings',
+            headerBackTitle: 'Map',
+            presentation: 'card',
+          }}
         />
         <Stack.Screen
           name="DayDetail"
