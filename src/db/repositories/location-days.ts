@@ -48,13 +48,23 @@ function buildSummariesFromRows(rows: LocationPointRow[]): DaySummary[] {
 
 export async function getLocationPointsForDay(dateKey: string): Promise<LocationPointRow[]> {
   const {start, end} = getDayRange(dateKey);
+  return getLocationPointsInRange(start, end);
+}
+
+export async function getLocationPointsInRange(
+  rangeStart: Date,
+  rangeEnd: Date,
+): Promise<LocationPointRow[]> {
   const db = await getDatabase();
 
   return db
     .select()
     .from(locationPoints)
     .where(
-      and(gte(locationPoints.timestamp, start), lte(locationPoints.timestamp, end)),
+      and(
+        gte(locationPoints.timestamp, rangeStart),
+        lte(locationPoints.timestamp, rangeEnd),
+      ),
     )
     .orderBy(asc(locationPoints.timestamp));
 }

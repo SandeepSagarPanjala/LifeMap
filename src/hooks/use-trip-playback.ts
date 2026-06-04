@@ -5,36 +5,45 @@ import {TRIP_PLAYBACK_DURATION_MS} from '@/lib/trip-playback';
 export function useTripPlayback(onFinished?: () => void) {
   const [progress, setProgress] = useState<number | null>(null);
   const rafRef = useRef<number | null>(null);
-  const startRef = useRef<number | null>(null);
+  const startTimeRef = useRef<number | null>(null);
+  const durationMsRef = useRef(TRIP_PLAYBACK_DURATION_MS);
+  const onFinishedRef = useRef(onFinished);
+  onFinishedRef.current = onFinished;
 
   const stop = useCallback(() => {
     if (rafRef.current != null) {
       cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
     }
-    startRef.current = null;
+    startTimeRef.current = null;
     setProgress(null);
   }, []);
 
-  const start = useCallback(() => {
-    stop();
-    startRef.current = Date.now();
+  const start = useCallback((durationMs: number = TRIP_PLAYBACK_DURATION_MS) => {
+    if (rafRef.current != null) {
+      cancelAnimationFrame(rafRef.current);
+    }
+    durationMsRef.current = Math.max(8_000, durationMs);
+    startTimeRef.current = null;
     setProgress(0);
 
-    const tick = () => {
-      const now = Date.now();
-      const startedAt = startRef.current;
-      if (startedAt == null) {
-        return;
+    const tick = (frameTime: number) => {
+      if (startTimeRef.current == null) {
+        startTimeRef.current = frameTime;
       }
 
-      const elapsed = now - startedAt;
-      const next = Math.min(1, elapsed / TRIP_PLAYBACK_DURATION_MS);
+      const elapsed = frameTime - startTimeRef.current;
+      const next = Math.min(1, elapsed / durationMsRef.current);
       setProgress(next);
 
       if (next >= 1) {
-        stop();
-        onFinished?.();
+        if (rafRef.current != null) {
+          cancelAnimationFrame(rafRef.current);
+          rafRef.current = null;
+        }
+        startTimeRef.current = null;
+        setProgress(null);
+        onFinishedRef.current?.();
         return;
       }
 
@@ -42,7 +51,7 @@ export function useTripPlayback(onFinished?: () => void) {
     };
 
     rafRef.current = requestAnimationFrame(tick);
-  }, [onFinished, stop]);
+  }, []);
 
   useEffect(() => () => stop(), [stop]);
 

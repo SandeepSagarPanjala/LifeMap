@@ -1,6 +1,6 @@
 import {format} from 'date-fns';
 
-import type {DetectedTrip, TripKind} from '@/lib/trip-detection';
+import type {DayTimelineEntry, DetectedTrip} from '@/lib/trip-detection';
 import {formatDistance, type DistanceUnit} from '@/lib/location-geo';
 
 export function formatTripDuration(durationMs: number): string {
@@ -21,23 +21,134 @@ export function formatTripDuration(durationMs: number): string {
   return `${hours} hr ${minutes} min`;
 }
 
+/** Life360-style: "Here for 3 hr 49 min" */
+export function formatHereForDuration(durationMs: number): string {
+  const totalMinutes = Math.max(1, Math.round(durationMs / 60_000));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours === 0) {
+    return `Here for ${minutes} min`;
+  }
+  if (minutes === 0) {
+    return `Here for ${hours} hr`;
+  }
+  return `Here for ${hours} hr ${minutes} min`;
+}
+
+const VISIT_ONGOING_THRESHOLD_MS = 20 * 60_000;
+
+export function isVisitOngoing(
+  endAt: Date,
+  now = new Date(),
+  options?: {openThroughNow?: boolean},
+): boolean {
+  if (options?.openThroughNow) {
+    return true;
+  }
+  return now.getTime() - endAt.getTime() < VISIT_ONGOING_THRESHOLD_MS;
+}
+
+/** "9:20 AM to 10:20 AM" */
+export function formatVisitTimeRange(
+  startAt: Date,
+  endAt: Date,
+  options?: {now?: Date},
+): string {
+  const start = format(startAt, 'h:mm a');
+  const end = format(options?.now ?? endAt, 'h:mm a');
+  return `${start} to ${end}`;
+}
+
+/** @deprecated Use formatVisitTimeRange + formatTripDuration */
+export function formatVisitRange(
+  startAt: Date,
+  endAt: Date,
+  durationMs: number,
+  options?: {ongoing?: boolean; now?: Date},
+): string {
+  return `${formatVisitTimeRange(startAt, endAt, {now: options?.now})} (${formatTripDuration(durationMs)})`;
+}
+
+export type StayVisitLabel = {
+  title: string;
+  subtitle: string;
+  statusLine?: string;
+};
+
+export function formatStayVisitLabel(
+  startAt: Date,
+  endAt: Date,
+  durationMs: number,
+  options?: {openThroughNow?: boolean; now?: Date},
+): StayVisitLabel {
+  const now = options?.now ?? new Date();
+  const ongoing = isVisitOngoing(endAt, now, {
+    openThroughNow: options?.openThroughNow,
+  });
+  return {
+    title: formatVisitTimeRange(startAt, endAt, {now}),
+    subtitle: formatTripDuration(durationMs),
+    statusLine: ongoing ? 'Still here' : undefined,
+  };
+}
+
 export function formatTripTimeRange(startAt: Date, endAt: Date): string {
-  return `${format(startAt, 'h:mm a')} – ${format(endAt, 'h:mm a')}`;
+  const safeEnd = endAt.getTime() >= startAt.getTime() ? endAt : startAt;
+  if (safeEnd.getTime() === startAt.getTime()) {
+    return format(startAt, 'h:mm a');
+  }
+  return `${format(startAt, 'h:mm a')} – ${format(safeEnd, 'h:mm a')}`;
 }
 
-export function formatTripKindLabel(kind: TripKind): string {
-  return kind === 'travel' ? 'Drive' : 'Stay';
+export function formatTimelineKindLabel(entry: DayTimelineEntry): string {
+  if (entry.kind === 'gap') {
+    return 'Gap';
+  }
+  if (entry.kind === 'stay') {
+    return 'Visit';
+  }
+  return 'Drive';
 }
 
-export function formatTripStats(trip: DetectedTrip, distanceUnit: DistanceUnit): string {
-  const duration = formatTripDuration(trip.durationMs);
-  if (trip.kind === 'stay') {
-    return `${formatTripKindLabel(trip.kind)} · ${duration}`;
+export function formatTimelineTitle(
+  entry: DayTimelineEntry,
+  now = new Date(),
+): string {
+  if (entry.kind === 'stay') {
+    return formatStayVisitLabel(
+      entry.startAt,
+      entry.endAt,
+      entry.durationMs,
+      {openThroughNow: entry.openThroughNow, now},
+    ).title;
+  }
+  return formatTripTimeRange(entry.startAt, entry.endAt);
+}
+
+export function formatTimelineStats(
+  entry: DayTimelineEntry,
+  distanceUnit: DistanceUnit,
+): string {
+  if (entry.kind === 'gap') {
+    return `No saved locations · ${formatTripDuration(entry.durationMs)}`;
+  }
+
+  if (entry.kind === 'stay') {
+    if (entry.durationMs < 60_000 && entry.points.length <= 1) {
+      return `Saved at ${format(entry.startAt, 'h:mm a')}`;
+    }
+    return formatTripDuration(entry.durationMs);
   }
 
   const distance =
-    trip.distanceKm > 0
-      ? formatDistance(trip.distanceKm, distanceUnit)
+    entry.distanceKm > 0
+      ? formatDistance(entry.distanceKm, distanceUnit)
       : '0 m';
-  return `${formatTripKindLabel(trip.kind)} · ${distance} · ${duration}`;
+  return `Drive · ${distance} · ${formatTripDuration(entry.durationMs)}`;
+}
+
+/** @deprecated */
+export function formatTripStats(trip: DetectedTrip, distanceUnit: DistanceUnit): string {
+  return formatTimelineStats(trip, distanceUnit);
 }

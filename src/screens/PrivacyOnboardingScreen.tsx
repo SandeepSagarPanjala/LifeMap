@@ -6,6 +6,7 @@ import {Button} from '@/components/ui/button';
 import {Icon} from '@/components/ui/icon';
 import {Text} from '@/components/ui/text';
 import {useThemeColors} from '@/hooks/use-theme-colors';
+import {ensureHistoryStartRecorded} from '@/db/repositories/history';
 import {useAppStore} from '@/stores/app-store';
 
 const PRIVACY_POINTS = [
@@ -67,7 +68,12 @@ export function PrivacyOnboardingScreen() {
           </Text>
         </View>
 
-        <Button className="mt-8 w-full" onPress={completePrivacyOnboarding}>
+        <Button
+          className="mt-8 w-full"
+          onPress={() => {
+            void ensureHistoryStartRecorded();
+            completePrivacyOnboarding();
+          }}>
           <Text>I understand — continue</Text>
         </Button>
       </ScrollView>

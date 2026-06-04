@@ -1,5 +1,6 @@
 import BackgroundGeolocation, {
   type Location,
+  type MotionChangeEvent,
   type Subscription,
 } from 'react-native-background-geolocation';
 
@@ -7,6 +8,7 @@ import {insertLocationPoint} from '@/db/repositories/location-points';
 import {distanceKm} from '@/lib/location-geo';
 import {getSetting, setSetting} from '@/db/repositories/settings';
 import {LocationPersistScheduler} from '@/lib/location-persist-scheduler';
+import {STATIONARY_PING_MIN_MS} from '@/lib/motion-tracking-policy';
 import {
   DEFAULT_TRACKING_PRESET,
   getTrackingPresetConfig,
@@ -48,6 +50,8 @@ export class TransistorSoftLocationService implements LocationService {
   private latestLocation: Location | null = null;
   private persistScheduler: LocationPersistScheduler | null = null;
   private lastPersistedCoords: {lat: number; lng: number} | null = null;
+  private lastPersistedMs = 0;
+  private isMoving = false;
 
   private rebuildPersistScheduler(): void {
     const preset = TRACKING_PRESETS[this.activePresetId];
@@ -62,7 +66,7 @@ export class TransistorSoftLocationService implements LocationService {
       preset.maxPersistIntervalMs,
       async () => {
         if (this.latestLocation) {
-          await this.writeLocationToDatabase(this.latestLocation);
+          await this.writeLocationToDatabase(this.latestLocation, 'gps');
         }
       },
     );
@@ -88,14 +92,17 @@ export class TransistorSoftLocationService implements LocationService {
     const preset = TRACKING_PRESETS[this.activePresetId];
 
     if (preset.maxPersistIntervalMs <= 0) {
-      await this.writeLocationToDatabase(location);
+      if (!this.isMoving && !this.movedEnoughSinceLastSave(location, preset.distanceFilter)) {
+        return;
+      }
+      await this.writeLocationToDatabase(location, 'gps');
       return;
     }
 
     if (this.movedEnoughSinceLastSave(location, preset.distanceFilter)) {
       const timestampMs = locationTimestamp(location).getTime();
       this.persistScheduler?.reset();
-      await this.writeLocationToDatabase(location);
+      await this.writeLocationToDatabase(location, 'gps');
       this.persistScheduler?.markPersisted(timestampMs);
       return;
     }
@@ -104,7 +111,21 @@ export class TransistorSoftLocationService implements LocationService {
     this.persistScheduler?.enqueue(timestampMs);
   }
 
-  private async writeLocationToDatabase(location: Location): Promise<void> {
+  private async forcePersistLocation(
+    location: Location,
+    source: string,
+  ): Promise<void> {
+    this.latestLocation = location;
+    const timestampMs = locationTimestamp(location).getTime();
+    this.persistScheduler?.reset();
+    await this.writeLocationToDatabase(location, source);
+    this.persistScheduler?.markPersisted(timestampMs);
+  }
+
+  private async writeLocationToDatabase(
+    location: Location,
+    source: string,
+  ): Promise<void> {
     const timestamp = locationTimestamp(location);
     const {coords} = location;
 
@@ -115,28 +136,50 @@ export class TransistorSoftLocationService implements LocationService {
       accuracy: coords.accuracy >= 0 ? coords.accuracy : null,
       altitude: coords.altitude,
       speed: coords.speed != null && coords.speed >= 0 ? coords.speed : null,
-      source: 'gps',
+      source,
     });
 
     this.lastPersistedCoords = {lat: coords.latitude, lng: coords.longitude};
+    this.lastPersistedMs = timestamp.getTime();
   }
 
-  private async refreshHeartbeatLocation(): Promise<void> {
-    const preset = TRACKING_PRESETS[this.activePresetId];
-    if (!preset.useHeartbeatFloor) {
+  private async onHeartbeat(): Promise<void> {
+    const now = Date.now();
+    const sinceLastSaveMs = now - this.lastPersistedMs;
+    const needsStationaryPing =
+      this.lastPersistedMs === 0 || sinceLastSaveMs >= STATIONARY_PING_MIN_MS;
+
+    if (needsStationaryPing) {
+      try {
+        const location = await BackgroundGeolocation.getCurrentPosition({
+          samples: 1,
+          persist: false,
+          timeout: 30,
+        });
+        await this.forcePersistLocation(location, 'heartbeat_ping');
+      } catch (error) {
+        if (__DEV__) {
+          console.warn('[LifeMap] Stationary ping getCurrentPosition failed', error);
+        }
+      }
       return;
     }
 
-    try {
-      const location = await BackgroundGeolocation.getCurrentPosition({
-        samples: 1,
-        persist: false,
-        timeout: 30,
-      });
-      await this.persistLocation(location);
-    } catch (error) {
-      if (__DEV__) {
-        console.warn('[LifeMap] Heartbeat getCurrentPosition failed', error);
+    const preset = TRACKING_PRESETS[this.activePresetId];
+    if (preset.useHeartbeatFloor && this.latestLocation) {
+      await this.persistLocation(this.latestLocation);
+    }
+  }
+
+  private async onMotionChange(event: MotionChangeEvent): Promise<void> {
+    this.isMoving = event.isMoving;
+    if (event.location) {
+      try {
+        await this.forcePersistLocation(event.location, 'motion');
+      } catch (error) {
+        if (__DEV__) {
+          console.warn('[LifeMap] Failed to persist motion change', error);
+        }
       }
     }
   }
@@ -160,8 +203,11 @@ export class TransistorSoftLocationService implements LocationService {
           }
         }
       }),
+      BackgroundGeolocation.onMotionChange(event => {
+        void this.onMotionChange(event);
+      }),
       BackgroundGeolocation.onHeartbeat(() => {
-        void this.refreshHeartbeatLocation();
+        void this.onHeartbeat();
       }),
     );
 
@@ -227,6 +273,8 @@ export class TransistorSoftLocationService implements LocationService {
     this.activePresetId = presetId;
     this.latestLocation = null;
     this.lastPersistedCoords = null;
+    this.lastPersistedMs = 0;
+    this.isMoving = false;
     this.rebuildPersistScheduler();
     await setSetting(SETTINGS_KEY_TRACKING_PRESET, presetId);
     await BackgroundGeolocation.setConfig(getTrackingPresetConfig(presetId));
@@ -260,6 +308,8 @@ export class TransistorSoftLocationService implements LocationService {
     this.persistScheduler = null;
     this.latestLocation = null;
     this.lastPersistedCoords = null;
+    this.lastPersistedMs = 0;
+    this.isMoving = false;
     this.configured = false;
   }
 }

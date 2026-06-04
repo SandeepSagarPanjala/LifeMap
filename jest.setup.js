@@ -88,6 +88,18 @@ jest.mock('react-native-background-geolocation', () => {
     static AUTHORIZATION_STATUS_RESTRICTED = AuthorizationStatus.Restricted;
 
     static onLocation = jest.fn(() => ({remove: jest.fn()}));
+    static onMotionChange = jest.fn(() => ({remove: jest.fn()}));
+    static onHeartbeat = jest.fn(() => ({remove: jest.fn()}));
+    static getCurrentPosition = jest.fn().mockResolvedValue({
+      timestamp: new Date().toISOString(),
+      coords: {
+        latitude: 33.21,
+        longitude: -97.13,
+        accuracy: 10,
+        altitude: 0,
+        speed: 0,
+      },
+    });
     static ready = jest.fn().mockResolvedValue({enabled: false});
     static requestPermission = jest.fn().mockResolvedValue(AuthorizationStatus.Always);
     static getState = jest.fn().mockResolvedValue({enabled: false});

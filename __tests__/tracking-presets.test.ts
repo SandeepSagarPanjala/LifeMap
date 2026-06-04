@@ -7,8 +7,8 @@ import {
 } from '../src/lib/tracking-presets';
 
 describe('tracking presets', () => {
-  it('defaults to distance-only 25 m', () => {
-    expect(DEFAULT_TRACKING_PRESET).toBe('d25_mov');
+  it('defaults to balanced 25 m with save cap', () => {
+    expect(DEFAULT_TRACKING_PRESET).toBe('d25_s30');
   });
 
   it('validates new preset ids', () => {
@@ -20,7 +20,7 @@ describe('tracking presets', () => {
     expect(normalizeTrackingPresetId('high')).toBe('d25_s30');
     expect(normalizeTrackingPresetId('balanced')).toBe('d25_mov');
     expect(normalizeTrackingPresetId('saver')).toBe('d75_mov');
-    expect(normalizeTrackingPresetId(null)).toBe('d25_mov');
+    expect(normalizeTrackingPresetId(null)).toBe('d25_s30');
   });
 
   it('maps capped presets with heartbeat and elasticity off', () => {
@@ -29,12 +29,14 @@ describe('tracking presets', () => {
     expect(capped.disableElasticity).toBe(true);
     expect(capped.heartbeatInterval).toBe(60);
     expect(capped.preventSuspend).toBe(true);
+    expect(capped.stopTimeout).toBe(5);
+    expect(capped.disableStopDetection).toBe(false);
   });
 
-  it('maps distance-only presets without save cap', () => {
+  it('maps distance-only presets without save cap but with motion heartbeat', () => {
     const mov = getTrackingPresetConfig('d25_mov');
     expect(mov.disableElasticity).toBe(false);
-    expect(mov.heartbeatInterval).toBeUndefined();
+    expect(mov.heartbeatInterval).toBe(60);
     expect(TRACKING_PRESETS.d25_mov.maxPersistIntervalMs).toBe(0);
   });
 });

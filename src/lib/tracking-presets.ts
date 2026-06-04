@@ -1,5 +1,7 @@
 import BackgroundGeolocation from 'react-native-background-geolocation';
 
+import {HEARTBEAT_CHECK_INTERVAL_SEC} from '@/lib/motion-tracking-policy';
+
 /** Slug ids (stored in settings). */
 export type TrackingPresetId =
   | 'd10_s30'
@@ -85,8 +87,9 @@ export const TRACKING_PRESETS: Record<TrackingPresetId, TrackingPreset> = {
   d25_mov: {
     id: 'd25_mov',
     label: '25 m · distance only',
-    saveRule: 'Saves when you have moved ~25 m (no time cap). Very few points when still.',
-    sdkHint: 'GPS while moving ~every 25 m (elasticity on)',
+    saveRule:
+      'Saves when you move ~25 m or when motion starts/stops. Stationary ping every 30 min. Sparse when still.',
+    sdkHint: 'GPS while moving ~every 25 m · motion stop/start · heartbeat ping',
     distanceFilter: 25,
     locationUpdateInterval: 60_000,
     fastestLocationUpdateInterval: 60_000,
@@ -139,7 +142,7 @@ export const TRACKING_PRESETS: Record<TrackingPresetId, TrackingPreset> = {
   },
 };
 
-export const DEFAULT_TRACKING_PRESET: TrackingPresetId = 'd25_mov';
+export const DEFAULT_TRACKING_PRESET: TrackingPresetId = 'd25_s30';
 
 export const TRACKING_PRESET_ORDER: TrackingPresetId[] = [
   'd10_s30',
@@ -172,19 +175,10 @@ export function normalizeTrackingPresetId(stored: string | null): TrackingPreset
   return DEFAULT_TRACKING_PRESET;
 }
 
-function heartbeatIntervalSeconds(preset: TrackingPreset): number | undefined {
-  if (!preset.useHeartbeatFloor || preset.maxPersistIntervalMs <= 0) {
-    return undefined;
-  }
-  // Android minimum heartbeat is 60 s.
-  return Math.max(60, Math.round(preset.maxPersistIntervalMs / 1000));
-}
-
 export function getTrackingPresetConfig(
   presetId: TrackingPresetId,
 ): Record<string, unknown> {
   const preset = TRACKING_PRESETS[presetId];
-  const heartbeatInterval = heartbeatIntervalSeconds(preset);
 
   return {
     desiredAccuracy: BackgroundGeolocation.DesiredAccuracy.High,
@@ -192,12 +186,10 @@ export function getTrackingPresetConfig(
     locationUpdateInterval: preset.locationUpdateInterval,
     fastestLocationUpdateInterval: preset.fastestLocationUpdateInterval,
     disableElasticity: preset.maxPersistIntervalMs > 0,
-    ...(heartbeatInterval != null
-      ? {
-          heartbeatInterval,
-          // iOS fires heartbeat only with preventSuspend (battery cost).
-          preventSuspend: true,
-        }
-      : {}),
+    stopTimeout: 5,
+    disableStopDetection: false,
+    disableMotionActivityUpdates: false,
+    heartbeatInterval: HEARTBEAT_CHECK_INTERVAL_SEC,
+    preventSuspend: true,
   };
 }

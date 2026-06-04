@@ -1,13 +1,11 @@
 import {useMemo} from 'react';
-import {Marker, Polyline} from 'react-native-maps';
-import {StyleSheet, Text, View} from 'react-native';
-import {format} from 'date-fns';
+import {Polyline} from 'react-native-maps';
 
-import {TripPlaybackMarker} from '@/components/map/TripPlaybackMarker';
+import {TripPlaybackHead} from '@/components/map/TripPlaybackHead';
 import type {LocationPointRow} from '@/db/repositories/location-days';
-import {bearingDegrees, toMapCoordinates} from '@/lib/location-geo';
+import {toMapCoordinates} from '@/lib/location-geo';
 import {
-  getPlaybackCoordinates,
+  buildDensePlaybackSamples,
   getTripPlaybackFrame,
 } from '@/lib/trip-playback';
 import {
@@ -26,35 +24,21 @@ type TripRouteOverlayProps = {
 
 export function TripRouteOverlay({points, playbackProgress = null}: TripRouteOverlayProps) {
   const coordinates = useMemo(() => toMapCoordinates(points), [points]);
+  const denseSamples = useMemo(() => buildDensePlaybackSamples(points), [points]);
 
   const frame = useMemo(() => {
     if (playbackProgress == null) {
       return null;
     }
-    return getTripPlaybackFrame(points, playbackProgress);
-  }, [points, playbackProgress]);
-
-  const playedCoordinates = useMemo(() => {
-    if (playbackProgress == null) {
-      return [];
-    }
-    return getPlaybackCoordinates(points, playbackProgress);
-  }, [points, playbackProgress]);
-
-  const heading = useMemo(() => {
-    if (!frame || frame.pointIndex >= points.length - 1) {
-      return 0;
-    }
-    const a = points[frame.pointIndex]!;
-    const b = points[frame.pointIndex + 1] ?? a;
-    return bearingDegrees(a, b);
-  }, [frame, points]);
+    return getTripPlaybackFrame(points, playbackProgress, denseSamples);
+  }, [denseSamples, playbackProgress, points]);
 
   if (coordinates.length < 1) {
     return null;
   }
 
   const isPlaying = playbackProgress != null;
+  const playedCoordinates = frame?.pathCoordinates ?? [];
 
   return (
     <>
@@ -79,7 +63,7 @@ export function TripRouteOverlay({points, playbackProgress = null}: TripRouteOve
         </>
       ) : null}
 
-      {isPlaying && playedCoordinates.length > 1 ? (
+      {isPlaying && playedCoordinates.length > 0 ? (
         <>
           <Polyline
             coordinates={playedCoordinates}
@@ -101,34 +85,12 @@ export function TripRouteOverlay({points, playbackProgress = null}: TripRouteOve
       ) : null}
 
       {isPlaying && frame ? (
-        <>
-          <TripPlaybackMarker coordinate={frame.coordinate} heading={heading} />
-          <Marker coordinate={frame.coordinate} anchor={{x: 0.5, y: 1.35}} tracksViewChanges={false}>
-            <View style={styles.timeChip}>
-              <Text style={styles.timeText}>{format(frame.point.timestamp, 'h:mm a')}</Text>
-            </View>
-          </Marker>
-        </>
+        <TripPlaybackHead
+          coordinate={frame.coordinate}
+          timestamp={frame.interpolatedAt}
+          labelPlacement={frame.labelPlacement}
+        />
       ) : null}
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  timeChip: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 1},
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  timeText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#1C1C1E',
-  },
-});

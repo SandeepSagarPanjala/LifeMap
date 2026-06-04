@@ -1,26 +1,42 @@
 import {Polyline} from 'react-native-maps';
 
 import type {LocationPointRow} from '@/db/repositories/location-days';
-import {toMapCoordinates} from '@/lib/location-geo';
+import {buildDrawableRouteSegments} from '@/lib/route-segments';
 import {
   ROUTE_PATH_BORDER,
   ROUTE_PATH_BORDER_WIDTH,
   ROUTE_PATH_FILL,
   ROUTE_PATH_FILL_WIDTH,
 } from '@/lib/route-map-style';
+import type {TripDetectionConfig} from '@/lib/trip-settings';
 
 type RoutePathOverlayProps = {
   points: LocationPointRow[];
+  tripConfig: TripDetectionConfig;
 };
 
-/** Continuous path through saved GPS points — blue fill, white border, no mid-line dots. */
-export function RoutePathOverlay({points}: RoutePathOverlayProps) {
-  const coordinates = toMapCoordinates(points);
+/** Draws only plausible drive segments — no misleading lines across long same-place gaps. */
+export function RoutePathOverlay({points, tripConfig}: RoutePathOverlayProps) {
+  const segments = buildDrawableRouteSegments(points, tripConfig);
 
-  if (coordinates.length < 2) {
+  if (segments.length === 0) {
     return null;
   }
 
+  return (
+    <>
+      {segments.map((coordinates, index) => (
+        <RouteSegmentPolylines key={`route-seg-${index}`} coordinates={coordinates} />
+      ))}
+    </>
+  );
+}
+
+function RouteSegmentPolylines({
+  coordinates,
+}: {
+  coordinates: {latitude: number; longitude: number}[];
+}) {
   return (
     <>
       <Polyline

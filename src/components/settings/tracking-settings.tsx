@@ -3,9 +3,7 @@ import {ActivityIndicator, Pressable, ScrollView, View} from 'react-native';
 
 import {formatDistanceToNow} from 'date-fns';
 
-import {countLocationPoints, getLatestLocationPoint} from '@/db/repositories/location-points';
-import {getLocationPointsForDay} from '@/db/repositories/location-days';
-import {getTodayDateKey} from '@/lib/day-utils';
+import {getLatestLocationPoint} from '@/db/repositories/location-points';
 import {getLocationService} from '@/location/transistorsoft-location-service';
 import type {LocationAuthorizationStatus} from '@/location/types';
 import {
@@ -37,11 +35,9 @@ export function TrackingSettings() {
   const colors = useThemeColors();
   const [loading, setLoading] = useState(true);
   const [enabled, setEnabled] = useState(false);
-  const [presetId, setPresetId] = useState<TrackingPresetId>('d25_mov');
+  const [presetId, setPresetId] = useState<TrackingPresetId>('d25_s30');
   const [authorizationStatus, setAuthorizationStatus] =
     useState<LocationAuthorizationStatus>('not_determined');
-  const [pointCount, setPointCount] = useState(0);
-  const [todayPointCount, setTodayPointCount] = useState(0);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
 
   const refresh = useCallback(async () => {
@@ -49,15 +45,11 @@ export function TrackingSettings() {
     try {
       const service = getLocationService();
       const state = await service.getState();
-      const count = await countLocationPoints();
       const latest = await getLatestLocationPoint();
-      const todayPoints = await getLocationPointsForDay(getTodayDateKey());
 
       setEnabled(state.enabled);
       setPresetId(state.presetId);
       setAuthorizationStatus(state.authorizationStatus);
-      setPointCount(count);
-      setTodayPointCount(todayPoints.length);
       setLastSavedAt(latest?.timestamp ?? null);
     } finally {
       setLoading(false);
@@ -117,18 +109,14 @@ export function TrackingSettings() {
         )}
       </View>
 
-      <Text variant="muted" className="mt-3 text-sm">
-        {pointCount.toLocaleString()} saved locally
-        {todayPointCount > 0 ? ` · ${todayPointCount.toLocaleString()} today` : ''}
-        {lastSavedAt
-          ? ` · last ${formatDistanceToNow(lastSavedAt, {addSuffix: true})}`
-          : ''}
-      </Text>
+      {lastSavedAt ? (
+        <Text variant="muted" className="mt-3 text-sm">
+          Last save {formatDistanceToNow(lastSavedAt, {addSuffix: true})}
+        </Text>
+      ) : null}
       <Text variant="muted" className="mt-2 text-sm leading-5">
-        Distance is when the SDK may fire; save cap is what LifeMap writes. With a time cap,
-        LifeMap also saves as soon as you move the preset distance (e.g. 25 m) so fast drives
-        do not draw long straight gaps. Still at home saves almost nothing. Android heartbeat
-        is at least 60 s.
+        Saves when you move, when motion starts or stops, and at least every 30 minutes while
+        still. Presets control distance and how often rows are written while moving.
       </Text>
 
       <ScrollView className="mt-4 max-h-96" nestedScrollEnabled showsVerticalScrollIndicator>
@@ -151,9 +139,11 @@ export function TrackingSettings() {
                 <Text variant="muted" className="mt-1 text-sm leading-5">
                   {preset.saveRule}
                 </Text>
-                <Text variant="muted" className="mt-1 text-xs leading-4 opacity-80">
-                  SDK: {preset.sdkHint}
-                </Text>
+                {__DEV__ ? (
+                  <Text variant="muted" className="mt-1 text-xs leading-4 opacity-80">
+                    SDK: {preset.sdkHint}
+                  </Text>
+                ) : null}
               </Pressable>
             );
           })}

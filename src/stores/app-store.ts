@@ -6,7 +6,8 @@ import {DEFAULT_ACCENT_THEME, type AccentThemeId} from '@/lib/color-themes';
 import {
   DEFAULT_TRIP_DWELL_MINUTES,
   DEFAULT_TRIP_DWELL_RADIUS_METERS,
-  DEFAULT_TRIP_GAP_MINUTES,
+  type TripDwellMinutes,
+  type TripRadiusMeters,
 } from '@/lib/trip-settings';
 
 export type DistanceUnit = 'km' | 'mi';
@@ -19,18 +20,16 @@ type AppState = {
   devShowOnboarding: boolean;
   distanceUnit: DistanceUnit;
   preferredMapApp: PreferredMapApp;
-  tripGapMinutes: number;
-  tripDwellMinutes: number;
-  tripDwellRadiusMeters: number;
+  tripDwellMinutes: TripDwellMinutes;
+  tripDwellRadiusMeters: TripRadiusMeters;
   completePrivacyOnboarding: () => void;
   setAccentTheme: (theme: AccentThemeId) => void;
   setSlowSplashEnabled: (enabled: boolean) => void;
   setDevShowOnboarding: (enabled: boolean) => void;
   setDistanceUnit: (unit: DistanceUnit) => void;
   setPreferredMapApp: (app: PreferredMapApp) => void;
-  setTripGapMinutes: (minutes: number) => void;
-  setTripDwellMinutes: (minutes: number) => void;
-  setTripDwellRadiusMeters: (meters: number) => void;
+  setTripDwellMinutes: (minutes: TripDwellMinutes) => void;
+  setTripDwellRadiusMeters: (meters: TripRadiusMeters) => void;
 };
 
 export const useAppStore = create<AppState>()(
@@ -42,7 +41,6 @@ export const useAppStore = create<AppState>()(
       devShowOnboarding: false,
       distanceUnit: 'km',
       preferredMapApp: 'apple',
-      tripGapMinutes: DEFAULT_TRIP_GAP_MINUTES,
       tripDwellMinutes: DEFAULT_TRIP_DWELL_MINUTES,
       tripDwellRadiusMeters: DEFAULT_TRIP_DWELL_RADIUS_METERS,
       completePrivacyOnboarding: () => set({hasCompletedPrivacyOnboarding: true}),
@@ -51,9 +49,9 @@ export const useAppStore = create<AppState>()(
       setDevShowOnboarding: enabled => set({devShowOnboarding: enabled}),
       setDistanceUnit: unit => set({distanceUnit: unit}),
       setPreferredMapApp: app => set({preferredMapApp: app}),
-      setTripGapMinutes: minutes => set({tripGapMinutes: minutes}),
-      setTripDwellMinutes: minutes => set({tripDwellMinutes: minutes}),
-      setTripDwellRadiusMeters: meters => set({tripDwellRadiusMeters: meters}),
+      setTripDwellMinutes: tripDwellMinutes => set({tripDwellMinutes}),
+      setTripDwellRadiusMeters: tripDwellRadiusMeters =>
+        set({tripDwellRadiusMeters}),
     }),
     {
       name: 'lifemap-app',
@@ -65,7 +63,6 @@ export const useAppStore = create<AppState>()(
         devShowOnboarding: state.devShowOnboarding,
         distanceUnit: state.distanceUnit,
         preferredMapApp: state.preferredMapApp,
-        tripGapMinutes: state.tripGapMinutes,
         tripDwellMinutes: state.tripDwellMinutes,
         tripDwellRadiusMeters: state.tripDwellRadiusMeters,
       }),

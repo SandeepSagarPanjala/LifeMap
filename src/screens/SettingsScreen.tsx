@@ -7,7 +7,8 @@ import {Text} from '@/components/ui/text';
 import {AccentThemePicker} from '@/components/settings/accent-theme-picker';
 import {PreferencesSettings} from '@/components/settings/preferences-settings';
 import {TrackingSettings} from '@/components/settings/tracking-settings';
-import {TripSettings} from '@/components/settings/trip-settings';
+import {HistoryDetectionSettings} from '@/components/settings/history-detection-settings';
+import {LocationDataSettings} from '@/components/settings/location-data-settings';
 import {useThemeColors} from '@/hooks/use-theme-colors';
 import {useAppStore} from '@/stores/app-store';
 
@@ -37,7 +38,11 @@ export function SettingsScreen() {
         </View>
 
         <View className="mt-4">
-          <TripSettings />
+          <HistoryDetectionSettings />
+        </View>
+
+        <View className="mt-4">
+          <LocationDataSettings />
         </View>
 
         <View className="mt-4">

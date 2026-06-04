@@ -1,22 +1,24 @@
+import {MapPin} from 'lucide-react-native';
 import {Pressable, View} from 'react-native';
-
-import {Route} from 'lucide-react-native';
 
 import {Icon} from '@/components/ui/icon';
 import {Text} from '@/components/ui/text';
-import {useThemeColors} from '@/hooks/use-theme-colors';
 import {
+  formatTripDwellLabel,
+  formatTripRadiusLabel,
   TRIP_DWELL_CHOICES,
-  TRIP_GAP_CHOICES,
   TRIP_RADIUS_CHOICES,
+  type TripDwellMinutes,
+  type TripRadiusMeters,
 } from '@/lib/trip-settings';
+import {useThemeColors} from '@/hooks/use-theme-colors';
 import {useAppStore} from '@/stores/app-store';
 
 type ChoiceRowProps<T extends number> = {
   label: string;
   choices: readonly T[];
   selected: T;
-  format: (value: T) => string;
+  formatChoice: (value: T) => string;
   onSelect: (value: T) => void;
 };
 
@@ -24,14 +26,12 @@ function ChoiceRow<T extends number>({
   label,
   choices,
   selected,
-  format,
+  formatChoice,
   onSelect,
 }: ChoiceRowProps<T>) {
   return (
-    <View className="mt-3">
-      <Text variant="muted" className="text-sm">
-        {label}
-      </Text>
+    <View className="mt-4">
+      <Text className="font-medium">{label}</Text>
       <View className="mt-2 flex-row flex-wrap gap-2">
         {choices.map(choice => {
           const active = choice === selected;
@@ -39,12 +39,14 @@ function ChoiceRow<T extends number>({
             <Pressable
               key={choice}
               accessibilityRole="button"
+              accessibilityState={{selected: active}}
               onPress={() => onSelect(choice)}
-              className={`rounded-full border px-3 py-1.5 ${
+              className={`rounded-full border px-3 py-2 ${
                 active ? 'border-primary bg-primary/10' : 'border-border'
               }`}>
-              <Text className={active ? 'text-primary text-sm font-medium' : 'text-sm'}>
-                {format(choice)}
+              <Text
+                className={`text-sm ${active ? 'text-primary font-semibold' : 'font-medium'}`}>
+                {formatChoice(choice)}
               </Text>
             </Pressable>
           );
@@ -54,49 +56,46 @@ function ChoiceRow<T extends number>({
   );
 }
 
-export function TripSettings() {
+export function HistoryDetectionSettings() {
   const colors = useThemeColors();
-  const tripGapMinutes = useAppStore(state => state.tripGapMinutes);
   const tripDwellMinutes = useAppStore(state => state.tripDwellMinutes);
   const tripDwellRadiusMeters = useAppStore(state => state.tripDwellRadiusMeters);
-  const setTripGapMinutes = useAppStore(state => state.setTripGapMinutes);
   const setTripDwellMinutes = useAppStore(state => state.setTripDwellMinutes);
   const setTripDwellRadiusMeters = useAppStore(state => state.setTripDwellRadiusMeters);
 
   return (
     <View className="bg-card border-border rounded-2xl border p-4">
       <View className="flex-row items-center gap-3">
-        <Icon as={Route} size={20} color={colors.primary} />
+        <Icon as={MapPin} size={20} color={colors.primary} />
         <View className="flex-1">
-          <Text className="font-medium">Trips</Text>
+          <Text className="font-medium">History & visits</Text>
           <Text variant="muted" className="mt-1 text-sm leading-5">
-            Split today&apos;s path into drive and stay trips. A gap ends a trip; staying in one
-            place for the dwell time creates a stay trip.
+            Controls how LifeMap groups your day into visits (orange) and trips (blue) on the map
+            history bar.
           </Text>
         </View>
       </View>
 
-      <ChoiceRow
-        label="Gap ends trip"
-        choices={TRIP_GAP_CHOICES}
-        selected={tripGapMinutes}
-        format={m => `${m} min`}
-        onSelect={setTripGapMinutes}
-      />
-      <ChoiceRow
-        label="Stay trip after"
+      <ChoiceRow<TripDwellMinutes>
+        label="Visit duration (same place)"
         choices={TRIP_DWELL_CHOICES}
         selected={tripDwellMinutes}
-        format={m => `${m} min`}
+        formatChoice={formatTripDwellLabel}
         onSelect={setTripDwellMinutes}
       />
-      <ChoiceRow
+
+      <ChoiceRow<TripRadiusMeters>
         label="Same place radius"
         choices={TRIP_RADIUS_CHOICES}
         selected={tripDwellRadiusMeters}
-        format={m => `${m} m`}
+        formatChoice={formatTripRadiusLabel}
         onSelect={setTripDwellRadiusMeters}
       />
+
+      <Text variant="muted" className="mt-4 text-xs leading-4">
+        A visit needs at least this long at one place. Trips are the saves from when you leave
+        until the next visit starts. Time gaps at the same place still count as one visit.
+      </Text>
     </View>
   );
 }
