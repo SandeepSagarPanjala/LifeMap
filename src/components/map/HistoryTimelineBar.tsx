@@ -40,7 +40,6 @@ type HistoryTimelineBarProps = {
   onSelectIndex: (index: number) => void;
   onDateKeyChange: (dateKey: string) => void;
   onOpenDatePicker: () => void;
-  focusSnapToEnd?: boolean;
 };
 
 export function HistoryTimelineBar({
@@ -50,7 +49,6 @@ export function HistoryTimelineBar({
   onSelectIndex,
   onDateKeyChange,
   onOpenDatePicker,
-  focusSnapToEnd = false,
 }: HistoryTimelineBarProps) {
   const scrubRef = useRef<View>(null);
   const [barMeasure, setBarMeasure] = useState<BarMeasure | null>(null);
@@ -108,7 +106,7 @@ export function HistoryTimelineBar({
   );
 
   const snapPxForDay = useCallback(() => {
-    if (isToday && focusSnapToEnd) {
+    if (isToday) {
       return (
         ruler.nowLeftPx ??
         (ruler.segments.length > 0
@@ -118,7 +116,7 @@ export function HistoryTimelineBar({
       );
     }
     return clampAnchorPx(0, barWidth);
-  }, [barWidth, focusSnapToEnd, isToday, ruler]);
+  }, [barWidth, isToday, ruler]);
 
   useEffect(() => {
     hasManualScrubRef.current = false;
@@ -129,7 +127,7 @@ export function HistoryTimelineBar({
       return;
     }
     applyAnchorPx(snapPxForDay());
-  }, [applyAnchorPx, dateKey, focusSnapToEnd, snapPxForDay]);
+  }, [applyAnchorPx, dateKey, snapPxForDay]);
 
   const handleGrant = useCallback(
     (event: GestureResponderEvent) => {

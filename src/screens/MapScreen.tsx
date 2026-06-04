@@ -77,7 +77,6 @@ export function MapScreen() {
     longitude: number;
   } | null>(null);
   const [historyPanelOpen, setHistoryPanelOpen] = useState(false);
-  const [historyFocusSnapToEnd, setHistoryFocusSnapToEnd] = useState(false);
   const [selectedHistoryIndex, setSelectedHistoryIndex] = useState(-1);
 
   const historyEntries = historyData.entries;
@@ -224,7 +223,6 @@ export function MapScreen() {
   const selectHistoryIndex = useCallback(
     (index: number) => {
       playback.stop();
-      setHistoryFocusSnapToEnd(focused => (focused ? false : focused));
       setSelectedHistoryIndex(index);
     },
     [playback],
@@ -238,20 +236,18 @@ export function MapScreen() {
     (dateKey: string) => {
       setSelectedDateKey(dateKey);
       setSelectedHistoryIndex(-1);
-      setHistoryFocusSnapToEnd(dateKey === todayKey);
       playback.stop();
     },
-    [playback, todayKey],
+    [playback],
   );
 
   const handleHistoryDateKeyChange = useCallback(
     (dateKey: string) => {
       setSelectedDateKey(dateKey);
       setSelectedHistoryIndex(-1);
-      setHistoryFocusSnapToEnd(dateKey === todayKey);
       playback.stop();
     },
-    [playback, todayKey],
+    [playback],
   );
 
   const handleToggleHistoryPanel = useCallback(() => {
@@ -259,16 +255,14 @@ export function MapScreen() {
       const next = !open;
       if (next) {
         setSelectedHistoryIndex(-1);
-        setHistoryFocusSnapToEnd(viewingToday);
       } else {
         playback.stop();
         setSelectedDateKey(todayKey);
         setSelectedHistoryIndex(-1);
-        setHistoryFocusSnapToEnd(false);
       }
       return next;
     });
-  }, [playback, todayKey, viewingToday]);
+  }, [playback, todayKey]);
 
   useEffect(() => {
     if (historyPanelOpen || historyLoading || !mapRef.current) {
@@ -426,7 +420,6 @@ export function MapScreen() {
             onSelectIndex={selectHistoryIndex}
             onDateKeyChange={handleHistoryDateKeyChange}
             onOpenDatePicker={openHistoryDatePicker}
-            focusSnapToEnd={historyFocusSnapToEnd}
           />
         </View>
       ) : null}
