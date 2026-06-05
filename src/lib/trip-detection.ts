@@ -41,7 +41,13 @@ const MIN_TIMELINE_GAP_MS = 2 * 60_000;
 /** Below this, movement between stays is GPS noise — not a real trip. */
 const MIN_TRAVEL_DISTANCE_M = 40;
 
-/** Stay cluster path above this is driving, not a stop (parking-lot drift is much smaller). */
+/**
+ * Max distance from the arrival save for one visit envelope.
+ * GPS path length can be much larger (lot drift); spread is what matters.
+ */
+const MAX_STAY_ENVELOPE_SPREAD_M = 250;
+
+/** Interior stop on a drive — path above this is movement, not a pause. */
 const MAX_STOP_CLUSTER_PATH_M = 250;
 
 /** Mall / campus walking can stay inside this envelope around the arrival anchor. */
@@ -361,20 +367,30 @@ function maxSpreadFromAnchorM(
   return maxM;
 }
 
-function growVenueEnvelopeCluster(
+function growSpreadEnvelopeCluster(
   points: LocationPointRow[],
   startIndex: number,
+  maxSpreadM: number,
 ): number {
   let end = startIndex;
   while (end + 1 < points.length) {
-    if (
-      maxSpreadFromAnchorM(points, startIndex, end + 1) > VENUE_MAX_SPREAD_M
-    ) {
+    const next = points[end + 1]!;
+    if (maxSpreadFromAnchorM(points, startIndex, end + 1) > maxSpreadM) {
+      break;
+    }
+    if (isShortGapDeparture(points[end]!, next)) {
       break;
     }
     end += 1;
   }
   return end;
+}
+
+function growVenueEnvelopeCluster(
+  points: LocationPointRow[],
+  startIndex: number,
+): number {
+  return growSpreadEnvelopeCluster(points, startIndex, VENUE_MAX_SPREAD_M);
 }
 
 function isVenueWalkCluster(clusterPoints: LocationPointRow[]): boolean {
@@ -448,31 +464,9 @@ function peelVenueWalkTail(
   return pieces.length > 0 ? pieces : [travel];
 }
 
-function growPlaceCluster(
-  points: LocationPointRow[],
-  startIndex: number,
-  radiusKm: number,
-): number {
-  let end = startIndex;
-  while (end + 1 < points.length) {
-    const next = points[end + 1]!;
-    let inCluster = false;
-    for (let k = startIndex; k <= end; k += 1) {
-      if (distanceKm(points[k]!, next) <= radiusKm) {
-        inCluster = true;
-        break;
-      }
-    }
-    if (!inCluster) {
-      break;
-    }
-    end += 1;
-  }
-  return end;
-}
-
 /**
- * Stay = saves within dwell radius of the visit anchor (first save in the cluster).
+ * Stay = saves that stay within {@link MAX_STAY_ENVELOPE_SPREAD_M} of the arrival
+ * anchor (spread, not GPS path length — lot drift can walk hundreds of meters).
  * Qualifies when span ≥ dwell minutes, last cluster (open visit), or a mid-route
  * stop (≥ {@link MIN_TRIP_STOP_MINUTES} between movement — e.g. food, charger).
  */
@@ -485,22 +479,24 @@ export function findStaySpans(
     return [];
   }
 
-  const radiusKm = config.dwellRadiusMeters / 1000;
   const minDwellMs = config.dwellMinutes * 60_000;
   const minTripStopMs = MIN_TRIP_STOP_MINUTES * 60_000;
   const spans: StaySpan[] = [];
   let index = 0;
 
   while (index < points.length) {
-    const end = growPlaceCluster(points, index, radiusKm);
+    const end = growSpreadEnvelopeCluster(
+      points,
+      index,
+      MAX_STAY_ENVELOPE_SPREAD_M,
+    );
     const spanMs =
       points[end]!.timestamp.getTime() - points[index]!.timestamp.getTime();
     const betweenMovement = index > 0 && end < points.length - 1;
     const atEndOfDay = end === points.length - 1;
     const midRouteStop = betweenMovement && spanMs >= minTripStopMs;
-    const clusterPoints = points.slice(index, end + 1);
-    const stationary =
-      calculatePathDistanceKm(clusterPoints) * 1000 <= MAX_STOP_CLUSTER_PATH_M;
+    const spreadM = maxSpreadFromAnchorM(points, index, end);
+    const stationary = spreadM <= MAX_STAY_ENVELOPE_SPREAD_M;
 
     if (
       stationary &&

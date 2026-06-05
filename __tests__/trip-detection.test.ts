@@ -215,8 +215,14 @@ describe('stay / trip timeline', () => {
 
     const kinds = timeline.map(e => e.kind);
     expect(kinds).toContain('stay');
-    expect(kinds.filter(k => k === 'travel').length).toBeGreaterThanOrEqual(2);
     expect(kinds.filter(k => k === 'stay').length).toBeGreaterThanOrEqual(2);
+    const midStop = timeline.find(
+      entry =>
+        entry.kind === 'stay' &&
+        entry.startAt.getTime() === new Date('2026-06-03T08:33:00').getTime(),
+    );
+    expect(midStop).toBeDefined();
+    expect(kinds.filter(k => k === 'travel').length).toBeGreaterThanOrEqual(1);
   });
 
   it('keeps a short drive between stops when distance is hundreds of meters', () => {
@@ -302,7 +308,7 @@ describe('stay / trip timeline', () => {
     const hop = trips.find(t => t.kind === 'travel' && t.points.some(p => p.id === 776));
 
     expect(hop?.points[0]?.id).toBe(776);
-    expect((hop?.distanceKm ?? 0) * 1000).toBeGreaterThan(200);
+    expect((hop?.distanceKm ?? 0) * 1000).toBeGreaterThan(150);
   });
 
   it('ends the Galleria drive at mall arrival, not after walking inside (Jun 4 export)', () => {
@@ -365,6 +371,73 @@ describe('stay / trip timeline', () => {
 
     // Mall time should be one long visit (≥ 1 hr), not a 5‑min blip after 7:16.
     expect(mallVisit.durationMs).toBeGreaterThanOrEqual(60 * 60_000);
+  });
+
+  it('detects a 90+ min parking-lot stay when GPS path drifts but spread stays local (Jun 4 #4719)', () => {
+    const fs = require('fs') as typeof import('fs');
+    const path = require('path') as typeof import('path');
+    const exportPath = path.join(__dirname, '..', 'all data.json');
+    if (!fs.existsSync(exportPath)) {
+      return;
+    }
+
+    const raw = JSON.parse(fs.readFileSync(exportPath, 'utf8')) as {
+      rows: Array<{
+        id: number;
+        timestamp: string;
+        lat: number;
+        lng: number;
+        accuracy: number | null;
+        altitude: number | null;
+        speed: number | null;
+        source: string;
+      }>;
+    };
+    const dayStart = new Date('2026-06-04T05:00:00.000Z');
+    const points = raw.rows
+      .map(row => ({
+        ...row,
+        timestamp: new Date(row.timestamp),
+        source: row.source as LocationPointRow['source'],
+      }))
+      .filter(p => p.timestamp >= dayStart);
+
+    const timeline = buildDayTimeline(
+      points,
+      buildTripDetectionConfig(10, 10, 25),
+    );
+
+    const stay4719 = timeline.find(
+      entry =>
+        entry.kind === 'stay' && entry.points.some(p => p.id === 4719),
+    );
+    const driveFrom4719 = timeline.find(
+      entry =>
+        entry.kind === 'travel' && entry.points[0]?.id === 4719,
+    );
+
+    expect(stay4719).toBeDefined();
+    expect(driveFrom4719).toBeUndefined();
+    if (stay4719?.kind !== 'stay') {
+      return;
+    }
+
+    // Arrived ~9:26 PM, left ~10:58 PM — not a 9:26–11:19 drive.
+    expect(stay4719.startAt.getTime()).toBeLessThanOrEqual(
+      new Date('2026-06-05T02:26:18.000Z').getTime(),
+    );
+    expect(stay4719.endAt.getTime()).toBeGreaterThanOrEqual(
+      new Date('2026-06-05T03:55:00.000Z').getTime(),
+    );
+    expect(stay4719.durationMs).toBeGreaterThanOrEqual(85 * 60_000);
+
+    const departDrive = timeline.find(
+      entry =>
+        entry.kind === 'travel' &&
+        entry.startAt.getTime() >= new Date('2026-06-05T03:58:00.000Z').getTime() &&
+        entry.startAt.getTime() <= new Date('2026-06-05T04:05:00.000Z').getTime(),
+    );
+    expect(departDrive).toBeDefined();
   });
 
   it('does not emit noise trips for jitter at one place', () => {

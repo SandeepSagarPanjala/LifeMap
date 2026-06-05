@@ -1,11 +1,12 @@
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
-  type GestureResponderEvent,
+  type LayoutChangeEvent,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import {Gesture, GestureDetector} from 'react-native-gesture-handler';
 import {ChevronLeft, ChevronRight} from 'lucide-react-native';
 
 import type {DayTimelineEntry} from '@/lib/trip-detection';
@@ -28,11 +29,6 @@ const LABEL_HEIGHT = 14;
 const TICK_BAND_HEIGHT = 12;
 const FALLBACK_BAR_WIDTH = 320;
 
-type BarMeasure = {
-  width: number;
-  pageX: number;
-};
-
 type HistoryTimelineBarProps = {
   dateKey: string;
   entries: DayTimelineEntry[];
@@ -50,15 +46,17 @@ export function HistoryTimelineBar({
   onDateKeyChange,
   onOpenDatePicker,
 }: HistoryTimelineBarProps) {
-  const scrubRef = useRef<View>(null);
-  const [barMeasure, setBarMeasure] = useState<BarMeasure | null>(null);
-  const barWidth = barMeasure?.width ?? FALLBACK_BAR_WIDTH;
+  const [barWidth, setBarWidth] = useState(FALLBACK_BAR_WIDTH);
+  const barWidthRef = useRef(barWidth);
   const now = useMemo(() => new Date(), [entries, dateKey]);
 
   const ruler = useMemo(
     () => buildHistoryDayRuler(entries, dateKey, barWidth, now),
     [barWidth, dateKey, entries, now],
   );
+  const rulerRef = useRef(ruler);
+  const entriesRef = useRef(entries);
+  const onSelectIndexRef = useRef(onSelectIndex);
 
   const dayTitle = formatHistoryDayTitle(dateKey, now);
   const isToday = dateKey === getTodayDateKey();
@@ -71,38 +69,64 @@ export function HistoryTimelineBar({
   const trackTop = LABEL_HEIGHT + TICK_BAND_HEIGHT;
   const scrubHeight = trackTop + TRACK_HEIGHT;
 
-  const syncBarMeasure = useCallback(() => {
-    scrubRef.current?.measureInWindow((pageX, _pageY, width) => {
-      if (width <= 0) {
-        return;
-      }
-      setBarMeasure(prev => {
-        if (prev?.width === width && prev.pageX === pageX) {
-          return prev;
-        }
-        return {width, pageX};
-      });
-    });
+  useEffect(() => {
+    barWidthRef.current = barWidth;
+  }, [barWidth]);
+
+  useEffect(() => {
+    rulerRef.current = ruler;
+  }, [ruler]);
+
+  useEffect(() => {
+    entriesRef.current = entries;
+  }, [entries]);
+
+  useEffect(() => {
+    onSelectIndexRef.current = onSelectIndex;
+  }, [onSelectIndex]);
+
+  const handleScrubLayout = useCallback((event: LayoutChangeEvent) => {
+    const {width} = event.nativeEvent.layout;
+    if (width > 0) {
+      setBarWidth(width);
+    }
   }, []);
 
-  const touchPageXToBarPx = useCallback(
-    (event: GestureResponderEvent): number => {
-      const {pageX} = event.nativeEvent;
-      if (barMeasure) {
-        return pageX - barMeasure.pageX;
-      }
-      return event.nativeEvent.locationX;
-    },
-    [barMeasure],
-  );
+  const moveScrubToBarPx = useCallback((px: number) => {
+    const width = barWidthRef.current;
+    const clamped = clampAnchorPx(px, width);
+    setAnchorPx(clamped);
+    onSelectIndexRef.current(
+      selectionAtAnchorPx(rulerRef.current, clamped, entriesRef.current),
+    );
+  }, []);
 
-  const applyAnchorPx = useCallback(
-    (px: number) => {
-      const clamped = clampAnchorPx(px, barWidth);
-      setAnchorPx(clamped);
-      onSelectIndex(selectionAtAnchorPx(ruler, clamped, entries));
-    },
-    [barWidth, entries, onSelectIndex, ruler],
+  const beginScrub = useCallback(() => {
+    isDraggingRef.current = true;
+    hasManualScrubRef.current = true;
+  }, []);
+
+  const endScrub = useCallback(() => {
+    isDraggingRef.current = false;
+    hasManualScrubRef.current = true;
+  }, []);
+
+  const scrubGesture = useMemo(
+    () =>
+      Gesture.Pan()
+        .minDistance(0)
+        .runOnJS(true)
+        .onBegin(event => {
+          beginScrub();
+          moveScrubToBarPx(event.x);
+        })
+        .onUpdate(event => {
+          moveScrubToBarPx(event.x);
+        })
+        .onFinalize(() => {
+          endScrub();
+        }),
+    [beginScrub, endScrub, moveScrubToBarPx],
   );
 
   const snapPxForDay = useCallback(() => {
@@ -126,36 +150,8 @@ export function HistoryTimelineBar({
     if (isDraggingRef.current || hasManualScrubRef.current) {
       return;
     }
-    applyAnchorPx(snapPxForDay());
-  }, [applyAnchorPx, dateKey, snapPxForDay]);
-
-  const handleGrant = useCallback(
-    (event: GestureResponderEvent) => {
-      syncBarMeasure();
-      isDraggingRef.current = true;
-      hasManualScrubRef.current = true;
-      applyAnchorPx(touchPageXToBarPx(event));
-    },
-    [applyAnchorPx, syncBarMeasure, touchPageXToBarPx],
-  );
-
-  const handleMove = useCallback(
-    (event: GestureResponderEvent) => {
-      isDraggingRef.current = true;
-      hasManualScrubRef.current = true;
-      applyAnchorPx(touchPageXToBarPx(event));
-    },
-    [applyAnchorPx, touchPageXToBarPx],
-  );
-
-  const handleRelease = useCallback(
-    (event: GestureResponderEvent) => {
-      isDraggingRef.current = false;
-      hasManualScrubRef.current = true;
-      applyAnchorPx(touchPageXToBarPx(event));
-    },
-    [applyAnchorPx, touchPageXToBarPx],
-  );
+    moveScrubToBarPx(snapPxForDay());
+  }, [dateKey, moveScrubToBarPx, snapPxForDay]);
 
   const goPrevDay = useCallback(() => {
     onDateKeyChange(shiftDateKey(dateKey, -1));
@@ -198,14 +194,10 @@ export function HistoryTimelineBar({
       </View>
 
       <View
-        ref={scrubRef}
         collapsable={false}
-        onLayout={syncBarMeasure}
-        style={[
-          styles.scrubArea,
-          {width: barWidth, height: scrubHeight},
-        ]}>
-        <View pointerEvents="none" style={[styles.labelRow, {width: barWidth, height: LABEL_HEIGHT}]}>
+        onLayout={handleScrubLayout}
+        style={[styles.scrubArea, {height: scrubHeight}]}>
+        <View pointerEvents="none" style={[styles.labelRow, styles.fullWidth, {height: LABEL_HEIGHT}]}>
           {ruler.ticks
             .filter(tick => tick.label != null)
             .map(tick => (
@@ -221,7 +213,8 @@ export function HistoryTimelineBar({
           pointerEvents="none"
           style={[
             styles.tickBand,
-            {width: barWidth, height: TICK_BAND_HEIGHT, top: LABEL_HEIGHT},
+            styles.fullWidth,
+            {height: TICK_BAND_HEIGHT, top: LABEL_HEIGHT},
           ]}>
           {ruler.ticks.map(tick => (
             <View
@@ -238,9 +231,10 @@ export function HistoryTimelineBar({
           pointerEvents="none"
           style={[
             styles.trackRow,
-            {width: barWidth, height: TRACK_HEIGHT, top: trackTop},
+            styles.fullWidth,
+            {height: TRACK_HEIGHT, top: trackTop},
           ]}>
-          <View style={[styles.track, {width: barWidth}]} />
+          <View style={[styles.track, styles.fullWidth]} />
           {ruler.segments.map(segment => {
             const color =
               segment.kind === 'stay'
@@ -293,16 +287,9 @@ export function HistoryTimelineBar({
           ]}
         />
 
-        <View
-          style={[styles.touchLayer, {width: barWidth, height: scrubHeight}]}
-          onStartShouldSetResponder={() => true}
-          onMoveShouldSetResponder={() => true}
-          onResponderTerminationRequest={() => false}
-          onResponderGrant={handleGrant}
-          onResponderMove={handleMove}
-          onResponderRelease={handleRelease}
-          onResponderTerminate={handleRelease}
-        />
+        <GestureDetector gesture={scrubGesture}>
+          <View collapsable={false} style={styles.touchLayer} />
+        </GestureDetector>
       </View>
     </View>
   );
@@ -340,12 +327,13 @@ const styles = StyleSheet.create({
   },
   scrubArea: {
     position: 'relative',
-    alignSelf: 'center',
+    width: '100%',
+  },
+  fullWidth: {
+    width: '100%',
   },
   touchLayer: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
+    ...StyleSheet.absoluteFillObject,
     zIndex: 10,
   },
   labelRow: {

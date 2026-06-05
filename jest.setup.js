@@ -13,8 +13,17 @@ jest.mock('react-native-reanimated', () => require('react-native-reanimated/mock
 
 jest.mock('react-native-gesture-handler', () => {
   const {View} = require('react-native');
+  const gesture = () => ({
+    minDistance: () => gesture(),
+    runOnJS: () => gesture(),
+    onBegin: () => gesture(),
+    onUpdate: () => gesture(),
+    onFinalize: () => gesture(),
+  });
   return {
     GestureHandlerRootView: View,
+    GestureDetector: View,
+    Gesture: {Pan: gesture},
     Swipeable: View,
     DrawerLayout: View,
     State: {},

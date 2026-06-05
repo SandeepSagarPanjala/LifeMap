@@ -333,8 +333,8 @@ export function MapScreen() {
         userLocationPriority="high"
         userInterfaceStyle={colorScheme === 'dark' ? 'dark' : 'light'}
         followsUserLocation={false}
-        scrollEnabled
-        zoomEnabled
+        scrollEnabled={!historyPanelOpen}
+        zoomEnabled={!historyPanelOpen}
         pitchEnabled
         rotateEnabled
         onRegionChange={onRegionChange}
