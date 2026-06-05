@@ -305,6 +305,68 @@ describe('stay / trip timeline', () => {
     expect((hop?.distanceKm ?? 0) * 1000).toBeGreaterThan(200);
   });
 
+  it('ends the Galleria drive at mall arrival, not after walking inside (Jun 4 export)', () => {
+    const fs = require('fs') as typeof import('fs');
+    const path = require('path') as typeof import('path');
+    const exportPath = path.join(__dirname, '..', 'all data.json');
+    if (!fs.existsSync(exportPath)) {
+      return;
+    }
+
+    const raw = JSON.parse(fs.readFileSync(exportPath, 'utf8')) as {
+      rows: Array<{
+        id: number;
+        timestamp: string;
+        lat: number;
+        lng: number;
+        accuracy: number | null;
+        altitude: number | null;
+        speed: number | null;
+        source: string;
+      }>;
+    };
+    const dayStart = new Date('2026-06-04T05:00:00.000Z');
+    const points = raw.rows
+      .map(row => ({
+        ...row,
+        timestamp: new Date(row.timestamp),
+        source: row.source as LocationPointRow['source'],
+      }))
+      .filter(p => p.timestamp >= dayStart);
+
+    const timeline = buildDayTimeline(
+      points,
+      buildTripDetectionConfig(10, 10, 25),
+    );
+    const eveningDrive = timeline.find(
+      entry =>
+        entry.kind === 'travel' &&
+        entry.points.some(p => p.id === 1470 || p.id === 1467),
+    );
+    const mallVisit = timeline.find(
+      entry =>
+        entry.kind === 'stay' &&
+        entry.points.some(p => p.id === 3270 || p.id === 3255),
+    );
+
+    expect(eveningDrive).toBeDefined();
+    expect(mallVisit).toBeDefined();
+    if (eveningDrive?.kind !== 'travel' || mallVisit?.kind !== 'stay') {
+      return;
+    }
+
+    // Drive should end ~6:55 PM at arrival (#3254–#3270), not 7:16 after mall walking.
+    expect(eveningDrive.endAt.getTime()).toBeLessThan(
+      new Date('2026-06-04T19:05:00-05:00').getTime(),
+    );
+    expect(eveningDrive.points.some(p => p.id === 3350 || p.id === 3307)).toBe(
+      false,
+    );
+
+    // Mall time should be one long visit (≥ 1 hr), not a 5‑min blip after 7:16.
+    expect(mallVisit.durationMs).toBeGreaterThanOrEqual(60 * 60_000);
+  });
+
   it('does not emit noise trips for jitter at one place', () => {
     const trips = detectTrips(
       makePoints([

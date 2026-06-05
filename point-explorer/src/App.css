@@ -69,6 +69,130 @@ body {
   background: #0066d6;
 }
 
+.secondary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #007aff;
+  background: #fff;
+  color: #007aff;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.secondary-btn:hover {
+  background: #f0f7ff;
+}
+
+.point-nav {
+  padding: 12px;
+  border-radius: 10px;
+  background: #eef6ff;
+  border: 1px solid #b3d7ff;
+}
+
+.point-nav-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.point-nav-badge {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #007aff;
+}
+
+.point-nav-exit {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 6px;
+  background: #fff;
+  color: #636366;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.point-nav-exit:hover {
+  background: #f2f2f7;
+}
+
+.point-nav-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.point-nav-arrow {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  border: 1px solid #007aff;
+  background: #fff;
+  color: #007aff;
+  font-size: 1.25rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.point-nav-arrow:hover:not(:disabled) {
+  background: #007aff;
+  color: #fff;
+}
+
+.point-nav-arrow:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.point-nav-position {
+  min-width: 88px;
+  text-align: center;
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.point-nav-hint {
+  margin: 10px 0 0;
+  text-align: center;
+  font-size: 0.72rem;
+  color: #636366;
+}
+
+.map-nav-overlay {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 1000;
+}
+
+.map-nav-exit {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 8px;
+  background: #1c1c1e;
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.map-nav-exit:hover {
+  background: #3a3a3c;
+}
+
 .hint,
 .muted,
 .empty {

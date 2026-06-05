@@ -44,6 +44,15 @@ const MIN_TRAVEL_DISTANCE_M = 40;
 /** Stay cluster path above this is driving, not a stop (parking-lot drift is much smaller). */
 const MAX_STOP_CLUSTER_PATH_M = 250;
 
+/** Mall / campus walking can stay inside this envelope around the arrival anchor. */
+const VENUE_MAX_SPREAD_M = 400;
+
+/** Path ÷ spread — walking loops score higher than driving away in one direction. */
+const VENUE_MIN_PATH_SPREAD_RATIO = 2;
+
+/** Net displacement ÷ spread — leaving the area ends near the envelope edge (~1). */
+const VENUE_MAX_NET_SPREAD_RATIO = 0.95;
+
 const COORD_DECIMALS = 5;
 
 function roundCoord(value: number): number {
@@ -339,6 +348,106 @@ export function isPlayableTimelineEntry(
 
 type StaySpan = {start: number; end: number};
 
+function maxSpreadFromAnchorM(
+  points: LocationPointRow[],
+  anchorIndex: number,
+  endIndex: number,
+): number {
+  const anchor = points[anchorIndex]!;
+  let maxM = 0;
+  for (let i = anchorIndex; i <= endIndex; i += 1) {
+    maxM = Math.max(maxM, distanceKm(anchor, points[i]!) * 1000);
+  }
+  return maxM;
+}
+
+function growVenueEnvelopeCluster(
+  points: LocationPointRow[],
+  startIndex: number,
+): number {
+  let end = startIndex;
+  while (end + 1 < points.length) {
+    if (
+      maxSpreadFromAnchorM(points, startIndex, end + 1) > VENUE_MAX_SPREAD_M
+    ) {
+      break;
+    }
+    end += 1;
+  }
+  return end;
+}
+
+function isVenueWalkCluster(clusterPoints: LocationPointRow[]): boolean {
+  const pathM = calculatePathDistanceKm(clusterPoints) * 1000;
+  const spreadM = maxSpreadFromAnchorM(
+    clusterPoints,
+    0,
+    clusterPoints.length - 1,
+  );
+  if (spreadM <= MAX_STOP_CLUSTER_PATH_M) {
+    return false;
+  }
+  if (pathM / spreadM < VENUE_MIN_PATH_SPREAD_RATIO) {
+    return false;
+  }
+  const netM =
+    distanceKm(
+      clusterPoints[0]!,
+      clusterPoints[clusterPoints.length - 1]!,
+    ) * 1000;
+  return spreadM > 0 && netM / spreadM <= VENUE_MAX_NET_SPREAD_RATIO;
+}
+
+/** Peel mall-style walking off the end of a long drive (GPS hops are > 25 m apart). */
+function findVenueWalkTailStart(
+  points: LocationPointRow[],
+  minDwellMs: number,
+): number | null {
+  for (let start = 0; start < points.length; start += 1) {
+    const venueEnd = growVenueEnvelopeCluster(points, start);
+    if (venueEnd !== points.length - 1) {
+      continue;
+    }
+    const spanMs =
+      points[venueEnd]!.timestamp.getTime() -
+      points[start]!.timestamp.getTime();
+    if (spanMs < minDwellMs) {
+      continue;
+    }
+    if (isVenueWalkCluster(points.slice(start, venueEnd + 1))) {
+      return start;
+    }
+  }
+  return null;
+}
+
+function peelVenueWalkTail(
+  travel: DetectedTrip,
+  config: TripDetectionConfig,
+): DetectedTrip[] {
+  const minDwellMs = config.dwellMinutes * 60_000;
+  const tailStart = findVenueWalkTailStart(travel.points, minDwellMs);
+  if (tailStart == null || tailStart === 0) {
+    return [travel];
+  }
+
+  const drivePoints = travel.points.slice(0, tailStart);
+  const visitPoints = travel.points.slice(tailStart);
+  const pieces: DetectedTrip[] = [];
+
+  if (drivePoints.length > 0) {
+    const drive = makeTrip(drivePoints, 'travel', 0);
+    if (isMeaningfulTravel(drive)) {
+      pieces.push(drive);
+    }
+  }
+  if (visitPoints.length > 0) {
+    pieces.push(makeTrip(visitPoints, 'stay', pieces.length));
+  }
+
+  return pieces.length > 0 ? pieces : [travel];
+}
+
 function growPlaceCluster(
   points: LocationPointRow[],
   startIndex: number,
@@ -430,6 +539,13 @@ function closestStayDistanceM(
   return minM;
 }
 
+function stayMaxSpreadM(stay: DetectedTrip): number {
+  if (stay.points.length === 0) {
+    return 0;
+  }
+  return maxSpreadFromAnchorM(stay.points, 0, stay.points.length - 1);
+}
+
 function staysWithinMergeRadius(
   previous: DetectedTrip,
   next: DetectedTrip,
@@ -439,7 +555,12 @@ function staysWithinMergeRadius(
     return false;
   }
   const limitM = config.dwellRadiusMeters + 5;
-  return closestStayDistanceM(previous, next) <= limitM;
+  if (closestStayDistanceM(previous, next) <= limitM) {
+    return true;
+  }
+
+  // Same large venue split by sparse GPS (e.g. ice skating with no pings).
+  return closestStayDistanceM(previous, next) <= VENUE_MAX_SPREAD_M;
 }
 
 /**
@@ -485,13 +606,24 @@ export function mergeAdjacentSameAreaStays(
         index + 1 < trips.length
       ) {
         const afterTravel = trips[index + 1]!;
-        if (
-          !isMeaningfulTravel(next) &&
+        const travelDistanceM = next.distanceKm * 1000;
+        const absorbsVenueHop =
           afterTravel.kind === 'stay' &&
-          staysWithinMergeRadius(current, afterTravel, config)
+          staysWithinMergeRadius(current, afterTravel, config) &&
+          travelDistanceM <= VENUE_MAX_SPREAD_M + 200 &&
+          next.durationMs <= 15 * 60_000 &&
+          stayMaxSpreadM(current) >= MAX_STOP_CLUSTER_PATH_M &&
+          stayMaxSpreadM(afterTravel) >= MAX_STOP_CLUSTER_PATH_M;
+        if (
+          absorbsVenueHop ||
+          (!isMeaningfulTravel(next) &&
+            afterTravel.kind === 'stay' &&
+            staysWithinMergeRadius(current, afterTravel, config))
         ) {
           current = makeTrip(
-            [...current.points, ...afterTravel.points],
+            absorbsVenueHop
+              ? [...current.points, ...next.points, ...afterTravel.points]
+              : [...current.points, ...afterTravel.points],
             'stay',
             merged.length,
           );
@@ -574,7 +706,7 @@ function prependDeparturePoint(
   return slice;
 }
 
-function splitTravelAtStops(
+function splitTravelAtInteriorStops(
   travel: DetectedTrip,
   startTripIndex: number,
 ): DetectedTrip[] {
@@ -623,6 +755,33 @@ function splitTravelAtStops(
   return pieces.length > 0 ? pieces : [travel];
 }
 
+function splitTravelAtStops(
+  travel: DetectedTrip,
+  startTripIndex: number,
+  config: TripDetectionConfig,
+): DetectedTrip[] {
+  const peeled = peelVenueWalkTail(travel, config);
+  const pieces: DetectedTrip[] = [];
+  let tripIndex = startTripIndex;
+
+  for (const segment of peeled) {
+    if (segment.kind === 'stay') {
+      pieces.push({
+        ...segment,
+        id: `stay-${tripIndex}-${segment.startAt.getTime()}`,
+      });
+      tripIndex += 1;
+      continue;
+    }
+
+    const split = splitTravelAtInteriorStops(segment, tripIndex);
+    pieces.push(...split);
+    tripIndex += split.length;
+  }
+
+  return pieces.length > 0 ? pieces : [travel];
+}
+
 function splitTravelsAtStops(
   trips: DetectedTrip[],
   _config: TripDetectionConfig,
@@ -632,7 +791,7 @@ function splitTravelsAtStops(
 
   for (const trip of trips) {
     if (trip.kind === 'travel') {
-      const pieces = splitTravelAtStops(trip, tripIndex);
+      const pieces = splitTravelAtStops(trip, tripIndex, _config);
       split.push(...pieces);
       tripIndex += pieces.length;
     } else {

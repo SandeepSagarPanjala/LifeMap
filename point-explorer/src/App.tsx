@@ -1,4 +1,4 @@
-import {useCallback, useMemo, useState} from 'react';
+import {useCallback, useEffect, useMemo, useState} from 'react';
 
 import {PointsMap} from './components/PointsMap';
 import {
@@ -7,6 +7,11 @@ import {
   parseExport,
   uniqueDateKeys,
 } from './lib/export';
+import {
+  adjacentPointId,
+  indexOfPointId,
+  sortPointsById,
+} from './lib/point-nav';
 import type {ParsedPoint} from './types';
 
 import './App.css';
@@ -16,6 +21,7 @@ export function App() {
   const [fileName, setFileName] = useState<string | null>(null);
   const [dateKey, setDateKey] = useState<string>('all');
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [pointNavMode, setPointNavMode] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const dateKeys = useMemo(() => uniqueDateKeys(allPoints), [allPoints]);
@@ -27,10 +33,68 @@ export function App() {
     return allPoints.filter(p => p.dateKey === dateKey);
   }, [allPoints, dateKey]);
 
+  const pointsById = useMemo(
+    () => sortPointsById(filteredPoints),
+    [filteredPoints],
+  );
+
   const selectedPoint = useMemo(
     () => filteredPoints.find(p => p.id === selectedId) ?? null,
     [filteredPoints, selectedId],
   );
+
+  const selectedIdIndex = useMemo(
+    () => indexOfPointId(pointsById, selectedId),
+    [pointsById, selectedId],
+  );
+
+  const enterPointNav = useCallback(() => {
+    if (pointsById.length === 0) {
+      return;
+    }
+    setPointNavMode(true);
+    if (selectedId == null) {
+      setSelectedId(pointsById[0]!.id);
+    }
+  }, [pointsById, selectedId]);
+
+  const exitPointNav = useCallback(() => {
+    setPointNavMode(false);
+  }, []);
+
+  const goPrevPoint = useCallback(() => {
+    const prevId = adjacentPointId(pointsById, selectedId, -1);
+    if (prevId != null) {
+      setSelectedId(prevId);
+    }
+  }, [pointsById, selectedId]);
+
+  const goNextPoint = useCallback(() => {
+    const nextId = adjacentPointId(pointsById, selectedId, 1);
+    if (nextId != null) {
+      setSelectedId(nextId);
+    }
+  }, [pointsById, selectedId]);
+
+  useEffect(() => {
+    if (!pointNavMode) {
+      return;
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        goPrevPoint();
+      } else if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        goNextPoint();
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        exitPointNav();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [exitPointNav, goNextPoint, goPrevPoint, pointNavMode]);
 
   const loadFile = useCallback(async (file: File) => {
     setError(null);
@@ -41,10 +105,12 @@ export function App() {
       setFileName(file.name);
       setDateKey('all');
       setSelectedId(null);
+      setPointNavMode(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to parse JSON');
       setAllPoints([]);
       setFileName(null);
+      setPointNavMode(false);
     }
   }, []);
 
@@ -68,6 +134,11 @@ export function App() {
     },
     [loadFile],
   );
+
+  const canGoPrev = adjacentPointId(pointsById, selectedId, -1) != null;
+  const canGoNext = adjacentPointId(pointsById, selectedId, 1) != null;
+  const prevPointId = adjacentPointId(pointsById, selectedId, -1);
+  const nextPointId = adjacentPointId(pointsById, selectedId, 1);
 
   return (
     <div className="app">
@@ -115,6 +186,7 @@ export function App() {
                 onChange={event => {
                   setDateKey(event.target.value);
                   setSelectedId(null);
+                  setPointNavMode(false);
                 }}>
                 <option value="all">All dates ({dateKeys.length})</option>
                 {dateKeys.map(key => (
@@ -125,6 +197,72 @@ export function App() {
                 ))}
               </select>
             </label>
+
+            {pointNavMode ? (
+              <section className="point-nav" aria-label="Point-to-point navigation">
+                <div className="point-nav-header">
+                  <span className="point-nav-badge">Point-to-point</span>
+                  <button
+                    type="button"
+                    className="point-nav-exit"
+                    onClick={exitPointNav}>
+                    Exit
+                  </button>
+                </div>
+                <div className="point-nav-controls">
+                  <button
+                    type="button"
+                    className="point-nav-arrow"
+                    aria-label={
+                      prevPointId != null
+                        ? `Previous point #${prevPointId}`
+                        : 'Previous point'
+                    }
+                    disabled={!canGoPrev}
+                    onClick={goPrevPoint}>
+                    ←
+                  </button>
+                  <span className="point-nav-position">
+                    {selectedId != null ? `#${selectedId}` : '—'}
+                  </span>
+                  <button
+                    type="button"
+                    className="point-nav-arrow"
+                    aria-label={
+                      nextPointId != null
+                        ? `Next point #${nextPointId}`
+                        : 'Next point'
+                    }
+                    disabled={!canGoNext}
+                    onClick={goNextPoint}>
+                    →
+                  </button>
+                </div>
+                {selectedIdIndex >= 0 ? (
+                  <p className="point-nav-sub">
+                    {selectedIdIndex + 1} of {pointsById.length.toLocaleString()}{' '}
+                    on this date · by point ID
+                  </p>
+                ) : null}
+                {prevPointId != null || nextPointId != null ? (
+                  <p className="point-nav-sub">
+                    {prevPointId != null ? `← #${prevPointId}` : ''}
+                    {prevPointId != null && nextPointId != null ? ' · ' : ''}
+                    {nextPointId != null ? `→ #${nextPointId}` : ''}
+                  </p>
+                ) : null}
+                <p className="point-nav-hint">
+                  ← → arrow keys · Esc to exit
+                </p>
+              </section>
+            ) : filteredPoints.length > 0 ? (
+              <button
+                type="button"
+                className="secondary-btn"
+                onClick={enterPointNav}>
+                Point-to-point navigation
+              </button>
+            ) : null}
 
             {selectedPoint ? (
               <section className="detail">
@@ -147,7 +285,11 @@ export function App() {
                 </dl>
               </section>
             ) : (
-              <p className="muted">Click a point on the map for details.</p>
+              <p className="muted">
+                {pointNavMode
+                  ? 'Select a point on the map or use the arrows.'
+                  : 'Click a point on the map for details.'}
+              </p>
             )}
           </>
         ) : (
@@ -160,11 +302,24 @@ export function App() {
         onDragOver={event => event.preventDefault()}
         onDrop={onDrop}>
         {allPoints.length > 0 ? (
-          <PointsMap
-            points={filteredPoints}
-            selectedId={selectedId}
-            onSelectId={setSelectedId}
-          />
+          <>
+            {pointNavMode ? (
+              <div className="map-nav-overlay">
+                <button
+                  type="button"
+                  className="map-nav-exit"
+                  onClick={exitPointNav}>
+                  Exit point-to-point
+                </button>
+              </div>
+            ) : null}
+            <PointsMap
+              points={filteredPoints}
+              selectedId={selectedId}
+              onSelectId={setSelectedId}
+              focusSelected={pointNavMode}
+            />
+          </>
         ) : (
           <div className="map-placeholder">
             <p>Map preview</p>
