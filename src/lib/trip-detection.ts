@@ -1061,35 +1061,135 @@ export function getTravelDisplayPoints(
   return points;
 }
 
-/** Map label placement — middle of stay points. */
+function appendVisitApproachToRoute(
+  drivePoints: LocationPointRow[],
+  approach: LocationPointRow[],
+): LocationPointRow[] {
+  if (approach.length === 0) {
+    return drivePoints;
+  }
+  if (drivePoints.length === 0) {
+    return approach;
+  }
+
+  const lastDrive = drivePoints[drivePoints.length - 1]!;
+  let start = 0;
+  while (start < approach.length) {
+    const point = approach[start]!;
+    if (
+      point.id === lastDrive.id ||
+      distanceKm(lastDrive, point) * 1000 < 3
+    ) {
+      start += 1;
+      continue;
+    }
+    break;
+  }
+
+  return [...drivePoints, ...approach.slice(start)];
+}
+
+/**
+ * History visit map: inbound drive plus turn-in saves until the visit circle.
+ * Does not trace the full stay — only the approach into the orange area.
+ */
+export function getVisitInboundTravelPoints(
+  inboundTravel: DetectedTrip,
+  visit: DetectedTrip,
+  previousStay: DetectedTrip | null,
+  otherStays: DetectedTrip[],
+  config: TripDetectionConfig,
+): LocationPointRow[] {
+  const drivePoints = getTravelDisplayPoints(
+    inboundTravel,
+    previousStay,
+    otherStays,
+    config,
+  );
+  if (visit.points.length === 0) {
+    return drivePoints;
+  }
+
+  const sortedVisit = [...visit.points].sort(
+    (a, b) => a.timestamp.getTime() - b.timestamp.getTime(),
+  );
+  const arrivalM = config.dwellRadiusMeters + 5;
+  const centroid = stayTripCentroid(visit);
+  const approach: LocationPointRow[] = [];
+
+  for (const point of sortedVisit) {
+    approach.push(point);
+    const distToCentroidM =
+      distanceKm(
+        {lat: point.lat, lng: point.lng},
+        {lat: centroid.latitude, lng: centroid.longitude},
+      ) * 1000;
+    if (distToCentroidM <= arrivalM) {
+      break;
+    }
+  }
+
+  return appendVisitApproachToRoute(drivePoints, approach);
+}
+
+/** Radius for picking the densest visit cluster (ignores approach/departure along roads). */
+const STAY_CENTROID_CLUSTER_M = 80;
+
+/**
+ * Map placement for visit circle and pin — mean of the densest GPS cluster,
+ * not the middle index (approach/departure legs skew that on quick stops).
+ */
 export function stayTripCentroid(trip: DetectedTrip): {
   latitude: number;
   longitude: number;
 } {
-  const point = trip.points[Math.floor(trip.points.length / 2)] ?? trip.points[0]!;
+  const points = trip.points;
+  if (points.length === 0) {
+    return {latitude: 0, longitude: 0};
+  }
+  if (points.length === 1) {
+    const only = points[0]!;
+    return {latitude: only.lat, longitude: only.lng};
+  }
+
+  let bestAnchor = points[0]!;
+  let bestNeighbors = 0;
+  for (const candidate of points) {
+    const neighbors = points.filter(
+      p => distanceKm(candidate, p) * 1000 <= STAY_CENTROID_CLUSTER_M,
+    ).length;
+    if (neighbors > bestNeighbors) {
+      bestNeighbors = neighbors;
+      bestAnchor = candidate;
+    }
+  }
+
+  const core = points.filter(
+    p => distanceKm(bestAnchor, p) * 1000 <= STAY_CENTROID_CLUSTER_M,
+  );
   return {
-    latitude: point?.lat ?? 0,
-    longitude: point?.lng ?? 0,
+    latitude: core.reduce((sum, p) => sum + p.lat, 0) / core.length,
+    longitude: core.reduce((sum, p) => sum + p.lng, 0) / core.length,
   };
 }
 
 /**
- * Exact saved coordinate for the map pin tip.
- * Ongoing visit → latest row; otherwise first save when the visit started.
+ * Map pin for the visit time label.
+ * Ongoing visit → latest save; completed visit → centroid (center of orange circle).
  */
 export function stayTripMarkerCoordinate(
   trip: DetectedTrip,
   options?: {ongoing?: boolean},
 ): {latitude: number; longitude: number} {
-  const sorted = [...trip.points].sort(
-    (a, b) => a.timestamp.getTime() - b.timestamp.getTime(),
-  );
-  const point =
-    options?.ongoing && sorted.length > 0
-      ? sorted[sorted.length - 1]!
-      : sorted[0];
-  return {
-    latitude: point?.lat ?? 0,
-    longitude: point?.lng ?? 0,
-  };
+  if (options?.ongoing && trip.points.length > 0) {
+    const sorted = [...trip.points].sort(
+      (a, b) => a.timestamp.getTime() - b.timestamp.getTime(),
+    );
+    const point = sorted[sorted.length - 1]!;
+    return {
+      latitude: point.lat,
+      longitude: point.lng,
+    };
+  }
+  return stayTripCentroid(trip);
 }

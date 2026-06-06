@@ -1,0 +1,86 @@
+# frozen_string_literal: true
+
+default_platform(:ios)
+
+platform :ios do
+  PROJECT_ROOT = File.expand_path("../..", __dir__)
+  WORKSPACE = File.expand_path("../LifeMap.xcworkspace", __dir__)
+  XCODEPROJ = File.expand_path("../LifeMap.xcodeproj", __dir__)
+  OUTPUT_DIR = File.expand_path("build", __dir__)
+
+  before_all do
+    setup_ci if ENV["CI"]
+  end
+
+  desc "Install JS dependencies and CocoaPods"
+  lane :prepare do
+    Dir.chdir(PROJECT_ROOT) do
+      sh("pnpm install --frozen-lockfile")
+    end
+    cocoapods(
+      podfile: File.expand_path("../Podfile", __dir__),
+    )
+  end
+
+  desc "Bump iOS build number (CURRENT_PROJECT_VERSION)"
+  lane :bump_build do
+    increment_build_number(xcodeproj: XCODEPROJ)
+  end
+
+  private_lane :connect_api_key do
+    next nil unless ENV["APP_STORE_CONNECT_API_KEY_ID"]
+
+    app_store_connect_api_key(
+      key_id: ENV["APP_STORE_CONNECT_API_KEY_ID"],
+      issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
+      key_filepath: ENV["APP_STORE_CONNECT_API_KEY_PATH"],
+      key_content: ENV["APP_STORE_CONNECT_API_KEY_BASE64"],
+      is_key_content_base64: ENV["APP_STORE_CONNECT_API_KEY_BASE64"] ? true : false,
+      duration: 1200,
+      in_house: false,
+    )
+  end
+
+  desc "Build Release .ipa for App Store / TestFlight"
+  lane :build do
+    prepare
+    bump_build unless ENV["SKIP_BUILD_BUMP"] == "1"
+
+    team_id = ENV.fetch("FASTLANE_TEAM_ID")
+    update_code_signing_settings(
+      path: XCODEPROJ,
+      use_automatic_signing: true,
+      team_id: team_id,
+      targets: ["LifeMap"],
+    )
+
+    # -allowProvisioningUpdates lets Xcode create/download the Apple Distribution
+    # cert + App Store profile (needed for export; archive alone can use Development).
+    provisioning_args = "DEVELOPMENT_TEAM=#{team_id} -allowProvisioningUpdates"
+
+    build_app(
+      workspace: WORKSPACE,
+      scheme: "LifeMap",
+      configuration: "Release",
+      export_method: "app-store",
+      output_directory: OUTPUT_DIR,
+      output_name: "LifeMap.ipa",
+      clean: true,
+      xcargs: provisioning_args,
+      export_xcargs: "-allowProvisioningUpdates",
+      export_team_id: team_id,
+    )
+  end
+
+  desc "Build and upload to TestFlight (Internal Testing)"
+  lane :beta do
+    build
+    upload_to_testflight(
+      api_key: connect_api_key,
+      skip_waiting_for_build_processing: true,
+      distribute_external: false,
+      notify_external_testers: false,
+      changelog: ENV["TESTFLIGHT_CHANGELOG"] || "LifeMap QA build",
+    )
+  end
+end

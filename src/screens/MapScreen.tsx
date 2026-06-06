@@ -27,6 +27,7 @@ import {useTripPlayback} from '@/hooks/use-trip-playback';
 import {getTodayDateKey} from '@/lib/day-utils';
 import {
   getTravelDisplayPoints,
+  getVisitInboundTravelPoints,
   isPlayableTimelineEntry,
   stayBeforeEntryIndex,
   staysBeforeEntryIndex,
@@ -136,8 +137,9 @@ export function MapScreen() {
       return null;
     }
     const priorIndex = selectedHistoryIndex - 1;
-    return getTravelDisplayPoints(
+    return getVisitInboundTravelPoints(
       prior,
+      selectedPlayable,
       stayBeforeEntryIndex(historyEntries, priorIndex),
       staysBeforeEntryIndex(historyEntries, priorIndex),
       tripDetectionConfig,

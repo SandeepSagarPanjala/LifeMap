@@ -59,6 +59,9 @@ src/config/env.local.ts
 **/fastlane/Preview.html
 **/fastlane/screenshots
 **/fastlane/test_output
+**/fastlane/build/
+**/fastlane/.env
+**/fastlane/AuthKey_*.p8
 
 # Bundle artifact
 *.jsbundle

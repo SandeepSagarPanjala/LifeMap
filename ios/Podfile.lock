@@ -2582,7 +2582,7 @@ SPEC CHECKSUMS:
   hermes-engine: 0960f4bca88f1b458632f58ca70f2bd73f327fda
   lottie-ios: 8f959969761e9c45d70353667d00af0e5b9cadb3
   lottie-react-native: 116cbc264ff83b04a1c5fdb2aa694423de4a2c5e
-  op-sqlite: 996b7e30c5517da2cec039ed481ffb2129d1b281
+  op-sqlite: 3e5adf01825eb767bc716655bbc87883db73844b
   RCTDeprecation: af44b104091a34482596cd9bd7e8d90c4e9b4bd7
   RCTRequired: bb77b070f75f53398ce43c0aaaa58337cebe2bf6
   RCTSwiftUI: afc0a0a635860da1040a0b894bfd529da06d7810
@@ -2666,7 +2666,7 @@ SPEC CHECKSUMS:
   Sentry: d5b72948d692d369ded835e2e77baadcd3c492dd
   TSBackgroundFetch: 18918b6449a1e3f01eb0f5b44d6d79ce6160a5a5
   TSLocationManager: 0c1b8ed109ae05ea4247def2992b3e4e3f49f839
-  Yoga: 7c1c3b93e408ac46c7ed64b5641ca7161747378d
+  Yoga: c0b3f2c7e8d3e327e450223a2414ca3fa296b9a2
 
 PODFILE CHECKSUM: d4e0fbcc1763fd02759f50b05f602f54d6130ab9
 

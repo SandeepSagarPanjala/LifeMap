@@ -51,6 +51,24 @@ pnpm ios:sim
 
 Uses **iPhone 17 Pro Max** simulator (not your physical device).
 
+### iOS — TestFlight QA (Release, no Metro)
+
+For real QA — not the Debug + Metro dev build. Uses **Fastlane** → **TestFlight Internal Testing**.
+
+```bash
+bundle install
+cp ios/fastlane/.env.example ios/fastlane/.env   # App Store Connect API key
+pnpm ios:beta                                     # build Release + upload
+```
+
+Full setup: [docs/ios-testflight.md](docs/ios-testflight.md)
+
+| Command | What it does |
+|---------|----------------|
+| `pnpm ios` | Debug dev build (Metro required) |
+| `pnpm ios:release` | Release `.ipa` only, no upload |
+| `pnpm ios:beta` | Release + TestFlight upload |
+
 ### Android
 
 Android tooling is set up via Homebrew (`android-commandlinetools`, `android-platform-tools`). Add this to your `~/.zshrc` so every terminal session can find the SDK:
@@ -141,7 +159,9 @@ pnpm test          # Jest
 
 Android job uploads `app-debug.apk` as a downloadable artifact. iOS job verifies Xcode compiles with `CODE_SIGNING_ALLOWED=NO` (no Apple certificates needed).
 
-Future (not wired yet): Maestro smoke tests (manual or nightly), Fastlane TestFlight (manual + secrets).
+**iOS TestFlight (manual):** Actions → **iOS TestFlight (manual)** — needs App Store Connect API secrets ([docs/ios-testflight.md](docs/ios-testflight.md)). Easiest path: `pnpm ios:beta` on your Mac first.
+
+Future: Maestro smoke tests, Android Play internal + Fastlane `supply`.
 
 ### Sentry (optional)
 

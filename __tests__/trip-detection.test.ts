@@ -3,10 +3,15 @@ import {
   dedupeLocationPoints,
   detectTrips,
   getTravelDisplayPoints,
+  getVisitInboundTravelPoints,
   isShortGapDeparture,
   isStaleWakeNotDeparture,
+  stayTripCentroid,
   stayTripMarkerCoordinate,
+  staysBeforeEntryIndex,
+  stayBeforeEntryIndex,
 } from '../src/lib/trip-detection';
+import {distanceKm} from '../src/lib/location-geo';
 import {buildTripDetectionConfig} from '../src/lib/trip-settings';
 import type {LocationPointRow} from '../src/db/repositories/location-days';
 
@@ -148,7 +153,7 @@ describe('stay / trip timeline', () => {
     expect(timeline.some(e => e.kind === 'travel')).toBe(false);
   });
 
-  it('uses exact first save for visit pin when not ongoing', () => {
+  it('uses visit centroid for map pin when not ongoing', () => {
     const trips = detectTrips(
       makePoints([
         {minutes: 0, lat: 33.21, lng: -97.13},
@@ -159,8 +164,9 @@ describe('stay / trip timeline', () => {
     const stay = trips.find(t => t.kind === 'stay');
     expect(stay).toBeDefined();
     const pin = stayTripMarkerCoordinate(stay!, {ongoing: false});
-    expect(pin.latitude).toBe(33.21);
-    expect(pin.longitude).toBe(-97.13);
+    const centroid = stayTripCentroid(stay!);
+    expect(pin.latitude).toBe(centroid.latitude);
+    expect(pin.longitude).toBe(centroid.longitude);
   });
 
   it('merges same-area stays across a time gap with no saves', () => {
@@ -497,6 +503,88 @@ describe('stay / trip timeline', () => {
     expect(morningVisit.endAt.getTime()).toBeGreaterThanOrEqual(
       departDrive.startAt.getTime() - 60_000,
     );
+  });
+
+  it('extends inbound drive through turn-in to the visit circle (Jun 5 7-Eleven)', () => {
+    const fs = require('fs') as typeof import('fs');
+    const path = require('path') as typeof import('path');
+    const exportPath = path.join(__dirname, '..', 'all data.json');
+    if (!fs.existsSync(exportPath)) {
+      return;
+    }
+
+    const raw = JSON.parse(fs.readFileSync(exportPath, 'utf8')) as {
+      rows: Array<{
+        id: number;
+        timestamp: string;
+        lat: number;
+        lng: number;
+        source: string;
+      }>;
+    };
+    const tripConfig = buildTripDetectionConfig(10, 10, 25);
+    const points = raw.rows
+      .map(row => ({
+        ...row,
+        timestamp: new Date(row.timestamp),
+        source: row.source as LocationPointRow['source'],
+        accuracy: null,
+        altitude: null,
+        speed: null,
+      }))
+      .filter(
+        p =>
+          p.timestamp >= new Date('2026-06-05T05:00:00.000Z') &&
+          p.timestamp < new Date('2026-06-06T05:00:00.000Z'),
+      );
+
+    const timeline = buildDayTimeline(points, tripConfig);
+    const visit = timeline.find(
+      entry =>
+        entry.kind === 'stay' &&
+        entry.startAt.getTime() >= new Date('2026-06-06T04:37:00.000Z').getTime() &&
+        entry.startAt.getTime() <= new Date('2026-06-06T04:42:00.000Z').getTime(),
+    );
+    expect(visit).toBeDefined();
+    if (visit?.kind !== 'stay') {
+      return;
+    }
+
+    const visitIndex = timeline.indexOf(visit);
+    const drive = timeline[visitIndex - 1];
+    expect(drive?.kind).toBe('travel');
+    if (drive?.kind !== 'travel') {
+      return;
+    }
+
+    const driveOnly = getTravelDisplayPoints(
+      drive,
+      stayBeforeEntryIndex(timeline, visitIndex),
+      staysBeforeEntryIndex(timeline, visitIndex),
+      tripConfig,
+    );
+    const withApproach = getVisitInboundTravelPoints(
+      drive,
+      visit,
+      stayBeforeEntryIndex(timeline, visitIndex),
+      staysBeforeEntryIndex(timeline, visitIndex),
+      tripConfig,
+    );
+
+    expect(withApproach.length).toBeGreaterThan(driveOnly.length);
+
+    const centroid = stayTripCentroid(visit);
+    const last = withApproach[withApproach.length - 1]!;
+    const distToCentroidM =
+      distanceKm(
+        {lat: last.lat, lng: last.lng},
+        {lat: centroid.latitude, lng: centroid.longitude},
+      ) * 1000;
+    expect(distToCentroidM).toBeLessThanOrEqual(30);
+    expect(last.id).toBeGreaterThan(13939);
+    // Core of the stop is in the 7-Eleven lot (~-96.804), not west on Coit (~-96.81).
+    expect(centroid.longitude).toBeGreaterThan(-96.806);
+    expect(centroid.longitude).toBeLessThan(-96.802);
   });
 
   it('does not emit noise trips for jitter at one place', () => {

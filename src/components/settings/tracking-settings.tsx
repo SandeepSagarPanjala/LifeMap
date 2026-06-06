@@ -35,7 +35,7 @@ export function TrackingSettings() {
   const colors = useThemeColors();
   const [loading, setLoading] = useState(true);
   const [enabled, setEnabled] = useState(false);
-  const [presetId, setPresetId] = useState<TrackingPresetId>('d25_s30');
+  const [presetId, setPresetId] = useState<TrackingPresetId>('d10_all');
   const [authorizationStatus, setAuthorizationStatus] =
     useState<LocationAuthorizationStatus>('not_determined');
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
@@ -115,8 +115,8 @@ export function TrackingSettings() {
         </Text>
       ) : null}
       <Text variant="muted" className="mt-2 text-sm leading-5">
-        Saves when you move, when motion starts or stops, and at least every 30 minutes while
-        still. Presets control distance and how often rows are written while moving.
+        Every GPS fix the SDK sends is saved. Presets only change how often the SDK requests
+        location (~10–100 m). A heartbeat still pings every 30 minutes if the SDK goes quiet.
       </Text>
 
       <ScrollView className="mt-4 max-h-96" nestedScrollEnabled showsVerticalScrollIndicator>
