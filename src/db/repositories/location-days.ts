@@ -1,4 +1,4 @@
-import {and, asc, desc, gte, lte} from 'drizzle-orm';
+import {and, asc, gte, lte, sql} from 'drizzle-orm';
 import {format} from 'date-fns';
 
 import {calculatePathDistanceKm} from '@/lib/location-geo';
@@ -77,6 +77,39 @@ export async function getAllLocationPoints(): Promise<LocationPointRow[]> {
 export async function getDaySummaries(): Promise<DaySummary[]> {
   const rows = await getAllLocationPoints();
   return buildSummariesFromRows(rows);
+}
+
+/** Lightweight calendar dots — timestamps only, no distance math. */
+export async function getDateKeysWithLocationData(): Promise<string[]> {
+  const db = await getDatabase();
+  const rows = await db
+    .select({timestamp: locationPoints.timestamp})
+    .from(locationPoints);
+  const keys = new Set<string>();
+  for (const row of rows) {
+    keys.add(toDateKey(row.timestamp));
+  }
+  return [...keys].sort((a, b) => b.localeCompare(a));
+}
+
+export async function getLocationDayFingerprint(
+  dateKey: string,
+): Promise<string> {
+  const {start, end} = getDayRange(dateKey);
+  const db = await getDatabase();
+  const [row] = await db
+    .select({
+      count: sql<number>`cast(count(*) as integer)`,
+      maxId: sql<number>`coalesce(max(${locationPoints.id}), 0)`,
+    })
+    .from(locationPoints)
+    .where(
+      and(
+        gte(locationPoints.timestamp, start),
+        lte(locationPoints.timestamp, end),
+      ),
+    );
+  return `${row?.count ?? 0}:${row?.maxId ?? 0}`;
 }
 
 export async function getHistoricalOnThisDaySummaries(

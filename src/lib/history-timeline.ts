@@ -15,7 +15,7 @@ import {isVisitOngoing} from '@/lib/trip-format';
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const MIN_GAP_SEGMENT_PX = 2;
 
-export const ANCHOR_SIZE_PX = 24;
+export const ANCHOR_SIZE_PX = 20;
 
 /** @deprecated Use ANCHOR_SIZE_PX */
 export const MIN_SEGMENT_TOUCH_PX = ANCHOR_SIZE_PX;

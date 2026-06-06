@@ -35,9 +35,12 @@ CREATE TABLE \`settings\` (
 --> statement-breakpoint
 CREATE UNIQUE INDEX \`settings_key_unique\` ON \`settings\` (\`key\`);`;
 
+const m0001 = `CREATE INDEX IF NOT EXISTS \`location_points_timestamp_idx\` ON \`location_points\` (\`timestamp\`);`;
+
 export default {
   journal,
   migrations: {
     m0000,
+    m0001,
   },
 };

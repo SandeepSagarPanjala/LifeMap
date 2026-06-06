@@ -1,3 +1,4 @@
+import {memo, useMemo} from 'react';
 import {Polyline} from 'react-native-maps';
 
 import type {LocationPointRow} from '@/db/repositories/location-days';
@@ -16,8 +17,14 @@ type RoutePathOverlayProps = {
 };
 
 /** Draws only plausible drive segments — no misleading lines across long same-place gaps. */
-export function RoutePathOverlay({points, tripConfig}: RoutePathOverlayProps) {
-  const segments = buildDrawableRouteSegments(points, tripConfig);
+export const RoutePathOverlay = memo(function RoutePathOverlay({
+  points,
+  tripConfig,
+}: RoutePathOverlayProps) {
+  const segments = useMemo(
+    () => buildDrawableRouteSegments(points, tripConfig),
+    [points, tripConfig],
+  );
 
   if (segments.length === 0) {
     return null;
@@ -30,9 +37,9 @@ export function RoutePathOverlay({points, tripConfig}: RoutePathOverlayProps) {
       ))}
     </>
   );
-}
+});
 
-function RouteSegmentPolylines({
+const RouteSegmentPolylines = memo(function RouteSegmentPolylines({
   coordinates,
 }: {
   coordinates: {latitude: number; longitude: number}[];
@@ -57,4 +64,4 @@ function RouteSegmentPolylines({
       />
     </>
   );
-}
+});

@@ -3,6 +3,7 @@ import {useFocusEffect} from '@react-navigation/native';
 import {endOfDay} from 'date-fns';
 
 import {
+  getLocationDayFingerprint,
   getLocationPointsForDay,
   getLocationPointsInRange,
   type LocationPointRow,
@@ -30,6 +31,16 @@ const EMPTY: HistoryData = {
   entries: [],
   range: {startAt: new Date(), endAt: new Date()},
 };
+
+const historyCache = new Map<string, HistoryData>();
+const fingerprintCache = new Map<string, string>();
+
+function historyCacheKey(
+  dateKey: string,
+  detectionConfig: TripDetectionConfig,
+): string {
+  return `${dateKey}:${detectionConfig.dwellMinutes}:${detectionConfig.dwellRadiusMeters}`;
+}
 
 async function loadHistoryForDay(
   dateKey: string,
@@ -85,18 +96,33 @@ export function useHistoryForDay(dateKey: string): {
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
-      setLoading(true);
-      void loadHistoryForDay(dateKey, detectionConfig)
-        .then(result => {
-          if (!cancelled) {
-            setData(result);
-          }
-        })
-        .finally(() => {
-          if (!cancelled) {
-            setLoading(false);
-          }
-        });
+      const cacheKey = historyCacheKey(dateKey, detectionConfig);
+
+      void (async () => {
+        const fingerprint = await getLocationDayFingerprint(dateKey);
+        if (cancelled) {
+          return;
+        }
+
+        const cached = historyCache.get(cacheKey);
+        const cachedFingerprint = fingerprintCache.get(dateKey);
+        if (cached && cachedFingerprint === fingerprint) {
+          setData(cached);
+          setLoading(false);
+          return;
+        }
+
+        setLoading(true);
+        const result = await loadHistoryForDay(dateKey, detectionConfig);
+        if (cancelled) {
+          return;
+        }
+        historyCache.set(cacheKey, result);
+        fingerprintCache.set(dateKey, fingerprint);
+        setData(result);
+        setLoading(false);
+      })();
+
       return () => {
         cancelled = true;
       };

@@ -440,6 +440,65 @@ describe('stay / trip timeline', () => {
     expect(departDrive).toBeDefined();
   });
 
+  it('extends sparse-GPS visit until next drive (Jun 5 8:53–10:47)', () => {
+    const fs = require('fs') as typeof import('fs');
+    const path = require('path') as typeof import('path');
+    const exportPath = path.join(__dirname, '..', 'all data.json');
+    if (!fs.existsSync(exportPath)) {
+      return;
+    }
+
+    const raw = JSON.parse(fs.readFileSync(exportPath, 'utf8')) as {
+      rows: Array<{
+        id: number;
+        timestamp: string;
+        lat: number;
+        lng: number;
+        accuracy: number | null;
+        altitude: number | null;
+        speed: number | null;
+        source: string;
+      }>;
+    };
+    const dayStart = new Date('2026-06-05T05:00:00.000Z');
+    const points = raw.rows
+      .map(row => ({
+        ...row,
+        timestamp: new Date(row.timestamp),
+        source: row.source as LocationPointRow['source'],
+      }))
+      .filter(p => p.timestamp >= dayStart);
+
+    const timeline = buildDayTimeline(
+      points,
+      buildTripDetectionConfig(10, 10, 25),
+    );
+
+    const morningVisit = timeline.find(
+      entry =>
+        entry.kind === 'stay' &&
+        entry.points.some(p => p.id === 10227 || p.id === 10237),
+    );
+    const departDrive = timeline.find(
+      entry =>
+        entry.kind === 'travel' &&
+        entry.startAt.getTime() >= new Date('2026-06-05T15:45:00.000Z').getTime() &&
+        entry.startAt.getTime() <= new Date('2026-06-05T15:50:00.000Z').getTime(),
+    );
+
+    expect(morningVisit).toBeDefined();
+    expect(departDrive).toBeDefined();
+    if (morningVisit?.kind !== 'stay' || departDrive?.kind !== 'travel') {
+      return;
+    }
+
+    // Arrived ~8:53, sparse pings until 9:11, then no GPS until drive at 10:47.
+    expect(morningVisit.durationMs).toBeGreaterThanOrEqual(110 * 60_000);
+    expect(morningVisit.endAt.getTime()).toBeGreaterThanOrEqual(
+      departDrive.startAt.getTime() - 60_000,
+    );
+  });
+
   it('does not emit noise trips for jitter at one place', () => {
     const trips = detectTrips(
       makePoints([

@@ -20,7 +20,7 @@ import {DayJourneyOverlay} from '@/components/map/DayJourneyOverlay';
 import {StayAreasOverlay} from '@/components/map/StayAreasOverlay';
 import {StayDurationCallout} from '@/components/map/StayDurationCallout';
 import {TripRouteOverlay} from '@/components/map/TripRouteOverlay';
-import {useDaySummaries} from '@/hooks/use-day-summaries';
+import {useDateKeysWithData} from '@/hooks/use-date-keys-with-data';
 import {useHistoryForDay} from '@/hooks/use-history-data';
 import {countHistoryTimelineEvents} from '@/lib/history-timeline';
 import {useTripPlayback} from '@/hooks/use-trip-playback';
@@ -68,10 +68,12 @@ export function MapScreen() {
   const {data: historyData, loading: historyLoading} =
     useHistoryForDay(selectedDateKey);
   const viewingToday = selectedDateKey === todayKey;
-  const {dateKeysWithData} = useDaySummaries();
+  const {dateKeysWithData} = useDateKeysWithData();
   const mapRef = useRef<MapView>(null);
   const hasCenteredOnOpenRef = useRef(false);
-  const [mapRegion, setMapRegion] = useState<Region>(FALLBACK_REGION);
+  const mapRegionRef = useRef<Region>(FALLBACK_REGION);
+  const historyScrubbingRef = useRef(false);
+  const fitHistoryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [userCoordinate, setUserCoordinate] = useState<{
     latitude: number;
     longitude: number;
@@ -180,19 +182,35 @@ export function MapScreen() {
     [insets.top, rightControlsBottom],
   );
 
-  const onRegionChange = useCallback((region: Region) => {
-    setMapRegion(region);
+  const legalLabelInsets = useMemo(
+    () => ({
+      top: 0,
+      right: 0,
+      bottom: calendarButtonBottom,
+      left: 72,
+    }),
+    [calendarButtonBottom],
+  );
+
+  const onRegionChangeComplete = useCallback((region: Region) => {
+    mapRegionRef.current = region;
   }, []);
 
   const goToCurrentLocation = useCallback(() => {
     if (!userCoordinate || !mapRef.current) {
       return;
     }
-    animateRecenterToUser(mapRef.current, userCoordinate, mapRegion);
-  }, [mapRegion, userCoordinate]);
+    animateRecenterToUser(mapRef.current, userCoordinate, mapRegionRef.current);
+  }, [userCoordinate]);
 
   const handleUserLocation = useCallback(
-    (coordinate: {latitude: number; longitude: number}) => {
+    (event: {
+      nativeEvent: {coordinate?: {latitude: number; longitude: number}};
+    }) => {
+      const coordinate = event.nativeEvent.coordinate;
+      if (!coordinate) {
+        return;
+      }
       setUserCoordinate(coordinate);
 
       if (hasCenteredOnOpenRef.current || !mapRef.current) {
@@ -200,12 +218,12 @@ export function MapScreen() {
       }
       hasCenteredOnOpenRef.current = true;
       const region = centerMapOnUser(mapRef.current, coordinate, true);
-      setMapRegion(region);
+      mapRegionRef.current = region;
     },
     [],
   );
 
-  const fitSelectedHistory = useCallback(() => {
+  const fitSelectedHistoryNow = useCallback(() => {
     if (!mapRef.current || !selectedPlayable) {
       return;
     }
@@ -217,15 +235,47 @@ export function MapScreen() {
           : selectedPlayable.points;
     const region = regionForCoordinates(toMapCoordinates(routePoints));
     mapRef.current.animateToRegion(region, 400);
-    setMapRegion(region);
+    mapRegionRef.current = region;
   }, [inboundTravelPoints, selectedPlayable, selectedTravelPoints]);
+
+  const scheduleFitSelectedHistory = useCallback(
+    (immediate = false) => {
+      if (fitHistoryTimerRef.current != null) {
+        clearTimeout(fitHistoryTimerRef.current);
+        fitHistoryTimerRef.current = null;
+      }
+      if (immediate) {
+        fitSelectedHistoryNow();
+        return;
+      }
+      fitHistoryTimerRef.current = setTimeout(() => {
+        fitHistoryTimerRef.current = null;
+        fitSelectedHistoryNow();
+      }, 280);
+    },
+    [fitSelectedHistoryNow],
+  );
 
   const selectHistoryIndex = useCallback(
     (index: number) => {
-      playback.stop();
-      setSelectedHistoryIndex(index);
+      setSelectedHistoryIndex(prev => {
+        if (prev !== index) {
+          playback.stop();
+        }
+        return index;
+      });
     },
     [playback],
+  );
+
+  const handleHistoryScrubActiveChange = useCallback(
+    (active: boolean) => {
+      historyScrubbingRef.current = active;
+      if (!active) {
+        scheduleFitSelectedHistory(true);
+      }
+    },
+    [scheduleFitSelectedHistory],
   );
 
   const openHistoryDatePicker = useCallback(() => {
@@ -274,31 +324,41 @@ export function MapScreen() {
     }
     const region = regionForCoordinates(coordinates);
     mapRef.current.animateToRegion(region, 400);
-    setMapRegion(region);
+    mapRegionRef.current = region;
   }, [historyData.points, historyLoading, historyPanelOpen, selectedDateKey]);
+
+  useEffect(
+    () => () => {
+      if (fitHistoryTimerRef.current != null) {
+        clearTimeout(fitHistoryTimerRef.current);
+      }
+    },
+    [],
+  );
 
   const handlePlayHistory = useCallback(() => {
     if (!selectedPlayable || selectedPlayable.kind !== 'travel') {
       return;
     }
-    fitSelectedHistory();
+    scheduleFitSelectedHistory(true);
     playback.start(getTripPlaybackDurationMs(selectedPlayable.durationMs));
-  }, [fitSelectedHistory, playback, selectedPlayable]);
+  }, [playback, scheduleFitSelectedHistory, selectedPlayable]);
 
   useEffect(() => {
     if (
       historyPanelOpen &&
       selectedHistoryIndex >= 0 &&
       selectedPlayable &&
-      !playback.isPlaying
+      !playback.isPlaying &&
+      !historyScrubbingRef.current
     ) {
-      fitSelectedHistory();
+      scheduleFitSelectedHistory();
     }
   }, [
     selectedHistoryIndex,
     historyPanelOpen,
     selectedPlayable,
-    fitSelectedHistory,
+    scheduleFitSelectedHistory,
     playback.isPlaying,
   ]);
 
@@ -322,29 +382,18 @@ export function MapScreen() {
         provider={provider}
         initialRegion={FALLBACK_REGION}
         mapPadding={mapPadding}
-        legalLabelInsets={{
-          top: 0,
-          right: 0,
-          bottom: calendarButtonBottom,
-          left: 72,
-        }}
+        legalLabelInsets={legalLabelInsets}
         showsUserLocation={showUserLocation}
         showsMyLocationButton={false}
         userLocationPriority="high"
         userInterfaceStyle={colorScheme === 'dark' ? 'dark' : 'light'}
         followsUserLocation={false}
-        scrollEnabled={!historyPanelOpen}
-        zoomEnabled={!historyPanelOpen}
+        scrollEnabled
+        zoomEnabled
         pitchEnabled
         rotateEnabled
-        onRegionChange={onRegionChange}
-        onRegionChangeComplete={onRegionChange}
-        onUserLocationChange={event => {
-          const coordinate = event.nativeEvent.coordinate;
-          if (coordinate) {
-            handleUserLocation(coordinate);
-          }
-        }}>
+        onRegionChangeComplete={onRegionChangeComplete}
+        onUserLocationChange={handleUserLocation}>
         {showDayJourney ? (
           <DayJourneyOverlay
             points={historyData.points}
@@ -359,6 +408,8 @@ export function MapScreen() {
             points={selectedTravelPoints}
             playbackProgress={playback.isPlaying ? playback.progress : null}
             emphasized
+            startAt={selectedPlayable.startAt}
+            endAt={selectedPlayable.endAt}
           />
         ) : null}
         {showHistoryEvent &&
@@ -418,6 +469,7 @@ export function MapScreen() {
             entries={historyEntries}
             selectedIndex={selectedHistoryIndex}
             onSelectIndex={selectHistoryIndex}
+            onScrubActiveChange={handleHistoryScrubActiveChange}
             onDateKeyChange={handleHistoryDateKeyChange}
             onOpenDatePicker={openHistoryDatePicker}
           />

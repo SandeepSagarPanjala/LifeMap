@@ -295,15 +295,16 @@ function closeStayEndsAtNextLeg(
     const departSave = travel.points[0]!;
     const leftArea =
       distanceKm(anchor, departSave) * 1000 > config.dwellRadiusMeters + 5;
-    const lastNearAnchor =
-      distanceKm(anchor, lastPoint) * 1000 <= config.dwellRadiusMeters + 5;
+    /** Last save still inside the visit envelope (lot drift can be ≫ dwell radius). */
+    const lastStillAtStay =
+      distanceKm(anchor, lastPoint) * 1000 <= MAX_STAY_ENVELOPE_SPREAD_M;
     const bridgeOvernightGap =
-      index === 0 && leftArea && lastNearAnchor && gapMs > MAX_STAY_DEPARTURE_BRIDGE_MS;
+      index === 0 && leftArea && lastStillAtStay && gapMs > MAX_STAY_DEPARTURE_BRIDGE_MS;
     /** Charger / meal: no pings for 20+ min, then drive away — visit runs until that leg starts. */
     const bridgeStationaryGap =
       index > 0 &&
       leftArea &&
-      lastNearAnchor &&
+      lastStillAtStay &&
       gapMs > MAX_STAY_DEPARTURE_BRIDGE_MS;
     const shortHopToNextStop =
       travel.durationMs < 2 * 60_000 &&

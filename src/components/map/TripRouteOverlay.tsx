@@ -1,6 +1,7 @@
-import {useMemo} from 'react';
+import {memo, useMemo} from 'react';
 import {Polyline} from 'react-native-maps';
 
+import {DriveEndpointLabels} from '@/components/map/DriveEndpointLabels';
 import {TripPlaybackHead} from '@/components/map/TripPlaybackHead';
 import type {LocationPointRow} from '@/db/repositories/location-days';
 import {toMapCoordinates} from '@/lib/location-geo';
@@ -22,12 +23,17 @@ type TripRouteOverlayProps = {
   playbackProgress?: number | null;
   /** History scrub — solid route for the selected drive only. */
   emphasized?: boolean;
+  /** Drive start/end times for history endpoint labels. */
+  startAt?: Date;
+  endAt?: Date;
 };
 
-export function TripRouteOverlay({
+export const TripRouteOverlay = memo(function TripRouteOverlay({
   points,
   playbackProgress = null,
   emphasized = false,
+  startAt,
+  endAt,
 }: TripRouteOverlayProps) {
   const coordinates = useMemo(() => toMapCoordinates(points), [points]);
   const denseSamples = useMemo(() => buildDensePlaybackSamples(points), [points]);
@@ -47,6 +53,14 @@ export function TripRouteOverlay({
   const playedCoordinates = frame?.pathCoordinates ?? [];
   const routeBorder = emphasized ? ROUTE_PATH_BORDER_SOLID : ROUTE_PATH_BORDER;
   const routeFill = emphasized ? ROUTE_PATH_FILL_SOLID : ROUTE_PATH_FILL;
+  const showEndpointLabels =
+    emphasized &&
+    !isPlaying &&
+    startAt != null &&
+    endAt != null &&
+    coordinates.length >= 2;
+  const routeStart = coordinates[0]!;
+  const routeEnd = coordinates[coordinates.length - 1]!;
 
   return (
     <>
@@ -99,6 +113,15 @@ export function TripRouteOverlay({
           labelPlacement={frame.labelPlacement}
         />
       ) : null}
+
+      {showEndpointLabels ? (
+        <DriveEndpointLabels
+          startCoordinate={routeStart}
+          endCoordinate={routeEnd}
+          startAt={startAt}
+          endAt={endAt}
+        />
+      ) : null}
     </>
   );
-}
+});

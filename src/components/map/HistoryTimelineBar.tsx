@@ -34,6 +34,7 @@ type HistoryTimelineBarProps = {
   entries: DayTimelineEntry[];
   selectedIndex: number;
   onSelectIndex: (index: number) => void;
+  onScrubActiveChange?: (active: boolean) => void;
   onDateKeyChange: (dateKey: string) => void;
   onOpenDatePicker: () => void;
 };
@@ -43,6 +44,7 @@ export function HistoryTimelineBar({
   entries,
   selectedIndex,
   onSelectIndex,
+  onScrubActiveChange,
   onDateKeyChange,
   onOpenDatePicker,
 }: HistoryTimelineBarProps) {
@@ -57,6 +59,8 @@ export function HistoryTimelineBar({
   const rulerRef = useRef(ruler);
   const entriesRef = useRef(entries);
   const onSelectIndexRef = useRef(onSelectIndex);
+  const onScrubActiveChangeRef = useRef(onScrubActiveChange);
+  const lastReportedIndexRef = useRef<number | null>(null);
 
   const dayTitle = formatHistoryDayTitle(dateKey, now);
   const isToday = dateKey === getTodayDateKey();
@@ -85,6 +89,22 @@ export function HistoryTimelineBar({
     onSelectIndexRef.current = onSelectIndex;
   }, [onSelectIndex]);
 
+  useEffect(() => {
+    onScrubActiveChangeRef.current = onScrubActiveChange;
+  }, [onScrubActiveChange]);
+
+  useEffect(() => {
+    lastReportedIndexRef.current = selectedIndex;
+  }, [selectedIndex]);
+
+  const reportSelectedIndex = useCallback((index: number) => {
+    if (lastReportedIndexRef.current === index) {
+      return;
+    }
+    lastReportedIndexRef.current = index;
+    onSelectIndexRef.current(index);
+  }, []);
+
   const handleScrubLayout = useCallback((event: LayoutChangeEvent) => {
     const {width} = event.nativeEvent.layout;
     if (width > 0) {
@@ -92,23 +112,30 @@ export function HistoryTimelineBar({
     }
   }, []);
 
-  const moveScrubToBarPx = useCallback((px: number) => {
-    const width = barWidthRef.current;
-    const clamped = clampAnchorPx(px, width);
-    setAnchorPx(clamped);
-    onSelectIndexRef.current(
-      selectionAtAnchorPx(rulerRef.current, clamped, entriesRef.current),
-    );
-  }, []);
+  const moveScrubToBarPx = useCallback(
+    (px: number, reportSelection = true) => {
+      const width = barWidthRef.current;
+      const clamped = clampAnchorPx(px, width);
+      setAnchorPx(clamped);
+      if (reportSelection) {
+        reportSelectedIndex(
+          selectionAtAnchorPx(rulerRef.current, clamped, entriesRef.current),
+        );
+      }
+    },
+    [reportSelectedIndex],
+  );
 
   const beginScrub = useCallback(() => {
     isDraggingRef.current = true;
     hasManualScrubRef.current = true;
+    onScrubActiveChangeRef.current?.(true);
   }, []);
 
   const endScrub = useCallback(() => {
     isDraggingRef.current = false;
     hasManualScrubRef.current = true;
+    onScrubActiveChangeRef.current?.(false);
   }, []);
 
   const scrubGesture = useMemo(
@@ -235,7 +262,7 @@ export function HistoryTimelineBar({
             {height: TRACK_HEIGHT, top: trackTop},
           ]}>
           <View style={[styles.track, styles.fullWidth]} />
-          {ruler.segments.map(segment => {
+          {ruler.segments.map((segment, segmentIndex) => {
             const color =
               segment.kind === 'stay'
                 ? HISTORY_COLORS.stay
@@ -243,10 +270,9 @@ export function HistoryTimelineBar({
                   ? HISTORY_COLORS.travel
                   : HISTORY_COLORS.gap;
             const selected = segment.entryIndex === selectedIndex;
+            const isFirst = segmentIndex === 0;
+            const isLast = segmentIndex === ruler.segments.length - 1;
             const edgeRadius = TRACK_HEIGHT / 2;
-            const atLeftEdge = segment.leftPx <= 0.5;
-            const atRightEdge =
-              segment.leftPx + segment.widthPx >= barWidth - 0.5;
 
             return (
               <View
@@ -258,18 +284,15 @@ export function HistoryTimelineBar({
                     width: segment.widthPx,
                     backgroundColor: color,
                     opacity: selected ? 1 : 0.88,
-                    borderTopLeftRadius: atLeftEdge ? edgeRadius : 4,
-                    borderBottomLeftRadius: atLeftEdge ? edgeRadius : 4,
-                    borderTopRightRadius: atRightEdge ? edgeRadius : 4,
-                    borderBottomRightRadius: atRightEdge ? edgeRadius : 4,
+                    borderTopLeftRadius: isFirst ? edgeRadius : 0,
+                    borderBottomLeftRadius: isFirst ? edgeRadius : 0,
+                    borderTopRightRadius: isLast ? edgeRadius : 0,
+                    borderBottomRightRadius: isLast ? edgeRadius : 0,
                   },
                 ]}
               />
             );
           })}
-          {ruler.nowLeftPx != null ? (
-            <View style={[styles.nowLine, {left: ruler.nowLeftPx}]} />
-          ) : null}
         </View>
 
         <View
@@ -386,15 +409,6 @@ const styles = StyleSheet.create({
     height: TRACK_HEIGHT,
     zIndex: 1,
   },
-  nowLine: {
-    position: 'absolute',
-    top: 0,
-    width: 2,
-    height: TRACK_HEIGHT,
-    backgroundColor: HISTORY_COLORS.nowMarker,
-    zIndex: 2,
-    marginLeft: -1,
-  },
   anchorStem: {
     position: 'absolute',
     width: 2,
@@ -408,7 +422,7 @@ const styles = StyleSheet.create({
     height: ANCHOR_SIZE_PX,
     borderRadius: ANCHOR_SIZE_PX / 2,
     backgroundColor: HISTORY_COLORS.anchor,
-    borderWidth: 2.5,
+    borderWidth: 2,
     borderColor: HISTORY_COLORS.anchorBorder,
     zIndex: 4,
     shadowColor: '#000',
