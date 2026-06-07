@@ -1,3 +1,4 @@
+import {useEffect, useState} from 'react';
 import {Marker} from 'react-native-maps';
 import {Armchair} from 'lucide-react-native';
 import {StyleSheet, Text, View} from 'react-native';
@@ -13,35 +14,64 @@ const BUBBLE_OFFSET_Y = -(DOT_RING_SIZE / 2 + 44);
 
 type StayDurationCalloutProps = {
   trip: DetectedTrip;
+  /** History scrub — orange visit pin. Live map keeps the system blue user puck. */
+  showVisitPin?: boolean;
+  /** Anchor the label (e.g. live GPS while the blue puck is shown). */
+  anchorCoordinate?: {latitude: number; longitude: number} | null;
 };
 
-export function StayDurationCallout({trip}: StayDurationCalloutProps) {
-  const ongoing = isVisitOngoing(trip.endAt, new Date(), {
+const LIVE_PUCK_BUBBLE_OFFSET_Y = -58;
+
+export function StayDurationCallout({
+  trip,
+  showVisitPin = true,
+  anchorCoordinate = null,
+}: StayDurationCalloutProps) {
+  const [now, setNow] = useState(() => new Date());
+  const ongoing = isVisitOngoing(trip.endAt, now, {
     openThroughNow: trip.openThroughNow,
   });
-  const coordinate = stayTripMarkerCoordinate(trip, {ongoing});
-  const visit = formatStayVisitLabel(trip.startAt, trip.endAt, trip.durationMs, {
+  const visitCoordinate = stayTripMarkerCoordinate(trip, {ongoing});
+  const coordinate = anchorCoordinate ?? visitCoordinate;
+  const bubbleOffsetY = showVisitPin
+    ? BUBBLE_OFFSET_Y
+    : LIVE_PUCK_BUBBLE_OFFSET_Y;
+
+  useEffect(() => {
+    if (!ongoing) {
+      return;
+    }
+    const timer = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(timer);
+  }, [ongoing]);
+
+  const durationMs = ongoing
+    ? now.getTime() - trip.startAt.getTime()
+    : trip.durationMs;
+  const visit = formatStayVisitLabel(trip.startAt, trip.endAt, durationMs, {
     openThroughNow: trip.openThroughNow,
-    now: new Date(),
+    now,
   });
 
   return (
     <>
-      <Marker
-        coordinate={coordinate}
-        anchor={MARKER_ANCHOR}
-        zIndex={13}
-        tracksViewChanges={false}>
-        <View style={styles.dotWrap}>
-          <View style={styles.dotRing} />
-          <View style={styles.dotCore} />
-        </View>
-      </Marker>
+      {showVisitPin ? (
+        <Marker
+          coordinate={visitCoordinate}
+          anchor={MARKER_ANCHOR}
+          zIndex={13}
+          tracksViewChanges={false}>
+          <View style={styles.dotWrap}>
+            <View style={styles.dotRing} />
+            <View style={styles.dotCore} />
+          </View>
+        </Marker>
+      ) : null}
 
       <Marker
         coordinate={coordinate}
         anchor={MARKER_ANCHOR}
-        centerOffset={{x: 0, y: BUBBLE_OFFSET_Y}}
+        centerOffset={{x: 0, y: bubbleOffsetY}}
         zIndex={12}
         tracksViewChanges={false}>
         <View style={styles.bubble}>

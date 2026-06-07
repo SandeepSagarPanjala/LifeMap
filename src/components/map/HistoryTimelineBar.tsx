@@ -21,8 +21,9 @@ import {
 } from '@/lib/history-timeline';
 
 const HORIZONTAL_PADDING = 16;
-const EVENT_NAV_BTN_WIDTH = 40;
-const EVENT_NAV_CIRCLE_SIZE = 32;
+const EVENT_NAV_BTN_WIDTH = 44;
+const EVENT_NAV_CIRCLE_SIZE = 36;
+const EVENT_NAV_ICON_SIZE = 20;
 const TRACK_HEIGHT = 36;
 const LABEL_HEIGHT = 14;
 const TICK_BAND_HEIGHT = 12;
@@ -148,7 +149,7 @@ export function HistoryTimelineBar({
           style={[styles.eventNavBtn, !canGoPrevEvent && styles.eventNavBtnDisabled]}>
           <View style={styles.eventNavCircle}>
             <ChevronLeft
-              size={18}
+              size={EVENT_NAV_ICON_SIZE}
               color={HISTORY_COLORS.playhead}
               strokeWidth={2.5}
             />
@@ -247,7 +248,7 @@ export function HistoryTimelineBar({
           style={[styles.eventNavBtn, !canGoNextEvent && styles.eventNavBtnDisabled]}>
           <View style={styles.eventNavCircle}>
             <ChevronRight
-              size={18}
+              size={EVENT_NAV_ICON_SIZE}
               color={HISTORY_COLORS.playhead}
               strokeWidth={2.5}
             />

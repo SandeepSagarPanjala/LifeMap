@@ -146,3 +146,36 @@ export function getHistoryLookbackStart(dayStart: Date): Date {
 export function getTodayHistoryLookbackStart(dayStart: Date): Date {
   return getHistoryLookbackStart(dayStart);
 }
+
+/** Open visit on today's map — last stay still in progress. */
+export function getCurrentOpenVisit(
+  entries: DayTimelineEntry[],
+  options?: {
+    userCoordinate?: {latitude: number; longitude: number} | null;
+    config?: TripDetectionConfig;
+  },
+): DetectedTrip | null {
+  if (entries.length === 0) {
+    return null;
+  }
+
+  const last = entries[entries.length - 1];
+  if (last.kind !== 'stay' || !last.openThroughNow) {
+    return null;
+  }
+
+  const {userCoordinate, config} = options ?? {};
+  if (userCoordinate != null && config != null && last.points.length > 0) {
+    const anchor = last.points[last.points.length - 1]!;
+    const stillHere = arePointsSamePlace(
+      {lat: userCoordinate.latitude, lng: userCoordinate.longitude},
+      anchor,
+      config,
+    );
+    if (!stillHere) {
+      return null;
+    }
+  }
+
+  return last;
+}

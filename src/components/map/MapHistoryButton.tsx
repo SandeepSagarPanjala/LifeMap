@@ -26,7 +26,11 @@ export function MapHistoryButton({
         eventCount > 0 ? `Show ${eventCount} history events` : 'Show history'
       }
       onPress={onPress}
-      style={[styles.button, {bottom}, active && styles.buttonActive]}>
+      style={[
+        styles.button,
+        {bottom},
+        active && [styles.buttonActive, {borderColor: colors.primary}],
+      ]}>
       <History size={22} color={colors.primary} strokeWidth={2.25} />
       {eventCount > 0 ? (
         <View style={styles.badge}>
@@ -55,7 +59,6 @@ const styles = StyleSheet.create({
   },
   buttonActive: {
     borderWidth: 2,
-    borderColor: '#007AFF',
   },
   badge: {
     position: 'absolute',

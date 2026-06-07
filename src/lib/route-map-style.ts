@@ -24,3 +24,18 @@ export const ROUTE_PATH_FILL_WIDTH = 4.5;
 export const VISIT_CONNECTOR_STROKE = 'rgba(0, 122, 255, 0.7)';
 export const VISIT_CONNECTOR_STROKE_WIDTH = 2;
 export const VISIT_CONNECTOR_DASH_PATTERN = [3, 5] as const;
+
+/** History day map — events before the selected index (no labels). */
+export const HISTORY_PAST_ROUTE_FILL = 'rgba(142, 142, 147, 0.5)';
+export const HISTORY_PAST_ROUTE_BORDER = 'rgba(255, 255, 255, 0.35)';
+export const HISTORY_PAST_STAY_FILL = 'rgba(142, 142, 147, 0.28)';
+export const HISTORY_PAST_STAY_STROKE = 'rgba(142, 142, 147, 0.45)';
+
+/** History day map — events after the selected index (no labels). */
+export const HISTORY_FUTURE_ROUTE_FILL = ROUTE_PATH_FILL;
+export const HISTORY_FUTURE_ROUTE_BORDER = ROUTE_PATH_BORDER;
+export const HISTORY_FUTURE_STAY_FILL = 'rgba(0, 122, 255, 0.2)';
+export const HISTORY_FUTURE_STAY_STROKE = 'rgba(0, 122, 255, 0.32)';
+
+export const HISTORY_GHOST_ROUTE_BORDER_WIDTH = 7;
+export const HISTORY_GHOST_ROUTE_FILL_WIDTH = 3.5;

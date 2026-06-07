@@ -1,6 +1,7 @@
-import {useCallback, useState} from 'react';
+import {useCallback, useEffect, useRef, useState} from 'react';
 import {useFocusEffect} from '@react-navigation/native';
 import {endOfDay} from 'date-fns';
+import {AppState, type AppStateStatus} from 'react-native';
 
 import {
   getLocationDayFingerprint,
@@ -77,6 +78,47 @@ async function loadHistoryForDay(
   };
 }
 
+async function syncHistoryForDay(
+  dateKey: string,
+  detectionConfig: TripDetectionConfig,
+  options?: {force?: boolean},
+): Promise<HistoryData> {
+  const cacheKey = historyCacheKey(dateKey, detectionConfig);
+  const fingerprint = await getLocationDayFingerprint(dateKey);
+  const cached = historyCache.get(cacheKey);
+  const cachedFingerprint = fingerprintCache.get(dateKey);
+  const canUseCache =
+    !options?.force &&
+    cached != null &&
+    cachedFingerprint === fingerprint;
+
+  if (canUseCache) {
+    return cached;
+  }
+
+  const result = await loadHistoryForDay(dateKey, detectionConfig);
+  historyCache.set(cacheKey, result);
+  fingerprintCache.set(dateKey, fingerprint);
+  return result;
+}
+
+/** Cheap DB check — skips trip detection when today's points are unchanged. */
+async function reloadHistoryIfChanged(
+  dateKey: string,
+  detectionConfig: TripDetectionConfig,
+): Promise<HistoryData | null> {
+  const cacheKey = historyCacheKey(dateKey, detectionConfig);
+  const fingerprint = await getLocationDayFingerprint(dateKey);
+  if (
+    fingerprintCache.get(dateKey) === fingerprint &&
+    historyCache.has(cacheKey)
+  ) {
+    return null;
+  }
+
+  return syncHistoryForDay(dateKey, detectionConfig);
+}
+
 export function useHistoryForDay(dateKey: string): {
   data: HistoryData;
   loading: boolean;
@@ -85,49 +127,71 @@ export function useHistoryForDay(dateKey: string): {
   const detectionConfig = useTripDetectionConfig();
   const [data, setData] = useState<HistoryData>(EMPTY);
   const [loading, setLoading] = useState(true);
+  const dateKeyRef = useRef(dateKey);
+  const detectionConfigRef = useRef(detectionConfig);
+  dateKeyRef.current = dateKey;
+  detectionConfigRef.current = detectionConfig;
+
+  const applySync = useCallback(
+    (options?: {force?: boolean}) => {
+      setLoading(true);
+      return syncHistoryForDay(dateKey, detectionConfig, options)
+        .then(setData)
+        .finally(() => setLoading(false));
+    },
+    [dateKey, detectionConfig],
+  );
 
   const refresh = useCallback(() => {
-    setLoading(true);
-    void loadHistoryForDay(dateKey, detectionConfig)
-      .then(setData)
-      .finally(() => setLoading(false));
-  }, [dateKey, detectionConfig]);
+    void applySync({force: true});
+  }, [applySync]);
 
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
-      const cacheKey = historyCacheKey(dateKey, detectionConfig);
 
-      void (async () => {
-        const fingerprint = await getLocationDayFingerprint(dateKey);
-        if (cancelled) {
-          return;
-        }
-
-        const cached = historyCache.get(cacheKey);
-        const cachedFingerprint = fingerprintCache.get(dateKey);
-        if (cached && cachedFingerprint === fingerprint) {
-          setData(cached);
-          setLoading(false);
-          return;
-        }
-
-        setLoading(true);
-        const result = await loadHistoryForDay(dateKey, detectionConfig);
-        if (cancelled) {
-          return;
-        }
-        historyCache.set(cacheKey, result);
-        fingerprintCache.set(dateKey, fingerprint);
-        setData(result);
-        setLoading(false);
-      })();
+      void syncHistoryForDay(dateKey, detectionConfig)
+        .then(result => {
+          if (!cancelled) {
+            setData(result);
+          }
+        })
+        .finally(() => {
+          if (!cancelled) {
+            setLoading(false);
+          }
+        });
 
       return () => {
         cancelled = true;
       };
     }, [dateKey, detectionConfig]),
   );
+
+  useEffect(() => {
+    let appState = AppState.currentState;
+
+    const onAppStateChange = (nextState: AppStateStatus) => {
+      const wasBackgrounded = appState === 'background' || appState === 'inactive';
+      appState = nextState;
+
+      if (nextState !== 'active' || !wasBackgrounded) {
+        return;
+      }
+
+      void reloadHistoryIfChanged(
+        dateKeyRef.current,
+        detectionConfigRef.current,
+      ).then(result => {
+        if (result != null) {
+          setData(result);
+        }
+      });
+    };
+
+    const subscription = AppState.addEventListener('change', onAppStateChange);
+    return () => subscription.remove();
+  }, []);
 
   return {data, loading, refresh};
 }

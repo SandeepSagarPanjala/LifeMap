@@ -3,6 +3,10 @@ import {Circle} from 'react-native-maps';
 import {buildStayMapCircles} from '@/lib/stay-map';
 import type {DetectedTrip} from '@/lib/trip-detection';
 import {
+  HISTORY_FUTURE_STAY_FILL,
+  HISTORY_FUTURE_STAY_STROKE,
+  HISTORY_PAST_STAY_FILL,
+  HISTORY_PAST_STAY_STROKE,
   STAY_AREA_FILL,
   STAY_AREA_FILL_EMPHASIS,
   STAY_AREA_STROKE,
@@ -11,11 +15,40 @@ import {
 } from '@/lib/route-map-style';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
 
+export type StayAreasTone = 'default' | 'emphasized' | 'past' | 'future';
+
 type StayAreasOverlayProps = {
   stays: DetectedTrip[];
   tripConfig: TripDetectionConfig;
   /** History scrub — single selected visit. */
   emphasized?: boolean;
+  tone?: StayAreasTone;
+};
+
+const STAY_TONE_COLORS: Record<
+  StayAreasTone,
+  {fill: string; stroke: string; zIndex: number}
+> = {
+  default: {
+    fill: STAY_AREA_FILL,
+    stroke: STAY_AREA_STROKE,
+    zIndex: 0,
+  },
+  emphasized: {
+    fill: STAY_AREA_FILL_EMPHASIS,
+    stroke: STAY_AREA_STROKE_EMPHASIS,
+    zIndex: 2,
+  },
+  past: {
+    fill: HISTORY_PAST_STAY_FILL,
+    stroke: HISTORY_PAST_STAY_STROKE,
+    zIndex: 0,
+  },
+  future: {
+    fill: HISTORY_FUTURE_STAY_FILL,
+    stroke: HISTORY_FUTURE_STAY_STROKE,
+    zIndex: 1,
+  },
 };
 
 /** Orange translucent visit areas — no labels (details live in History). */
@@ -23,10 +56,12 @@ export function StayAreasOverlay({
   stays,
   tripConfig,
   emphasized = false,
+  tone,
 }: StayAreasOverlayProps) {
   const circles = buildStayMapCircles(stays, tripConfig.dwellRadiusMeters);
-  const fillColor = emphasized ? STAY_AREA_FILL_EMPHASIS : STAY_AREA_FILL;
-  const strokeColor = emphasized ? STAY_AREA_STROKE_EMPHASIS : STAY_AREA_STROKE;
+  const resolvedTone = tone ?? (emphasized ? 'emphasized' : 'default');
+  const {fill: fillColor, stroke: strokeColor, zIndex} =
+    STAY_TONE_COLORS[resolvedTone];
 
   if (circles.length === 0) {
     return null;
@@ -42,7 +77,7 @@ export function StayAreasOverlay({
           fillColor={fillColor}
           strokeColor={strokeColor}
           strokeWidth={STAY_AREA_STROKE_WIDTH}
-          zIndex={emphasized ? 2 : 0}
+          zIndex={zIndex}
         />
       ))}
     </>

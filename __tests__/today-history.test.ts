@@ -1,4 +1,5 @@
 import {
+  getCurrentOpenVisit,
   prepareDayHistoryTimeline,
   prepareTodayHistoryTimeline,
 } from '../src/lib/today-history';
@@ -76,6 +77,39 @@ describe('prepareTodayHistoryTimeline', () => {
         new Date('2026-06-04T04:59:59.999Z').getTime(),
       );
     }
+  });
+
+  it('getCurrentOpenVisit returns open stay when user is still on site', () => {
+    const today = [row('2026-06-04T06:36:29.000Z', 1)];
+    const entries = prepareTodayHistoryTimeline(
+      today,
+      [],
+      dayStart,
+      now,
+      config,
+    );
+    const visit = getCurrentOpenVisit(entries, {
+      userCoordinate: {latitude: home.lat, longitude: home.lng},
+      config,
+    });
+    expect(visit?.kind).toBe('stay');
+    expect(visit?.openThroughNow).toBe(true);
+  });
+
+  it('getCurrentOpenVisit hides when live GPS is away from the visit', () => {
+    const today = [row('2026-06-04T06:36:29.000Z', 1)];
+    const entries = prepareTodayHistoryTimeline(
+      today,
+      [],
+      dayStart,
+      now,
+      config,
+    );
+    const visit = getCurrentOpenVisit(entries, {
+      userCoordinate: {latitude: 33.3, longitude: -97.2},
+      config,
+    });
+    expect(visit).toBeNull();
   });
 
   it('extends last stay through now when no saves after last ping', () => {
