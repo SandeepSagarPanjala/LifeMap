@@ -1,5 +1,6 @@
 import {useEffect, useState} from 'react';
-import {InteractionManager} from 'react-native';
+
+import {runWhenIdle} from '@/lib/run-when-idle';
 
 /** True after open animations / taps finish — safe to run heavier UI work. */
 export function useAfterInteractions(active: boolean): boolean {
@@ -12,7 +13,7 @@ export function useAfterInteractions(active: boolean): boolean {
     }
 
     setReady(false);
-    const task = InteractionManager.runAfterInteractions(() => {
+    const task = runWhenIdle(() => {
       setReady(true);
     });
 

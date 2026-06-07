@@ -37,6 +37,7 @@ import {
   shouldRefreshUserCoordinate,
   type MapUserCoordinate,
 } from '@/lib/user-coordinate-throttle';
+import {buildMapAttributionInsets} from '@/lib/map-attribution-insets';
 import {useAppStore} from '@/stores/app-store';
 
 import {
@@ -174,15 +175,12 @@ export function useMapScreenController() {
     [insets.top, rightControlsBottom],
   );
 
-  const legalLabelInsets = useMemo(
-    () => ({
-      top: 0,
-      right: 0,
-      bottom: calendarButtonBottom,
-      left: historyPanelOpen ? 12 : 72,
-    }),
-    [calendarButtonBottom, historyPanelOpen],
-  );
+  const mapAttributionInsets = useMemo(() => {
+    const bottomClearance = historyPanelOpen
+      ? insets.bottom + 8
+      : locateButtonBottom + MAP_STACK_BUTTON_SIZE + 6;
+    return buildMapAttributionInsets(bottomClearance);
+  }, [historyPanelOpen, insets.bottom, locateButtonBottom]);
 
   const scrubOnEvent =
     historyPanelOpen && selectedHistoryIndex >= 0 && selectedEntry != null;
@@ -423,7 +421,7 @@ export function useMapScreenController() {
     mapRef,
     provider,
     mapPadding,
-    legalLabelInsets,
+    mapAttributionInsets,
     locateButtonBottom,
     calendarButtonBottom,
     historyButtonBottom,

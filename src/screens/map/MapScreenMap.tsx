@@ -17,7 +17,7 @@ export function MapScreenMap({controller}: MapScreenMapProps) {
     mapRef,
     provider,
     mapPadding,
-    legalLabelInsets,
+    mapAttributionInsets,
     colorScheme,
     showUserLocation,
     onRegionChangeComplete,
@@ -40,7 +40,8 @@ export function MapScreenMap({controller}: MapScreenMapProps) {
       provider={provider}
       initialRegion={MAP_FALLBACK_REGION}
       mapPadding={mapPadding}
-      legalLabelInsets={legalLabelInsets}
+      legalLabelInsets={mapAttributionInsets.legalLabelInsets}
+      appleLogoInsets={mapAttributionInsets.appleLogoInsets}
       showsUserLocation={showUserLocation}
       showsMyLocationButton={false}
       userLocationPriority="high"

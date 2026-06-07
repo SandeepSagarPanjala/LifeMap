@@ -1,8 +1,8 @@
 import {useEffect, useMemo, useState} from 'react';
 import {endOfMonth, startOfMonth} from 'date-fns';
-import {InteractionManager} from 'react-native';
 
 import {getDateKeysWithLocationDataInRange} from '@/db/repositories/location-days';
+import {runWhenIdle} from '@/lib/run-when-idle';
 
 /** Calendar dots for one visible month — not the whole database. */
 export function useDateKeysForMonth(
@@ -23,7 +23,7 @@ export function useDateKeysForMonth(
     let cancelled = false;
     setLoading(true);
 
-    const task = InteractionManager.runAfterInteractions(() => {
+    const task = runWhenIdle(() => {
       void getDateKeysWithLocationDataInRange(monthStart, monthEnd)
         .then(result => {
           if (!cancelled) {

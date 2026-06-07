@@ -1,7 +1,7 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {useFocusEffect} from '@react-navigation/native';
 import {endOfDay} from 'date-fns';
-import {AppState, InteractionManager, type AppStateStatus} from 'react-native';
+import {AppState, type AppStateStatus} from 'react-native';
 
 import {
   getLocationDayFingerprint,
@@ -9,6 +9,7 @@ import {
   getLocationPointsInRange,
 } from '@/db/repositories/location-days';
 import {getDayRange, getTodayDateKey} from '@/lib/day-utils';
+import {runWhenIdle} from '@/lib/run-when-idle';
 import type {HistoryData} from '@/lib/history-data-types';
 import {
   historyCacheKey,
@@ -197,9 +198,7 @@ export function useHistoryForDay(dateKey: string): {
           });
       };
 
-      const task = hasCached
-        ? null
-        : InteractionManager.runAfterInteractions(run);
+      const task = hasCached ? null : runWhenIdle(run);
       if (hasCached) {
         run();
       }
