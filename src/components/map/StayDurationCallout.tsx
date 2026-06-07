@@ -1,13 +1,11 @@
 import {Marker} from 'react-native-maps';
-import {Crosshair} from 'lucide-react-native';
+import {Armchair} from 'lucide-react-native';
 import {StyleSheet, Text, View} from 'react-native';
 
 import {formatStayVisitLabel, isVisitOngoing} from '@/lib/trip-format';
 import type {DetectedTrip} from '@/lib/trip-detection';
 import {stayTripMarkerCoordinate} from '@/lib/trip-detection';
 import {HISTORY_COLORS} from '@/lib/history-timeline';
-import {useThemeColors} from '@/hooks/use-theme-colors';
-
 const DOT_SIZE = 18;
 const DOT_RING_SIZE = 28;
 const MARKER_ANCHOR = {x: 0.5, y: 0.5} as const;
@@ -18,7 +16,6 @@ type StayDurationCalloutProps = {
 };
 
 export function StayDurationCallout({trip}: StayDurationCalloutProps) {
-  const colors = useThemeColors();
   const ongoing = isVisitOngoing(trip.endAt, new Date(), {
     openThroughNow: trip.openThroughNow,
   });
@@ -48,7 +45,7 @@ export function StayDurationCallout({trip}: StayDurationCalloutProps) {
         zIndex={12}
         tracksViewChanges={false}>
         <View style={styles.bubble}>
-          <Crosshair size={14} color={colors.primary} strokeWidth={2.25} />
+          <Armchair size={14} color={HISTORY_COLORS.stay} strokeWidth={2.25} />
           <View style={styles.bubbleText}>
             <Text style={styles.mapLabel} numberOfLines={2}>
               {visit.title}

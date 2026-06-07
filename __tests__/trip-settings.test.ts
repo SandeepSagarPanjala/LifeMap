@@ -8,7 +8,7 @@ import {
 describe('trip-settings', () => {
   it('normalizes dwell minutes to allowed choices', () => {
     expect(normalizeTripDwellMinutes(30)).toBe(30);
-    expect(normalizeTripDwellMinutes(99)).toBe(10);
+    expect(normalizeTripDwellMinutes(99)).toBe(5);
   });
 
   it('normalizes radius to allowed choices', () => {

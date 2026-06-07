@@ -24,8 +24,12 @@ export const HISTORY_COLORS = {
   track: '#FFFFFF',
   trackEdge: '#E5E5EA',
   stay: '#FF9500',
+  stayMuted: '#FFC56E',
   travel: '#007AFF',
+  travelMuted: '#6EB0FF',
   gap: '#AEAEB2',
+  gapMuted: '#D1D1D6',
+  segmentSelectedBorder: '#FFFFFF',
   playhead: '#1C1C1E',
   anchor: '#FFFFFF',
   anchorBorder: '#1C1C1E',
@@ -34,6 +38,28 @@ export const HISTORY_COLORS = {
   tickMajor: '#8E8E93',
   nowMarker: '#34C759',
 } as const;
+
+export function historySegmentColor(
+  kind: DayTimelineEntry['kind'],
+  selected = false,
+): string {
+  if (!selected) {
+    if (kind === 'stay') {
+      return HISTORY_COLORS.stayMuted;
+    }
+    if (kind === 'travel') {
+      return HISTORY_COLORS.travelMuted;
+    }
+    return HISTORY_COLORS.gapMuted;
+  }
+  if (kind === 'stay') {
+    return HISTORY_COLORS.stay;
+  }
+  if (kind === 'travel') {
+    return HISTORY_COLORS.travel;
+  }
+  return HISTORY_COLORS.gap;
+}
 
 export type HistoryTimeRange = {
   startAt: Date;

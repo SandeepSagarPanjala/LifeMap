@@ -1,5 +1,5 @@
 export const DEFAULT_TRIP_GAP_MINUTES = 10;
-export const DEFAULT_TRIP_DWELL_MINUTES = 10;
+export const DEFAULT_TRIP_DWELL_MINUTES = 5;
 /** Fixed same-place radius for visit detection (not exposed in Settings). */
 export const HISTORY_SAME_PLACE_RADIUS_METERS = 25;
 export const DEFAULT_TRIP_DWELL_RADIUS_METERS = HISTORY_SAME_PLACE_RADIUS_METERS;
@@ -11,7 +11,7 @@ export const MIN_TRIP_STOP_MINUTES = 5;
 export const MIN_STOP_CLUSTER_RADIUS_METERS = 50;
 
 /** Minimum time at one place before it counts as a visit (stay). */
-export const TRIP_DWELL_CHOICES = [10, 20, 30, 40, 50, 60] as const;
+export const TRIP_DWELL_CHOICES = [5, 10, 20, 30, 40, 50, 60] as const;
 
 /** How close saves must be to count as the same place. */
 export const TRIP_RADIUS_CHOICES = [25, 50, 100, 150] as const;

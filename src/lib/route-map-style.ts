@@ -19,3 +19,8 @@ export const ROUTE_PATH_FILL_SOLID = 'rgba(0, 122, 255, 1)';
 export const ROUTE_PATH_BORDER_SOLID = 'rgba(255, 255, 255, 1)';
 export const ROUTE_PATH_BORDER_WIDTH = 9;
 export const ROUTE_PATH_FILL_WIDTH = 4.5;
+
+/** Thin dashed link from end of inbound drive to visit pin (no GPS along parking lot). */
+export const VISIT_CONNECTOR_STROKE = 'rgba(0, 122, 255, 0.7)';
+export const VISIT_CONNECTOR_STROKE_WIDTH = 2;
+export const VISIT_CONNECTOR_DASH_PATTERN = [3, 5] as const;

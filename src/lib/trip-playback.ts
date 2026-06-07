@@ -8,7 +8,7 @@ import {
 } from '@/lib/location-geo';
 
 /** Default cap; actual playback uses `getTripPlaybackDurationMs`. */
-export const TRIP_PLAYBACK_DURATION_MS = 18_000;
+export const TRIP_PLAYBACK_DURATION_MS = 13_000;
 
 /** Wall-clock playback length (accelerated, not real-time). */
 export function getTripPlaybackDurationMs(_tripDurationMs: number): number {

@@ -20,6 +20,7 @@ import {DayJourneyOverlay} from '@/components/map/DayJourneyOverlay';
 import {StayAreasOverlay} from '@/components/map/StayAreasOverlay';
 import {StayDurationCallout} from '@/components/map/StayDurationCallout';
 import {TripRouteOverlay} from '@/components/map/TripRouteOverlay';
+import {VisitApproachConnector} from '@/components/map/VisitApproachConnector';
 import {useDateKeysWithData} from '@/hooks/use-date-keys-with-data';
 import {useHistoryForDay} from '@/hooks/use-history-data';
 import {countHistoryTimelineEvents} from '@/lib/history-timeline';
@@ -30,13 +31,20 @@ import {
   getVisitInboundTravelPoints,
   isPlayableTimelineEntry,
   stayBeforeEntryIndex,
+  stayTripMarkerCoordinate,
   staysBeforeEntryIndex,
   type DetectedTrip,
 } from '@/lib/trip-detection';
+import {isVisitOngoing} from '@/lib/trip-format';
 import {useTripDetectionConfig} from '@/hooks/use-trip-detection-config';
 import {getTripPlaybackDurationMs} from '@/lib/trip-playback';
 import {regionForCoordinates, toMapCoordinates} from '@/lib/location-geo';
-import {animateRecenterToUser, centerMapOnUser} from '@/lib/map-location-utils';
+import {
+  animateRecenterToUser,
+  centerMapOnUser,
+  regionAroundCoordinate,
+  VISIT_MARKER_ZOOM_DELTA,
+} from '@/lib/map-location-utils';
 import type {RootStackParamList} from '@/navigation/types';
 import {useAppStore} from '@/stores/app-store';
 import {useThemeColors} from '@/hooks/use-theme-colors';
@@ -73,7 +81,6 @@ export function MapScreen() {
   const mapRef = useRef<MapView>(null);
   const hasCenteredOnOpenRef = useRef(false);
   const mapRegionRef = useRef<Region>(FALLBACK_REGION);
-  const historyScrubbingRef = useRef(false);
   const fitHistoryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [userCoordinate, setUserCoordinate] = useState<{
     latitude: number;
@@ -189,9 +196,9 @@ export function MapScreen() {
       top: 0,
       right: 0,
       bottom: calendarButtonBottom,
-      left: 72,
+      left: historyPanelOpen ? 12 : 72,
     }),
-    [calendarButtonBottom],
+    [calendarButtonBottom, historyPanelOpen],
   );
 
   const onRegionChangeComplete = useCallback((region: Region) => {
@@ -270,16 +277,6 @@ export function MapScreen() {
     [playback],
   );
 
-  const handleHistoryScrubActiveChange = useCallback(
-    (active: boolean) => {
-      historyScrubbingRef.current = active;
-      if (!active) {
-        scheduleFitSelectedHistory(true);
-      }
-    },
-    [scheduleFitSelectedHistory],
-  );
-
   const openHistoryDatePicker = useCallback(() => {
     setHistoryDatePickerOpen(true);
   }, []);
@@ -306,7 +303,7 @@ export function MapScreen() {
     setHistoryPanelOpen(open => {
       const next = !open;
       if (next) {
-        setSelectedHistoryIndex(-1);
+        setSelectedHistoryIndex(historyEntries.length > 0 ? 0 : -1);
       } else {
         playback.stop();
         setSelectedDateKey(todayKey);
@@ -314,7 +311,7 @@ export function MapScreen() {
       }
       return next;
     });
-  }, [playback, todayKey]);
+  }, [historyEntries.length, playback, todayKey]);
 
   useEffect(() => {
     if (historyPanelOpen || historyLoading || !mapRef.current) {
@@ -346,13 +343,46 @@ export function MapScreen() {
     playback.start(getTripPlaybackDurationMs(selectedPlayable.durationMs));
   }, [playback, scheduleFitSelectedHistory, selectedPlayable]);
 
+  const handleZoomVisit = useCallback(() => {
+    if (!mapRef.current || !selectedPlayable || selectedPlayable.kind !== 'stay') {
+      return;
+    }
+    const ongoing = isVisitOngoing(selectedPlayable.endAt, new Date(), {
+      openThroughNow: selectedPlayable.openThroughNow,
+    });
+    const coordinate = stayTripMarkerCoordinate(selectedPlayable, {ongoing});
+    const region = regionAroundCoordinate(
+      coordinate,
+      VISIT_MARKER_ZOOM_DELTA,
+      VISIT_MARKER_ZOOM_DELTA,
+    );
+    mapRef.current.animateToRegion(region, 400);
+    mapRegionRef.current = region;
+  }, [selectedPlayable]);
+
+  useEffect(() => {
+    if (
+      !historyPanelOpen ||
+      historyLoading ||
+      historyEntries.length === 0 ||
+      selectedHistoryIndex >= 0
+    ) {
+      return;
+    }
+    setSelectedHistoryIndex(0);
+  }, [
+    historyEntries.length,
+    historyLoading,
+    historyPanelOpen,
+    selectedHistoryIndex,
+  ]);
+
   useEffect(() => {
     if (
       historyPanelOpen &&
       selectedHistoryIndex >= 0 &&
       selectedPlayable &&
-      !playback.isPlaying &&
-      !historyScrubbingRef.current
+      !playback.isPlaying
     ) {
       scheduleFitSelectedHistory();
     }
@@ -418,7 +448,13 @@ export function MapScreen() {
         selectedPlayable?.kind === 'stay' &&
         inboundTravelPoints != null &&
         !playback.isPlaying ? (
-          <TripRouteOverlay points={inboundTravelPoints} emphasized />
+          <>
+            <TripRouteOverlay points={inboundTravelPoints} emphasized />
+            <VisitApproachConnector
+              routePoints={inboundTravelPoints}
+              visit={selectedPlayable}
+            />
+          </>
         ) : null}
         {showHistoryEvent &&
         selectedPlayable?.kind === 'stay' &&
@@ -434,7 +470,9 @@ export function MapScreen() {
         ) : null}
       </MapView>
 
-      <MapLocateButton bottom={locateButtonBottom} onPress={goToCurrentLocation} />
+      {!historyPanelOpen ? (
+        <MapLocateButton bottom={locateButtonBottom} onPress={goToCurrentLocation} />
+      ) : null}
       <MapCalendarButton
         bottom={calendarButtonBottom}
         onPress={openHistoryDatePicker}
@@ -465,13 +503,13 @@ export function MapScreen() {
             isPlaying={playback.isPlaying}
             onPlay={handlePlayHistory}
             onStop={playback.stop}
+            onZoomVisit={handleZoomVisit}
           />
           <HistoryTimelineBar
             dateKey={selectedDateKey}
             entries={historyEntries}
             selectedIndex={selectedHistoryIndex}
             onSelectIndex={selectHistoryIndex}
-            onScrubActiveChange={handleHistoryScrubActiveChange}
             onDateKeyChange={handleHistoryDateKeyChange}
             onOpenDatePicker={openHistoryDatePicker}
           />

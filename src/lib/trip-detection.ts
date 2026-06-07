@@ -41,6 +41,10 @@ const MIN_TIMELINE_GAP_MS = 2 * 60_000;
 /** Below this, movement between stays is GPS noise — not a real trip. */
 const MIN_TRAVEL_DISTANCE_M = 40;
 
+/** Turn-in faster than this stays on the drive path; slower = parked (visit starts). */
+const VISIT_ARRIVAL_SPEED_MS = 2;
+const VISIT_DEPARTURE_SPEED_MS = 2;
+
 /**
  * Max distance from the arrival save for one visit envelope.
  * GPS path length can be much larger (lot drift); spread is what matters.
@@ -275,6 +279,99 @@ function buildTravelSlice(
  * keep their last save when the next drive is far away in time (charger gap, etc.).
  * Overnight home can bridge a long sparse-GPS gap before the first outing.
  */
+function pointSpeedMs(point: LocationPointRow): number | null {
+  return point.speed;
+}
+
+function isStationarySave(point: LocationPointRow): boolean {
+  const speed = pointSpeedMs(point);
+  return speed == null || speed <= VISIT_ARRIVAL_SPEED_MS;
+}
+
+/** First parked save in a stay cluster — turn-in pings before this belong on the drive. */
+function findVisitArrivalIndex(points: LocationPointRow[]): number {
+  for (let index = 0; index < points.length; index += 1) {
+    if (isStationarySave(points[index]!)) {
+      return index;
+    }
+  }
+  return 0;
+}
+
+/** Last parked save before leaving — departure pings belong on the next drive. */
+function findVisitDepartureEndIndex(points: LocationPointRow[]): number {
+  for (let index = points.length - 1; index >= 0; index -= 1) {
+    if (isStationarySave(points[index]!)) {
+      return index;
+    }
+  }
+  return points.length - 1;
+}
+
+/**
+ * Clean visit/drive boundaries:
+ * drive → … → arrival (#16329), visit = all in-area saves (sparse OK), next drive from departure.
+ */
+function normalizeVisitTravelBoundaries(trips: DetectedTrip[]): DetectedTrip[] {
+  if (trips.length === 0) {
+    return [];
+  }
+
+  const adjusted = trips.map(trip => ({...trip, points: [...trip.points]}));
+
+  for (let index = 0; index < adjusted.length; index += 1) {
+    const stay = adjusted[index]!;
+    if (stay.kind !== 'stay' || stay.points.length === 0) {
+      continue;
+    }
+
+    const arrivalIndex = findVisitArrivalIndex(stay.points);
+    const departureIndex = findVisitDepartureEndIndex(stay.points);
+    const approach = stay.points.slice(0, arrivalIndex);
+    const visitCore = stay.points.slice(arrivalIndex, departureIndex + 1);
+    const departureLead = stay.points.slice(departureIndex + 1);
+
+    adjusted[index] =
+      visitCore.length > 0
+        ? makeTrip(visitCore, 'stay', index)
+        : {...stay, points: [], durationMs: 0};
+
+    if (approach.length > 0) {
+      const prevIndex = index - 1;
+      if (prevIndex >= 0 && adjusted[prevIndex]!.kind === 'travel') {
+        const prev = adjusted[prevIndex]!;
+        const drivePoints = [...prev.points, ...approach];
+        if (visitCore.length > 0) {
+          const lastDrive = drivePoints[drivePoints.length - 1];
+          const arrival = visitCore[0]!;
+          if (lastDrive?.id !== arrival.id) {
+            drivePoints.push(arrival);
+          }
+        }
+        adjusted[prevIndex] = makeTrip(drivePoints, 'travel', prevIndex);
+      }
+    }
+
+    if (departureLead.length > 0) {
+      const nextIndex = index + 1;
+      if (nextIndex < adjusted.length && adjusted[nextIndex]!.kind === 'travel') {
+        const next = adjusted[nextIndex]!;
+        adjusted[nextIndex] = makeTrip(
+          [...departureLead, ...next.points],
+          'travel',
+          nextIndex,
+        );
+      }
+    }
+  }
+
+  return adjusted.filter(
+    trip =>
+      trip.points.length > 0 &&
+      (trip.kind === 'stay' || isMeaningfulTravel(trip)),
+  );
+}
+
 function closeStayEndsAtNextLeg(
   trips: DetectedTrip[],
   config: TripDetectionConfig,
@@ -910,7 +1007,8 @@ export function detectTrips(
     config,
   );
   const withoutNoise = dropNoiseTravels(merged);
-  return closeStayEndsAtNextLeg(withoutNoise, config);
+  const bounded = normalizeVisitTravelBoundaries(withoutNoise);
+  return closeStayEndsAtNextLeg(bounded, config);
 }
 
 /** @deprecated Use mergeAdjacentSameAreaStays */
@@ -1100,36 +1198,46 @@ export function getVisitInboundTravelPoints(
   otherStays: DetectedTrip[],
   config: TripDetectionConfig,
 ): LocationPointRow[] {
-  const drivePoints = getTravelDisplayPoints(
+  return getTravelDisplayPoints(
     inboundTravel,
     previousStay,
     otherStays,
     config,
   );
-  if (visit.points.length === 0) {
-    return drivePoints;
+}
+
+/** Minimum gap before drawing the dashed visit connector in history mode. */
+export const VISIT_CONNECTOR_MIN_GAP_M = 8;
+
+/**
+ * History visit map: dashed segment from last GPS on the solid blue path to the
+ * orange pin (centroid). Bridges parking-lot / turn-in gaps with no drive points.
+ */
+export function visitApproachConnectorCoordinates(
+  routePoints: LocationPointRow[],
+  visit: DetectedTrip,
+  minGapM = VISIT_CONNECTOR_MIN_GAP_M,
+): {latitude: number; longitude: number}[] | null {
+  if (routePoints.length === 0 || visit.points.length === 0) {
+    return null;
   }
 
-  const sortedVisit = [...visit.points].sort(
-    (a, b) => a.timestamp.getTime() - b.timestamp.getTime(),
-  );
-  const arrivalM = config.dwellRadiusMeters + 5;
-  const centroid = stayTripCentroid(visit);
-  const approach: LocationPointRow[] = [];
+  const last = routePoints[routePoints.length - 1]!;
+  const target = stayTripMarkerCoordinate(visit);
+  const gapM =
+    distanceKm(
+      {lat: last.lat, lng: last.lng},
+      {lat: target.latitude, lng: target.longitude},
+    ) * 1000;
 
-  for (const point of sortedVisit) {
-    approach.push(point);
-    const distToCentroidM =
-      distanceKm(
-        {lat: point.lat, lng: point.lng},
-        {lat: centroid.latitude, lng: centroid.longitude},
-      ) * 1000;
-    if (distToCentroidM <= arrivalM) {
-      break;
-    }
+  if (gapM < minGapM) {
+    return null;
   }
 
-  return appendVisitApproachToRoute(drivePoints, approach);
+  return [
+    {latitude: last.lat, longitude: last.lng},
+    {latitude: target.latitude, longitude: target.longitude},
+  ];
 }
 
 /** Radius for picking the densest visit cluster (ignores approach/departure along roads). */

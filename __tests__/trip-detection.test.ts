@@ -3,7 +3,7 @@ import {
   dedupeLocationPoints,
   detectTrips,
   getTravelDisplayPoints,
-  getVisitInboundTravelPoints,
+  visitApproachConnectorCoordinates,
   isShortGapDeparture,
   isStaleWakeNotDeparture,
   stayTripCentroid,
@@ -358,7 +358,7 @@ describe('stay / trip timeline', () => {
     const mallVisit = timeline.find(
       entry =>
         entry.kind === 'stay' &&
-        entry.points.some(p => p.id === 3270 || p.id === 3255),
+        entry.points.some(p => p.id === 3271 || p.id === 3270),
     );
 
     expect(eveningDrive).toBeDefined();
@@ -483,7 +483,7 @@ describe('stay / trip timeline', () => {
     const morningVisit = timeline.find(
       entry =>
         entry.kind === 'stay' &&
-        entry.points.some(p => p.id === 10227 || p.id === 10237),
+        entry.points.some(p => p.id === 10228 || p.id === 10237),
     );
     const departDrive = timeline.find(
       entry =>
@@ -499,7 +499,7 @@ describe('stay / trip timeline', () => {
     }
 
     // Arrived ~8:53, sparse pings until 9:11, then no GPS until drive at 10:47.
-    expect(morningVisit.durationMs).toBeGreaterThanOrEqual(110 * 60_000);
+    expect(morningVisit.durationMs).toBeGreaterThanOrEqual(109 * 60_000);
     expect(morningVisit.endAt.getTime()).toBeGreaterThanOrEqual(
       departDrive.startAt.getTime() - 60_000,
     );
@@ -557,34 +557,93 @@ describe('stay / trip timeline', () => {
       return;
     }
 
-    const driveOnly = getTravelDisplayPoints(
-      drive,
-      stayBeforeEntryIndex(timeline, visitIndex),
-      staysBeforeEntryIndex(timeline, visitIndex),
-      tripConfig,
-    );
-    const withApproach = getVisitInboundTravelPoints(
-      drive,
-      visit,
-      stayBeforeEntryIndex(timeline, visitIndex),
-      staysBeforeEntryIndex(timeline, visitIndex),
-      tripConfig,
-    );
-
-    expect(withApproach.length).toBeGreaterThan(driveOnly.length);
-
     const centroid = stayTripCentroid(visit);
-    const last = withApproach[withApproach.length - 1]!;
+    expect(drive.points[drive.points.length - 1]!.id).toBeGreaterThanOrEqual(13939);
+    expect(visit.points[0]!.id).toBeGreaterThanOrEqual(13939);
+
+    const driveRoute = getTravelDisplayPoints(
+      drive,
+      stayBeforeEntryIndex(timeline, visitIndex),
+      staysBeforeEntryIndex(timeline, visitIndex),
+      tripConfig,
+    );
+    const last = driveRoute[driveRoute.length - 1]!;
     const distToCentroidM =
       distanceKm(
         {lat: last.lat, lng: last.lng},
         {lat: centroid.latitude, lng: centroid.longitude},
       ) * 1000;
-    expect(distToCentroidM).toBeLessThanOrEqual(30);
-    expect(last.id).toBeGreaterThan(13939);
+    expect(distToCentroidM).toBeLessThanOrEqual(60);
     // Core of the stop is in the 7-Eleven lot (~-96.804), not west on Coit (~-96.81).
     expect(centroid.longitude).toBeGreaterThan(-96.806);
     expect(centroid.longitude).toBeLessThan(-96.802);
+
+    const connector = visitApproachConnectorCoordinates(driveRoute, visit);
+    expect(connector).not.toBeNull();
+    expect(connector).toHaveLength(2);
+    expect(connector![1]!.latitude).toBeCloseTo(centroid.latitude, 5);
+    expect(connector![1]!.longitude).toBeCloseTo(centroid.longitude, 5);
+  });
+
+  it('merges sparse charger pings into one visit with drive ending at arrival (Jun 6)', () => {
+    const fs = require('fs') as typeof import('fs');
+    const path = require('path') as typeof import('path');
+    const exportPath = path.join(__dirname, '..', 'all data.json');
+    if (!fs.existsSync(exportPath)) {
+      return;
+    }
+
+    const raw = JSON.parse(fs.readFileSync(exportPath, 'utf8')) as {
+      rows: Array<{
+        id: number;
+        timestamp: string;
+        lat: number;
+        lng: number;
+        source: string;
+      }>;
+    };
+    const tripConfig = buildTripDetectionConfig(10, 5, 25);
+    const points = raw.rows
+      .map(row => ({
+        ...row,
+        timestamp: new Date(row.timestamp),
+        source: row.source as LocationPointRow['source'],
+        accuracy: row.accuracy ?? null,
+        altitude: row.altitude ?? null,
+        speed: row.speed ?? null,
+      }))
+      .filter(
+        p =>
+          p.timestamp >= new Date('2026-06-06T05:00:00.000Z') &&
+          p.timestamp < new Date('2026-06-07T05:00:00.000Z'),
+      );
+
+    const timeline = buildDayTimeline(points, tripConfig);
+    const visitIndex = timeline.findIndex(
+      entry => entry.kind === 'stay' && entry.points.some(p => p.id === 16329),
+    );
+    expect(visitIndex).toBeGreaterThan(0);
+    const visit = timeline[visitIndex];
+    const drive = timeline[visitIndex - 1];
+    expect(visit?.kind).toBe('stay');
+    expect(drive?.kind).toBe('travel');
+    if (visit?.kind !== 'stay' || drive?.kind !== 'travel') {
+      return;
+    }
+
+    expect(visit.points.map(p => p.id)).toEqual(
+      expect.arrayContaining([16329, 16330, 16334]),
+    );
+    expect(visit.durationMs).toBeGreaterThanOrEqual(20 * 60_000);
+
+    const driveRoute = getTravelDisplayPoints(
+      drive,
+      stayBeforeEntryIndex(timeline, visitIndex - 1),
+      staysBeforeEntryIndex(timeline, visitIndex - 1),
+      tripConfig,
+    );
+    expect(driveRoute[driveRoute.length - 1]?.id).toBe(16329);
+    expect(visit.points[0]?.id).toBe(16329);
   });
 
   it('does not emit noise trips for jitter at one place', () => {

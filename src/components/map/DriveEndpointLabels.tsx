@@ -3,11 +3,15 @@ import {Marker} from 'react-native-maps';
 import {format} from 'date-fns';
 import {StyleSheet, Text, View} from 'react-native';
 
+import {CheckeredFlagIcon} from '@/components/map/CheckeredFlagIcon';
 import type {MapCoordinate} from '@/lib/location-geo';
 
 const MARKER_ANCHOR = {x: 0.5, y: 0.5} as const;
 const DOT_SIZE = 16;
 const DOT_RING_SIZE = 24;
+const FINISH_BADGE_SIZE = 24;
+const FLAG_SIZE = 13;
+const DRIVE_BLUE = '#007AFF';
 
 type DriveEndpointLabelsProps = {
   startCoordinate: MapCoordinate;
@@ -16,19 +20,12 @@ type DriveEndpointLabelsProps = {
   endAt: Date;
 };
 
-type EndpointMarkerProps = {
+type StartMarkerProps = {
   coordinate: MapCoordinate;
   time: Date;
-  centerOffset: {x: number; y: number};
-  caption: string;
 };
 
-function EndpointMarker({
-  coordinate,
-  time,
-  centerOffset,
-  caption,
-}: EndpointMarkerProps) {
+function StartMarker({coordinate, time}: StartMarkerProps) {
   return (
     <>
       <Marker
@@ -44,11 +41,44 @@ function EndpointMarker({
       <Marker
         coordinate={coordinate}
         anchor={MARKER_ANCHOR}
-        centerOffset={centerOffset}
+        centerOffset={{x: 0, y: -40}}
         zIndex={13}
         tracksViewChanges={false}>
         <View style={styles.chip}>
-          <Text style={styles.caption}>{caption}</Text>
+          <Text style={styles.caption}>Start</Text>
+          <Text style={styles.timeText}>{format(time, 'h:mm a')}</Text>
+        </View>
+      </Marker>
+    </>
+  );
+}
+
+function FinishMarker({
+  coordinate,
+  time,
+}: {
+  coordinate: MapCoordinate;
+  time: Date;
+}) {
+  return (
+    <>
+      <Marker
+        coordinate={coordinate}
+        anchor={MARKER_ANCHOR}
+        zIndex={14}
+        tracksViewChanges={false}>
+        <View style={styles.finishBadge}>
+          <CheckeredFlagIcon size={FLAG_SIZE} />
+        </View>
+      </Marker>
+      <Marker
+        coordinate={coordinate}
+        anchor={MARKER_ANCHOR}
+        centerOffset={{x: 0, y: 44}}
+        zIndex={13}
+        tracksViewChanges={false}>
+        <View style={styles.chip}>
+          <Text style={styles.caption}>Finish</Text>
           <Text style={styles.timeText}>{format(time, 'h:mm a')}</Text>
         </View>
       </Marker>
@@ -64,18 +94,8 @@ export const DriveEndpointLabels = memo(function DriveEndpointLabels({
 }: DriveEndpointLabelsProps) {
   return (
     <>
-      <EndpointMarker
-        coordinate={startCoordinate}
-        time={startAt}
-        caption="Start"
-        centerOffset={{x: 0, y: -40}}
-      />
-      <EndpointMarker
-        coordinate={endCoordinate}
-        time={endAt}
-        caption="End"
-        centerOffset={{x: 0, y: 40}}
-      />
+      <StartMarker coordinate={startCoordinate} time={startAt} />
+      <FinishMarker coordinate={endCoordinate} time={endAt} />
     </>
   );
 });
@@ -98,9 +118,24 @@ const styles = StyleSheet.create({
     width: DOT_SIZE,
     height: DOT_SIZE,
     borderRadius: DOT_SIZE / 2,
-    backgroundColor: '#007AFF',
+    backgroundColor: DRIVE_BLUE,
     borderWidth: 2.5,
     borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  finishBadge: {
+    width: FINISH_BADGE_SIZE,
+    height: FINISH_BADGE_SIZE,
+    borderRadius: 7,
+    backgroundColor: DRIVE_BLUE,
+    borderWidth: 2.5,
+    borderColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 1},
     shadowOpacity: 0.2,
@@ -122,7 +157,7 @@ const styles = StyleSheet.create({
   caption: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#007AFF',
+    color: DRIVE_BLUE,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
   },

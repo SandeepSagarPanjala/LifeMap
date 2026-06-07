@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {useCallback, useMemo, useState} from 'react';
 import {
   type LayoutChangeEvent,
   Pressable,
@@ -6,7 +6,6 @@ import {
   Text,
   View,
 } from 'react-native';
-import {Gesture, GestureDetector} from 'react-native-gesture-handler';
 import {ChevronLeft, ChevronRight} from 'lucide-react-native';
 
 import type {DayTimelineEntry} from '@/lib/trip-detection';
@@ -15,26 +14,27 @@ import {
   shiftDateKey,
 } from '@/lib/day-utils';
 import {
-  ANCHOR_SIZE_PX,
   buildHistoryDayRuler,
-  clampAnchorPx,
   formatHistoryDayTitle,
   HISTORY_COLORS,
-  selectionAtAnchorPx,
+  historySegmentColor,
 } from '@/lib/history-timeline';
 
 const HORIZONTAL_PADDING = 16;
+const EVENT_NAV_BTN_WIDTH = 40;
+const EVENT_NAV_CIRCLE_SIZE = 32;
 const TRACK_HEIGHT = 36;
 const LABEL_HEIGHT = 14;
 const TICK_BAND_HEIGHT = 12;
-const FALLBACK_BAR_WIDTH = 320;
+const FALLBACK_BAR_WIDTH = 260;
+/** Selected segment rises slightly above the track. */
+const SELECTED_SEGMENT_LIFT = 4;
 
 type HistoryTimelineBarProps = {
   dateKey: string;
   entries: DayTimelineEntry[];
   selectedIndex: number;
   onSelectIndex: (index: number) => void;
-  onScrubActiveChange?: (active: boolean) => void;
   onDateKeyChange: (dateKey: string) => void;
   onOpenDatePicker: () => void;
 };
@@ -44,141 +44,31 @@ export function HistoryTimelineBar({
   entries,
   selectedIndex,
   onSelectIndex,
-  onScrubActiveChange,
   onDateKeyChange,
   onOpenDatePicker,
 }: HistoryTimelineBarProps) {
   const [barWidth, setBarWidth] = useState(FALLBACK_BAR_WIDTH);
-  const barWidthRef = useRef(barWidth);
   const now = useMemo(() => new Date(), [entries, dateKey]);
 
   const ruler = useMemo(
     () => buildHistoryDayRuler(entries, dateKey, barWidth, now),
     [barWidth, dateKey, entries, now],
   );
-  const rulerRef = useRef(ruler);
-  const entriesRef = useRef(entries);
-  const onSelectIndexRef = useRef(onSelectIndex);
-  const onScrubActiveChangeRef = useRef(onScrubActiveChange);
-  const lastReportedIndexRef = useRef<number | null>(null);
 
   const dayTitle = formatHistoryDayTitle(dateKey, now);
   const isToday = dateKey === getTodayDateKey();
   const canGoNextDay = !isToday;
-
-  const [anchorPx, setAnchorPx] = useState(barWidth / 2);
-  const isDraggingRef = useRef(false);
-  const hasManualScrubRef = useRef(false);
+  const hasEntries = entries.length > 0;
 
   const trackTop = LABEL_HEIGHT + TICK_BAND_HEIGHT;
-  const scrubHeight = trackTop + TRACK_HEIGHT;
+  const barHeight = trackTop + TRACK_HEIGHT;
 
-  useEffect(() => {
-    barWidthRef.current = barWidth;
-  }, [barWidth]);
-
-  useEffect(() => {
-    rulerRef.current = ruler;
-  }, [ruler]);
-
-  useEffect(() => {
-    entriesRef.current = entries;
-  }, [entries]);
-
-  useEffect(() => {
-    onSelectIndexRef.current = onSelectIndex;
-  }, [onSelectIndex]);
-
-  useEffect(() => {
-    onScrubActiveChangeRef.current = onScrubActiveChange;
-  }, [onScrubActiveChange]);
-
-  useEffect(() => {
-    lastReportedIndexRef.current = selectedIndex;
-  }, [selectedIndex]);
-
-  const reportSelectedIndex = useCallback((index: number) => {
-    if (lastReportedIndexRef.current === index) {
-      return;
-    }
-    lastReportedIndexRef.current = index;
-    onSelectIndexRef.current(index);
-  }, []);
-
-  const handleScrubLayout = useCallback((event: LayoutChangeEvent) => {
+  const handleTrackLayout = useCallback((event: LayoutChangeEvent) => {
     const {width} = event.nativeEvent.layout;
     if (width > 0) {
       setBarWidth(width);
     }
   }, []);
-
-  const moveScrubToBarPx = useCallback(
-    (px: number, reportSelection = true) => {
-      const width = barWidthRef.current;
-      const clamped = clampAnchorPx(px, width);
-      setAnchorPx(clamped);
-      if (reportSelection) {
-        reportSelectedIndex(
-          selectionAtAnchorPx(rulerRef.current, clamped, entriesRef.current),
-        );
-      }
-    },
-    [reportSelectedIndex],
-  );
-
-  const beginScrub = useCallback(() => {
-    isDraggingRef.current = true;
-    hasManualScrubRef.current = true;
-    onScrubActiveChangeRef.current?.(true);
-  }, []);
-
-  const endScrub = useCallback(() => {
-    isDraggingRef.current = false;
-    hasManualScrubRef.current = true;
-    onScrubActiveChangeRef.current?.(false);
-  }, []);
-
-  const scrubGesture = useMemo(
-    () =>
-      Gesture.Pan()
-        .minDistance(0)
-        .runOnJS(true)
-        .onBegin(event => {
-          beginScrub();
-          moveScrubToBarPx(event.x);
-        })
-        .onUpdate(event => {
-          moveScrubToBarPx(event.x);
-        })
-        .onFinalize(() => {
-          endScrub();
-        }),
-    [beginScrub, endScrub, moveScrubToBarPx],
-  );
-
-  const snapPxForDay = useCallback(() => {
-    if (isToday) {
-      return (
-        ruler.nowLeftPx ??
-        (ruler.segments.length > 0
-          ? ruler.segments[ruler.segments.length - 1]!.leftPx +
-            ruler.segments[ruler.segments.length - 1]!.widthPx / 2
-          : barWidth / 2)
-      );
-    }
-    return clampAnchorPx(0, barWidth);
-  }, [barWidth, isToday, ruler]);
-
-  useEffect(() => {
-    hasManualScrubRef.current = false;
-  }, [dateKey]);
-
-  useEffect(() => {
-    if (isDraggingRef.current || hasManualScrubRef.current) {
-      return;
-    }
-    moveScrubToBarPx(snapPxForDay());
-  }, [dateKey, moveScrubToBarPx, snapPxForDay]);
 
   const goPrevDay = useCallback(() => {
     onDateKeyChange(shiftDateKey(dateKey, -1));
@@ -190,8 +80,37 @@ export function HistoryTimelineBar({
     }
   }, [canGoNextDay, dateKey, onDateKeyChange]);
 
-  const anchorLeft = clampAnchorPx(anchorPx, barWidth);
-  const anchorTop = trackTop + TRACK_HEIGHT / 2 - ANCHOR_SIZE_PX / 2;
+  const goPrevEvent = useCallback(() => {
+    if (!hasEntries) {
+      return;
+    }
+    if (selectedIndex < 0) {
+      onSelectIndex(entries.length - 1);
+      return;
+    }
+    if (selectedIndex > 0) {
+      onSelectIndex(selectedIndex - 1);
+    }
+  }, [entries.length, hasEntries, onSelectIndex, selectedIndex]);
+
+  const goNextEvent = useCallback(() => {
+    if (!hasEntries) {
+      return;
+    }
+    if (selectedIndex < 0) {
+      onSelectIndex(0);
+      return;
+    }
+    if (selectedIndex < entries.length - 1) {
+      onSelectIndex(selectedIndex + 1);
+    }
+  }, [entries.length, hasEntries, onSelectIndex, selectedIndex]);
+
+  const canGoPrevEvent =
+    hasEntries && (selectedIndex < 0 || selectedIndex > 0);
+  const canGoNextEvent =
+    hasEntries &&
+    (selectedIndex < 0 || selectedIndex < entries.length - 1);
 
   return (
     <View style={styles.wrap}>
@@ -220,99 +139,120 @@ export function HistoryTimelineBar({
         </Pressable>
       </View>
 
-      <View
-        collapsable={false}
-        onLayout={handleScrubLayout}
-        style={[styles.scrubArea, {height: scrubHeight}]}>
-        <View pointerEvents="none" style={[styles.labelRow, styles.fullWidth, {height: LABEL_HEIGHT}]}>
-          {ruler.ticks
-            .filter(tick => tick.label != null)
-            .map(tick => (
-              <Text
-                key={`label-${tick.hour}`}
-                style={[styles.majorLabel, {left: tick.leftPx - 18}]}>
-                {tick.label}
-              </Text>
-            ))}
-        </View>
-
-        <View
-          pointerEvents="none"
-          style={[
-            styles.tickBand,
-            styles.fullWidth,
-            {height: TICK_BAND_HEIGHT, top: LABEL_HEIGHT},
-          ]}>
-          {ruler.ticks.map(tick => (
-            <View
-              key={`tick-${tick.hour}`}
-              style={[
-                tick.kind === 'major' ? styles.tickMajor : styles.tickMinor,
-                {left: tick.leftPx},
-              ]}
+      <View style={[styles.barRow, {height: barHeight}]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Previous event"
+          disabled={!canGoPrevEvent}
+          onPress={goPrevEvent}
+          style={[styles.eventNavBtn, !canGoPrevEvent && styles.eventNavBtnDisabled]}>
+          <View style={styles.eventNavCircle}>
+            <ChevronLeft
+              size={18}
+              color={HISTORY_COLORS.playhead}
+              strokeWidth={2.5}
             />
-          ))}
-        </View>
+          </View>
+        </Pressable>
 
         <View
-          pointerEvents="none"
-          style={[
-            styles.trackRow,
-            styles.fullWidth,
-            {height: TRACK_HEIGHT, top: trackTop},
-          ]}>
-          <View style={[styles.track, styles.fullWidth]} />
-          {ruler.segments.map((segment, segmentIndex) => {
-            const color =
-              segment.kind === 'stay'
-                ? HISTORY_COLORS.stay
-                : segment.kind === 'travel'
-                  ? HISTORY_COLORS.travel
-                  : HISTORY_COLORS.gap;
-            const selected = segment.entryIndex === selectedIndex;
-            const isFirst = segmentIndex === 0;
-            const isLast = segmentIndex === ruler.segments.length - 1;
-            const edgeRadius = TRACK_HEIGHT / 2;
+          collapsable={false}
+          onLayout={handleTrackLayout}
+          style={[styles.trackArea, {height: barHeight}]}>
+          <View
+            pointerEvents="none"
+            style={[styles.labelRow, styles.fullWidth, {height: LABEL_HEIGHT}]}>
+            {ruler.ticks
+              .filter(tick => tick.label != null)
+              .map(tick => (
+                <Text
+                  key={`label-${tick.hour}`}
+                  style={[styles.majorLabel, {left: tick.leftPx - 18}]}>
+                  {tick.label}
+                </Text>
+              ))}
+          </View>
 
-            return (
+          <View
+            pointerEvents="none"
+            style={[
+              styles.tickBand,
+              styles.fullWidth,
+              {height: TICK_BAND_HEIGHT, top: LABEL_HEIGHT},
+            ]}>
+            {ruler.ticks.map(tick => (
               <View
-                key={`${segment.entryIndex}-${segment.startAt.getTime()}`}
+                key={`tick-${tick.hour}`}
                 style={[
-                  styles.fill,
-                  {
-                    left: segment.leftPx,
-                    width: segment.widthPx,
-                    backgroundColor: color,
-                    opacity: selected ? 1 : 0.88,
-                    borderTopLeftRadius: isFirst ? edgeRadius : 0,
-                    borderBottomLeftRadius: isFirst ? edgeRadius : 0,
-                    borderTopRightRadius: isLast ? edgeRadius : 0,
-                    borderBottomRightRadius: isLast ? edgeRadius : 0,
-                  },
+                  tick.kind === 'major' ? styles.tickMajor : styles.tickMinor,
+                  {left: tick.leftPx},
                 ]}
               />
-            );
-          })}
+            ))}
+          </View>
+
+          <View
+            style={[
+              styles.trackRow,
+              styles.fullWidth,
+              {height: TRACK_HEIGHT, top: trackTop},
+            ]}>
+            <View pointerEvents="none" style={[styles.track, styles.fullWidth]} />
+            {ruler.segments.map((segment, segmentIndex) => {
+              const selected = segment.entryIndex === selectedIndex;
+              const color = historySegmentColor(segment.kind, selected);
+              const isFirst = segmentIndex === 0;
+              const isLast = segmentIndex === ruler.segments.length - 1;
+              const segmentHeight = selected
+                ? TRACK_HEIGHT + SELECTED_SEGMENT_LIFT * 2
+                : TRACK_HEIGHT;
+              const edgeRadius = segmentHeight / 2;
+
+              return (
+                <Pressable
+                  key={`${segment.entryIndex}-${segment.startAt.getTime()}`}
+                  accessibilityRole="button"
+                  accessibilityState={{selected}}
+                  onPress={() => onSelectIndex(segment.entryIndex)}
+                  style={[
+                    styles.fill,
+                    selected && styles.fillSelected,
+                    {
+                      left: segment.leftPx,
+                      width: segment.widthPx,
+                      top: selected ? -SELECTED_SEGMENT_LIFT : 0,
+                      height: segmentHeight,
+                      backgroundColor: color,
+                      borderTopLeftRadius: isFirst ? edgeRadius : 0,
+                      borderBottomLeftRadius: isFirst ? edgeRadius : 0,
+                      borderTopRightRadius: isLast ? edgeRadius : 0,
+                      borderBottomRightRadius: isLast ? edgeRadius : 0,
+                      borderWidth: selected ? 2 : 0,
+                      borderColor: selected
+                        ? HISTORY_COLORS.segmentSelectedBorder
+                        : 'transparent',
+                    },
+                  ]}
+                />
+              );
+            })}
+          </View>
         </View>
 
-        <View
-          pointerEvents="none"
-          style={[
-            styles.anchorStem,
-            {left: anchorLeft, top: trackTop, height: TRACK_HEIGHT},
-          ]}
-        />
-        <View
-          pointerEvents="none"
-          style={[
-            styles.anchor,
-            {left: anchorLeft - ANCHOR_SIZE_PX / 2, top: anchorTop},
-          ]}
-        />
-
-        <GestureDetector gesture={scrubGesture}>
-          <View collapsable={false} style={styles.touchLayer} />
-        </GestureDetector>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Next event"
+          disabled={!canGoNextEvent}
+          onPress={goNextEvent}
+          style={[styles.eventNavBtn, !canGoNextEvent && styles.eventNavBtnDisabled]}>
+          <View style={styles.eventNavCircle}>
+            <ChevronRight
+              size={18}
+              color={HISTORY_COLORS.playhead}
+              strokeWidth={2.5}
+            />
+          </View>
+        </Pressable>
       </View>
     </View>
   );
@@ -348,16 +288,41 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: HISTORY_COLORS.playhead,
   },
-  scrubArea: {
+  barRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+  },
+  eventNavBtn: {
+    width: EVENT_NAV_BTN_WIDTH,
+    height: TRACK_HEIGHT,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  eventNavCircle: {
+    width: EVENT_NAV_CIRCLE_SIZE,
+    height: EVENT_NAV_CIRCLE_SIZE,
+    borderRadius: EVENT_NAV_CIRCLE_SIZE / 2,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: HISTORY_COLORS.trackEdge,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  eventNavBtnDisabled: {
+    opacity: 0.35,
+  },
+  trackArea: {
+    flex: 1,
     position: 'relative',
-    width: '100%',
+    marginHorizontal: 4,
   },
   fullWidth: {
     width: '100%',
-  },
-  touchLayer: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 10,
   },
   labelRow: {
     position: 'relative',
@@ -409,26 +374,12 @@ const styles = StyleSheet.create({
     height: TRACK_HEIGHT,
     zIndex: 1,
   },
-  anchorStem: {
-    position: 'absolute',
-    width: 2,
-    marginLeft: -1,
-    backgroundColor: HISTORY_COLORS.playhead,
-    zIndex: 3,
-  },
-  anchor: {
-    position: 'absolute',
-    width: ANCHOR_SIZE_PX,
-    height: ANCHOR_SIZE_PX,
-    borderRadius: ANCHOR_SIZE_PX / 2,
-    backgroundColor: HISTORY_COLORS.anchor,
-    borderWidth: 2,
-    borderColor: HISTORY_COLORS.anchorBorder,
-    zIndex: 4,
+  fillSelected: {
+    zIndex: 2,
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 1},
-    shadowOpacity: 0.25,
-    shadowRadius: 3,
-    elevation: 5,
+    shadowOpacity: 0.16,
+    shadowRadius: 2,
+    elevation: 2,
   },
 });
