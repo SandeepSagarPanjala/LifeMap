@@ -2,7 +2,6 @@ import type {LocationPointRow} from '@/db/repositories/location-days';
 import {
   bearingDegrees,
   distanceKm,
-  toMapCoordinates,
   type LocationPointLike,
   type MapCoordinate,
 } from '@/lib/location-geo';
@@ -59,77 +58,6 @@ function buildCumulativeDistanceKm(points: LocationPointRow[]): number[] {
     );
   }
   return cumulative;
-}
-
-type ResolvedPlayback = {
-  coordinate: MapCoordinate;
-  pointIndex: number;
-  interpolatedAt: Date;
-};
-
-/** Progress 0–1 moves at constant speed along the path (not wall-clock time). */
-function resolvePlaybackPosition(
-  points: LocationPointRow[],
-  progress: number,
-): ResolvedPlayback | null {
-  if (points.length === 0) {
-    return null;
-  }
-
-  const clamped = Math.min(1, Math.max(0, progress));
-  if (points.length === 1) {
-    const point = points[0]!;
-    return {
-      coordinate: {latitude: point.lat, longitude: point.lng},
-      pointIndex: 0,
-      interpolatedAt: point.timestamp,
-    };
-  }
-
-  const cumulative = buildCumulativeDistanceKm(points);
-  const totalKm = cumulative[cumulative.length - 1] ?? 0;
-
-  if (totalKm <= 0) {
-    const point = points[0]!;
-    return {
-      coordinate: {latitude: point.lat, longitude: point.lng},
-      pointIndex: 0,
-      interpolatedAt: point.timestamp,
-    };
-  }
-
-  const targetKm = clamped * totalKm;
-
-  for (let index = 0; index < points.length - 1; index += 1) {
-    const startKm = cumulative[index]!;
-    const endKm = cumulative[index + 1]!;
-    if (targetKm > endKm) {
-      continue;
-    }
-
-    const segmentKm = Math.max(endKm - startKm, 0);
-    const t = segmentKm > 0 ? (targetKm - startKm) / segmentKm : 0;
-    const a = points[index]!;
-    const b = points[index + 1]!;
-    const aMs = a.timestamp.getTime();
-    const bMs = b.timestamp.getTime();
-
-    return {
-      coordinate: {
-        latitude: lerp(a.lat, b.lat, t),
-        longitude: lerp(a.lng, b.lng, t),
-      },
-      pointIndex: index,
-      interpolatedAt: new Date(lerp(aMs, bMs, t)),
-    };
-  }
-
-  const last = points[points.length - 1]!;
-  return {
-    coordinate: {latitude: last.lat, longitude: last.lng},
-    pointIndex: points.length - 1,
-    interpolatedAt: last.timestamp,
-  };
 }
 
 /** Horizontal travel → top/bottom; vertical travel → left/right. */

@@ -599,6 +599,9 @@ describe('stay / trip timeline', () => {
         timestamp: string;
         lat: number;
         lng: number;
+        accuracy: number | null;
+        altitude: number | null;
+        speed: number | null;
         source: string;
       }>;
     };

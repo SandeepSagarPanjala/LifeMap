@@ -43,6 +43,9 @@ npm-debug.log
 pnpm-debug.log*
 yarn-error.log
 
+# Local GPS export — personal data, keep on disk only
+all data.json
+
 # Local secrets (copy from src/config/env.local.example.ts)
 src/config/env.local.ts
 .env

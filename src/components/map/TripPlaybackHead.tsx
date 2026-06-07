@@ -43,7 +43,7 @@ export function TripPlaybackHead({
       coordinate,
       PLAYBACK_MARKER_FRAME_MS,
     );
-  }, [coordinate.latitude, coordinate.longitude]);
+  }, [coordinate]);
 
   return (
     <>

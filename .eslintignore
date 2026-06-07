@@ -1,0 +1,7 @@
+node_modules/
+coverage/
+android/
+ios/
+**/Pods/
+point-explorer/dist/
+point-explorer/node_modules/

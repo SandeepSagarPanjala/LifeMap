@@ -54,7 +54,7 @@ function FlyToSelected({
     }
     const zoom = Math.max(map.getZoom(), 16);
     map.flyTo([point.lat, point.lng], zoom, {duration: 0.35});
-  }, [enabled, map, point?.id, point?.lat, point?.lng]);
+  }, [enabled, map, point]);
 
   return null;
 }
@@ -75,7 +75,7 @@ function SelectedMarkerPopup({
     }
     markerRef.current?.bringToFront();
     markerRef.current?.openPopup();
-  }, [enabled, point?.id]);
+  }, [enabled, point]);
 
   if (!enabled || point == null) {
     return null;

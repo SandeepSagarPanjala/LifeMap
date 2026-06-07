@@ -1,5 +1,5 @@
 import {format, parseISO} from 'date-fns';
-import {Pressable, ScrollView, View} from 'react-native';
+import {Pressable, ScrollView} from 'react-native';
 
 import type {DaySummary} from '@/db/repositories/location-days';
 import {Text} from '@/components/ui/text';

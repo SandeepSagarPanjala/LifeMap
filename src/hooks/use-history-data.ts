@@ -24,13 +24,6 @@ import type {TripDetectionConfig} from '@/lib/trip-settings';
 
 export type {HistoryData} from '@/lib/history-data-types';
 
-const EMPTY: HistoryData = {
-  dateKey: getTodayDateKey(),
-  points: [],
-  entries: [],
-  range: {startAt: new Date(), endAt: new Date()},
-};
-
 function emptyForDateKey(dateKey: string): HistoryData {
   const {start: dayStart} = getDayRange(dateKey);
   return {

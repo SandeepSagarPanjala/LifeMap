@@ -53,7 +53,6 @@ describe('prepareTodayHistoryTimeline', () => {
 
   it('extends last stay through end of day on a past day with no later saves', () => {
     const dayKey = '2026-06-03';
-    const dayStart = new Date('2026-06-03T05:00:00.000Z');
     const lastPing = new Date('2026-06-04T04:12:13.000Z');
     const now = new Date('2026-06-04T12:00:00.000Z');
     const dayPoints = [

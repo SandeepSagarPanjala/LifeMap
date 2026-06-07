@@ -49,7 +49,7 @@ export function HistoryTimelineBar({
   onOpenDatePicker,
 }: HistoryTimelineBarProps) {
   const [barWidth, setBarWidth] = useState(FALLBACK_BAR_WIDTH);
-  const now = useMemo(() => new Date(), [entries, dateKey]);
+  const now = useMemo(() => new Date(), []);
 
   const ruler = useMemo(
     () => buildHistoryDayRuler(entries, dateKey, barWidth, now),

@@ -43,7 +43,6 @@ const MIN_TRAVEL_DISTANCE_M = 40;
 
 /** Turn-in faster than this stays on the drive path; slower = parked (visit starts). */
 const VISIT_ARRIVAL_SPEED_MS = 2;
-const VISIT_DEPARTURE_SPEED_MS = 2;
 
 /**
  * Max distance from the arrival save for one visit envelope.
@@ -1157,34 +1156,6 @@ export function getTravelDisplayPoints(
   }
 
   return points;
-}
-
-function appendVisitApproachToRoute(
-  drivePoints: LocationPointRow[],
-  approach: LocationPointRow[],
-): LocationPointRow[] {
-  if (approach.length === 0) {
-    return drivePoints;
-  }
-  if (drivePoints.length === 0) {
-    return approach;
-  }
-
-  const lastDrive = drivePoints[drivePoints.length - 1]!;
-  let start = 0;
-  while (start < approach.length) {
-    const point = approach[start]!;
-    if (
-      point.id === lastDrive.id ||
-      distanceKm(lastDrive, point) * 1000 < 3
-    ) {
-      start += 1;
-      continue;
-    }
-    break;
-  }
-
-  return [...drivePoints, ...approach.slice(start)];
 }
 
 /**

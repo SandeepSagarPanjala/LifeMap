@@ -1,5 +1,3 @@
-import {format} from 'date-fns';
-
 import type {LocationPointRow} from '@/db/repositories/location-days';
 
 export type LocationExportScope = 'today' | 'all';
