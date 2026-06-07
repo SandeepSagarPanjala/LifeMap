@@ -1,14 +1,12 @@
 import {
-  addDays,
   differenceInCalendarDays,
   endOfDay,
   format,
   isToday,
   isYesterday,
-  startOfDay,
 } from 'date-fns';
 
-import {parseDateKey, toDateKey} from '@/lib/day-utils';
+import {parseDateKey, getDayRange, shiftDateKey, toDateKey} from '@/lib/day-utils';
 import type {DayTimelineEntry} from '@/lib/trip-detection';
 import {isVisitOngoing} from '@/lib/trip-format';
 
@@ -413,12 +411,12 @@ function clipEntryToDay(
 
 function listCalendarDays(rangeStart: Date, rangeEnd: Date): Date[] {
   const days: Date[] = [];
-  let cursor = startOfDay(rangeStart);
-  const last = startOfDay(rangeEnd);
+  let dateKey = toDateKey(rangeStart);
+  const lastKey = toDateKey(rangeEnd);
 
-  while (cursor.getTime() <= last.getTime()) {
-    days.push(cursor);
-    cursor = addDays(cursor, 1);
+  while (dateKey <= lastKey) {
+    days.push(parseDateKey(dateKey));
+    dateKey = shiftDateKey(dateKey, 1);
   }
 
   return days;
@@ -430,9 +428,7 @@ export function buildHistoryDayRuler(
   barWidthPx: number,
   now: Date = new Date(),
 ): HistoryDayRuler {
-  const day = parseDateKey(dateKey);
-  const dayStart = startOfDay(day);
-  const dayEnd = endOfDay(day);
+  const {start: dayStart, end: dayEnd} = getDayRange(dateKey);
   const raw: HistoryDaySegment[] = [];
 
   for (let index = 0; index < entries.length; index += 1) {
@@ -461,10 +457,10 @@ export function buildHistoryDayRuler(
   return {
     dateKey,
     dayStart,
-    label: formatDayRulerLabel(day, now),
+    label: formatDayRulerLabel(dayStart, now),
     segments,
     ticks: buildRulerTicks(dayStart, breakpoints, barWidthPx),
-    nowLeftPx: isToday(day) ? timeToBarPx(now, breakpoints) : null,
+    nowLeftPx: isToday(dayStart) ? timeToBarPx(now, breakpoints) : null,
     barWidthPx,
   };
 }

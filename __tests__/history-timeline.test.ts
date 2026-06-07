@@ -12,9 +12,11 @@ import {
 import type {DayTimelineEntry} from '../src/lib/trip-detection';
 
 const BAR_WIDTH = 300;
+
+// Jun 3, 2026 — America/Chicago (CDT, UTC-5)
 const range = {
-  startAt: new Date('2026-06-03T00:00:00'),
-  endAt: new Date('2026-06-03T14:00:00'),
+  startAt: new Date('2026-06-03T05:00:00.000Z'), // midnight CDT
+  endAt: new Date('2026-06-03T19:00:00.000Z'), // 2 PM CDT
 };
 
 const entries: DayTimelineEntry[] = [
@@ -22,8 +24,8 @@ const entries: DayTimelineEntry[] = [
     id: 'stay-0',
     kind: 'stay',
     points: [],
-    startAt: new Date('2026-06-03T08:00:00'),
-    endAt: new Date('2026-06-03T10:00:00'),
+    startAt: new Date('2026-06-03T13:00:00.000Z'), // 8 AM CDT
+    endAt: new Date('2026-06-03T15:00:00.000Z'), // 10 AM CDT
     durationMs: 2 * 3_600_000,
     distanceKm: 0,
   },
@@ -31,20 +33,20 @@ const entries: DayTimelineEntry[] = [
     id: 'travel-1',
     kind: 'travel',
     points: [],
-    startAt: new Date('2026-06-03T10:00:00'),
-    endAt: new Date('2026-06-03T10:30:00'),
+    startAt: new Date('2026-06-03T15:00:00.000Z'), // 10 AM CDT
+    endAt: new Date('2026-06-03T15:30:00.000Z'), // 10:30 AM CDT
     durationMs: 30 * 60_000,
     distanceKm: 3,
   },
 ];
 
 describe('history day rulers', () => {
-  const now = new Date('2026-06-03T14:00:00');
+  const now = new Date('2026-06-03T20:00:00.000Z'); // 3 PM CDT
 
   it('maps 8 AM to the correct position on linear midnight scale', () => {
-    const dayStart = new Date('2026-06-03T00:00:00');
+    const dayStart = new Date('2026-06-03T05:00:00.000Z');
     const px = calendarTimeToRulerPx(
-      new Date('2026-06-03T08:00:00'),
+      new Date('2026-06-03T13:00:00.000Z'),
       dayStart,
       BAR_WIDTH,
     );
@@ -104,8 +106,8 @@ describe('history day rulers', () => {
       id: 'travel-short',
       kind: 'travel',
       points: [],
-      startAt: new Date('2026-06-03T10:00:00'),
-      endAt: new Date('2026-06-03T10:05:00'),
+      startAt: new Date('2026-06-03T15:00:00.000Z'),
+      endAt: new Date('2026-06-03T15:05:00.000Z'),
       durationMs: 5 * 60_000,
       distanceKm: 1,
     };
@@ -129,16 +131,16 @@ describe('history day rulers', () => {
         {
           entryIndex: 0,
           kind: 'stay',
-          startAt: new Date('2026-06-03T08:00:00'),
-          endAt: new Date('2026-06-03T10:00:00'),
+          startAt: new Date('2026-06-03T13:00:00.000Z'),
+          endAt: new Date('2026-06-03T15:00:00.000Z'),
           leftPx: 0,
           widthPx: 0,
         },
         {
           entryIndex: 1,
           kind: 'travel',
-          startAt: new Date('2026-06-03T10:00:00'),
-          endAt: new Date('2026-06-03T10:05:00'),
+          startAt: new Date('2026-06-03T15:00:00.000Z'),
+          endAt: new Date('2026-06-03T15:05:00.000Z'),
           leftPx: 0,
           widthPx: 0,
         },
@@ -161,11 +163,10 @@ describe('history day rulers', () => {
   });
 
   it('round-trips linear ruler position to calendar time', () => {
-    const dayStart = new Date('2026-06-03T00:00:00');
-    const original = new Date('2026-06-03T15:30:00');
+    const dayStart = new Date('2026-06-03T05:00:00.000Z');
+    const original = new Date('2026-06-03T20:30:00.000Z'); // 3:30 PM CDT
     const px = calendarTimeToRulerPx(original, dayStart, BAR_WIDTH);
     const back = rulerPxToCalendarTime(px, dayStart, BAR_WIDTH);
-    expect(back.getHours()).toBe(15);
-    expect(back.getMinutes()).toBe(30);
+    expect(back.getTime()).toBe(original.getTime());
   });
 });

@@ -1,7 +1,13 @@
+import {TZDate} from '@date-fns/tz';
 import {format} from 'date-fns';
 
 import type {DayTimelineEntry, DetectedTrip} from '@/lib/trip-detection';
 import {formatDistance, type DistanceUnit} from '@/lib/location-geo';
+import {APP_TIMEZONE} from '@/lib/timezone';
+
+function formatAppTime(date: Date, pattern: string): string {
+  return format(new TZDate(date, APP_TIMEZONE), pattern);
+}
 
 export function formatTripDuration(durationMs: number): string {
   const totalMinutes = Math.max(0, Math.round(durationMs / 60_000));
@@ -55,8 +61,8 @@ export function formatVisitTimeRange(
   endAt: Date,
   options?: {now?: Date},
 ): string {
-  const start = format(startAt, 'h:mm a');
-  const end = format(options?.now ?? endAt, 'h:mm a');
+  const start = formatAppTime(startAt, 'h:mm a');
+  const end = formatAppTime(options?.now ?? endAt, 'h:mm a');
   return `${start} to ${end}`;
 }
 
@@ -100,9 +106,9 @@ export function formatStayVisitLabel(
 export function formatTripTimeRange(startAt: Date, endAt: Date): string {
   const safeEnd = endAt.getTime() >= startAt.getTime() ? endAt : startAt;
   if (safeEnd.getTime() === startAt.getTime()) {
-    return format(startAt, 'h:mm a');
+    return formatAppTime(startAt, 'h:mm a');
   }
-  return `${format(startAt, 'h:mm a')} – ${format(safeEnd, 'h:mm a')}`;
+  return `${formatAppTime(startAt, 'h:mm a')} – ${formatAppTime(safeEnd, 'h:mm a')}`;
 }
 
 export function formatTimelineKindLabel(entry: DayTimelineEntry): string {
@@ -140,7 +146,7 @@ export function formatTimelineStats(
 
   if (entry.kind === 'stay') {
     if (entry.durationMs < 60_000 && entry.points.length <= 1) {
-      return `Saved at ${format(entry.startAt, 'h:mm a')}`;
+      return `Saved at ${formatAppTime(entry.startAt, 'h:mm a')}`;
     }
     return formatTripDuration(entry.durationMs);
   }
