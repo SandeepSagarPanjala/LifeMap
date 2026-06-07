@@ -79,7 +79,32 @@ export async function getDaySummaries(): Promise<DaySummary[]> {
   return buildSummariesFromRows(rows);
 }
 
-/** Lightweight calendar dots — timestamps only, no distance math. */
+/** Calendar dots for a date range (e.g. one visible month). */
+export async function getDateKeysWithLocationDataInRange(
+  rangeStart: Date,
+  rangeEnd: Date,
+): Promise<string[]> {
+  const db = await getDatabase();
+  const rows = await db
+    .select({timestamp: locationPoints.timestamp})
+    .from(locationPoints)
+    .where(
+      and(
+        gte(locationPoints.timestamp, rangeStart),
+        lte(locationPoints.timestamp, rangeEnd),
+      ),
+    );
+  const keys = new Set<string>();
+  for (const row of rows) {
+    keys.add(toDateKey(row.timestamp));
+  }
+  return [...keys].sort((a, b) => b.localeCompare(a));
+}
+
+/**
+ * @deprecated Prefer getDateKeysWithLocationDataInRange for calendar UI.
+ * Scans every row — avoid on large multi-year databases.
+ */
 export async function getDateKeysWithLocationData(): Promise<string[]> {
   const db = await getDatabase();
   const rows = await db

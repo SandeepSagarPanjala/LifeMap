@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
 import {
   addMonths,
   eachDayOfInterval,
@@ -24,6 +24,8 @@ import {
 } from 'react-native';
 
 import {Text} from '@/components/ui/text';
+import {SkeletonPulse} from '@/components/ui/skeleton-pulse';
+import {useDateKeysForMonth} from '@/hooks/use-date-keys-for-month';
 import {
   getTodayDateKey,
   parseDateKey,
@@ -37,7 +39,6 @@ const SHEET_OFFSCREEN = 420;
 type HistoryDatePickerSheetProps = {
   visible: boolean;
   selectedDateKey: string;
-  dateKeysWithData: Set<string>;
   onSelectDate: (dateKey: string) => void;
   onClose: () => void;
 };
@@ -45,7 +46,6 @@ type HistoryDatePickerSheetProps = {
 export function HistoryDatePickerSheet({
   visible,
   selectedDateKey,
-  dateKeysWithData,
   onSelectDate,
   onClose,
 }: HistoryDatePickerSheetProps) {
@@ -61,9 +61,15 @@ export function HistoryDatePickerSheet({
   const [visibleMonth, setVisibleMonth] = useState(() =>
     startOfMonth(selectedDay),
   );
+  const {dateKeysWithData, loading: dotsLoading} = useDateKeysForMonth(
+    visibleMonth,
+    visible,
+  );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (visible) {
+      closingRef.current = false;
+      setMounted(true);
       setVisibleMonth(startOfMonth(parseDateKey(selectedDateKey)));
     }
   }, [visible, selectedDateKey]);
@@ -111,23 +117,28 @@ export function HistoryDatePickerSheet({
     [backdropOpacity, sheetTranslateY],
   );
 
+  const closeSheet = useCallback(
+    (afterClose?: () => void) => {
+      if (closingRef.current) {
+        return;
+      }
+      closingRef.current = true;
+      animateOut(() => {
+        closingRef.current = false;
+        setMounted(false);
+        onClose();
+        afterClose?.();
+      });
+    },
+    [animateOut, onClose],
+  );
+
   const dismiss = useCallback(() => {
-    if (closingRef.current) {
-      return;
-    }
-    closingRef.current = true;
-    animateOut(() => {
-      closingRef.current = false;
-      setMounted(false);
-      onClose();
-    });
-  }, [animateOut, onClose]);
+    closeSheet();
+  }, [closeSheet]);
 
   useEffect(() => {
-    if (visible) {
-      closingRef.current = false;
-      setMounted(true);
-    } else if (mounted && !closingRef.current) {
+    if (!visible && mounted && !closingRef.current) {
       closingRef.current = true;
       animateOut(() => {
         closingRef.current = false;
@@ -157,13 +168,11 @@ export function HistoryDatePickerSheet({
     if (isAfter(startOfDay(day), today)) {
       return;
     }
-    onSelectDate(key);
-    dismiss();
+    closeSheet(() => onSelectDate(key));
   };
 
   const goToToday = () => {
-    onSelectDate(todayKey);
-    dismiss();
+    closeSheet(() => onSelectDate(todayKey));
   };
 
   if (!mounted) {
@@ -266,7 +275,10 @@ export function HistoryDatePickerSheet({
                       ]}>
                       {format(day, 'd')}
                     </Text>
-                    {hasData ? (
+                    {dotsLoading && inMonth && !isFuture ? (
+                      <SkeletonPulse style={styles.dataDotSkeleton} />
+                    ) : null}
+                    {!dotsLoading && hasData ? (
                       <View
                         style={[
                           styles.dataDot,
@@ -416,5 +428,12 @@ const styles = StyleSheet.create({
   },
   dataDotSelected: {
     backgroundColor: '#FFFFFF',
+  },
+  dataDotSkeleton: {
+    position: 'absolute',
+    bottom: 4,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
   },
 });

@@ -1,17 +1,19 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {useFocusEffect} from '@react-navigation/native';
 import {endOfDay} from 'date-fns';
-import {AppState, type AppStateStatus} from 'react-native';
+import {AppState, InteractionManager, type AppStateStatus} from 'react-native';
 
 import {
   getLocationDayFingerprint,
   getLocationPointsForDay,
   getLocationPointsInRange,
-  type LocationPointRow,
 } from '@/db/repositories/location-days';
 import {getDayRange, getTodayDateKey} from '@/lib/day-utils';
-import type {DayTimelineEntry} from '@/lib/trip-detection';
-import type {HistoryTimeRange} from '@/lib/history-timeline';
+import type {HistoryData} from '@/lib/history-data-types';
+import {
+  historyCacheKey,
+  historyDataCache,
+} from '@/lib/history-data-cache';
 import {
   getHistoryLookbackStart,
   prepareDayHistoryTimeline,
@@ -19,12 +21,7 @@ import {
 import {useTripDetectionConfig} from '@/hooks/use-trip-detection-config';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
 
-export type HistoryData = {
-  dateKey: string;
-  points: LocationPointRow[];
-  entries: DayTimelineEntry[];
-  range: HistoryTimeRange;
-};
+export type {HistoryData} from '@/lib/history-data-types';
 
 const EMPTY: HistoryData = {
   dateKey: getTodayDateKey(),
@@ -33,14 +30,14 @@ const EMPTY: HistoryData = {
   range: {startAt: new Date(), endAt: new Date()},
 };
 
-const historyCache = new Map<string, HistoryData>();
-const fingerprintCache = new Map<string, string>();
-
-function historyCacheKey(
-  dateKey: string,
-  detectionConfig: TripDetectionConfig,
-): string {
-  return `${dateKey}:${detectionConfig.dwellMinutes}:${detectionConfig.dwellRadiusMeters}`;
+function emptyForDateKey(dateKey: string): HistoryData {
+  const {start: dayStart} = getDayRange(dateKey);
+  return {
+    dateKey,
+    points: [],
+    entries: [],
+    range: {startAt: dayStart, endAt: dayStart},
+  };
 }
 
 async function loadHistoryForDay(
@@ -85,8 +82,8 @@ async function syncHistoryForDay(
 ): Promise<HistoryData> {
   const cacheKey = historyCacheKey(dateKey, detectionConfig);
   const fingerprint = await getLocationDayFingerprint(dateKey);
-  const cached = historyCache.get(cacheKey);
-  const cachedFingerprint = fingerprintCache.get(dateKey);
+  const cached = historyDataCache.read(cacheKey, dateKey);
+  const cachedFingerprint = historyDataCache.getFingerprint(dateKey);
   const canUseCache =
     !options?.force &&
     cached != null &&
@@ -97,8 +94,7 @@ async function syncHistoryForDay(
   }
 
   const result = await loadHistoryForDay(dateKey, detectionConfig);
-  historyCache.set(cacheKey, result);
-  fingerprintCache.set(dateKey, fingerprint);
+  historyDataCache.write(cacheKey, result, fingerprint);
   return result;
 }
 
@@ -110,8 +106,8 @@ async function reloadHistoryIfChanged(
   const cacheKey = historyCacheKey(dateKey, detectionConfig);
   const fingerprint = await getLocationDayFingerprint(dateKey);
   if (
-    fingerprintCache.get(dateKey) === fingerprint &&
-    historyCache.has(cacheKey)
+    historyDataCache.getFingerprint(dateKey) === fingerprint &&
+    historyDataCache.has(cacheKey)
   ) {
     return null;
   }
@@ -122,50 +118,97 @@ async function reloadHistoryIfChanged(
 export function useHistoryForDay(dateKey: string): {
   data: HistoryData;
   loading: boolean;
+  error: string | null;
   refresh: () => void;
 } {
   const detectionConfig = useTripDetectionConfig();
-  const [data, setData] = useState<HistoryData>(EMPTY);
-  const [loading, setLoading] = useState(true);
+  const initialCacheKey = historyCacheKey(dateKey, detectionConfig);
+  const initialCached = historyDataCache.peek(initialCacheKey);
+  const [data, setData] = useState<HistoryData>(
+    initialCached ?? emptyForDateKey(dateKey),
+  );
+  const [loading, setLoading] = useState(initialCached == null);
+  const [error, setError] = useState<string | null>(null);
   const dateKeyRef = useRef(dateKey);
   const detectionConfigRef = useRef(detectionConfig);
   dateKeyRef.current = dateKey;
   detectionConfigRef.current = detectionConfig;
 
-  const applySync = useCallback(
-    (options?: {force?: boolean}) => {
-      setLoading(true);
+  useEffect(() => {
+    const cacheKey = historyCacheKey(dateKey, detectionConfig);
+    const cached = historyDataCache.peek(cacheKey);
+    if (cached != null) {
+      setData(cached);
+      setLoading(false);
+      return;
+    }
+    setData(emptyForDateKey(dateKey));
+    setLoading(true);
+  }, [dateKey, detectionConfig]);
+
+  const runSync = useCallback(
+    (options?: {force?: boolean; showLoading?: boolean}) => {
+      if (options?.showLoading) {
+        setLoading(true);
+      }
+      setError(null);
+
       return syncHistoryForDay(dateKey, detectionConfig, options)
-        .then(setData)
-        .finally(() => setLoading(false));
+        .then(result => {
+          setData(result);
+          return result;
+        })
+        .catch((cause: unknown) => {
+          const message =
+            cause instanceof Error
+              ? cause.message
+              : 'Could not load this day';
+          setError(message);
+          throw cause;
+        })
+        .finally(() => {
+          setLoading(false);
+        });
     },
     [dateKey, detectionConfig],
   );
 
   const refresh = useCallback(() => {
-    void applySync({force: true});
-  }, [applySync]);
+    void runSync({force: true, showLoading: true});
+  }, [runSync]);
 
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
+      const cacheKey = historyCacheKey(dateKey, detectionConfig);
+      const hasCached = historyDataCache.has(cacheKey);
 
-      void syncHistoryForDay(dateKey, detectionConfig)
-        .then(result => {
-          if (!cancelled) {
-            setData(result);
-          }
-        })
-        .finally(() => {
-          if (!cancelled) {
-            setLoading(false);
-          }
-        });
+      if (!hasCached) {
+        setLoading(true);
+      }
+
+      const run = () => {
+        void runSync()
+          .catch(() => undefined)
+          .finally(() => {
+            if (!cancelled) {
+              setLoading(false);
+            }
+          });
+      };
+
+      const task = hasCached
+        ? null
+        : InteractionManager.runAfterInteractions(run);
+      if (hasCached) {
+        run();
+      }
 
       return () => {
         cancelled = true;
+        task?.cancel();
       };
-    }, [dateKey, detectionConfig]),
+    }, [dateKey, detectionConfig, runSync]),
   );
 
   useEffect(() => {
@@ -182,18 +225,20 @@ export function useHistoryForDay(dateKey: string): {
       void reloadHistoryIfChanged(
         dateKeyRef.current,
         detectionConfigRef.current,
-      ).then(result => {
-        if (result != null) {
-          setData(result);
-        }
-      });
+      )
+        .then(result => {
+          if (result != null) {
+            setData(result);
+          }
+        })
+        .catch(() => undefined);
     };
 
     const subscription = AppState.addEventListener('change', onAppStateChange);
     return () => subscription.remove();
   }, []);
 
-  return {data, loading, refresh};
+  return {data, loading, error, refresh};
 }
 
 /** @deprecated Use useHistoryForDay */

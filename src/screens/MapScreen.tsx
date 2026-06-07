@@ -1,8 +1,22 @@
-import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {Settings} from 'lucide-react-native';
-import {Platform, Pressable, StyleSheet, useColorScheme, View} from 'react-native';
+import {
+  Animated,
+  Platform,
+  Pressable,
+  StyleSheet,
+  useColorScheme,
+  View,
+} from 'react-native';
 import MapView, {
   PROVIDER_DEFAULT,
   PROVIDER_GOOGLE,
@@ -12,19 +26,24 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 import {HistoryDatePickerSheet} from '@/components/map/HistoryDatePickerSheet';
 import {HistoryEventCard} from '@/components/map/HistoryEventCard';
+import {HistoryPanelSkeleton} from '@/components/map/HistoryPanelSkeleton';
 import {HistoryTimelineBar} from '@/components/map/HistoryTimelineBar';
+import {useAfterInteractions} from '@/hooks/use-after-interactions';
 import {MapCalendarButton} from '@/components/map/MapCalendarButton';
 import {MapHistoryButton} from '@/components/map/MapHistoryButton';
 import {MapLocateButton} from '@/components/map/MapLocateButton';
 import {DayJourneyOverlay} from '@/components/map/DayJourneyOverlay';
 import {HistoryDayMapOverlay} from '@/components/map/HistoryDayMapOverlay';
 import {StayDurationCallout} from '@/components/map/StayDurationCallout';
-import {useDateKeysWithData} from '@/hooks/use-date-keys-with-data';
 import {useHistoryForDay} from '@/hooks/use-history-data';
 import {countHistoryTimelineEvents} from '@/lib/history-timeline';
 import {useTripPlayback} from '@/hooks/use-trip-playback';
 import {getTodayDateKey} from '@/lib/day-utils';
 import {getCurrentOpenVisit} from '@/lib/today-history';
+import {
+  shouldRefreshUserCoordinate,
+  type MapUserCoordinate,
+} from '@/lib/user-coordinate-throttle';
 import {buildHistoryMapPlan} from '@/lib/history-map-plan';
 import {
   isPlayableTimelineEntry,
@@ -73,15 +92,15 @@ export function MapScreen() {
   const {data: historyData, loading: historyLoading} =
     useHistoryForDay(selectedDateKey);
   const viewingToday = selectedDateKey === todayKey;
-  const {dateKeysWithData} = useDateKeysWithData();
   const mapRef = useRef<MapView>(null);
   const hasCenteredOnOpenRef = useRef(false);
   const mapRegionRef = useRef<Region>(FALLBACK_REGION);
   const fitHistoryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [userCoordinate, setUserCoordinate] = useState<{
-    latitude: number;
-    longitude: number;
-  } | null>(null);
+  const [userCoordinate, setUserCoordinate] = useState<MapUserCoordinate | null>(
+    null,
+  );
+  const userCoordinateRef = useRef<MapUserCoordinate | null>(null);
+  const lastUserCoordinateRefreshMsRef = useRef(0);
   const [historyPanelOpen, setHistoryPanelOpen] = useState(false);
   const [selectedHistoryIndex, setSelectedHistoryIndex] = useState(-1);
 
@@ -111,17 +130,39 @@ export function MapScreen() {
       ? selectedEntry
       : null;
 
+  const historyPanelReady = useAfterInteractions(historyPanelOpen);
+  const deferredHistoryEntries = useDeferredValue(historyEntries);
+  const historyEntriesPending =
+    historyPanelOpen && deferredHistoryEntries !== historyEntries;
+
   const historyMapPlan = useMemo(
     () =>
       buildHistoryMapPlan(
-        historyEntries,
+        deferredHistoryEntries,
         selectedHistoryIndex,
         tripDetectionConfig,
       ),
-    [historyEntries, selectedHistoryIndex, tripDetectionConfig],
+    [deferredHistoryEntries, selectedHistoryIndex, tripDetectionConfig],
   );
 
+  const showHistoryPanelContent =
+    historyPanelOpen &&
+    historyPanelReady &&
+    !historyLoading &&
+    !historyEntriesPending;
+
   const playback = useTripPlayback();
+  const historyPanelY = useRef(new Animated.Value(HISTORY_PANEL_HEIGHT + 48)).current;
+
+  useEffect(() => {
+    Animated.spring(historyPanelY, {
+      toValue: historyPanelOpen ? 0 : HISTORY_PANEL_HEIGHT + 48,
+      damping: 24,
+      stiffness: 280,
+      mass: 0.85,
+      useNativeDriver: true,
+    }).start();
+  }, [historyPanelOpen, historyPanelY]);
 
   const currentOpenVisit = useMemo(
     () =>
@@ -200,7 +241,18 @@ export function MapScreen() {
       if (!coordinate) {
         return;
       }
-      setUserCoordinate(coordinate);
+
+      if (
+        shouldRefreshUserCoordinate(
+          userCoordinateRef.current,
+          coordinate,
+          lastUserCoordinateRefreshMsRef.current,
+        )
+      ) {
+        lastUserCoordinateRefreshMsRef.current = Date.now();
+        userCoordinateRef.current = coordinate;
+        setUserCoordinate(coordinate);
+      }
 
       if (hasCenteredOnOpenRef.current || !mapRef.current) {
         return;
@@ -360,7 +412,7 @@ export function MapScreen() {
 
   useEffect(() => {
     if (
-      historyPanelOpen &&
+      showHistoryPanelContent &&
       selectedHistoryIndex >= 0 &&
       selectedPlayable &&
       !playback.isPlaying
@@ -369,7 +421,7 @@ export function MapScreen() {
     }
   }, [
     selectedHistoryIndex,
-    historyPanelOpen,
+    showHistoryPanelContent,
     selectedPlayable,
     scheduleFitSelectedHistory,
     playback.isPlaying,
@@ -378,9 +430,11 @@ export function MapScreen() {
   const scrubOnEvent =
     historyPanelOpen && selectedHistoryIndex >= 0 && selectedEntry != null;
 
-  const showDayJourney = !historyPanelOpen && !playback.isPlaying;
   const showHistoryMap =
-    historyPanelOpen && selectedHistoryIndex >= 0 && historyMapPlan.selected != null;
+    showHistoryPanelContent &&
+    selectedHistoryIndex >= 0 &&
+    historyMapPlan.selected != null;
+  const showDayJourney = !historyPanelOpen && !playback.isPlaying && !historyLoading;
   const showUserLocation =
     !historyPanelOpen && !playback.isPlaying && viewingToday;
 
@@ -446,33 +500,45 @@ export function MapScreen() {
       <HistoryDatePickerSheet
         visible={historyDatePickerOpen}
         selectedDateKey={selectedDateKey}
-        dateKeysWithData={dateKeysWithData}
         onSelectDate={handleSelectMapDate}
         onClose={() => setHistoryDatePickerOpen(false)}
       />
 
       {historyPanelOpen ? (
-        <View style={[styles.historyPanelHost, {bottom: insets.bottom}]}>
-          <HistoryEventCard
-            entry={scrubOnEvent ? selectedEntry : null}
-            scrubOnEmpty={
-              !historyLoading && historyEntries.length > 0 && !scrubOnEvent
-            }
-            distanceUnit={distanceUnit}
-            isPlaying={playback.isPlaying}
-            onPlay={handlePlayHistory}
-            onStop={playback.stop}
-            onZoomVisit={handleZoomVisit}
-          />
-          <HistoryTimelineBar
-            dateKey={selectedDateKey}
-            entries={historyEntries}
-            selectedIndex={selectedHistoryIndex}
-            onSelectIndex={selectHistoryIndex}
-            onDateKeyChange={handleHistoryDateKeyChange}
-            onOpenDatePicker={openHistoryDatePicker}
-          />
-        </View>
+        <Animated.View
+          style={[
+            styles.historyPanelHost,
+            {
+              bottom: insets.bottom,
+              transform: [{translateY: historyPanelY}],
+            },
+          ]}>
+          {showHistoryPanelContent ? (
+            <>
+              <HistoryEventCard
+                entry={scrubOnEvent ? selectedEntry : null}
+                scrubOnEmpty={
+                  historyEntries.length > 0 && !scrubOnEvent
+                }
+                distanceUnit={distanceUnit}
+                isPlaying={playback.isPlaying}
+                onPlay={handlePlayHistory}
+                onStop={playback.stop}
+                onZoomVisit={handleZoomVisit}
+              />
+              <HistoryTimelineBar
+                dateKey={selectedDateKey}
+                entries={historyEntries}
+                selectedIndex={selectedHistoryIndex}
+                onSelectIndex={selectHistoryIndex}
+                onDateKeyChange={handleHistoryDateKeyChange}
+                onOpenDatePicker={openHistoryDatePicker}
+              />
+            </>
+          ) : (
+            <HistoryPanelSkeleton />
+          )}
+        </Animated.View>
       ) : null}
 
       <View
