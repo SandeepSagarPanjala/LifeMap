@@ -1,20 +1,16 @@
 import {useCallback, useEffect, useState} from 'react';
-import {ActivityIndicator, Pressable, ScrollView, View} from 'react-native';
+import {ActivityIndicator, Pressable, View} from 'react-native';
 
 import {formatDistanceToNow} from 'date-fns';
+import {LocateFixed} from 'lucide-react-native';
 
 import {getLatestLocationPoint} from '@/db/repositories/location-points';
 import {getLocationService} from '@/location/transistorsoft-location-service';
 import type {LocationAuthorizationStatus} from '@/location/types';
-import {
-  TRACKING_PRESET_ORDER,
-  TRACKING_PRESETS,
-  type TrackingPresetId,
-} from '@/lib/tracking-presets';
+import {TRACKING_DISTANCE_FILTER_METERS} from '@/lib/tracking-presets';
 import {Icon} from '@/components/ui/icon';
 import {Text} from '@/components/ui/text';
 import {useThemeColors} from '@/hooks/use-theme-colors';
-import {LocateFixed} from 'lucide-react-native';
 
 function formatAuthorization(status: LocationAuthorizationStatus): string {
   switch (status) {
@@ -35,7 +31,6 @@ export function TrackingSettings() {
   const colors = useThemeColors();
   const [loading, setLoading] = useState(true);
   const [enabled, setEnabled] = useState(false);
-  const [presetId, setPresetId] = useState<TrackingPresetId>('d10_all');
   const [authorizationStatus, setAuthorizationStatus] =
     useState<LocationAuthorizationStatus>('not_determined');
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
@@ -48,7 +43,6 @@ export function TrackingSettings() {
       const latest = await getLatestLocationPoint();
 
       setEnabled(state.enabled);
-      setPresetId(state.presetId);
       setAuthorizationStatus(state.authorizationStatus);
       setLastSavedAt(latest?.timestamp ?? null);
     } finally {
@@ -70,11 +64,6 @@ export function TrackingSettings() {
       }
     }
     await service.setEnabled(!enabled);
-    await refresh();
-  };
-
-  const handlePreset = async (next: TrackingPresetId) => {
-    await getLocationService().setPreset(next);
     await refresh();
   };
 
@@ -115,40 +104,16 @@ export function TrackingSettings() {
         </Text>
       ) : null}
       <Text variant="muted" className="mt-2 text-sm leading-5">
-        Every GPS fix the SDK sends is saved. Presets only change how often the SDK requests
-        location (~10–100 m). A heartbeat still pings every 30 minutes if the SDK goes quiet.
+        {enabled
+          ? `Records your location about every ${TRACKING_DISTANCE_FILTER_METERS} m while moving and saves every fix the SDK sends. A heartbeat still pings every 30 minutes if the SDK goes quiet.`
+          : 'Background tracking is off — LifeMap is not saving new GPS points while the app is closed. Your existing map and history still work from data already saved.'}
       </Text>
-
-      <ScrollView className="mt-4 max-h-96" nestedScrollEnabled showsVerticalScrollIndicator>
-        <View className="gap-2">
-          {TRACKING_PRESET_ORDER.map(id => {
-            const preset = TRACKING_PRESETS[id];
-            const selected = presetId === id;
-
-            return (
-              <Pressable
-                key={id}
-                accessibilityRole="button"
-                onPress={() => void handlePreset(id)}
-                className={`rounded-xl border px-3 py-3 ${
-                  selected ? 'border-primary bg-primary/10' : 'border-border'
-                }`}>
-                <Text className={selected ? 'text-primary font-medium' : 'font-medium'}>
-                  {preset.label}
-                </Text>
-                <Text variant="muted" className="mt-1 text-sm leading-5">
-                  {preset.saveRule}
-                </Text>
-                {__DEV__ ? (
-                  <Text variant="muted" className="mt-1 text-xs leading-4 opacity-80">
-                    SDK: {preset.sdkHint}
-                  </Text>
-                ) : null}
-              </Pressable>
-            );
-          })}
-        </View>
-      </ScrollView>
+      {!enabled ? (
+        <Text variant="muted" className="mt-2 text-sm leading-5">
+          Trips and visits are detected from saved location points only. With tracking off,
+          you will see gaps in your timeline for any time nothing new was recorded.
+        </Text>
+      ) : null}
 
       {authorizationStatus === 'denied' || authorizationStatus === 'when_in_use' ? (
         <Pressable

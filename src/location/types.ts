@@ -1,5 +1,3 @@
-import type {TrackingPresetId} from '@/lib/tracking-presets';
-
 export type LocationAuthorizationStatus =
   | 'not_determined'
   | 'restricted'
@@ -10,7 +8,6 @@ export type LocationAuthorizationStatus =
 export type LocationServiceState = {
   enabled: boolean;
   authorizationStatus: LocationAuthorizationStatus;
-  presetId: TrackingPresetId;
 };
 
 export interface LocationService {
@@ -19,6 +16,5 @@ export interface LocationService {
   getState(): Promise<LocationServiceState>;
   start(): Promise<void>;
   stop(): Promise<void>;
-  setPreset(presetId: TrackingPresetId): Promise<void>;
   setEnabled(enabled: boolean): Promise<void>;
 }

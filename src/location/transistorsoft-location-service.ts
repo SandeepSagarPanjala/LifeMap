@@ -13,12 +13,9 @@ import {getSetting, setSetting} from '@/db/repositories/settings';
 import {recordTrackingDiagnostic} from '@/lib/tracking-diagnostics';
 import {STATIONARY_PING_MIN_MS} from '@/lib/motion-tracking-policy';
 import {
-  DEFAULT_TRACKING_PRESET,
   getTrackingPresetConfig,
-  normalizeTrackingPresetId,
   SETTINGS_KEY_TRACKING_ENABLED,
-  SETTINGS_KEY_TRACKING_PRESET,
-  type TrackingPresetId,
+  TRACKING_DISTANCE_FILTER_METERS,
 } from '@/lib/tracking-presets';
 
 import type {LocationAuthorizationStatus, LocationService, LocationServiceState} from './types';
@@ -66,7 +63,6 @@ function toLocationSource(base: string, eventName?: string): string {
 export class TransistorSoftLocationService implements LocationService {
   private configured = false;
   private subscriptions: Subscription[] = [];
-  private activePresetId: TrackingPresetId = DEFAULT_TRACKING_PRESET;
   private lastPersistedMs = 0;
   private heartbeatInFlight: Promise<void> | null = null;
   private suppressOnLocationTimestampMs: number | null = null;
@@ -206,11 +202,10 @@ export class TransistorSoftLocationService implements LocationService {
       return;
     }
 
-    this.activePresetId = await readStoredPreset();
-    const presetConfig = getTrackingPresetConfig(this.activePresetId);
+    const presetConfig = getTrackingPresetConfig();
     await this.initializePersistedClock();
     await recordTrackingDiagnostic('tracking_configure', {
-      presetId: this.activePresetId,
+      distanceFilterMeters: TRACKING_DISTANCE_FILTER_METERS,
     });
 
     this.subscriptions.push(
@@ -302,7 +297,6 @@ export class TransistorSoftLocationService implements LocationService {
     return {
       enabled: state.enabled,
       authorizationStatus: mapAuthorizationStatus(provider.status),
-      presetId: await readStoredPreset(),
     };
   }
 
@@ -317,14 +311,6 @@ export class TransistorSoftLocationService implements LocationService {
     await BackgroundGeolocation.stop();
     await setSetting(SETTINGS_KEY_TRACKING_ENABLED, 'false');
     await recordTrackingDiagnostic('tracking_enabled', {enabled: false});
-  }
-
-  async setPreset(presetId: TrackingPresetId): Promise<void> {
-    this.activePresetId = presetId;
-    this.lastPersistedMs = 0;
-    await setSetting(SETTINGS_KEY_TRACKING_PRESET, presetId);
-    await BackgroundGeolocation.setConfig(getTrackingPresetConfig(presetId));
-    await recordTrackingDiagnostic('tracking_preset_changed', {presetId});
   }
 
   async setEnabled(enabled: boolean): Promise<void> {
@@ -359,11 +345,6 @@ export class TransistorSoftLocationService implements LocationService {
     this.heartbeatInFlight = null;
     this.configured = false;
   }
-}
-
-async function readStoredPreset(): Promise<TrackingPresetId> {
-  const stored = await getSetting(SETTINGS_KEY_TRACKING_PRESET);
-  return normalizeTrackingPresetId(stored);
 }
 
 async function readStoredEnabled(): Promise<boolean> {

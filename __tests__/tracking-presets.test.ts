@@ -1,41 +1,21 @@
 import {
-  DEFAULT_TRACKING_PRESET,
   getTrackingPresetConfig,
-  isTrackingPresetId,
-  normalizeTrackingPresetId,
+  TRACKING_DISTANCE_FILTER_METERS,
 } from '../src/lib/tracking-presets';
 
 describe('tracking presets', () => {
-  it('defaults to full-fidelity save-every-fix preset', () => {
-    expect(DEFAULT_TRACKING_PRESET).toBe('d10_s30');
+  it('uses a fixed 25 m distance filter', () => {
+    expect(TRACKING_DISTANCE_FILTER_METERS).toBe(25);
   });
 
-  it('validates preset ids', () => {
-    expect(isTrackingPresetId('d10_all')).toBe(true);
-    expect(isTrackingPresetId('d25_s30')).toBe(true);
-    expect(isTrackingPresetId('high')).toBe(false);
-  });
-
-  it('migrates legacy preset ids', () => {
-    expect(normalizeTrackingPresetId('high')).toBe('d10_all');
-    expect(normalizeTrackingPresetId('balanced')).toBe('d25_mov');
-    expect(normalizeTrackingPresetId('saver')).toBe('d75_mov');
-    expect(normalizeTrackingPresetId(null)).toBe('d10_s30');
-  });
-
-  it('requests frequent SDK updates with elasticity enabled', () => {
-    const config = getTrackingPresetConfig('d10_all');
-    expect(config.distanceFilter).toBe(10);
+  it('requests SDK updates with elasticity and heartbeat enabled', () => {
+    const config = getTrackingPresetConfig();
+    expect(config.distanceFilter).toBe(25);
     expect(config.disableElasticity).toBe(false);
     expect(config.heartbeatInterval).toBe(60);
     expect(config.preventSuspend).toBe(true);
     expect(config.pausesLocationUpdatesAutomatically).toBe(false);
     expect(config.stopTimeout).toBe(30);
     expect(config.disableStopDetection).toBe(false);
-  });
-
-  it('keeps short stop timeout for saver presets', () => {
-    const config = getTrackingPresetConfig('d75_mov');
-    expect(config.stopTimeout).toBe(5);
   });
 });

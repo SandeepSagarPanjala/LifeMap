@@ -26,17 +26,6 @@ export function bootstrapLocationTracking(): Promise<LocationAuthorizationStatus
       const authorization = await service.requestPermission();
       await service.syncEnabledFromSettings();
 
-      const state = await service.getState();
-      const canTrack =
-        authorization === 'always' ||
-        authorization === 'when_in_use' ||
-        state.authorizationStatus === 'always' ||
-        state.authorizationStatus === 'when_in_use';
-
-      if (canTrack && !state.enabled) {
-        await service.start();
-      }
-
       return authorization;
     })();
   }

@@ -1,5 +1,4 @@
 import {
-  buildRawLocationExportCsv,
   buildRawLocationExportJson,
   exportFileLabel,
 } from '../src/lib/location-export';
@@ -49,21 +48,15 @@ describe('location export', () => {
     expect(payload.rows[1].source).toBe('motion');
   });
 
-  it('exports raw CSV with header and ISO timestamps', () => {
-    const csv = buildRawLocationExportCsv(sample);
-    const lines = csv.split('\n');
-
-    expect(lines[0]).toBe('id,timestamp,lat,lng,accuracy,altitude,speed,source');
-    expect(lines[1]).toContain('2026-06-03T10:00:00.000Z');
-    expect(lines[2]).toContain('motion');
-  });
-
   it('builds export file labels', () => {
-    expect(exportFileLabel('json', 'today', '2026-06-03')).toBe(
+    expect(exportFileLabel('today', '2026-06-03')).toBe(
       'lifemap-location-points-2026-06-03.json',
     );
-    expect(exportFileLabel('csv', 'all', '2026-06-03')).toBe(
-      'lifemap-location-points-all.csv',
+    expect(exportFileLabel('day', '2026-06-05')).toBe(
+      'lifemap-location-points-2026-06-05.json',
+    );
+    expect(exportFileLabel('all', '2026-06-03')).toBe(
+      'lifemap-location-points-all.json',
     );
   });
 });

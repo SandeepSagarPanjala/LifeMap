@@ -1,6 +1,6 @@
 import type {LocationPointRow} from '@/db/repositories/location-days';
 
-export type LocationExportScope = 'today' | 'all';
+export type LocationExportScope = 'today' | 'all' | 'day';
 
 /** Mirrors `location_points` columns in SQLite. */
 export type RawLocationPointRow = {
@@ -61,31 +61,11 @@ export function buildRawLocationExportJson(
   return JSON.stringify(buildRawLocationExportPayload(points, options), null, 2);
 }
 
-export function buildRawLocationExportCsv(points: LocationPointRow[]): string {
-  const sorted = [...points].sort(
-    (a, b) => a.timestamp.getTime() - b.timestamp.getTime(),
-  );
-  const header = 'id,timestamp,lat,lng,accuracy,altitude,speed,source';
-  const rows = sorted.map(point =>
-    [
-      point.id,
-      point.timestamp.toISOString(),
-      point.lat,
-      point.lng,
-      point.accuracy ?? '',
-      point.altitude ?? '',
-      point.speed ?? '',
-      point.source,
-    ].join(','),
-  );
-  return [header, ...rows].join('\n');
-}
-
 export function exportFileLabel(
-  format: 'json' | 'csv',
   scope: LocationExportScope,
   dateKey: string,
 ): string {
-  const suffix = scope === 'today' ? dateKey : 'all';
-  return `lifemap-location-points-${suffix}.${format}`;
+  const suffix =
+    scope === 'today' ? dateKey : scope === 'day' ? dateKey : 'all';
+  return `lifemap-location-points-${suffix}.json`;
 }
