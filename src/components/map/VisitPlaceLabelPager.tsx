@@ -1,4 +1,4 @@
-import {useCallback, useRef, useState} from 'react';
+import {useCallback, useEffect, useRef, useState} from 'react';
 import {
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -7,6 +7,7 @@ import {
   View,
 } from 'react-native';
 
+import {VisitPlaceLabelWithPin} from '@/components/map/VisitPlaceLabelWithPin';
 import {Text} from '@/components/ui/text';
 import type {VisitPlaceDisplay} from '@/lib/place-lookup-types';
 
@@ -24,15 +25,20 @@ export function VisitPlaceLabelPager({
   const scrollRef = useRef<ScrollView>(null);
   const [pageIndex, setPageIndex] = useState(display.selectedIndex);
 
+  useEffect(() => {
+    setPageIndex(display.selectedIndex);
+  }, [display.selectedIndex]);
+
   const candidates = display.candidates;
   if (display.source !== 'lookup' || candidates.length <= 1) {
     if (!display.primaryLabel) {
       return null;
     }
     return (
-      <Text className="text-base font-semibold" numberOfLines={1}>
-        {display.primaryLabel}
-      </Text>
+      <VisitPlaceLabelWithPin
+        name={display.primaryLabel}
+        showPin={display.isAreaDefault}
+      />
     );
   }
 
@@ -64,9 +70,12 @@ export function VisitPlaceLabelPager({
         style={styles.scroll}>
         {candidates.map((candidate, index) => (
           <View key={`${candidate.name}-${index}`} style={styles.page}>
-            <Text className="text-base font-semibold" numberOfLines={1}>
-              {candidate.name}
-            </Text>
+            <VisitPlaceLabelWithPin
+              name={candidate.name}
+              showPin={
+                display.isAreaDefault && index === display.selectedIndex
+              }
+            />
             <Text variant="muted" className="text-[10px] uppercase tracking-wide">
               {candidate.kind === 'address' ? 'Address' : 'Nearby'}
             </Text>

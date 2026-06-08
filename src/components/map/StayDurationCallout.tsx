@@ -1,6 +1,6 @@
 import {useEffect, useState} from 'react';
 import {Marker} from 'react-native-maps';
-import {Armchair} from 'lucide-react-native';
+import {Armchair, MapPin} from 'lucide-react-native';
 import {StyleSheet, Text, View} from 'react-native';
 
 import {SavedPlaceIcon} from '@/components/map/SavedPlaceIcon';
@@ -19,6 +19,7 @@ type StayDurationCalloutProps = {
   trip: DetectedTrip;
   savedPlace?: SavedPlaceRow | null;
   nearbyPlaceLabel?: string | null;
+  nearbyPlacePinned?: boolean;
   /** History scrub — orange visit pin. Live map keeps the system blue user puck. */
   showVisitPin?: boolean;
   /** Anchor the label (e.g. live GPS while the blue puck is shown). */
@@ -31,6 +32,7 @@ export function StayDurationCallout({
   trip,
   savedPlace = null,
   nearbyPlaceLabel = null,
+  nearbyPlacePinned = false,
   showVisitPin = true,
   anchorCoordinate = null,
 }: StayDurationCalloutProps) {
@@ -93,9 +95,19 @@ export function StayDurationCallout({
                 {savedPlaceDisplayLabel(savedPlace)}
               </Text>
             ) : nearbyPlaceLabel ? (
-              <Text style={styles.placeLabel} numberOfLines={1}>
-                {nearbyPlaceLabel}
-              </Text>
+              <View style={styles.placeLabelRow}>
+                {nearbyPlacePinned ? (
+                  <MapPin
+                    size={12}
+                    color="#8E8E93"
+                    fill="#C7C7CC"
+                    strokeWidth={2}
+                  />
+                ) : null}
+                <Text style={styles.placeLabel} numberOfLines={1}>
+                  {nearbyPlaceLabel}
+                </Text>
+              </View>
             ) : null}
             <Text style={styles.mapLabel} numberOfLines={2}>
               {visit.title}
@@ -157,10 +169,18 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   placeLabel: {
+    flexShrink: 1,
     fontSize: 15,
     fontWeight: '700',
     color: '#1C1C1E',
     marginBottom: 2,
+  },
+  placeLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 2,
+    maxWidth: '100%',
   },
   mapLabel: {
     fontSize: 14,

@@ -22,6 +22,7 @@ const EMPTY_DISPLAY: VisitPlaceDisplay = {
   selectedIndex: 0,
   cacheId: null,
   loading: false,
+  isAreaDefault: false,
 };
 
 export function useVisitPlaceDisplay(

@@ -91,6 +91,7 @@ describe('place lookup display', () => {
     const row = placeRow(33.21, -97.13, {selectedCandidateIndex: 1});
     const display = resolveVisitPlaceDisplay(row);
     expect(display.primaryLabel).toBe('123 Main St');
+    expect(display.isAreaDefault).toBe(true);
   });
 });
 

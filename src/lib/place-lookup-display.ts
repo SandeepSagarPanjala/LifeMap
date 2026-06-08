@@ -38,6 +38,7 @@ export function resolveVisitPlaceDisplay(
       selectedIndex: 0,
       cacheId: row?.id ?? null,
       loading: options?.loading ?? row?.lookupStatus === 'pending',
+      isAreaDefault: false,
     };
   }
 
@@ -49,6 +50,7 @@ export function resolveVisitPlaceDisplay(
       selectedIndex: 0,
       cacheId: row.id,
       loading: false,
+      isAreaDefault: false,
     };
   }
 
@@ -61,6 +63,7 @@ export function resolveVisitPlaceDisplay(
       selectedIndex: 0,
       cacheId: row.id,
       loading: false,
+      isAreaDefault: false,
     };
   }
 
@@ -78,6 +81,7 @@ export function resolveVisitPlaceDisplay(
     selectedIndex,
     cacheId: row.id,
     loading: false,
+    isAreaDefault: row.selectedCandidateIndex != null,
   };
 }
 
@@ -91,5 +95,6 @@ export function savedPlaceVisitDisplay(
     selectedIndex: 0,
     cacheId: null,
     loading: false,
+    isAreaDefault: false,
   };
 }

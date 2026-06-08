@@ -38,4 +38,6 @@ export type VisitPlaceDisplay = {
   selectedIndex: number;
   cacheId: number | null;
   loading: boolean;
+  /** User swiped to set the default label for this area. */
+  isAreaDefault: boolean;
 };

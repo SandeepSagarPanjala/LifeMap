@@ -13,6 +13,7 @@ type HistoryDayMapOverlayProps = {
   plan: HistoryMapPlan;
   selectedSavedPlace?: SavedPlaceRow | null;
   selectedNearbyPlaceLabel?: string | null;
+  selectedNearbyPlacePinned?: boolean;
   selectedDriveStartPlace?: SavedPlaceRow | null;
   selectedDriveEndPlace?: SavedPlaceRow | null;
   tripConfig: TripDetectionConfig;
@@ -24,6 +25,7 @@ export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
   plan,
   selectedSavedPlace = null,
   selectedNearbyPlaceLabel = null,
+  selectedNearbyPlacePinned = false,
   selectedDriveStartPlace = null,
   selectedDriveEndPlace = null,
   tripConfig,
@@ -103,6 +105,9 @@ export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
             savedPlace={selectedSavedPlace}
             nearbyPlaceLabel={
               selectedSavedPlace ? null : selectedNearbyPlaceLabel
+            }
+            nearbyPlacePinned={
+              !selectedSavedPlace && selectedNearbyPlacePinned
             }
           />
         </>
