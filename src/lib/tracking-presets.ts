@@ -26,6 +26,7 @@ export type TrackingPreset = {
   distanceFilter: number;
   locationUpdateInterval: number;
   fastestLocationUpdateInterval: number;
+  trackingMode: 'complete' | 'saver';
 };
 
 const SAVE_EVERY_FIX =
@@ -46,6 +47,7 @@ export const TRACKING_PRESETS: Record<TrackingPresetId, TrackingPreset> = {
     distanceFilter: 10,
     locationUpdateInterval: 5_000,
     fastestLocationUpdateInterval: 1_000,
+    trackingMode: 'complete',
   },
   d10_s30: {
     id: 'd10_s30',
@@ -55,6 +57,7 @@ export const TRACKING_PRESETS: Record<TrackingPresetId, TrackingPreset> = {
     distanceFilter: 10,
     locationUpdateInterval: 30_000,
     fastestLocationUpdateInterval: 30_000,
+    trackingMode: 'complete',
   },
   d25_s30: {
     id: 'd25_s30',
@@ -64,6 +67,7 @@ export const TRACKING_PRESETS: Record<TrackingPresetId, TrackingPreset> = {
     distanceFilter: 25,
     locationUpdateInterval: 30_000,
     fastestLocationUpdateInterval: 30_000,
+    trackingMode: 'complete',
   },
   d25_s60: {
     id: 'd25_s60',
@@ -73,6 +77,7 @@ export const TRACKING_PRESETS: Record<TrackingPresetId, TrackingPreset> = {
     distanceFilter: 25,
     locationUpdateInterval: 60_000,
     fastestLocationUpdateInterval: 60_000,
+    trackingMode: 'complete',
   },
   d25_s120: {
     id: 'd25_s120',
@@ -82,6 +87,7 @@ export const TRACKING_PRESETS: Record<TrackingPresetId, TrackingPreset> = {
     distanceFilter: 25,
     locationUpdateInterval: 120_000,
     fastestLocationUpdateInterval: 120_000,
+    trackingMode: 'complete',
   },
   d25_mov: {
     id: 'd25_mov',
@@ -91,6 +97,7 @@ export const TRACKING_PRESETS: Record<TrackingPresetId, TrackingPreset> = {
     distanceFilter: 25,
     locationUpdateInterval: 60_000,
     fastestLocationUpdateInterval: 60_000,
+    trackingMode: 'complete',
   },
   d50_s60: {
     id: 'd50_s60',
@@ -100,6 +107,7 @@ export const TRACKING_PRESETS: Record<TrackingPresetId, TrackingPreset> = {
     distanceFilter: 50,
     locationUpdateInterval: 60_000,
     fastestLocationUpdateInterval: 60_000,
+    trackingMode: 'complete',
   },
   d75_s300: {
     id: 'd75_s300',
@@ -109,6 +117,7 @@ export const TRACKING_PRESETS: Record<TrackingPresetId, TrackingPreset> = {
     distanceFilter: 75,
     locationUpdateInterval: 300_000,
     fastestLocationUpdateInterval: 300_000,
+    trackingMode: 'saver',
   },
   d75_mov: {
     id: 'd75_mov',
@@ -118,6 +127,7 @@ export const TRACKING_PRESETS: Record<TrackingPresetId, TrackingPreset> = {
     distanceFilter: 75,
     locationUpdateInterval: 300_000,
     fastestLocationUpdateInterval: 300_000,
+    trackingMode: 'saver',
   },
   d100_s600: {
     id: 'd100_s600',
@@ -127,10 +137,11 @@ export const TRACKING_PRESETS: Record<TrackingPresetId, TrackingPreset> = {
     distanceFilter: 100,
     locationUpdateInterval: 600_000,
     fastestLocationUpdateInterval: 600_000,
+    trackingMode: 'saver',
   },
 };
 
-export const DEFAULT_TRACKING_PRESET: TrackingPresetId = 'd10_all';
+export const DEFAULT_TRACKING_PRESET: TrackingPresetId = 'd10_s30';
 
 export const TRACKING_PRESET_ORDER: TrackingPresetId[] = [
   'd10_all',
@@ -168,6 +179,7 @@ export function getTrackingPresetConfig(
   presetId: TrackingPresetId,
 ): Record<string, unknown> {
   const preset = TRACKING_PRESETS[presetId];
+  const stopTimeoutMinutes = preset.trackingMode === 'saver' ? 5 : 30;
 
   return {
     desiredAccuracy: BackgroundGeolocation.DesiredAccuracy.High,
@@ -175,7 +187,7 @@ export function getTrackingPresetConfig(
     locationUpdateInterval: preset.locationUpdateInterval,
     fastestLocationUpdateInterval: preset.fastestLocationUpdateInterval,
     disableElasticity: false,
-    stopTimeout: 5,
+    stopTimeout: stopTimeoutMinutes,
     disableStopDetection: false,
     disableMotionActivityUpdates: false,
     heartbeatInterval: HEARTBEAT_CHECK_INTERVAL_SEC,

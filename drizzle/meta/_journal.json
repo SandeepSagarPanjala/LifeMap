@@ -15,6 +15,13 @@
       "when": 1780341882142,
       "tag": "0001_location_points_timestamp_idx",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788894000000,
+      "tag": "0002_tracking_events",
+      "breakpoints": true
     }
   ]
 }

@@ -7,7 +7,7 @@ import {
 
 describe('tracking presets', () => {
   it('defaults to full-fidelity save-every-fix preset', () => {
-    expect(DEFAULT_TRACKING_PRESET).toBe('d10_all');
+    expect(DEFAULT_TRACKING_PRESET).toBe('d10_s30');
   });
 
   it('validates preset ids', () => {
@@ -20,7 +20,7 @@ describe('tracking presets', () => {
     expect(normalizeTrackingPresetId('high')).toBe('d10_all');
     expect(normalizeTrackingPresetId('balanced')).toBe('d25_mov');
     expect(normalizeTrackingPresetId('saver')).toBe('d75_mov');
-    expect(normalizeTrackingPresetId(null)).toBe('d10_all');
+    expect(normalizeTrackingPresetId(null)).toBe('d10_s30');
   });
 
   it('requests frequent SDK updates with elasticity enabled', () => {
@@ -30,7 +30,12 @@ describe('tracking presets', () => {
     expect(config.heartbeatInterval).toBe(60);
     expect(config.preventSuspend).toBe(true);
     expect(config.pausesLocationUpdatesAutomatically).toBe(false);
-    expect(config.stopTimeout).toBe(5);
+    expect(config.stopTimeout).toBe(30);
     expect(config.disableStopDetection).toBe(false);
+  });
+
+  it('keeps short stop timeout for saver presets', () => {
+    const config = getTrackingPresetConfig('d75_mov');
+    expect(config.stopTimeout).toBe(5);
   });
 });

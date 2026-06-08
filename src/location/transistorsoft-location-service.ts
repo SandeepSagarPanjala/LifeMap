@@ -1,11 +1,16 @@
 import BackgroundGeolocation, {
+  type HeadlessEvent,
   type Location,
   type MotionChangeEvent,
   type Subscription,
 } from 'react-native-background-geolocation';
 
-import {insertLocationPoint} from '@/db/repositories/location-points';
+import {
+  getLatestLocationPoint,
+  insertLocationPoint,
+} from '@/db/repositories/location-points';
 import {getSetting, setSetting} from '@/db/repositories/settings';
+import {recordTrackingDiagnostic} from '@/lib/tracking-diagnostics';
 import {STATIONARY_PING_MIN_MS} from '@/lib/motion-tracking-policy';
 import {
   DEFAULT_TRACKING_PRESET,
@@ -40,20 +45,48 @@ function locationTimestamp(location: Location): Date {
   return value instanceof Date ? value : new Date(value);
 }
 
+function isLocationLike(value: unknown): value is Location {
+  if (value == null || typeof value !== 'object') {
+    return false;
+  }
+  const candidate = value as {coords?: {latitude?: number; longitude?: number}};
+  return (
+    candidate.coords?.latitude != null &&
+    candidate.coords?.longitude != null
+  );
+}
+
+function toLocationSource(base: string, eventName?: string): string {
+  if (!eventName) {
+    return base;
+  }
+  return `${base}:${String(eventName).toLowerCase()}`;
+}
+
 export class TransistorSoftLocationService implements LocationService {
   private configured = false;
   private subscriptions: Subscription[] = [];
   private activePresetId: TrackingPresetId = DEFAULT_TRACKING_PRESET;
   private lastPersistedMs = 0;
+  private heartbeatInFlight: Promise<void> | null = null;
+  private suppressOnLocationTimestampMs: number | null = null;
+  private initializingPersistedClock: Promise<void> | null = null;
 
   /** Every SDK location callback is written — no distance or time throttling. */
-  private async persistLocation(location: Location, source = 'gps'): Promise<void> {
-    await this.writeLocationToDatabase(location, source);
+  private async persistLocation(
+    location: Location,
+    source = 'gps',
+    options?: {dedupe?: boolean},
+  ): Promise<void> {
+    await this.writeLocationToDatabase(location, source, {
+      dedupe: options?.dedupe,
+    });
   }
 
   private async writeLocationToDatabase(
     location: Location,
     source: string,
+    options?: {dedupe?: boolean},
   ): Promise<void> {
     const timestamp = locationTimestamp(location);
     const {coords} = location;
@@ -66,15 +99,66 @@ export class TransistorSoftLocationService implements LocationService {
       altitude: coords.altitude,
       speed: coords.speed != null && coords.speed >= 0 ? coords.speed : null,
       source,
-    });
+    }, {dedupe: options?.dedupe});
 
     this.lastPersistedMs = timestamp.getTime();
   }
 
+  private async initializePersistedClock(): Promise<void> {
+    if (this.initializingPersistedClock != null) {
+      return this.initializingPersistedClock;
+    }
+    this.initializingPersistedClock = (async () => {
+      const latest = await getLatestLocationPoint();
+      if (latest?.timestamp) {
+        this.lastPersistedMs = latest.timestamp.getTime();
+      }
+    })().finally(() => {
+      this.initializingPersistedClock = null;
+    });
+    return this.initializingPersistedClock;
+  }
+
+  private async importNativeQueue(): Promise<void> {
+    const pending = (await BackgroundGeolocation.getLocations()) as Location[];
+    if (pending.length === 0) {
+      return;
+    }
+
+    for (const item of pending) {
+      if (!isLocationLike(item)) {
+        continue;
+      }
+      const source = toLocationSource('native_queue', item.event);
+      await this.persistLocation(item, source, {dedupe: true});
+    }
+    await BackgroundGeolocation.destroyLocations();
+    await recordTrackingDiagnostic('native_queue_drained', {
+      importedCount: pending.length,
+    });
+  }
+
+  async drainNativeQueue(): Promise<void> {
+    await this.importNativeQueue();
+  }
+
   /** Fresh GPS when the SDK has been quiet 30+ min while tracking is still on. */
   private async onHeartbeat(): Promise<void> {
+    if (this.heartbeatInFlight != null) {
+      return this.heartbeatInFlight;
+    }
+    this.heartbeatInFlight = this.runHeartbeat().finally(() => {
+      this.heartbeatInFlight = null;
+    });
+    return this.heartbeatInFlight;
+  }
+
+  private async runHeartbeat(): Promise<void> {
     const sinceLastSaveMs = Date.now() - this.lastPersistedMs;
     if (this.lastPersistedMs !== 0 && sinceLastSaveMs < STATIONARY_PING_MIN_MS) {
+      await recordTrackingDiagnostic('heartbeat_skipped_recent_save', {
+        sinceLastSaveMs,
+      });
       return;
     }
 
@@ -84,15 +168,28 @@ export class TransistorSoftLocationService implements LocationService {
         persist: false,
         timeout: 30,
       });
-      await this.persistLocation(location, 'heartbeat_ping');
+      this.suppressOnLocationTimestampMs = locationTimestamp(location).getTime();
+      await this.persistLocation(location, 'heartbeat_ping', {dedupe: true});
+      await recordTrackingDiagnostic('heartbeat_saved', {
+        timestamp: locationTimestamp(location).toISOString(),
+      });
     } catch (error) {
+      await recordTrackingDiagnostic('heartbeat_error', {
+        message: error instanceof Error ? error.message : 'unknown',
+      });
       if (__DEV__) {
         console.warn('[LifeMap] Stationary ping getCurrentPosition failed', error);
       }
+    } finally {
+      // no-op
     }
   }
 
   private async onMotionChange(event: MotionChangeEvent): Promise<void> {
+    await recordTrackingDiagnostic('motion_change', {
+      isMoving: event.isMoving,
+      hasLocation: event.location != null,
+    });
     if (event.location) {
       try {
         await this.persistLocation(event.location, 'motion');
@@ -111,11 +208,23 @@ export class TransistorSoftLocationService implements LocationService {
 
     this.activePresetId = await readStoredPreset();
     const presetConfig = getTrackingPresetConfig(this.activePresetId);
+    await this.initializePersistedClock();
+    await recordTrackingDiagnostic('tracking_configure', {
+      presetId: this.activePresetId,
+    });
 
     this.subscriptions.push(
       BackgroundGeolocation.onLocation(async location => {
+        const timestampMs = locationTimestamp(location).getTime();
+        if (
+          this.suppressOnLocationTimestampMs != null &&
+          this.suppressOnLocationTimestampMs === timestampMs
+        ) {
+          this.suppressOnLocationTimestampMs = null;
+          return;
+        }
         try {
-          await this.persistLocation(location);
+          await this.persistLocation(location, 'gps', {dedupe: true});
         } catch (error) {
           if (__DEV__) {
             console.warn('[LifeMap] Failed to persist location', error);
@@ -127,6 +236,21 @@ export class TransistorSoftLocationService implements LocationService {
       }),
       BackgroundGeolocation.onHeartbeat(() => {
         void this.onHeartbeat();
+      }),
+      BackgroundGeolocation.onProviderChange(provider => {
+        void recordTrackingDiagnostic('provider_change', {
+          enabled: provider.enabled,
+          status: provider.status,
+          gps: provider.gps,
+          network: provider.network,
+        });
+      }),
+      BackgroundGeolocation.onAuthorization(event => {
+        void recordTrackingDiagnostic('authorization_event', {
+          status: event.status,
+          success: event.success,
+          error: event.error,
+        });
       }),
     );
 
@@ -158,12 +282,16 @@ export class TransistorSoftLocationService implements LocationService {
       debug: false,
       logLevel: BackgroundGeolocation.LogLevel.Warning,
     } as Parameters<typeof BackgroundGeolocation.setConfig>[0]);
+    await this.importNativeQueue();
 
     this.configured = true;
   }
 
   async requestPermission(): Promise<LocationAuthorizationStatus> {
     const status = await BackgroundGeolocation.requestPermission();
+    await recordTrackingDiagnostic('permission_requested', {
+      status: mapAuthorizationStatus(status),
+    });
     return mapAuthorizationStatus(status);
   }
 
@@ -180,12 +308,15 @@ export class TransistorSoftLocationService implements LocationService {
 
   async start(): Promise<void> {
     await BackgroundGeolocation.start();
+    await this.importNativeQueue();
     await setSetting(SETTINGS_KEY_TRACKING_ENABLED, 'true');
+    await recordTrackingDiagnostic('tracking_enabled', {enabled: true});
   }
 
   async stop(): Promise<void> {
     await BackgroundGeolocation.stop();
     await setSetting(SETTINGS_KEY_TRACKING_ENABLED, 'false');
+    await recordTrackingDiagnostic('tracking_enabled', {enabled: false});
   }
 
   async setPreset(presetId: TrackingPresetId): Promise<void> {
@@ -193,6 +324,7 @@ export class TransistorSoftLocationService implements LocationService {
     this.lastPersistedMs = 0;
     await setSetting(SETTINGS_KEY_TRACKING_PRESET, presetId);
     await BackgroundGeolocation.setConfig(getTrackingPresetConfig(presetId));
+    await recordTrackingDiagnostic('tracking_preset_changed', {presetId});
   }
 
   async setEnabled(enabled: boolean): Promise<void> {
@@ -209,10 +341,13 @@ export class TransistorSoftLocationService implements LocationService {
 
     if (enabled && !state.enabled) {
       await BackgroundGeolocation.start();
+      await this.importNativeQueue();
+      await recordTrackingDiagnostic('tracking_sync_started', {enabledFromSettings: true});
     }
 
     if (!enabled && state.enabled) {
       await BackgroundGeolocation.stop();
+      await recordTrackingDiagnostic('tracking_sync_stopped', {enabledFromSettings: false});
     }
   }
 
@@ -220,6 +355,8 @@ export class TransistorSoftLocationService implements LocationService {
     this.subscriptions.forEach(subscription => subscription.remove());
     this.subscriptions = [];
     this.lastPersistedMs = 0;
+    this.suppressOnLocationTimestampMs = null;
+    this.heartbeatInFlight = null;
     this.configured = false;
   }
 }
@@ -251,4 +388,32 @@ export function resetLocationService(): void {
     locationService.dispose();
     locationService = null;
   }
+}
+
+export async function handleHeadlessLocationEvent(
+  event: HeadlessEvent,
+): Promise<void> {
+  if (event.name !== BackgroundGeolocation.Event.Location) {
+    return;
+  }
+  const location = event.params as Location;
+  if (!isLocationLike(location)) {
+    return;
+  }
+  await insertLocationPoint({
+    timestamp: locationTimestamp(location),
+    lat: location.coords.latitude,
+    lng: location.coords.longitude,
+    accuracy: location.coords.accuracy >= 0 ? location.coords.accuracy : null,
+    altitude: location.coords.altitude,
+    speed:
+      location.coords.speed != null && location.coords.speed >= 0
+        ? location.coords.speed
+        : null,
+    source: toLocationSource('headless', location.event),
+  }, {dedupe: true});
+  await recordTrackingDiagnostic('headless_location_saved', {
+    event: event.name,
+    timestamp: locationTimestamp(location).toISOString(),
+  });
 }

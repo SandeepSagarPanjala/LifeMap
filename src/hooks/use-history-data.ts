@@ -8,8 +8,10 @@ import {
   getLocationPointsForDay,
   getLocationPointsInRange,
 } from '@/db/repositories/location-days';
-import {getDayRange, getTodayDateKey} from '@/lib/day-utils';
+import {subscribeLocationPointInserts} from '@/db/repositories/location-points';
+import {getDayRange, getTodayDateKey, toDateKey} from '@/lib/day-utils';
 import {runWhenIdle} from '@/lib/run-when-idle';
+import {getLocationService} from '@/location/transistorsoft-location-service';
 import type {HistoryData} from '@/lib/history-data-types';
 import {
   historyCacheKey,
@@ -123,6 +125,7 @@ export function useHistoryForDay(dateKey: string): {
   );
   const [loading, setLoading] = useState(initialCached == null);
   const [error, setError] = useState<string | null>(null);
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dateKeyRef = useRef(dateKey);
   const detectionConfigRef = useRef(detectionConfig);
   dateKeyRef.current = dateKey;
@@ -214,20 +217,62 @@ export function useHistoryForDay(dateKey: string): {
         return;
       }
 
-      void reloadHistoryIfChanged(
-        dateKeyRef.current,
-        detectionConfigRef.current,
-      )
-        .then(result => {
-          if (result != null) {
-            setData(result);
-          }
+      void getLocationService()
+        .drainNativeQueue()
+        .catch(() => undefined)
+        .finally(() => {
+          void syncHistoryForDay(
+            dateKeyRef.current,
+            detectionConfigRef.current,
+            {force: true},
+          )
+            .then(result => {
+              setData(result);
+            })
+            .catch(() => undefined);
         })
-        .catch(() => undefined);
     };
 
     const subscription = AppState.addEventListener('change', onAppStateChange);
     return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (refreshTimerRef.current != null) {
+        clearTimeout(refreshTimerRef.current);
+        refreshTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = subscribeLocationPointInserts(point => {
+      if (toDateKey(point.timestamp) !== dateKeyRef.current) {
+        return;
+      }
+      if (AppState.currentState !== 'active') {
+        return;
+      }
+      if (refreshTimerRef.current != null) {
+        return;
+      }
+      refreshTimerRef.current = setTimeout(() => {
+        refreshTimerRef.current = null;
+        void reloadHistoryIfChanged(
+          dateKeyRef.current,
+          detectionConfigRef.current,
+        )
+          .then(result => {
+            if (result != null) {
+              setData(result);
+            }
+          })
+          .catch(() => undefined);
+      }, 800);
+    });
+
+    return unsubscribe;
   }, []);
 
   return {data, loading, error, refresh};

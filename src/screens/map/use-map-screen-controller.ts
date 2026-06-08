@@ -91,6 +91,19 @@ export function useMapScreenController() {
     () => countHistoryTimelineEvents(historyEntries),
     [historyEntries],
   );
+  const trackingGapWarning = useMemo(() => {
+    if (!viewingToday || historyData.points.length === 0) {
+      return null;
+    }
+    const lastPoint = historyData.points[historyData.points.length - 1]!;
+    const gapMs = Date.now() - lastPoint.timestamp.getTime();
+    if (gapMs < 2 * 60 * 60_000) {
+      return null;
+    }
+    const hours = Math.floor(gapMs / 3_600_000);
+    const minutes = Math.floor((gapMs % 3_600_000) / 60_000);
+    return `No saved points for ${hours}h ${minutes}m`;
+  }, [historyData.points, viewingToday]);
 
   const dayStays = useMemo(
     (): DetectedTrip[] =>
@@ -189,8 +202,7 @@ export function useMapScreenController() {
     showHistoryPanelContent &&
     selectedHistoryIndex >= 0 &&
     historyMapPlan.selected != null;
-  const showDayJourney =
-    !historyPanelOpen && !playback.isPlaying && !historyLoading;
+  const showDayJourney = !historyPanelOpen && !playback.isPlaying;
   const showUserLocation =
     !historyPanelOpen && !playback.isPlaying && viewingToday;
 
@@ -430,6 +442,7 @@ export function useMapScreenController() {
     dayStays,
     historyMapPlan,
     historyBadgeCount,
+    trackingGapWarning,
     historyPanelOpen,
     historyPanelY,
     historyDatePickerOpen,

@@ -36,3 +36,10 @@ export const settings = sqliteTable('settings', {
   value: text('value'),
 });
 
+export const trackingEvents = sqliteTable('tracking_events', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  timestamp: integer('timestamp', {mode: 'timestamp'}).notNull(),
+  event: text('event').notNull(),
+  details: text('details'),
+});
+

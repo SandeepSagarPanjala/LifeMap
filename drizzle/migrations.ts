@@ -36,11 +36,20 @@ CREATE TABLE \`settings\` (
 CREATE UNIQUE INDEX \`settings_key_unique\` ON \`settings\` (\`key\`);`;
 
 const m0001 = `CREATE INDEX IF NOT EXISTS \`location_points_timestamp_idx\` ON \`location_points\` (\`timestamp\`);`;
+const m0002 = `CREATE TABLE IF NOT EXISTS \`tracking_events\` (
+	\`id\` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	\`timestamp\` integer NOT NULL,
+	\`event\` text NOT NULL,
+	\`details\` text
+);
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS \`tracking_events_timestamp_idx\` ON \`tracking_events\` (\`timestamp\`);`;
 
 export default {
   journal,
   migrations: {
     m0000,
     m0001,
+    m0002,
   },
 };
