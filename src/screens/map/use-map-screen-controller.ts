@@ -44,7 +44,8 @@ import {isVisitOngoing} from '@/lib/trip-format';
 import {
   canAddSavedPlace,
   matchSavedPlaceForStay,
-  matchSavedPlaceForTripEndpoint,
+  matchDriveEndSavedPlace,
+  matchDriveStartSavedPlace,
   MAX_SAVED_PLACES,
   SavedPlaceLimitError,
 } from '@/lib/saved-places';
@@ -53,6 +54,8 @@ import {getCurrentOpenVisit} from '@/lib/today-history';
 import {
   isPlayableTimelineEntry,
   firstPlayableTimelineIndex,
+  findNextPlayableTimelineIndex,
+  findPrevPlayableTimelineIndex,
   stayTripMarkerCoordinate,
   type DetectedTrip,
 } from '@/lib/trip-detection';
@@ -215,25 +218,55 @@ export function useMapScreenController() {
     [selectedPlayable, savedPlaces],
   );
 
-  const selectedDriveStartPlace = useMemo(
-    () =>
-      selectedPlayable?.kind === 'travel'
-        ? matchSavedPlaceForTripEndpoint(
-            selectedPlayable,
-            'start',
-            savedPlaces,
-          )
-        : null,
-    [selectedPlayable, savedPlaces],
-  );
+  const selectedDriveStartPlace = useMemo(() => {
+    if (selectedPlayable?.kind !== 'travel') {
+      return null;
+    }
+    let previousStay: DetectedTrip | null = null;
+    if (selectedHistoryIndex >= 0) {
+      const prevIdx = findPrevPlayableTimelineIndex(
+        historyEntries,
+        selectedHistoryIndex,
+      );
+      const prev = prevIdx >= 0 ? historyEntries[prevIdx] : null;
+      if (prev?.kind === 'stay') {
+        previousStay = prev;
+      }
+    }
+    return matchDriveStartSavedPlace(
+      selectedPlayable,
+      previousStay,
+      savedPlaces,
+    );
+  }, [
+    historyEntries,
+    savedPlaces,
+    selectedHistoryIndex,
+    selectedPlayable,
+  ]);
 
-  const selectedDriveEndPlace = useMemo(
-    () =>
-      selectedPlayable?.kind === 'travel'
-        ? matchSavedPlaceForTripEndpoint(selectedPlayable, 'end', savedPlaces)
-        : null,
-    [selectedPlayable, savedPlaces],
-  );
+  const selectedDriveEndPlace = useMemo(() => {
+    if (selectedPlayable?.kind !== 'travel') {
+      return null;
+    }
+    let nextStay: DetectedTrip | null = null;
+    if (selectedHistoryIndex >= 0) {
+      const nextIdx = findNextPlayableTimelineIndex(
+        historyEntries,
+        selectedHistoryIndex,
+      );
+      const next = nextIdx >= 0 ? historyEntries[nextIdx] : null;
+      if (next?.kind === 'stay') {
+        nextStay = next;
+      }
+    }
+    return matchDriveEndSavedPlace(selectedPlayable, nextStay, savedPlaces);
+  }, [
+    historyEntries,
+    savedPlaces,
+    selectedHistoryIndex,
+    selectedPlayable,
+  ]);
 
   const selectedStay =
     selectedPlayable?.kind === 'stay' ? selectedPlayable : null;
@@ -283,6 +316,7 @@ export function useMapScreenController() {
   usePlaceLookupScheduler({
     entries: historyEntries,
     selectedStay,
+    selectedDateKey,
     savedPlaces,
     tripConfig: tripDetectionConfig,
     viewingToday,
@@ -303,13 +337,24 @@ export function useMapScreenController() {
 
   const handleSelectVisitPlaceIndex = useCallback(
     (index: number) => {
-      const cacheId = selectedVisitPlaceDisplay.cacheId;
-      if (cacheId == null) {
+      if (!selectedStay) {
         return;
       }
-      void selectVisitPlaceCandidate(cacheId, index);
+      void selectVisitPlaceCandidate({
+        cacheId: selectedVisitPlaceDisplay.cacheId,
+        selectedIndex: index,
+        stay: selectedStay,
+        dateKey: selectedDateKey,
+        materializedTripId: selectedVisitPlaceDisplay.materializedTripId,
+      });
     },
-    [selectVisitPlaceCandidate, selectedVisitPlaceDisplay.cacheId],
+    [
+      selectVisitPlaceCandidate,
+      selectedDateKey,
+      selectedStay,
+      selectedVisitPlaceDisplay.cacheId,
+      selectedVisitPlaceDisplay.materializedTripId,
+    ],
   );
 
   const showHistoryMap =

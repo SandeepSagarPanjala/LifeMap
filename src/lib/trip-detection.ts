@@ -21,6 +21,8 @@ export type DetectedTrip = {
   durationMs: number;
   /** Last visit of the day with no newer saves — UI runs through `now`. */
   openThroughNow?: boolean;
+  /** Persisted trip row — per-visit label overrides. */
+  materializedTripId?: number;
 };
 
 export type TimelineGap = {
@@ -1109,6 +1111,44 @@ export function detectTripsNewestFirst(
 }
 
 const LONG_GAP_BEFORE_TRAVEL_MS = 10 * 60_000;
+const DEPARTURE_BRIDGE_M = 80;
+
+function previousStayDepartureAnchor(
+  stay: DetectedTrip,
+): LocationPointRow | null {
+  if (stay.points.length === 0) {
+    return null;
+  }
+
+  const last = stay.points[stay.points.length - 1]!;
+  const marker = stayTripMarkerCoordinate(stay);
+  const markerDistM =
+    distanceKm(
+      {lat: last.lat, lng: last.lng},
+      {lat: marker.latitude, lng: marker.longitude},
+    ) * 1000;
+
+  // Materialized rows can end on the departure road — anchor at the visit pin instead.
+  if (markerDistM > DEPARTURE_BRIDGE_M) {
+    return {
+      ...last,
+      lat: marker.latitude,
+      lng: marker.longitude,
+    };
+  }
+
+  return last;
+}
+
+function shouldBridgeDeparture(
+  anchor: LocationPointRow,
+  points: LocationPointRow[],
+): boolean {
+  if (points.length === 0) {
+    return false;
+  }
+  return distanceKm(points[0]!, anchor) * 1000 > DEPARTURE_BRIDGE_M;
+}
 
 function minDistanceToStayM(
   point: LocationPointLike,
@@ -1164,9 +1204,12 @@ export function getTravelDisplayPoints(
 
   let points = travel.points;
   const limitM = config.dwellRadiusMeters + 15;
-  const lastStaySave = previousStay?.points[previousStay.points.length - 1];
-  const gapMs = lastStaySave
-    ? travel.startAt.getTime() - lastStaySave.timestamp.getTime()
+  const departureAnchor = previousStay
+    ? previousStayDepartureAnchor(previousStay)
+    : null;
+  const lastStaySave = departureAnchor;
+  const gapMs = departureAnchor
+    ? travel.startAt.getTime() - departureAnchor.timestamp.getTime()
     : 0;
 
   if (previousStay && gapMs >= LONG_GAP_BEFORE_TRAVEL_MS) {
@@ -1191,14 +1234,13 @@ export function getTravelDisplayPoints(
     }
   }
 
-  const lastSave = previousStay?.points[previousStay.points.length - 1];
   if (
-    lastSave &&
-    gapMs >= LONG_GAP_BEFORE_TRAVEL_MS &&
-    points.length > 0 &&
-    minDistanceToStayM(points[0]!, previousStay) > 80
+    previousStay &&
+    departureAnchor &&
+    shouldBridgeDeparture(departureAnchor, points) &&
+    points[0] !== departureAnchor
   ) {
-    return [lastSave, ...points];
+    return [departureAnchor, ...points];
   }
 
   return points;

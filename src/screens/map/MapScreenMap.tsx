@@ -96,7 +96,8 @@ export function MapScreenMap({controller}: MapScreenMapProps) {
               }
               nearbyPlacePinned={
                 !currentOpenVisitSavedPlace &&
-                currentOpenVisitPlaceDisplay.isAreaDefault
+                (currentOpenVisitPlaceDisplay.isAreaDefault ||
+                  currentOpenVisitPlaceDisplay.isTripLabel)
               }
               showVisitPin={false}
               anchorCoordinate={userCoordinate}
@@ -112,7 +113,9 @@ export function MapScreenMap({controller}: MapScreenMapProps) {
             selectedSavedPlace ? null : selectedVisitPlaceDisplay.primaryLabel
           }
           selectedNearbyPlacePinned={
-            !selectedSavedPlace && selectedVisitPlaceDisplay.isAreaDefault
+            !selectedSavedPlace &&
+            (selectedVisitPlaceDisplay.isAreaDefault ||
+              selectedVisitPlaceDisplay.isTripLabel)
           }
           selectedDriveStartPlace={selectedDriveStartPlace}
           selectedDriveEndPlace={selectedDriveEndPlace}

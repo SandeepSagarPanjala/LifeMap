@@ -28,7 +28,11 @@ export function buildVisitPlaceCandidates(
 
 export function resolveVisitPlaceDisplay(
   row: PlaceLookupRow | null,
-  options?: {loading?: boolean},
+  options?: {
+    loading?: boolean;
+    selectedIndexOverride?: number | null;
+    isTripLabel?: boolean;
+  },
 ): VisitPlaceDisplay {
   if (!row || row.lookupStatus === 'pending') {
     return {
@@ -37,8 +41,10 @@ export function resolveVisitPlaceDisplay(
       candidates: [],
       selectedIndex: 0,
       cacheId: row?.id ?? null,
+      materializedTripId: null,
       loading: options?.loading ?? row?.lookupStatus === 'pending',
       isAreaDefault: false,
+      isTripLabel: false,
     };
   }
 
@@ -49,8 +55,10 @@ export function resolveVisitPlaceDisplay(
       candidates: [],
       selectedIndex: 0,
       cacheId: row.id,
+      materializedTripId: null,
       loading: false,
       isAreaDefault: false,
+      isTripLabel: false,
     };
   }
 
@@ -62,15 +70,23 @@ export function resolveVisitPlaceDisplay(
       candidates: [],
       selectedIndex: 0,
       cacheId: row.id,
+      materializedTripId: null,
       loading: false,
       isAreaDefault: false,
+      isTripLabel: false,
     };
   }
 
-  const selectedIndex =
-    row.selectedCandidateIndex != null &&
-    row.selectedCandidateIndex >= 0 &&
-    row.selectedCandidateIndex < candidates.length
+  const hasTripOverride =
+    options?.selectedIndexOverride != null &&
+    options.selectedIndexOverride >= 0 &&
+    options.selectedIndexOverride < candidates.length;
+
+  const selectedIndex = hasTripOverride
+    ? options!.selectedIndexOverride!
+    : row.selectedCandidateIndex != null &&
+        row.selectedCandidateIndex >= 0 &&
+        row.selectedCandidateIndex < candidates.length
       ? row.selectedCandidateIndex
       : 0;
 
@@ -80,8 +96,10 @@ export function resolveVisitPlaceDisplay(
     candidates,
     selectedIndex,
     cacheId: row.id,
+    materializedTripId: null,
     loading: false,
-    isAreaDefault: row.selectedCandidateIndex != null,
+    isAreaDefault: !hasTripOverride && row.selectedCandidateIndex != null,
+    isTripLabel: options?.isTripLabel === true && hasTripOverride,
   };
 }
 
@@ -94,7 +112,9 @@ export function savedPlaceVisitDisplay(
     candidates: [{name: place.label, kind: 'poi'}],
     selectedIndex: 0,
     cacheId: null,
+    materializedTripId: null,
     loading: false,
     isAreaDefault: false,
+    isTripLabel: false,
   };
 }

@@ -10,6 +10,7 @@ import {
   MAP_SETTINGS_SIZE,
   MAP_SETTINGS_TOP_GAP,
 } from './map-screen-constants';
+import {MaterializationActivityDot} from '@/components/map/MaterializationActivityDot';
 import type {MapScreenController} from './use-map-screen-controller';
 
 type MapScreenTopBarProps = {
@@ -31,6 +32,7 @@ export function MapScreenTopBar({controller}: MapScreenTopBarProps) {
         style={[styles.settingsButton, {top: settingsTop}]}>
         <Settings size={22} color={colors.primary} strokeWidth={2.25} />
       </Pressable>
+      <MaterializationActivityDot top={settingsTop + 4} />
     </View>
   );
 }

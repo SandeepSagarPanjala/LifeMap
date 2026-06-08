@@ -10,12 +10,14 @@ import {
   shouldSkipPlaceLookupForStay,
   stayQualifiesForPlaceLookup,
 } from '@/lib/place-lookup-service';
+import {ensureTripForClosedStay} from '@/lib/trip-materialization';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
 import type {DayTimelineEntry, DetectedTrip} from '@/lib/trip-detection';
 
 type UsePlaceLookupSchedulerArgs = {
   entries: DayTimelineEntry[];
   selectedStay: DetectedTrip | null;
+  selectedDateKey: string;
   savedPlaces: SavedPlaceRow[];
   tripConfig: TripDetectionConfig;
   viewingToday: boolean;
@@ -38,6 +40,7 @@ function listQualifyingStays(
 export function usePlaceLookupScheduler({
   entries,
   selectedStay,
+  selectedDateKey,
   savedPlaces,
   tripConfig,
   viewingToday,
@@ -80,6 +83,7 @@ export function usePlaceLookupScheduler({
           stayQualifiesForPlaceLookup(selectedStay, tripConfig) &&
           !shouldSkipPlaceLookupForStay(selectedStay, savedPlaces)
         ) {
+          await ensureTripForClosedStay(selectedStay, selectedDateKey);
           await enqueuePlaceLookupForStay(selectedStay, savedPlaces, tripConfig);
         }
       })();
@@ -92,6 +96,7 @@ export function usePlaceLookupScheduler({
     entries,
     historyPanelOpen,
     savedPlaces,
+    selectedDateKey,
     selectedStay,
     tripConfig,
     viewingToday,

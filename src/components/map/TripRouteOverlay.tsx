@@ -64,8 +64,12 @@ export const TripRouteOverlay = memo(function TripRouteOverlay({
     startAt != null &&
     endAt != null &&
     coordinates.length >= 2;
-  const routeStart = coordinates[0]!;
-  const routeEnd = coordinates[coordinates.length - 1]!;
+  const routeStart = startSavedPlace
+    ? {latitude: startSavedPlace.lat, longitude: startSavedPlace.lng}
+    : coordinates[0]!;
+  const routeEnd = endSavedPlace
+    ? {latitude: endSavedPlace.lat, longitude: endSavedPlace.lng}
+    : coordinates[coordinates.length - 1]!;
 
   return (
     <>

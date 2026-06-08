@@ -37,7 +37,10 @@ export type VisitPlaceDisplay = {
   candidates: VisitPlaceDisplayCandidate[];
   selectedIndex: number;
   cacheId: number | null;
+  materializedTripId: number | null;
   loading: boolean;
   /** User swiped to set the default label for this area. */
   isAreaDefault: boolean;
+  /** User swiped to set the label for this specific visit. */
+  isTripLabel: boolean;
 };

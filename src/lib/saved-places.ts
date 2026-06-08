@@ -79,6 +79,38 @@ export function matchSavedPlaceForTripEndpoint(
   return matchSavedPlaceForPoint(point, places);
 }
 
+/** Drive end — last GPS is often still on the road; use the next visit when needed. */
+export function matchDriveEndSavedPlace(
+  travel: DetectedTrip,
+  nextStay: DetectedTrip | null,
+  places: SavedPlaceRow[],
+): SavedPlaceRow | null {
+  const fromEndpoint = matchSavedPlaceForTripEndpoint(travel, 'end', places);
+  if (fromEndpoint != null) {
+    return fromEndpoint;
+  }
+  if (nextStay != null) {
+    return matchSavedPlaceForStay(nextStay, places);
+  }
+  return null;
+}
+
+/** Drive start — parking-lot departure GPS may sit outside the saved-place radius. */
+export function matchDriveStartSavedPlace(
+  travel: DetectedTrip,
+  previousStay: DetectedTrip | null,
+  places: SavedPlaceRow[],
+): SavedPlaceRow | null {
+  const fromEndpoint = matchSavedPlaceForTripEndpoint(travel, 'start', places);
+  if (fromEndpoint != null) {
+    return fromEndpoint;
+  }
+  if (previousStay != null) {
+    return matchSavedPlaceForStay(previousStay, places);
+  }
+  return null;
+}
+
 export function savedPlaceDisplayLabel(place: SavedPlaceRow): string {
   return place.label;
 }

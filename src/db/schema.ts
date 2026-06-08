@@ -65,3 +65,39 @@ export const placeLookupCache = sqliteTable('place_lookup_cache', {
   fetchedAt: integer('fetched_at', {mode: 'timestamp'}),
 });
 
+export const trips = sqliteTable('trips', {
+  id: integer('id').primaryKey({autoIncrement: true}),
+  eventKey: text('event_key').notNull().unique(),
+  kind: text('kind', {enum: ['stay', 'travel']}).notNull(),
+  dateKey: text('date_key').notNull(),
+  startAt: integer('start_at', {mode: 'timestamp'}).notNull(),
+  endAt: integer('end_at', {mode: 'timestamp'}).notNull(),
+  durationMs: integer('duration_ms').notNull(),
+  distanceKm: real('distance_km').notNull(),
+  centroidLat: real('centroid_lat').notNull(),
+  centroidLng: real('centroid_lng').notNull(),
+  placeLookupCacheId: integer('place_lookup_cache_id'),
+  selectedCandidateIndex: integer('selected_candidate_index'),
+  detectionVersion: integer('detection_version').notNull(),
+  closedAt: integer('closed_at', {mode: 'timestamp'}).notNull(),
+});
+
+export const materializedDays = sqliteTable('materialized_days', {
+  dateKey: text('date_key').primaryKey(),
+  status: text('status').notNull(),
+  detectionVersion: integer('detection_version').notNull(),
+  tripCount: integer('trip_count').notNull().default(0),
+  pointCount: integer('point_count').notNull().default(0),
+  sealedAt: integer('sealed_at', {mode: 'timestamp'}),
+  updatedAt: integer('updated_at', {mode: 'timestamp'}).notNull(),
+});
+
+export const materializationQueue = sqliteTable('materialization_queue', {
+  id: integer('id').primaryKey({autoIncrement: true}),
+  jobType: text('job_type').notNull(),
+  dateKey: text('date_key').notNull(),
+  status: text('status').notNull().default('pending'),
+  attempts: integer('attempts').notNull().default(0),
+  createdAt: integer('created_at', {mode: 'timestamp'}).notNull(),
+});
+

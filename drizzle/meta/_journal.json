@@ -36,6 +36,13 @@
       "when": 1788896000000,
       "tag": "0004_place_lookup_cache",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788897000000,
+      "tag": "0005_trips_materialization",
+      "breakpoints": true
     }
   ]
 }

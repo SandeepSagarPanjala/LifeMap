@@ -1,6 +1,8 @@
 import type {SavedPlaceRow} from '../src/db/repositories/saved-places';
 import {
   canAddSavedPlace,
+  matchDriveEndSavedPlace,
+  matchDriveStartSavedPlace,
   matchSavedPlaceForPoint,
   matchSavedPlaceForStay,
   matchSavedPlaceForTripEndpoint,
@@ -113,6 +115,106 @@ describe('saved places matching', () => {
     expect(
       matchSavedPlaceForTripEndpoint(travel, 'end', places)?.label,
     ).toBe('Latitude Magnolia');
+  });
+
+  it('matches drive end from the following visit when last GPS is still on the road', () => {
+    const travel: DetectedTrip = {
+      id: 'travel-1',
+      kind: 'travel',
+      points: [
+        {
+          id: 1,
+          timestamp: new Date('2026-06-08T05:00:00.000Z'),
+          lat: 33.052,
+          lng: -96.83459,
+          accuracy: 10,
+          altitude: null,
+          speed: null,
+          source: 'gps',
+        },
+      ],
+      startAt: new Date('2026-06-08T05:00:00.000Z'),
+      endAt: new Date('2026-06-08T05:10:00.000Z'),
+      distanceKm: 1,
+      durationMs: 600_000,
+    };
+    const nextStay: DetectedTrip = {
+      id: 'stay-1',
+      kind: 'stay',
+      points: [
+        {
+          id: 2,
+          timestamp: new Date('2026-06-08T05:10:00.000Z'),
+          lat: 33.05532,
+          lng: -96.83445,
+          accuracy: 10,
+          altitude: null,
+          speed: null,
+          source: 'gps',
+        },
+      ],
+      startAt: new Date('2026-06-08T05:10:00.000Z'),
+      endAt: new Date('2026-06-08T05:40:00.000Z'),
+      distanceKm: 0,
+      durationMs: 1_800_000,
+    };
+    const library = place('favorite', 'Library', 33.05595, -96.83449);
+
+    expect(matchSavedPlaceForTripEndpoint(travel, 'end', [library])).toBeNull();
+    expect(matchDriveEndSavedPlace(travel, nextStay, [library])?.label).toBe(
+      'Library',
+    );
+  });
+
+  it('matches drive start from the previous visit when departure GPS is outside radius', () => {
+    const previousStay: DetectedTrip = {
+      id: 'stay-0',
+      kind: 'stay',
+      points: [
+        {
+          id: 1,
+          timestamp: new Date('2026-06-08T04:00:00.000Z'),
+          lat: 33.05532,
+          lng: -96.83445,
+          accuracy: 10,
+          altitude: null,
+          speed: null,
+          source: 'gps',
+        },
+      ],
+      startAt: new Date('2026-06-08T04:00:00.000Z'),
+      endAt: new Date('2026-06-08T04:55:00.000Z'),
+      distanceKm: 0,
+      durationMs: 3_300_000,
+    };
+    const travel: DetectedTrip = {
+      id: 'travel-1',
+      kind: 'travel',
+      points: [
+        {
+          id: 2,
+          timestamp: new Date('2026-06-08T05:00:00.000Z'),
+          lat: 33.052,
+          lng: -96.83459,
+          accuracy: 10,
+          altitude: null,
+          speed: null,
+          source: 'gps',
+        },
+      ],
+      startAt: new Date('2026-06-08T05:00:00.000Z'),
+      endAt: new Date('2026-06-08T05:10:00.000Z'),
+      distanceKm: 1,
+      durationMs: 600_000,
+    };
+    const library = place('favorite', 'Library', 33.05595, -96.83449);
+
+    expect(
+      matchSavedPlaceForTripEndpoint(travel, 'start', [library]),
+    ).toBeNull();
+    expect(
+      matchDriveStartSavedPlace(travel, previousStay, [library])?.label,
+    ).toBe('Library');
   });
 });
 

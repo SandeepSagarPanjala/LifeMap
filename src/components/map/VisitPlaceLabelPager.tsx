@@ -29,6 +29,7 @@ export function VisitPlaceLabelPager({
     setPageIndex(display.selectedIndex);
   }, [display.selectedIndex]);
 
+  const showUserPin = display.isAreaDefault || display.isTripLabel;
   const candidates = display.candidates;
   if (display.source !== 'lookup' || candidates.length <= 1) {
     if (!display.primaryLabel) {
@@ -37,7 +38,7 @@ export function VisitPlaceLabelPager({
     return (
       <VisitPlaceLabelWithPin
         name={display.primaryLabel}
-        showPin={display.isAreaDefault}
+        showPin={showUserPin}
       />
     );
   }
@@ -73,7 +74,7 @@ export function VisitPlaceLabelPager({
             <VisitPlaceLabelWithPin
               name={candidate.name}
               showPin={
-                display.isAreaDefault && index === display.selectedIndex
+                showUserPin && index === display.selectedIndex
               }
             />
             <Text variant="muted" className="text-[10px] uppercase tracking-wide">

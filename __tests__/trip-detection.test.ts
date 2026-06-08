@@ -18,6 +18,7 @@ import {
 import {distanceKm} from '../src/lib/location-geo';
 import {buildTripDetectionConfig} from '../src/lib/trip-settings';
 import type {LocationPointRow} from '../src/db/repositories/location-days';
+import type {DetectedTrip} from '../src/lib/trip-detection';
 
 const config = buildTripDetectionConfig(10, 10, 150);
 
@@ -663,6 +664,51 @@ describe('stay / trip timeline', () => {
     );
     expect(trips).toHaveLength(1);
     expect(trips[0]?.kind).toBe('stay');
+  });
+
+  it('bridges drive start to visit pin when prior stay row ends on departure road GPS', () => {
+    const library = {
+      id: 1,
+      timestamp: new Date('2026-06-06T21:25:00.000Z'),
+      lat: 33.05582,
+      lng: -96.83425,
+      accuracy: 10,
+      altitude: null,
+      speed: 0,
+      source: 'gps' as const,
+    };
+    const road = {
+      id: 2,
+      timestamp: new Date('2026-06-06T21:34:10.000Z'),
+      lat: 33.05809,
+      lng: -96.83283,
+      accuracy: 10,
+      altitude: null,
+      speed: 14,
+      source: 'gps' as const,
+    };
+    const previousStay: DetectedTrip = {
+      id: 'stay-library',
+      kind: 'stay',
+      points: [library, road],
+      startAt: new Date('2026-06-06T20:13:00.000Z'),
+      endAt: road.timestamp,
+      distanceKm: 0,
+      durationMs: 1,
+    };
+    const travel: DetectedTrip = {
+      id: 'travel-tesla',
+      kind: 'travel',
+      points: [road, {...road, id: 3, lat: 33.05928, lng: -96.83279}],
+      startAt: road.timestamp,
+      endAt: new Date('2026-06-06T21:39:00.000Z'),
+      distanceKm: 1,
+      durationMs: 1,
+    };
+
+    const route = getTravelDisplayPoints(travel, previousStay, [], config);
+    expect(route[0]?.lat).toBeCloseTo(library.lat, 3);
+    expect(route[0]?.lat).not.toBeCloseTo(road.lat, 3);
   });
 });
 

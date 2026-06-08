@@ -1,13 +1,8 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {useFocusEffect} from '@react-navigation/native';
-import {endOfDay} from 'date-fns';
 import {AppState, type AppStateStatus} from 'react-native';
 
-import {
-  getLocationDayFingerprint,
-  getLocationPointsForDay,
-  getLocationPointsInRange,
-} from '@/db/repositories/location-days';
+import {getLocationDayFingerprint} from '@/db/repositories/location-days';
 import {subscribeLocationPointInserts} from '@/db/repositories/location-points';
 import {getDayRange, getTodayDateKey, toDateKey} from '@/lib/day-utils';
 import {runWhenIdle} from '@/lib/run-when-idle';
@@ -17,11 +12,6 @@ import {
   historyCacheKey,
   historyDataCache,
 } from '@/lib/history-data-cache';
-import {
-  getHistoryLookaheadEnd,
-  getHistoryLookbackStart,
-  prepareDayHistoryTimeline,
-} from '@/lib/today-history';
 import {useTripDetectionConfig} from '@/hooks/use-trip-detection-config';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
 
@@ -41,42 +31,10 @@ async function loadHistoryForDay(
   dateKey: string,
   detectionConfig: TripDetectionConfig,
 ): Promise<HistoryData> {
-  const now = new Date();
-  const {start: dayStart} = getDayRange(dateKey);
-  const isToday = dateKey === getTodayDateKey();
-  const rangeEnd = isToday ? now : endOfDay(dayStart);
-  const lookbackStart = getHistoryLookbackStart(dayStart);
-  const dayEnd = endOfDay(dayStart);
-  const lookaheadEnd = getHistoryLookaheadEnd(dayEnd);
-  const [dayPoints, lookbackPoints, lookaheadPoints] = await Promise.all([
-    getLocationPointsForDay(dateKey),
-    getLocationPointsInRange(
-      lookbackStart,
-      new Date(dayStart.getTime() - 1),
-    ),
-    getLocationPointsInRange(
-      new Date(dayEnd.getTime() + 1),
-      lookaheadEnd,
-    ),
-  ]);
-  const entries = prepareDayHistoryTimeline(
-    dateKey,
-    dayPoints,
-    lookbackPoints,
-    detectionConfig,
-    now,
-    lookaheadPoints,
+  const {loadHistoryWithMaterialization} = await import(
+    '@/lib/trip-materialization'
   );
-
-  return {
-    dateKey,
-    points: dayPoints,
-    entries,
-    range: {
-      startAt: dayStart,
-      endAt: rangeEnd,
-    },
-  };
+  return loadHistoryWithMaterialization(dateKey, detectionConfig);
 }
 
 async function syncHistoryForDay(

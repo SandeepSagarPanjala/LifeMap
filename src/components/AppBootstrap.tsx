@@ -6,6 +6,7 @@ import {
   initializeTrackingDiagnosticsEnabled,
   recordTrackingDiagnostic,
 } from '@/lib/tracking-diagnostics';
+import {useTripMaterializationBootstrap} from '@/hooks/use-trip-materialization-bootstrap';
 import {useAppStore} from '@/stores/app-store';
 
 type AppBootstrapProps = {
@@ -18,6 +19,8 @@ export function AppBootstrap({children, enableLocationTracking = false}: AppBoot
   const hasCompletedPrivacyOnboarding = useAppStore(
     state => state.hasCompletedPrivacyOnboarding,
   );
+
+  useTripMaterializationBootstrap();
 
   useEffect(() => {
     void ensureDatabaseReady();
