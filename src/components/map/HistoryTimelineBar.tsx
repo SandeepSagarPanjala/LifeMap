@@ -10,12 +10,13 @@ import {ChevronLeft, ChevronRight} from 'lucide-react-native';
 
 import type {DayTimelineEntry} from '@/lib/trip-detection';
 import {
-  getTodayDateKey,
-  shiftDateKey,
-} from '@/lib/day-utils';
+  findNextPlayableTimelineIndex,
+  findPrevPlayableTimelineIndex,
+  firstPlayableTimelineIndex,
+  lastPlayableTimelineIndex,
+} from '@/lib/trip-detection';
 import {
   buildHistoryDayRuler,
-  formatHistoryDayTitle,
   HISTORY_COLORS,
   historySegmentColor,
 } from '@/lib/history-timeline';
@@ -36,8 +37,6 @@ type HistoryTimelineBarProps = {
   entries: DayTimelineEntry[];
   selectedIndex: number;
   onSelectIndex: (index: number) => void;
-  onDateKeyChange: (dateKey: string) => void;
-  onOpenDatePicker: () => void;
 };
 
 export function HistoryTimelineBar({
@@ -45,8 +44,6 @@ export function HistoryTimelineBar({
   entries,
   selectedIndex,
   onSelectIndex,
-  onDateKeyChange,
-  onOpenDatePicker,
 }: HistoryTimelineBarProps) {
   const [barWidth, setBarWidth] = useState(FALLBACK_BAR_WIDTH);
   const now = useMemo(() => new Date(), []);
@@ -56,9 +53,6 @@ export function HistoryTimelineBar({
     [barWidth, dateKey, entries, now],
   );
 
-  const dayTitle = formatHistoryDayTitle(dateKey, now);
-  const isToday = dateKey === getTodayDateKey();
-  const canGoNextDay = !isToday;
   const hasEntries = entries.length > 0;
 
   const trackTop = LABEL_HEIGHT + TICK_BAND_HEIGHT;
@@ -71,82 +65,58 @@ export function HistoryTimelineBar({
     }
   }, []);
 
-  const goPrevDay = useCallback(() => {
-    onDateKeyChange(shiftDateKey(dateKey, -1));
-  }, [dateKey, onDateKeyChange]);
-
-  const goNextDay = useCallback(() => {
-    if (canGoNextDay) {
-      onDateKeyChange(shiftDateKey(dateKey, 1));
-    }
-  }, [canGoNextDay, dateKey, onDateKeyChange]);
-
   const goPrevEvent = useCallback(() => {
     if (!hasEntries) {
       return;
     }
-    if (selectedIndex < 0) {
-      onSelectIndex(entries.length - 1);
-      return;
+    const target =
+      selectedIndex < 0
+        ? lastPlayableTimelineIndex(entries)
+        : findPrevPlayableTimelineIndex(entries, selectedIndex);
+    if (target >= 0) {
+      onSelectIndex(target);
     }
-    if (selectedIndex > 0) {
-      onSelectIndex(selectedIndex - 1);
-    }
-  }, [entries.length, hasEntries, onSelectIndex, selectedIndex]);
+  }, [entries, hasEntries, onSelectIndex, selectedIndex]);
 
   const goNextEvent = useCallback(() => {
     if (!hasEntries) {
       return;
     }
-    if (selectedIndex < 0) {
-      onSelectIndex(0);
-      return;
+    const target =
+      selectedIndex < 0
+        ? firstPlayableTimelineIndex(entries)
+        : findNextPlayableTimelineIndex(entries, selectedIndex);
+    if (target >= 0) {
+      onSelectIndex(target);
     }
-    if (selectedIndex < entries.length - 1) {
-      onSelectIndex(selectedIndex + 1);
-    }
-  }, [entries.length, hasEntries, onSelectIndex, selectedIndex]);
+  }, [entries, hasEntries, onSelectIndex, selectedIndex]);
 
+  const firstPlayable = firstPlayableTimelineIndex(entries);
+  const lastPlayable = lastPlayableTimelineIndex(entries);
   const canGoPrevEvent =
-    hasEntries && (selectedIndex < 0 || selectedIndex > 0);
+    hasEntries &&
+    (selectedIndex < 0
+      ? lastPlayable >= 0
+      : findPrevPlayableTimelineIndex(entries, selectedIndex) >= 0);
   const canGoNextEvent =
     hasEntries &&
-    (selectedIndex < 0 || selectedIndex < entries.length - 1);
+    (selectedIndex < 0
+      ? firstPlayable >= 0
+      : findNextPlayableTimelineIndex(entries, selectedIndex) >= 0);
 
   return (
     <View style={styles.wrap}>
-      <View style={styles.dayNav}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Previous day"
-          onPress={goPrevDay}
-          style={styles.dayNavBtn}>
-          <ChevronLeft size={20} color={HISTORY_COLORS.playhead} />
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`${dayTitle}, choose date`}
-          onPress={onOpenDatePicker}
-          style={styles.dayTitleBtn}>
-          <Text style={styles.dayTitle}>{dayTitle}</Text>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Next day"
-          disabled={!canGoNextDay}
-          onPress={goNextDay}
-          style={[styles.dayNavBtn, !canGoNextDay && styles.dayNavBtnDisabled]}>
-          <ChevronRight size={20} color={HISTORY_COLORS.playhead} />
-        </Pressable>
-      </View>
-
       <View style={[styles.barRow, {height: barHeight}]}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Previous event"
           disabled={!canGoPrevEvent}
           onPress={goPrevEvent}
-          style={[styles.eventNavBtn, !canGoPrevEvent && styles.eventNavBtnDisabled]}>
+          style={[
+            styles.eventNavBtn,
+            {height: barHeight},
+            !canGoPrevEvent && styles.eventNavBtnDisabled,
+          ]}>
           <View style={styles.eventNavCircle}>
             <ChevronLeft
               size={EVENT_NAV_ICON_SIZE}
@@ -245,7 +215,11 @@ export function HistoryTimelineBar({
           accessibilityLabel="Next event"
           disabled={!canGoNextEvent}
           onPress={goNextEvent}
-          style={[styles.eventNavBtn, !canGoNextEvent && styles.eventNavBtnDisabled]}>
+          style={[
+            styles.eventNavBtn,
+            {height: barHeight},
+            !canGoNextEvent && styles.eventNavBtnDisabled,
+          ]}>
           <View style={styles.eventNavCircle}>
             <ChevronRight
               size={EVENT_NAV_ICON_SIZE}
@@ -265,39 +239,14 @@ const styles = StyleSheet.create({
     paddingTop: 2,
     paddingBottom: 8,
   },
-  dayNav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  dayNavBtn: {
-    padding: 8,
-    minWidth: 40,
-    alignItems: 'center',
-  },
-  dayNavBtnDisabled: {
-    opacity: 0.25,
-  },
-  dayTitleBtn: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 4,
-  },
-  dayTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: HISTORY_COLORS.playhead,
-  },
   barRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
   },
   eventNavBtn: {
     width: EVENT_NAV_BTN_WIDTH,
-    height: TRACK_HEIGHT,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
   },
   eventNavCircle: {
     width: EVENT_NAV_CIRCLE_SIZE,

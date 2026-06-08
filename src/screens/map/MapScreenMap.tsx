@@ -35,6 +35,8 @@ export function MapScreenMap({controller}: MapScreenMapProps) {
     showHistoryMap,
     historyMapPlan,
     selectedSavedPlace,
+    selectedDriveStartPlace,
+    selectedDriveEndPlace,
     playback,
     savedPlaces,
     showSavedPlaceCircles,
@@ -66,7 +68,10 @@ export function MapScreenMap({controller}: MapScreenMapProps) {
         showCircles={showSavedPlaceCircles}
         hideMarkerPlaceId={
           showHistoryMap
-            ? (selectedSavedPlace?.id ?? null)
+            ? (selectedSavedPlace?.id ??
+              selectedDriveEndPlace?.id ??
+              selectedDriveStartPlace?.id ??
+              null)
             : (currentOpenVisitSavedPlace?.id ?? null)
         }
       />
@@ -92,6 +97,8 @@ export function MapScreenMap({controller}: MapScreenMapProps) {
         <HistoryDayMapOverlay
           plan={historyMapPlan}
           selectedSavedPlace={selectedSavedPlace}
+          selectedDriveStartPlace={selectedDriveStartPlace}
+          selectedDriveEndPlace={selectedDriveEndPlace}
           tripConfig={tripDetectionConfig}
           playbackProgress={playback.isPlaying ? playback.progress : null}
         />

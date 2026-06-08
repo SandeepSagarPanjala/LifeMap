@@ -8,6 +8,10 @@ import {
   isStaleWakeNotDeparture,
   stayTripCentroid,
   stayTripMarkerCoordinate,
+  findNextPlayableTimelineIndex,
+  findPrevPlayableTimelineIndex,
+  firstPlayableTimelineIndex,
+  lastPlayableTimelineIndex,
   staysBeforeEntryIndex,
   stayBeforeEntryIndex,
 } from '../src/lib/trip-detection';
@@ -659,5 +663,48 @@ describe('stay / trip timeline', () => {
     );
     expect(trips).toHaveLength(1);
     expect(trips[0]?.kind).toBe('stay');
+  });
+});
+
+describe('playable timeline navigation', () => {
+  const stay = {
+    id: 'stay-1',
+    kind: 'stay' as const,
+    points: [],
+    startAt: new Date('2026-06-08T08:00:00'),
+    endAt: new Date('2026-06-08T09:00:00'),
+    distanceKm: 0,
+    durationMs: 3_600_000,
+  };
+  const gap = {
+    kind: 'gap' as const,
+    startAt: new Date('2026-06-08T09:00:00'),
+    endAt: new Date('2026-06-08T10:00:00'),
+    durationMs: 3_600_000,
+    distanceKm: 0,
+  };
+  const travel = {
+    id: 'travel-1',
+    kind: 'travel' as const,
+    points: [],
+    startAt: new Date('2026-06-08T10:00:00'),
+    endAt: new Date('2026-06-08T11:00:00'),
+    distanceKm: 5,
+    durationMs: 3_600_000,
+  };
+  const entries = [stay, gap, travel];
+
+  it('skips gaps when moving to the next playable entry', () => {
+    expect(firstPlayableTimelineIndex(entries)).toBe(0);
+    expect(lastPlayableTimelineIndex(entries)).toBe(2);
+    expect(findNextPlayableTimelineIndex(entries, 0)).toBe(2);
+    expect(findNextPlayableTimelineIndex(entries, 1)).toBe(2);
+    expect(findNextPlayableTimelineIndex(entries, 2)).toBe(-1);
+  });
+
+  it('skips gaps when moving to the previous playable entry', () => {
+    expect(findPrevPlayableTimelineIndex(entries, 2)).toBe(0);
+    expect(findPrevPlayableTimelineIndex(entries, 1)).toBe(0);
+    expect(findPrevPlayableTimelineIndex(entries, 0)).toBe(-1);
   });
 });

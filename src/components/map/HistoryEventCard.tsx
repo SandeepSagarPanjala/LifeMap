@@ -7,11 +7,13 @@ import {Text} from '@/components/ui/text';
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import {HISTORY_COLORS} from '@/lib/history-timeline';
 import {savedPlaceDisplayLabel} from '@/lib/saved-places';
+import {SAVED_PLACE_MAP_STYLE} from '@/lib/saved-places-map';
 import type {DayTimelineEntry} from '@/lib/trip-detection';
 import {
   formatStayVisitLabel,
   formatTimelineStats,
   formatTimelineTitle,
+  formatTripClockTime,
 } from '@/lib/trip-format';
 import type {DistanceUnit} from '@/lib/location-geo';
 import {useThemeColors} from '@/hooks/use-theme-colors';
@@ -22,6 +24,8 @@ const VISIT_LOTTIE = require('../../../assets/lottie/visit-relax.json');
 type HistoryEventCardProps = {
   entry: DayTimelineEntry | null;
   savedPlace?: SavedPlaceRow | null;
+  driveStartPlace?: SavedPlaceRow | null;
+  driveEndPlace?: SavedPlaceRow | null;
   /** Timeline has data but no event is selected yet. */
   scrubOnEmpty?: boolean;
   distanceUnit: DistanceUnit;
@@ -35,9 +39,7 @@ const ACTION_BUTTON_SIZE = 44;
 const ACTION_BUTTON_INSET = 16;
 const DRIVE_LOTTIE_CLIP_WIDTH = 96;
 const DRIVE_LOTTIE_CLIP_HEIGHT = ACTION_BUTTON_SIZE;
-const DRIVE_LOTTIE_LEFT = ACTION_BUTTON_INSET - 4;
 /** Text starts here — slightly inside clip to skip Lottie right-padding. */
-const DRIVE_CAR_VISUAL_WIDTH = 84;
 const DRIVE_LOTTIE_RENDER_WIDTH = 280;
 const DRIVE_LOTTIE_RENDER_HEIGHT = 160;
 const VISIT_LOTTIE_CLIP_WIDTH = 70;
@@ -65,7 +67,7 @@ function VisitCardIcon() {
 
 function DriveCardIcon() {
   return (
-    <View style={styles.driveLottieAnchor}>
+    <View style={styles.driveLottieInline}>
       <View style={styles.driveLottieClip}>
         <LottieView
           source={DRIVE_LOTTIE}
@@ -78,9 +80,44 @@ function DriveCardIcon() {
   );
 }
 
+function DriveEndpointSummary({
+  caption,
+  time,
+  savedPlace,
+}: {
+  caption: 'Start' | 'Finish';
+  time: Date;
+  savedPlace?: SavedPlaceRow | null;
+}) {
+  const placeAccent = savedPlace
+    ? SAVED_PLACE_MAP_STYLE[savedPlace.kind]
+    : null;
+
+  return (
+    <View style={styles.driveEndpoint}>
+      <Text style={styles.driveEndpointCaption}>{caption}</Text>
+      <Text style={styles.driveEndpointTime}>{formatTripClockTime(time)}</Text>
+      {savedPlace && placeAccent ? (
+        <View style={styles.driveEndpointPlaceRow}>
+          <SavedPlaceIcon
+            kind={savedPlace.kind}
+            size={14}
+            color={placeAccent.icon}
+          />
+          <Text style={styles.driveEndpointPlace} numberOfLines={1}>
+            {savedPlaceDisplayLabel(savedPlace)}
+          </Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 export function HistoryEventCard({
   entry,
   savedPlace = null,
+  driveStartPlace = null,
+  driveEndPlace = null,
   scrubOnEmpty = false,
   distanceUnit,
   isPlaying,
@@ -105,7 +142,6 @@ export function HistoryEventCard({
     );
   }
 
-  const showPlay = entry.kind === 'travel';
   const showZoom = entry.kind === 'stay';
   const isGap = entry.kind === 'gap';
   const isStay = entry.kind === 'stay';
@@ -121,11 +157,26 @@ export function HistoryEventCard({
 
   return (
     <View style={[styles.card, isGap && styles.cardGap]}>
-      <Text variant="muted" className="text-xs uppercase tracking-wide">
-        {isGap ? 'Gap' : isStay ? 'Visit' : 'Drive'}
-      </Text>
+      {!isStay ? (
+        <Text variant="muted" className="text-xs uppercase tracking-wide">
+          {isGap ? 'Gap' : 'Drive'}
+        </Text>
+      ) : null}
       {isStay && visitLabel ? (
         <>
+          <View style={styles.visitKindRow}>
+            <Text variant="muted" className="text-xs uppercase tracking-wide">
+              Visit
+            </Text>
+            {savedPlace ? (
+              <View style={styles.visitPlaceRow}>
+                <SavedPlaceIcon kind={savedPlace.kind} size={16} />
+                <Text className="text-base font-semibold">
+                  {savedPlaceDisplayLabel(savedPlace)}
+                </Text>
+              </View>
+            ) : null}
+          </View>
           <VisitCardIcon />
           <View
             style={[
@@ -134,20 +185,7 @@ export function HistoryEventCard({
               styles.visitTitleRow,
             ]}>
             <View className="flex-1">
-              {savedPlace ? (
-                <View className="mb-1 flex-row items-center gap-2">
-                  <SavedPlaceIcon kind={savedPlace.kind} size={18} />
-                  <Text className="text-lg font-semibold">
-                    {savedPlaceDisplayLabel(savedPlace)}
-                  </Text>
-                </View>
-              ) : null}
-              <Text
-                className={
-                  savedPlace ? 'text-base font-medium' : 'text-lg font-semibold'
-                }>
-                {visitLabel.title}
-              </Text>
+              <Text className="text-lg font-semibold">{visitLabel.title}</Text>
               <Text variant="muted" className="mt-0.5 text-sm">
                 {visitLabel.subtitle}
               </Text>
@@ -156,19 +194,43 @@ export function HistoryEventCard({
         </>
       ) : isTravel ? (
         <>
-          <DriveCardIcon />
-          <View
-            style={[
-              styles.eventTitleRow,
-              showPlay && styles.eventTitleRowWithRightAction,
-              styles.driveTitleRow,
-            ]}>
-            <View className="flex-1">
-              <Text className="text-lg font-semibold">{title}</Text>
+          <View style={styles.driveBodyRow}>
+            <DriveCardIcon />
+            <View style={styles.driveContent}>
+              {driveStartPlace || driveEndPlace ? (
+                <View style={styles.driveEndpointsRow}>
+                  <DriveEndpointSummary
+                    caption="Start"
+                    time={entry.startAt}
+                    savedPlace={driveStartPlace}
+                  />
+                  <DriveEndpointSummary
+                    caption="Finish"
+                    time={entry.endAt}
+                    savedPlace={driveEndPlace}
+                  />
+                </View>
+              ) : (
+                <Text className="text-lg font-semibold">{title}</Text>
+              )}
               <Text variant="muted" className="mt-0.5 text-sm">
                 {stats}
               </Text>
             </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={isPlaying ? 'Stop playback' : 'Play on map'}
+              onPress={() => (isPlaying ? onStop() : onPlay())}
+              style={[
+                styles.inlineActionButton,
+                {backgroundColor: colors.primary},
+              ]}>
+              {isPlaying ? (
+                <Pause size={20} color="#FFFFFF" fill="#FFFFFF" />
+              ) : (
+                <Play size={20} color="#FFFFFF" fill="#FFFFFF" />
+              )}
+            </Pressable>
           </View>
         </>
       ) : (
@@ -180,19 +242,6 @@ export function HistoryEventCard({
         </>
       )}
 
-      {showPlay ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={isPlaying ? 'Stop playback' : 'Play on map'}
-          onPress={() => (isPlaying ? onStop() : onPlay())}
-          style={[styles.actionButton, {backgroundColor: colors.primary}]}>
-          {isPlaying ? (
-            <Pause size={20} color="#FFFFFF" fill="#FFFFFF" />
-          ) : (
-            <Play size={20} color="#FFFFFF" fill="#FFFFFF" />
-          )}
-        </Pressable>
-      ) : null}
       {showZoom ? (
         <Pressable
           accessibilityRole="button"
@@ -240,8 +289,64 @@ const styles = StyleSheet.create({
   visitTitleRow: {
     paddingLeft: VISIT_LOTTIE_LEFT + VISIT_VISUAL_WIDTH,
   },
-  driveTitleRow: {
-    paddingLeft: DRIVE_LOTTIE_LEFT + DRIVE_CAR_VISUAL_WIDTH,
+  visitKindRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  visitPlaceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 1,
+  },
+  driveBodyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+  },
+  driveContent: {
+    flex: 1,
+    minWidth: 0,
+  },
+  driveLottieInline: {
+    flexShrink: 0,
+  },
+  driveEndpointsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  driveEndpoint: {
+    flex: 1,
+    minWidth: 0,
+  },
+  driveEndpointCaption: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: HISTORY_COLORS.travel,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  driveEndpointPlaceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
+  driveEndpointPlace: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1C1C1E',
+  },
+  driveEndpointTime: {
+    marginTop: 1,
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#1C1C1E',
   },
   visitLottieAnchor: {
     position: 'absolute',
@@ -261,12 +366,6 @@ const styles = StyleSheet.create({
     height: VISIT_LOTTIE_RENDER_HEIGHT,
     marginTop: -96,
     transform: [{scaleX: -1}],
-  },
-  driveLottieAnchor: {
-    position: 'absolute',
-    left: DRIVE_LOTTIE_LEFT,
-    bottom: ACTION_BUTTON_INSET,
-    zIndex: 2,
   },
   driveLottieClip: {
     width: DRIVE_LOTTIE_CLIP_WIDTH,
@@ -290,5 +389,13 @@ const styles = StyleSheet.create({
     borderRadius: ACTION_BUTTON_SIZE / 2,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  inlineActionButton: {
+    width: ACTION_BUTTON_SIZE,
+    height: ACTION_BUTTON_SIZE,
+    borderRadius: ACTION_BUTTON_SIZE / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
   },
 });

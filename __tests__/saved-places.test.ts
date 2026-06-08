@@ -3,6 +3,7 @@ import {
   canAddSavedPlace,
   matchSavedPlaceForPoint,
   matchSavedPlaceForStay,
+  matchSavedPlaceForTripEndpoint,
   MAX_SAVED_PLACES,
 } from '../src/lib/saved-places';
 import {shouldShowSavedPlaceCircles} from '../src/lib/saved-places-map';
@@ -69,6 +70,49 @@ describe('saved places matching', () => {
       place('home', 'Home', 33.21, -97.13),
     ]);
     expect(match?.kind).toBe('home');
+  });
+
+  it('matches drive start and end to saved places', () => {
+    const travel: DetectedTrip = {
+      id: 'travel-1',
+      kind: 'travel',
+      points: [
+        {
+          id: 1,
+          timestamp: new Date('2026-06-08T05:00:00.000Z'),
+          lat: 33.21,
+          lng: -97.13,
+          accuracy: 10,
+          altitude: null,
+          speed: null,
+          source: 'gps',
+        },
+        {
+          id: 2,
+          timestamp: new Date('2026-06-08T05:10:00.000Z'),
+          lat: 33.25,
+          lng: -97.15,
+          accuracy: 10,
+          altitude: null,
+          speed: null,
+          source: 'gps',
+        },
+      ],
+      startAt: new Date('2026-06-08T05:00:00.000Z'),
+      endAt: new Date('2026-06-08T05:10:00.000Z'),
+      distanceKm: 5,
+      durationMs: 600_000,
+    };
+    const places = [
+      place('home', 'Home', 33.21, -97.13),
+      place('favorite', 'Latitude Magnolia', 33.25, -97.15),
+    ];
+    expect(
+      matchSavedPlaceForTripEndpoint(travel, 'start', places)?.label,
+    ).toBe('Home');
+    expect(
+      matchSavedPlaceForTripEndpoint(travel, 'end', places)?.label,
+    ).toBe('Latitude Magnolia');
   });
 });
 

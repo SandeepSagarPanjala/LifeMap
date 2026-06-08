@@ -64,6 +64,21 @@ export function matchSavedPlaceForStay(
   return null;
 }
 
+export function matchSavedPlaceForTripEndpoint(
+  trip: DetectedTrip,
+  endpoint: 'start' | 'end',
+  places: SavedPlaceRow[],
+): SavedPlaceRow | null {
+  if (trip.points.length === 0 || places.length === 0) {
+    return null;
+  }
+  const point =
+    endpoint === 'start'
+      ? trip.points[0]!
+      : trip.points[trip.points.length - 1]!;
+  return matchSavedPlaceForPoint(point, places);
+}
+
 export function savedPlaceDisplayLabel(place: SavedPlaceRow): string {
   return place.label;
 }

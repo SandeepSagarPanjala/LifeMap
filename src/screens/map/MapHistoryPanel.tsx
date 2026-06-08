@@ -1,5 +1,6 @@
 import {Animated, StyleSheet} from 'react-native';
 
+import {HistoryDayNav} from '@/components/map/HistoryDayNav';
 import {HistoryEventCard} from '@/components/map/HistoryEventCard';
 import {HistoryPanelSkeleton} from '@/components/map/HistoryPanelSkeleton';
 import {HistoryTimelineBar} from '@/components/map/HistoryTimelineBar';
@@ -19,6 +20,8 @@ export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
     scrubOnEvent,
     selectedEntry,
     selectedSavedPlace,
+    selectedDriveStartPlace,
+    selectedDriveEndPlace,
     historyEntries,
     distanceUnit,
     playback,
@@ -46,9 +49,16 @@ export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
       ]}>
       {showHistoryPanelContent ? (
         <>
+          <HistoryDayNav
+            dateKey={selectedDateKey}
+            onDateKeyChange={handleHistoryDateKeyChange}
+            onOpenDatePicker={openHistoryDatePicker}
+          />
           <HistoryEventCard
             entry={scrubOnEvent ? selectedEntry : null}
             savedPlace={scrubOnEvent ? selectedSavedPlace : null}
+            driveStartPlace={scrubOnEvent ? selectedDriveStartPlace : null}
+            driveEndPlace={scrubOnEvent ? selectedDriveEndPlace : null}
             scrubOnEmpty={historyEntries.length > 0 && !scrubOnEvent}
             distanceUnit={distanceUnit}
             isPlaying={playback.isPlaying}
@@ -61,8 +71,6 @@ export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
             entries={historyEntries}
             selectedIndex={selectedHistoryIndex}
             onSelectIndex={selectHistoryIndex}
-            onDateKeyChange={handleHistoryDateKeyChange}
-            onOpenDatePicker={openHistoryDatePicker}
           />
         </>
       ) : (

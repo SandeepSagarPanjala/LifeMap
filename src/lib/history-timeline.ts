@@ -301,6 +301,21 @@ export function formatHistoryDayTitle(
   return formatDayRulerLabel(parseDateKey(dateKey), referenceNow);
 }
 
+/** Date label for the history day navigator (always shows calendar date). */
+export function formatHistoryDayNavLabel(
+  dateKey: string,
+  referenceNow: Date = new Date(),
+): string {
+  const day = parseDateKey(dateKey);
+  if (isToday(day)) {
+    return 'Today';
+  }
+  if (day.getFullYear() !== referenceNow.getFullYear()) {
+    return format(day, 'MMM d, yyyy');
+  }
+  return format(day, 'EEE, MMM d');
+}
+
 /** Linear 12 AM → 12 AM (used in tests / helpers). */
 export function calendarTimeToRulerPx(
   time: Date,

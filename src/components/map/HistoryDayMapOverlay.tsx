@@ -12,6 +12,8 @@ import type {TripDetectionConfig} from '@/lib/trip-settings';
 type HistoryDayMapOverlayProps = {
   plan: HistoryMapPlan;
   selectedSavedPlace?: SavedPlaceRow | null;
+  selectedDriveStartPlace?: SavedPlaceRow | null;
+  selectedDriveEndPlace?: SavedPlaceRow | null;
   tripConfig: TripDetectionConfig;
   playbackProgress: number | null;
 };
@@ -20,6 +22,8 @@ type HistoryDayMapOverlayProps = {
 export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
   plan,
   selectedSavedPlace = null,
+  selectedDriveStartPlace = null,
+  selectedDriveEndPlace = null,
   tripConfig,
   playbackProgress,
 }: HistoryDayMapOverlayProps) {
@@ -68,6 +72,8 @@ export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
           emphasized
           startAt={selected.entry.startAt}
           endAt={selected.entry.endAt}
+          startSavedPlace={selectedDriveStartPlace}
+          endSavedPlace={selectedDriveEndPlace}
         />
       ) : null}
 

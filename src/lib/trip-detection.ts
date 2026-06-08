@@ -449,6 +449,52 @@ export function isPlayableTimelineEntry(
   return entry.kind !== 'gap';
 }
 
+export function firstPlayableTimelineIndex(
+  entries: DayTimelineEntry[],
+): number {
+  for (let index = 0; index < entries.length; index += 1) {
+    if (isPlayableTimelineEntry(entries[index]!)) {
+      return index;
+    }
+  }
+  return -1;
+}
+
+export function lastPlayableTimelineIndex(
+  entries: DayTimelineEntry[],
+): number {
+  for (let index = entries.length - 1; index >= 0; index -= 1) {
+    if (isPlayableTimelineEntry(entries[index]!)) {
+      return index;
+    }
+  }
+  return -1;
+}
+
+export function findNextPlayableTimelineIndex(
+  entries: DayTimelineEntry[],
+  fromIndex: number,
+): number {
+  for (let index = fromIndex + 1; index < entries.length; index += 1) {
+    if (isPlayableTimelineEntry(entries[index]!)) {
+      return index;
+    }
+  }
+  return -1;
+}
+
+export function findPrevPlayableTimelineIndex(
+  entries: DayTimelineEntry[],
+  fromIndex: number,
+): number {
+  for (let index = fromIndex - 1; index >= 0; index -= 1) {
+    if (isPlayableTimelineEntry(entries[index]!)) {
+      return index;
+    }
+  }
+  return -1;
+}
+
 type StaySpan = {start: number; end: number};
 
 function maxSpreadFromAnchorM(

@@ -121,6 +121,10 @@ export function formatTripTimeRange(startAt: Date, endAt: Date): string {
   return `${startTime} – ${formatAppTime(safeEnd, 'h:mm a')}`;
 }
 
+export function formatTripClockTime(date: Date): string {
+  return formatAppTime(date, 'h:mm a');
+}
+
 export function formatTimelineKindLabel(entry: DayTimelineEntry): string {
   if (entry.kind === 'gap') {
     return 'Gap';

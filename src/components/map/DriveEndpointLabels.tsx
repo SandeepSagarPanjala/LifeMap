@@ -1,10 +1,14 @@
 import {memo} from 'react';
 import {Marker} from 'react-native-maps';
-import {format} from 'date-fns';
 import {StyleSheet, Text, View} from 'react-native';
 
 import {CheckeredFlagIcon} from '@/components/map/CheckeredFlagIcon';
+import {SavedPlaceIcon} from '@/components/map/SavedPlaceIcon';
+import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import type {MapCoordinate} from '@/lib/location-geo';
+import {savedPlaceDisplayLabel} from '@/lib/saved-places';
+import {SAVED_PLACE_MAP_STYLE} from '@/lib/saved-places-map';
+import {formatTripClockTime} from '@/lib/trip-format';
 
 const MARKER_ANCHOR = {x: 0.5, y: 0.5} as const;
 const DOT_SIZE = 16;
@@ -18,14 +22,52 @@ type DriveEndpointLabelsProps = {
   endCoordinate: MapCoordinate;
   startAt: Date;
   endAt: Date;
+  startSavedPlace?: SavedPlaceRow | null;
+  endSavedPlace?: SavedPlaceRow | null;
 };
+
+type EndpointChipProps = {
+  caption: 'Start' | 'Finish';
+  time: Date;
+  savedPlace?: SavedPlaceRow | null;
+};
+
+function EndpointChip({caption, time, savedPlace}: EndpointChipProps) {
+  const placeAccent = savedPlace
+    ? SAVED_PLACE_MAP_STYLE[savedPlace.kind]
+    : null;
+
+  return (
+    <View style={styles.chip}>
+      <Text style={styles.caption}>{caption}</Text>
+      <Text style={styles.timeText}>{formatTripClockTime(time)}</Text>
+      {savedPlace && placeAccent ? (
+        <View style={styles.placeRow}>
+          <SavedPlaceIcon
+            kind={savedPlace.kind}
+            size={12}
+            color={placeAccent.icon}
+          />
+          <Text style={styles.placeName} numberOfLines={1}>
+            {savedPlaceDisplayLabel(savedPlace)}
+          </Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
 
 type StartMarkerProps = {
   coordinate: MapCoordinate;
   time: Date;
+  savedPlace?: SavedPlaceRow | null;
 };
 
-function StartMarker({coordinate, time}: StartMarkerProps) {
+function StartMarker({coordinate, time, savedPlace}: StartMarkerProps) {
+  const placeAccent = savedPlace
+    ? SAVED_PLACE_MAP_STYLE[savedPlace.kind]
+    : null;
+
   return (
     <>
       <Marker
@@ -33,10 +75,27 @@ function StartMarker({coordinate, time}: StartMarkerProps) {
         anchor={MARKER_ANCHOR}
         zIndex={14}
         tracksViewChanges={false}>
-        <View style={styles.dotWrap}>
-          <View style={styles.dotRing} />
-          <View style={styles.dotCore} />
-        </View>
+        {savedPlace && placeAccent ? (
+          <View
+            style={[
+              styles.savedPlaceBadge,
+              {
+                backgroundColor: placeAccent.badgeBg,
+                borderColor: placeAccent.icon,
+              },
+            ]}>
+            <SavedPlaceIcon
+              kind={savedPlace.kind}
+              size={FLAG_SIZE}
+              color={placeAccent.icon}
+            />
+          </View>
+        ) : (
+          <View style={styles.dotWrap}>
+            <View style={styles.dotRing} />
+            <View style={styles.dotCore} />
+          </View>
+        )}
       </Marker>
       <Marker
         coordinate={coordinate}
@@ -44,10 +103,7 @@ function StartMarker({coordinate, time}: StartMarkerProps) {
         centerOffset={{x: 0, y: -40}}
         zIndex={13}
         tracksViewChanges={false}>
-        <View style={styles.chip}>
-          <Text style={styles.caption}>Start</Text>
-          <Text style={styles.timeText}>{format(time, 'h:mm a')}</Text>
-        </View>
+        <EndpointChip caption="Start" time={time} savedPlace={savedPlace} />
       </Marker>
     </>
   );
@@ -56,10 +112,16 @@ function StartMarker({coordinate, time}: StartMarkerProps) {
 function FinishMarker({
   coordinate,
   time,
+  savedPlace,
 }: {
   coordinate: MapCoordinate;
   time: Date;
+  savedPlace?: SavedPlaceRow | null;
 }) {
+  const placeAccent = savedPlace
+    ? SAVED_PLACE_MAP_STYLE[savedPlace.kind]
+    : null;
+
   return (
     <>
       <Marker
@@ -67,9 +129,26 @@ function FinishMarker({
         anchor={MARKER_ANCHOR}
         zIndex={14}
         tracksViewChanges={false}>
-        <View style={styles.finishBadge}>
-          <CheckeredFlagIcon size={FLAG_SIZE} />
-        </View>
+        {savedPlace && placeAccent ? (
+          <View
+            style={[
+              styles.savedPlaceBadge,
+              {
+                backgroundColor: placeAccent.badgeBg,
+                borderColor: placeAccent.icon,
+              },
+            ]}>
+            <SavedPlaceIcon
+              kind={savedPlace.kind}
+              size={FLAG_SIZE}
+              color={placeAccent.icon}
+            />
+          </View>
+        ) : (
+          <View style={styles.finishBadge}>
+            <CheckeredFlagIcon size={FLAG_SIZE} />
+          </View>
+        )}
       </Marker>
       <Marker
         coordinate={coordinate}
@@ -77,10 +156,7 @@ function FinishMarker({
         centerOffset={{x: 0, y: 44}}
         zIndex={13}
         tracksViewChanges={false}>
-        <View style={styles.chip}>
-          <Text style={styles.caption}>Finish</Text>
-          <Text style={styles.timeText}>{format(time, 'h:mm a')}</Text>
-        </View>
+        <EndpointChip caption="Finish" time={time} savedPlace={savedPlace} />
       </Marker>
     </>
   );
@@ -91,11 +167,21 @@ export const DriveEndpointLabels = memo(function DriveEndpointLabels({
   endCoordinate,
   startAt,
   endAt,
+  startSavedPlace = null,
+  endSavedPlace = null,
 }: DriveEndpointLabelsProps) {
   return (
     <>
-      <StartMarker coordinate={startCoordinate} time={startAt} />
-      <FinishMarker coordinate={endCoordinate} time={endAt} />
+      <StartMarker
+        coordinate={startCoordinate}
+        time={startAt}
+        savedPlace={startSavedPlace}
+      />
+      <FinishMarker
+        coordinate={endCoordinate}
+        time={endAt}
+        savedPlace={endSavedPlace}
+      />
     </>
   );
 });
@@ -142,12 +228,26 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 4,
   },
+  savedPlaceBadge: {
+    width: FINISH_BADGE_SIZE,
+    height: FINISH_BADGE_SIZE,
+    borderRadius: FINISH_BADGE_SIZE / 2,
+    borderWidth: 2.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 4,
+  },
   chip: {
     backgroundColor: '#FFFFFF',
     borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 6,
     alignItems: 'center',
+    maxWidth: 160,
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 1},
     shadowOpacity: 0.14,
@@ -161,10 +261,23 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.4,
   },
+  placeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+    maxWidth: '100%',
+  },
+  placeName: {
+    flexShrink: 1,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1C1C1E',
+  },
   timeText: {
     fontSize: 13,
     fontWeight: '700',
     color: '#1C1C1E',
-    marginTop: 1,
+    marginTop: 2,
   },
 });

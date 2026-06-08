@@ -39,6 +39,7 @@ import {isVisitOngoing} from '@/lib/trip-format';
 import {
   canAddSavedPlace,
   matchSavedPlaceForStay,
+  matchSavedPlaceForTripEndpoint,
   MAX_SAVED_PLACES,
   SavedPlaceLimitError,
 } from '@/lib/saved-places';
@@ -46,6 +47,7 @@ import {shouldShowSavedPlaceCircles} from '@/lib/saved-places-map';
 import {getCurrentOpenVisit} from '@/lib/today-history';
 import {
   isPlayableTimelineEntry,
+  firstPlayableTimelineIndex,
   stayTripMarkerCoordinate,
   type DetectedTrip,
 } from '@/lib/trip-detection';
@@ -204,6 +206,26 @@ export function useMapScreenController() {
     () =>
       selectedPlayable?.kind === 'stay'
         ? matchSavedPlaceForStay(selectedPlayable, savedPlaces)
+        : null,
+    [selectedPlayable, savedPlaces],
+  );
+
+  const selectedDriveStartPlace = useMemo(
+    () =>
+      selectedPlayable?.kind === 'travel'
+        ? matchSavedPlaceForTripEndpoint(
+            selectedPlayable,
+            'start',
+            savedPlaces,
+          )
+        : null,
+    [selectedPlayable, savedPlaces],
+  );
+
+  const selectedDriveEndPlace = useMemo(
+    () =>
+      selectedPlayable?.kind === 'travel'
+        ? matchSavedPlaceForTripEndpoint(selectedPlayable, 'end', savedPlaces)
         : null,
     [selectedPlayable, savedPlaces],
   );
@@ -381,7 +403,7 @@ export function useMapScreenController() {
     setHistoryPanelOpen(open => {
       const next = !open;
       if (next) {
-        setSelectedHistoryIndex(historyEntries.length > 0 ? 0 : -1);
+        setSelectedHistoryIndex(firstPlayableTimelineIndex(historyEntries));
       } else {
         playback.stop();
         setSelectedDateKey(todayKey);
@@ -594,9 +616,9 @@ export function useMapScreenController() {
     ) {
       return;
     }
-    setSelectedHistoryIndex(0);
+    setSelectedHistoryIndex(firstPlayableTimelineIndex(historyEntries));
   }, [
-    historyEntries.length,
+    historyEntries,
     historyLoading,
     historyPanelOpen,
     selectedHistoryIndex,
@@ -668,6 +690,8 @@ export function useMapScreenController() {
     currentOpenVisit,
     currentOpenVisitSavedPlace,
     selectedSavedPlace,
+    selectedDriveStartPlace,
+    selectedDriveEndPlace,
     savedPlaces,
     hasHome,
     hasWork,
