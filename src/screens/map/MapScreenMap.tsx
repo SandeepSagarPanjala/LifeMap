@@ -30,11 +30,13 @@ export function MapScreenMap({controller}: MapScreenMapProps) {
     tripDetectionConfig,
     currentOpenVisit,
     currentOpenVisitSavedPlace,
+    currentOpenVisitPlaceDisplay,
     userCoordinate,
     handleMapLongPress,
     showHistoryMap,
     historyMapPlan,
     selectedSavedPlace,
+    selectedVisitPlaceDisplay,
     selectedDriveStartPlace,
     selectedDriveEndPlace,
     playback,
@@ -87,6 +89,11 @@ export function MapScreenMap({controller}: MapScreenMapProps) {
             <StayDurationCallout
               trip={currentOpenVisit}
               savedPlace={currentOpenVisitSavedPlace}
+              nearbyPlaceLabel={
+                currentOpenVisitSavedPlace
+                  ? null
+                  : currentOpenVisitPlaceDisplay.primaryLabel
+              }
               showVisitPin={false}
               anchorCoordinate={userCoordinate}
             />
@@ -97,6 +104,9 @@ export function MapScreenMap({controller}: MapScreenMapProps) {
         <HistoryDayMapOverlay
           plan={historyMapPlan}
           selectedSavedPlace={selectedSavedPlace}
+          selectedNearbyPlaceLabel={
+            selectedSavedPlace ? null : selectedVisitPlaceDisplay.primaryLabel
+          }
           selectedDriveStartPlace={selectedDriveStartPlace}
           selectedDriveEndPlace={selectedDriveEndPlace}
           tripConfig={tripDetectionConfig}

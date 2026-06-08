@@ -12,6 +12,7 @@ import type {TripDetectionConfig} from '@/lib/trip-settings';
 type HistoryDayMapOverlayProps = {
   plan: HistoryMapPlan;
   selectedSavedPlace?: SavedPlaceRow | null;
+  selectedNearbyPlaceLabel?: string | null;
   selectedDriveStartPlace?: SavedPlaceRow | null;
   selectedDriveEndPlace?: SavedPlaceRow | null;
   tripConfig: TripDetectionConfig;
@@ -22,6 +23,7 @@ type HistoryDayMapOverlayProps = {
 export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
   plan,
   selectedSavedPlace = null,
+  selectedNearbyPlaceLabel = null,
   selectedDriveStartPlace = null,
   selectedDriveEndPlace = null,
   tripConfig,
@@ -99,6 +101,9 @@ export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
           <StayDurationCallout
             trip={selected.entry}
             savedPlace={selectedSavedPlace}
+            nearbyPlaceLabel={
+              selectedSavedPlace ? null : selectedNearbyPlaceLabel
+            }
           />
         </>
       ) : null}

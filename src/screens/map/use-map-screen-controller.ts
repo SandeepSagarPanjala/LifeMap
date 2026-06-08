@@ -20,7 +20,12 @@ import {
 } from '@/db/repositories/saved-places';
 import {useAfterInteractions} from '@/hooks/use-after-interactions';
 import {useHistoryForDay} from '@/hooks/use-history-data';
+import {usePlaceLookupScheduler} from '@/hooks/use-place-lookup-scheduler';
 import {useSavedPlaces} from '@/hooks/use-saved-places';
+import {
+  useSelectVisitPlaceCandidate,
+  useVisitPlaceDisplay,
+} from '@/hooks/use-visit-place-display';
 import {useTripDetectionConfig} from '@/hooks/use-trip-detection-config';
 import {useTripPlayback} from '@/hooks/use-trip-playback';
 import {buildHistoryMapPlan} from '@/lib/history-map-plan';
@@ -230,6 +235,9 @@ export function useMapScreenController() {
     [selectedPlayable, savedPlaces],
   );
 
+  const selectedStay =
+    selectedPlayable?.kind === 'stay' ? selectedPlayable : null;
+
   const provider =
     Platform.OS === 'android' && preferredMapApp === 'google'
       ? PROVIDER_GOOGLE
@@ -271,6 +279,38 @@ export function useMapScreenController() {
 
   const scrubOnEvent =
     historyPanelOpen && selectedHistoryIndex >= 0 && selectedEntry != null;
+
+  usePlaceLookupScheduler({
+    entries: historyEntries,
+    selectedStay,
+    savedPlaces,
+    tripConfig: tripDetectionConfig,
+    viewingToday,
+    historyPanelOpen,
+  });
+
+  const selectedVisitPlaceDisplay = useVisitPlaceDisplay(
+    scrubOnEvent && selectedStay ? selectedStay : null,
+    savedPlaces,
+  );
+
+  const currentOpenVisitPlaceDisplay = useVisitPlaceDisplay(
+    currentOpenVisit,
+    savedPlaces,
+  );
+
+  const selectVisitPlaceCandidate = useSelectVisitPlaceCandidate();
+
+  const handleSelectVisitPlaceIndex = useCallback(
+    (index: number) => {
+      const cacheId = selectedVisitPlaceDisplay.cacheId;
+      if (cacheId == null) {
+        return;
+      }
+      void selectVisitPlaceCandidate(cacheId, index);
+    },
+    [selectVisitPlaceCandidate, selectedVisitPlaceDisplay.cacheId],
+  );
 
   const showHistoryMap =
     showHistoryPanelContent &&
@@ -692,6 +732,9 @@ export function useMapScreenController() {
     selectedSavedPlace,
     selectedDriveStartPlace,
     selectedDriveEndPlace,
+    selectedVisitPlaceDisplay,
+    currentOpenVisitPlaceDisplay,
+    handleSelectVisitPlaceIndex,
     savedPlaces,
     hasHome,
     hasWork,

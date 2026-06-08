@@ -29,6 +29,13 @@
       "when": 1788895000000,
       "tag": "0003_saved_places",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788896000000,
+      "tag": "0004_place_lookup_cache",
+      "breakpoints": true
     }
   ]
 }

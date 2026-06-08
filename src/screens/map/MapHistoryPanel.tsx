@@ -22,6 +22,8 @@ export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
     selectedSavedPlace,
     selectedDriveStartPlace,
     selectedDriveEndPlace,
+    selectedVisitPlaceDisplay,
+    handleSelectVisitPlaceIndex,
     historyEntries,
     distanceUnit,
     playback,
@@ -57,6 +59,12 @@ export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
           <HistoryEventCard
             entry={scrubOnEvent ? selectedEntry : null}
             savedPlace={scrubOnEvent ? selectedSavedPlace : null}
+            visitPlaceDisplay={
+              scrubOnEvent && selectedEntry?.kind === 'stay'
+                ? selectedVisitPlaceDisplay
+                : null
+            }
+            onSelectVisitPlaceIndex={handleSelectVisitPlaceIndex}
             driveStartPlace={scrubOnEvent ? selectedDriveStartPlace : null}
             driveEndPlace={scrubOnEvent ? selectedDriveEndPlace : null}
             scrubOnEmpty={historyEntries.length > 0 && !scrubOnEvent}

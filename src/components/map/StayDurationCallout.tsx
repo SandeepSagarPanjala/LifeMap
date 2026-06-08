@@ -18,6 +18,7 @@ const BUBBLE_OFFSET_Y = -(DOT_RING_SIZE / 2 + 44);
 type StayDurationCalloutProps = {
   trip: DetectedTrip;
   savedPlace?: SavedPlaceRow | null;
+  nearbyPlaceLabel?: string | null;
   /** History scrub — orange visit pin. Live map keeps the system blue user puck. */
   showVisitPin?: boolean;
   /** Anchor the label (e.g. live GPS while the blue puck is shown). */
@@ -29,6 +30,7 @@ const LIVE_PUCK_BUBBLE_OFFSET_Y = -58;
 export function StayDurationCallout({
   trip,
   savedPlace = null,
+  nearbyPlaceLabel = null,
   showVisitPin = true,
   anchorCoordinate = null,
 }: StayDurationCalloutProps) {
@@ -89,6 +91,10 @@ export function StayDurationCallout({
             {savedPlace ? (
               <Text style={styles.placeLabel} numberOfLines={1}>
                 {savedPlaceDisplayLabel(savedPlace)}
+              </Text>
+            ) : nearbyPlaceLabel ? (
+              <Text style={styles.placeLabel} numberOfLines={1}>
+                {nearbyPlaceLabel}
               </Text>
             ) : null}
             <Text style={styles.mapLabel} numberOfLines={2}>

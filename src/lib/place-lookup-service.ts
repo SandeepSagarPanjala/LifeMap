@@ -1,0 +1,126 @@
+import type {SavedPlaceRow} from '@/db/repositories/saved-places';
+import {
+  completePlaceLookup,
+  failPlaceLookup,
+  findPlaceLookupNearAnchor,
+  insertPendingPlaceLookup,
+} from '@/db/repositories/place-lookup-cache';
+import {notifyPlaceLookupUpdated} from '@/lib/place-lookup-events';
+import {fetchNearbyPlaceLookup} from '@/lib/place-lookup-native';
+import {
+  placeLookupAnchorKey,
+  PLACE_LOOKUP_SESSION_BUDGET,
+} from '@/lib/place-lookup-venue';
+import type {TripDetectionConfig} from '@/lib/trip-settings';
+import {matchSavedPlaceForStay} from '@/lib/saved-places';
+import type {DetectedTrip} from '@/lib/trip-detection';
+import {stayTripCentroid} from '@/lib/trip-detection';
+
+function stayLookupAnchor(stay: DetectedTrip): {lat: number; lng: number} {
+  const centroid = stayTripCentroid(stay);
+  return {lat: centroid.latitude, lng: centroid.longitude};
+}
+
+const inFlightKeys = new Set<string>();
+let sessionFetchCount = 0;
+
+export function resetPlaceLookupSessionBudget(): void {
+  sessionFetchCount = 0;
+}
+
+export function stayQualifiesForPlaceLookup(
+  stay: DetectedTrip,
+  config: TripDetectionConfig,
+): boolean {
+  return stay.durationMs >= config.dwellMinutes * 60_000;
+}
+
+export function shouldSkipPlaceLookupForStay(
+  stay: DetectedTrip,
+  savedPlaces: SavedPlaceRow[],
+): boolean {
+  return matchSavedPlaceForStay(stay, savedPlaces) != null;
+}
+
+export async function resolveVisitPlaceLookupRow(
+  stay: DetectedTrip,
+): Promise<Awaited<ReturnType<typeof findPlaceLookupNearAnchor>>> {
+  return findPlaceLookupNearAnchor(stayLookupAnchor(stay));
+}
+
+async function performPlaceLookup(anchor: {lat: number; lng: number}): Promise<void> {
+  const key = placeLookupAnchorKey(anchor.lat, anchor.lng);
+  if (inFlightKeys.has(key)) {
+    return;
+  }
+
+  const existing = await findPlaceLookupNearAnchor(anchor);
+  if (existing?.lookupStatus === 'complete' || existing?.lookupStatus === 'failed') {
+    return;
+  }
+
+  if (sessionFetchCount >= PLACE_LOOKUP_SESSION_BUDGET) {
+    return;
+  }
+
+  inFlightKeys.add(key);
+  sessionFetchCount += 1;
+
+  let rowId = existing?.id;
+  try {
+    if (!rowId) {
+      const inserted = await insertPendingPlaceLookup(anchor);
+      rowId = inserted.id;
+      notifyPlaceLookupUpdated();
+    }
+
+    const result = await fetchNearbyPlaceLookup(anchor.lat, anchor.lng);
+    await completePlaceLookup(rowId, {
+      addressLine: result.addressLine,
+      candidates: result.candidates,
+    });
+  } catch {
+    if (rowId != null) {
+      await failPlaceLookup(rowId);
+    }
+  } finally {
+    inFlightKeys.delete(key);
+    notifyPlaceLookupUpdated();
+  }
+}
+
+export async function enqueuePlaceLookupForStay(
+  stay: DetectedTrip,
+  savedPlaces: SavedPlaceRow[],
+  config: TripDetectionConfig,
+): Promise<void> {
+  if (
+    stay.points.length === 0 ||
+    !stayQualifiesForPlaceLookup(stay, config) ||
+    shouldSkipPlaceLookupForStay(stay, savedPlaces)
+  ) {
+    return;
+  }
+
+  const anchor = stayLookupAnchor(stay);
+  await performPlaceLookup(anchor);
+}
+
+export async function enqueuePlaceLookupsForStays(
+  stays: DetectedTrip[],
+  savedPlaces: SavedPlaceRow[],
+  config: TripDetectionConfig,
+): Promise<void> {
+  for (const stay of stays) {
+    if (sessionFetchCount >= PLACE_LOOKUP_SESSION_BUDGET) {
+      break;
+    }
+    await enqueuePlaceLookupForStay(stay, savedPlaces, config);
+  }
+}
+
+/** @internal Test helper */
+export function __resetPlaceLookupServiceForTests(): void {
+  inFlightKeys.clear();
+  sessionFetchCount = 0;
+}

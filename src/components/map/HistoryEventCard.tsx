@@ -3,11 +3,13 @@ import {Pressable, StyleSheet, View} from 'react-native';
 import {Pause, Play} from 'lucide-react-native';
 
 import {SavedPlaceIcon} from '@/components/map/SavedPlaceIcon';
+import {VisitPlaceLabelPager} from '@/components/map/VisitPlaceLabelPager';
 import {Text} from '@/components/ui/text';
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import {HISTORY_COLORS} from '@/lib/history-timeline';
 import {savedPlaceDisplayLabel} from '@/lib/saved-places';
 import {SAVED_PLACE_MAP_STYLE} from '@/lib/saved-places-map';
+import type {VisitPlaceDisplay} from '@/lib/place-lookup-types';
 import type {DayTimelineEntry} from '@/lib/trip-detection';
 import {
   formatStayVisitLabel,
@@ -24,6 +26,8 @@ const VISIT_LOTTIE = require('../../../assets/lottie/visit-relax.json');
 type HistoryEventCardProps = {
   entry: DayTimelineEntry | null;
   savedPlace?: SavedPlaceRow | null;
+  visitPlaceDisplay?: VisitPlaceDisplay | null;
+  onSelectVisitPlaceIndex?: (index: number) => void;
   driveStartPlace?: SavedPlaceRow | null;
   driveEndPlace?: SavedPlaceRow | null;
   /** Timeline has data but no event is selected yet. */
@@ -116,6 +120,8 @@ function DriveEndpointSummary({
 export function HistoryEventCard({
   entry,
   savedPlace = null,
+  visitPlaceDisplay = null,
+  onSelectVisitPlaceIndex,
   driveStartPlace = null,
   driveEndPlace = null,
   scrubOnEmpty = false,
@@ -175,6 +181,15 @@ export function HistoryEventCard({
                   {savedPlaceDisplayLabel(savedPlace)}
                 </Text>
               </View>
+            ) : visitPlaceDisplay?.primaryLabel ? (
+              <VisitPlaceLabelPager
+                display={visitPlaceDisplay}
+                onSelectIndex={index => onSelectVisitPlaceIndex?.(index)}
+              />
+            ) : visitPlaceDisplay?.loading ? (
+              <Text variant="muted" className="text-sm">
+                Finding nearby place…
+              </Text>
             ) : null}
           </View>
           <VisitCardIcon />

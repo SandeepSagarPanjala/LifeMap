@@ -53,3 +53,15 @@ export const savedPlaces = sqliteTable('saved_places', {
   createdAt: integer('created_at', {mode: 'timestamp'}).notNull(),
 });
 
+export const placeLookupCache = sqliteTable('place_lookup_cache', {
+  id: integer('id').primaryKey({autoIncrement: true}),
+  anchorLat: real('anchor_lat').notNull(),
+  anchorLng: real('anchor_lng').notNull(),
+  venueRadiusMeters: integer('venue_radius_meters').notNull().default(250),
+  addressLine: text('address_line'),
+  candidatesJson: text('candidates_json'),
+  selectedCandidateIndex: integer('selected_candidate_index'),
+  lookupStatus: text('lookup_status').notNull().default('pending'),
+  fetchedAt: integer('fetched_at', {mode: 'timestamp'}),
+});
+
