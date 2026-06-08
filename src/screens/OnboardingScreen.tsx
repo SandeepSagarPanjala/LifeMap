@@ -9,7 +9,7 @@ import {
   type NativeSyntheticEvent,
 } from 'react-native';
 import LottieView from 'lottie-react-native';
-import {Camera, Lock} from 'lucide-react-native';
+import {Camera, LocateFixed, Lock, Shield} from 'lucide-react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 
 import {SplashBackground} from '@/components/splash/SplashBackground';
@@ -21,6 +21,8 @@ import {ONBOARDING_SLIDES, type OnboardingSlideConfig} from '@/lib/onboarding-sl
 
 const FALLBACK_ICONS = {
   'capture-moments': Camera,
+  'private-by-design': Shield,
+  'permissions-preview': LocateFixed,
 } as const;
 
 type OnboardingScreenProps = {
@@ -88,6 +90,18 @@ export function OnboardingScreen({onComplete}: OnboardingScreenProps) {
           <Text variant="muted" className="text-muted-foreground mt-3 text-center text-lg leading-7">
             {item.description}
           </Text>
+          {item.bullets ? (
+            <View className="mt-4 gap-3">
+              {item.bullets.map(bullet => (
+                <View key={bullet} className="flex-row gap-3">
+                  <Text className="text-primary mt-0.5 text-lg leading-6">•</Text>
+                  <Text variant="muted" className="text-muted-foreground flex-1 text-base leading-6">
+                    {bullet}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
         </View>
       </View>
     );
