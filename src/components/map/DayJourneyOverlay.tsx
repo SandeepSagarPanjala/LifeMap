@@ -6,21 +6,34 @@ import {RoutePathOverlay} from '@/components/map/RoutePathOverlay';
 import {StayAreasOverlay} from '@/components/map/StayAreasOverlay';
 
 type DayJourneyOverlayProps = {
-  points: LocationPointRow[];
+  travels: DetectedTrip[];
   stays: DetectedTrip[];
   tripConfig: TripDetectionConfig;
+  /** Fallback when trip detection has not produced drives yet. */
+  fallbackPoints?: LocationPointRow[];
 };
 
 /** Default map: blue drive paths + orange visit areas (same data story as History). */
 export function DayJourneyOverlay({
-  points,
+  travels,
   stays,
   tripConfig,
+  fallbackPoints = [],
 }: DayJourneyOverlayProps) {
   return (
     <>
       <StayAreasOverlay stays={stays} tripConfig={tripConfig} />
-      <RoutePathOverlay points={points} tripConfig={tripConfig} />
+      {travels.length > 0
+        ? travels.map(travel => (
+            <RoutePathOverlay
+              key={travel.id}
+              points={travel.points}
+              tripConfig={tripConfig}
+            />
+          ))
+        : (
+          <RoutePathOverlay points={fallbackPoints} tripConfig={tripConfig} />
+        )}
     </>
   );
 }

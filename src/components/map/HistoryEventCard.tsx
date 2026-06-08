@@ -242,6 +242,7 @@ const styles = StyleSheet.create({
     width: VISIT_LOTTIE_RENDER_WIDTH,
     height: VISIT_LOTTIE_RENDER_HEIGHT,
     marginTop: -96,
+    transform: [{scaleX: -1}],
   },
   driveLottieAnchor: {
     position: 'absolute',

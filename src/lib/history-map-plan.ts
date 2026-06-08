@@ -25,6 +25,42 @@ export type HistoryMapPlan = {
   selected: HistoryMapSelected | null;
 };
 
+function findNextTravelAfter(
+  entries: DayTimelineEntry[],
+  afterIndex: number,
+  config: TripDetectionConfig,
+): LocationPointRow[] | null {
+  for (let index = afterIndex + 1; index < entries.length; index += 1) {
+    const entry = entries[index];
+    if (!isPlayableTimelineEntry(entry) || entry.kind !== 'travel') {
+      continue;
+    }
+    const points = getTravelDisplayPoints(
+      entry,
+      stayBeforeEntryIndex(entries, index),
+      staysBeforeEntryIndex(entries, index),
+      config,
+    );
+    if (points.length > 0) {
+      return points;
+    }
+  }
+  return null;
+}
+
+function findNextStayAfter(
+  entries: DayTimelineEntry[],
+  afterIndex: number,
+): DetectedTrip | null {
+  for (let index = afterIndex + 1; index < entries.length; index += 1) {
+    const entry = entries[index];
+    if (isPlayableTimelineEntry(entry) && entry.kind === 'stay') {
+      return entry;
+    }
+  }
+  return null;
+}
+
 export function buildHistoryMapPlan(
   entries: DayTimelineEntry[],
   selectedIndex: number,
@@ -32,9 +68,6 @@ export function buildHistoryMapPlan(
 ): HistoryMapPlan {
   const pastDrives: LocationPointRow[][] = [];
   const pastStays: DetectedTrip[] = [];
-  let nextDrive: LocationPointRow[] | null = null;
-  let nextStay: DetectedTrip | null = null;
-  let nextCaptured = false;
   let selected: HistoryMapSelected | null = null;
 
   for (let index = 0; index < entries.length; index += 1) {
@@ -72,8 +105,6 @@ export function buildHistoryMapPlan(
     }
 
     const isPast = selectedIndex >= 0 && index < selectedIndex;
-    const isNext =
-      selectedIndex >= 0 && index > selectedIndex && !nextCaptured;
 
     if (entry.kind === 'travel') {
       const points = getTravelDisplayPoints(
@@ -87,17 +118,24 @@ export function buildHistoryMapPlan(
       }
       if (isPast) {
         pastDrives.push(points);
-      } else if (isNext) {
-        nextDrive = points;
-        nextCaptured = true;
       }
     } else if (isPast) {
       pastStays.push(entry);
-    } else if (isNext) {
-      nextStay = entry;
-      nextCaptured = true;
     }
   }
 
-  return {pastDrives, pastStays, nextDrive, nextStay, selected};
+  const nextDrive =
+    selectedIndex >= 0
+      ? findNextTravelAfter(entries, selectedIndex, config)
+      : null;
+  const nextStay =
+    selectedIndex >= 0 ? findNextStayAfter(entries, selectedIndex) : null;
+
+  return {
+    pastDrives,
+    pastStays,
+    nextDrive,
+    nextStay,
+    selected,
+  };
 }

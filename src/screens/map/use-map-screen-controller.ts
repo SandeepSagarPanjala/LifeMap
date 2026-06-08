@@ -22,8 +22,9 @@ import {regionForCoordinates, toMapCoordinates} from '@/lib/location-geo';
 import {
   animateRecenterToUser,
   centerMapOnUser,
+  MAP_USER_ZOOM_DELTA,
   regionAroundCoordinate,
-  VISIT_MARKER_ZOOM_DELTA,
+  VISIT_MAX_ZOOM_DELTA,
 } from '@/lib/map-location-utils';
 import {getTripPlaybackDurationMs} from '@/lib/trip-playback';
 import {isVisitOngoing} from '@/lib/trip-format';
@@ -73,6 +74,7 @@ export function useMapScreenController() {
 
   const mapRef = useRef<MapView>(null);
   const hasCenteredOnOpenRef = useRef(false);
+  const needsDefaultCenterRef = useRef(true);
   const mapRegionRef = useRef<Region>(MAP_FALLBACK_REGION);
   const fitHistoryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const userCoordinateRef = useRef<MapUserCoordinate | null>(null);
@@ -109,6 +111,14 @@ export function useMapScreenController() {
     (): DetectedTrip[] =>
       historyEntries.filter(
         (entry): entry is DetectedTrip => entry.kind === 'stay',
+      ),
+    [historyEntries],
+  );
+
+  const dayTravels = useMemo(
+    (): DetectedTrip[] =>
+      historyEntries.filter(
+        (entry): entry is DetectedTrip => entry.kind === 'travel',
       ),
     [historyEntries],
   );
@@ -352,8 +362,8 @@ export function useMapScreenController() {
     const coordinate = stayTripMarkerCoordinate(selectedPlayable, {ongoing});
     const region = regionAroundCoordinate(
       coordinate,
-      VISIT_MARKER_ZOOM_DELTA,
-      VISIT_MARKER_ZOOM_DELTA,
+      VISIT_MAX_ZOOM_DELTA,
+      VISIT_MAX_ZOOM_DELTA,
     );
     mapRef.current.animateToRegion(region, 400);
     mapRegionRef.current = region;
@@ -370,9 +380,37 @@ export function useMapScreenController() {
   }, [historyPanelOpen, historyPanelY]);
 
   useEffect(() => {
+    if (!historyPanelOpen && viewingToday) {
+      needsDefaultCenterRef.current = true;
+    }
+  }, [historyPanelOpen, viewingToday, selectedDateKey]);
+
+  useEffect(() => {
+    if (!historyLoading && viewingToday && !historyPanelOpen) {
+      needsDefaultCenterRef.current = true;
+    }
+  }, [historyLoading, viewingToday, historyPanelOpen, selectedDateKey]);
+
+  useEffect(() => {
     if (historyPanelOpen || historyLoading || !mapRef.current) {
       return;
     }
+
+    if (viewingToday) {
+      if (!userCoordinate || !needsDefaultCenterRef.current) {
+        return;
+      }
+      needsDefaultCenterRef.current = false;
+      const region = regionAroundCoordinate(
+        userCoordinate,
+        MAP_USER_ZOOM_DELTA,
+        MAP_USER_ZOOM_DELTA,
+      );
+      mapRef.current.animateToRegion(region, 400);
+      mapRegionRef.current = region;
+      return;
+    }
+
     const coordinates = toMapCoordinates(historyData.points);
     if (coordinates.length === 0) {
       return;
@@ -380,7 +418,14 @@ export function useMapScreenController() {
     const region = regionForCoordinates(coordinates);
     mapRef.current.animateToRegion(region, 400);
     mapRegionRef.current = region;
-  }, [historyData.points, historyLoading, historyPanelOpen, selectedDateKey]);
+  }, [
+    historyData.points,
+    historyLoading,
+    historyPanelOpen,
+    selectedDateKey,
+    userCoordinate,
+    viewingToday,
+  ]);
 
   useEffect(
     () => () => {
@@ -440,6 +485,7 @@ export function useMapScreenController() {
     historyData,
     historyEntries,
     dayStays,
+    dayTravels,
     historyMapPlan,
     historyBadgeCount,
     trackingGapWarning,

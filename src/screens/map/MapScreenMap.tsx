@@ -25,6 +25,7 @@ export function MapScreenMap({controller}: MapScreenMapProps) {
     showDayJourney,
     historyData,
     dayStays,
+    dayTravels,
     tripDetectionConfig,
     currentOpenVisit,
     userCoordinate,
@@ -56,9 +57,10 @@ export function MapScreenMap({controller}: MapScreenMapProps) {
       {showDayJourney ? (
         <>
           <DayJourneyOverlay
-            points={historyData.points}
+            travels={dayTravels}
             stays={dayStays}
             tripConfig={tripDetectionConfig}
+            fallbackPoints={historyData.points}
           />
           {currentOpenVisit ? (
             <StayDurationCallout

@@ -36,8 +36,8 @@ export function regionAroundCoordinate(
 }
 
 export const MAP_USER_ZOOM_DELTA = 0.01;
-/** Tight zoom on the visit orange pin (not the whole stay envelope). */
-export const VISIT_MARKER_ZOOM_DELTA = 0.006;
+/** Max zoom when pressing play on a visit in history. */
+export const VISIT_MAX_ZOOM_DELTA = 0.0008;
 const RECENTER_ZOOM_DELTA = MAP_USER_ZOOM_DELTA;
 const ZOOM_OUT_FACTOR = 1.5;
 const ZOOM_OUT_MS = 280;

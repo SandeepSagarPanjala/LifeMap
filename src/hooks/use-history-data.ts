@@ -18,6 +18,7 @@ import {
   historyDataCache,
 } from '@/lib/history-data-cache';
 import {
+  getHistoryLookaheadEnd,
   getHistoryLookbackStart,
   prepareDayHistoryTimeline,
 } from '@/lib/today-history';
@@ -45,11 +46,17 @@ async function loadHistoryForDay(
   const isToday = dateKey === getTodayDateKey();
   const rangeEnd = isToday ? now : endOfDay(dayStart);
   const lookbackStart = getHistoryLookbackStart(dayStart);
-  const [dayPoints, lookbackPoints] = await Promise.all([
+  const dayEnd = endOfDay(dayStart);
+  const lookaheadEnd = getHistoryLookaheadEnd(dayEnd);
+  const [dayPoints, lookbackPoints, lookaheadPoints] = await Promise.all([
     getLocationPointsForDay(dateKey),
     getLocationPointsInRange(
       lookbackStart,
       new Date(dayStart.getTime() - 1),
+    ),
+    getLocationPointsInRange(
+      new Date(dayEnd.getTime() + 1),
+      lookaheadEnd,
     ),
   ]);
   const entries = prepareDayHistoryTimeline(
@@ -58,6 +65,7 @@ async function loadHistoryForDay(
     lookbackPoints,
     detectionConfig,
     now,
+    lookaheadPoints,
   );
 
   return {

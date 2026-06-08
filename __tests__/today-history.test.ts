@@ -3,6 +3,7 @@ import {
   prepareDayHistoryTimeline,
   prepareTodayHistoryTimeline,
 } from '../src/lib/today-history';
+import {buildHistoryDayRuler} from '../src/lib/history-timeline';
 import {buildTripDetectionConfig} from '../src/lib/trip-settings';
 import type {LocationPointRow} from '../src/db/repositories/location-days';
 
@@ -130,5 +131,100 @@ describe('prepareTodayHistoryTimeline', () => {
       expect(stay.endAt).toEqual(now);
       expect(stay.openThroughNow).toBe(true);
     }
+  });
+
+  it('does not split a midnight drive into a fake visit and restart', () => {
+    const road = {lat: 33.22, lng: -96.95};
+    const moving = (iso: string, id: number, latOffset: number): LocationPointRow => ({
+      id,
+      timestamp: new Date(iso),
+      lat: road.lat + latOffset,
+      lng: road.lng + latOffset * 0.01,
+      accuracy: 8,
+      altitude: 180,
+      speed: 20,
+      source: 'gps',
+    });
+
+    const jun7Points = [
+      moving('2026-06-08T04:51:00.000Z', 1, 0), // 11:51 PM Jun 7 CDT
+      moving('2026-06-08T04:54:00.000Z', 2, 0.01),
+      moving('2026-06-08T04:57:00.000Z', 3, 0.02),
+      moving('2026-06-08T04:59:30.000Z', 4, 0.03),
+    ];
+    const jun8Points = [
+      moving('2026-06-08T05:00:30.000Z', 5, 0.04), // 12:00 AM Jun 8 CDT
+      moving('2026-06-08T05:05:00.000Z', 6, 0.08),
+      moving('2026-06-08T05:10:00.000Z', 7, 0.12),
+      moving('2026-06-08T05:20:00.000Z', 8, 0.2),
+    ];
+    const referenceNow = new Date('2026-06-08T12:00:00.000Z');
+
+    const yesterday = prepareDayHistoryTimeline(
+      '2026-06-07',
+      jun7Points,
+      [],
+      config,
+      referenceNow,
+      jun8Points,
+    );
+    const today = prepareDayHistoryTimeline(
+      '2026-06-08',
+      jun8Points,
+      jun7Points,
+      config,
+      referenceNow,
+    );
+
+    expect(yesterday.some(entry => entry.kind === 'stay')).toBe(false);
+    expect(today.some(entry => entry.kind === 'stay')).toBe(false);
+
+    const yesterdayDrive = yesterday.find(entry => entry.kind === 'travel');
+    const todayDrive = today.find(entry => entry.kind === 'travel');
+    expect(yesterdayDrive?.kind).toBe('travel');
+    expect(todayDrive?.kind).toBe('travel');
+    if (yesterdayDrive?.kind === 'travel' && todayDrive?.kind === 'travel') {
+      expect(yesterdayDrive.points).toHaveLength(8);
+      expect(todayDrive.points).toHaveLength(8);
+      expect(yesterdayDrive.startAt.toISOString()).toBe(
+        '2026-06-08T04:51:00.000Z',
+      );
+      expect(yesterdayDrive.endAt.toISOString()).toBe(
+        '2026-06-08T05:20:00.000Z',
+      );
+      expect(todayDrive.startAt.toISOString()).toBe(
+        '2026-06-08T04:51:00.000Z',
+      );
+      expect(todayDrive.endAt.toISOString()).toBe(
+        '2026-06-08T05:20:00.000Z',
+      );
+    }
+
+    const yesterdayBar = buildHistoryDayRuler(
+      yesterday,
+      '2026-06-07',
+      300,
+      referenceNow,
+    );
+    const todayBar = buildHistoryDayRuler(
+      today,
+      '2026-06-08',
+      300,
+      referenceNow,
+    );
+    const yesterdaySegment = yesterdayBar.segments[0]!;
+    const todaySegment = todayBar.segments[0]!;
+    expect(yesterdaySegment.startAt.toISOString()).toBe(
+      '2026-06-08T04:51:00.000Z',
+    );
+    expect(yesterdaySegment.endAt.toISOString()).toBe(
+      '2026-06-08T04:59:59.999Z',
+    );
+    expect(todaySegment.startAt.toISOString()).toBe(
+      '2026-06-08T05:00:00.000Z',
+    );
+    expect(todaySegment.endAt.toISOString()).toBe(
+      '2026-06-08T05:20:00.000Z',
+    );
   });
 });

@@ -108,7 +108,17 @@ export function formatTripTimeRange(startAt: Date, endAt: Date): string {
   if (safeEnd.getTime() === startAt.getTime()) {
     return formatAppTime(startAt, 'h:mm a');
   }
-  return `${formatAppTime(startAt, 'h:mm a')} – ${formatAppTime(safeEnd, 'h:mm a')}`;
+
+  const startDay = formatAppTime(startAt, 'yyyy-MM-dd');
+  const endDay = formatAppTime(safeEnd, 'yyyy-MM-dd');
+  const startTime = formatAppTime(startAt, 'h:mm a');
+
+  if (startDay !== endDay) {
+    const endLabel = format(new TZDate(safeEnd, APP_TIMEZONE), 'MMM d, h:mm a');
+    return `${startTime} – ${endLabel}`;
+  }
+
+  return `${startTime} – ${formatAppTime(safeEnd, 'h:mm a')}`;
 }
 
 export function formatTimelineKindLabel(entry: DayTimelineEntry): string {
