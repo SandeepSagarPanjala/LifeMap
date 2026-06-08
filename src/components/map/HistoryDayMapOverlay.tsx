@@ -5,11 +5,13 @@ import {StayAreasOverlay} from '@/components/map/StayAreasOverlay';
 import {StayDurationCallout} from '@/components/map/StayDurationCallout';
 import {TripRouteOverlay} from '@/components/map/TripRouteOverlay';
 import {VisitApproachConnector} from '@/components/map/VisitApproachConnector';
+import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import type {HistoryMapPlan} from '@/lib/history-map-plan';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
 
 type HistoryDayMapOverlayProps = {
   plan: HistoryMapPlan;
+  selectedSavedPlace?: SavedPlaceRow | null;
   tripConfig: TripDetectionConfig;
   playbackProgress: number | null;
 };
@@ -17,6 +19,7 @@ type HistoryDayMapOverlayProps = {
 /** All day drives/visits on the map; selected event keeps full detail and labels. */
 export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
   plan,
+  selectedSavedPlace = null,
   tripConfig,
   playbackProgress,
 }: HistoryDayMapOverlayProps) {
@@ -87,7 +90,10 @@ export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
             tripConfig={tripConfig}
             tone="emphasized"
           />
-          <StayDurationCallout trip={selected.entry} />
+          <StayDurationCallout
+            trip={selected.entry}
+            savedPlace={selectedSavedPlace}
+          />
         </>
       ) : null}
     </>

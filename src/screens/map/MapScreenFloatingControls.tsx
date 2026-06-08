@@ -3,6 +3,7 @@ import {Text, View} from 'react-native';
 import {MapCalendarButton} from '@/components/map/MapCalendarButton';
 import {MapHistoryButton} from '@/components/map/MapHistoryButton';
 import {MapLocateButton} from '@/components/map/MapLocateButton';
+import {MapPlacesButton} from '@/components/map/MapPlacesButton';
 
 import type {MapScreenController} from './use-map-screen-controller';
 
@@ -16,9 +17,11 @@ export function MapScreenFloatingControls({
   const {
     historyPanelOpen,
     locateButtonBottom,
+    placesButtonBottom,
     calendarButtonBottom,
     historyButtonBottom,
     goToCurrentLocation,
+    openSavedPlacesSheet,
     openHistoryDatePicker,
     handleToggleHistoryPanel,
     historyBadgeCount,
@@ -28,7 +31,13 @@ export function MapScreenFloatingControls({
   return (
     <>
       {!historyPanelOpen ? (
-        <MapLocateButton bottom={locateButtonBottom} onPress={goToCurrentLocation} />
+        <>
+          <MapPlacesButton
+            bottom={placesButtonBottom}
+            onPress={openSavedPlacesSheet}
+          />
+          <MapLocateButton bottom={locateButtonBottom} onPress={goToCurrentLocation} />
+        </>
       ) : null}
       <MapCalendarButton
         bottom={calendarButtonBottom}
@@ -46,7 +55,7 @@ export function MapScreenFloatingControls({
             position: 'absolute',
             left: 16,
             right: 16,
-            bottom: locateButtonBottom + 64,
+            bottom: placesButtonBottom + 64,
             backgroundColor: '#111827',
             borderRadius: 12,
             paddingHorizontal: 12,

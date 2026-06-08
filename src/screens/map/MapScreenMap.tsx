@@ -3,6 +3,7 @@ import MapView from 'react-native-maps';
 
 import {DayJourneyOverlay} from '@/components/map/DayJourneyOverlay';
 import {HistoryDayMapOverlay} from '@/components/map/HistoryDayMapOverlay';
+import {SavedPlacesMapOverlay} from '@/components/map/SavedPlacesMapOverlay';
 import {StayDurationCallout} from '@/components/map/StayDurationCallout';
 
 import {MAP_FALLBACK_REGION} from './map-screen-constants';
@@ -28,10 +29,15 @@ export function MapScreenMap({controller}: MapScreenMapProps) {
     dayTravels,
     tripDetectionConfig,
     currentOpenVisit,
+    currentOpenVisitSavedPlace,
     userCoordinate,
+    handleMapLongPress,
     showHistoryMap,
     historyMapPlan,
+    selectedSavedPlace,
     playback,
+    savedPlaces,
+    showSavedPlaceCircles,
   } = controller;
 
   return (
@@ -53,7 +59,17 @@ export function MapScreenMap({controller}: MapScreenMapProps) {
       pitchEnabled
       rotateEnabled
       onRegionChangeComplete={onRegionChangeComplete}
-      onUserLocationChange={handleUserLocation}>
+      onUserLocationChange={handleUserLocation}
+      onLongPress={handleMapLongPress}>
+      <SavedPlacesMapOverlay
+        places={savedPlaces}
+        showCircles={showSavedPlaceCircles}
+        hideMarkerPlaceId={
+          showHistoryMap
+            ? (selectedSavedPlace?.id ?? null)
+            : (currentOpenVisitSavedPlace?.id ?? null)
+        }
+      />
       {showDayJourney ? (
         <>
           <DayJourneyOverlay
@@ -65,6 +81,7 @@ export function MapScreenMap({controller}: MapScreenMapProps) {
           {currentOpenVisit ? (
             <StayDurationCallout
               trip={currentOpenVisit}
+              savedPlace={currentOpenVisitSavedPlace}
               showVisitPin={false}
               anchorCoordinate={userCoordinate}
             />
@@ -74,6 +91,7 @@ export function MapScreenMap({controller}: MapScreenMapProps) {
       {showHistoryMap ? (
         <HistoryDayMapOverlay
           plan={historyMapPlan}
+          selectedSavedPlace={selectedSavedPlace}
           tripConfig={tripDetectionConfig}
           playbackProgress={playback.isPlaying ? playback.progress : null}
         />

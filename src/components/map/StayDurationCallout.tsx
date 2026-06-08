@@ -3,9 +3,12 @@ import {Marker} from 'react-native-maps';
 import {Armchair} from 'lucide-react-native';
 import {StyleSheet, Text, View} from 'react-native';
 
+import {SavedPlaceIcon} from '@/components/map/SavedPlaceIcon';
+import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import {formatStayVisitLabel, isVisitOngoing} from '@/lib/trip-format';
 import type {DetectedTrip} from '@/lib/trip-detection';
 import {stayTripMarkerCoordinate} from '@/lib/trip-detection';
+import {savedPlaceDisplayLabel} from '@/lib/saved-places';
 import {HISTORY_COLORS} from '@/lib/history-timeline';
 const DOT_SIZE = 18;
 const DOT_RING_SIZE = 28;
@@ -14,6 +17,7 @@ const BUBBLE_OFFSET_Y = -(DOT_RING_SIZE / 2 + 44);
 
 type StayDurationCalloutProps = {
   trip: DetectedTrip;
+  savedPlace?: SavedPlaceRow | null;
   /** History scrub — orange visit pin. Live map keeps the system blue user puck. */
   showVisitPin?: boolean;
   /** Anchor the label (e.g. live GPS while the blue puck is shown). */
@@ -24,6 +28,7 @@ const LIVE_PUCK_BUBBLE_OFFSET_Y = -58;
 
 export function StayDurationCallout({
   trip,
+  savedPlace = null,
   showVisitPin = true,
   anchorCoordinate = null,
 }: StayDurationCalloutProps) {
@@ -75,8 +80,17 @@ export function StayDurationCallout({
         zIndex={12}
         tracksViewChanges={false}>
         <View style={styles.bubble}>
-          <Armchair size={14} color={HISTORY_COLORS.stay} strokeWidth={2.25} />
+          {savedPlace ? (
+            <SavedPlaceIcon kind={savedPlace.kind} size={16} />
+          ) : (
+            <Armchair size={14} color={HISTORY_COLORS.stay} strokeWidth={2.25} />
+          )}
           <View style={styles.bubbleText}>
+            {savedPlace ? (
+              <Text style={styles.placeLabel} numberOfLines={1}>
+                {savedPlaceDisplayLabel(savedPlace)}
+              </Text>
+            ) : null}
             <Text style={styles.mapLabel} numberOfLines={2}>
               {visit.title}
             </Text>
@@ -135,6 +149,12 @@ const styles = StyleSheet.create({
   },
   bubbleText: {
     flexShrink: 1,
+  },
+  placeLabel: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1C1C1E',
+    marginBottom: 2,
   },
   mapLabel: {
     fontSize: 14,

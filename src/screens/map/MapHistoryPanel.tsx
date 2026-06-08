@@ -18,6 +18,7 @@ export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
     showHistoryPanelContent,
     scrubOnEvent,
     selectedEntry,
+    selectedSavedPlace,
     historyEntries,
     distanceUnit,
     playback,
@@ -47,6 +48,7 @@ export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
         <>
           <HistoryEventCard
             entry={scrubOnEvent ? selectedEntry : null}
+            savedPlace={scrubOnEvent ? selectedSavedPlace : null}
             scrubOnEmpty={historyEntries.length > 0 && !scrubOnEvent}
             distanceUnit={distanceUnit}
             isPlaying={playback.isPlaying}

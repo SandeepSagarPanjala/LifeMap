@@ -6,7 +6,10 @@ import {Pressable, StyleSheet, View} from 'react-native';
 import {useThemeColors} from '@/hooks/use-theme-colors';
 import type {RootStackParamList} from '@/navigation/types';
 
-import {MAP_SETTINGS_SIZE, MAP_SETTINGS_TOP_GAP} from './map-screen-constants';
+import {
+  MAP_SETTINGS_SIZE,
+  MAP_SETTINGS_TOP_GAP,
+} from './map-screen-constants';
 import type {MapScreenController} from './use-map-screen-controller';
 
 type MapScreenTopBarProps = {
@@ -17,19 +20,15 @@ export function MapScreenTopBar({controller}: MapScreenTopBarProps) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const colors = useThemeColors();
   const {insets} = controller;
+  const settingsTop = insets.top + MAP_SETTINGS_TOP_GAP;
 
   return (
-    <View
-      pointerEvents="box-none"
-      style={[
-        styles.bar,
-        {paddingTop: insets.top + MAP_SETTINGS_TOP_GAP, paddingLeft: 16},
-      ]}>
+    <View pointerEvents="box-none" style={styles.bar}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Settings"
         onPress={() => navigation.navigate('Settings')}
-        style={styles.settingsButton}>
+        style={[styles.settingsButton, {top: settingsTop}]}>
         <Settings size={22} color={colors.primary} strokeWidth={2.25} />
       </Pressable>
     </View>
@@ -42,8 +41,11 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
+    bottom: 0,
   },
   settingsButton: {
+    position: 'absolute',
+    left: 16,
     width: MAP_SETTINGS_SIZE,
     height: MAP_SETTINGS_SIZE,
     borderRadius: MAP_SETTINGS_SIZE / 2,

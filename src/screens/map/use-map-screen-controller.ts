@@ -6,13 +6,21 @@ import {
   useRef,
   useState,
 } from 'react';
-import {Animated, Platform, useColorScheme} from 'react-native';
+import {Animated, Alert, Platform, useColorScheme} from 'react-native';
 import type MapView from 'react-native-maps';
 import {PROVIDER_DEFAULT, PROVIDER_GOOGLE, type Region} from 'react-native-maps';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
+import {
+  addFavoritePlace,
+  deleteSavedPlace,
+  type SavedPlaceRow,
+  upsertHomePlace,
+  upsertWorkPlace,
+} from '@/db/repositories/saved-places';
 import {useAfterInteractions} from '@/hooks/use-after-interactions';
 import {useHistoryForDay} from '@/hooks/use-history-data';
+import {useSavedPlaces} from '@/hooks/use-saved-places';
 import {useTripDetectionConfig} from '@/hooks/use-trip-detection-config';
 import {useTripPlayback} from '@/hooks/use-trip-playback';
 import {buildHistoryMapPlan} from '@/lib/history-map-plan';
@@ -28,6 +36,13 @@ import {
 } from '@/lib/map-location-utils';
 import {getTripPlaybackDurationMs} from '@/lib/trip-playback';
 import {isVisitOngoing} from '@/lib/trip-format';
+import {
+  canAddSavedPlace,
+  matchSavedPlaceForStay,
+  MAX_SAVED_PLACES,
+  SavedPlaceLimitError,
+} from '@/lib/saved-places';
+import {shouldShowSavedPlaceCircles} from '@/lib/saved-places-map';
 import {getCurrentOpenVisit} from '@/lib/today-history';
 import {
   isPlayableTimelineEntry,
@@ -66,7 +81,15 @@ export function useMapScreenController() {
   const [userCoordinate, setUserCoordinate] = useState<MapUserCoordinate | null>(
     null,
   );
+  const [savePlaceCoordinate, setSavePlaceCoordinate] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [savedPlacesSheetOpen, setSavedPlacesSheetOpen] = useState(false);
+  const [showSavedPlaceCircles, setShowSavedPlaceCircles] = useState(true);
 
+  const {places: savedPlaces, hasHome, hasWork, refresh: refreshSavedPlaces} =
+    useSavedPlaces();
   const {data: historyData, loading: historyLoading} =
     useHistoryForDay(selectedDateKey);
   const viewingToday = selectedDateKey === todayKey;
@@ -76,6 +99,7 @@ export function useMapScreenController() {
   const hasCenteredOnOpenRef = useRef(false);
   const needsDefaultCenterRef = useRef(true);
   const mapRegionRef = useRef<Region>(MAP_FALLBACK_REGION);
+  const showSavedPlaceCirclesRef = useRef(true);
   const fitHistoryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const userCoordinateRef = useRef<MapUserCoordinate | null>(null);
   const lastUserCoordinateRefreshMsRef = useRef(0);
@@ -168,6 +192,22 @@ export function useMapScreenController() {
     ],
   );
 
+  const currentOpenVisitSavedPlace = useMemo(
+    () =>
+      currentOpenVisit != null
+        ? matchSavedPlaceForStay(currentOpenVisit, savedPlaces)
+        : null,
+    [currentOpenVisit, savedPlaces],
+  );
+
+  const selectedSavedPlace = useMemo(
+    () =>
+      selectedPlayable?.kind === 'stay'
+        ? matchSavedPlaceForStay(selectedPlayable, savedPlaces)
+        : null,
+    [selectedPlayable, savedPlaces],
+  );
+
   const provider =
     Platform.OS === 'android' && preferredMapApp === 'google'
       ? PROVIDER_GOOGLE
@@ -177,6 +217,8 @@ export function useMapScreenController() {
   const locateButtonBottom = historyPanelOpen
     ? historyPanelBottom + 12
     : insets.bottom + MAP_LOCATE_BUTTON_BOTTOM_GAP;
+  const placesButtonBottom =
+    locateButtonBottom + MAP_STACK_BUTTON_SIZE + MAP_STACK_BUTTON_GAP;
   const historyButtonBottom = locateButtonBottom;
   const calendarButtonBottom =
     historyButtonBottom + MAP_STACK_BUTTON_SIZE + MAP_STACK_BUTTON_GAP;
@@ -218,6 +260,11 @@ export function useMapScreenController() {
 
   const onRegionChangeComplete = useCallback((region: Region) => {
     mapRegionRef.current = region;
+    const nextShowCircles = shouldShowSavedPlaceCircles(region.latitudeDelta);
+    if (nextShowCircles !== showSavedPlaceCirclesRef.current) {
+      showSavedPlaceCirclesRef.current = nextShowCircles;
+      setShowSavedPlaceCircles(nextShowCircles);
+    }
   }, []);
 
   const goToCurrentLocation = useCallback(() => {
@@ -352,6 +399,108 @@ export function useMapScreenController() {
     playback.start(getTripPlaybackDurationMs(selectedPlayable.durationMs));
   }, [playback, scheduleFitSelectedHistory, selectedPlayable]);
 
+  const handleMapLongPress = useCallback(
+    (event: {nativeEvent: {coordinate: {latitude: number; longitude: number}}}) => {
+      if (historyPanelOpen || playback.isPlaying) {
+        return;
+      }
+      setSavePlaceCoordinate(event.nativeEvent.coordinate);
+    },
+    [historyPanelOpen, playback.isPlaying],
+  );
+
+  const closeSavePlaceSheet = useCallback(() => {
+    setSavePlaceCoordinate(null);
+  }, []);
+
+  const showSavedPlaceLimitAlert = useCallback(() => {
+    Alert.alert(
+      'Place limit reached',
+      `You can save up to ${MAX_SAVED_PLACES} places. Remove one from Places to add another.`,
+    );
+  }, []);
+
+  const handleSaveHomePlace = useCallback(
+    async (coordinate: {latitude: number; longitude: number}) => {
+      try {
+        await upsertHomePlace(coordinate.latitude, coordinate.longitude);
+        await refreshSavedPlaces();
+      } catch (error) {
+        if (error instanceof SavedPlaceLimitError) {
+          showSavedPlaceLimitAlert();
+          return;
+        }
+        throw error;
+      }
+    },
+    [refreshSavedPlaces, showSavedPlaceLimitAlert],
+  );
+
+  const handleSaveWorkPlace = useCallback(
+    async (coordinate: {latitude: number; longitude: number}) => {
+      try {
+        await upsertWorkPlace(coordinate.latitude, coordinate.longitude);
+        await refreshSavedPlaces();
+      } catch (error) {
+        if (error instanceof SavedPlaceLimitError) {
+          showSavedPlaceLimitAlert();
+          return;
+        }
+        throw error;
+      }
+    },
+    [refreshSavedPlaces, showSavedPlaceLimitAlert],
+  );
+
+  const handleSaveFavoritePlace = useCallback(
+    async (
+      coordinate: {latitude: number; longitude: number},
+      name: string,
+    ) => {
+      try {
+        await addFavoritePlace(coordinate.latitude, coordinate.longitude, name);
+        await refreshSavedPlaces();
+      } catch (error) {
+        if (error instanceof SavedPlaceLimitError) {
+          showSavedPlaceLimitAlert();
+          return;
+        }
+        throw error;
+      }
+    },
+    [refreshSavedPlaces, showSavedPlaceLimitAlert],
+  );
+
+  const openSavedPlacesSheet = useCallback(() => {
+    setSavedPlacesSheetOpen(true);
+  }, []);
+
+  const closeSavedPlacesSheet = useCallback(() => {
+    setSavedPlacesSheetOpen(false);
+  }, []);
+
+  const handleDeleteSavedPlace = useCallback(
+    async (place: SavedPlaceRow) => {
+      await deleteSavedPlace(place.id);
+      await refreshSavedPlaces();
+    },
+    [refreshSavedPlaces],
+  );
+
+  const handleSelectSavedPlace = useCallback((place: SavedPlaceRow) => {
+    if (!mapRef.current) {
+      return;
+    }
+    const region = regionAroundCoordinate(
+      {latitude: place.lat, longitude: place.lng},
+      VISIT_MAX_ZOOM_DELTA,
+      VISIT_MAX_ZOOM_DELTA,
+    );
+    mapRef.current.animateToRegion(region, 400);
+    mapRegionRef.current = region;
+    needsDefaultCenterRef.current = false;
+  }, []);
+
   const handleZoomVisit = useCallback(() => {
     if (!mapRef.current || !selectedPlayable || selectedPlayable.kind !== 'stay') {
       return;
@@ -470,6 +619,20 @@ export function useMapScreenController() {
     playback.isPlaying,
   ]);
 
+  const canSaveHome = useMemo(
+    () => !hasHome && canAddSavedPlace(savedPlaces, 'home'),
+    [hasHome, savedPlaces],
+  );
+  const canSaveWork = useMemo(
+    () => !hasWork && canAddSavedPlace(savedPlaces, 'work'),
+    [hasWork, savedPlaces],
+  );
+  const canSaveFavorite = useMemo(
+    () => canAddSavedPlace(savedPlaces, 'favorite'),
+    [savedPlaces],
+  );
+  const isAtSavedPlaceLimit = savedPlaces.length >= MAX_SAVED_PLACES;
+
   return {
     tripDetectionConfig,
     insets,
@@ -480,6 +643,7 @@ export function useMapScreenController() {
     mapPadding,
     mapAttributionInsets,
     locateButtonBottom,
+    placesButtonBottom,
     calendarButtonBottom,
     historyButtonBottom,
     historyData,
@@ -502,10 +666,32 @@ export function useMapScreenController() {
     showDayJourney,
     showUserLocation,
     currentOpenVisit,
+    currentOpenVisitSavedPlace,
+    selectedSavedPlace,
+    savedPlaces,
+    hasHome,
+    hasWork,
+    canSaveHome,
+    canSaveWork,
+    canSaveFavorite,
+    isAtSavedPlaceLimit,
+    maxSavedPlaces: MAX_SAVED_PLACES,
+    showSavedPlaceCircles,
+    savePlaceCoordinate,
+    savedPlacesSheetOpen,
     userCoordinate,
     playback,
     onRegionChangeComplete,
     handleUserLocation,
+    handleMapLongPress,
+    closeSavePlaceSheet,
+    handleSaveHomePlace,
+    handleSaveWorkPlace,
+    handleSaveFavoritePlace,
+    openSavedPlacesSheet,
+    closeSavedPlacesSheet,
+    handleDeleteSavedPlace,
+    handleSelectSavedPlace,
     goToCurrentLocation,
     openHistoryDatePicker,
     closeHistoryDatePicker,

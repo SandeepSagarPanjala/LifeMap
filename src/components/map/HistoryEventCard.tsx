@@ -2,8 +2,11 @@ import LottieView from 'lottie-react-native';
 import {Pressable, StyleSheet, View} from 'react-native';
 import {Pause, Play} from 'lucide-react-native';
 
+import {SavedPlaceIcon} from '@/components/map/SavedPlaceIcon';
 import {Text} from '@/components/ui/text';
+import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import {HISTORY_COLORS} from '@/lib/history-timeline';
+import {savedPlaceDisplayLabel} from '@/lib/saved-places';
 import type {DayTimelineEntry} from '@/lib/trip-detection';
 import {
   formatStayVisitLabel,
@@ -18,6 +21,7 @@ const VISIT_LOTTIE = require('../../../assets/lottie/visit-relax.json');
 
 type HistoryEventCardProps = {
   entry: DayTimelineEntry | null;
+  savedPlace?: SavedPlaceRow | null;
   /** Timeline has data but no event is selected yet. */
   scrubOnEmpty?: boolean;
   distanceUnit: DistanceUnit;
@@ -76,6 +80,7 @@ function DriveCardIcon() {
 
 export function HistoryEventCard({
   entry,
+  savedPlace = null,
   scrubOnEmpty = false,
   distanceUnit,
   isPlaying,
@@ -129,7 +134,20 @@ export function HistoryEventCard({
               styles.visitTitleRow,
             ]}>
             <View className="flex-1">
-              <Text className="text-lg font-semibold">{visitLabel.title}</Text>
+              {savedPlace ? (
+                <View className="mb-1 flex-row items-center gap-2">
+                  <SavedPlaceIcon kind={savedPlace.kind} size={18} />
+                  <Text className="text-lg font-semibold">
+                    {savedPlaceDisplayLabel(savedPlace)}
+                  </Text>
+                </View>
+              ) : null}
+              <Text
+                className={
+                  savedPlace ? 'text-base font-medium' : 'text-lg font-semibold'
+                }>
+                {visitLabel.title}
+              </Text>
               <Text variant="muted" className="mt-0.5 text-sm">
                 {visitLabel.subtitle}
               </Text>

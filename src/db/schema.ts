@@ -43,3 +43,13 @@ export const trackingEvents = sqliteTable('tracking_events', {
   details: text('details'),
 });
 
+export const savedPlaces = sqliteTable('saved_places', {
+  id: integer('id').primaryKey({autoIncrement: true}),
+  kind: text('kind', {enum: ['home', 'work', 'favorite']}).notNull(),
+  label: text('label').notNull(),
+  lat: real('lat').notNull(),
+  lng: real('lng').notNull(),
+  radiusMeters: integer('radius_meters').notNull().default(150),
+  createdAt: integer('created_at', {mode: 'timestamp'}).notNull(),
+});
+

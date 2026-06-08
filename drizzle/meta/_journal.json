@@ -22,6 +22,13 @@
       "when": 1788894000000,
       "tag": "0002_tracking_events",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788895000000,
+      "tag": "0003_saved_places",
+      "breakpoints": true
     }
   ]
 }

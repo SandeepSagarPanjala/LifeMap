@@ -45,11 +45,24 @@ const m0002 = `CREATE TABLE IF NOT EXISTS \`tracking_events\` (
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS \`tracking_events_timestamp_idx\` ON \`tracking_events\` (\`timestamp\`);`;
 
+const m0003 = `CREATE TABLE IF NOT EXISTS \`saved_places\` (
+	\`id\` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	\`kind\` text NOT NULL,
+	\`label\` text NOT NULL,
+	\`lat\` real NOT NULL,
+	\`lng\` real NOT NULL,
+	\`radius_meters\` integer DEFAULT 150 NOT NULL,
+	\`created_at\` integer NOT NULL
+);
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS \`saved_places_kind_idx\` ON \`saved_places\` (\`kind\`);`;
+
 export default {
   journal,
   migrations: {
     m0000,
     m0001,
     m0002,
+    m0003,
   },
 };
