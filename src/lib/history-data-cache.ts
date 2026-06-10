@@ -1,5 +1,6 @@
 import type {HistoryData} from '@/lib/history-data-types';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
+import {TRIP_DETECTION_VERSION} from '@/lib/trip-settings';
 
 /** Keep RAM small — today + one other day the user is browsing. */
 export const HISTORY_DATA_CACHE_MAX_ENTRIES = 2;
@@ -8,7 +9,7 @@ export function historyCacheKey(
   dateKey: string,
   detectionConfig: TripDetectionConfig,
 ): string {
-  return `${dateKey}:${detectionConfig.dwellMinutes}:${detectionConfig.dwellRadiusMeters}`;
+  return `${dateKey}:${detectionConfig.dwellMinutes}:${detectionConfig.dwellRadiusMeters}:v${TRIP_DETECTION_VERSION}`;
 }
 
 type CacheSlot = {

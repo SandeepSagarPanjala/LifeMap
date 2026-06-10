@@ -24,7 +24,7 @@ const MARKER_ANCHOR = {x: 0.5, y: 0.5} as const;
 const LIVE_PUCK_ANCHOR = {x: 0.5, y: 1} as const;
 /** Lift label above the system user-location puck (bottom-anchored). */
 const LIVE_PUCK_CENTER_OFFSET = {x: 0, y: -100} as const;
-const BUBBLE_OFFSET_Y = -(DOT_RING_SIZE / 2 + 44);
+const BUBBLE_OFFSET_Y = -(DOT_RING_SIZE / 2 + 60);
 
 type StayDurationCalloutProps = {
   trip: DetectedTrip;

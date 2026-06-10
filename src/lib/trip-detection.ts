@@ -1,11 +1,13 @@
 import {differenceInMilliseconds} from 'date-fns';
 
 import type {LocationPointRow} from '@/db/repositories/location-days';
+import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import {calculatePathDistanceKm, distanceKm} from '@/lib/location-geo';
 import type {LocationPointLike} from '@/lib/location-geo';
 import {
   MIN_STOP_CLUSTER_RADIUS_METERS,
   MIN_TRIP_STOP_MINUTES,
+  SAVED_PLACE_MIN_DWELL_MINUTES,
   type TripDetectionConfig,
 } from '@/lib/trip-settings';
 
@@ -15,6 +17,8 @@ export type TripKind = 'travel' | 'stay' | 'gap';
 export type TripTimelineOptions = {
   /** Capture times — pauses overlapping these are not split into visits. */
   momentTimestamps?: readonly Date[];
+  /** Saved Home / Work / favorites — 150 m + 1 min visit rules from place center. */
+  savedPlaces?: readonly SavedPlaceRow[];
 };
 
 const MOMENT_CAPTURE_STOP_BUFFER_MS = 3 * 60_000;
@@ -314,12 +318,30 @@ function isStationarySave(point: LocationPointRow): boolean {
   return speed == null || speed <= VISIT_ARRIVAL_SPEED_MS;
 }
 
+/** Saves after a road pause that still show movement into the lot (turn-in). */
+const ROAD_PAUSE_LOOKAHEAD = 4;
+
 /** First parked save in a stay cluster — turn-in pings before this belong on the drive. */
-function findVisitArrivalIndex(points: LocationPointRow[]): number {
-  for (let index = 0; index < points.length; index += 1) {
-    if (isStationarySave(points[index]!)) {
-      return index;
+function findVisitArrivalIndex(
+  points: LocationPointRow[],
+  departureIndex: number,
+): number {
+  for (let index = 0; index <= departureIndex; index += 1) {
+    if (!isStationarySave(points[index]!)) {
+      continue;
     }
+    // Red light / yield on the main road before turning into a parking lot —
+    // the next few saves are still moving toward the store, not a real visit yet.
+    const stillTurningIn = points
+      .slice(
+        index + 1,
+        Math.min(index + 1 + ROAD_PAUSE_LOOKAHEAD, departureIndex + 1),
+      )
+      .some(point => !isStationarySave(point));
+    if (stillTurningIn) {
+      continue;
+    }
+    return index;
   }
   return 0;
 }
@@ -351,15 +373,29 @@ function normalizeVisitTravelBoundaries(trips: DetectedTrip[]): DetectedTrip[] {
       continue;
     }
 
-    const arrivalIndex = findVisitArrivalIndex(stay.points);
     const departureIndex = findVisitDepartureEndIndex(stay.points);
+    const arrivalIndex = findVisitArrivalIndex(stay.points, departureIndex);
     const approach = stay.points.slice(0, arrivalIndex);
     const visitCore = stay.points.slice(arrivalIndex, departureIndex + 1);
     const departureLead = stay.points.slice(departureIndex + 1);
+    const areaArrivedAt = approach[0]?.timestamp ?? stay.startAt;
 
     adjusted[index] =
       visitCore.length > 0
-        ? makeTrip(visitCore, 'stay', index)
+        ? (() => {
+            const core = makeTrip(visitCore, 'stay', index);
+            if (
+              approach.length > 0 &&
+              areaArrivedAt.getTime() < core.startAt.getTime()
+            ) {
+              return {
+                ...core,
+                startAt: areaArrivedAt,
+                durationMs: differenceInMilliseconds(core.endAt, areaArrivedAt),
+              };
+            }
+            return core;
+          })()
         : {...stay, points: [], durationMs: 0};
 
     if (approach.length > 0) {
@@ -523,6 +559,163 @@ export function findPrevPlayableTimelineIndex(
 }
 
 type StaySpan = {start: number; end: number};
+
+const SAVED_PLACE_MIN_DWELL_MS = SAVED_PLACE_MIN_DWELL_MINUTES * 60_000;
+/** Brief GPS drift outside a saved-place radius does not end the visit. */
+const SAVED_PLACE_DEPARTURE_GRACE_MS = 10 * 60_000;
+
+function pointAtSavedPlace(
+  point: LocationPointRow,
+  place: SavedPlaceRow,
+): boolean {
+  return distanceKm(point, place) * 1000 <= place.radiusMeters;
+}
+
+function awayMsBetweenIndices(
+  points: LocationPointRow[],
+  fromIndex: number,
+  toIndex: number,
+  place: SavedPlaceRow,
+): number {
+  if (toIndex <= fromIndex + 1) {
+    return 0;
+  }
+
+  let awayMs = 0;
+  let awaySince: number | null = null;
+  for (let index = fromIndex + 1; index < toIndex; index += 1) {
+    const timestampMs = points[index]!.timestamp.getTime();
+    if (pointAtSavedPlace(points[index]!, place)) {
+      if (awaySince != null) {
+        awayMs += timestampMs - awaySince;
+        awaySince = null;
+      }
+    } else if (awaySince == null) {
+      awaySince = timestampMs;
+    }
+  }
+
+  if (awaySince != null) {
+    awayMs += points[toIndex]!.timestamp.getTime() - awaySince;
+  }
+
+  return awayMs;
+}
+
+function mergeStaySpans(spans: StaySpan[]): StaySpan[] {
+  if (spans.length === 0) {
+    return [];
+  }
+
+  const sorted = [...spans].sort(
+    (left, right) => left.start - right.start || left.end - right.end,
+  );
+  const merged: StaySpan[] = [{...sorted[0]!}];
+
+  for (let index = 1; index < sorted.length; index += 1) {
+    const current = sorted[index]!;
+    const previous = merged[merged.length - 1]!;
+    if (current.start <= previous.end + 1) {
+      previous.end = Math.max(previous.end, current.end);
+    } else {
+      merged.push({...current});
+    }
+  }
+
+  return merged;
+}
+
+/**
+ * Saved places: any saves within the place radius (typically 150 m from center).
+ * Qualifies at ≥ 1 minute; brief excursions outside the radius are GPS drift.
+ */
+/** @internal Test helper */
+export function findSavedPlaceStaySpans(
+  points: LocationPointRow[],
+  places: readonly SavedPlaceRow[],
+): StaySpan[] {
+  if (points.length === 0 || places.length === 0) {
+    return [];
+  }
+
+  const spans: StaySpan[] = [];
+
+  for (const place of places) {
+    let index = 0;
+    while (index < points.length) {
+      while (
+        index < points.length &&
+        !pointAtSavedPlace(points[index]!, place)
+      ) {
+        index += 1;
+      }
+      if (index >= points.length) {
+        break;
+      }
+
+      const start = index;
+      let lastAtPlace = index;
+      index += 1;
+
+      while (index < points.length) {
+        if (pointAtSavedPlace(points[index]!, place)) {
+          lastAtPlace = index;
+          index += 1;
+          continue;
+        }
+
+        let nextAtPlace = index;
+        while (
+          nextAtPlace < points.length &&
+          !pointAtSavedPlace(points[nextAtPlace]!, place)
+        ) {
+          nextAtPlace += 1;
+        }
+        if (nextAtPlace >= points.length) {
+          break;
+        }
+
+        const awayMs = awayMsBetweenIndices(
+          points,
+          lastAtPlace,
+          nextAtPlace,
+          place,
+        );
+        if (awayMs <= SAVED_PLACE_DEPARTURE_GRACE_MS) {
+          lastAtPlace = nextAtPlace;
+          index = nextAtPlace + 1;
+        } else {
+          break;
+        }
+      }
+
+      const spanMs =
+        points[lastAtPlace]!.timestamp.getTime() -
+        points[start]!.timestamp.getTime();
+      const atEndOfDay = lastAtPlace === points.length - 1;
+      if (spanMs >= SAVED_PLACE_MIN_DWELL_MS || atEndOfDay) {
+        spans.push({start, end: lastAtPlace});
+      }
+    }
+  }
+
+  return mergeStaySpans(spans);
+}
+
+function findAllStaySpans(
+  points: LocationPointRow[],
+  config: TripDetectionConfig,
+  savedPlaces: readonly SavedPlaceRow[],
+): StaySpan[] {
+  const generic = findStaySpans(points, config);
+  if (savedPlaces.length === 0) {
+    return generic;
+  }
+  return mergeStaySpans([
+    ...generic,
+    ...findSavedPlaceStaySpans(points, savedPlaces),
+  ]);
+}
 
 function maxSpreadFromAnchorM(
   points: LocationPointRow[],
@@ -990,11 +1183,13 @@ function splitTravelsAtStops(
 function collapseMomentCaptureStays(
   trips: DetectedTrip[],
   momentTimestamps: readonly Date[],
+  config: TripDetectionConfig,
 ): DetectedTrip[] {
   if (momentTimestamps.length === 0 || trips.length < 3) {
     return trips;
   }
 
+  const maxCollapseStayMs = config.dwellMinutes * 60_000;
   const merged: DetectedTrip[] = [];
   let index = 0;
 
@@ -1007,6 +1202,7 @@ function collapseMomentCaptureStays(
       current.kind === 'travel' &&
       next?.kind === 'stay' &&
       after?.kind === 'travel' &&
+      next.durationMs < maxCollapseStayMs &&
       spanOverlapsMoment(
         next.startAt.getTime(),
         next.endAt.getTime(),
@@ -1071,8 +1267,9 @@ export function detectTrips(
   options: TripTimelineOptions = {},
 ): DetectedTrip[] {
   const momentTimestamps = options.momentTimestamps ?? [];
+  const savedPlaces = options.savedPlaces ?? [];
   const deduped = dedupeLocationPoints(points);
-  const stays = findStaySpans(deduped, config);
+  const stays = findAllStaySpans(deduped, config, savedPlaces);
   if (stays.length === 0) {
     return [];
   }
@@ -1145,6 +1342,7 @@ export function detectTrips(
     collapseMomentCaptureStays(
       splitTravelsAtStops(trips, config, momentTimestamps),
       momentTimestamps,
+      config,
     ),
     config,
   );

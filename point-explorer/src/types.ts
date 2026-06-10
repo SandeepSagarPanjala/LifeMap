@@ -17,6 +17,15 @@ export type LocationExport = {
   rows: LocationPointRow[];
 };
 
+/** Full database export from LifeMap Settings → All tables. */
+export type DatabaseExport = {
+  exportedAt?: string;
+  scope?: string;
+  tables?: {
+    location_points?: LocationPointRow[];
+  };
+};
+
 export type ParsedPoint = LocationPointRow & {
   at: Date;
   dateKey: string;

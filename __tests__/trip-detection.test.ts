@@ -2,6 +2,7 @@ import {
   buildDayTimeline,
   dedupeLocationPoints,
   detectTrips,
+  findSavedPlaceStaySpans,
   getTravelDisplayPoints,
   visitApproachConnectorCoordinates,
   isShortGapDeparture,
@@ -801,5 +802,56 @@ describe('playable timeline navigation', () => {
     expect(findPrevPlayableTimelineIndex(entries, 2)).toBe(0);
     expect(findPrevPlayableTimelineIndex(entries, 1)).toBe(0);
     expect(findPrevPlayableTimelineIndex(entries, 0)).toBe(-1);
+  });
+});
+
+describe('findSavedPlaceStaySpans', () => {
+  const homePlace = {
+    id: 1,
+    kind: 'home' as const,
+    label: 'Home',
+    lat: 33.25045,
+    lng: -97.15306,
+    radiusMeters: 150,
+    createdAt: new Date(),
+  };
+
+  it('detects a long home visit from points within 150 m of saved home', () => {
+    const start = new Date('2026-06-08T05:20:00.000Z');
+    const points: LocationPointRow[] = [];
+    for (let hour = 0; hour < 20; hour += 1) {
+      points.push({
+        id: hour + 1,
+        timestamp: new Date(start.getTime() + hour * 60 * 60_000),
+        lat: 33.25045 + hour * 0.00001,
+        lng: -97.15306,
+        accuracy: 10,
+        altitude: null,
+        speed: null,
+        source: 'gps',
+      });
+    }
+
+    const spans = findSavedPlaceStaySpans(points, [homePlace]);
+    expect(spans).toHaveLength(1);
+    expect(spans[0]?.start).toBe(0);
+    expect(spans[0]?.end).toBe(points.length - 1);
+  });
+
+  it('splits home visit from a real departure to another city', () => {
+    const homePoints = makePoints([
+      {minutes: 0, lat: 33.25045, lng: -97.15306},
+      {minutes: 60, lat: 33.2505, lng: -97.1531},
+      {minutes: 120, lat: 33.2504, lng: -97.153},
+    ]);
+    const awayPoints = makePoints([
+      {minutes: 180, lat: 33.28, lng: -97.05},
+      {minutes: 240, lat: 33.29, lng: -97.04},
+    ]);
+    const points = [...homePoints, ...awayPoints];
+
+    const spans = findSavedPlaceStaySpans(points, [homePlace]);
+    expect(spans).toHaveLength(1);
+    expect(spans[0]?.end).toBe(2);
   });
 });

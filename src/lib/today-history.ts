@@ -231,9 +231,10 @@ function attachCrossDayTravelDisplay(
       break;
     }
     const absorbed =
-      isMidDriveNoiseStay(next, raw, config) ||
-      isTrailingDriveArrivalStay(next, rawTravel, config) ||
-      isCrossDayDriveTailStay(next, raw, config);
+      next.durationMs < config.dwellMinutes * 60_000 &&
+      (isMidDriveNoiseStay(next, raw, config) ||
+        isTrailingDriveArrivalStay(next, rawTravel, config) ||
+        isCrossDayDriveTailStay(next, raw, config));
     if (!absorbed) {
       break;
     }
@@ -265,6 +266,8 @@ function attachCrossDayTravelDisplay(
  * Map history for one calendar day: detect on lookback + day + lookahead points,
  * fill midnight→first save when still at the same place, and extend the open visit
  * through now when viewing today.
+ *
+ * @param forDisplay When false, skips map-only cross-day drive merging (use for DB persist).
  */
 export function prepareDayHistoryTimeline(
   dateKey: string,
@@ -274,6 +277,7 @@ export function prepareDayHistoryTimeline(
   referenceNow: Date = new Date(),
   lookaheadPoints: LocationPointRow[] = [],
   timelineOptions: TripTimelineOptions = {},
+  forDisplay = true,
 ): DayTimelineEntry[] {
   const {start: dayStart} = getDayRange(dateKey);
   const isToday = dateKey === toDateKey(referenceNow);
@@ -301,6 +305,9 @@ export function prepareDayHistoryTimeline(
 
   return filtered.map((entry, index) => {
     if (entry.kind === 'travel') {
+      if (!forDisplay) {
+        return entry;
+      }
       return attachCrossDayTravelDisplay(
         entry,
         raw,

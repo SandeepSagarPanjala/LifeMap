@@ -4,7 +4,7 @@ Standalone internal web app to visualize LifeMap `location_points` JSON exports.
 
 ## What it does
 
-- Load `all data.json` (or any export with a `rows` array)
+- Load LifeMap JSON exports: location-points (`rows`) or full database (`tables.location_points`)
 - Plot every save on an OpenStreetMap map (blue dots, chronological blue path)
 - Filter by **date** (America/Chicago calendar day)
 - Click a point for id, time, coordinates, accuracy, source
@@ -30,21 +30,20 @@ Output is in `dist/` — can be opened on any static file host.
 
 ## Export format
 
-Expects the same shape as LifeMap exports:
+Accepts either LifeMap export shape:
+
+**Location points only** (legacy):
+
+```json
+{ "rows": [{ "id": 1, "timestamp": "...", "lat": 33.21, "lng": -97.13, ... }] }
+```
+
+**Full database** (Settings → All tables):
 
 ```json
 {
-  "rows": [
-    {
-      "id": 1,
-      "timestamp": "2026-06-04T09:00:00.000Z",
-      "lat": 33.21,
-      "lng": -97.13,
-      "accuracy": 8,
-      "altitude": null,
-      "speed": null,
-      "source": "gps"
-    }
-  ]
+  "tables": {
+    "location_points": [{ "id": 1, "timestamp": "...", "lat": 33.21, "lng": -97.13, ... }]
+  }
 }
 ```

@@ -58,7 +58,6 @@ export async function insertLocationPoint(
           eq(locationPoints.timestamp, point.timestamp),
           eq(locationPoints.lat, point.lat),
           eq(locationPoints.lng, point.lng),
-          eq(locationPoints.source, source),
         ),
       )
       .limit(1);

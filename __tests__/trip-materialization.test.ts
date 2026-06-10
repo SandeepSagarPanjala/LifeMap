@@ -4,9 +4,10 @@ import {
 } from '@/lib/timeline-from-trips';
 import {
   isClosedPlayableEntry,
+  isImplausibleMaterializedTravel,
   tripEventKey,
-  TRIP_DETECTION_VERSION,
 } from '@/lib/trip-materialization';
+import {TRIP_DETECTION_VERSION} from '@/lib/trip-settings';
 import type {TripRow} from '@/db/repositories/trips';
 import type {DetectedTrip} from '@/lib/trip-detection';
 
@@ -54,6 +55,48 @@ describe('isClosedPlayableEntry', () => {
   it('treats closed stays and drives as persistable', () => {
     expect(isClosedPlayableEntry(stay(1, 2))).toBe(true);
     expect(isClosedPlayableEntry(travel(1, 2))).toBe(true);
+  });
+});
+
+describe('isImplausibleMaterializedTravel', () => {
+  it('flags Jun 8 corrupt 22hr cached drive', () => {
+    const corrupt: TripRow = {
+      id: 416,
+      eventKey: 'travel:1:2',
+      kind: 'travel',
+      dateKey: '2026-06-08',
+      startAt: new Date('2026-06-08T04:51:23.000Z'),
+      endAt: new Date('2026-06-09T03:25:14.000Z'),
+      durationMs: 81_231_000,
+      distanceKm: 31.35,
+      centroidLat: 33.23,
+      centroidLng: -97.02,
+      placeLookupCacheId: null,
+      selectedCandidateIndex: null,
+      detectionVersion: 1,
+      closedAt: new Date(),
+    };
+    expect(isImplausibleMaterializedTravel(corrupt)).toBe(true);
+  });
+
+  it('allows a normal half-hour commute', () => {
+    const commute: TripRow = {
+      id: 1,
+      eventKey: 'travel:1:2',
+      kind: 'travel',
+      dateKey: '2026-06-08',
+      startAt: new Date('2026-06-08T04:51:23.000Z'),
+      endAt: new Date('2026-06-08T05:20:24.000Z'),
+      durationMs: 1_741_000,
+      distanceKm: 27.6,
+      centroidLat: 33.23,
+      centroidLng: -97.02,
+      placeLookupCacheId: null,
+      selectedCandidateIndex: null,
+      detectionVersion: 2,
+      closedAt: new Date(),
+    };
+    expect(isImplausibleMaterializedTravel(commute)).toBe(false);
   });
 });
 

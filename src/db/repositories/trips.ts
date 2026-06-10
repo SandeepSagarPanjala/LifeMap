@@ -171,3 +171,12 @@ export async function deleteAllTrips(): Promise<number> {
   const deleted = await db.delete(trips).returning({id: trips.id});
   return deleted.length;
 }
+
+export async function deleteTripsForDay(dateKey: string): Promise<number> {
+  const db = await getDatabase();
+  const deleted = await db
+    .delete(trips)
+    .where(eq(trips.dateKey, dateKey))
+    .returning({id: trips.id});
+  return deleted.length;
+}

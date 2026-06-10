@@ -227,4 +227,92 @@ describe('prepareTodayHistoryTimeline', () => {
       '2026-06-08T05:20:00.000Z',
     );
   });
+
+  it('keeps home visit separate from cross-day drive when persisting (Jun 8 export)', () => {
+    const fs = require('fs') as typeof import('fs');
+    const path = require('path') as typeof import('path');
+    const exportPath = path.join(__dirname, '..', 'all data.json');
+    if (!fs.existsSync(exportPath)) {
+      return;
+    }
+
+    const raw = JSON.parse(fs.readFileSync(exportPath, 'utf8')) as {
+      tables: {
+        location_points: Array<{
+          id: number;
+          timestamp: string;
+          lat: number;
+          lng: number;
+          accuracy: number | null;
+          altitude: number | null;
+          speed: number | null;
+          source: string;
+        }>;
+        saved_places: Array<{
+          id: number;
+          kind: string;
+          label: string;
+          lat: number;
+          lng: number;
+          radiusMeters: number;
+          createdAt: string;
+        }>;
+      };
+    };
+    const tripConfig = buildTripDetectionConfig(10, 5, 25);
+    const allPoints = raw.tables.location_points.map(row => ({
+      ...row,
+      timestamp: new Date(row.timestamp),
+      source: row.source as LocationPointRow['source'],
+    }));
+
+    const dateKey = '2026-06-08';
+    const dayStart = new Date('2026-06-08T05:00:00.000Z');
+    const dayEnd = new Date('2026-06-09T04:59:59.999Z');
+    const lookbackStart = new Date('2026-06-06T05:00:00.000Z');
+    const lookaheadEnd = new Date('2026-06-10T05:00:00.000Z');
+    const dayPoints = allPoints.filter(
+      p => p.timestamp >= dayStart && p.timestamp <= dayEnd,
+    );
+    const lookbackPoints = allPoints.filter(
+      p => p.timestamp >= lookbackStart && p.timestamp < dayStart,
+    );
+    const lookaheadPoints = allPoints.filter(
+      p => p.timestamp > dayEnd && p.timestamp <= lookaheadEnd,
+    );
+    const referenceNow = new Date('2026-06-10T12:00:00.000Z');
+    const savedPlaces = (raw.tables.saved_places ?? []).map(place => ({
+      ...place,
+      kind: place.kind as 'home' | 'work' | 'favorite',
+      createdAt: new Date(place.createdAt),
+    }));
+
+    const persistEntries = prepareDayHistoryTimeline(
+      dateKey,
+      dayPoints,
+      lookbackPoints,
+      tripConfig,
+      referenceNow,
+      lookaheadPoints,
+      {savedPlaces},
+      false,
+    );
+
+    const inboundDrive = persistEntries.find(entry => entry.kind === 'travel');
+    const homeStay = persistEntries.find(
+      entry =>
+        entry.kind === 'stay' &&
+        entry.durationMs >= 12 * 60 * 60_000,
+    );
+
+    expect(inboundDrive?.kind).toBe('travel');
+    expect(homeStay?.kind).toBe('stay');
+    if (inboundDrive?.kind === 'travel' && homeStay?.kind === 'stay') {
+      expect(inboundDrive.durationMs).toBeLessThan(60 * 60_000);
+      expect(homeStay.durationMs).toBeGreaterThan(12 * 60 * 60_000);
+      expect(inboundDrive.endAt.getTime()).toBeLessThanOrEqual(
+        homeStay.startAt.getTime() + 5 * 60_000,
+      );
+    }
+  });
 });

@@ -75,15 +75,23 @@ export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
       {selected?.entry.kind === 'travel' &&
       selected.travelPoints != null &&
       selected.travelPoints.length > 0 ? (
-        <TripRouteOverlay
-          points={selected.travelPoints}
-          playbackProgress={playbackProgress}
-          emphasized
-          startAt={selected.entry.startAt}
-          endAt={selected.entry.endAt}
-          startSavedPlace={selectedDriveStartPlace}
-          endSavedPlace={selectedDriveEndPlace}
-        />
+        <>
+          <TripRouteOverlay
+            points={selected.travelPoints}
+            playbackProgress={playbackProgress}
+            emphasized
+            startAt={selected.entry.startAt}
+            endAt={selected.entry.endAt}
+            startSavedPlace={selectedDriveStartPlace}
+            endSavedPlace={selectedDriveEndPlace}
+          />
+          {plan.nextStay != null && !isPlaying ? (
+            <VisitApproachConnector
+              routePoints={selected.travelPoints}
+              visit={plan.nextStay}
+            />
+          ) : null}
+        </>
       ) : null}
 
       {selected?.entry.kind === 'stay' &&

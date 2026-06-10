@@ -1,4 +1,4 @@
-import type {LocationExport, ParsedPoint} from '../types';
+import type {DatabaseExport, LocationExport, LocationPointRow, ParsedPoint} from '../types';
 
 const DATE_KEY_FORMATTER = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'America/Chicago',
@@ -36,14 +36,35 @@ export function formatDateLabel(dateKey: string): string {
   }).format(date);
 }
 
+function extractLocationRows(raw: unknown): LocationPointRow[] | null {
+  if (!raw || typeof raw !== 'object') {
+    return null;
+  }
+
+  const locationExport = raw as LocationExport;
+  if (Array.isArray(locationExport.rows)) {
+    return locationExport.rows;
+  }
+
+  const databaseExport = raw as DatabaseExport;
+  const rows = databaseExport.tables?.location_points;
+  if (Array.isArray(rows)) {
+    return rows;
+  }
+
+  return null;
+}
+
 export function parseExport(raw: unknown): ParsedPoint[] {
-  const data = raw as LocationExport;
-  if (!data || !Array.isArray(data.rows)) {
-    throw new Error('Invalid export: expected { rows: [...] }');
+  const rows = extractLocationRows(raw);
+  if (!rows) {
+    throw new Error(
+      'Invalid export: expected { rows: [...] } or { tables: { location_points: [...] } }',
+    );
   }
 
   const points: ParsedPoint[] = [];
-  for (const row of data.rows) {
+  for (const row of rows) {
     if (
       typeof row.lat !== 'number' ||
       typeof row.lng !== 'number' ||

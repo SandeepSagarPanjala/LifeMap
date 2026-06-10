@@ -17,8 +17,10 @@ import {
   upsertMaterializedDay,
 } from '@/db/repositories/materialized-days';
 import {findPlaceLookupNearAnchor} from '@/db/repositories/place-lookup-cache';
+import {listSavedPlaces} from '@/db/repositories/saved-places';
 import {
   deleteAllTrips,
+  deleteTripsForDay,
   getTripByEventKey,
   getTripById,
   insertTripIfAbsent,
@@ -41,7 +43,6 @@ import {
 } from '@/lib/trip-materialization-events';
 import {
   buildTimelineFromTrips,
-  canReadDayFromMaterializedTrips,
 } from '@/lib/timeline-from-trips';
 import {
   type DayTimelineEntry,
@@ -54,10 +55,39 @@ import {
   DEFAULT_TRIP_DWELL_MINUTES,
   DEFAULT_TRIP_GAP_MINUTES,
   HISTORY_SAME_PLACE_RADIUS_METERS,
+  TRIP_DETECTION_VERSION,
   type TripDetectionConfig,
 } from '@/lib/trip-settings';
+const MIN_IMPLAUSIBLE_DRIVE_HOURS = 2;
+const MIN_IMPLAUSIBLE_DRIVE_AVG_KMH = 8;
 
-export const TRIP_DETECTION_VERSION = 1;
+export function isImplausibleMaterializedTravel(row: TripRow): boolean {
+  if (row.kind !== 'travel') {
+    return false;
+  }
+  const hours = row.durationMs / 3_600_000;
+  if (hours < MIN_IMPLAUSIBLE_DRIVE_HOURS) {
+    return false;
+  }
+  const avgKmh = row.distanceKm / hours;
+  return avgKmh < MIN_IMPLAUSIBLE_DRIVE_AVG_KMH;
+}
+
+async function purgeMaterializedDayCache(
+  dateKey: string,
+  pointCount: number,
+): Promise<void> {
+  await deleteTripsForDay(dateKey);
+  await upsertMaterializedDay(dateKey, {
+    status: 'open',
+    detectionVersion: TRIP_DETECTION_VERSION,
+    tripCount: 0,
+    pointCount,
+    sealedAt: null,
+  });
+  clearHistoryDataCache();
+  notifyMaterializationUpdated();
+}
 
 const WORKER_TIME_BUDGET_MS = 5_000;
 const WORKER_BATCH_SIZE = 3;
@@ -121,6 +151,7 @@ async function loadLiveHistoryForDay(
   dateKey: string,
   detectionConfig: TripDetectionConfig,
   referenceNow: Date = new Date(),
+  forDisplay = true,
 ): Promise<HistoryData> {
   const {start: dayStart} = getDayRange(dateKey);
   const isToday = dateKey === getTodayDateKey();
@@ -128,7 +159,7 @@ async function loadLiveHistoryForDay(
   const lookbackStart = getHistoryLookbackStart(dayStart);
   const dayEnd = endOfDay(dayStart);
   const lookaheadEnd = getHistoryLookaheadEnd(dayEnd);
-  const [dayPoints, lookbackPoints, lookaheadPoints, dayMoments] =
+  const [dayPoints, lookbackPoints, lookaheadPoints, dayMoments, savedPlaces] =
     await Promise.all([
     getLocationPointsForDay(dateKey),
     getLocationPointsInRange(
@@ -140,6 +171,7 @@ async function loadLiveHistoryForDay(
       lookaheadEnd,
     ),
     getMomentsForDay(dayStart, rangeEnd),
+    listSavedPlaces(),
   ]);
   const entries = prepareDayHistoryTimeline(
     dateKey,
@@ -150,7 +182,9 @@ async function loadLiveHistoryForDay(
     lookaheadPoints,
     {
       momentTimestamps: dayMoments.map(moment => moment.timestamp),
+      savedPlaces,
     },
+    forDisplay,
   );
 
   return {
@@ -197,17 +231,13 @@ export async function loadHistoryWithMaterialization(
   dateKey: string,
   detectionConfig: TripDetectionConfig,
 ): Promise<HistoryData> {
-  const isToday = dateKey === getTodayDateKey();
-  const materializedDay = await getMaterializedDay(dateKey);
+  let materializedDay = await getMaterializedDay(dateKey);
 
   if (
-    !isToday &&
-    canReadDayFromMaterializedTrips(materializedDay, TRIP_DETECTION_VERSION)
+    materializedDay != null &&
+    materializedDay.detectionVersion < TRIP_DETECTION_VERSION
   ) {
-    const materialized = await loadHistoryFromMaterializedTrips(dateKey);
-    if (materialized.entries.length > 0) {
-      return materialized;
-    }
+    await purgeMaterializedDayCache(dateKey, materializedDay.pointCount);
   }
 
   const live = await loadLiveHistoryForDay(dateKey, detectionConfig);
@@ -249,9 +279,15 @@ async function persistClosedTripsForDay(
   dateKey: string,
   detectionConfig: TripDetectionConfig,
 ): Promise<number> {
-  const live = await loadLiveHistoryForDay(dateKey, detectionConfig);
+  const live = await loadLiveHistoryForDay(
+    dateKey,
+    detectionConfig,
+    new Date(),
+    false,
+  );
   const closedEntries = live.entries.filter(isClosedPlayableEntry);
   const closedAt = new Date();
+  await deleteTripsForDay(dateKey);
   let inserted = 0;
 
   for (const entry of closedEntries) {
@@ -312,7 +348,12 @@ async function sealDay(
     return;
   }
 
-  const live = await loadLiveHistoryForDay(dateKey, detectionConfig);
+  const live = await loadLiveHistoryForDay(
+    dateKey,
+    detectionConfig,
+    new Date(),
+    false,
+  );
   if (dayHasOpenVisit(live.entries)) {
     return;
   }
@@ -483,3 +524,4 @@ export async function resetMaterializedTripHistory(): Promise<ResetMaterializedT
 }
 
 export type {TripRow};
+export {TRIP_DETECTION_VERSION} from '@/lib/trip-settings';
