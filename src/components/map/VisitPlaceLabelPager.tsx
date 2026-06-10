@@ -29,20 +29,7 @@ export function VisitPlaceLabelPager({
     setPageIndex(display.selectedIndex);
   }, [display.selectedIndex]);
 
-  const showUserPin = display.isAreaDefault || display.isTripLabel;
   const candidates = display.candidates;
-  if (display.source !== 'lookup' || candidates.length <= 1) {
-    if (!display.primaryLabel) {
-      return null;
-    }
-    return (
-      <VisitPlaceLabelWithPin
-        name={display.primaryLabel}
-        showPin={showUserPin}
-      />
-    );
-  }
-
   const handleMomentumEnd = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
       const nextIndex = Math.round(
@@ -56,6 +43,19 @@ export function VisitPlaceLabelPager({
     },
     [candidates.length, display.selectedIndex, onSelectIndex],
   );
+
+  const showUserPin = display.isAreaDefault || display.isTripLabel;
+  if (display.source !== 'lookup' || candidates.length <= 1) {
+    if (!display.primaryLabel) {
+      return null;
+    }
+    return (
+      <VisitPlaceLabelWithPin
+        name={display.primaryLabel}
+        showPin={showUserPin}
+      />
+    );
+  }
 
   return (
     <View style={styles.wrap}>

@@ -1488,6 +1488,32 @@ export function stayBeforeEntryIndex(
   return null;
 }
 
+export function stayAfterEntryIndex(
+  entries: DayTimelineEntry[],
+  index: number,
+): DetectedTrip | null {
+  for (let entryIndex = index + 1; entryIndex < entries.length; entryIndex += 1) {
+    const entry = entries[entryIndex]!;
+    if (entry.kind === 'stay') {
+      return entry;
+    }
+  }
+  return null;
+}
+
+export function adjacentStaysForTravelIndex(
+  entries: DayTimelineEntry[],
+  travelIndex: number,
+): {
+  previousStay: DetectedTrip | null;
+  nextStay: DetectedTrip | null;
+} {
+  return {
+    previousStay: stayBeforeEntryIndex(entries, travelIndex),
+    nextStay: stayAfterEntryIndex(entries, travelIndex),
+  };
+}
+
 export function getTravelDisplayPoints(
   travel: DetectedTrip,
   previousStay: DetectedTrip | null,

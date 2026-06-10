@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useLayoutEffect, useRef, useState} from 'react';
+import {useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
 import {
   Alert,
   Animated,
@@ -11,17 +11,26 @@ import {
 } from 'react-native';
 import {AudioLines, Camera, NotebookPen, Pause, Play, Trash2, X} from 'lucide-react-native';
 
+import {SavedPlaceIcon} from '@/components/map/SavedPlaceIcon';
 import {CAPTURE_BUTTON_THEMES} from '@/components/map/map-capture-button-theme';
 import {MomentPreviewImage} from '@/components/moments/MomentPreviewImage';
 import {Text} from '@/components/ui/text';
 import type {MomentRow} from '@/db/repositories/moments';
+import type {SavedPlaceRow} from '@/db/repositories/saved-places';
+import {useMomentPreviewContexts} from '@/hooks/use-moment-preview-contexts';
 import {useThemeColors} from '@/hooks/use-theme-colors';
+import type {DistanceUnit} from '@/lib/location-geo';
+import {
+  type MomentPreviewContext,
+} from '@/lib/moments/moment-preview-context';
 import {formatVoiceDurationMs} from '@/lib/moments/format-voice-duration';
 import {resolveExistingMomentContentPath} from '@/lib/moments/moment-media-uri';
 import {
   createVoiceRecorderSession,
   getVoiceRecordingErrorMessage,
 } from '@/lib/moments/voice-recorder';
+import {matchSavedPlaceForStay} from '@/lib/saved-places';
+import type {DayTimelineEntry} from '@/lib/trip-detection';
 import {formatTripClockTime} from '@/lib/trip-format';
 
 const SHEET_OFFSCREEN = 520;
@@ -30,6 +39,10 @@ type MomentsPreviewSheetProps = {
   visible: boolean;
   title: string;
   moments: MomentRow[];
+  timelineEntries: DayTimelineEntry[];
+  savedPlaces: readonly SavedPlaceRow[];
+  distanceUnit: DistanceUnit;
+  previewEntry?: DayTimelineEntry | null;
   onClose: () => void;
   onDeleteMoment: (momentId: number) => Promise<void>;
 };
@@ -109,14 +122,64 @@ function VoicePreviewRow({
   );
 }
 
+function MomentPreviewContextRow({
+  context,
+  savedPlaces,
+  timelineEntries,
+}: {
+  context: MomentPreviewContext;
+  savedPlaces: readonly SavedPlaceRow[];
+  timelineEntries: DayTimelineEntry[];
+}) {
+  const stayEntry =
+    context.entryKind === 'stay'
+      ? timelineEntries.find(
+          entry => entry.id === context.entryId && entry.kind === 'stay',
+        )
+      : null;
+  const savedPlace =
+    stayEntry?.kind === 'stay'
+      ? matchSavedPlaceForStay(stayEntry, savedPlaces)
+      : null;
+
+  return (
+    <View style={styles.contextRow}>
+      <Text variant="muted" className="text-[10px] uppercase tracking-wide">
+        {context.kindLabel}
+      </Text>
+      {savedPlace ? (
+        <View style={styles.contextPlaceRow}>
+          <SavedPlaceIcon kind={savedPlace.kind} size={14} />
+          <Text className="text-sm font-semibold" numberOfLines={1}>
+            {context.placeLabel}
+          </Text>
+        </View>
+      ) : context.placeLabel ? (
+        <Text className="text-sm font-semibold" numberOfLines={1}>
+          {context.placeLabel}
+        </Text>
+      ) : null}
+      <Text variant="muted" className="text-xs">
+        {context.timeLabel} · {context.statsLabel}
+      </Text>
+    </View>
+  );
+}
+
 function MomentPreviewCard({
   moment,
+  context,
+  savedPlaces,
+  timelineEntries,
   isPlayingVoice,
   onToggleVoice,
   onDelete,
   deleting,
 }: {
   moment: MomentRow;
+  context?: MomentPreviewContext;
+  savedPlaces: readonly SavedPlaceRow[];
+  timelineEntries: DayTimelineEntry[];
   isPlayingVoice: boolean;
   onToggleVoice: () => void;
   onDelete: () => void;
@@ -141,6 +204,14 @@ function MomentPreviewCard({
           <Trash2 size={18} color="#FF3B30" strokeWidth={2.25} />
         </Pressable>
       </View>
+
+      {context ? (
+        <MomentPreviewContextRow
+          context={context}
+          savedPlaces={savedPlaces}
+          timelineEntries={timelineEntries}
+        />
+      ) : null}
 
       {moment.type === 'photo' && moment.contentPath ? (
         <MomentPreviewImage contentPath={moment.contentPath} style={styles.photo} />
@@ -180,10 +251,47 @@ export function MomentsPreviewSheet({
   visible,
   title,
   moments,
+  timelineEntries,
+  savedPlaces,
+  distanceUnit,
+  previewEntry = null,
   onClose,
   onDeleteMoment,
 }: MomentsPreviewSheetProps) {
   const colors = useThemeColors();
+  const momentContexts = useMomentPreviewContexts(
+    moments,
+    timelineEntries,
+    savedPlaces,
+    distanceUnit,
+  );
+  const resolvedTitle = useMemo(() => {
+    if (previewEntry?.kind === 'stay') {
+      const firstContext = moments[0]
+        ? momentContexts.get(moments[0].id)
+        : undefined;
+      const place = firstContext?.placeLabel?.trim();
+      if (place) {
+        return `${place} moments`;
+      }
+      return 'Visit moments';
+    }
+
+    if (moments.length === 1) {
+      const context = momentContexts.get(moments[0]!.id);
+      if (context?.placeLabel?.trim()) {
+        return `${context.placeLabel.trim()} moments`;
+      }
+      if (context?.entryKind === 'stay') {
+        return 'Visit moments';
+      }
+      if (context?.entryKind === 'travel') {
+        return 'Drive moments';
+      }
+    }
+
+    return title;
+  }, [momentContexts, moments, previewEntry, title]);
   const [mounted, setMounted] = useState(visible);
   const [playingVoiceId, setPlayingVoiceId] = useState<number | null>(null);
   const [deletingMomentId, setDeletingMomentId] = useState<number | null>(null);
@@ -385,7 +493,7 @@ export function MomentsPreviewSheet({
             {backgroundColor: colors.background, transform: [{translateY: sheetTranslateY}]},
           ]}>
           <View style={styles.header}>
-            <Text className="text-lg font-semibold">{title}</Text>
+            <Text className="text-lg font-semibold">{resolvedTitle}</Text>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Close moments preview"
@@ -409,6 +517,9 @@ export function MomentsPreviewSheet({
                 <MomentPreviewCard
                   key={moment.id}
                   moment={moment}
+                  context={momentContexts.get(moment.id)}
+                  savedPlaces={savedPlaces}
+                  timelineEntries={timelineEntries}
                   isPlayingVoice={playingVoiceId === moment.id}
                   onToggleVoice={() => void toggleVoice(moment)}
                   onDelete={() => confirmDeleteMoment(moment)}
@@ -477,6 +588,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+  },
+  contextRow: {
+    gap: 2,
+    paddingBottom: 2,
+  },
+  contextPlaceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   deleteButton: {
     width: 32,

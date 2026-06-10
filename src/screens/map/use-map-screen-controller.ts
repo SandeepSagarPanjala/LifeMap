@@ -25,17 +25,26 @@ import {useAfterInteractions} from '@/hooks/use-after-interactions';
 import {useHistoryForDay} from '@/hooks/use-history-data';
 import {usePlaceLookupScheduler} from '@/hooks/use-place-lookup-scheduler';
 import {useSavedPlaces} from '@/hooks/use-saved-places';
+import {useDriveEndpointLabels} from '@/hooks/use-drive-endpoint-labels';
 import {useDayMoments} from '@/hooks/use-day-moments';
 import {
   buildMomentMapPins,
   type MomentMapPin,
 } from '@/components/map/MomentMapOverlay';
+import type {SavedPlaceMomentClusterOnMap} from '@/components/map/SavedPlacesMapOverlay';
 import {
   countMoments,
   countMomentsForEntry,
   filterMomentsForEntry,
   type MomentCounts,
 } from '@/lib/moments/moment-counts';
+import {
+  formatMomentsPreviewSheetTitle,
+} from '@/lib/moments/moment-preview-context';
+import {
+  partitionMomentMapPins,
+  shouldClusterMomentsOnMap,
+} from '@/lib/moments/moment-map-clustering';
 import {
   useSelectVisitPlaceCandidate,
   useVisitPlaceDisplay,
@@ -58,10 +67,9 @@ import {isVisitOngoing} from '@/lib/trip-format';
 import {
   canAddSavedPlace,
   matchSavedPlaceForStay,
-  matchDriveEndSavedPlace,
-  matchDriveStartSavedPlace,
   MAX_SAVED_PLACES,
   SavedPlaceLimitError,
+  savedPlaceDisplayLabel,
 } from '@/lib/saved-places';
 import {shouldShowSavedPlaceCircles} from '@/lib/saved-places-map';
 import {getCurrentOpenVisit} from '@/lib/today-history';
@@ -69,8 +77,7 @@ import {capturePhotoFromCamera} from '@/lib/moments/capture-photo';
 import {
   isPlayableTimelineEntry,
   firstPlayableTimelineIndex,
-  findNextPlayableTimelineIndex,
-  findPrevPlayableTimelineIndex,
+  adjacentStaysForTravelIndex,
   stayTripMarkerCoordinate,
   type DetectedTrip,
   type DayTimelineEntry,
@@ -129,6 +136,7 @@ export function useMapScreenController() {
     | null
   >(null);
   const [showSavedPlaceCircles, setShowSavedPlaceCircles] = useState(true);
+  const [clusterMomentsOnMap, setClusterMomentsOnMap] = useState(false);
 
   const {places: savedPlaces, hasHome, hasWork, refresh: refreshSavedPlaces} =
     useSavedPlaces();
@@ -144,6 +152,7 @@ export function useMapScreenController() {
   const needsDefaultCenterRef = useRef(true);
   const mapRegionRef = useRef<Region>(MAP_FALLBACK_REGION);
   const showSavedPlaceCirclesRef = useRef(true);
+  const clusterMomentsOnMapRef = useRef(false);
   const fitHistoryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const userCoordinateRef = useRef<MapUserCoordinate | null>(null);
   const lastUserCoordinateRefreshMsRef = useRef(0);
@@ -252,55 +261,18 @@ export function useMapScreenController() {
     [selectedPlayable, savedPlaces],
   );
 
-  const selectedDriveStartPlace = useMemo(() => {
-    if (selectedPlayable?.kind !== 'travel') {
-      return null;
+  const selectedTravelAdjacentStays = useMemo(() => {
+    if (selectedPlayable?.kind !== 'travel' || selectedHistoryIndex < 0) {
+      return {previousStay: null, nextStay: null};
     }
-    let previousStay: DetectedTrip | null = null;
-    if (selectedHistoryIndex >= 0) {
-      const prevIdx = findPrevPlayableTimelineIndex(
-        historyEntries,
-        selectedHistoryIndex,
-      );
-      const prev = prevIdx >= 0 ? historyEntries[prevIdx] : null;
-      if (prev?.kind === 'stay') {
-        previousStay = prev;
-      }
-    }
-    return matchDriveStartSavedPlace(
-      selectedPlayable,
-      previousStay,
-      savedPlaces,
-    );
-  }, [
-    historyEntries,
-    savedPlaces,
-    selectedHistoryIndex,
-    selectedPlayable,
-  ]);
+    return adjacentStaysForTravelIndex(historyEntries, selectedHistoryIndex);
+  }, [historyEntries, selectedHistoryIndex, selectedPlayable]);
 
-  const selectedDriveEndPlace = useMemo(() => {
-    if (selectedPlayable?.kind !== 'travel') {
-      return null;
-    }
-    let nextStay: DetectedTrip | null = null;
-    if (selectedHistoryIndex >= 0) {
-      const nextIdx = findNextPlayableTimelineIndex(
-        historyEntries,
-        selectedHistoryIndex,
-      );
-      const next = nextIdx >= 0 ? historyEntries[nextIdx] : null;
-      if (next?.kind === 'stay') {
-        nextStay = next;
-      }
-    }
-    return matchDriveEndSavedPlace(selectedPlayable, nextStay, savedPlaces);
-  }, [
-    historyEntries,
+  const selectedDriveEndpointLabels = useDriveEndpointLabels(
+    selectedTravelAdjacentStays.previousStay,
+    selectedTravelAdjacentStays.nextStay,
     savedPlaces,
-    selectedHistoryIndex,
-    selectedPlayable,
-  ]);
+  );
 
   const selectedStay =
     selectedPlayable?.kind === 'stay' ? selectedPlayable : null;
@@ -422,7 +394,7 @@ export function useMapScreenController() {
     return countMomentsForEntry(dayMoments, currentOpenVisit);
   }, [dayMoments, currentOpenVisit]);
 
-  const dayMomentMapPins = useMemo((): MomentMapPin[] => {
+  const dayMomentMapPinsRaw = useMemo((): MomentMapPin[] => {
     if (!showDayJourney) {
       return [];
     }
@@ -432,6 +404,68 @@ export function useMapScreenController() {
       historyEntries,
     );
   }, [showDayJourney, dayMoments, historyData.points, historyEntries]);
+
+  const historyMomentMapPinsRaw = useMemo((): MomentMapPin[] => {
+    if (!showHistoryMap || !selectedEntry) {
+      return [];
+    }
+    return buildMomentMapPins(
+      filterMomentsForEntry(dayMoments, selectedEntry),
+      historyData.points,
+      [selectedEntry],
+    );
+  }, [showHistoryMap, selectedEntry, dayMoments, historyData.points]);
+
+  const dayMomentMapPins = useMemo(
+    () =>
+      partitionMomentMapPins(
+        dayMomentMapPinsRaw,
+        savedPlaces,
+        clusterMomentsOnMap,
+      ).individualPins,
+    [dayMomentMapPinsRaw, savedPlaces, clusterMomentsOnMap],
+  );
+
+  const historyMomentMapPins = useMemo(
+    () =>
+      partitionMomentMapPins(
+        historyMomentMapPinsRaw,
+        savedPlaces,
+        clusterMomentsOnMap,
+      ).individualPins,
+    [historyMomentMapPinsRaw, savedPlaces, clusterMomentsOnMap],
+  );
+
+  const savedPlaceMomentClusters = useMemo((): SavedPlaceMomentClusterOnMap[] => {
+    const raw = showDayJourney
+      ? dayMomentMapPinsRaw
+      : showHistoryMap
+        ? historyMomentMapPinsRaw
+        : [];
+    if (raw.length === 0 || !clusterMomentsOnMap) {
+      return [];
+    }
+    return partitionMomentMapPins(raw, savedPlaces, true).savedPlaceClusters.map(
+      cluster => ({
+        placeId: cluster.place.id,
+        counts: cluster.counts,
+        onPress: () => {
+          setMomentsPreviewScope({
+            kind: 'moment-ids',
+            momentIds: cluster.momentIds,
+            title: `${savedPlaceDisplayLabel(cluster.place)} moments`,
+          });
+        },
+      }),
+    );
+  }, [
+    clusterMomentsOnMap,
+    dayMomentMapPinsRaw,
+    historyMomentMapPinsRaw,
+    savedPlaces,
+    showDayJourney,
+    showHistoryMap,
+  ]);
 
   const selectedEntryMomentCounts = useMemo((): MomentCounts | undefined => {
     if (!selectedEntry) {
@@ -454,31 +488,30 @@ export function useMapScreenController() {
     }
     return filterMomentsForEntry(dayMoments, momentsPreviewScope.entry);
   }, [momentsPreviewScope, dayMoments]);
+  const momentsPreviewEntry = useMemo(() => {
+    if (momentsPreviewScope?.kind === 'entry') {
+      return momentsPreviewScope.entry;
+    }
+    return null;
+  }, [momentsPreviewScope]);
   const momentsPreviewTitle = useMemo(() => {
-    if (!momentsPreviewScope) {
-      return '';
-    }
-    if (momentsPreviewScope.kind === 'day') {
-      return `${formatHistoryDayNavLabel(selectedDateKey)} moments`;
-    }
-    if (momentsPreviewScope.kind === 'moment-ids') {
-      return momentsPreviewScope.title;
-    }
-    return momentsPreviewScope.entry.kind === 'stay'
-      ? 'Visit moments'
-      : 'Drive moments';
-  }, [momentsPreviewScope, selectedDateKey]);
-
-  const historyMomentMapPins = useMemo((): MomentMapPin[] => {
-    if (!showHistoryMap || !selectedEntry) {
-      return [];
-    }
-    return buildMomentMapPins(
-      filterMomentsForEntry(dayMoments, selectedEntry),
-      historyData.points,
-      [selectedEntry],
+    return formatMomentsPreviewSheetTitle(
+      momentsPreviewScope,
+      momentsPreviewMoments,
+      historyEntries,
+      savedPlaces,
+      formatHistoryDayNavLabel(selectedDateKey),
+      distanceUnit,
     );
-  }, [showHistoryMap, selectedEntry, dayMoments, historyData.points]);
+  }, [
+    distanceUnit,
+    historyEntries,
+    momentsPreviewMoments,
+    momentsPreviewScope,
+    savedPlaces,
+    selectedDateKey,
+  ]);
+
   const showUserLocation =
     !historyPanelOpen && !playback.isPlaying && viewingToday;
 
@@ -488,6 +521,11 @@ export function useMapScreenController() {
     if (nextShowCircles !== showSavedPlaceCirclesRef.current) {
       showSavedPlaceCirclesRef.current = nextShowCircles;
       setShowSavedPlaceCircles(nextShowCircles);
+    }
+    const nextClusterMoments = shouldClusterMomentsOnMap(region.latitudeDelta);
+    if (nextClusterMoments !== clusterMomentsOnMapRef.current) {
+      clusterMomentsOnMapRef.current = nextClusterMoments;
+      setClusterMomentsOnMap(nextClusterMoments);
     }
   }, []);
 
@@ -949,6 +987,7 @@ export function useMapScreenController() {
     momentsPreviewOpen,
     momentsPreviewTitle,
     momentsPreviewMoments,
+    momentsPreviewEntry,
     openDayMomentsPreview,
     openCurrentVisitMomentsPreview,
     openSelectedEntryMomentsPreview,
@@ -984,8 +1023,7 @@ export function useMapScreenController() {
     currentOpenVisit,
     currentOpenVisitSavedPlace,
     selectedSavedPlace,
-    selectedDriveStartPlace,
-    selectedDriveEndPlace,
+    selectedDriveEndpointLabels,
     selectedVisitPlaceDisplay,
     currentOpenVisitPlaceDisplay,
     handleSelectVisitPlaceIndex,
@@ -998,6 +1036,7 @@ export function useMapScreenController() {
     isAtSavedPlaceLimit,
     maxSavedPlaces: MAX_SAVED_PLACES,
     showSavedPlaceCircles,
+    savedPlaceMomentClusters,
     savePlaceCoordinate,
     savedPlacesSheetOpen,
     userCoordinate,

@@ -6,6 +6,7 @@ import {StayDurationCallout} from '@/components/map/StayDurationCallout';
 import {TripRouteOverlay} from '@/components/map/TripRouteOverlay';
 import {VisitApproachConnector} from '@/components/map/VisitApproachConnector';
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
+import type {DriveEndpointLabel} from '@/lib/drive-endpoint-label';
 import type {HistoryMapPlan} from '@/lib/history-map-plan';
 import type {MomentCounts} from '@/lib/moments/moment-counts';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
@@ -15,8 +16,8 @@ type HistoryDayMapOverlayProps = {
   selectedSavedPlace?: SavedPlaceRow | null;
   selectedNearbyPlaceLabel?: string | null;
   selectedNearbyPlacePinned?: boolean;
-  selectedDriveStartPlace?: SavedPlaceRow | null;
-  selectedDriveEndPlace?: SavedPlaceRow | null;
+  selectedDriveStartLabel?: DriveEndpointLabel;
+  selectedDriveEndLabel?: DriveEndpointLabel;
   selectedEntryMomentCounts?: MomentCounts;
   onPressSelectedEntryMoments?: () => void;
   tripConfig: TripDetectionConfig;
@@ -29,8 +30,8 @@ export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
   selectedSavedPlace = null,
   selectedNearbyPlaceLabel = null,
   selectedNearbyPlacePinned = false,
-  selectedDriveStartPlace = null,
-  selectedDriveEndPlace = null,
+  selectedDriveStartLabel,
+  selectedDriveEndLabel,
   selectedEntryMomentCounts,
   onPressSelectedEntryMoments,
   tripConfig,
@@ -82,8 +83,8 @@ export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
             emphasized
             startAt={selected.entry.startAt}
             endAt={selected.entry.endAt}
-            startSavedPlace={selectedDriveStartPlace}
-            endSavedPlace={selectedDriveEndPlace}
+            startLabel={selectedDriveStartLabel}
+            endLabel={selectedDriveEndLabel}
           />
           {plan.nextStay != null && !isPlaying ? (
             <VisitApproachConnector

@@ -4,7 +4,7 @@ import {Polyline} from 'react-native-maps';
 import {DriveEndpointLabels} from '@/components/map/DriveEndpointLabels';
 import {TripPlaybackHead} from '@/components/map/TripPlaybackHead';
 import type {LocationPointRow} from '@/db/repositories/location-days';
-import type {SavedPlaceRow} from '@/db/repositories/saved-places';
+import type {DriveEndpointLabel} from '@/lib/drive-endpoint-label';
 import {toMapCoordinates} from '@/lib/location-geo';
 import {
   buildDensePlaybackSamples,
@@ -27,8 +27,8 @@ type TripRouteOverlayProps = {
   /** Drive start/end times for history endpoint labels. */
   startAt?: Date;
   endAt?: Date;
-  startSavedPlace?: SavedPlaceRow | null;
-  endSavedPlace?: SavedPlaceRow | null;
+  startLabel?: DriveEndpointLabel;
+  endLabel?: DriveEndpointLabel;
 };
 
 export const TripRouteOverlay = memo(function TripRouteOverlay({
@@ -37,8 +37,8 @@ export const TripRouteOverlay = memo(function TripRouteOverlay({
   emphasized = false,
   startAt,
   endAt,
-  startSavedPlace = null,
-  endSavedPlace = null,
+  startLabel,
+  endLabel,
 }: TripRouteOverlayProps) {
   const coordinates = useMemo(() => toMapCoordinates(points), [points]);
   const denseSamples = useMemo(() => buildDensePlaybackSamples(points), [points]);
@@ -64,11 +64,11 @@ export const TripRouteOverlay = memo(function TripRouteOverlay({
     startAt != null &&
     endAt != null &&
     coordinates.length >= 2;
-  const routeStart = startSavedPlace
-    ? {latitude: startSavedPlace.lat, longitude: startSavedPlace.lng}
+  const routeStart = startLabel?.savedPlace
+    ? {latitude: startLabel.savedPlace.lat, longitude: startLabel.savedPlace.lng}
     : coordinates[0]!;
-  const routeEnd = endSavedPlace
-    ? {latitude: endSavedPlace.lat, longitude: endSavedPlace.lng}
+  const routeEnd = endLabel?.savedPlace
+    ? {latitude: endLabel.savedPlace.lat, longitude: endLabel.savedPlace.lng}
     : coordinates[coordinates.length - 1]!;
 
   return (
@@ -129,8 +129,8 @@ export const TripRouteOverlay = memo(function TripRouteOverlay({
           endCoordinate={routeEnd}
           startAt={startAt}
           endAt={endAt}
-          startSavedPlace={startSavedPlace}
-          endSavedPlace={endSavedPlace}
+          startLabel={startLabel}
+          endLabel={endLabel}
         />
       ) : null}
     </>

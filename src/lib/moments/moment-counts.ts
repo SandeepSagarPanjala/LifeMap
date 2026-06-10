@@ -84,7 +84,7 @@ export function filterMomentsForEntry(
   return moments.filter(moment => momentBelongsToEntry(moment, entry, now));
 }
 
-function addToCounts(counts: MomentCounts, moment: MomentRow): void {
+export function addToCounts(counts: MomentCounts, moment: MomentRow): void {
   if (moment.type === 'photo') {
     counts.photo += 1;
   } else if (moment.type === 'voice') {

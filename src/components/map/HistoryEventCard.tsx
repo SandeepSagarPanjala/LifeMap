@@ -2,6 +2,7 @@ import LottieView from 'lottie-react-native';
 import {Pressable, StyleSheet, View} from 'react-native';
 import {Pause, Play} from 'lucide-react-native';
 
+import {DriveEndpointPlaceRow} from '@/components/map/DriveEndpointPlaceRow';
 import {SavedPlaceIcon} from '@/components/map/SavedPlaceIcon';
 import {VisitPlaceLabelPager} from '@/components/map/VisitPlaceLabelPager';
 import {MomentCountsRow} from '@/components/moments/MomentCountsRow';
@@ -10,8 +11,8 @@ import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import {HISTORY_COLORS} from '@/lib/history-timeline';
 import type {MomentCounts} from '@/lib/moments/moment-counts';
 import {hasMomentCounts} from '@/lib/moments/moment-counts';
+import type {DriveEndpointLabel} from '@/lib/drive-endpoint-label';
 import {savedPlaceDisplayLabel} from '@/lib/saved-places';
-import {SAVED_PLACE_MAP_STYLE} from '@/lib/saved-places-map';
 import type {VisitPlaceDisplay} from '@/lib/place-lookup-types';
 import type {DayTimelineEntry} from '@/lib/trip-detection';
 import {
@@ -31,8 +32,8 @@ type HistoryEventCardProps = {
   savedPlace?: SavedPlaceRow | null;
   visitPlaceDisplay?: VisitPlaceDisplay | null;
   onSelectVisitPlaceIndex?: (index: number) => void;
-  driveStartPlace?: SavedPlaceRow | null;
-  driveEndPlace?: SavedPlaceRow | null;
+  driveStartLabel?: DriveEndpointLabel;
+  driveEndLabel?: DriveEndpointLabel;
   momentCounts?: MomentCounts;
   onPressMomentCounts?: () => void;
   /** Timeline has data but no event is selected yet. */
@@ -92,31 +93,22 @@ function DriveCardIcon() {
 function DriveEndpointSummary({
   caption,
   time,
-  savedPlace,
+  label,
 }: {
   caption: 'Start' | 'Finish';
   time: Date;
-  savedPlace?: SavedPlaceRow | null;
+  label?: DriveEndpointLabel;
 }) {
-  const placeAccent = savedPlace
-    ? SAVED_PLACE_MAP_STYLE[savedPlace.kind]
-    : null;
-
   return (
     <View style={styles.driveEndpoint}>
       <Text style={styles.driveEndpointCaption}>{caption}</Text>
       <Text style={styles.driveEndpointTime}>{formatTripClockTime(time)}</Text>
-      {savedPlace && placeAccent ? (
-        <View style={styles.driveEndpointPlaceRow}>
-          <SavedPlaceIcon
-            kind={savedPlace.kind}
-            size={14}
-            color={placeAccent.icon}
-          />
-          <Text style={styles.driveEndpointPlace} numberOfLines={1}>
-            {savedPlaceDisplayLabel(savedPlace)}
-          </Text>
-        </View>
+      {label ? (
+        <DriveEndpointPlaceRow
+          label={label}
+          iconSize={14}
+          textStyle={styles.driveEndpointPlace}
+        />
       ) : null}
     </View>
   );
@@ -127,8 +119,8 @@ export function HistoryEventCard({
   savedPlace = null,
   visitPlaceDisplay = null,
   onSelectVisitPlaceIndex,
-  driveStartPlace = null,
-  driveEndPlace = null,
+  driveStartLabel,
+  driveEndLabel,
   momentCounts,
   onPressMomentCounts,
   scrubOnEmpty = false,
@@ -172,10 +164,10 @@ export function HistoryEventCard({
   return (
     <View style={[styles.card, isGap && styles.cardGap]}>
       {showMomentCounts ? (
-        <>
+        <View style={styles.momentSection}>
           <MomentCountsRow counts={momentCounts!} onPress={onPressMomentCounts} />
           <View style={styles.momentDivider} />
-        </>
+        </View>
       ) : null}
       {!isStay ? (
         <Text variant="muted" className="text-xs uppercase tracking-wide">
@@ -226,22 +218,18 @@ export function HistoryEventCard({
           <View style={styles.driveBodyRow}>
             <DriveCardIcon />
             <View style={styles.driveContent}>
-              {driveStartPlace || driveEndPlace ? (
-                <View style={styles.driveEndpointsRow}>
-                  <DriveEndpointSummary
-                    caption="Start"
-                    time={entry.startAt}
-                    savedPlace={driveStartPlace}
-                  />
-                  <DriveEndpointSummary
-                    caption="Finish"
-                    time={entry.endAt}
-                    savedPlace={driveEndPlace}
-                  />
-                </View>
-              ) : (
-                <Text className="text-lg font-semibold">{title}</Text>
-              )}
+              <View style={styles.driveEndpointsRow}>
+                <DriveEndpointSummary
+                  caption="Start"
+                  time={entry.startAt}
+                  label={driveStartLabel}
+                />
+                <DriveEndpointSummary
+                  caption="Finish"
+                  time={entry.endAt}
+                  label={driveEndLabel}
+                />
+              </View>
               <Text variant="muted" className="mt-0.5 text-sm">
                 {stats}
               </Text>
@@ -306,10 +294,13 @@ const styles = StyleSheet.create({
     borderColor: '#E5E5EA',
     borderStyle: 'dashed',
   },
+  momentSection: {
+    gap: 8,
+    marginBottom: 12,
+  },
   momentDivider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: '#E5E5EA',
-    marginBottom: 12,
   },
   eventTitleRow: {
     flexDirection: 'row',
@@ -363,12 +354,6 @@ const styles = StyleSheet.create({
     color: HISTORY_COLORS.travel,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
-  },
-  driveEndpointPlaceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 2,
   },
   driveEndpointPlace: {
     flex: 1,

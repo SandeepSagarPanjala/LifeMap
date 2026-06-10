@@ -20,8 +20,7 @@ export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
     scrubOnEvent,
     selectedEntry,
     selectedSavedPlace,
-    selectedDriveStartPlace,
-    selectedDriveEndPlace,
+    selectedDriveEndpointLabels,
     selectedVisitPlaceDisplay,
     handleSelectVisitPlaceIndex,
     historyEntries,
@@ -67,8 +66,12 @@ export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
                 : null
             }
             onSelectVisitPlaceIndex={handleSelectVisitPlaceIndex}
-            driveStartPlace={scrubOnEvent ? selectedDriveStartPlace : null}
-            driveEndPlace={scrubOnEvent ? selectedDriveEndPlace : null}
+            driveStartLabel={
+              scrubOnEvent ? selectedDriveEndpointLabels.start : undefined
+            }
+            driveEndLabel={
+              scrubOnEvent ? selectedDriveEndpointLabels.end : undefined
+            }
             momentCounts={scrubOnEvent ? selectedEntryMomentCounts : undefined}
             onPressMomentCounts={
               scrubOnEvent ? openSelectedEntryMomentsPreview : undefined

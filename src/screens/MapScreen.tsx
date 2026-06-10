@@ -73,6 +73,10 @@ export function MapScreen() {
         visible={controller.momentsPreviewOpen}
         title={controller.momentsPreviewTitle}
         moments={controller.momentsPreviewMoments}
+        timelineEntries={controller.historyEntries}
+        savedPlaces={controller.savedPlaces}
+        distanceUnit={controller.distanceUnit}
+        previewEntry={controller.momentsPreviewEntry}
         onClose={controller.closeMomentsPreview}
         onDeleteMoment={controller.handleDeleteMoment}
       />

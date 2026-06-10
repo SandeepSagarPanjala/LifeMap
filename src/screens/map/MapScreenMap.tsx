@@ -43,13 +43,13 @@ export function MapScreenMap({controller}: MapScreenMapProps) {
     historyMapPlan,
     selectedSavedPlace,
     selectedVisitPlaceDisplay,
-    selectedDriveStartPlace,
-    selectedDriveEndPlace,
+  selectedDriveEndpointLabels,
     selectedEntryMomentCounts,
     openSelectedEntryMomentsPreview,
     playback,
     savedPlaces,
     showSavedPlaceCircles,
+    savedPlaceMomentClusters,
   } = controller;
 
   return (
@@ -76,11 +76,12 @@ export function MapScreenMap({controller}: MapScreenMapProps) {
       <SavedPlacesMapOverlay
         places={savedPlaces}
         showCircles={showSavedPlaceCircles}
+        momentClusters={savedPlaceMomentClusters}
         hideMarkerPlaceId={
           showHistoryMap
             ? (selectedSavedPlace?.id ??
-              selectedDriveEndPlace?.id ??
-              selectedDriveStartPlace?.id ??
+              selectedDriveEndpointLabels.end.savedPlace?.id ??
+              selectedDriveEndpointLabels.start.savedPlace?.id ??
               null)
             : (currentOpenVisitSavedPlace?.id ?? null)
         }
@@ -132,8 +133,8 @@ export function MapScreenMap({controller}: MapScreenMapProps) {
               (selectedVisitPlaceDisplay.isAreaDefault ||
                 selectedVisitPlaceDisplay.isTripLabel)
             }
-            selectedDriveStartPlace={selectedDriveStartPlace}
-            selectedDriveEndPlace={selectedDriveEndPlace}
+            selectedDriveStartLabel={selectedDriveEndpointLabels.start}
+            selectedDriveEndLabel={selectedDriveEndpointLabels.end}
             selectedEntryMomentCounts={selectedEntryMomentCounts}
             onPressSelectedEntryMoments={openSelectedEntryMomentsPreview}
             tripConfig={tripDetectionConfig}

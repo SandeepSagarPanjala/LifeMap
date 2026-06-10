@@ -3,10 +3,10 @@ import {Marker} from 'react-native-maps';
 import {StyleSheet, Text, View} from 'react-native';
 
 import {CheckeredFlagIcon} from '@/components/map/CheckeredFlagIcon';
+import {DriveEndpointPlaceRow} from '@/components/map/DriveEndpointPlaceRow';
 import {SavedPlaceIcon} from '@/components/map/SavedPlaceIcon';
-import type {SavedPlaceRow} from '@/db/repositories/saved-places';
+import type {DriveEndpointLabel} from '@/lib/drive-endpoint-label';
 import type {MapCoordinate} from '@/lib/location-geo';
-import {savedPlaceDisplayLabel} from '@/lib/saved-places';
 import {SAVED_PLACE_MAP_STYLE} from '@/lib/saved-places-map';
 import {formatTripClockTime} from '@/lib/trip-format';
 
@@ -22,36 +22,23 @@ type DriveEndpointLabelsProps = {
   endCoordinate: MapCoordinate;
   startAt: Date;
   endAt: Date;
-  startSavedPlace?: SavedPlaceRow | null;
-  endSavedPlace?: SavedPlaceRow | null;
+  startLabel?: DriveEndpointLabel;
+  endLabel?: DriveEndpointLabel;
 };
 
 type EndpointChipProps = {
   caption: 'Start' | 'Finish';
   time: Date;
-  savedPlace?: SavedPlaceRow | null;
+  label?: DriveEndpointLabel;
 };
 
-function EndpointChip({caption, time, savedPlace}: EndpointChipProps) {
-  const placeAccent = savedPlace
-    ? SAVED_PLACE_MAP_STYLE[savedPlace.kind]
-    : null;
-
+function EndpointChip({caption, time, label}: EndpointChipProps) {
   return (
     <View style={styles.chip}>
       <Text style={styles.caption}>{caption}</Text>
       <Text style={styles.timeText}>{formatTripClockTime(time)}</Text>
-      {savedPlace && placeAccent ? (
-        <View style={styles.placeRow}>
-          <SavedPlaceIcon
-            kind={savedPlace.kind}
-            size={12}
-            color={placeAccent.icon}
-          />
-          <Text style={styles.placeName} numberOfLines={1}>
-            {savedPlaceDisplayLabel(savedPlace)}
-          </Text>
-        </View>
+      {label ? (
+        <DriveEndpointPlaceRow label={label} iconSize={12} textStyle={styles.placeName} />
       ) : null}
     </View>
   );
@@ -60,10 +47,11 @@ function EndpointChip({caption, time, savedPlace}: EndpointChipProps) {
 type StartMarkerProps = {
   coordinate: MapCoordinate;
   time: Date;
-  savedPlace?: SavedPlaceRow | null;
+  label?: DriveEndpointLabel;
 };
 
-function StartMarker({coordinate, time, savedPlace}: StartMarkerProps) {
+function StartMarker({coordinate, time, label}: StartMarkerProps) {
+  const savedPlace = label?.savedPlace ?? null;
   const placeAccent = savedPlace
     ? SAVED_PLACE_MAP_STYLE[savedPlace.kind]
     : null;
@@ -103,7 +91,7 @@ function StartMarker({coordinate, time, savedPlace}: StartMarkerProps) {
         centerOffset={{x: 0, y: -40}}
         zIndex={13}
         tracksViewChanges={false}>
-        <EndpointChip caption="Start" time={time} savedPlace={savedPlace} />
+        <EndpointChip caption="Start" time={time} label={label} />
       </Marker>
     </>
   );
@@ -112,12 +100,13 @@ function StartMarker({coordinate, time, savedPlace}: StartMarkerProps) {
 function FinishMarker({
   coordinate,
   time,
-  savedPlace,
+  label,
 }: {
   coordinate: MapCoordinate;
   time: Date;
-  savedPlace?: SavedPlaceRow | null;
+  label?: DriveEndpointLabel;
 }) {
+  const savedPlace = label?.savedPlace ?? null;
   const placeAccent = savedPlace
     ? SAVED_PLACE_MAP_STYLE[savedPlace.kind]
     : null;
@@ -156,7 +145,7 @@ function FinishMarker({
         centerOffset={{x: 0, y: 44}}
         zIndex={13}
         tracksViewChanges={false}>
-        <EndpointChip caption="Finish" time={time} savedPlace={savedPlace} />
+        <EndpointChip caption="Finish" time={time} label={label} />
       </Marker>
     </>
   );
@@ -167,20 +156,20 @@ export const DriveEndpointLabels = memo(function DriveEndpointLabels({
   endCoordinate,
   startAt,
   endAt,
-  startSavedPlace = null,
-  endSavedPlace = null,
+  startLabel,
+  endLabel,
 }: DriveEndpointLabelsProps) {
   return (
     <>
       <StartMarker
         coordinate={startCoordinate}
         time={startAt}
-        savedPlace={startSavedPlace}
+        label={startLabel}
       />
       <FinishMarker
         coordinate={endCoordinate}
         time={endAt}
-        savedPlace={endSavedPlace}
+        label={endLabel}
       />
     </>
   );
