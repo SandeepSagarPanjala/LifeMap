@@ -38,7 +38,12 @@ function EndpointChip({caption, time, label}: EndpointChipProps) {
       <Text style={styles.caption}>{caption}</Text>
       <Text style={styles.timeText}>{formatTripClockTime(time)}</Text>
       {label ? (
-        <DriveEndpointPlaceRow label={label} iconSize={12} textStyle={styles.placeName} />
+        <DriveEndpointPlaceRow
+          label={label}
+          iconSize={12}
+          textStyle={styles.placeName}
+          numberOfLines={2}
+        />
       ) : null}
     </View>
   );
@@ -236,7 +241,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     alignItems: 'center',
-    maxWidth: 160,
+    maxWidth: 200,
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 1},
     shadowOpacity: 0.14,

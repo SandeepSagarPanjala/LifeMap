@@ -1,5 +1,6 @@
 import {
   EMPTY_DRIVE_ENDPOINT_LABEL,
+  formatDriveRouteTitle,
   resolveDriveEndpointLabelFromStaySync,
 } from '../src/lib/drive-endpoint-label';
 import type {SavedPlaceRow} from '../src/db/repositories/saved-places';
@@ -113,5 +114,19 @@ describe('drive endpoint labels', () => {
       previousStay: homeStay,
       nextStay: libraryStay,
     });
+  });
+
+  it('formats a drive route title from endpoint labels', () => {
+    expect(
+      formatDriveRouteTitle(
+        {source: 'saved', text: 'Home', savedPlace: home, pinned: false},
+        {
+          source: 'auto-label',
+          text: '116 W University Dr',
+          savedPlace: null,
+          pinned: false,
+        },
+      ),
+    ).toBe('Home to 116 W University Dr');
   });
 });

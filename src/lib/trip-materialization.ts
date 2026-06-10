@@ -113,6 +113,51 @@ export function isClosedPlayableEntry(
   return !entry.openThroughNow;
 }
 
+export type PersistedTripLabel = {
+  placeLookupCacheId: number | null;
+  selectedCandidateIndex: number | null;
+};
+
+/** User label choices keyed by stable trip event id — survives day re-materialization. */
+export function existingTripLabelsByEventKey(
+  rows: readonly TripRow[],
+): Map<string, PersistedTripLabel> {
+  const map = new Map<string, PersistedTripLabel>();
+  for (const row of rows) {
+    if (
+      row.selectedCandidateIndex != null ||
+      row.placeLookupCacheId != null
+    ) {
+      map.set(row.eventKey, {
+        placeLookupCacheId: row.placeLookupCacheId,
+        selectedCandidateIndex: row.selectedCandidateIndex,
+      });
+    }
+  }
+  return map;
+}
+
+export function tripLabelForPersist(
+  eventKey: string,
+  existingByEventKey: ReadonlyMap<string, PersistedTripLabel>,
+  placeLookup: {id: number; selectedCandidateIndex: number | null} | null,
+): PersistedTripLabel {
+  const existing = existingByEventKey.get(eventKey);
+  if (existing?.selectedCandidateIndex != null) {
+    return {
+      placeLookupCacheId:
+        existing.placeLookupCacheId ?? placeLookup?.id ?? null,
+      selectedCandidateIndex: existing.selectedCandidateIndex,
+    };
+  }
+
+  return {
+    placeLookupCacheId:
+      existing?.placeLookupCacheId ?? placeLookup?.id ?? null,
+    selectedCandidateIndex: placeLookup?.selectedCandidateIndex ?? null,
+  };
+}
+
 export function getDefaultTripDetectionConfig(): TripDetectionConfig {
   return buildTripDetectionConfig(
     DEFAULT_TRIP_GAP_MINUTES,
@@ -287,14 +332,19 @@ async function persistClosedTripsForDay(
   );
   const closedEntries = live.entries.filter(isClosedPlayableEntry);
   const closedAt = new Date();
+  const existingLabels = existingTripLabelsByEventKey(
+    await listTripsForDay(dateKey),
+  );
   await deleteTripsForDay(dateKey);
   let inserted = 0;
 
   for (const entry of closedEntries) {
     const centroid = tripCentroid(entry);
     const placeLookup = await findPlaceLookupNearAnchor(centroid);
+    const eventKey = tripEventKey(entry);
+    const labels = tripLabelForPersist(eventKey, existingLabels, placeLookup);
     const row = await insertTripIfAbsent({
-      eventKey: tripEventKey(entry),
+      eventKey,
       kind: entry.kind,
       dateKey,
       startAt: entry.startAt,
@@ -303,8 +353,8 @@ async function persistClosedTripsForDay(
       distanceKm: entry.distanceKm,
       centroidLat: centroid.lat,
       centroidLng: centroid.lng,
-      placeLookupCacheId: placeLookup?.id ?? null,
-      selectedCandidateIndex: placeLookup?.selectedCandidateIndex ?? null,
+      placeLookupCacheId: labels.placeLookupCacheId,
+      selectedCandidateIndex: labels.selectedCandidateIndex,
       detectionVersion: TRIP_DETECTION_VERSION,
       closedAt,
     });

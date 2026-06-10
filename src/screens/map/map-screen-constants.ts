@@ -11,7 +11,9 @@ export const MAP_SETTINGS_TOP_GAP = 8;
 export const MAP_SETTINGS_SIZE = 44;
 export const MAP_SETTINGS_STACK_GAP = 8;
 export const MAP_LOCATE_BUTTON_BOTTOM_GAP = 20;
-export const MAP_HISTORY_PANEL_HEIGHT = 218;
+/** Full history panel (day nav + event card with moments + timeline bar). */
+export const MAP_HISTORY_PANEL_HEIGHT = 256;
+export const MAP_HISTORY_FLOATING_CONTROLS_GAP = 8;
 export const MAP_STACK_BUTTON_SIZE = 44;
 export const MAP_STACK_BUTTON_GAP = 8;
 export const MAP_LEFT_STACK_COUNT = 4;

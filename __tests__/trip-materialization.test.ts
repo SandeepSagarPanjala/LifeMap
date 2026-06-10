@@ -3,9 +3,11 @@ import {
   canReadDayFromMaterializedTrips,
 } from '@/lib/timeline-from-trips';
 import {
+  existingTripLabelsByEventKey,
   isClosedPlayableEntry,
   isImplausibleMaterializedTravel,
   tripEventKey,
+  tripLabelForPersist,
 } from '@/lib/trip-materialization';
 import {TRIP_DETECTION_VERSION} from '@/lib/trip-settings';
 import type {TripRow} from '@/db/repositories/trips';
@@ -55,6 +57,54 @@ describe('isClosedPlayableEntry', () => {
   it('treats closed stays and drives as persistable', () => {
     expect(isClosedPlayableEntry(stay(1, 2))).toBe(true);
     expect(isClosedPlayableEntry(travel(1, 2))).toBe(true);
+  });
+});
+
+describe('tripLabelForPersist', () => {
+  it('keeps a visit-specific label when the day is re-materialized', () => {
+    const eventKey = tripEventKey(stay(1_000, 2_000));
+    const existing = existingTripLabelsByEventKey([
+      {
+        id: 3,
+        eventKey,
+        kind: 'stay',
+        dateKey: '2026-06-09',
+        startAt: new Date(1_000),
+        endAt: new Date(2_000),
+        durationMs: 1_000,
+        distanceKm: 0,
+        centroidLat: 33.21,
+        centroidLng: -97.13,
+        placeLookupCacheId: 12,
+        selectedCandidateIndex: 2,
+        detectionVersion: 2,
+        closedAt: new Date(2_000),
+      },
+    ]);
+
+    expect(
+      tripLabelForPersist(eventKey, existing, {
+        id: 12,
+        selectedCandidateIndex: 0,
+      }),
+    ).toEqual({
+      placeLookupCacheId: 12,
+      selectedCandidateIndex: 2,
+    });
+  });
+
+  it('falls back to the area default when no visit label was saved', () => {
+    const eventKey = tripEventKey(stay(1_000, 2_000));
+
+    expect(
+      tripLabelForPersist(eventKey, new Map(), {
+        id: 9,
+        selectedCandidateIndex: 1,
+      }),
+    ).toEqual({
+      placeLookupCacheId: 9,
+      selectedCandidateIndex: 1,
+    });
   });
 });
 

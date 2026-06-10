@@ -14,7 +14,7 @@ import {HISTORY_COLORS} from '@/lib/history-timeline';
 const SAVED_PLACE_MARKER_ANCHOR = {x: 0.5, y: 0.3} as const;
 /** Lift cluster pill above the saved-place badge (Marker.onPress — not Pressable inside Marker). */
 const CLUSTER_MARKER_ANCHOR = {x: 0.5, y: 1} as const;
-const CLUSTER_MARKER_CENTER_OFFSET = {x: 0, y: -22} as const;
+const CLUSTER_MARKER_CENTER_OFFSET = {x: 0, y: -38} as const;
 const CIRCLE_STROKE_WIDTH = 1.5;
 const MARKER_LABEL_MAX_WIDTH = 84;
 

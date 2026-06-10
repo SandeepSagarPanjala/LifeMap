@@ -96,6 +96,7 @@ import {
   DAY_MOMENT_SUMMARY_BOTTOM_GAP,
   MAP_FALLBACK_REGION,
   MAP_HISTORY_PANEL_HEIGHT,
+  MAP_HISTORY_FLOATING_CONTROLS_GAP,
   MAP_LEFT_STACK_COUNT,
   MAP_LOCATE_BUTTON_BOTTOM_GAP,
   MAP_RIGHT_STACK_COUNT,
@@ -292,7 +293,7 @@ export function useMapScreenController() {
 
   const historyPanelBottom = insets.bottom + MAP_HISTORY_PANEL_HEIGHT;
   const stackBaseBottom = historyPanelOpen
-    ? historyPanelBottom + 12
+    ? historyPanelBottom + MAP_HISTORY_FLOATING_CONTROLS_GAP
     : insets.bottom + MAP_LOCATE_BUTTON_BOTTOM_GAP + daySummaryBarReserve;
 
   const locateButtonBottom = mapStackButtonBottom(stackBaseBottom, 0);

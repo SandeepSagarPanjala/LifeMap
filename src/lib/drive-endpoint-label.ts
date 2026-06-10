@@ -82,3 +82,21 @@ export function resolveDriveEndpointLabelFromStaySync(
 export function hasDriveEndpointLabel(label: DriveEndpointLabel): boolean {
   return label.text != null && label.text.length > 0;
 }
+
+export function formatDriveRouteTitle(
+  startLabel?: DriveEndpointLabel,
+  endLabel?: DriveEndpointLabel,
+): string | null {
+  const start = startLabel?.text?.trim();
+  const end = endLabel?.text?.trim();
+  if (start && end) {
+    return `${start} to ${end}`;
+  }
+  if (start) {
+    return start;
+  }
+  if (end) {
+    return end;
+  }
+  return null;
+}
