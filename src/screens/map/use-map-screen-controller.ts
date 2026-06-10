@@ -7,10 +7,13 @@ import {
   useState,
 } from 'react';
 import {Animated, Alert, Platform, useColorScheme} from 'react-native';
+import {useNavigation} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type MapView from 'react-native-maps';
 import {PROVIDER_DEFAULT, PROVIDER_GOOGLE, type Region} from 'react-native-maps';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
+import {deleteMoment} from '@/db/repositories/moments';
 import {
   addFavoritePlace,
   deleteSavedPlace,
@@ -22,6 +25,17 @@ import {useAfterInteractions} from '@/hooks/use-after-interactions';
 import {useHistoryForDay} from '@/hooks/use-history-data';
 import {usePlaceLookupScheduler} from '@/hooks/use-place-lookup-scheduler';
 import {useSavedPlaces} from '@/hooks/use-saved-places';
+import {useDayMoments} from '@/hooks/use-day-moments';
+import {
+  buildMomentMapPins,
+  type MomentMapPin,
+} from '@/components/map/MomentMapOverlay';
+import {
+  countMoments,
+  countMomentsForEntry,
+  filterMomentsForEntry,
+  type MomentCounts,
+} from '@/lib/moments/moment-counts';
 import {
   useSelectVisitPlaceCandidate,
   useVisitPlaceDisplay,
@@ -29,7 +43,7 @@ import {
 import {useTripDetectionConfig} from '@/hooks/use-trip-detection-config';
 import {useTripPlayback} from '@/hooks/use-trip-playback';
 import {buildHistoryMapPlan} from '@/lib/history-map-plan';
-import {countHistoryTimelineEvents} from '@/lib/history-timeline';
+import {countHistoryTimelineEvents, formatHistoryDayNavLabel} from '@/lib/history-timeline';
 import {getTodayDateKey} from '@/lib/day-utils';
 import {regionForCoordinates, toMapCoordinates} from '@/lib/location-geo';
 import {
@@ -51,6 +65,7 @@ import {
 } from '@/lib/saved-places';
 import {shouldShowSavedPlaceCircles} from '@/lib/saved-places-map';
 import {getCurrentOpenVisit} from '@/lib/today-history';
+import {capturePhotoFromCamera} from '@/lib/moments/capture-photo';
 import {
   isPlayableTimelineEntry,
   firstPlayableTimelineIndex,
@@ -58,25 +73,35 @@ import {
   findPrevPlayableTimelineIndex,
   stayTripMarkerCoordinate,
   type DetectedTrip,
+  type DayTimelineEntry,
 } from '@/lib/trip-detection';
 import {
   shouldRefreshUserCoordinate,
   type MapUserCoordinate,
 } from '@/lib/user-coordinate-throttle';
 import {buildMapAttributionInsets} from '@/lib/map-attribution-insets';
+import type {RootStackParamList} from '@/navigation/types';
 import {useAppStore} from '@/stores/app-store';
 
 import {
+  DAY_MOMENT_SUMMARY_ABOVE_BAR_GAP,
+  DAY_MOMENT_SUMMARY_BAR_HEIGHT,
+  DAY_MOMENT_SUMMARY_BOTTOM_GAP,
   MAP_FALLBACK_REGION,
   MAP_HISTORY_PANEL_HEIGHT,
+  MAP_LEFT_STACK_COUNT,
   MAP_LOCATE_BUTTON_BOTTOM_GAP,
+  MAP_RIGHT_STACK_COUNT,
   MAP_SETTINGS_SIZE,
   MAP_SETTINGS_TOP_GAP,
   MAP_STACK_BUTTON_GAP,
   MAP_STACK_BUTTON_SIZE,
+  mapStackButtonBottom,
+  mapStackTotalHeight,
 } from './map-screen-constants';
 
 export function useMapScreenController() {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const tripDetectionConfig = useTripDetectionConfig();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
@@ -96,15 +121,24 @@ export function useMapScreenController() {
     longitude: number;
   } | null>(null);
   const [savedPlacesSheetOpen, setSavedPlacesSheetOpen] = useState(false);
+  const [voiceMemoSheetOpen, setVoiceMemoSheetOpen] = useState(false);
+  const [momentsPreviewScope, setMomentsPreviewScope] = useState<
+    | {kind: 'day'}
+    | {kind: 'entry'; entry: DayTimelineEntry}
+    | {kind: 'moment-ids'; momentIds: number[]; title: string}
+    | null
+  >(null);
   const [showSavedPlaceCircles, setShowSavedPlaceCircles] = useState(true);
 
   const {places: savedPlaces, hasHome, hasWork, refresh: refreshSavedPlaces} =
     useSavedPlaces();
+  const {dayMoments, refreshDayMoments} = useDayMoments(selectedDateKey);
   const {data: historyData, loading: historyLoading} =
     useHistoryForDay(selectedDateKey);
   const viewingToday = selectedDateKey === todayKey;
   const historyEntries = historyData.entries;
 
+  const captureInFlightRef = useRef(false);
   const mapRef = useRef<MapView>(null);
   const hasCenteredOnOpenRef = useRef(false);
   const needsDefaultCenterRef = useRef(true);
@@ -276,31 +310,44 @@ export function useMapScreenController() {
       ? PROVIDER_GOOGLE
       : PROVIDER_DEFAULT;
 
+  const reserveDayMomentSummary =
+    !historyPanelOpen && !playback.isPlaying;
+  const daySummaryBarReserve = reserveDayMomentSummary
+    ? DAY_MOMENT_SUMMARY_BOTTOM_GAP +
+      DAY_MOMENT_SUMMARY_BAR_HEIGHT +
+      DAY_MOMENT_SUMMARY_ABOVE_BAR_GAP
+    : 0;
+
   const historyPanelBottom = insets.bottom + MAP_HISTORY_PANEL_HEIGHT;
-  const locateButtonBottom = historyPanelOpen
+  const stackBaseBottom = historyPanelOpen
     ? historyPanelBottom + 12
-    : insets.bottom + MAP_LOCATE_BUTTON_BOTTOM_GAP;
-  const placesButtonBottom =
-    locateButtonBottom + MAP_STACK_BUTTON_SIZE + MAP_STACK_BUTTON_GAP;
-  const historyButtonBottom = locateButtonBottom;
-  const calendarButtonBottom =
-    historyButtonBottom + MAP_STACK_BUTTON_SIZE + MAP_STACK_BUTTON_GAP;
-  const rightControlsBottom = historyPanelOpen
-    ? historyPanelBottom + 12
-    : locateButtonBottom;
+    : insets.bottom + MAP_LOCATE_BUTTON_BOTTOM_GAP + daySummaryBarReserve;
+
+  const locateButtonBottom = mapStackButtonBottom(stackBaseBottom, 0);
+  const historyButtonBottom = mapStackButtonBottom(stackBaseBottom, 1);
+  const calendarButtonBottom = mapStackButtonBottom(stackBaseBottom, 2);
+  const placesButtonBottom = mapStackButtonBottom(stackBaseBottom, 3);
+
+  const cameraButtonBottom = mapStackButtonBottom(stackBaseBottom, 0);
+  const voiceButtonBottom = mapStackButtonBottom(stackBaseBottom, 1);
+  const noteButtonBottom = mapStackButtonBottom(stackBaseBottom, 2);
+  const dayMomentSummaryBottom = insets.bottom + DAY_MOMENT_SUMMARY_BOTTOM_GAP;
+
+  const leftStackHeight = mapStackTotalHeight(
+    MAP_LEFT_STACK_COUNT,
+    MAP_STACK_BUTTON_SIZE,
+    MAP_STACK_BUTTON_GAP,
+  );
+  const floatingControlsClearance = stackBaseBottom + leftStackHeight + 16;
 
   const mapPadding = useMemo(
     () => ({
       top: insets.top + MAP_SETTINGS_TOP_GAP + MAP_SETTINGS_SIZE,
       right: 12,
-      bottom:
-        rightControlsBottom +
-        MAP_STACK_BUTTON_SIZE * 2 +
-        MAP_STACK_BUTTON_GAP +
-        16,
+      bottom: floatingControlsClearance,
       left: 12,
     }),
-    [insets.top, rightControlsBottom],
+    [floatingControlsClearance, insets.top],
   );
 
   const mapAttributionInsets = useMemo(() => {
@@ -362,6 +409,76 @@ export function useMapScreenController() {
     selectedHistoryIndex >= 0 &&
     historyMapPlan.selected != null;
   const showDayJourney = !historyPanelOpen && !playback.isPlaying;
+  const showDayMomentSummary = showDayJourney;
+  const dayMomentCounts = useMemo(
+    () => countMoments(dayMoments),
+    [dayMoments],
+  );
+
+  const currentVisitMomentCounts = useMemo((): MomentCounts | undefined => {
+    if (!currentOpenVisit) {
+      return undefined;
+    }
+    return countMomentsForEntry(dayMoments, currentOpenVisit);
+  }, [dayMoments, currentOpenVisit]);
+
+  const dayMomentMapPins = useMemo((): MomentMapPin[] => {
+    if (!showDayJourney) {
+      return [];
+    }
+    return buildMomentMapPins(
+      dayMoments,
+      historyData.points,
+      historyEntries,
+    );
+  }, [showDayJourney, dayMoments, historyData.points, historyEntries]);
+
+  const selectedEntryMomentCounts = useMemo((): MomentCounts | undefined => {
+    if (!selectedEntry) {
+      return undefined;
+    }
+    return countMomentsForEntry(dayMoments, selectedEntry);
+  }, [dayMoments, selectedEntry]);
+
+  const momentsPreviewOpen = momentsPreviewScope != null;
+  const momentsPreviewMoments = useMemo(() => {
+    if (!momentsPreviewScope) {
+      return [];
+    }
+    if (momentsPreviewScope.kind === 'day') {
+      return dayMoments;
+    }
+    if (momentsPreviewScope.kind === 'moment-ids') {
+      const ids = new Set(momentsPreviewScope.momentIds);
+      return dayMoments.filter(moment => ids.has(moment.id));
+    }
+    return filterMomentsForEntry(dayMoments, momentsPreviewScope.entry);
+  }, [momentsPreviewScope, dayMoments]);
+  const momentsPreviewTitle = useMemo(() => {
+    if (!momentsPreviewScope) {
+      return '';
+    }
+    if (momentsPreviewScope.kind === 'day') {
+      return `${formatHistoryDayNavLabel(selectedDateKey)} moments`;
+    }
+    if (momentsPreviewScope.kind === 'moment-ids') {
+      return momentsPreviewScope.title;
+    }
+    return momentsPreviewScope.entry.kind === 'stay'
+      ? 'Visit moments'
+      : 'Drive moments';
+  }, [momentsPreviewScope, selectedDateKey]);
+
+  const historyMomentMapPins = useMemo((): MomentMapPin[] => {
+    if (!showHistoryMap || !selectedEntry) {
+      return [];
+    }
+    return buildMomentMapPins(
+      filterMomentsForEntry(dayMoments, selectedEntry),
+      historyData.points,
+      [selectedEntry],
+    );
+  }, [showHistoryMap, selectedEntry, dayMoments, historyData.points]);
   const showUserLocation =
     !historyPanelOpen && !playback.isPlaying && viewingToday;
 
@@ -740,6 +857,73 @@ export function useMapScreenController() {
   );
   const isAtSavedPlaceLimit = savedPlaces.length >= MAX_SAVED_PLACES;
 
+  const handleCaptureCamera = useCallback(async () => {
+    if (captureInFlightRef.current) {
+      return;
+    }
+    captureInFlightRef.current = true;
+    try {
+      const moment = await capturePhotoFromCamera();
+      if (moment) {
+        await refreshDayMoments();
+      }
+    } finally {
+      captureInFlightRef.current = false;
+    }
+  }, [refreshDayMoments]);
+
+  const handleCaptureVoice = useCallback(() => {
+    setVoiceMemoSheetOpen(true);
+  }, []);
+
+  const closeVoiceMemoSheet = useCallback(() => {
+    setVoiceMemoSheetOpen(false);
+  }, []);
+
+  const handleVoiceMemoSaved = useCallback(async () => {
+    await refreshDayMoments();
+  }, [refreshDayMoments]);
+
+  const handleCaptureNote = useCallback(() => {
+    navigation.navigate('CaptureNote');
+  }, [navigation]);
+
+  const openDayMomentsPreview = useCallback(() => {
+    setMomentsPreviewScope({kind: 'day'});
+  }, []);
+
+  const openCurrentVisitMomentsPreview = useCallback(() => {
+    if (currentOpenVisit) {
+      setMomentsPreviewScope({kind: 'entry', entry: currentOpenVisit});
+    }
+  }, [currentOpenVisit]);
+
+  const openSelectedEntryMomentsPreview = useCallback(() => {
+    if (selectedEntry) {
+      setMomentsPreviewScope({kind: 'entry', entry: selectedEntry});
+    }
+  }, [selectedEntry]);
+
+  const openMomentMapPinPreview = useCallback((pin: MomentMapPin) => {
+    setMomentsPreviewScope({
+      kind: 'moment-ids',
+      momentIds: [pin.moment.id],
+      title: 'Moment',
+    });
+  }, []);
+
+  const closeMomentsPreview = useCallback(() => {
+    setMomentsPreviewScope(null);
+  }, []);
+
+  const handleDeleteMoment = useCallback(
+    async (momentId: number) => {
+      await deleteMoment(momentId);
+      await refreshDayMoments();
+    },
+    [refreshDayMoments],
+  );
+
   return {
     tripDetectionConfig,
     insets,
@@ -753,6 +937,24 @@ export function useMapScreenController() {
     placesButtonBottom,
     calendarButtonBottom,
     historyButtonBottom,
+    cameraButtonBottom,
+    voiceButtonBottom,
+    noteButtonBottom,
+    handleCaptureCamera,
+    handleCaptureVoice,
+    closeVoiceMemoSheet,
+    handleVoiceMemoSaved,
+    voiceMemoSheetOpen,
+    handleCaptureNote,
+    momentsPreviewOpen,
+    momentsPreviewTitle,
+    momentsPreviewMoments,
+    openDayMomentsPreview,
+    openCurrentVisitMomentsPreview,
+    openSelectedEntryMomentsPreview,
+    openMomentMapPinPreview,
+    closeMomentsPreview,
+    handleDeleteMoment,
     historyData,
     historyEntries,
     dayStays,
@@ -771,6 +973,13 @@ export function useMapScreenController() {
     showHistoryPanelContent,
     showHistoryMap,
     showDayJourney,
+    showDayMomentSummary,
+    dayMomentSummaryBottom,
+    dayMomentCounts,
+    currentVisitMomentCounts,
+    dayMomentMapPins,
+    historyMomentMapPins,
+    selectedEntryMomentCounts,
     showUserLocation,
     currentOpenVisit,
     currentOpenVisitSavedPlace,

@@ -1,4 +1,4 @@
-import {eq} from 'drizzle-orm';
+import {eq, sql} from 'drizzle-orm';
 
 import {getDatabase} from '../client';
 import {materializedDays} from '../schema';
@@ -79,6 +79,22 @@ export async function upsertMaterializedDay(
         updatedAt: now,
       },
     });
+}
+
+export async function countMaterializedDays(): Promise<number> {
+  const db = await getDatabase();
+  const [row] = await db
+    .select({count: sql<number>`cast(count(*) as integer)`})
+    .from(materializedDays);
+  return row?.count ?? 0;
+}
+
+export async function deleteAllMaterializedDays(): Promise<number> {
+  const db = await getDatabase();
+  const deleted = await db
+    .delete(materializedDays)
+    .returning({dateKey: materializedDays.dateKey});
+  return deleted.length;
 }
 
 export async function markMaterializedDayFailed(

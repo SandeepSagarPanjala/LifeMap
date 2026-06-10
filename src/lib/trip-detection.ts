@@ -11,6 +11,31 @@ import {
 
 export type TripKind = 'travel' | 'stay' | 'gap';
 
+/** Optional inputs that refine timeline detection without changing trip settings. */
+export type TripTimelineOptions = {
+  /** Capture times — pauses overlapping these are not split into visits. */
+  momentTimestamps?: readonly Date[];
+};
+
+const MOMENT_CAPTURE_STOP_BUFFER_MS = 3 * 60_000;
+
+function spanOverlapsMoment(
+  startMs: number,
+  endMs: number,
+  momentTimestamps: readonly Date[],
+): boolean {
+  if (momentTimestamps.length === 0) {
+    return false;
+  }
+
+  const bufferedStart = startMs - MOMENT_CAPTURE_STOP_BUFFER_MS;
+  const bufferedEnd = endMs + MOMENT_CAPTURE_STOP_BUFFER_MS;
+  return momentTimestamps.some(timestamp => {
+    const t = timestamp.getTime();
+    return t >= bufferedStart && t <= bufferedEnd;
+  });
+}
+
 export type DetectedTrip = {
   id: string;
   kind: 'travel' | 'stay';
@@ -801,6 +826,7 @@ function growPlaceClusterFromAnchor(
 /** Find pauses inside a drive (wide radius — parking lots drift > 25 m). */
 function findStopSpansInTravel(
   points: LocationPointRow[],
+  momentTimestamps: readonly Date[] = [],
 ): StaySpan[] {
   if (points.length < 2) {
     return [];
@@ -821,7 +847,11 @@ function findStopSpansInTravel(
     const interior = index > 0 && end < points.length - 1;
 
     if (stationary && interior && spanMs >= minTripStopMs) {
-      spans.push({start: index, end});
+      const stopStartMs = points[index]!.timestamp.getTime();
+      const stopEndMs = points[end]!.timestamp.getTime();
+      if (!spanOverlapsMoment(stopStartMs, stopEndMs, momentTimestamps)) {
+        spans.push({start: index, end});
+      }
     }
 
     index = end + 1;
@@ -850,8 +880,9 @@ function prependDeparturePoint(
 function splitTravelAtInteriorStops(
   travel: DetectedTrip,
   startTripIndex: number,
+  momentTimestamps: readonly Date[] = [],
 ): DetectedTrip[] {
-  const stops = findStopSpansInTravel(travel.points);
+  const stops = findStopSpansInTravel(travel.points, momentTimestamps);
   if (stops.length === 0) {
     return [travel];
   }
@@ -900,6 +931,7 @@ function splitTravelAtStops(
   travel: DetectedTrip,
   startTripIndex: number,
   config: TripDetectionConfig,
+  momentTimestamps: readonly Date[] = [],
 ): DetectedTrip[] {
   const peeled = peelVenueWalkTail(travel, config);
   const pieces: DetectedTrip[] = [];
@@ -915,7 +947,11 @@ function splitTravelAtStops(
       continue;
     }
 
-    const split = splitTravelAtInteriorStops(segment, tripIndex);
+    const split = splitTravelAtInteriorStops(
+      segment,
+      tripIndex,
+      momentTimestamps,
+    );
     pieces.push(...split);
     tripIndex += split.length;
   }
@@ -925,14 +961,20 @@ function splitTravelAtStops(
 
 function splitTravelsAtStops(
   trips: DetectedTrip[],
-  _config: TripDetectionConfig,
+  config: TripDetectionConfig,
+  momentTimestamps: readonly Date[] = [],
 ): DetectedTrip[] {
   const split: DetectedTrip[] = [];
   let tripIndex = 0;
 
   for (const trip of trips) {
     if (trip.kind === 'travel') {
-      const pieces = splitTravelAtStops(trip, tripIndex, _config);
+      const pieces = splitTravelAtStops(
+        trip,
+        tripIndex,
+        config,
+        momentTimestamps,
+      );
       split.push(...pieces);
       tripIndex += pieces.length;
     } else {
@@ -942,6 +984,54 @@ function splitTravelsAtStops(
   }
 
   return split;
+}
+
+/** Rejoin drive → brief stop → drive when the stop was a moment capture pause. */
+function collapseMomentCaptureStays(
+  trips: DetectedTrip[],
+  momentTimestamps: readonly Date[],
+): DetectedTrip[] {
+  if (momentTimestamps.length === 0 || trips.length < 3) {
+    return trips;
+  }
+
+  const merged: DetectedTrip[] = [];
+  let index = 0;
+
+  while (index < trips.length) {
+    const current = trips[index]!;
+    const next = trips[index + 1];
+    const after = trips[index + 2];
+
+    if (
+      current.kind === 'travel' &&
+      next?.kind === 'stay' &&
+      after?.kind === 'travel' &&
+      spanOverlapsMoment(
+        next.startAt.getTime(),
+        next.endAt.getTime(),
+        momentTimestamps,
+      )
+    ) {
+      merged.push(
+        makeTrip(
+          [...current.points, ...next.points, ...after.points],
+          'travel',
+          merged.length,
+        ),
+      );
+      index += 3;
+      continue;
+    }
+
+    merged.push({
+      ...current,
+      id: `${current.kind}-${merged.length}-${current.startAt.getTime()}`,
+    });
+    index += 1;
+  }
+
+  return merged;
 }
 
 function shouldShowTimelineGap(
@@ -978,7 +1068,9 @@ function shouldShowTimelineGap(
 export function detectTrips(
   points: LocationPointRow[],
   config: TripDetectionConfig,
+  options: TripTimelineOptions = {},
 ): DetectedTrip[] {
+  const momentTimestamps = options.momentTimestamps ?? [];
   const deduped = dedupeLocationPoints(points);
   const stays = findStaySpans(deduped, config);
   if (stays.length === 0) {
@@ -1050,7 +1142,10 @@ export function detectTrips(
   }
 
   const merged = mergeAdjacentSameAreaStays(
-    splitTravelsAtStops(trips, config),
+    collapseMomentCaptureStays(
+      splitTravelsAtStops(trips, config, momentTimestamps),
+      momentTimestamps,
+    ),
     config,
   );
   const withoutNoise = dropNoiseTravels(merged);
@@ -1069,8 +1164,9 @@ export function mergeSameAreaTrips(
 export function buildDayTimeline(
   points: LocationPointRow[],
   config: TripDetectionConfig,
+  options: TripTimelineOptions = {},
 ): DayTimelineEntry[] {
-  const trips = detectTrips(points, config);
+  const trips = detectTrips(points, config, options);
   if (trips.length === 0) {
     return [];
   }
@@ -1098,16 +1194,18 @@ export function buildDayTimeline(
 export function buildDayTimelineNewestFirst(
   points: LocationPointRow[],
   config: TripDetectionConfig,
+  options: TripTimelineOptions = {},
 ): DayTimelineEntry[] {
-  return [...buildDayTimeline(points, config)].reverse();
+  return [...buildDayTimeline(points, config, options)].reverse();
 }
 
 /** @deprecated Use buildDayTimelineNewestFirst */
 export function detectTripsNewestFirst(
   points: LocationPointRow[],
   config: TripDetectionConfig,
+  options: TripTimelineOptions = {},
 ): DetectedTrip[] {
-  return [...detectTrips(points, config)].reverse();
+  return [...detectTrips(points, config, options)].reverse();
 }
 
 const LONG_GAP_BEFORE_TRAVEL_MS = 10 * 60_000;

@@ -87,7 +87,11 @@ class HistoryDataCache {
 
 export const historyDataCache = new HistoryDataCache();
 
+export function clearHistoryDataCache(): void {
+  historyDataCache.clear();
+}
+
 /** @internal — reset between tests. */
 export function resetHistoryDataCacheForTests(): void {
-  historyDataCache.clear();
+  clearHistoryDataCache();
 }

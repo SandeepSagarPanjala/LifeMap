@@ -34,6 +34,8 @@ export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
     selectHistoryIndex,
     handleHistoryDateKeyChange,
     openHistoryDatePicker,
+    selectedEntryMomentCounts,
+    openSelectedEntryMomentsPreview,
   } = controller;
 
   if (!historyPanelOpen) {
@@ -67,6 +69,10 @@ export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
             onSelectVisitPlaceIndex={handleSelectVisitPlaceIndex}
             driveStartPlace={scrubOnEvent ? selectedDriveStartPlace : null}
             driveEndPlace={scrubOnEvent ? selectedDriveEndPlace : null}
+            momentCounts={scrubOnEvent ? selectedEntryMomentCounts : undefined}
+            onPressMomentCounts={
+              scrubOnEvent ? openSelectedEntryMomentsPreview : undefined
+            }
             scrubOnEmpty={historyEntries.length > 0 && !scrubOnEvent}
             distanceUnit={distanceUnit}
             isPlaying={playback.isPlaying}

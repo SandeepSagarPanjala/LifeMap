@@ -49,6 +49,53 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
+  - NitroModules (0.35.9):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-callinvoker
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
+  - NitroSound (0.2.15):
+    - hermes-engine
+    - NitroModules
+    - RCTRequired
+    - RCTTypeSafety
+    - React-callinvoker
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
   - op-sqlite (16.2.0):
     - hermes-engine
     - RCTRequired
@@ -1468,6 +1515,94 @@ PODS:
     - React-RCTFBReactNativeSpec
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
+  - react-native-blob-util (0.24.9):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
+  - react-native-cameraroll (7.10.2):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
+  - react-native-compressor (1.19.0):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
+  - react-native-image-picker (8.2.1):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
   - react-native-maps (1.27.2):
     - react-native-maps/Maps (= 1.27.2)
   - react-native-maps/Generated (1.27.2):
@@ -2310,6 +2445,8 @@ DEPENDENCIES:
   - FBLazyVector (from `../node_modules/react-native/Libraries/FBLazyVector`)
   - hermes-engine (from `../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec`)
   - lottie-react-native (from `../node_modules/lottie-react-native`)
+  - NitroModules (from `../node_modules/react-native-nitro-modules`)
+  - NitroSound (from `../node_modules/react-native-nitro-sound`)
   - "op-sqlite (from `../node_modules/@op-engineering/op-sqlite`)"
   - RCTDeprecation (from `../node_modules/react-native/ReactApple/Libraries/RCTFoundation/RCTDeprecation`)
   - RCTRequired (from `../node_modules/react-native/Libraries/Required`)
@@ -2348,6 +2485,10 @@ DEPENDENCIES:
   - React-logger (from `../node_modules/react-native/ReactCommon/logger`)
   - React-Mapbuffer (from `../node_modules/react-native/ReactCommon`)
   - React-microtasksnativemodule (from `../node_modules/react-native/ReactCommon/react/nativemodule/microtasks`)
+  - react-native-blob-util (from `../node_modules/react-native-blob-util`)
+  - "react-native-cameraroll (from `../node_modules/@react-native-camera-roll/camera-roll`)"
+  - react-native-compressor (from `../node_modules/react-native-compressor`)
+  - react-native-image-picker (from `../node_modules/react-native-image-picker`)
   - react-native-maps (from `../node_modules/react-native-maps`)
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
   - React-NativeModulesApple (from `../node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios`)
@@ -2411,6 +2552,10 @@ EXTERNAL SOURCES:
     :tag: hermes-v250829098.0.9
   lottie-react-native:
     :path: "../node_modules/lottie-react-native"
+  NitroModules:
+    :path: "../node_modules/react-native-nitro-modules"
+  NitroSound:
+    :path: "../node_modules/react-native-nitro-sound"
   op-sqlite:
     :path: "../node_modules/@op-engineering/op-sqlite"
   RCTDeprecation:
@@ -2485,6 +2630,14 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon"
   React-microtasksnativemodule:
     :path: "../node_modules/react-native/ReactCommon/react/nativemodule/microtasks"
+  react-native-blob-util:
+    :path: "../node_modules/react-native-blob-util"
+  react-native-cameraroll:
+    :path: "../node_modules/@react-native-camera-roll/camera-roll"
+  react-native-compressor:
+    :path: "../node_modules/react-native-compressor"
+  react-native-image-picker:
+    :path: "../node_modules/react-native-image-picker"
   react-native-maps:
     :path: "../node_modules/react-native-maps"
   react-native-safe-area-context:
@@ -2582,6 +2735,8 @@ SPEC CHECKSUMS:
   hermes-engine: 0960f4bca88f1b458632f58ca70f2bd73f327fda
   lottie-ios: 8f959969761e9c45d70353667d00af0e5b9cadb3
   lottie-react-native: 116cbc264ff83b04a1c5fdb2aa694423de4a2c5e
+  NitroModules: 62af0d110a4aa4f4027e6ee18f5dea25f759ed83
+  NitroSound: a74e484f72e326e9771d7ca023f3d07a8f127be6
   op-sqlite: 3e5adf01825eb767bc716655bbc87883db73844b
   RCTDeprecation: af44b104091a34482596cd9bd7e8d90c4e9b4bd7
   RCTRequired: bb77b070f75f53398ce43c0aaaa58337cebe2bf6
@@ -2619,6 +2774,10 @@ SPEC CHECKSUMS:
   React-logger: 517377b1d2ba7ac722d47fb2183b98de86632063
   React-Mapbuffer: 45e088dfb58dc326ae20cca1814d3726553c4cad
   React-microtasksnativemodule: ab9d1a05fe1f58ea44a97d307ef1b53463f45a3f
+  react-native-blob-util: b346583bf0b7b0675d9cfc5e042b9ad91c279f14
+  react-native-cameraroll: 4dbbfd1044dac3fb8a00ccdc0b25c15163d006fc
+  react-native-compressor: ec959b4ff0105ed06b59721427d49387710b41d4
+  react-native-image-picker: 7793e84ad7b802351cf687c18bb42ad30150b29b
   react-native-maps: c545a4c303ce633d2dce0c178c1ad84dd286d3b0
   react-native-safe-area-context: d18d2c3404ad84fd9fee211a89228b509bb78f5e
   React-NativeModulesApple: b94faa2dce6d8c0a9d722ed7ee27b996d28b62d1

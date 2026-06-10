@@ -7,6 +7,7 @@ import {TripRouteOverlay} from '@/components/map/TripRouteOverlay';
 import {VisitApproachConnector} from '@/components/map/VisitApproachConnector';
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import type {HistoryMapPlan} from '@/lib/history-map-plan';
+import type {MomentCounts} from '@/lib/moments/moment-counts';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
 
 type HistoryDayMapOverlayProps = {
@@ -16,6 +17,8 @@ type HistoryDayMapOverlayProps = {
   selectedNearbyPlacePinned?: boolean;
   selectedDriveStartPlace?: SavedPlaceRow | null;
   selectedDriveEndPlace?: SavedPlaceRow | null;
+  selectedEntryMomentCounts?: MomentCounts;
+  onPressSelectedEntryMoments?: () => void;
   tripConfig: TripDetectionConfig;
   playbackProgress: number | null;
 };
@@ -28,6 +31,8 @@ export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
   selectedNearbyPlacePinned = false,
   selectedDriveStartPlace = null,
   selectedDriveEndPlace = null,
+  selectedEntryMomentCounts,
+  onPressSelectedEntryMoments,
   tripConfig,
   playbackProgress,
 }: HistoryDayMapOverlayProps) {
@@ -109,6 +114,8 @@ export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
             nearbyPlacePinned={
               !selectedSavedPlace && selectedNearbyPlacePinned
             }
+            momentCounts={selectedEntryMomentCounts}
+            onPressMomentCounts={onPressSelectedEntryMoments}
           />
         </>
       ) : null}

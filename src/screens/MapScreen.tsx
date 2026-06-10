@@ -1,8 +1,11 @@
 import {View} from 'react-native';
 
+import {DayMomentSummaryBar} from '@/components/map/DayMomentSummaryBar';
 import {HistoryDatePickerSheet} from '@/components/map/HistoryDatePickerSheet';
 import {SavedPlacesSheet} from '@/components/map/SavedPlacesSheet';
 import {SavePlaceSheet} from '@/components/map/SavePlaceSheet';
+import {VoiceMemoSheet} from '@/components/map/VoiceMemoSheet';
+import {MomentsPreviewSheet} from '@/components/moments/MomentsPreviewSheet';
 
 import {MapHistoryPanel} from './map/MapHistoryPanel';
 import {MapScreenFloatingControls} from './map/MapScreenFloatingControls';
@@ -17,6 +20,22 @@ export function MapScreen() {
     <View className="bg-background flex-1">
       <MapScreenMap controller={controller} />
       <MapScreenFloatingControls controller={controller} />
+      {controller.showDayMomentSummary ? (
+        <View
+          pointerEvents="box-none"
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: controller.dayMomentSummaryBottom,
+          }}>
+          <DayMomentSummaryBar
+            counts={controller.dayMomentCounts}
+            docked
+            onPress={controller.openDayMomentsPreview}
+          />
+        </View>
+      ) : null}
       <HistoryDatePickerSheet
         visible={controller.historyDatePickerOpen}
         selectedDateKey={controller.selectedDateKey}
@@ -44,6 +63,18 @@ export function MapScreen() {
         onClose={controller.closeSavedPlacesSheet}
         onSelectPlace={controller.handleSelectSavedPlace}
         onDelete={controller.handleDeleteSavedPlace}
+      />
+      <VoiceMemoSheet
+        visible={controller.voiceMemoSheetOpen}
+        onClose={controller.closeVoiceMemoSheet}
+        onSaved={controller.handleVoiceMemoSaved}
+      />
+      <MomentsPreviewSheet
+        visible={controller.momentsPreviewOpen}
+        title={controller.momentsPreviewTitle}
+        moments={controller.momentsPreviewMoments}
+        onClose={controller.closeMomentsPreview}
+        onDeleteMoment={controller.handleDeleteMoment}
       />
       <MapHistoryPanel controller={controller} />
       <MapScreenTopBar controller={controller} />

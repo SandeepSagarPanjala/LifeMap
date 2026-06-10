@@ -55,6 +55,23 @@ export function isVisitOngoing(
   return now.getTime() - endAt.getTime() < VISIT_ONGOING_THRESHOLD_MS;
 }
 
+/** "Today", "Yesterday", or "Monday, Jun 9" */
+export function formatVisitDateLine(startAt: Date, now = new Date()): string {
+  const day = new TZDate(startAt, APP_TIMEZONE);
+  const today = new TZDate(now, APP_TIMEZONE);
+  const yesterday = new TZDate(now, APP_TIMEZONE);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  const dayKey = format(day, 'yyyy-MM-dd');
+  if (dayKey === format(today, 'yyyy-MM-dd')) {
+    return 'Today';
+  }
+  if (dayKey === format(yesterday, 'yyyy-MM-dd')) {
+    return 'Yesterday';
+  }
+  return format(day, 'EEEE, MMM d');
+}
+
 /** "9:20 AM to 10:20 AM" */
 export function formatVisitTimeRange(
   startAt: Date,

@@ -23,7 +23,7 @@
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleVersion</key>
-	<string>7</string>
+	<string>8</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
@@ -41,6 +41,14 @@
 	<string>LifeMap records your daily path in the background so your timeline stays complete, even when the app is closed. All data stays on your phone, encrypted. You can pause tracking anytime in Settings.</string>
 	<key>NSMotionUsageDescription</key>
 	<string>LifeMap uses motion activity to record your route efficiently and reduce battery use while building your private timeline.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>LifeMap uses the camera so you can capture photo moments on your map. Photos are stored on this device only.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>LifeMap saves a full-quality copy of camera moments to your Photos library. LifeMap keeps a separate compressed copy for the app.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>LifeMap lets you attach photos from your library to notes. Attached photos are stored on this device only.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>LifeMap uses the microphone so you can record voice memos on your map. Recordings are stored on this device only.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>

@@ -9,6 +9,7 @@ import {
   dedupeLocationPoints,
   type DayTimelineEntry,
   type DetectedTrip,
+  type TripTimelineOptions,
 } from '@/lib/trip-detection';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
 
@@ -272,6 +273,7 @@ export function prepareDayHistoryTimeline(
   config: TripDetectionConfig,
   referenceNow: Date = new Date(),
   lookaheadPoints: LocationPointRow[] = [],
+  timelineOptions: TripTimelineOptions = {},
 ): DayTimelineEntry[] {
   const {start: dayStart} = getDayRange(dateKey);
   const isToday = dateKey === toDateKey(referenceNow);
@@ -283,7 +285,7 @@ export function prepareDayHistoryTimeline(
     ...lookaheadPoints,
   ]);
   const lastBeforeDay = lastPointBefore(combined, dayStart);
-  const raw = buildDayTimeline(combined, config);
+  const raw = buildDayTimeline(combined, config, timelineOptions);
 
   const filtered = dropMidDriveNoiseStays(
     raw

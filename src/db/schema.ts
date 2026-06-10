@@ -22,6 +22,13 @@ export const moments = sqliteTable('moments', {
   caption: text('caption'),
   placeLabel: text('place_label'),
   linkedPointId: integer('linked_point_id').references(() => locationPoints.id),
+  title: text('title'),
+  moodScore: real('mood_score'),
+  moodLabel: text('mood_label'),
+  finishedAt: integer('finished_at', {mode: 'timestamp'}),
+  contentBytes: integer('content_bytes'),
+  sourceBytes: integer('source_bytes'),
+  contentFormat: text('content_format'),
   shareVisibility: text('share_visibility')
     .notNull()
     .default('private'),

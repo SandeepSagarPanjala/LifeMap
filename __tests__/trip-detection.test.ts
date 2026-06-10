@@ -666,6 +666,55 @@ describe('stay / trip timeline', () => {
     expect(trips[0]?.kind).toBe('stay');
   });
 
+  it('does not split a drive at a pause when a moment was captured there', () => {
+    const stopLat = 33.23;
+    const stopLng = -97.08;
+    const points = makePoints([
+      {minutes: 0, ...HOME},
+      {minutes: 60, ...HOME},
+      {minutes: 110, ...HOME},
+      {minutes: 120, lat: 33.22, lng: -97.1},
+      {minutes: 125, lat: 33.225, lng: -97.09},
+      {minutes: 130, lat: stopLat, lng: stopLng},
+      {minutes: 136, lat: stopLat, lng: stopLng},
+      {minutes: 142, lat: stopLat, lng: stopLng},
+      {minutes: 148, lat: 33.24, lng: -97.07},
+      {minutes: 155, lat: 33.245, lng: -97.06},
+      {minutes: 165, ...WALMART},
+      {minutes: 180, ...WALMART},
+    ]);
+    const momentAt = new Date(
+      points.find(point => point.id === 7)!.timestamp.getTime() + 3 * 60_000,
+    );
+
+    const withoutMoments = buildDayTimeline(points, config);
+    const withMoment = buildDayTimeline(points, config, {
+      momentTimestamps: [momentAt],
+    });
+
+    expect(withoutMoments.map(entry => entry.kind)).toEqual([
+      'stay',
+      'travel',
+      'stay',
+      'travel',
+      'stay',
+    ]);
+    expect(withMoment.map(entry => entry.kind)).toEqual([
+      'stay',
+      'travel',
+      'stay',
+    ]);
+
+    const splitDrive = withoutMoments[1];
+    const mergedDrive = withMoment[1];
+    expect(splitDrive?.kind).toBe('travel');
+    expect(mergedDrive?.kind).toBe('travel');
+    if (splitDrive?.kind !== 'travel' || mergedDrive?.kind !== 'travel') {
+      return;
+    }
+    expect(mergedDrive.durationMs).toBeGreaterThan(splitDrive.durationMs);
+  });
+
   it('bridges drive start to visit pin when prior stay row ends on departure road GPS', () => {
     const library = {
       id: 1,

@@ -136,3 +136,62 @@ jest.mock('react-native-svg', () => {
     Rect: View,
   };
 });
+
+jest.mock('react-native-image-picker', () => ({
+  launchCamera: jest.fn(),
+  launchImageLibrary: jest.fn(),
+}));
+
+jest.mock('react-native-compressor', () => ({
+  Image: {
+    compress: jest.fn(),
+  },
+}));
+
+jest.mock('@react-native-camera-roll/camera-roll', () => ({
+  CameraRoll: {
+    saveAsset: jest.fn(),
+    save: jest.fn(),
+  },
+}));
+
+jest.mock('react-native-blob-util', () => ({
+  __esModule: true,
+  default: {
+    fs: {
+      dirs: {DocumentDir: '/documents'},
+      exists: jest.fn().mockResolvedValue(true),
+      mkdir: jest.fn().mockResolvedValue(undefined),
+      cp: jest.fn().mockResolvedValue(undefined),
+      stat: jest.fn().mockResolvedValue({size: 128}),
+      unlink: jest.fn().mockResolvedValue(undefined),
+    },
+  },
+}));
+
+jest.mock('react-native-nitro-sound', () => {
+  const sound = {
+    startRecorder: jest.fn().mockResolvedValue('/tmp/recording.m4a'),
+    stopRecorder: jest.fn().mockResolvedValue('/tmp/recording.m4a'),
+    pauseRecorder: jest.fn().mockResolvedValue(undefined),
+    resumeRecorder: jest.fn().mockResolvedValue(undefined),
+    startPlayer: jest.fn().mockResolvedValue(undefined),
+    stopPlayer: jest.fn().mockResolvedValue(undefined),
+    pausePlayer: jest.fn().mockResolvedValue(undefined),
+    resumePlayer: jest.fn().mockResolvedValue(undefined),
+    addRecordBackListener: jest.fn(),
+    removeRecordBackListener: jest.fn(),
+    addPlayBackListener: jest.fn(),
+    removePlayBackListener: jest.fn(),
+    addPlaybackEndListener: jest.fn(),
+    removePlaybackEndListener: jest.fn(),
+    dispose: jest.fn(),
+  };
+
+  return {
+    __esModule: true,
+    default: sound,
+    createSound: jest.fn(() => sound),
+    AVEncoderAudioQualityIOSType: {medium: 64},
+  };
+});

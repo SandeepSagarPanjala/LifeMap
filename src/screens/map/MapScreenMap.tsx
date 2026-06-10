@@ -3,6 +3,7 @@ import MapView from 'react-native-maps';
 
 import {DayJourneyOverlay} from '@/components/map/DayJourneyOverlay';
 import {HistoryDayMapOverlay} from '@/components/map/HistoryDayMapOverlay';
+import {MomentMapOverlay} from '@/components/map/MomentMapOverlay';
 import {SavedPlacesMapOverlay} from '@/components/map/SavedPlacesMapOverlay';
 import {StayDurationCallout} from '@/components/map/StayDurationCallout';
 
@@ -24,6 +25,9 @@ export function MapScreenMap({controller}: MapScreenMapProps) {
     onRegionChangeComplete,
     handleUserLocation,
     showDayJourney,
+    dayMomentMapPins,
+    historyMomentMapPins,
+    openMomentMapPinPreview,
     historyData,
     dayStays,
     dayTravels,
@@ -31,6 +35,8 @@ export function MapScreenMap({controller}: MapScreenMapProps) {
     currentOpenVisit,
     currentOpenVisitSavedPlace,
     currentOpenVisitPlaceDisplay,
+    currentVisitMomentCounts,
+    openCurrentVisitMomentsPreview,
     userCoordinate,
     handleMapLongPress,
     showHistoryMap,
@@ -39,6 +45,8 @@ export function MapScreenMap({controller}: MapScreenMapProps) {
     selectedVisitPlaceDisplay,
     selectedDriveStartPlace,
     selectedDriveEndPlace,
+    selectedEntryMomentCounts,
+    openSelectedEntryMomentsPreview,
     playback,
     savedPlaces,
     showSavedPlaceCircles,
@@ -85,6 +93,10 @@ export function MapScreenMap({controller}: MapScreenMapProps) {
             tripConfig={tripDetectionConfig}
             fallbackPoints={historyData.points}
           />
+          <MomentMapOverlay
+            pins={dayMomentMapPins}
+            onPressPin={openMomentMapPinPreview}
+          />
           {currentOpenVisit ? (
             <StayDurationCallout
               trip={currentOpenVisit}
@@ -101,27 +113,37 @@ export function MapScreenMap({controller}: MapScreenMapProps) {
               }
               showVisitPin={false}
               anchorCoordinate={userCoordinate}
+              momentCounts={currentVisitMomentCounts}
+              onPressMomentCounts={openCurrentVisitMomentsPreview}
             />
           ) : null}
         </>
       ) : null}
       {showHistoryMap ? (
-        <HistoryDayMapOverlay
-          plan={historyMapPlan}
-          selectedSavedPlace={selectedSavedPlace}
-          selectedNearbyPlaceLabel={
-            selectedSavedPlace ? null : selectedVisitPlaceDisplay.primaryLabel
-          }
-          selectedNearbyPlacePinned={
-            !selectedSavedPlace &&
-            (selectedVisitPlaceDisplay.isAreaDefault ||
-              selectedVisitPlaceDisplay.isTripLabel)
-          }
-          selectedDriveStartPlace={selectedDriveStartPlace}
-          selectedDriveEndPlace={selectedDriveEndPlace}
-          tripConfig={tripDetectionConfig}
-          playbackProgress={playback.isPlaying ? playback.progress : null}
-        />
+        <>
+          <HistoryDayMapOverlay
+            plan={historyMapPlan}
+            selectedSavedPlace={selectedSavedPlace}
+            selectedNearbyPlaceLabel={
+              selectedSavedPlace ? null : selectedVisitPlaceDisplay.primaryLabel
+            }
+            selectedNearbyPlacePinned={
+              !selectedSavedPlace &&
+              (selectedVisitPlaceDisplay.isAreaDefault ||
+                selectedVisitPlaceDisplay.isTripLabel)
+            }
+            selectedDriveStartPlace={selectedDriveStartPlace}
+            selectedDriveEndPlace={selectedDriveEndPlace}
+            selectedEntryMomentCounts={selectedEntryMomentCounts}
+            onPressSelectedEntryMoments={openSelectedEntryMomentsPreview}
+            tripConfig={tripDetectionConfig}
+            playbackProgress={playback.isPlaying ? playback.progress : null}
+          />
+          <MomentMapOverlay
+            pins={historyMomentMapPins}
+            onPressPin={openMomentMapPinPreview}
+          />
+        </>
       ) : null}
     </MapView>
   );

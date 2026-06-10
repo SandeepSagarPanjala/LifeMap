@@ -8,6 +8,7 @@ import {AccentThemePicker} from '@/components/settings/accent-theme-picker';
 import {DevSettings} from '@/components/settings/dev-settings';
 import {ExportSettings} from '@/components/settings/export-settings';
 import {HistoryDetectionSettings} from '@/components/settings/history-detection-settings';
+import {HistoryRepairSettings} from '@/components/settings/history-repair-settings';
 import {PreferencesSettings} from '@/components/settings/preferences-settings';
 import {SettingsSection} from '@/components/settings/settings-section';
 import {StorageSettings} from '@/components/settings/storage-settings';
@@ -37,6 +38,7 @@ export function SettingsScreen() {
           subtitle="Storage and how visits and drives are detected.">
           <StorageSettings />
           <HistoryDetectionSettings />
+          <HistoryRepairSettings />
           <View className="bg-card border-border rounded-2xl border p-4">
             <View className="flex-row items-center gap-3">
               <Icon as={Shield} size={20} color={colors.primary} />

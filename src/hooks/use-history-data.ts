@@ -2,9 +2,7 @@ import {useCallback, useEffect, useRef, useState} from 'react';
 import {useFocusEffect} from '@react-navigation/native';
 import {AppState, type AppStateStatus} from 'react-native';
 
-import {getLocationDayFingerprint} from '@/db/repositories/location-days';
-import {subscribeLocationPointInserts} from '@/db/repositories/location-points';
-import {getDayRange, getTodayDateKey, toDateKey} from '@/lib/day-utils';
+import {getDayHistoryFingerprint} from '@/lib/history-fingerprint';
 import {runWhenIdle} from '@/lib/run-when-idle';
 import {getLocationService} from '@/location/transistorsoft-location-service';
 import type {HistoryData} from '@/lib/history-data-types';
@@ -12,6 +10,9 @@ import {
   historyCacheKey,
   historyDataCache,
 } from '@/lib/history-data-cache';
+import {subscribeLocationPointInserts} from '@/db/repositories/location-points';
+import {subscribeMomentChanges} from '@/db/repositories/moments';
+import {getDayRange, getTodayDateKey, toDateKey} from '@/lib/day-utils';
 import {useTripDetectionConfig} from '@/hooks/use-trip-detection-config';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
 
@@ -43,7 +44,7 @@ async function syncHistoryForDay(
   options?: {force?: boolean},
 ): Promise<HistoryData> {
   const cacheKey = historyCacheKey(dateKey, detectionConfig);
-  const fingerprint = await getLocationDayFingerprint(dateKey);
+  const fingerprint = await getDayHistoryFingerprint(dateKey);
   const cached = historyDataCache.read(cacheKey, dateKey);
   const cachedFingerprint = historyDataCache.getFingerprint(dateKey);
   const canUseCache =
@@ -66,7 +67,7 @@ async function reloadHistoryIfChanged(
   detectionConfig: TripDetectionConfig,
 ): Promise<HistoryData | null> {
   const cacheKey = historyCacheKey(dateKey, detectionConfig);
-  const fingerprint = await getLocationDayFingerprint(dateKey);
+  const fingerprint = await getDayHistoryFingerprint(dateKey);
   if (
     historyDataCache.getFingerprint(dateKey) === fingerprint &&
     historyDataCache.has(cacheKey)
@@ -239,6 +240,35 @@ export function useHistoryForDay(dateKey: string): {
     });
 
     return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    const scheduleReload = (timestamp: Date) => {
+      if (toDateKey(timestamp) !== dateKeyRef.current) {
+        return;
+      }
+      if (AppState.currentState !== 'active') {
+        return;
+      }
+      if (refreshTimerRef.current != null) {
+        return;
+      }
+      refreshTimerRef.current = setTimeout(() => {
+        refreshTimerRef.current = null;
+        void reloadHistoryIfChanged(
+          dateKeyRef.current,
+          detectionConfigRef.current,
+        )
+          .then(result => {
+            if (result != null) {
+              setData(result);
+            }
+          })
+          .catch(() => undefined);
+      }, 800);
+    };
+
+    return subscribeMomentChanges(scheduleReload);
   }, []);
 
   return {data, loading, error, refresh};

@@ -1,4 +1,4 @@
-import {and, asc, eq} from 'drizzle-orm';
+import {asc, eq, sql} from 'drizzle-orm';
 
 import {getDatabase} from '../client';
 import {trips} from '../schema';
@@ -156,4 +156,18 @@ export async function updateTripLabelSelection(
 export async function countTripsForDay(dateKey: string): Promise<number> {
   const rows = await listTripsForDay(dateKey);
   return rows.length;
+}
+
+export async function countAllTrips(): Promise<number> {
+  const db = await getDatabase();
+  const [row] = await db
+    .select({count: sql<number>`cast(count(*) as integer)`})
+    .from(trips);
+  return row?.count ?? 0;
+}
+
+export async function deleteAllTrips(): Promise<number> {
+  const db = await getDatabase();
+  const deleted = await db.delete(trips).returning({id: trips.id});
+  return deleted.length;
 }

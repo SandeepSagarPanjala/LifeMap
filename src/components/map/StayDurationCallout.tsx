@@ -4,15 +4,26 @@ import {Armchair, MapPin} from 'lucide-react-native';
 import {StyleSheet, Text, View} from 'react-native';
 
 import {SavedPlaceIcon} from '@/components/map/SavedPlaceIcon';
+import {MomentCountsRow} from '@/components/moments/MomentCountsRow';
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
-import {formatStayVisitLabel, isVisitOngoing} from '@/lib/trip-format';
+import type {MomentCounts} from '@/lib/moments/moment-counts';
+import {hasMomentCounts} from '@/lib/moments/moment-counts';
+import {
+  formatStayVisitLabel,
+  formatVisitDateLine,
+  isVisitOngoing,
+} from '@/lib/trip-format';
 import type {DetectedTrip} from '@/lib/trip-detection';
 import {stayTripMarkerCoordinate} from '@/lib/trip-detection';
 import {savedPlaceDisplayLabel} from '@/lib/saved-places';
 import {HISTORY_COLORS} from '@/lib/history-timeline';
+
 const DOT_SIZE = 18;
 const DOT_RING_SIZE = 28;
 const MARKER_ANCHOR = {x: 0.5, y: 0.5} as const;
+const LIVE_PUCK_ANCHOR = {x: 0.5, y: 1} as const;
+/** Lift label above the system user-location puck (bottom-anchored). */
+const LIVE_PUCK_CENTER_OFFSET = {x: 0, y: -100} as const;
 const BUBBLE_OFFSET_Y = -(DOT_RING_SIZE / 2 + 44);
 
 type StayDurationCalloutProps = {
@@ -20,21 +31,23 @@ type StayDurationCalloutProps = {
   savedPlace?: SavedPlaceRow | null;
   nearbyPlaceLabel?: string | null;
   nearbyPlacePinned?: boolean;
+  momentCounts?: MomentCounts;
   /** History scrub — orange visit pin. Live map keeps the system blue user puck. */
   showVisitPin?: boolean;
   /** Anchor the label (e.g. live GPS while the blue puck is shown). */
   anchorCoordinate?: {latitude: number; longitude: number} | null;
+  onPressMomentCounts?: () => void;
 };
-
-const LIVE_PUCK_BUBBLE_OFFSET_Y = -58;
 
 export function StayDurationCallout({
   trip,
   savedPlace = null,
   nearbyPlaceLabel = null,
   nearbyPlacePinned = false,
+  momentCounts,
   showVisitPin = true,
   anchorCoordinate = null,
+  onPressMomentCounts,
 }: StayDurationCalloutProps) {
   const [now, setNow] = useState(() => new Date());
   const ongoing = isVisitOngoing(trip.endAt, now, {
@@ -42,9 +55,13 @@ export function StayDurationCallout({
   });
   const visitCoordinate = stayTripMarkerCoordinate(trip, {ongoing});
   const coordinate = anchorCoordinate ?? visitCoordinate;
-  const bubbleOffsetY = showVisitPin
-    ? BUBBLE_OFFSET_Y
-    : LIVE_PUCK_BUBBLE_OFFSET_Y;
+  const counts = momentCounts;
+  const showMomentCounts = counts != null && hasMomentCounts(counts);
+  const livePuckLabel = !showVisitPin;
+  const bubbleAnchor = livePuckLabel ? LIVE_PUCK_ANCHOR : MARKER_ANCHOR;
+  const bubbleCenterOffset = livePuckLabel
+    ? LIVE_PUCK_CENTER_OFFSET
+    : {x: 0, y: BUBBLE_OFFSET_Y};
 
   useEffect(() => {
     if (!ongoing) {
@@ -79,23 +96,31 @@ export function StayDurationCallout({
 
       <Marker
         coordinate={coordinate}
-        anchor={MARKER_ANCHOR}
-        centerOffset={{x: 0, y: bubbleOffsetY}}
+        anchor={bubbleAnchor}
+        centerOffset={bubbleCenterOffset}
         zIndex={12}
-        tracksViewChanges={false}>
-        <View style={styles.bubble}>
-          {savedPlace ? (
-            <SavedPlaceIcon kind={savedPlace.kind} size={16} />
-          ) : (
-            <Armchair size={14} color={HISTORY_COLORS.stay} strokeWidth={2.25} />
-          )}
-          <View style={styles.bubbleText}>
+        tracksViewChanges={false}
+        onPress={
+          showMomentCounts && onPressMomentCounts ? onPressMomentCounts : undefined
+        }>
+        <View style={styles.bubble} collapsable={false}>
+          {showMomentCounts ? (
+            <>
+              <MomentCountsRow counts={counts!} onPress={onPressMomentCounts} />
+              <View style={styles.divider} />
+            </>
+          ) : null}
+
+          <View style={styles.body}>
             {savedPlace ? (
-              <Text style={styles.placeLabel} numberOfLines={1}>
-                {savedPlaceDisplayLabel(savedPlace)}
-              </Text>
+              <View style={styles.placeRow}>
+                <SavedPlaceIcon kind={savedPlace.kind} size={16} />
+                <Text style={styles.placeLabel} numberOfLines={1}>
+                  {savedPlaceDisplayLabel(savedPlace)}
+                </Text>
+              </View>
             ) : nearbyPlaceLabel ? (
-              <View style={styles.placeLabelRow}>
+              <View style={styles.placeRow}>
                 {nearbyPlacePinned ? (
                   <MapPin
                     size={12}
@@ -103,13 +128,17 @@ export function StayDurationCallout({
                     fill="#C7C7CC"
                     strokeWidth={2}
                   />
-                ) : null}
+                ) : (
+                  <Armchair size={14} color={HISTORY_COLORS.stay} strokeWidth={2.25} />
+                )}
                 <Text style={styles.placeLabel} numberOfLines={1}>
                   {nearbyPlaceLabel}
                 </Text>
               </View>
             ) : null}
-            <Text style={styles.mapLabel} numberOfLines={2}>
+
+            <Text style={styles.dateLine}>{formatVisitDateLine(trip.startAt, now)}</Text>
+            <Text style={styles.timeLine} numberOfLines={2}>
               {visit.title}
             </Text>
             <Text style={styles.durationLine}>{visit.subtitle}</Text>
@@ -151,9 +180,6 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   bubble: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
     paddingHorizontal: 12,
@@ -164,25 +190,33 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.14,
     shadowRadius: 8,
     elevation: 5,
+    gap: 8,
   },
-  bubbleText: {
-    flexShrink: 1,
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: '#E5E5EA',
+  },
+  body: {
+    gap: 2,
+  },
+  placeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
   },
   placeLabel: {
     flexShrink: 1,
     fontSize: 15,
     fontWeight: '700',
     color: '#1C1C1E',
-    marginBottom: 2,
   },
-  placeLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 2,
-    maxWidth: '100%',
+  dateLine: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#636366',
   },
-  mapLabel: {
+  timeLine: {
     fontSize: 14,
     fontWeight: '700',
     color: '#1C1C1E',
@@ -191,7 +225,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     color: '#636366',
-    marginTop: 2,
   },
   statusLine: {
     fontSize: 11,

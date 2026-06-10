@@ -6,15 +6,19 @@ import {
 } from '@/db/repositories/location-days';
 import {
   enqueueMaterializationJob,
+  clearMaterializationQueue,
   type MaterializationJob,
 } from '@/db/repositories/materialization-queue';
+import {getMomentsForDay} from '@/db/repositories/moments';
 import {
+  deleteAllMaterializedDays,
   getMaterializedDay,
   markMaterializedDayFailed,
   upsertMaterializedDay,
 } from '@/db/repositories/materialized-days';
 import {findPlaceLookupNearAnchor} from '@/db/repositories/place-lookup-cache';
 import {
+  deleteAllTrips,
   getTripByEventKey,
   getTripById,
   insertTripIfAbsent,
@@ -24,6 +28,7 @@ import {
 } from '@/db/repositories/trips';
 import {getDayRange, getTodayDateKey} from '@/lib/day-utils';
 import type {HistoryData} from '@/lib/history-data-types';
+import {clearHistoryDataCache} from '@/lib/history-data-cache';
 import {runWhenIdle} from '@/lib/run-when-idle';
 import {
   getHistoryLookaheadEnd,
@@ -123,7 +128,8 @@ async function loadLiveHistoryForDay(
   const lookbackStart = getHistoryLookbackStart(dayStart);
   const dayEnd = endOfDay(dayStart);
   const lookaheadEnd = getHistoryLookaheadEnd(dayEnd);
-  const [dayPoints, lookbackPoints, lookaheadPoints] = await Promise.all([
+  const [dayPoints, lookbackPoints, lookaheadPoints, dayMoments] =
+    await Promise.all([
     getLocationPointsForDay(dateKey),
     getLocationPointsInRange(
       lookbackStart,
@@ -133,6 +139,7 @@ async function loadLiveHistoryForDay(
       new Date(dayEnd.getTime() + 1),
       lookaheadEnd,
     ),
+    getMomentsForDay(dayStart, rangeEnd),
   ]);
   const entries = prepareDayHistoryTimeline(
     dateKey,
@@ -141,6 +148,9 @@ async function loadLiveHistoryForDay(
     detectionConfig,
     referenceNow,
     lookaheadPoints,
+    {
+      momentTimestamps: dayMoments.map(moment => moment.timestamp),
+    },
   );
 
   return {
@@ -194,7 +204,10 @@ export async function loadHistoryWithMaterialization(
     !isToday &&
     canReadDayFromMaterializedTrips(materializedDay, TRIP_DETECTION_VERSION)
   ) {
-    return loadHistoryFromMaterializedTrips(dateKey);
+    const materialized = await loadHistoryFromMaterializedTrips(dateKey);
+    if (materialized.entries.length > 0) {
+      return materialized;
+    }
   }
 
   const live = await loadLiveHistoryForDay(dateKey, detectionConfig);
@@ -442,6 +455,31 @@ export async function ensureTripForClosedStay(
   }
 
   return trip;
+}
+
+export type ResetMaterializedTripHistoryResult = {
+  tripsDeleted: number;
+  materializedDaysDeleted: number;
+  queueJobsDeleted: number;
+};
+
+/** Drop cached visit/drive rows so history rebuilds from GPS and moments. */
+export async function resetMaterializedTripHistory(): Promise<ResetMaterializedTripHistoryResult> {
+  const [tripsDeleted, materializedDaysDeleted, queueJobsDeleted] =
+    await Promise.all([
+      deleteAllTrips(),
+      deleteAllMaterializedDays(),
+      clearMaterializationQueue(),
+    ]);
+
+  clearHistoryDataCache();
+  notifyMaterializationUpdated();
+
+  return {
+    tripsDeleted,
+    materializedDaysDeleted,
+    queueJobsDeleted,
+  };
 }
 
 export type {TripRow};

@@ -4,9 +4,12 @@ import {Pause, Play} from 'lucide-react-native';
 
 import {SavedPlaceIcon} from '@/components/map/SavedPlaceIcon';
 import {VisitPlaceLabelPager} from '@/components/map/VisitPlaceLabelPager';
+import {MomentCountsRow} from '@/components/moments/MomentCountsRow';
 import {Text} from '@/components/ui/text';
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import {HISTORY_COLORS} from '@/lib/history-timeline';
+import type {MomentCounts} from '@/lib/moments/moment-counts';
+import {hasMomentCounts} from '@/lib/moments/moment-counts';
 import {savedPlaceDisplayLabel} from '@/lib/saved-places';
 import {SAVED_PLACE_MAP_STYLE} from '@/lib/saved-places-map';
 import type {VisitPlaceDisplay} from '@/lib/place-lookup-types';
@@ -30,6 +33,8 @@ type HistoryEventCardProps = {
   onSelectVisitPlaceIndex?: (index: number) => void;
   driveStartPlace?: SavedPlaceRow | null;
   driveEndPlace?: SavedPlaceRow | null;
+  momentCounts?: MomentCounts;
+  onPressMomentCounts?: () => void;
   /** Timeline has data but no event is selected yet. */
   scrubOnEmpty?: boolean;
   distanceUnit: DistanceUnit;
@@ -124,6 +129,8 @@ export function HistoryEventCard({
   onSelectVisitPlaceIndex,
   driveStartPlace = null,
   driveEndPlace = null,
+  momentCounts,
+  onPressMomentCounts,
   scrubOnEmpty = false,
   distanceUnit,
   isPlaying,
@@ -160,9 +167,16 @@ export function HistoryEventCard({
     : null;
   const title = isStay ? visitLabel!.title : formatTimelineTitle(entry);
   const stats = formatTimelineStats(entry, distanceUnit);
+  const showMomentCounts = momentCounts != null && hasMomentCounts(momentCounts);
 
   return (
     <View style={[styles.card, isGap && styles.cardGap]}>
+      {showMomentCounts ? (
+        <>
+          <MomentCountsRow counts={momentCounts!} onPress={onPressMomentCounts} />
+          <View style={styles.momentDivider} />
+        </>
+      ) : null}
       {!isStay ? (
         <Text variant="muted" className="text-xs uppercase tracking-wide">
           {isGap ? 'Gap' : 'Drive'}
@@ -291,6 +305,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E5EA',
     borderStyle: 'dashed',
+  },
+  momentDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: '#E5E5EA',
+    marginBottom: 12,
   },
   eventTitleRow: {
     flexDirection: 'row',

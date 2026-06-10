@@ -105,3 +105,11 @@ export async function countPendingJobs(): Promise<number> {
     .where(eq(materializationQueue.status, 'pending'));
   return rows.length;
 }
+
+export async function clearMaterializationQueue(): Promise<number> {
+  const db = await getDatabase();
+  const deleted = await db
+    .delete(materializationQueue)
+    .returning({id: materializationQueue.id});
+  return deleted.length;
+}
