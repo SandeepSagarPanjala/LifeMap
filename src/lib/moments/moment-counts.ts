@@ -29,6 +29,29 @@ export function hasMomentCounts(counts: MomentCounts): boolean {
   return counts.photo > 0 || counts.voice > 0 || counts.note > 0;
 }
 
+export function momentCountsEqual(a: MomentCounts, b: MomentCounts): boolean {
+  return a.photo === b.photo && a.voice === b.voice && a.note === b.note;
+}
+
+/** Hide the docked day bar when the open-visit callout already shows every moment today. */
+export function shouldShowDayMomentSummaryBar(
+  dayCounts: MomentCounts,
+  currentOpenVisit: DayTimelineEntry | null,
+  visitCounts: MomentCounts,
+): boolean {
+  if (!hasMomentCounts(dayCounts)) {
+    return false;
+  }
+  if (
+    currentOpenVisit?.kind === 'stay' &&
+    hasMomentCounts(visitCounts) &&
+    momentCountsEqual(dayCounts, visitCounts)
+  ) {
+    return false;
+  }
+  return true;
+}
+
 export function countMoments(moments: MomentRow[]): MomentCounts {
   const counts = emptyMomentCounts();
   for (const moment of moments) {

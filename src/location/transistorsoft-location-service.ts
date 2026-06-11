@@ -10,8 +10,8 @@ import {
   insertLocationPoint,
 } from '@/db/repositories/location-points';
 import {getSetting, setSetting} from '@/db/repositories/settings';
+import {evaluateDepartureWatchdog} from '@/lib/departure-watchdog';
 import {recordTrackingDiagnostic} from '@/lib/tracking-diagnostics';
-import {STATIONARY_PING_MIN_MS} from '@/lib/motion-tracking-policy';
 import {
   getTrackingPresetConfig,
   SETTINGS_KEY_TRACKING_ENABLED,
@@ -64,6 +64,8 @@ export class TransistorSoftLocationService implements LocationService {
   private configured = false;
   private subscriptions: Subscription[] = [];
   private lastPersistedMs = 0;
+  private lastPersistedLat: number | null = null;
+  private lastPersistedLng: number | null = null;
   private heartbeatInFlight: Promise<void> | null = null;
   private suppressOnLocationTimestampMs: number | null = null;
   private initializingPersistedClock: Promise<void> | null = null;
@@ -98,6 +100,15 @@ export class TransistorSoftLocationService implements LocationService {
     }, {dedupe: options?.dedupe});
 
     this.lastPersistedMs = timestamp.getTime();
+    this.lastPersistedLat = coords.latitude;
+    this.lastPersistedLng = coords.longitude;
+  }
+
+  private lastSavedFix(): {lat: number; lng: number} | null {
+    if (this.lastPersistedLat == null || this.lastPersistedLng == null) {
+      return null;
+    }
+    return {lat: this.lastPersistedLat, lng: this.lastPersistedLng};
   }
 
   private async initializePersistedClock(): Promise<void> {
@@ -108,6 +119,8 @@ export class TransistorSoftLocationService implements LocationService {
       const latest = await getLatestLocationPoint();
       if (latest?.timestamp) {
         this.lastPersistedMs = latest.timestamp.getTime();
+        this.lastPersistedLat = latest.lat;
+        this.lastPersistedLng = latest.lng;
       }
     })().finally(() => {
       this.initializingPersistedClock = null;
@@ -138,7 +151,7 @@ export class TransistorSoftLocationService implements LocationService {
     await this.importNativeQueue();
   }
 
-  /** Fresh GPS when the SDK has been quiet 30+ min while tracking is still on. */
+  /** Samples GPS every heartbeat to catch silent departures after long stationary periods. */
   private async onHeartbeat(): Promise<void> {
     if (this.heartbeatInFlight != null) {
       return this.heartbeatInFlight;
@@ -149,14 +162,30 @@ export class TransistorSoftLocationService implements LocationService {
     return this.heartbeatInFlight;
   }
 
-  private async runHeartbeat(): Promise<void> {
-    const sinceLastSaveMs = Date.now() - this.lastPersistedMs;
-    if (this.lastPersistedMs !== 0 && sinceLastSaveMs < STATIONARY_PING_MIN_MS) {
-      await recordTrackingDiagnostic('heartbeat_skipped_recent_save', {
-        sinceLastSaveMs,
+  private async forceMovingMode(reason: string, details: Record<string, unknown>): Promise<void> {
+    try {
+      await BackgroundGeolocation.changePace(true);
+      await recordTrackingDiagnostic('departure_force_moving', {
+        reason,
+        ...details,
       });
-      return;
+    } catch (error) {
+      await recordTrackingDiagnostic('departure_force_moving_error', {
+        reason,
+        message: error instanceof Error ? error.message : 'unknown',
+        ...details,
+      });
+      if (__DEV__) {
+        console.warn('[LifeMap] changePace(true) failed', error);
+      }
     }
+  }
+
+  private async runHeartbeat(): Promise<void> {
+    await this.importNativeQueue();
+
+    const sinceLastSaveMs =
+      this.lastPersistedMs === 0 ? Number.POSITIVE_INFINITY : Date.now() - this.lastPersistedMs;
 
     try {
       const location = await BackgroundGeolocation.getCurrentPosition({
@@ -164,20 +193,52 @@ export class TransistorSoftLocationService implements LocationService {
         persist: false,
         timeout: 30,
       });
-      this.suppressOnLocationTimestampMs = locationTimestamp(location).getTime();
-      await this.persistLocation(location, 'heartbeat_ping', {dedupe: true});
-      await recordTrackingDiagnostic('heartbeat_saved', {
-        timestamp: locationTimestamp(location).toISOString(),
+      const {coords} = location;
+      const evaluation = evaluateDepartureWatchdog({
+        sinceLastSaveMs,
+        lastSaved: this.lastSavedFix(),
+        fresh: {
+          lat: coords.latitude,
+          lng: coords.longitude,
+          accuracy: coords.accuracy >= 0 ? coords.accuracy : null,
+          speed: coords.speed != null && coords.speed >= 0 ? coords.speed : null,
+        },
+      });
+
+      if (evaluation.forceMoving) {
+        await this.forceMovingMode(evaluation.reason, {
+          distanceMeters: evaluation.distanceMeters,
+          sinceLastSaveMs,
+          speed: coords.speed != null && coords.speed >= 0 ? coords.speed : null,
+        });
+      }
+
+      if (evaluation.shouldPersist) {
+        this.suppressOnLocationTimestampMs = locationTimestamp(location).getTime();
+        await this.persistLocation(location, evaluation.source, {dedupe: true});
+        await recordTrackingDiagnostic(
+          evaluation.source === 'heartbeat_ping' ? 'heartbeat_saved' : 'heartbeat_departure_saved',
+          {
+            reason: evaluation.reason,
+            distanceMeters: evaluation.distanceMeters,
+            timestamp: locationTimestamp(location).toISOString(),
+          },
+        );
+        return;
+      }
+
+      await recordTrackingDiagnostic('heartbeat_checked', {
+        reason: evaluation.reason,
+        distanceMeters: evaluation.distanceMeters,
+        sinceLastSaveMs,
       });
     } catch (error) {
       await recordTrackingDiagnostic('heartbeat_error', {
         message: error instanceof Error ? error.message : 'unknown',
       });
       if (__DEV__) {
-        console.warn('[LifeMap] Stationary ping getCurrentPosition failed', error);
+        console.warn('[LifeMap] Heartbeat getCurrentPosition failed', error);
       }
-    } finally {
-      // no-op
     }
   }
 
@@ -341,6 +402,8 @@ export class TransistorSoftLocationService implements LocationService {
     this.subscriptions.forEach(subscription => subscription.remove());
     this.subscriptions = [];
     this.lastPersistedMs = 0;
+    this.lastPersistedLat = null;
+    this.lastPersistedLng = null;
     this.suppressOnLocationTimestampMs = null;
     this.heartbeatInFlight = null;
     this.configured = false;

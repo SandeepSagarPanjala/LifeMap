@@ -6,7 +6,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import {Animated, Alert, Platform, useColorScheme} from 'react-native';
+import {Animated, Alert, AppState, Platform, useColorScheme} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type MapView from 'react-native-maps';
@@ -36,6 +36,7 @@ import {
   countMoments,
   countMomentsForEntry,
   filterMomentsForEntry,
+  shouldShowDayMomentSummaryBar,
   type MomentCounts,
 } from '@/lib/moments/moment-counts';
 import {
@@ -52,8 +53,12 @@ import {
 import {useTripDetectionConfig} from '@/hooks/use-trip-detection-config';
 import {useTripPlayback} from '@/hooks/use-trip-playback';
 import {buildHistoryMapPlan} from '@/lib/history-map-plan';
-import {countHistoryTimelineEvents, formatHistoryDayNavLabel} from '@/lib/history-timeline';
-import {getTodayDateKey} from '@/lib/day-utils';
+import {
+  countHistoryTimelineEvents,
+  formatHistoryDayNavLabel,
+  formatMapDateLabel,
+} from '@/lib/history-timeline';
+import {followTodayDateKeyRoll, getTodayDateKey} from '@/lib/day-utils';
 import {regionForCoordinates, toMapCoordinates} from '@/lib/location-geo';
 import {
   animateRecenterToUser,
@@ -116,8 +121,34 @@ export function useMapScreenController() {
   const preferredMapApp = useAppStore(state => state.preferredMapApp);
   const distanceUnit = useAppStore(state => state.distanceUnit);
   const todayKey = getTodayDateKey();
+  const lastKnownTodayRef = useRef(todayKey);
 
   const [selectedDateKey, setSelectedDateKey] = useState(todayKey);
+
+  const syncSelectedDateKeyForTodayRoll = useCallback((nextTodayKey: string) => {
+    const priorTodayKey = lastKnownTodayRef.current;
+    if (priorTodayKey === nextTodayKey) {
+      return;
+    }
+    lastKnownTodayRef.current = nextTodayKey;
+    setSelectedDateKey(current =>
+      followTodayDateKeyRoll(current, priorTodayKey, nextTodayKey),
+    );
+  }, []);
+
+  useEffect(() => {
+    syncSelectedDateKeyForTodayRoll(todayKey);
+  }, [syncSelectedDateKeyForTodayRoll, todayKey]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextState => {
+      if (nextState !== 'active') {
+        return;
+      }
+      syncSelectedDateKeyForTodayRoll(getTodayDateKey());
+    });
+    return () => subscription.remove();
+  }, [syncSelectedDateKeyForTodayRoll]);
   const [historyDatePickerOpen, setHistoryDatePickerOpen] = useState(false);
   const [historyPanelOpen, setHistoryPanelOpen] = useState(false);
   const [selectedHistoryIndex, setSelectedHistoryIndex] = useState(-1);
@@ -145,6 +176,10 @@ export function useMapScreenController() {
   const {data: historyData, loading: historyLoading} =
     useHistoryForDay(selectedDateKey);
   const viewingToday = selectedDateKey === todayKey;
+  const mapDateLabel = useMemo(
+    () => formatMapDateLabel(selectedDateKey, todayKey),
+    [selectedDateKey, todayKey],
+  );
   const historyEntries = historyData.entries;
 
   const captureInFlightRef = useRef(false);
@@ -278,14 +313,39 @@ export function useMapScreenController() {
   const selectedStay =
     selectedPlayable?.kind === 'stay' ? selectedPlayable : null;
 
+  const showDayJourney = !historyPanelOpen && !playback.isPlaying;
+  const dayMomentCounts = useMemo(
+    () => countMoments(dayMoments),
+    [dayMoments],
+  );
+  const currentVisitMomentCounts = useMemo((): MomentCounts => {
+    if (!currentOpenVisit) {
+      return {photo: 0, voice: 0, note: 0};
+    }
+    return countMomentsForEntry(dayMoments, currentOpenVisit);
+  }, [dayMoments, currentOpenVisit]);
+  const showDayMomentSummary = useMemo(
+    () =>
+      showDayJourney &&
+      shouldShowDayMomentSummaryBar(
+        dayMomentCounts,
+        currentOpenVisit,
+        currentVisitMomentCounts,
+      ),
+    [
+      showDayJourney,
+      dayMomentCounts,
+      currentOpenVisit,
+      currentVisitMomentCounts,
+    ],
+  );
+
   const provider =
     Platform.OS === 'android' && preferredMapApp === 'google'
       ? PROVIDER_GOOGLE
       : PROVIDER_DEFAULT;
 
-  const reserveDayMomentSummary =
-    !historyPanelOpen && !playback.isPlaying;
-  const daySummaryBarReserve = reserveDayMomentSummary
+  const daySummaryBarReserve = showDayMomentSummary
     ? DAY_MOMENT_SUMMARY_BOTTOM_GAP +
       DAY_MOMENT_SUMMARY_BAR_HEIGHT +
       DAY_MOMENT_SUMMARY_ABOVE_BAR_GAP
@@ -381,20 +441,6 @@ export function useMapScreenController() {
     showHistoryPanelContent &&
     selectedHistoryIndex >= 0 &&
     historyMapPlan.selected != null;
-  const showDayJourney = !historyPanelOpen && !playback.isPlaying;
-  const showDayMomentSummary = showDayJourney;
-  const dayMomentCounts = useMemo(
-    () => countMoments(dayMoments),
-    [dayMoments],
-  );
-
-  const currentVisitMomentCounts = useMemo((): MomentCounts | undefined => {
-    if (!currentOpenVisit) {
-      return undefined;
-    }
-    return countMomentsForEntry(dayMoments, currentOpenVisit);
-  }, [dayMoments, currentOpenVisit]);
-
   const dayMomentMapPinsRaw = useMemo((): MomentMapPin[] => {
     if (!showDayJourney) {
       return [];
@@ -1006,6 +1052,7 @@ export function useMapScreenController() {
     historyPanelY,
     historyDatePickerOpen,
     selectedDateKey,
+    mapDateLabel,
     selectedHistoryIndex,
     selectedEntry,
     selectedPlayable,

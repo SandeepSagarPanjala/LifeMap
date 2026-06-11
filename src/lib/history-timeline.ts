@@ -316,6 +316,28 @@ export function formatHistoryDayNavLabel(
   return format(day, 'EEE, MMM d');
 }
 
+/** Always names the calendar day shown on the map — the source of truth for map data. */
+export function formatMapDateLabel(
+  dateKey: string,
+  todayKey: string,
+  referenceNow: Date = new Date(),
+): string {
+  const day = parseDateKey(dateKey);
+  const calendarDate =
+    day.getFullYear() !== referenceNow.getFullYear()
+      ? format(day, 'MMM d, yyyy')
+      : format(day, 'MMM d');
+
+  if (dateKey === todayKey) {
+    return `Today · ${calendarDate}`;
+  }
+
+  const weekday = format(day, 'EEE');
+  return day.getFullYear() !== referenceNow.getFullYear()
+    ? `${weekday} · ${format(day, 'MMM d, yyyy')}`
+    : `${weekday} · ${calendarDate}`;
+}
+
 /** Linear 12 AM → 12 AM (used in tests / helpers). */
 export function calendarTimeToRulerPx(
   time: Date,

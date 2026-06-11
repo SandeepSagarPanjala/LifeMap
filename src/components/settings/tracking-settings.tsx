@@ -123,6 +123,29 @@ export function TrackingSettings() {
           <Text className="text-primary text-center font-medium">Request location access</Text>
         </Pressable>
       ) : null}
+
+      <View className="border-border mt-4 border-t pt-4 opacity-60">
+        <View className="flex-row items-center gap-3">
+          <View className="flex-1">
+            <Text className="font-medium">Maximum reliability</Text>
+            <Text variant="muted" className="mt-1 text-sm leading-5">
+              Keeps GPS active even when still. Better drive coverage, higher battery
+              use (~10–15%/day). Test the current departure watchdog on real drives
+              first — enable this only if gaps remain.
+            </Text>
+          </View>
+          <Pressable
+            accessibilityRole="switch"
+            accessibilityState={{checked: false, disabled: true}}
+            disabled
+            className="bg-muted h-6 w-11 rounded-full px-0.5">
+            <View className="mt-0.5 ml-0 h-5 w-5 rounded-full bg-white" />
+          </Pressable>
+        </View>
+        <Text variant="muted" className="mt-2 text-xs">
+          Coming soon — placeholder while we validate the new heartbeat departure checks.
+        </Text>
+      </View>
     </View>
   );
 }

@@ -10,6 +10,7 @@ import {
   MAP_SETTINGS_SIZE,
   MAP_SETTINGS_TOP_GAP,
 } from './map-screen-constants';
+import {MapDateLabel} from '@/components/map/MapDateLabel';
 import {MaterializationActivityDot} from '@/components/map/MaterializationActivityDot';
 import type {MapScreenController} from './use-map-screen-controller';
 
@@ -20,11 +21,12 @@ type MapScreenTopBarProps = {
 export function MapScreenTopBar({controller}: MapScreenTopBarProps) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const colors = useThemeColors();
-  const {insets} = controller;
+  const {insets, mapDateLabel} = controller;
   const settingsTop = insets.top + MAP_SETTINGS_TOP_GAP;
 
   return (
     <View pointerEvents="box-none" style={styles.bar}>
+      <MapDateLabel label={mapDateLabel} topInset={insets.top} />
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Settings"

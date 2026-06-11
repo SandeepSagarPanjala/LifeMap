@@ -44,3 +44,18 @@ export function shiftDateKey(dateKey: string, deltaDays: number): string {
 export function isDateKeyAfterToday(dateKey: string, now: Date = new Date()): boolean {
   return isAfter(parseDateKey(dateKey), startOfDay(toZonedDate(now)));
 }
+
+/**
+ * When the calendar day rolls over, keep following "today" only if the map was
+ * already showing the prior today — not when the user picked another day.
+ */
+export function followTodayDateKeyRoll(
+  selectedDateKey: string,
+  priorTodayKey: string,
+  nextTodayKey: string,
+): string {
+  if (priorTodayKey === nextTodayKey) {
+    return selectedDateKey;
+  }
+  return selectedDateKey === priorTodayKey ? nextTodayKey : selectedDateKey;
+}

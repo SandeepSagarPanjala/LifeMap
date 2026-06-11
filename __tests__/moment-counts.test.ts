@@ -4,6 +4,7 @@ import {
   countMomentsForEntry,
   emptyMomentCounts,
   filterMomentsForEntry,
+  shouldShowDayMomentSummaryBar,
 } from '../src/lib/moments/moment-counts';
 import type {MomentRow} from '../src/db/repositories/moments';
 import type {DayTimelineEntry} from '../src/lib/trip-detection';
@@ -122,5 +123,20 @@ describe('moment counts', () => {
     expect(filterMomentsForEntry(moments, stay, now).map(item => item.id)).toEqual([
       1, 3,
     ]);
+  });
+
+  it('hides the day summary bar when every moment is on the open visit callout', () => {
+    const dayCounts = {photo: 1, voice: 1, note: 0};
+    expect(shouldShowDayMomentSummaryBar(dayCounts, stay, dayCounts)).toBe(
+      false,
+    );
+  });
+
+  it('keeps the day summary bar when moments exist outside the open visit', () => {
+    const dayCounts = {photo: 2, voice: 1, note: 0};
+    const visitCounts = {photo: 1, voice: 0, note: 0};
+    expect(shouldShowDayMomentSummaryBar(dayCounts, stay, visitCounts)).toBe(
+      true,
+    );
   });
 });

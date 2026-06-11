@@ -2,6 +2,7 @@ import {useEffect} from 'react';
 import {AppState} from 'react-native';
 
 import {ensureDatabaseReady, bootstrapLocationTracking} from '@/location/bootstrap';
+import {getLocationService} from '@/location/transistorsoft-location-service';
 import {
   initializeTrackingDiagnosticsEnabled,
   recordTrackingDiagnostic,
@@ -50,9 +51,17 @@ export function AppBootstrap({children, enableLocationTracking = false}: AppBoot
         previous,
         next: nextState,
       });
+
+      if (
+        enableLocationTracking &&
+        hasCompletedPrivacyOnboarding &&
+        nextState === 'active'
+      ) {
+        void getLocationService().drainNativeQueue().catch(() => undefined);
+      }
     });
     return () => subscription.remove();
-  }, []);
+  }, [enableLocationTracking, hasCompletedPrivacyOnboarding]);
 
   return children;
 }

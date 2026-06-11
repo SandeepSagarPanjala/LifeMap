@@ -16,6 +16,7 @@ describe('tracking presets', () => {
     expect(config.preventSuspend).toBe(true);
     expect(config.pausesLocationUpdatesAutomatically).toBe(false);
     expect(config.stopTimeout).toBe(30);
+    expect(config.stopDetectionDelay).toBe(300_000);
     expect(config.disableStopDetection).toBe(false);
   });
 });
