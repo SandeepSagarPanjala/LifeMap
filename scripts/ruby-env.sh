@@ -17,6 +17,10 @@ export LANG="${LANG:-en_US.UTF-8}"
 export LC_ALL="${LC_ALL:-en_US.UTF-8}"
 export PATH="$RUBY_PREFIX/bin:$GEM_BIN:$PATH"
 
+# After pod install, xcodebuild -showBuildSettings can exceed Fastlane's 3s default.
+export FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT="${FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT:-120}"
+export FASTLANE_XCODEBUILD_SETTINGS_RETRIES="${FASTLANE_XCODEBUILD_SETTINGS_RETRIES:-4}"
+
 if ! command -v ruby >/dev/null 2>&1; then
   echo "ERROR: ruby not found. Install with: brew install ruby@3.2" >&2
   return 1 2>/dev/null || exit 1

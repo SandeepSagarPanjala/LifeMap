@@ -58,6 +58,10 @@ This lane:
 
 First upload may take 5–15 minutes to process in App Store Connect.
 
+If `xcodebuild -showBuildSettings timed out` after `pod install`, retry `pnpm ios:beta`
+(scripts set `FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT=120` automatically). Quit Xcode if it
+is open and indexing the project, then run again.
+
 ### Build IPA only (no upload)
 
 ```bash
