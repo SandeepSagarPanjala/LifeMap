@@ -1,7 +1,7 @@
 import { open, type DB } from '@op-engineering/op-sqlite';
 import { drizzle } from 'drizzle-orm/op-sqlite';
-import { migrate } from 'drizzle-orm/op-sqlite/migrator';
-import migrations from '../../drizzle/migrations';
+
+import { runMigrations } from './migrate';
 import { getOrCreateDatabaseKey } from './keychain';
 
 export type Database = ReturnType<typeof drizzle>;
@@ -33,7 +33,7 @@ async function initDatabase(): Promise<{ db: Database; sqlite: DB }> {
 
   const db = drizzle(sqlite);
 
-  await migrate(db, migrations);
+  await runMigrations(sqlite);
 
   return { db, sqlite };
 }

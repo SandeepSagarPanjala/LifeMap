@@ -22,6 +22,14 @@ import {
 } from '@/lib/motion-tracking-policy';
 import {recordTrackingDiagnostic} from '@/lib/tracking-diagnostics';
 import {
+  createTrackingMotionGuardState,
+  resetDepartureWake,
+  resetTrackingMotionGuardState,
+  shouldApplyDepartureWake,
+  shouldLogMotionChange,
+  type TrackingMotionGuardState,
+} from '@/lib/tracking-diagnostic-guards';
+import {
   getTrackingConfig,
   SETTINGS_KEY_TRACKING_ENABLED,
   SETTINGS_KEY_TRACKING_MAX_RELIABILITY,
@@ -92,6 +100,8 @@ export class TransistorSoftLocationService implements LocationService {
   private motionInFlight: Promise<void> | null = null;
   private suppressOnLocationTimestampMs: number | null = null;
   private initializingPersistedClock: Promise<void> | null = null;
+  private readonly motionGuard: TrackingMotionGuardState =
+    createTrackingMotionGuardState();
 
   private async persistLocation(
     location: Location,
@@ -226,6 +236,10 @@ export class TransistorSoftLocationService implements LocationService {
   }
 
   private async forceMovingMode(reason: string, details: Record<string, unknown>): Promise<void> {
+    if (!shouldApplyDepartureWake(this.motionGuard)) {
+      return;
+    }
+
     try {
       await BackgroundGeolocation.changePace(true);
       await recordTrackingDiagnostic('departure_force_moving', {
@@ -233,6 +247,7 @@ export class TransistorSoftLocationService implements LocationService {
         ...details,
       });
     } catch (error) {
+      resetDepartureWake(this.motionGuard);
       await recordTrackingDiagnostic('departure_force_moving_error', {
         reason,
         message: error instanceof Error ? error.message : 'unknown',
@@ -329,10 +344,12 @@ export class TransistorSoftLocationService implements LocationService {
   }
 
   private async runMotionChange(event: MotionChangeEvent): Promise<void> {
-    await recordTrackingDiagnostic('motion_change', {
-      isMoving: event.isMoving,
-      hasLocation: event.location != null,
-    });
+    if (shouldLogMotionChange(this.motionGuard, event.isMoving)) {
+      await recordTrackingDiagnostic('motion_change', {
+        isMoving: event.isMoving,
+        hasLocation: event.location != null,
+      });
+    }
     if (!event.location || isSampleLocation(event.location)) {
       return;
     }
@@ -476,6 +493,7 @@ export class TransistorSoftLocationService implements LocationService {
     this.heartbeatInFlight = null;
     this.motionInFlight = null;
     this.configured = false;
+    resetTrackingMotionGuardState(this.motionGuard);
   }
 }
 

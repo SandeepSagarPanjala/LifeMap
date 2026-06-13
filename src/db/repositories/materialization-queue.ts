@@ -69,11 +69,20 @@ export async function claimPendingJobs(
 
   const claimed: MaterializationJob[] = [];
   for (const row of rows) {
-    await db
+    const updated = await db
       .update(materializationQueue)
       .set({status: 'processing'})
-      .where(eq(materializationQueue.id, row.id));
-    claimed.push(mapRow(row));
+      .where(
+        and(
+          eq(materializationQueue.id, row.id),
+          eq(materializationQueue.status, 'pending'),
+        ),
+      )
+      .returning({id: materializationQueue.id});
+
+    if (updated.length > 0) {
+      claimed.push(mapRow(row));
+    }
   }
   return claimed;
 }

@@ -29,7 +29,7 @@ export type TripDetectionConfig = {
 export const SAVED_PLACE_MIN_DWELL_MINUTES = 1;
 
 /** Bump when visit/drive detection rules change — invalidates sealed day cache. */
-export const TRIP_DETECTION_VERSION = 9;
+export const TRIP_DETECTION_VERSION = 10;
 
 export function buildTripDetectionConfig(
   gapMinutes: number,

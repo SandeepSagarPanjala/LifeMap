@@ -1,6 +1,10 @@
 import type {MomentRow} from '@/db/repositories/moments';
 import type {LocationPointRow} from '@/db/repositories/location-days';
-import type {DayTimelineEntry} from '@/lib/trip-detection';
+import type {SavedPlaceRow} from '@/db/repositories/saved-places';
+import {distanceKm, type LocationPointLike} from '@/lib/location-geo';
+import {matchSavedPlaceForPoint} from '@/lib/saved-places';
+import type {DayTimelineEntry, DetectedTrip} from '@/lib/trip-detection';
+import {stayTripCentroid} from '@/lib/trip-detection';
 
 import {
   effectiveTimelineEntryEnd,
@@ -118,6 +122,114 @@ export function filterMomentsForEntry(
   now: Date = new Date(),
 ): MomentRow[] {
   return moments.filter(moment => momentBelongsToEntry(moment, entry, now));
+}
+
+export function resolveMomentLocation(
+  moment: MomentRow,
+  points: LocationPointRow[],
+  entries: DayTimelineEntry[],
+  now: Date = new Date(),
+): LocationPointLike | null {
+  if (moment.lat != null && moment.lng != null) {
+    return {lat: moment.lat, lng: moment.lng};
+  }
+
+  const containingEntry = findContainingTimelineEntry(
+    moment.timestamp,
+    entries,
+    now,
+  );
+  const coordinate = resolveMomentCoordinate(
+    moment.timestamp,
+    points,
+    containingEntry,
+  );
+  return coordinate != null
+    ? {lat: coordinate.lat, lng: coordinate.lng}
+    : null;
+}
+
+export function momentMatchesSavedPlace(
+  moment: MomentRow,
+  place: SavedPlaceRow,
+  points: LocationPointRow[],
+  entries: DayTimelineEntry[],
+  now: Date = new Date(),
+): boolean {
+  const location = resolveMomentLocation(moment, points, entries, now);
+  if (location == null) {
+    return false;
+  }
+  return matchSavedPlaceForPoint(location, [place])?.id === place.id;
+}
+
+export function momentMatchesStayLocation(
+  moment: MomentRow,
+  stay: DetectedTrip,
+  savedPlace: SavedPlaceRow | null,
+  dwellRadiusMeters: number,
+  points: LocationPointRow[],
+  entries: DayTimelineEntry[],
+  now: Date = new Date(),
+): boolean {
+  if (savedPlace != null) {
+    return momentMatchesSavedPlace(moment, savedPlace, points, entries, now);
+  }
+
+  const location = resolveMomentLocation(moment, points, entries, now);
+  if (location == null) {
+    return momentBelongsToEntry(moment, stay, now);
+  }
+
+  const centroid = stayTripCentroid(stay);
+  return distanceKm(location, centroid) * 1000 <= dwellRadiusMeters + 5;
+}
+
+export function filterMomentsForStayEntry(
+  moments: MomentRow[],
+  entry: DayTimelineEntry,
+  options: {
+    savedPlace: SavedPlaceRow | null;
+    dwellRadiusMeters: number;
+    points: LocationPointRow[];
+    entries: DayTimelineEntry[];
+    /** Live stay callout clubs by place; history scrub uses visit time window. */
+    aggregation?: 'place' | 'visit';
+    now?: Date;
+  },
+): MomentRow[] {
+  const now = options.now ?? new Date();
+  const aggregation = options.aggregation ?? 'visit';
+  if (entry.kind !== 'stay' || aggregation === 'visit') {
+    return filterMomentsForEntry(moments, entry, now);
+  }
+
+  return moments.filter(moment =>
+    momentMatchesStayLocation(
+      moment,
+      entry,
+      options.savedPlace,
+      options.dwellRadiusMeters,
+      options.points,
+      options.entries,
+      now,
+    ),
+  );
+}
+
+export function countMomentsForStayEntry(
+  moments: MomentRow[],
+  entry: DayTimelineEntry,
+  options: {
+    savedPlace: SavedPlaceRow | null;
+    dwellRadiusMeters: number;
+    points: LocationPointRow[];
+    entries: DayTimelineEntry[];
+    aggregation?: 'place' | 'visit';
+    now?: Date;
+  },
+): MomentCounts {
+  return countMoments(filterMomentsForStayEntry(moments, entry, options));
 }
 
 export function addToCounts(counts: MomentCounts, moment: MomentRow): void {

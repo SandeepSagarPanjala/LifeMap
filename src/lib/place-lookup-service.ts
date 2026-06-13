@@ -15,6 +15,7 @@ import type {TripDetectionConfig} from '@/lib/trip-settings';
 import {matchSavedPlaceForStay} from '@/lib/saved-places';
 import type {DetectedTrip} from '@/lib/trip-detection';
 import {stayTripCentroid} from '@/lib/trip-detection';
+import {stayMeetsMinimumVisitDwell} from '@/lib/visit-dwell';
 
 function stayLookupAnchor(stay: DetectedTrip): {lat: number; lng: number} {
   const centroid = stayTripCentroid(stay);
@@ -31,8 +32,9 @@ export function resetPlaceLookupSessionBudget(): void {
 export function stayQualifiesForPlaceLookup(
   stay: DetectedTrip,
   config: TripDetectionConfig,
+  savedPlaces: SavedPlaceRow[] = [],
 ): boolean {
-  return stay.durationMs >= config.dwellMinutes * 60_000;
+  return stayMeetsMinimumVisitDwell(stay, config, savedPlaces);
 }
 
 export function shouldSkipPlaceLookupForStay(
@@ -96,7 +98,7 @@ export async function enqueuePlaceLookupForStay(
 ): Promise<void> {
   if (
     stay.points.length === 0 ||
-    !stayQualifiesForPlaceLookup(stay, config) ||
+    !stayQualifiesForPlaceLookup(stay, config, savedPlaces) ||
     shouldSkipPlaceLookupForStay(stay, savedPlaces)
   ) {
     return;

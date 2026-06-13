@@ -42,17 +42,12 @@ export function formatHereForDuration(durationMs: number): string {
   return `Here for ${hours} hr ${minutes} min`;
 }
 
-const VISIT_ONGOING_THRESHOLD_MS = 20 * 60_000;
-
 export function isVisitOngoing(
-  endAt: Date,
-  now = new Date(),
+  _endAt: Date,
+  _now = new Date(),
   options?: {openThroughNow?: boolean},
 ): boolean {
-  if (options?.openThroughNow) {
-    return true;
-  }
-  return now.getTime() - endAt.getTime() < VISIT_ONGOING_THRESHOLD_MS;
+  return options?.openThroughNow === true;
 }
 
 /** "Today", "Yesterday", or "Monday, Jun 9" */
@@ -109,13 +104,16 @@ export function formatStayVisitLabel(
   const ongoing = isVisitOngoing(endAt, now, {
     openThroughNow: options?.openThroughNow,
   });
+  const effectiveDurationMs = ongoing
+    ? Math.max(0, now.getTime() - startAt.getTime())
+    : durationMs;
   return {
     title: formatVisitTimeRange(
       startAt,
       endAt,
       ongoing ? {now} : undefined,
     ),
-    subtitle: formatTripDuration(durationMs),
+    subtitle: formatTripDuration(effectiveDurationMs),
     statusLine: ongoing ? 'Still here' : undefined,
   };
 }

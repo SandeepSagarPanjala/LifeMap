@@ -14,6 +14,7 @@ import {
 import type {TripDetectionConfig} from '@/lib/trip-settings';
 import {matchSavedPlaceForStay, shouldSplitStayAtMidnight} from '@/lib/saved-places';
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
+import {stayMeetsMinimumVisitDwell} from '@/lib/visit-dwell';
 
 const LOOKBACK_HOURS = 48;
 const LOOKAHEAD_HOURS = 48;
@@ -143,9 +144,9 @@ function isCrossDayDriveTailStay(
   stay: DetectedTrip,
   fullTimeline: DayTimelineEntry[],
   config: TripDetectionConfig,
+  savedPlaces: readonly SavedPlaceRow[] = [],
 ): boolean {
-  const minStayMs = config.dwellMinutes * 60_000;
-  if (stay.durationMs >= minStayMs) {
+  if (stayMeetsMinimumVisitDwell(stay, config, savedPlaces)) {
     return false;
   }
 
@@ -162,9 +163,9 @@ function isTrailingDriveArrivalStay(
   stay: DetectedTrip,
   travel: DetectedTrip,
   config: TripDetectionConfig,
+  savedPlaces: readonly SavedPlaceRow[] = [],
 ): boolean {
-  const minStayMs = config.dwellMinutes * 60_000;
-  if (stay.durationMs >= minStayMs) {
+  if (stayMeetsMinimumVisitDwell(stay, config, savedPlaces)) {
     return false;
   }
 
@@ -183,12 +184,7 @@ function isMidDriveNoiseStay(
   config: TripDetectionConfig,
   savedPlaces: readonly SavedPlaceRow[] = [],
 ): boolean {
-  if (savedPlaces.length > 0 && matchSavedPlaceForStay(entry, savedPlaces) != null) {
-    return false;
-  }
-
-  const minStayMs = config.dwellMinutes * 60_000;
-  if (entry.durationMs >= minStayMs) {
+  if (stayMeetsMinimumVisitDwell(entry, config, savedPlaces)) {
     return false;
   }
 
@@ -202,10 +198,10 @@ function isMidDriveNoiseStay(
   if (previous?.kind === 'travel' && next?.kind === 'travel') {
     return true;
   }
-  if (previous?.kind === 'travel' && isTrailingDriveArrivalStay(entry, previous, config)) {
+  if (previous?.kind === 'travel' && isTrailingDriveArrivalStay(entry, previous, config, savedPlaces)) {
     return true;
   }
-  if (isCrossDayDriveTailStay(entry, fullTimeline, config)) {
+  if (isCrossDayDriveTailStay(entry, fullTimeline, config, savedPlaces)) {
     return true;
   }
   return false;
@@ -251,10 +247,10 @@ function attachCrossDayTravelDisplay(
       break;
     }
     const absorbed =
-      next.durationMs < config.dwellMinutes * 60_000 &&
+      !stayMeetsMinimumVisitDwell(next, config, savedPlaces) &&
       (isMidDriveNoiseStay(next, raw, config, savedPlaces) ||
-        isTrailingDriveArrivalStay(next, rawTravel, config) ||
-        isCrossDayDriveTailStay(next, raw, config));
+        isTrailingDriveArrivalStay(next, rawTravel, config, savedPlaces) ||
+        isCrossDayDriveTailStay(next, raw, config, savedPlaces));
     if (!absorbed) {
       break;
     }

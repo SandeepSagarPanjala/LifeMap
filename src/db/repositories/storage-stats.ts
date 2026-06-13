@@ -36,26 +36,36 @@ export type AppStorageBreakdown = {
   databaseFreeBytes: number;
 };
 
-function pragmaNumber(
-  rows: Array<Record<string, unknown>>,
-  key: string,
-): number {
-  const raw = rows[0]?.[key];
-  return typeof raw === 'number' ? raw : Number(raw ?? 0);
-}
-
 export type DatabaseFileStats = {
   totalBytes: number;
   freeBytes: number;
   usedBytes: number;
 };
 
+function pragmaNumber(
+  rows: Array<Record<string, unknown>> | undefined,
+  key: string,
+): number {
+  const row = rows?.[0];
+  if (!row) {
+    return 0;
+  }
+
+  const named = row[key];
+  if (named != null) {
+    return Number(named);
+  }
+
+  const firstValue = Object.values(row)[0];
+  return firstValue != null ? Number(firstValue) : 0;
+}
+
 async function readDatabaseFileStats(): Promise<DatabaseFileStats> {
   const sqlite = await getSqlite();
   const [pageCountResult, pageSizeResult, freelistResult] = await Promise.all([
-    sqlite.execute('PRAGMA page_count'),
-    sqlite.execute('PRAGMA page_size'),
-    sqlite.execute('PRAGMA freelist_count'),
+    sqlite.executeAsync('PRAGMA page_count'),
+    sqlite.executeAsync('PRAGMA page_size'),
+    sqlite.executeAsync('PRAGMA freelist_count'),
   ]);
   return computeDatabaseFileStats(
     pragmaNumber(pageCountResult.rows, 'page_count'),
@@ -97,28 +107,32 @@ type ListedFile = {
 async function listMomentDirectoryFiles(
   relativeDirectory: string,
 ): Promise<ListedFile[]> {
-  const absoluteDirectory = `${getDocumentDirectory()}/${relativeDirectory}`;
-  const exists = await ReactNativeBlobUtil.fs.exists(absoluteDirectory);
-  if (!exists) {
+  try {
+    const absoluteDirectory = `${getDocumentDirectory()}/${relativeDirectory}`;
+    const exists = await ReactNativeBlobUtil.fs.exists(absoluteDirectory);
+    if (!exists) {
+      return [];
+    }
+
+    const names = await ReactNativeBlobUtil.fs.ls(absoluteDirectory);
+    const files: ListedFile[] = [];
+
+    for (const name of names) {
+      const absolutePath = `${absoluteDirectory}/${name}`;
+      const stat = await ReactNativeBlobUtil.fs.stat(absolutePath);
+      if (stat.type === 'directory') {
+        continue;
+      }
+      files.push({
+        relativePath: `${relativeDirectory}/${name}`,
+        bytes: stat.size ?? 0,
+      });
+    }
+
+    return files;
+  } catch {
     return [];
   }
-
-  const names = await ReactNativeBlobUtil.fs.ls(absoluteDirectory);
-  const files: ListedFile[] = [];
-
-  for (const name of names) {
-    const absolutePath = `${absoluteDirectory}/${name}`;
-    const stat = await ReactNativeBlobUtil.fs.stat(absolutePath);
-    if (stat.type === 'directory') {
-      continue;
-    }
-    files.push({
-      relativePath: `${relativeDirectory}/${name}`,
-      bytes: stat.size ?? 0,
-    });
-  }
-
-  return files;
 }
 
 async function resolveMomentFileBytes(moment: MomentRow): Promise<number> {
@@ -220,16 +234,46 @@ export async function getAppStorageBreakdown(): Promise<AppStorageBreakdown> {
     },
   ];
 
-  const momentItems = await groupMomentStorageByType(allMoments);
+  let momentItems: StorageBreakdownItem[] = [];
+  let orphanFiles: ListedFile[] = [];
+  let tempFiles: ListedFile[] = [];
+
+  try {
+    momentItems = await groupMomentStorageByType(allMoments);
+
+    const referencedPaths = referencedMomentPaths(allMoments);
+    const momentFiles = await listMomentDirectoryFiles('moments');
+    orphanFiles = momentFiles.filter(
+      file => !referencedPaths.has(file.relativePath),
+    );
+    tempFiles = await listMomentDirectoryFiles(`moments/${MOMENTS_TMP_DIRECTORY}`);
+  } catch {
+    if (allMoments.length > 0) {
+      momentItems = MOMENT_STORAGE_TYPE_ORDER.flatMap(type => {
+        const typed = allMoments.filter(moment => moment.type === type);
+        if (typed.length === 0) {
+          return [];
+        }
+        const bytes = typed.reduce(
+          (sum, moment) => sum + (moment.contentBytes ?? 0),
+          0,
+        );
+        return [
+          {
+            key: `moments-${type}`,
+            label: momentTypeLabel(type),
+            count: typed.length,
+            bytes,
+            category: 'moment' as const,
+          },
+        ];
+      });
+    }
+  }
+
   items.push(...momentItems);
 
-  const referencedPaths = referencedMomentPaths(allMoments);
-  const momentFiles = await listMomentDirectoryFiles('moments');
-  const orphanFiles = momentFiles.filter(
-    file => !referencedPaths.has(file.relativePath),
-  );
   const orphanBytes = sumBreakdownBytes(orphanFiles);
-
   if (orphanBytes > 0) {
     items.push({
       key: 'orphan-moment-files',
@@ -240,7 +284,6 @@ export async function getAppStorageBreakdown(): Promise<AppStorageBreakdown> {
     });
   }
 
-  const tempFiles = await listMomentDirectoryFiles(`moments/${MOMENTS_TMP_DIRECTORY}`);
   const tempBytes = sumBreakdownBytes(tempFiles);
   if (tempBytes > 0) {
     items.push({

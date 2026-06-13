@@ -3,8 +3,8 @@ import { getDatabase } from '../src/db/client';
 import * as schema from '../src/db/schema';
 
 jest.mock('@op-engineering/op-sqlite');
-jest.mock('drizzle-orm/op-sqlite/migrator', () => ({
-  migrate: jest.fn().mockResolvedValue(undefined),
+jest.mock('../src/db/migrate', () => ({
+  runMigrations: jest.fn().mockResolvedValue(undefined),
 }));
 
 describe('database layer (Phase 1)', () => {
@@ -36,12 +36,12 @@ describe('database layer (Phase 1)', () => {
   });
 
   it('applies migrations idempotently on app launch', async () => {
-    const { migrate } = jest.requireMock('drizzle-orm/op-sqlite/migrator');
+    const {runMigrations} = jest.requireMock('../src/db/migrate');
 
     await getDatabase();
     await getDatabase();
 
-    expect(migrate).toHaveBeenCalledTimes(1);
+    expect(runMigrations).toHaveBeenCalledTimes(1);
   });
 
   it('creates location_points, moments, and settings tables (schema contract)', () => {

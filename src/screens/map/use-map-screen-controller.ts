@@ -36,7 +36,9 @@ import type {SavedPlaceMomentClusterOnMap} from '@/components/map/SavedPlacesMap
 import {
   countMoments,
   countMomentsForEntry,
+  countMomentsForStayEntry,
   filterMomentsForEntry,
+  filterMomentsForStayEntry,
   shouldHideSavedPlaceMomentCluster,
   shouldShowDayMomentSummaryBar,
   type MomentCounts,
@@ -164,7 +166,11 @@ export function useMapScreenController() {
   const [voiceMemoSheetOpen, setVoiceMemoSheetOpen] = useState(false);
   const [momentsPreviewScope, setMomentsPreviewScope] = useState<
     | {kind: 'day'}
-    | {kind: 'entry'; entry: DayTimelineEntry}
+    | {
+        kind: 'entry';
+        entry: DayTimelineEntry;
+        aggregation?: 'place' | 'visit';
+      }
     | {kind: 'moment-ids'; momentIds: number[]; title: string}
     | null
   >(null);
@@ -327,8 +333,21 @@ export function useMapScreenController() {
     if (!currentOpenVisit) {
       return {photo: 0, voice: 0, note: 0};
     }
-    return countMomentsForEntry(dayMoments, currentOpenVisit);
-  }, [dayMoments, currentOpenVisit]);
+    return countMomentsForStayEntry(dayMoments, currentOpenVisit, {
+      savedPlace: currentOpenVisitSavedPlace,
+      dwellRadiusMeters: tripDetectionConfig.dwellRadiusMeters,
+      points: historyData.points,
+      entries: historyEntries,
+      aggregation: 'place',
+    });
+  }, [
+    currentOpenVisit,
+    currentOpenVisitSavedPlace,
+    dayMoments,
+    historyData.points,
+    historyEntries,
+    tripDetectionConfig.dwellRadiusMeters,
+  ]);
   const showDayMomentSummary = useMemo(
     () =>
       showDayJourney &&
@@ -557,8 +576,27 @@ export function useMapScreenController() {
       const ids = new Set(momentsPreviewScope.momentIds);
       return dayMoments.filter(moment => ids.has(moment.id));
     }
-    return filterMomentsForEntry(dayMoments, momentsPreviewScope.entry);
-  }, [momentsPreviewScope, dayMoments]);
+    const entry = momentsPreviewScope.entry;
+    const aggregation = momentsPreviewScope.aggregation ?? 'visit';
+    const savedPlace =
+      entry.kind === 'stay'
+        ? matchSavedPlaceForStay(entry, savedPlaces)
+        : null;
+    return filterMomentsForStayEntry(dayMoments, entry, {
+      savedPlace,
+      dwellRadiusMeters: tripDetectionConfig.dwellRadiusMeters,
+      points: historyData.points,
+      entries: historyEntries,
+      aggregation,
+    });
+  }, [
+    historyData.points,
+    historyEntries,
+    momentsPreviewScope,
+    dayMoments,
+    savedPlaces,
+    tripDetectionConfig.dwellRadiusMeters,
+  ]);
   const momentsPreviewEntry = useMemo(() => {
     if (momentsPreviewScope?.kind === 'entry') {
       return momentsPreviewScope.entry;
@@ -1000,13 +1038,21 @@ export function useMapScreenController() {
 
   const openCurrentVisitMomentsPreview = useCallback(() => {
     if (currentOpenVisit) {
-      setMomentsPreviewScope({kind: 'entry', entry: currentOpenVisit});
+      setMomentsPreviewScope({
+        kind: 'entry',
+        entry: currentOpenVisit,
+        aggregation: 'place',
+      });
     }
   }, [currentOpenVisit]);
 
   const openSelectedEntryMomentsPreview = useCallback(() => {
     if (selectedEntry) {
-      setMomentsPreviewScope({kind: 'entry', entry: selectedEntry});
+      setMomentsPreviewScope({
+        kind: 'entry',
+        entry: selectedEntry,
+        aggregation: 'visit',
+      });
     }
   }, [selectedEntry]);
 

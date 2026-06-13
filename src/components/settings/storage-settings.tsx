@@ -16,11 +16,20 @@ export function StorageSettings() {
   const [breakdown, setBreakdown] = useState<Awaited<
     ReturnType<typeof getAppStorageBreakdown>
   > | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
+    setErrorMessage(null);
     try {
       setBreakdown(await getAppStorageBreakdown());
+    } catch (error) {
+      setBreakdown(null);
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Could not load storage breakdown.',
+      );
     } finally {
       setLoading(false);
     }
@@ -58,6 +67,10 @@ export function StorageSettings() {
             />
           ))}
         </View>
+      ) : errorMessage ? (
+        <Text variant="muted" className="mt-4 text-sm leading-5">
+          {errorMessage}
+        </Text>
       ) : null}
     </View>
   );

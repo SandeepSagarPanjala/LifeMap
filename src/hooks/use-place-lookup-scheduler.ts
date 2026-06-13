@@ -32,7 +32,7 @@ function listQualifyingStays(
   return entries.filter(
     (entry): entry is DetectedTrip =>
       entry.kind === 'stay' &&
-      stayQualifiesForPlaceLookup(entry, config) &&
+      stayQualifiesForPlaceLookup(entry, config, savedPlaces) &&
       !shouldSkipPlaceLookupForStay(entry, savedPlaces),
   );
 }
@@ -80,7 +80,7 @@ export function usePlaceLookupScheduler({
         if (
           historyPanelOpen &&
           selectedStay &&
-          stayQualifiesForPlaceLookup(selectedStay, tripConfig) &&
+          stayQualifiesForPlaceLookup(selectedStay, tripConfig, savedPlaces) &&
           !shouldSkipPlaceLookupForStay(selectedStay, savedPlaces)
         ) {
           await ensureTripForClosedStay(selectedStay, selectedDateKey);

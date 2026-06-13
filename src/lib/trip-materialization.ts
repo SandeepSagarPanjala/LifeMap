@@ -474,6 +474,8 @@ export async function drainMaterializationQueue(
         break;
       }
     }
+  } catch {
+    // Background materialization is best-effort.
   } finally {
     workerRunning = false;
     setMaterializationBusy(false);

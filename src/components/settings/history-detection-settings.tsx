@@ -7,6 +7,7 @@ import {
   DEFAULT_TRIP_DWELL_MINUTES,
   HISTORY_SAME_PLACE_RADIUS_METERS,
   MIN_TRIP_STOP_MINUTES,
+  SAVED_PLACE_MIN_DWELL_MINUTES,
 } from '@/lib/trip-settings';
 import {useThemeColors} from '@/hooks/use-theme-colors';
 
@@ -37,7 +38,11 @@ export function HistoryDetectionSettings() {
       </View>
 
       <ReadOnlyRow
-        label="Visit (same place)"
+        label="Saved place visit"
+        value={`${SAVED_PLACE_MIN_DWELL_MINUTES} min`}
+      />
+      <ReadOnlyRow
+        label="Other place visit"
         value={`${DEFAULT_TRIP_DWELL_MINUTES} min`}
       />
       <ReadOnlyRow
@@ -50,10 +55,11 @@ export function HistoryDetectionSettings() {
       />
 
       <Text variant="muted" className="mt-3 text-xs leading-4">
-        A visit needs at least {DEFAULT_TRIP_DWELL_MINUTES} minutes within{' '}
-        {HISTORY_SAME_PLACE_RADIUS_METERS} m. Shorter stops during a drive (food,
-        charger) can count from {MIN_TRIP_STOP_MINUTES} minutes. Trips are the
-        path between visits.
+        Saved places (Home, Work, favorites) count as a visit from{' '}
+        {SAVED_PLACE_MIN_DWELL_MINUTES} minute. Other places need at least{' '}
+        {DEFAULT_TRIP_DWELL_MINUTES} minutes within {HISTORY_SAME_PLACE_RADIUS_METERS}{' '}
+        m. Shorter stops during a drive (food, charger) can count from{' '}
+        {MIN_TRIP_STOP_MINUTES} minutes. Trips are the path between visits.
       </Text>
     </View>
   );
