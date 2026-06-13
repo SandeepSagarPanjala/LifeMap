@@ -1,6 +1,8 @@
 import {
   buildDatabaseExportJson,
+  buildSingleTableExportJson,
   databaseExportFileLabel,
+  sumExportTableRowCounts,
 } from '../src/lib/database-export';
 import {resolveExportPeriod} from '../src/lib/export-period';
 
@@ -50,8 +52,35 @@ describe('database export', () => {
     expect(databaseExportFileLabel(period)).toBe(
       'lifemap-database-2026-06-06.json',
     );
+    expect(databaseExportFileLabel(period, 'location_points')).toBe(
+      'lifemap-database-location_points-2026-06-06.json',
+    );
     expect(databaseExportFileLabel(resolveExportPeriod('all'))).toBe(
       'lifemap-database-all.json',
     );
+  });
+
+  it('builds single-table JSON and sums row counts', () => {
+    const period = resolveExportPeriod('day', '2026-06-06');
+    const payload = JSON.parse(
+      buildSingleTableExportJson('trips', period, [{id: 1}]),
+    );
+    expect(payload.rowCounts.trips).toBe(1);
+    expect(payload.rowCounts.location_points).toBe(0);
+    expect(payload.tables.trips).toHaveLength(1);
+
+    expect(
+      sumExportTableRowCounts({
+        location_points: 10,
+        trips: 2,
+        materialized_days: 1,
+        materialization_queue: 0,
+        tracking_events: 3,
+        saved_places: 1,
+        place_lookup_cache: 4,
+        moments: 5,
+        settings: 2,
+      }),
+    ).toBe(28);
   });
 });

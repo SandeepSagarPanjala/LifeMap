@@ -1,60 +1,56 @@
 import {format} from 'date-fns';
 import {useCallback, useEffect, useState} from 'react';
 import {ActivityIndicator, Alert, Pressable, Share, View} from 'react-native';
-import {Database} from 'lucide-react-native';
+import {CalendarDays, Database} from 'lucide-react-native';
 
 import {HistoryDatePickerSheet} from '@/components/map/HistoryDatePickerSheet';
 import {Icon} from '@/components/ui/icon';
 import {Text} from '@/components/ui/text';
-import {fetchDatabaseExportTables} from '@/db/repositories/database-export';
-import {countLocationPoints} from '@/db/repositories/location-points';
-import {getLocationPointsForDay} from '@/db/repositories/location-days';
 import {
-  countTrackingEvents,
-  getAllTrackingEvents,
-} from '@/db/repositories/tracking-events';
+  fetchDatabaseExportTable,
+  fetchDatabaseExportTables,
+  getExportTableStats,
+  type ExportTableStats,
+} from '@/db/repositories/database-export';
+import {deleteAllTrackingEvents} from '@/db/repositories/tracking-events';
+import {vacuumDatabase} from '@/db/repositories/storage-stats';
 import {useThemeColors} from '@/hooks/use-theme-colors';
 import {
   buildDatabaseExportJson,
+  buildSingleTableExportJson,
+  DATABASE_EXPORT_TABLE_NAMES,
   databaseExportFileLabel,
+  sumExportTableRowCounts,
+  type DatabaseExportTableName,
 } from '@/lib/database-export';
 import {getTodayDateKey, parseDateKey} from '@/lib/day-utils';
-import {
-  resolveExportPeriod,
-  type ExportPeriodScope,
-} from '@/lib/export-period';
-import {
-  diagnosticsExportFileLabel,
-  buildTrackingDiagnosticsJson,
-} from '@/lib/tracking-diagnostics-export';
+import {formatStorageBytes} from '@/lib/format-storage';
+import {resolveExportPeriod} from '@/lib/export-period';
 import {
   getTrackingDiagnosticsEnabled,
   setTrackingDiagnosticsEnabled,
 } from '@/lib/tracking-diagnostics';
 
+type ExportPickerTarget = DatabaseExportTableName | 'all_tables';
+
 export function ExportSettings() {
   const colors = useThemeColors();
   const [loading, setLoading] = useState(true);
-  const [totalCount, setTotalCount] = useState(0);
-  const [todayCount, setTodayCount] = useState(0);
-  const [diagnosticsCount, setDiagnosticsCount] = useState(0);
+  const [tableStats, setTableStats] = useState<ExportTableStats | null>(null);
   const [diagnosticsEnabled, setDiagnosticsEnabled] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [deletingDiagnostics, setDeletingDiagnostics] = useState(false);
+  const [compacting, setCompacting] = useState(false);
   const [dayPickerVisible, setDayPickerVisible] = useState(false);
+  const [pickerTarget, setPickerTarget] = useState<ExportPickerTarget | null>(
+    null,
+  );
   const [selectedDayKey, setSelectedDayKey] = useState(getTodayDateKey());
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const todayKey = getTodayDateKey();
-      const [total, todayPoints, diagnostics] = await Promise.all([
-        countLocationPoints(),
-        getLocationPointsForDay(todayKey),
-        countTrackingEvents(),
-      ]);
-      setTotalCount(total);
-      setTodayCount(todayPoints.length);
-      setDiagnosticsCount(diagnostics);
+      setTableStats(await getExportTableStats());
     } finally {
       setLoading(false);
     }
@@ -70,56 +66,60 @@ export function ExportSettings() {
       .catch(() => undefined);
   }, []);
 
-  const shareDatabaseExport = async (
-    scope: ExportPeriodScope,
+  const shareExport = async (
+    target: ExportPickerTarget,
+    scope: 'all' | 'day',
     dateKey?: string,
   ) => {
     setExporting(true);
     try {
-      const period = resolveExportPeriod(scope, dateKey);
-      const tables = await fetchDatabaseExportTables(period);
-      const totalRows = Object.values(tables).reduce(
-        (sum, rows) => sum + rows.length,
-        0,
-      );
+      const period = resolveExportPeriod(scope === 'all' ? 'all' : 'day', dateKey);
 
-      if (totalRows === 0) {
+      if (target === 'all_tables') {
+        const tables = await fetchDatabaseExportTables(period);
+        const totalRows = Object.values(tables).reduce(
+          (sum, rows) => sum + rows.length,
+          0,
+        );
+        if (totalRows === 0) {
+          Alert.alert(
+            'Nothing to export',
+            scope === 'all'
+              ? 'No rows in the database yet.'
+              : `No rows for ${formatDayLabel(period.dateKey ?? getTodayDateKey())}.`,
+          );
+          return;
+        }
+        await Share.share({
+          message: buildDatabaseExportJson(period, tables),
+          title: databaseExportFileLabel(period),
+        });
+        return;
+      }
+
+      const rows = await fetchDatabaseExportTable(target, period);
+      if (rows.length === 0) {
         Alert.alert(
           'Nothing to export',
           scope === 'all'
-            ? 'No rows in the database yet.'
-            : `No rows for ${formatDayLabel(period.dateKey ?? getTodayDateKey())}.`,
+            ? `No rows in ${target} yet.`
+            : `No ${target} rows for ${formatDayLabel(period.dateKey ?? getTodayDateKey())}.`,
         );
         return;
       }
 
       await Share.share({
-        message: buildDatabaseExportJson(period, tables),
-        title: databaseExportFileLabel(period),
+        message: buildSingleTableExportJson(target, period, rows),
+        title: databaseExportFileLabel(period, target),
       });
     } finally {
       setExporting(false);
     }
   };
 
-  const shareDiagnosticsExport = async () => {
-    setExporting(true);
-    try {
-      const events = await getAllTrackingEvents();
-      if (events.length === 0) {
-        Alert.alert(
-          'No diagnostics yet',
-          'Tracking diagnostics have not recorded any events yet.',
-        );
-        return;
-      }
-      await Share.share({
-        message: buildTrackingDiagnosticsJson(events),
-        title: diagnosticsExportFileLabel(),
-      });
-    } finally {
-      setExporting(false);
-    }
+  const openDayPicker = (target: ExportPickerTarget) => {
+    setPickerTarget(target);
+    setDayPickerVisible(true);
   };
 
   const toggleDiagnostics = async () => {
@@ -129,6 +129,93 @@ export function ExportSettings() {
     await refresh();
   };
 
+  const confirmDeleteDiagnostics = () => {
+    const rowCount = tableStats?.counts.tracking_events ?? 0;
+    Alert.alert(
+      'Delete tracking diagnostics?',
+      `This removes ${rowCount.toLocaleString()} debug log rows from tracking_events. Your map, visits, drives, and GPS points are not affected.`,
+      [
+        {text: 'Cancel', style: 'cancel'},
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            void runDeleteDiagnostics();
+          },
+        },
+      ],
+    );
+  };
+
+  const runDeleteDiagnostics = async () => {
+    setDeletingDiagnostics(true);
+    try {
+      const deleted = await deleteAllTrackingEvents();
+      let compactMessage = '';
+      if (deleted > 0) {
+        setCompacting(true);
+        const compacted = await vacuumDatabase();
+        compactMessage = `\n\nDatabase compacted from ${formatStorageBytes(compacted.beforeBytes)} to ${formatStorageBytes(compacted.afterBytes)}.`;
+      }
+      await refresh();
+      Alert.alert(
+        'Diagnostics deleted',
+        `Removed ${deleted.toLocaleString()} tracking_events rows.${compactMessage}`,
+      );
+    } catch (error) {
+      Alert.alert(
+        'Could not delete diagnostics',
+        error instanceof Error ? error.message : 'Something went wrong.',
+      );
+    } finally {
+      setDeletingDiagnostics(false);
+      setCompacting(false);
+    }
+  };
+
+  const confirmCompactDatabase = () => {
+    const reclaimable = tableStats?.freeDbBytes ?? 0;
+    Alert.alert(
+      'Compact database?',
+      `SQLite keeps empty pages after deletes. This reclaims about ${formatStorageBytes(reclaimable)} on disk. Your data is not deleted.`,
+      [
+        {text: 'Cancel', style: 'cancel'},
+        {
+          text: 'Compact',
+          onPress: () => {
+            void runCompactDatabase();
+          },
+        },
+      ],
+    );
+  };
+
+  const runCompactDatabase = async () => {
+    setCompacting(true);
+    try {
+      const result = await vacuumDatabase();
+      await refresh();
+      Alert.alert(
+        'Database compacted',
+        `Reduced from ${formatStorageBytes(result.beforeBytes)} to ${formatStorageBytes(result.afterBytes)}.`,
+      );
+    } catch (error) {
+      Alert.alert(
+        'Could not compact database',
+        error instanceof Error ? error.message : 'Something went wrong.',
+      );
+    } finally {
+      setCompacting(false);
+    }
+  };
+
+  const totalRows =
+    tableStats != null ? sumExportTableRowCounts(tableStats.counts) : 0;
+  const trackingEventsCount = tableStats?.counts.tracking_events ?? 0;
+  const totalDbBytes = tableStats?.totalDbBytes ?? 0;
+  const freeDbBytes = tableStats?.freeDbBytes ?? 0;
+  const tableActionsDisabled = exporting || deletingDiagnostics || compacting;
+
   return (
     <>
       <View className="bg-card border-border rounded-2xl border p-4">
@@ -136,50 +223,63 @@ export function ExportSettings() {
           <Icon as={Database} size={20} color={colors.primary} />
           <View className="flex-1">
             <Text className="font-medium">Export data</Text>
+            <Text variant="muted" className="mt-1 text-sm leading-5">
+              Export one table or everything as JSON. Storage estimates use live
+              data size; the all tables row shows the DB file on disk.
+            </Text>
           </View>
         </View>
 
         {loading ? (
           <ActivityIndicator className="mt-4" />
-        ) : (
+        ) : tableStats ? (
           <>
-            <Text variant="muted" className="mt-3 text-sm">
-              {totalCount.toLocaleString()} location rows
-              {todayCount > 0 ? ` · ${todayCount.toLocaleString()} today` : ''}
-            </Text>
-
-            <View className="mt-4">
-              <Text className="text-sm font-medium">All tables</Text>
-              <Text variant="muted" className="mt-1 text-xs">
-                Location points, trips, visits, settings, and more
-              </Text>
-              <View className="mt-2 gap-2">
-                <ExportRow label="Today">
-                  <ExportButton
-                    label="Export JSON"
-                    disabled={exporting}
-                    primary
-                    onPress={() => void shareDatabaseExport('today')}
-                  />
-                </ExportRow>
-                <ExportRow label="All saved">
-                  <ExportButton
-                    label="Export JSON"
-                    disabled={exporting}
-                    primary
-                    onPress={() => void shareDatabaseExport('all')}
-                  />
-                </ExportRow>
-                <ExportRow label="Pick a day">
-                  <ExportButton
-                    label="Export JSON"
-                    disabled={exporting}
-                    primary
-                    onPress={() => setDayPickerVisible(true)}
-                  />
-                </ExportRow>
-              </View>
+            <View className="border-border mt-4 overflow-hidden rounded-xl border">
+              <ExportTableHeader />
+              {DATABASE_EXPORT_TABLE_NAMES.map(tableName => (
+                <ExportTableRow
+                  key={tableName}
+                  tableName={tableName}
+                  count={tableStats.counts[tableName]}
+                  storageBytes={tableStats.storageBytes[tableName]}
+                  disabled={tableActionsDisabled}
+                  onPickDay={() => openDayPicker(tableName)}
+                  onExportAll={() => void shareExport(tableName, 'all')}
+                />
+              ))}
+              <ExportTableRow
+                tableName="all_tables"
+                count={totalRows}
+                storageBytes={totalDbBytes}
+                disabled={tableActionsDisabled}
+                emphasized
+                onPickDay={() => openDayPicker('all_tables')}
+                onExportAll={() => void shareExport('all_tables', 'all')}
+              />
             </View>
+
+            {freeDbBytes > 0 ? (
+              <Text variant="muted" className="mt-3 text-xs leading-4">
+                {formatStorageBytes(freeDbBytes)} of the DB file is empty space
+                from deleted rows. Compact to reclaim it on disk.
+              </Text>
+            ) : null}
+
+            {freeDbBytes > 0 ? (
+              <Pressable
+                accessibilityRole="button"
+                disabled={tableActionsDisabled}
+                onPress={confirmCompactDatabase}
+                className={`border-border mt-3 self-start rounded-full border px-3 py-2 ${
+                  tableActionsDisabled ? 'opacity-50' : ''
+                }`}>
+                {compacting ? (
+                  <ActivityIndicator />
+                ) : (
+                  <Text className="text-sm font-medium">Compact database</Text>
+                )}
+              </Pressable>
+            ) : null}
 
             <View className="border-border mt-4 border-t pt-4">
               <View className="flex-row items-center gap-3">
@@ -201,27 +301,32 @@ export function ExportSettings() {
               </View>
 
               <Text variant="muted" className="mt-2 text-xs leading-4">
-                Records tracking lifecycle events locally. Turn on during dogfood,
-                then export JSON if you see a large gap.
+                Debug only — not used for your map or timeline. Turn on briefly
+                when investigating a tracking gap, export tracking_events from
+                the table above if needed, then turn off and delete. With
+                maximum reliability on, this table grows very fast.
               </Text>
 
-              {diagnosticsCount > 0 ? (
-                <View className="mt-3">
-                  <Text variant="muted" className="text-xs">
-                    {diagnosticsCount.toLocaleString()} events recorded
-                  </Text>
-                  <View className="mt-2 flex-row flex-wrap gap-2">
-                    <ExportButton
-                      label="Export JSON"
-                      disabled={exporting}
-                      onPress={() => void shareDiagnosticsExport()}
-                    />
-                  </View>
-                </View>
+              {trackingEventsCount > 0 ? (
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={exporting || deletingDiagnostics || compacting}
+                  onPress={confirmDeleteDiagnostics}
+                  className={`border-destructive mt-3 self-start rounded-full border px-3 py-2 ${
+                    exporting || deletingDiagnostics ? 'opacity-50' : ''
+                  }`}>
+                  {deletingDiagnostics ? (
+                    <ActivityIndicator />
+                  ) : (
+                    <Text className="text-destructive text-sm font-medium">
+                      Delete diagnostics
+                    </Text>
+                  )}
+                </Pressable>
               ) : null}
             </View>
           </>
-        )}
+        ) : null}
       </View>
 
       <HistoryDatePickerSheet
@@ -230,54 +335,117 @@ export function ExportSettings() {
         onSelectDate={dateKey => {
           setSelectedDayKey(dateKey);
           setDayPickerVisible(false);
-          void shareDatabaseExport('day', dateKey);
+          const target = pickerTarget;
+          setPickerTarget(null);
+          if (target != null) {
+            void shareExport(target, 'day', dateKey);
+          }
         }}
-        onClose={() => setDayPickerVisible(false)}
+        onClose={() => {
+          setDayPickerVisible(false);
+          setPickerTarget(null);
+        }}
       />
     </>
   );
 }
 
-function ExportRow({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
+function ExportTableHeader() {
   return (
-    <View className="flex-row items-center gap-2">
-      <Text variant="muted" className="w-20 text-xs">
-        {label}
+    <View className="bg-muted/40 border-border flex-row items-center border-b px-2 py-2">
+      <Text variant="muted" className="min-w-0 flex-1 text-[10px] font-semibold uppercase">
+        Table
       </Text>
-      <View className="flex-1 flex-row flex-wrap gap-2">{children}</View>
+      <Text
+        variant="muted"
+        className="w-11 text-right text-[10px] font-semibold uppercase">
+        Count
+      </Text>
+      <Text
+        variant="muted"
+        className="w-14 text-right text-[10px] font-semibold uppercase">
+        Storage
+      </Text>
+      <Text
+        variant="muted"
+        className="w-10 text-center text-[10px] font-semibold uppercase">
+        Day
+      </Text>
+      <Text
+        variant="muted"
+        className="w-14 text-center text-[10px] font-semibold uppercase">
+        All days
+      </Text>
     </View>
   );
 }
 
-function ExportButton({
-  label,
-  primary,
+function ExportTableRow({
+  tableName,
+  count,
+  storageBytes,
   disabled,
-  onPress,
+  emphasized = false,
+  onPickDay,
+  onExportAll,
 }: {
-  label: string;
-  primary?: boolean;
-  disabled?: boolean;
-  onPress: () => void;
+  tableName: ExportPickerTarget;
+  count: number;
+  storageBytes: number;
+  disabled: boolean;
+  emphasized?: boolean;
+  onPickDay: () => void;
+  onExportAll: () => void;
 }) {
+  const colors = useThemeColors();
+  const label = tableName === 'all_tables' ? 'all tables' : tableName;
+
   return (
-    <Pressable
-      accessibilityRole="button"
-      disabled={disabled}
-      onPress={onPress}
-      className={`rounded-full border px-3 py-2 ${
-        primary ? 'border-primary' : 'border-border'
-      } ${disabled ? 'opacity-50' : ''}`}>
-      <Text className={`text-sm font-medium ${primary ? 'text-primary' : ''}`}>
+    <View
+      className={`border-border flex-row items-center border-b px-2 py-2.5 ${
+        emphasized ? 'bg-primary/5' : ''
+      }`}>
+      <Text
+        className={`min-w-0 flex-1 text-xs ${emphasized ? 'font-semibold' : ''}`}
+        numberOfLines={2}>
         {label}
       </Text>
-    </Pressable>
+      <Text className="w-11 text-right text-xs font-medium">
+        {count.toLocaleString()}
+      </Text>
+      <Text
+        className={`w-14 text-right text-[10px] font-medium ${
+          emphasized ? 'font-semibold' : ''
+        }`}>
+        {formatStorageBytes(storageBytes)}
+      </Text>
+      <View className="w-10 items-center">
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Export ${label} for selected day`}
+          disabled={disabled}
+          onPress={onPickDay}
+          className={`rounded-full p-1.5 ${disabled ? 'opacity-40' : ''}`}>
+          <Icon as={CalendarDays} size={16} color={colors.primary} />
+        </Pressable>
+      </View>
+      <View className="w-14 items-center">
+        <Pressable
+          accessibilityRole="button"
+          disabled={disabled}
+          onPress={onExportAll}
+          className={`rounded-full border px-2 py-1 ${
+            emphasized ? 'border-primary' : 'border-border'
+          } ${disabled ? 'opacity-40' : ''}`}>
+          <Text
+            className={`text-[10px] font-medium ${
+              emphasized ? 'text-primary' : ''
+            }`}>
+            Export
+          </Text>
+        </Pressable>
+      </View>
+    </View>
   );
 }
 

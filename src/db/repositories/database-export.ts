@@ -1,4 +1,4 @@
-import {and, asc, eq, gte, lte} from 'drizzle-orm';
+import {and, asc, eq, gte, lte, sql} from 'drizzle-orm';
 
 import {getDatabase} from '../client';
 import {
@@ -13,11 +13,86 @@ import {
   trips,
 } from '../schema';
 import type {ExportPeriod} from '@/lib/export-period';
-import type {DatabaseExportTables} from '@/lib/database-export';
+import type {
+  DatabaseExportTableName,
+  DatabaseExportTables,
+} from '@/lib/database-export';
+import {estimateExportTableStorageBytes} from '@/lib/export-table-storage';
+import {getDatabaseFileStats} from './storage-stats';
 import {toDateKey} from '@/lib/day-utils';
 
 function iso(value: Date | null | undefined): string | null {
   return value ? value.toISOString() : null;
+}
+
+export async function countExportTableRows(): Promise<
+  Record<DatabaseExportTableName, number>
+> {
+  const db = await getDatabase();
+  const [
+    locationPointCount,
+    tripCount,
+    materializedDayCount,
+    queueCount,
+    trackingEventCount,
+    savedPlaceCount,
+    placeLookupCount,
+    momentCount,
+    settingCount,
+  ] = await Promise.all([
+    db.select({count: sql<number>`count(*)`}).from(locationPoints),
+    db.select({count: sql<number>`count(*)`}).from(trips),
+    db.select({count: sql<number>`count(*)`}).from(materializedDays),
+    db.select({count: sql<number>`count(*)`}).from(materializationQueue),
+    db.select({count: sql<number>`count(*)`}).from(trackingEvents),
+    db.select({count: sql<number>`count(*)`}).from(savedPlaces),
+    db.select({count: sql<number>`count(*)`}).from(placeLookupCache),
+    db.select({count: sql<number>`count(*)`}).from(moments),
+    db.select({count: sql<number>`count(*)`}).from(settings),
+  ]);
+
+  return {
+    location_points: Number(locationPointCount[0]?.count ?? 0),
+    trips: Number(tripCount[0]?.count ?? 0),
+    materialized_days: Number(materializedDayCount[0]?.count ?? 0),
+    materialization_queue: Number(queueCount[0]?.count ?? 0),
+    tracking_events: Number(trackingEventCount[0]?.count ?? 0),
+    saved_places: Number(savedPlaceCount[0]?.count ?? 0),
+    place_lookup_cache: Number(placeLookupCount[0]?.count ?? 0),
+    moments: Number(momentCount[0]?.count ?? 0),
+    settings: Number(settingCount[0]?.count ?? 0),
+  };
+}
+
+export type ExportTableStats = {
+  counts: Record<DatabaseExportTableName, number>;
+  storageBytes: Record<DatabaseExportTableName, number>;
+  totalDbBytes: number;
+  usedDbBytes: number;
+  freeDbBytes: number;
+};
+
+export async function getExportTableStats(): Promise<ExportTableStats> {
+  const [counts, fileStats] = await Promise.all([
+    countExportTableRows(),
+    getDatabaseFileStats(),
+  ]);
+
+  return {
+    counts,
+    storageBytes: estimateExportTableStorageBytes(counts, fileStats.usedBytes),
+    totalDbBytes: fileStats.totalBytes,
+    usedDbBytes: fileStats.usedBytes,
+    freeDbBytes: fileStats.freeBytes,
+  };
+}
+
+export async function fetchDatabaseExportTable(
+  table: DatabaseExportTableName,
+  period: ExportPeriod,
+): Promise<unknown[]> {
+  const tables = await fetchDatabaseExportTables(period);
+  return tables[table];
 }
 
 export async function fetchDatabaseExportTables(

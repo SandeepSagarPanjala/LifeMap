@@ -157,6 +157,15 @@ export async function getRecentMoments(limit = 20): Promise<MomentRow[]> {
   return rows.map(mapRow);
 }
 
+export async function getAllMoments(): Promise<MomentRow[]> {
+  const db = await getDatabase();
+  const rows = await db
+    .select()
+    .from(moments)
+    .orderBy(asc(moments.timestamp), asc(moments.id));
+  return rows.map(mapRow);
+}
+
 export async function deleteMoment(id: number): Promise<void> {
   const existing = await getMomentById(id);
   if (!existing) {

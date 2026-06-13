@@ -44,6 +44,16 @@ export async function countTrackingEvents(): Promise<number> {
   return Number(result[0]?.count ?? 0);
 }
 
+export async function deleteAllTrackingEvents(): Promise<number> {
+  const deleted = await countTrackingEvents();
+  if (deleted === 0) {
+    return 0;
+  }
+  const db = await getDatabase();
+  await db.delete(trackingEvents);
+  return deleted;
+}
+
 export async function getAllTrackingEvents(): Promise<TrackingEventRow[]> {
   const db = await getDatabase();
   const rows = await db

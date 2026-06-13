@@ -1,4 +1,4 @@
-import {and, desc, eq, gte, sql} from 'drizzle-orm';
+import {and, desc, eq, gte, like, or, sql} from 'drizzle-orm';
 
 import {getDatabase} from '../client';
 import {locationPoints} from '../schema';
@@ -12,6 +12,23 @@ export type NewLocationPoint = {
   speed?: number | null;
   source?: string;
 };
+
+/** Legacy rows from motion callbacks — GPS rows are kept. */
+export function isMotionLocationPointSource(source: string): boolean {
+  return (
+    source === 'motion' ||
+    source === 'headless:motion' ||
+    source.endsWith(':motion')
+  );
+}
+
+function motionLocationSourceFilter() {
+  return or(
+    eq(locationPoints.source, 'motion'),
+    eq(locationPoints.source, 'headless:motion'),
+    like(locationPoints.source, '%:motion'),
+  );
+}
 
 type LocationPointInsertListener = (point: {
   timestamp: Date;
@@ -76,6 +93,25 @@ export async function insertLocationPoint(
     source,
   });
   notifyInsert({timestamp: point.timestamp, lat: point.lat, lng: point.lng, source});
+}
+
+export async function countMotionLocationPoints(): Promise<number> {
+  const db = await getDatabase();
+  const result = await db
+    .select({count: sql<number>`count(*)`})
+    .from(locationPoints)
+    .where(motionLocationSourceFilter());
+  return Number(result[0]?.count ?? 0);
+}
+
+export async function deleteMotionLocationPoints(): Promise<number> {
+  const deleted = await countMotionLocationPoints();
+  if (deleted === 0) {
+    return 0;
+  }
+  const db = await getDatabase();
+  await db.delete(locationPoints).where(motionLocationSourceFilter());
+  return deleted;
 }
 
 export async function countLocationPoints(): Promise<number> {

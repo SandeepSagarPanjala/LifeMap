@@ -12,6 +12,11 @@ import {
 import {getSetting, setSetting} from '@/db/repositories/settings';
 import {evaluateDepartureWatchdog} from '@/lib/departure-watchdog';
 import {
+  isExactDuplicatePersist,
+  shouldSkipMotionPersist,
+  type LastPersistedFix,
+} from '@/lib/location-save-guard';
+import {
   HEARTBEAT_CURRENT_POSITION_REQUEST,
   MIN_DEPARTURE_SPEED_MS,
 } from '@/lib/motion-tracking-policy';
@@ -84,6 +89,7 @@ export class TransistorSoftLocationService implements LocationService {
   private lastPersistedLat: number | null = null;
   private lastPersistedLng: number | null = null;
   private heartbeatInFlight: Promise<void> | null = null;
+  private motionInFlight: Promise<void> | null = null;
   private suppressOnLocationTimestampMs: number | null = null;
   private initializingPersistedClock: Promise<void> | null = null;
 
@@ -104,6 +110,35 @@ export class TransistorSoftLocationService implements LocationService {
   ): Promise<void> {
     const timestamp = locationTimestamp(location);
     const {coords} = location;
+    const timestampMs = timestamp.getTime();
+    const last: LastPersistedFix | null =
+      this.lastPersistedMs > 0 &&
+      this.lastPersistedLat != null &&
+      this.lastPersistedLng != null
+        ? {
+            timestampMs: this.lastPersistedMs,
+            lat: this.lastPersistedLat,
+            lng: this.lastPersistedLng,
+          }
+        : null;
+
+    if (
+      isExactDuplicatePersist(
+        last,
+        timestampMs,
+        coords.latitude,
+        coords.longitude,
+      )
+    ) {
+      return;
+    }
+
+    if (
+      (source === 'motion' || source.startsWith('motion')) &&
+      shouldSkipMotionPersist(last, coords, timestampMs)
+    ) {
+      return;
+    }
 
     await insertLocationPoint({
       timestamp,
@@ -284,18 +319,25 @@ export class TransistorSoftLocationService implements LocationService {
   }
 
   private async onMotionChange(event: MotionChangeEvent): Promise<void> {
+    if (this.motionInFlight != null) {
+      return this.motionInFlight;
+    }
+    this.motionInFlight = this.runMotionChange(event).finally(() => {
+      this.motionInFlight = null;
+    });
+    return this.motionInFlight;
+  }
+
+  private async runMotionChange(event: MotionChangeEvent): Promise<void> {
     await recordTrackingDiagnostic('motion_change', {
       isMoving: event.isMoving,
       hasLocation: event.location != null,
     });
-    if (event.location && !isSampleLocation(event.location)) {
-      try {
-        await this.persistLocation(event.location, 'motion');
-      } catch (error) {
-        if (__DEV__) {
-          console.warn('[LifeMap] Failed to persist motion change', error);
-        }
-      }
+    if (!event.location || isSampleLocation(event.location)) {
+      return;
+    }
+    if (event.isMoving) {
+      await this.maybeWakeFromSpeed(event.location);
     }
   }
 
@@ -432,6 +474,7 @@ export class TransistorSoftLocationService implements LocationService {
     this.lastPersistedLng = null;
     this.suppressOnLocationTimestampMs = null;
     this.heartbeatInFlight = null;
+    this.motionInFlight = null;
     this.configured = false;
   }
 }
@@ -518,22 +561,16 @@ export async function handleHeadlessLocationEvent(
     }
     case BackgroundGeolocation.Event.MotionChange: {
       const motion = event.params as MotionChangeEvent;
-      if (motion.location && isLocationLike(motion.location) && !isSampleLocation(motion.location)) {
-        await insertLocationPoint({
-          timestamp: locationTimestamp(motion.location),
-          lat: motion.location.coords.latitude,
-          lng: motion.location.coords.longitude,
-          accuracy:
-            motion.location.coords.accuracy >= 0
-              ? motion.location.coords.accuracy
-              : null,
-          altitude: motion.location.coords.altitude,
-          speed:
-            motion.location.coords.speed != null && motion.location.coords.speed >= 0
-              ? motion.location.coords.speed
-              : null,
-          source: 'headless:motion',
-        }, {dedupe: true});
+      if (
+        motion.isMoving &&
+        motion.location &&
+        isLocationLike(motion.location) &&
+        !isSampleLocation(motion.location)
+      ) {
+        const speed = motion.location.coords.speed;
+        if (speed != null && speed >= MIN_DEPARTURE_SPEED_MS) {
+          await BackgroundGeolocation.changePace(true);
+        }
       }
       return;
     }

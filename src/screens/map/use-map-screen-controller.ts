@@ -23,6 +23,7 @@ import {
 } from '@/db/repositories/saved-places';
 import {useAfterInteractions} from '@/hooks/use-after-interactions';
 import {useHistoryForDay} from '@/hooks/use-history-data';
+import {useLatestLocationSave} from '@/hooks/use-latest-location-save';
 import {usePlaceLookupScheduler} from '@/hooks/use-place-lookup-scheduler';
 import {useSavedPlaces} from '@/hooks/use-saved-places';
 import {useDriveEndpointLabels} from '@/hooks/use-drive-endpoint-labels';
@@ -175,6 +176,7 @@ export function useMapScreenController() {
   const {dayMoments, refreshDayMoments} = useDayMoments(selectedDateKey);
   const {data: historyData, loading: historyLoading} =
     useHistoryForDay(selectedDateKey);
+  const latestLocationSaveAt = useLatestLocationSave();
   const viewingToday = selectedDateKey === todayKey;
   const mapDateLabel = useMemo(
     () => formatMapDateLabel(selectedDateKey, todayKey),
@@ -207,18 +209,21 @@ export function useMapScreenController() {
     [historyEntries],
   );
   const trackingGapWarning = useMemo(() => {
-    if (!viewingToday || historyData.points.length === 0) {
+    if (!viewingToday) {
       return null;
     }
-    const lastPoint = historyData.points[historyData.points.length - 1]!;
-    const gapMs = Date.now() - lastPoint.timestamp.getTime();
+    const lastSaveAt = latestLocationSaveAt;
+    if (lastSaveAt == null) {
+      return null;
+    }
+    const gapMs = Date.now() - lastSaveAt.getTime();
     if (gapMs < 2 * 60 * 60_000) {
       return null;
     }
     const hours = Math.floor(gapMs / 3_600_000);
     const minutes = Math.floor((gapMs % 3_600_000) / 60_000);
     return `No saved points for ${hours}h ${minutes}m`;
-  }, [historyData.points, viewingToday]);
+  }, [latestLocationSaveAt, viewingToday]);
 
   const dayStays = useMemo(
     (): DetectedTrip[] =>

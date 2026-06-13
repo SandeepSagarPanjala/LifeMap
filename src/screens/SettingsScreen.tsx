@@ -38,7 +38,6 @@ export function SettingsScreen() {
           subtitle="Storage and how visits and drives are detected.">
           <StorageSettings />
           <HistoryDetectionSettings />
-          <HistoryRepairSettings />
           <View className="bg-card border-border rounded-2xl border p-4">
             <View className="flex-row items-center gap-3">
               <Icon as={Shield} size={20} color={colors.primary} />
@@ -54,8 +53,9 @@ export function SettingsScreen() {
 
         <SettingsSection
           title="Developer"
-          subtitle="Export data and internal debugging tools.">
+          subtitle="Export data, repair history, and internal debugging tools.">
           <ExportSettings />
+          <HistoryRepairSettings />
           <DevSettings />
         </SettingsSection>
       </ScrollView>

@@ -9,6 +9,9 @@ import {
   clearMaterializationQueue,
   type MaterializationJob,
 } from '@/db/repositories/materialization-queue';
+import {
+  deleteMotionLocationPoints,
+} from '@/db/repositories/location-points';
 import {getMomentsForDay} from '@/db/repositories/moments';
 import {
   deleteAllMaterializedDays,
@@ -553,6 +556,18 @@ export type ResetMaterializedTripHistoryResult = {
   materializedDaysDeleted: number;
   queueJobsDeleted: number;
 };
+
+/** Drop legacy motion rows and rebuild cached visit/drive summaries from GPS. */
+export async function purgeLegacyMotionLocationData(): Promise<
+  ResetMaterializedTripHistoryResult & {motionPointsDeleted: number}
+> {
+  const motionPointsDeleted = await deleteMotionLocationPoints();
+  const reset = await resetMaterializedTripHistory();
+  return {
+    motionPointsDeleted,
+    ...reset,
+  };
+}
 
 /** Drop cached visit/drive rows so history rebuilds from GPS and moments. */
 export async function resetMaterializedTripHistory(): Promise<ResetMaterializedTripHistoryResult> {
