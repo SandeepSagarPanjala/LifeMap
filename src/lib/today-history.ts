@@ -12,6 +12,8 @@ import {
   type TripTimelineOptions,
 } from '@/lib/trip-detection';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
+import {matchSavedPlaceForStay, shouldSplitStayAtMidnight} from '@/lib/saved-places';
+import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 
 const LOOKBACK_HOURS = 48;
 const LOOKAHEAD_HOURS = 48;
@@ -61,11 +63,22 @@ function clipTimelineEntryToDay(
   entry: DayTimelineEntry,
   dayStart: Date,
   rangeEnd: Date,
+  savedPlaces: readonly SavedPlaceRow[] = [],
 ): DayTimelineEntry | null {
   const rawEnd =
     entry.kind === 'stay' && entry.openThroughNow ? rangeEnd : entry.endAt;
-  let startMs = Math.max(entry.startAt.getTime(), dayStart.getTime());
-  let endMs = Math.min(rawEnd.getTime(), rangeEnd.getTime());
+  const keepFullStaySpan =
+    entry.kind === 'stay' &&
+    !shouldSplitStayAtMidnight(entry, savedPlaces) &&
+    (entry.startAt.getTime() < dayStart.getTime() ||
+      rawEnd.getTime() > rangeEnd.getTime());
+
+  let startMs = keepFullStaySpan
+    ? entry.startAt.getTime()
+    : Math.max(entry.startAt.getTime(), dayStart.getTime());
+  let endMs = keepFullStaySpan
+    ? rawEnd.getTime()
+    : Math.min(rawEnd.getTime(), rangeEnd.getTime());
 
   if (endMs <= startMs) {
     const overlapsWindow =
@@ -168,7 +181,12 @@ function isMidDriveNoiseStay(
   entry: DetectedTrip,
   fullTimeline: DayTimelineEntry[],
   config: TripDetectionConfig,
+  savedPlaces: readonly SavedPlaceRow[] = [],
 ): boolean {
+  if (savedPlaces.length > 0 && matchSavedPlaceForStay(entry, savedPlaces) != null) {
+    return false;
+  }
+
   const minStayMs = config.dwellMinutes * 60_000;
   if (entry.durationMs >= minStayMs) {
     return false;
@@ -198,12 +216,13 @@ function dropMidDriveNoiseStays(
   entries: DayTimelineEntry[],
   fullTimeline: DayTimelineEntry[],
   config: TripDetectionConfig,
+  savedPlaces: readonly SavedPlaceRow[] = [],
 ): DayTimelineEntry[] {
   return entries.filter(entry => {
     if (entry.kind !== 'stay') {
       return true;
     }
-    return !isMidDriveNoiseStay(entry, fullTimeline, config);
+    return !isMidDriveNoiseStay(entry, fullTimeline, config, savedPlaces);
   });
 }
 
@@ -213,6 +232,7 @@ function attachCrossDayTravelDisplay(
   config: TripDetectionConfig,
   dayStart: Date,
   rangeEnd: Date,
+  savedPlaces: readonly SavedPlaceRow[] = [],
 ): DetectedTrip {
   const rawIndex = raw.findIndex(
     candidate => candidate.id === entry.id && candidate.kind === 'travel',
@@ -232,7 +252,7 @@ function attachCrossDayTravelDisplay(
     }
     const absorbed =
       next.durationMs < config.dwellMinutes * 60_000 &&
-      (isMidDriveNoiseStay(next, raw, config) ||
+      (isMidDriveNoiseStay(next, raw, config, savedPlaces) ||
         isTrailingDriveArrivalStay(next, rawTravel, config) ||
         isCrossDayDriveTailStay(next, raw, config));
     if (!absorbed) {
@@ -288,16 +308,18 @@ export function prepareDayHistoryTimeline(
     ...dayPoints,
     ...lookaheadPoints,
   ]);
+  const savedPlaces = timelineOptions.savedPlaces ?? [];
   const lastBeforeDay = lastPointBefore(combined, dayStart);
   const raw = buildDayTimeline(combined, config, timelineOptions);
 
   const filtered = dropMidDriveNoiseStays(
     raw
       .filter(entry => overlapsDayWindow(entry, dayStart, rangeEnd))
-      .map(entry => clipTimelineEntryToDay(entry, dayStart, rangeEnd))
+      .map(entry => clipTimelineEntryToDay(entry, dayStart, rangeEnd, savedPlaces))
       .filter((entry): entry is DayTimelineEntry => entry != null),
     raw,
     config,
+    savedPlaces,
   );
   const firstStayIdx = filtered.findIndex(e => e.kind === 'stay');
   const lastStayIdx = lastStayIndex(filtered);
@@ -314,6 +336,7 @@ export function prepareDayHistoryTimeline(
         config,
         dayStart,
         rangeEnd,
+        savedPlaces,
       );
     }
 
@@ -324,9 +347,15 @@ export function prepareDayHistoryTimeline(
     const isFirstStay = index === firstStayIdx;
     const isLastStay = index === lastStayIdx;
     const isOpenStay =
-      isToday && isLastStay && !isMidDriveNoiseStay(entry, raw, config);
+      isToday &&
+      isLastStay &&
+      !isMidDriveNoiseStay(entry, raw, config, savedPlaces);
     const closeStayAtDayEnd =
-      !isToday && isLastStay && !isMidDriveNoiseStay(entry, raw, config);
+      !isToday &&
+      isLastStay &&
+      !isMidDriveNoiseStay(entry, raw, config, savedPlaces) &&
+      entry.endAt.getTime() <= rangeEnd.getTime() &&
+      toDateKey(entry.startAt) === toDateKey(rangeEnd);
 
     let stay = entry;
     const firstSave = stay.points[0]!;
@@ -335,7 +364,8 @@ export function prepareDayHistoryTimeline(
       isFirstStay &&
       lastBeforeDay != null &&
       !driveCrossesMidnight &&
-      arePointsSamePlace(lastBeforeDay, firstSave, config)
+      arePointsSamePlace(lastBeforeDay, firstSave, config) &&
+      shouldSplitStayAtMidnight(stay, savedPlaces)
     ) {
       stay = adjustStay(stay, {
         startAt: dayStart,

@@ -72,6 +72,14 @@ def enableProguardInReleaseBuilds = false
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
+def transistorLicensePropsFile = rootProject.file("transistor-license.properties")
+def transistorLicense = ""
+if (transistorLicensePropsFile.exists()) {
+    def props = new Properties()
+    transistorLicensePropsFile.withInputStream { props.load(it) }
+    transistorLicense = props.getProperty("license", "")
+}
+
 android {
     ndkVersion rootProject.ext.ndkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
@@ -84,6 +92,7 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+        manifestPlaceholders = [transistorLicense: transistorLicense]
     }
     signingConfigs {
         debug {

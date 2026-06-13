@@ -19,7 +19,7 @@ export type SavedPlaceRow = {
   createdAt: Date;
 };
 
-export const DEFAULT_SAVED_PLACE_RADIUS_METERS = 150;
+export const DEFAULT_SAVED_PLACE_RADIUS_METERS = 20;
 
 function mapRow(row: typeof savedPlaces.$inferSelect): SavedPlaceRow {
   return {

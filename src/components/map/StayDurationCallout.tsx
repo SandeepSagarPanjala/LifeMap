@@ -14,7 +14,7 @@ import {
   isVisitOngoing,
 } from '@/lib/trip-format';
 import type {DetectedTrip} from '@/lib/trip-detection';
-import {stayTripMarkerCoordinate} from '@/lib/trip-detection';
+import {stayMapMarkerCoordinate} from '@/lib/trip-detection';
 import {savedPlaceDisplayLabel} from '@/lib/saved-places';
 import {HISTORY_COLORS} from '@/lib/history-timeline';
 
@@ -53,7 +53,7 @@ export function StayDurationCallout({
   const ongoing = isVisitOngoing(trip.endAt, now, {
     openThroughNow: trip.openThroughNow,
   });
-  const visitCoordinate = stayTripMarkerCoordinate(trip, {ongoing});
+  const visitCoordinate = stayMapMarkerCoordinate(trip, {ongoing});
   const coordinate = anchorCoordinate ?? visitCoordinate;
   const counts = momentCounts;
   const showMomentCounts = counts != null && hasMomentCounts(counts);

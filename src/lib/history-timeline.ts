@@ -429,10 +429,16 @@ function clipEntryToDay(
   now: Date,
 ): Omit<HistoryDaySegment, 'leftPx' | 'widthPx'> | null {
   const rawEnd = segmentEndAt(entry, now);
-  const segStart = new Date(
-    Math.max(entry.startAt.getTime(), dayStart.getTime()),
-  );
-  const segEnd = new Date(Math.min(rawEnd.getTime(), dayEnd.getTime()));
+  const showFullCrossMidnightStay =
+    entry.kind === 'stay' &&
+    (entry.startAt.getTime() < dayStart.getTime() ||
+      rawEnd.getTime() > dayEnd.getTime());
+  const segStart = showFullCrossMidnightStay
+    ? entry.startAt
+    : new Date(Math.max(entry.startAt.getTime(), dayStart.getTime()));
+  const segEnd = showFullCrossMidnightStay
+    ? rawEnd
+    : new Date(Math.min(rawEnd.getTime(), dayEnd.getTime()));
 
   if (segEnd.getTime() <= segStart.getTime()) {
     return null;

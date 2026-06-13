@@ -27,7 +27,7 @@ describe('evaluateDepartureWatchdog', () => {
     expect(result.distanceMeters).toBeGreaterThan(HEARTBEAT_DEPARTURE_DISTANCE_METERS);
   });
 
-  it('forces moving on speed watchdog after 15 minutes', () => {
+  it('forces moving on speed watchdog after 5 minutes', () => {
     const result = evaluateDepartureWatchdog({
       sinceLastSaveMs: DEPARTURE_WATCHDOG_MIN_MS,
       lastSaved: theater,
@@ -43,7 +43,7 @@ describe('evaluateDepartureWatchdog', () => {
     expect(result.reason).toBe('speed_watchdog');
   });
 
-  it('does not force moving on speed alone before 15 minutes', () => {
+  it('does not force moving on speed alone before 5 minutes', () => {
     const result = evaluateDepartureWatchdog({
       sinceLastSaveMs: DEPARTURE_WATCHDOG_MIN_MS - 1,
       lastSaved: theater,

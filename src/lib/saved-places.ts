@@ -64,6 +64,14 @@ export function matchSavedPlaceForStay(
   return null;
 }
 
+/** Only Home visits are cut at midnight; other stays show the full span on both days. */
+export function shouldSplitStayAtMidnight(
+  stay: DetectedTrip,
+  savedPlaces: readonly SavedPlaceRow[],
+): boolean {
+  return matchSavedPlaceForStay(stay, savedPlaces)?.kind === 'home';
+}
+
 export function matchSavedPlaceForTripEndpoint(
   trip: DetectedTrip,
   endpoint: 'start' | 'end',

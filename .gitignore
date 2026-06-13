@@ -51,6 +51,10 @@ src/config/env.local.ts
 .env
 .env.local
 
+# TransistorSoft license keys (trial/production JWT — never commit)
+ios/Config/Secrets.xcconfig
+android/transistor-license.properties
+
 # fastlane
 #
 # It is recommended to not store the screenshots in the git repo. Instead, use fastlane to re-generate the

@@ -1,5 +1,5 @@
 import type {DetectedTrip} from '@/lib/trip-detection';
-import {stayTripCentroid} from '@/lib/trip-detection';
+import {stayMapCentroid} from '@/lib/trip-detection';
 
 export type StayMapCircle = {
   key: string;
@@ -13,7 +13,7 @@ export function buildStayMapCircles(
 ): StayMapCircle[] {
   return stays.map(stay => ({
     key: stay.id,
-    center: stayTripCentroid(stay),
+    center: stayMapCentroid(stay),
     radiusMeters: dwellRadiusMeters,
   }));
 }

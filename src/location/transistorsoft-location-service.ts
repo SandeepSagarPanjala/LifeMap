@@ -11,10 +11,15 @@ import {
 } from '@/db/repositories/location-points';
 import {getSetting, setSetting} from '@/db/repositories/settings';
 import {evaluateDepartureWatchdog} from '@/lib/departure-watchdog';
+import {
+  HEARTBEAT_CURRENT_POSITION_REQUEST,
+  MIN_DEPARTURE_SPEED_MS,
+} from '@/lib/motion-tracking-policy';
 import {recordTrackingDiagnostic} from '@/lib/tracking-diagnostics';
 import {
-  getTrackingPresetConfig,
+  getTrackingConfig,
   SETTINGS_KEY_TRACKING_ENABLED,
+  SETTINGS_KEY_TRACKING_MAX_RELIABILITY,
   TRACKING_DISTANCE_FILTER_METERS,
 } from '@/lib/tracking-presets';
 
@@ -60,6 +65,18 @@ function toLocationSource(base: string, eventName?: string): string {
   return `${base}:${String(eventName).toLowerCase()}`;
 }
 
+function isSampleLocation(location: Location): boolean {
+  return (location as Location & {sample?: boolean}).sample === true;
+}
+
+async function readMaxReliability(): Promise<boolean> {
+  const stored = await getSetting(SETTINGS_KEY_TRACKING_MAX_RELIABILITY);
+  if (stored === null) {
+    return true;
+  }
+  return stored === 'true';
+}
+
 export class TransistorSoftLocationService implements LocationService {
   private configured = false;
   private subscriptions: Subscription[] = [];
@@ -70,7 +87,6 @@ export class TransistorSoftLocationService implements LocationService {
   private suppressOnLocationTimestampMs: number | null = null;
   private initializingPersistedClock: Promise<void> | null = null;
 
-  /** Every SDK location callback is written — no distance or time throttling. */
   private async persistLocation(
     location: Location,
     source = 'gps',
@@ -135,7 +151,7 @@ export class TransistorSoftLocationService implements LocationService {
     }
 
     for (const item of pending) {
-      if (!isLocationLike(item)) {
+      if (!isLocationLike(item) || isSampleLocation(item)) {
         continue;
       }
       const source = toLocationSource('native_queue', item.event);
@@ -151,7 +167,19 @@ export class TransistorSoftLocationService implements LocationService {
     await this.importNativeQueue();
   }
 
-  /** Samples GPS every heartbeat to catch silent departures after long stationary periods. */
+  async applyTrackingProfile(maxReliability?: boolean): Promise<void> {
+    const enabled =
+      maxReliability ?? (await readMaxReliability());
+    if (!this.configured) {
+      return;
+    }
+    await BackgroundGeolocation.setConfig(getTrackingConfig(enabled));
+    await recordTrackingDiagnostic('tracking_profile_applied', {
+      maxReliability: enabled,
+      distanceFilterMeters: TRACKING_DISTANCE_FILTER_METERS,
+    });
+  }
+
   private async onHeartbeat(): Promise<void> {
     if (this.heartbeatInFlight != null) {
       return this.heartbeatInFlight;
@@ -181,6 +209,21 @@ export class TransistorSoftLocationService implements LocationService {
     }
   }
 
+  private async maybeWakeFromSpeed(location: Location): Promise<void> {
+    const speed = location.coords.speed;
+    if (speed == null || speed < MIN_DEPARTURE_SPEED_MS) {
+      return;
+    }
+    const accuracy = location.coords.accuracy;
+    if (accuracy >= 0 && accuracy > 75) {
+      return;
+    }
+    await this.forceMovingMode('gps_speed_wake', {
+      speed,
+      accuracy: accuracy >= 0 ? accuracy : null,
+    });
+  }
+
   private async runHeartbeat(): Promise<void> {
     await this.importNativeQueue();
 
@@ -188,11 +231,9 @@ export class TransistorSoftLocationService implements LocationService {
       this.lastPersistedMs === 0 ? Number.POSITIVE_INFINITY : Date.now() - this.lastPersistedMs;
 
     try {
-      const location = await BackgroundGeolocation.getCurrentPosition({
-        samples: 1,
-        persist: false,
-        timeout: 30,
-      });
+      const location = await BackgroundGeolocation.getCurrentPosition(
+        HEARTBEAT_CURRENT_POSITION_REQUEST,
+      );
       const {coords} = location;
       const evaluation = evaluateDepartureWatchdog({
         sinceLastSaveMs,
@@ -247,7 +288,7 @@ export class TransistorSoftLocationService implements LocationService {
       isMoving: event.isMoving,
       hasLocation: event.location != null,
     });
-    if (event.location) {
+    if (event.location && !isSampleLocation(event.location)) {
       try {
         await this.persistLocation(event.location, 'motion');
       } catch (error) {
@@ -263,14 +304,23 @@ export class TransistorSoftLocationService implements LocationService {
       return;
     }
 
-    const presetConfig = getTrackingPresetConfig();
+    if ((await getSetting(SETTINGS_KEY_TRACKING_MAX_RELIABILITY)) === null) {
+      await setSetting(SETTINGS_KEY_TRACKING_MAX_RELIABILITY, 'true');
+    }
+
+    const maxReliability = await readMaxReliability();
+    const config = getTrackingConfig(maxReliability);
     await this.initializePersistedClock();
     await recordTrackingDiagnostic('tracking_configure', {
       distanceFilterMeters: TRACKING_DISTANCE_FILTER_METERS,
+      maxReliability,
     });
 
     this.subscriptions.push(
       BackgroundGeolocation.onLocation(async location => {
+        if (isSampleLocation(location)) {
+          return;
+        }
         const timestampMs = locationTimestamp(location).getTime();
         if (
           this.suppressOnLocationTimestampMs != null &&
@@ -280,6 +330,7 @@ export class TransistorSoftLocationService implements LocationService {
           return;
         }
         try {
+          await this.maybeWakeFromSpeed(location);
           await this.persistLocation(location, 'gps', {dedupe: true});
         } catch (error) {
           if (__DEV__) {
@@ -310,34 +361,7 @@ export class TransistorSoftLocationService implements LocationService {
       }),
     );
 
-    await BackgroundGeolocation.ready({
-      ...presetConfig,
-      locationAuthorizationRequest: BackgroundGeolocation.LocationRequest.Always,
-      stopOnTerminate: false,
-      startOnBoot: true,
-      foregroundService: true,
-      autoSync: false,
-      batchSync: false,
-      maxRecordsToPersist: -1,
-      notification: {
-        title: 'LifeMap',
-        text: 'Recording your day privately on this device',
-      },
-      backgroundPermissionRationale: {
-        title: 'Allow LifeMap to track in the background?',
-        message:
-          'LifeMap needs always-on location so your timeline stays complete when the app is closed. Everything stays encrypted on your phone.',
-        positiveAction: 'Change to Always',
-        negativeAction: 'Cancel',
-      },
-      debug: false,
-      logLevel: BackgroundGeolocation.LogLevel.Warning,
-    } as Parameters<typeof BackgroundGeolocation.ready>[0]);
-
-    await BackgroundGeolocation.setConfig({
-      debug: false,
-      logLevel: BackgroundGeolocation.LogLevel.Warning,
-    } as Parameters<typeof BackgroundGeolocation.setConfig>[0]);
+    await BackgroundGeolocation.ready(config);
     await this.importNativeQueue();
 
     this.configured = true;
@@ -396,6 +420,8 @@ export class TransistorSoftLocationService implements LocationService {
       await BackgroundGeolocation.stop();
       await recordTrackingDiagnostic('tracking_sync_stopped', {enabledFromSettings: false});
     }
+
+    await this.applyTrackingProfile();
   }
 
   dispose(): void {
@@ -437,27 +463,81 @@ export function resetLocationService(): void {
 export async function handleHeadlessLocationEvent(
   event: HeadlessEvent,
 ): Promise<void> {
-  if (event.name !== BackgroundGeolocation.Event.Location) {
-    return;
+  switch (event.name) {
+    case BackgroundGeolocation.Event.Location: {
+      const location = event.params as Location;
+      if (!isLocationLike(location) || isSampleLocation(location)) {
+        return;
+      }
+      await insertLocationPoint({
+        timestamp: locationTimestamp(location),
+        lat: location.coords.latitude,
+        lng: location.coords.longitude,
+        accuracy: location.coords.accuracy >= 0 ? location.coords.accuracy : null,
+        altitude: location.coords.altitude,
+        speed:
+          location.coords.speed != null && location.coords.speed >= 0
+            ? location.coords.speed
+            : null,
+        source: toLocationSource('headless', location.event),
+      }, {dedupe: true});
+      await recordTrackingDiagnostic('headless_location_saved', {
+        event: event.name,
+        timestamp: locationTimestamp(location).toISOString(),
+      });
+      return;
+    }
+    case BackgroundGeolocation.Event.Heartbeat: {
+      try {
+        const location = await BackgroundGeolocation.getCurrentPosition(
+          HEARTBEAT_CURRENT_POSITION_REQUEST,
+        );
+        if (!isLocationLike(location) || isSampleLocation(location)) {
+          return;
+        }
+        await insertLocationPoint({
+          timestamp: locationTimestamp(location),
+          lat: location.coords.latitude,
+          lng: location.coords.longitude,
+          accuracy: location.coords.accuracy >= 0 ? location.coords.accuracy : null,
+          altitude: location.coords.altitude,
+          speed:
+            location.coords.speed != null && location.coords.speed >= 0
+              ? location.coords.speed
+              : null,
+          source: 'headless:heartbeat',
+        }, {dedupe: true});
+        const speed = location.coords.speed;
+        if (speed != null && speed >= MIN_DEPARTURE_SPEED_MS) {
+          await BackgroundGeolocation.changePace(true);
+        }
+      } catch {
+        // Headless heartbeat is best-effort.
+      }
+      return;
+    }
+    case BackgroundGeolocation.Event.MotionChange: {
+      const motion = event.params as MotionChangeEvent;
+      if (motion.location && isLocationLike(motion.location) && !isSampleLocation(motion.location)) {
+        await insertLocationPoint({
+          timestamp: locationTimestamp(motion.location),
+          lat: motion.location.coords.latitude,
+          lng: motion.location.coords.longitude,
+          accuracy:
+            motion.location.coords.accuracy >= 0
+              ? motion.location.coords.accuracy
+              : null,
+          altitude: motion.location.coords.altitude,
+          speed:
+            motion.location.coords.speed != null && motion.location.coords.speed >= 0
+              ? motion.location.coords.speed
+              : null,
+          source: 'headless:motion',
+        }, {dedupe: true});
+      }
+      return;
+    }
+    default:
+      return;
   }
-  const location = event.params as Location;
-  if (!isLocationLike(location)) {
-    return;
-  }
-  await insertLocationPoint({
-    timestamp: locationTimestamp(location),
-    lat: location.coords.latitude,
-    lng: location.coords.longitude,
-    accuracy: location.coords.accuracy >= 0 ? location.coords.accuracy : null,
-    altitude: location.coords.altitude,
-    speed:
-      location.coords.speed != null && location.coords.speed >= 0
-        ? location.coords.speed
-        : null,
-    source: toLocationSource('headless', location.event),
-  }, {dedupe: true});
-  await recordTrackingDiagnostic('headless_location_saved', {
-    event: event.name,
-    timestamp: locationTimestamp(location).toISOString(),
-  });
 }

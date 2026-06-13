@@ -1,11 +1,14 @@
 import {
   getCurrentOpenVisit,
+  getHistoryLookaheadEnd,
   prepareDayHistoryTimeline,
   prepareTodayHistoryTimeline,
 } from '../src/lib/today-history';
 import {buildHistoryDayRuler} from '../src/lib/history-timeline';
 import {buildTripDetectionConfig} from '../src/lib/trip-settings';
+import {getDayRange} from '../src/lib/day-utils';
 import type {LocationPointRow} from '../src/db/repositories/location-days';
+import {endOfDay} from 'date-fns';
 
 const config = buildTripDetectionConfig(10, 10, 25);
 const home = {lat: 33.25045, lng: -97.15306};
@@ -34,13 +37,26 @@ describe('prepareTodayHistoryTimeline', () => {
   it('extends open visit to now and from midnight when still home overnight', () => {
     const lookback = [row('2026-06-04T04:12:00.000Z', 1)]; // 11:12 PM Jun 3 CDT
     const today = [row('2026-06-04T06:36:29.000Z', 3)]; // 1:36 AM CDT
+    const savedPlaces = [
+      {
+        id: 1,
+        kind: 'home' as const,
+        label: 'Home',
+        lat: home.lat,
+        lng: home.lng,
+        radiusMeters: 100,
+        createdAt: new Date('2026-01-01'),
+      },
+    ];
 
-    const entries = prepareTodayHistoryTimeline(
+    const entries = prepareDayHistoryTimeline(
+      '2026-06-04',
       today,
       lookback,
-      dayStart,
-      now,
       config,
+      now,
+      [],
+      {savedPlaces},
     );
     const stay = entries.find(e => e.kind === 'stay');
     expect(stay?.kind).toBe('stay');
@@ -313,6 +329,265 @@ describe('prepareTodayHistoryTimeline', () => {
       expect(inboundDrive.endAt.getTime()).toBeLessThanOrEqual(
         homeStay.startAt.getTime() + 5 * 60_000,
       );
+    }
+  });
+
+  it('keeps a brief saved-place stop between two drives (Jun 13 Shay export)', () => {
+    const fs = require('fs') as typeof import('fs');
+    const path = require('path') as typeof import('path');
+    const exportPath = path.join(__dirname, '..', 'all data.json');
+    if (!fs.existsSync(exportPath)) {
+      return;
+    }
+
+    const raw = JSON.parse(fs.readFileSync(exportPath, 'utf8')) as {
+      tables: {
+        location_points: Array<{
+          id: number;
+          timestamp: string;
+          lat: number;
+          lng: number;
+          accuracy: number | null;
+          altitude: number | null;
+          speed: number | null;
+          source: string;
+        }>;
+        saved_places: Array<{
+          id: number;
+          kind: string;
+          label: string;
+          lat: number;
+          lng: number;
+          radiusMeters: number;
+          createdAt: string;
+        }>;
+      };
+    };
+
+    const points = raw.tables.location_points.map(row => ({
+      ...row,
+      timestamp: new Date(row.timestamp),
+      source: row.source as LocationPointRow['source'],
+    }));
+    const savedPlaces = raw.tables.saved_places.map(row => ({
+      ...row,
+      createdAt: new Date(row.createdAt),
+    }));
+    const dayStart = new Date('2026-06-13T05:00:00.000Z');
+    const dayPoints = points.filter(
+      point => point.timestamp >= dayStart && point.timestamp < new Date('2026-06-13T07:24:00.000Z'),
+    );
+    const lookback = points.filter(point => point.timestamp < dayStart).slice(-80);
+
+    const entries = prepareDayHistoryTimeline(
+      '2026-06-13',
+      dayPoints,
+      lookback,
+      buildTripDetectionConfig(10, 5, 20),
+      new Date('2026-06-13T07:24:00.000Z'),
+      [],
+      {savedPlaces},
+    );
+
+    const kinds = entries.map(entry => entry.kind);
+    expect(kinds).toContain('stay');
+    expect(kinds).toContain('travel');
+
+    for (let index = 0; index < entries.length - 1; index += 1) {
+      const left = entries[index]!;
+      const right = entries[index + 1]!;
+      if (left.kind !== 'gap' && right.kind !== 'gap') {
+        expect(left.kind).not.toBe(right.kind);
+      }
+    }
+
+    const shayStop = entries.find(
+      entry =>
+        entry.kind === 'stay' &&
+        entry.startAt.toISOString() === '2026-06-13T05:40:18.000Z',
+    );
+    expect(shayStop?.kind).toBe('stay');
+  });
+
+  it('detects Slim Chickens stop after Shay on Jun 12 export', () => {
+    const fs = require('fs') as typeof import('fs');
+    const path = require('path') as typeof import('path');
+    const exportPath = path.join(__dirname, '..', 'all data.json');
+    if (!fs.existsSync(exportPath)) {
+      return;
+    }
+
+    const raw = JSON.parse(fs.readFileSync(exportPath, 'utf8')) as {
+      tables: {
+        location_points: Array<{
+          id: number;
+          timestamp: string;
+          lat: number;
+          lng: number;
+          accuracy: number | null;
+          altitude: number | null;
+          speed: number | null;
+          source: string;
+        }>;
+        saved_places: Array<{
+          id: number;
+          kind: string;
+          label: string;
+          lat: number;
+          lng: number;
+          radiusMeters: number;
+          createdAt: string;
+        }>;
+      };
+    };
+
+    const points = raw.tables.location_points.map(row => ({
+      ...row,
+      timestamp: new Date(row.timestamp),
+      source: row.source as LocationPointRow['source'],
+    }));
+    const savedPlaces = raw.tables.saved_places.map(row => ({
+      ...row,
+      createdAt: new Date(row.createdAt),
+    }));
+    const dayStart = new Date('2026-06-12T05:00:00.000Z');
+    const dayPoints = points.filter(
+      point =>
+        point.timestamp >= dayStart &&
+        point.timestamp < new Date('2026-06-13T05:00:00.000Z'),
+    );
+    const lookback = points.filter(point => point.timestamp < dayStart).slice(-80);
+
+    const entries = prepareDayHistoryTimeline(
+      '2026-06-12',
+      dayPoints,
+      lookback,
+      buildTripDetectionConfig(10, 5, 20),
+      new Date('2026-06-13T07:24:00.000Z'),
+      [],
+      {savedPlaces},
+    );
+
+    const evening = entries.filter(
+      entry =>
+        entry.kind !== 'gap' &&
+        entry.startAt >= new Date('2026-06-13T01:00:00.000Z'),
+    );
+    const kinds = evening.map(entry => entry.kind);
+    expect(kinds).toEqual(['travel', 'stay', 'travel', 'stay', 'travel', 'stay']);
+
+    const slimVisit = evening.find(
+      entry =>
+        entry.kind === 'stay' &&
+        entry.startAt.getTime() >= new Date('2026-06-13T03:38:00.000Z').getTime() &&
+        entry.startAt.getTime() <= new Date('2026-06-13T03:40:00.000Z').getTime(),
+    );
+    expect(slimVisit?.kind).toBe('stay');
+    expect(slimVisit?.durationMs).toBeGreaterThan(20 * 60_000);
+
+    const bogusMinute = evening.find(
+      entry =>
+        entry.kind === 'stay' &&
+        entry.durationMs <= 2 * 60_000 &&
+        entry.startAt.toISOString().startsWith('2026-06-13T04:09'),
+    );
+    expect(bogusMinute).toBeUndefined();
+  });
+
+  it('shows full cross-midnight span for non-home stays on both days (Jun 12–13 7509)', () => {
+    const fs = require('fs') as typeof import('fs');
+    const path = require('path') as typeof import('path');
+    const exportPath = path.join(__dirname, '..', 'all data.json');
+    if (!fs.existsSync(exportPath)) {
+      return;
+    }
+
+    const raw = JSON.parse(fs.readFileSync(exportPath, 'utf8')) as {
+      tables: {
+        location_points: Array<{
+          id: number;
+          timestamp: string;
+          lat: number;
+          lng: number;
+          accuracy: number | null;
+          altitude: number | null;
+          speed: number | null;
+          source: string;
+        }>;
+        saved_places: Array<{
+          id: number;
+          kind: string;
+          label: string;
+          lat: number;
+          lng: number;
+          radiusMeters: number;
+          createdAt: string;
+        }>;
+      };
+    };
+
+    const points = raw.tables.location_points.map(row => ({
+      ...row,
+      timestamp: new Date(row.timestamp),
+      source: row.source as LocationPointRow['source'],
+    }));
+    const savedPlaces = raw.tables.saved_places.map(row => ({
+      ...row,
+      kind: row.kind as 'home' | 'work' | 'favorite',
+      createdAt: new Date(row.createdAt),
+    }));
+    const tripConfig = buildTripDetectionConfig(10, 5, 20);
+    const referenceNow = new Date('2026-06-13T07:24:00.000Z');
+
+    function loadDay(dateKey: string) {
+      const {start: dayStart} = getDayRange(dateKey);
+      const dayEnd = endOfDay(dayStart);
+      const lookaheadEnd = getHistoryLookaheadEnd(dayEnd);
+      const dayPoints = points.filter(
+        point => point.timestamp >= dayStart && point.timestamp <= dayEnd,
+      );
+      const lookback = points.filter(point => point.timestamp < dayStart);
+      const lookahead = points.filter(
+        point => point.timestamp > dayEnd && point.timestamp <= lookaheadEnd,
+      );
+      return prepareDayHistoryTimeline(
+        dateKey,
+        dayPoints,
+        lookback,
+        tripConfig,
+        referenceNow,
+        lookahead,
+        {savedPlaces},
+      );
+    }
+
+    const jun12 = loadDay('2026-06-12');
+    const jun13 = loadDay('2026-06-13');
+
+    const jun12LastStay = jun12.filter(entry => entry.kind === 'stay').at(-1);
+    const jun13FirstStay = jun13.find(entry => entry.kind === 'stay');
+
+    expect(jun12LastStay?.kind).toBe('stay');
+    expect(jun13FirstStay?.kind).toBe('stay');
+    if (jun12LastStay?.kind === 'stay' && jun13FirstStay?.kind === 'stay') {
+      expect(jun12LastStay.startAt.toISOString()).toBe(
+        '2026-06-13T04:36:48.000Z',
+      );
+      expect(jun12LastStay.endAt.toISOString()).toBe(
+        '2026-06-13T05:13:42.000Z',
+      );
+      expect(jun13FirstStay.startAt).toEqual(jun12LastStay.startAt);
+      expect(jun13FirstStay.endAt).toEqual(jun12LastStay.endAt);
+      expect(jun12LastStay.endAt.getTime()).toBeGreaterThan(
+        endOfDay(getDayRange('2026-06-12').start).getTime(),
+      );
+
+      const jun12Bar = buildHistoryDayRuler(jun12, '2026-06-12', 300, referenceNow);
+      const jun13Bar = buildHistoryDayRuler(jun13, '2026-06-13', 300, referenceNow);
+      const jun12Segment = jun12Bar.segments.at(-1)!;
+      const jun13Segment = jun13Bar.segments[0]!;
+      expect(jun12Segment.endAt).toEqual(jun12LastStay.endAt);
+      expect(jun13Segment.startAt).toEqual(jun13FirstStay.startAt);
     }
   });
 });

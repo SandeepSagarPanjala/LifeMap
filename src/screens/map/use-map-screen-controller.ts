@@ -83,7 +83,7 @@ import {
   isPlayableTimelineEntry,
   firstPlayableTimelineIndex,
   adjacentStaysForTravelIndex,
-  stayTripMarkerCoordinate,
+  stayMapMarkerCoordinate,
   type DetectedTrip,
   type DayTimelineEntry,
 } from '@/lib/trip-detection';
@@ -817,7 +817,7 @@ export function useMapScreenController() {
     const ongoing = isVisitOngoing(selectedPlayable.endAt, new Date(), {
       openThroughNow: selectedPlayable.openThroughNow,
     });
-    const coordinate = stayTripMarkerCoordinate(selectedPlayable, {ongoing});
+    const coordinate = stayMapMarkerCoordinate(selectedPlayable, {ongoing});
     const region = regionAroundCoordinate(
       coordinate,
       VISIT_MAX_ZOOM_DELTA,

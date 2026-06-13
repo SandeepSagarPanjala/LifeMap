@@ -14,7 +14,9 @@ Debug builds from `pnpm ios` are for **development only**.
    - Open `ios/LifeMap.xcworkspace` → LifeMap target → **Signing & Capabilities** → **Automatically manage signing** ✓
    - First TestFlight build needs an **Apple Distribution** certificate; `pnpm ios:beta` requests one via `-allowProvisioningUpdates` if you are signed into Xcode
 4. **TransistorSoft license** for **Release** background GPS (Debug works without it)
-   - Add license to `Info.plist` per [TransistorSoft docs](https://github.com/transistorsoft/react-native-background-geolocation/blob/master/docs/installation.md) before QA tests location in TestFlight builds
+   - Copy `ios/Config/Secrets.xcconfig.example` → `ios/Config/Secrets.xcconfig` and paste your iOS JWT
+   - Copy `android/transistor-license.properties.example` → `android/transistor-license.properties` for Android
+   - Trial expires **2026-07-13** — both files are gitignored
 
 ## One-time Fastlane setup (your Mac)
 

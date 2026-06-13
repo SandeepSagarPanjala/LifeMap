@@ -1,9 +1,15 @@
 import {differenceInMilliseconds} from 'date-fns';
 
+/**
+ * Visit / drive timeline detection.
+ * Product rules (alternation, speed, continuity): docs/timeline-model.md
+ */
+
 import type {LocationPointRow} from '@/db/repositories/location-days';
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import {calculatePathDistanceKm, distanceKm} from '@/lib/location-geo';
 import type {LocationPointLike} from '@/lib/location-geo';
+import {buildDrawableRouteSegments} from '@/lib/route-segments';
 import {
   MIN_STOP_CLUSTER_RADIUS_METERS,
   MIN_TRIP_STOP_MINUTES,
@@ -71,6 +77,17 @@ const MIN_TIMELINE_GAP_MS = 2 * 60_000;
 
 /** Below this, movement between stays is GPS noise — not a real trip. */
 const MIN_TRAVEL_DISTANCE_M = 40;
+
+/** Long drives need multiple fixes — 2-point straight lines are tracking gaps, not routes. */
+const MIN_TRAVEL_POINTS_FOR_LONG_DRIVE = 3;
+const LONG_DRIVE_DISTANCE_M = 200;
+
+/** Long hops slower than this are gaps, not drives (see docs/timeline-model.md). */
+const MIN_MEANINGFUL_DRIVE_IMPLIED_KMH = 8;
+
+/** Few collinear fixes on a long chord — do not draw a road-following lie. */
+const SPARSE_ROUTE_MAX_POINTS = 6;
+const SPARSE_ROUTE_STRAIGHTNESS_RATIO = 0.9;
 
 /** Turn-in faster than this stays on the drive path; slower = parked (visit starts). */
 const VISIT_ARRIVAL_SPEED_MS = 2;
@@ -163,6 +180,18 @@ function isMeaningfulTravel(trip: DetectedTrip): boolean {
     return false;
   }
   const distanceM = trip.distanceKm * 1000;
+  if (
+    trip.points.length < MIN_TRAVEL_POINTS_FOR_LONG_DRIVE &&
+    distanceM >= LONG_DRIVE_DISTANCE_M
+  ) {
+    return false;
+  }
+  if (distanceM >= LONG_DRIVE_DISTANCE_M) {
+    const impliedKmh = impliedSpeedKmh(distanceM, trip.durationMs);
+    if (impliedKmh < MIN_MEANINGFUL_DRIVE_IMPLIED_KMH) {
+      return false;
+    }
+  }
   /** Real hops (e.g. Whataburger → Tesla lot) can be short but hundreds of meters. */
   if (distanceM >= 100) {
     return true;
@@ -171,6 +200,22 @@ function isMeaningfulTravel(trip: DetectedTrip): boolean {
     return false;
   }
   return distanceM >= MIN_TRAVEL_DISTANCE_M;
+}
+
+/** True when a drive has too few GPS fixes to draw a real path (avoid straight-line lies). */
+export function isSparseTravelRoute(points: LocationPointRow[]): boolean {
+  if (points.length < 2) {
+    return true;
+  }
+  const pathM = calculatePathDistanceKm(points) * 1000;
+  const straightM = distanceKm(points[0]!, points[points.length - 1]!) * 1000;
+  if (pathM >= LONG_DRIVE_DISTANCE_M && straightM / Math.max(pathM, 1) >= SPARSE_ROUTE_STRAIGHTNESS_RATIO) {
+    return points.length < SPARSE_ROUTE_MAX_POINTS;
+  }
+  if (points.length >= MIN_TRAVEL_POINTS_FOR_LONG_DRIVE) {
+    return false;
+  }
+  return pathM >= LONG_DRIVE_DISTANCE_M;
 }
 
 const MAX_STAY_DEPARTURE_BRIDGE_MS = 5 * 60_000;
@@ -360,6 +405,14 @@ function findVisitDepartureEndIndex(points: LocationPointRow[]): number {
  * Clean visit/drive boundaries:
  * drive → … → arrival (#16329), visit = all in-area saves (sparse OK), next drive from departure.
  */
+function isMidRouteVenueStop(stay: DetectedTrip): boolean {
+  const minStopMs = MIN_TRIP_STOP_MINUTES * 60_000;
+  if (stay.durationMs < minStopMs || stay.points.length === 0) {
+    return false;
+  }
+  return stayMaxSpreadM(stay) <= MIN_STOP_CLUSTER_RADIUS_METERS * 2;
+}
+
 function normalizeVisitTravelBoundaries(trips: DetectedTrip[]): DetectedTrip[] {
   if (trips.length === 0) {
     return [];
@@ -373,29 +426,19 @@ function normalizeVisitTravelBoundaries(trips: DetectedTrip[]): DetectedTrip[] {
       continue;
     }
 
+    if (isMidRouteVenueStop(stay)) {
+      continue;
+    }
+
     const departureIndex = findVisitDepartureEndIndex(stay.points);
     const arrivalIndex = findVisitArrivalIndex(stay.points, departureIndex);
     const approach = stay.points.slice(0, arrivalIndex);
     const visitCore = stay.points.slice(arrivalIndex, departureIndex + 1);
     const departureLead = stay.points.slice(departureIndex + 1);
-    const areaArrivedAt = approach[0]?.timestamp ?? stay.startAt;
 
     adjusted[index] =
       visitCore.length > 0
-        ? (() => {
-            const core = makeTrip(visitCore, 'stay', index);
-            if (
-              approach.length > 0 &&
-              areaArrivedAt.getTime() < core.startAt.getTime()
-            ) {
-              return {
-                ...core,
-                startAt: areaArrivedAt,
-                durationMs: differenceInMilliseconds(core.endAt, areaArrivedAt),
-              };
-            }
-            return core;
-          })()
+        ? makeTrip(visitCore, 'stay', index)
         : {...stay, points: [], durationMs: 0};
 
     if (approach.length > 0) {
@@ -434,6 +477,226 @@ function normalizeVisitTravelBoundaries(trips: DetectedTrip[]): DetectedTrip[] {
   );
 }
 
+function trimTripStart(trip: DetectedTrip, startAt: Date): DetectedTrip {
+  const startMs = startAt.getTime();
+  const points = trip.points.filter(point => point.timestamp.getTime() >= startMs);
+  if (points.length === 0) {
+    return {
+      ...trip,
+      startAt,
+      durationMs: Math.max(0, differenceInMilliseconds(trip.endAt, startAt)),
+    };
+  }
+  const remade = makeTrip(points, trip.kind, 0);
+  return {
+    ...remade,
+    id: trip.id,
+    materializedTripId: trip.materializedTripId,
+    openThroughNow: trip.openThroughNow,
+  };
+}
+
+function trimTripEnd(trip: DetectedTrip, endAt: Date): DetectedTrip {
+  const endMs = endAt.getTime();
+  const points = trip.points.filter(point => point.timestamp.getTime() <= endMs);
+  if (points.length === 0) {
+    return {
+      ...trip,
+      endAt,
+      durationMs: Math.max(0, differenceInMilliseconds(endAt, trip.startAt)),
+    };
+  }
+  const remade = makeTrip(points, trip.kind, 0);
+  return {
+    ...remade,
+    id: trip.id,
+    materializedTripId: trip.materializedTripId,
+    openThroughNow: trip.openThroughNow,
+  };
+}
+
+/**
+ * Adjacent drive/visit cards must not overlap in time.
+ * Arrival = drive ends → visit starts. Departure = visit ends → next drive starts.
+ * See docs/timeline-model.md.
+ */
+function snapTripEndAt(trip: DetectedTrip, endAt: Date): DetectedTrip {
+  if (trip.endAt.getTime() === endAt.getTime()) {
+    return trip;
+  }
+  if (trip.endAt.getTime() < endAt.getTime()) {
+    return {
+      ...trip,
+      endAt,
+      durationMs: Math.max(0, differenceInMilliseconds(endAt, trip.startAt)),
+    };
+  }
+  return trimTripEnd(trip, endAt);
+}
+
+function snapTripStartAt(trip: DetectedTrip, startAt: Date): DetectedTrip {
+  if (trip.startAt.getTime() === startAt.getTime()) {
+    return trip;
+  }
+  if (trip.startAt.getTime() > startAt.getTime()) {
+    return {
+      ...trip,
+      startAt,
+      durationMs: Math.max(0, differenceInMilliseconds(trip.endAt, startAt)),
+    };
+  }
+  return trimTripStart(trip, startAt);
+}
+
+function mergeConsecutiveTravels(trips: DetectedTrip[]): DetectedTrip[] {
+  const merged: DetectedTrip[] = [];
+
+  for (const trip of trips) {
+    const last = merged[merged.length - 1];
+    if (last?.kind === 'travel' && trip.kind === 'travel') {
+      merged[merged.length - 1] = makeTrip(
+        [...last.points, ...trip.points],
+        'travel',
+        merged.length - 1,
+      );
+      continue;
+    }
+    merged.push(trip);
+  }
+
+  return merged;
+}
+
+function shouldBridgeBetweenStays(
+  left: DetectedTrip,
+  right: DetectedTrip,
+): boolean {
+  const gapMs = right.startAt.getTime() - left.endAt.getTime();
+  if (gapMs > MIN_TIMELINE_GAP_MS) {
+    return false;
+  }
+  const from = left.points[left.points.length - 1];
+  const to = right.points[0];
+  if (from == null || to == null) {
+    return false;
+  }
+  const distM = distanceKm(from, to) * 1000;
+  return distM >= MIN_TRAVEL_DISTANCE_M && distM <= SHORT_DEPARTURE_MAX_DIST_M;
+}
+
+function bridgeTravelBetweenStays(
+  left: DetectedTrip,
+  right: DetectedTrip,
+): DetectedTrip | null {
+  const from = left.points[left.points.length - 1];
+  const to = right.points[0];
+  if (from == null || to == null || from.id === to.id) {
+    return null;
+  }
+  const travel = makeTrip([from, to], 'travel', 0);
+  if (travel.distanceKm * 1000 < MIN_TRAVEL_DISTANCE_M) {
+    return null;
+  }
+  return travel;
+}
+
+/** Rule 1: never drive→drive or visit→visit in the final timeline. */
+function enforceStrictAlternation(
+  trips: DetectedTrip[],
+  config: TripDetectionConfig,
+): DetectedTrip[] {
+  let result = mergeConsecutiveTravels(trips);
+  const resolved: DetectedTrip[] = [];
+  let index = 0;
+
+  while (index < result.length) {
+    const current = result[index]!;
+    index += 1;
+
+    if (
+      current.kind === 'stay' &&
+      index < result.length &&
+      result[index]!.kind === 'stay'
+    ) {
+      let combined = current;
+      while (index < result.length && result[index]!.kind === 'stay') {
+        const next = result[index]!;
+        if (staysWithinMergeRadius(combined, next, config)) {
+          combined = makeTrip(
+            [...combined.points, ...next.points],
+            'stay',
+            resolved.length,
+          );
+          index += 1;
+          continue;
+        }
+
+        const bridge = shouldBridgeBetweenStays(combined, next)
+          ? bridgeTravelBetweenStays(combined, next)
+          : null;
+        resolved.push({
+          ...combined,
+          id: `stay-${resolved.length}-${combined.startAt.getTime()}`,
+        });
+        if (bridge != null) {
+          resolved.push({
+            ...bridge,
+            id: `travel-${resolved.length}-${bridge.startAt.getTime()}`,
+          });
+        }
+        combined = next;
+        index += 1;
+      }
+      resolved.push({
+        ...combined,
+        id: `${combined.kind}-${resolved.length}-${combined.startAt.getTime()}`,
+      });
+      continue;
+    }
+
+    resolved.push({
+      ...current,
+      id: `${current.kind}-${resolved.length}-${current.startAt.getTime()}`,
+    });
+  }
+
+  return mergeConsecutiveTravels(resolved);
+}
+
+function enforceAdjacentContinuity(trips: DetectedTrip[]): DetectedTrip[] {
+  if (trips.length === 0) {
+    return [];
+  }
+
+  const adjusted = trips.map(trip => ({...trip, points: [...trip.points]}));
+
+  for (let index = 0; index < adjusted.length - 1; index += 1) {
+    const left = adjusted[index]!;
+    const right = adjusted[index + 1]!;
+
+    if (left.kind === 'travel' && right.kind === 'stay') {
+      const boundary = right.startAt;
+      adjusted[index] = snapTripEndAt(left, boundary);
+      adjusted[index + 1] = snapTripStartAt(right, boundary);
+    }
+
+    if (left.kind === 'stay' && right.kind === 'travel') {
+      const boundary = right.startAt;
+      adjusted[index] = snapTripEndAt(left, boundary);
+      adjusted[index + 1] = snapTripStartAt(right, boundary);
+    }
+  }
+
+  return adjusted.filter(
+    trip =>
+      trip.points.length > 0 &&
+      trip.endAt.getTime() >= trip.startAt.getTime() &&
+      (trip.kind === 'stay' ||
+        isMeaningfulTravel(trip) ||
+        isSparseTravelRoute(trip.points)),
+  );
+}
+
 function closeStayEndsAtNextLeg(
   trips: DetectedTrip[],
   config: TripDetectionConfig,
@@ -464,7 +727,8 @@ function closeStayEndsAtNextLeg(
       index > 0 &&
       leftArea &&
       lastStillAtStay &&
-      gapMs > MAX_STAY_DEPARTURE_BRIDGE_MS;
+      gapMs > MAX_STAY_DEPARTURE_BRIDGE_MS &&
+      gapMs <= SAVED_PLACE_DEPARTURE_GRACE_MS;
     const shortHopToNextStop =
       travel.durationMs < 2 * 60_000 &&
       travel.distanceKm * 1000 < 300;
@@ -702,6 +966,28 @@ export function findSavedPlaceStaySpans(
   return mergeStaySpans(spans);
 }
 
+function clipGenericSpansAtSavedPlaceDepartures(
+  generic: StaySpan[],
+  saved: StaySpan[],
+): StaySpan[] {
+  if (saved.length === 0) {
+    return generic;
+  }
+
+  return generic.flatMap(span => {
+    let end = span.end;
+    for (const savedSpan of saved) {
+      if (span.start <= savedSpan.end && span.end >= savedSpan.start) {
+        end = Math.min(end, savedSpan.end);
+      }
+    }
+    if (end < span.start) {
+      return [];
+    }
+    return [{start: span.start, end}];
+  });
+}
+
 function findAllStaySpans(
   points: LocationPointRow[],
   config: TripDetectionConfig,
@@ -711,9 +997,10 @@ function findAllStaySpans(
   if (savedPlaces.length === 0) {
     return generic;
   }
+  const saved = findSavedPlaceStaySpans(points, savedPlaces);
   return mergeStaySpans([
-    ...generic,
-    ...findSavedPlaceStaySpans(points, savedPlaces),
+    ...clipGenericSpansAtSavedPlaceDepartures(generic, saved),
+    ...saved,
   ]);
 }
 
@@ -1257,6 +1544,7 @@ function shouldShowTimelineGap(
 
 /**
  * Life360-style timeline: stay → trip → stay → trip → stay.
+ * Product rules: docs/timeline-model.md
  * - Stay: ≥ dwell minutes in one area, or open visit through last save.
  * - Trip: saves from the moment you leave until the next stay begins.
  * - Gap: no rows in DB and next save is far away (not same-area hole).
@@ -1348,7 +1636,9 @@ export function detectTrips(
   );
   const withoutNoise = dropNoiseTravels(merged);
   const bounded = normalizeVisitTravelBoundaries(withoutNoise);
-  return closeStayEndsAtNextLeg(bounded, config);
+  const closed = closeStayEndsAtNextLeg(bounded, config);
+  const alternating = enforceStrictAlternation(closed, config);
+  return enforceAdjacentContinuity(alternating);
 }
 
 /** @deprecated Use mergeAdjacentSameAreaStays */
@@ -1417,7 +1707,7 @@ function previousStayDepartureAnchor(
   }
 
   const last = stay.points[stay.points.length - 1]!;
-  const marker = stayTripMarkerCoordinate(stay);
+  const marker = stayMapMarkerCoordinate(stay);
   const markerDistM =
     distanceKm(
       {lat: last.lat, lng: last.lng},
@@ -1568,9 +1858,103 @@ export function getTravelDisplayPoints(
   return points;
 }
 
+function mergeRoutePoints(
+  base: LocationPointRow[],
+  extra: LocationPointRow[],
+): LocationPointRow[] {
+  if (extra.length === 0) {
+    return base;
+  }
+  const merged = [...base];
+  let lastId = merged[merged.length - 1]?.id;
+  for (const point of extra) {
+    if (point.id === lastId) {
+      continue;
+    }
+    merged.push(point);
+    lastId = point.id;
+  }
+  return merged;
+}
+
+function sortedStayPoints(stay: DetectedTrip): LocationPointRow[] {
+  return [...stay.points].sort(
+    (a, b) => a.timestamp.getTime() - b.timestamp.getTime(),
+  );
+}
+
+/** Turn-in saves before the parked arrival — belong on the solid inbound drive. */
+export function visitArrivalPointsForInbound(visit: DetectedTrip): LocationPointRow[] {
+  const sorted = sortedStayPoints(visit);
+  if (sorted.length === 0) {
+    return [];
+  }
+  const departureIndex = findVisitDepartureEndIndex(sorted);
+  const arrivalIndex = findVisitArrivalIndex(sorted, departureIndex);
+  return sorted.slice(0, arrivalIndex + 1);
+}
+
+/** In-area saves after arrival and before departure — movement inside the visit. */
+export function visitCorePoints(visit: DetectedTrip): LocationPointRow[] {
+  const sorted = sortedStayPoints(visit);
+  if (sorted.length === 0) {
+    return [];
+  }
+  const departureIndex = findVisitDepartureEndIndex(sorted);
+  const arrivalIndex = findVisitArrivalIndex(sorted, departureIndex);
+  return sorted.slice(arrivalIndex, departureIndex + 1);
+}
+
+/** Map display uses in-area core — not turn-in pings still attached to the visit row. */
+export function stayMapDisplayPoints(stay: DetectedTrip): LocationPointRow[] {
+  if (stay.kind !== 'stay') {
+    return stay.points;
+  }
+  const core = visitCorePoints(stay);
+  return core.length > 0 ? core : stay.points;
+}
+
+export function stayMapCentroid(stay: DetectedTrip): {
+  latitude: number;
+  longitude: number;
+} {
+  const displayPoints = stayMapDisplayPoints(stay);
+  if (displayPoints.length === 0) {
+    return stayTripCentroid(stay);
+  }
+  return stayTripCentroid({...stay, points: displayPoints});
+}
+
+export function stayMapMarkerCoordinate(
+  stay: DetectedTrip,
+  options?: {ongoing?: boolean},
+): {latitude: number; longitude: number} {
+  if (options?.ongoing && stay.points.length > 0) {
+    return stayTripMarkerCoordinate(stay, options);
+  }
+  return stayMapCentroid(stay);
+}
+
+/** Dashed map paths for wandering inside the orange visit area. */
+export function visitInAreaRouteSegments(
+  visit: DetectedTrip,
+  config: TripDetectionConfig,
+): {latitude: number; longitude: number}[][] {
+  return buildDrawableRouteSegments(visitCorePoints(visit), config);
+}
+
+export function extendTravelToVisitArrival(
+  travelPoints: LocationPointRow[],
+  visit: DetectedTrip | null,
+): LocationPointRow[] {
+  if (visit == null) {
+    return travelPoints;
+  }
+  return mergeRoutePoints(travelPoints, visitArrivalPointsForInbound(visit));
+}
+
 /**
- * History visit map: inbound drive plus turn-in saves until the visit circle.
- * Does not trace the full stay — only the approach into the orange area.
+ * History visit map: inbound drive through turn-in until the visit arrival save.
  */
 export function getVisitInboundTravelPoints(
   inboundTravel: DetectedTrip,
@@ -1579,25 +1963,29 @@ export function getVisitInboundTravelPoints(
   otherStays: DetectedTrip[],
   config: TripDetectionConfig,
 ): LocationPointRow[] {
-  return getTravelDisplayPoints(
+  const base = getTravelDisplayPoints(
     inboundTravel,
     previousStay,
     otherStays,
     config,
   );
+  return mergeRoutePoints(base, visitArrivalPointsForInbound(visit));
 }
 
-/** Minimum gap before drawing the dashed visit connector in history mode. */
+/** @deprecated Use visitInAreaRouteSegments — only tiny parking-lot bridges if needed. */
 export const VISIT_CONNECTOR_MIN_GAP_M = 8;
+/** @deprecated Use visitInAreaRouteSegments for in-area movement. */
+export const VISIT_CONNECTOR_MAX_GAP_M = 35;
 
 /**
- * History visit map: dashed segment from last GPS on the solid blue path to the
- * orange pin (centroid). Bridges parking-lot / turn-in gaps with no drive points.
+ * @deprecated Prefer visitInAreaRouteSegments. Short bridge only when arrival save
+ * is still a few meters outside the drawn visit pin.
  */
 export function visitApproachConnectorCoordinates(
   routePoints: LocationPointRow[],
   visit: DetectedTrip,
   minGapM = VISIT_CONNECTOR_MIN_GAP_M,
+  maxGapM = VISIT_CONNECTOR_MAX_GAP_M,
 ): {latitude: number; longitude: number}[] | null {
   if (routePoints.length === 0 || visit.points.length === 0) {
     return null;
@@ -1611,7 +1999,7 @@ export function visitApproachConnectorCoordinates(
       {lat: target.latitude, lng: target.longitude},
     ) * 1000;
 
-  if (gapM < minGapM) {
+  if (gapM < minGapM || gapM > maxGapM) {
     return null;
   }
 

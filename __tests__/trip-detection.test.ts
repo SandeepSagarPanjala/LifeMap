@@ -4,9 +4,13 @@ import {
   detectTrips,
   findSavedPlaceStaySpans,
   getTravelDisplayPoints,
+  getVisitInboundTravelPoints,
   visitApproachConnectorCoordinates,
+  visitInAreaRouteSegments,
   isShortGapDeparture,
   isStaleWakeNotDeparture,
+  stayMapCentroid,
+  stayMapMarkerCoordinate,
   stayTripCentroid,
   stayTripMarkerCoordinate,
   findNextPlayableTimelineIndex,
@@ -15,6 +19,7 @@ import {
   lastPlayableTimelineIndex,
   staysBeforeEntryIndex,
   stayBeforeEntryIndex,
+  isSparseTravelRoute,
 } from '../src/lib/trip-detection';
 import {distanceKm} from '../src/lib/location-geo';
 import {buildTripDetectionConfig} from '../src/lib/trip-settings';
@@ -59,11 +64,14 @@ describe('stay / trip timeline', () => {
         {minutes: 0, ...HOME},
         {minutes: 60, ...HOME},
         {minutes: 110, ...HOME},
+        {minutes: 118, lat: 33.215, lng: -97.12},
         {minutes: 120, lat: 33.22, lng: -97.1},
         {minutes: 125, lat: 33.23, lng: -97.08},
+        {minutes: 130, lat: 33.235, lng: -97.07},
         {minutes: 135, ...WALMART},
         {minutes: 150, ...WALMART},
         {minutes: 165, lat: 33.24, lng: -97.07},
+        {minutes: 170, lat: 33.23, lng: -97.09},
         {minutes: 175, lat: 33.22, lng: -97.11},
         {minutes: 185, ...HOME},
         {minutes: 200, ...HOME},
@@ -76,10 +84,8 @@ describe('stay / trip timeline', () => {
     expect(timeline[0]?.kind).toBe('stay');
     expect(timeline[2]?.kind).toBe('stay');
     expect(timeline[4]?.kind).toBe('stay');
-    if (timeline[1]?.kind === 'travel') {
-      expect(timeline[1].startAt.getTime()).toBe(
-        new Date('2026-06-03T10:00:00').getTime(),
-      );
+    if (timeline[1]?.kind === 'travel' && timeline[0]?.kind === 'stay') {
+      expect(timeline[0].endAt.getTime()).toBe(timeline[1].startAt.getTime());
     }
   });
 
@@ -567,8 +573,9 @@ describe('stay / trip timeline', () => {
     expect(drive.points[drive.points.length - 1]!.id).toBeGreaterThanOrEqual(13939);
     expect(visit.points[0]!.id).toBeGreaterThanOrEqual(13939);
 
-    const driveRoute = getTravelDisplayPoints(
+    const driveRoute = getVisitInboundTravelPoints(
       drive,
+      visit,
       stayBeforeEntryIndex(timeline, visitIndex),
       staysBeforeEntryIndex(timeline, visitIndex),
       tripConfig,
@@ -584,11 +591,8 @@ describe('stay / trip timeline', () => {
     expect(centroid.longitude).toBeGreaterThan(-96.806);
     expect(centroid.longitude).toBeLessThan(-96.802);
 
-    const connector = visitApproachConnectorCoordinates(driveRoute, visit);
-    expect(connector).not.toBeNull();
-    expect(connector).toHaveLength(2);
-    expect(connector![1]!.latitude).toBeCloseTo(centroid.latitude, 5);
-    expect(connector![1]!.longitude).toBeCloseTo(centroid.longitude, 5);
+    expect(visitApproachConnectorCoordinates(driveRoute, visit)).toBeNull();
+    expect(visitInAreaRouteSegments(visit, tripConfig).length).toBeGreaterThan(0);
   });
 
   it('merges sparse charger pings into one visit with drive ending at arrival (Jun 6)', () => {
@@ -853,5 +857,216 @@ describe('findSavedPlaceStaySpans', () => {
     const spans = findSavedPlaceStaySpans(points, [homePlace]);
     expect(spans).toHaveLength(1);
     expect(spans[0]?.end).toBe(2);
+  });
+
+  it('does not treat a 2-point long hop as a meaningful drive', () => {
+    const base = new Date('2026-06-13T05:00:00.000Z');
+    const points = [
+      {
+        id: 1,
+        timestamp: base,
+        lat: 33.15,
+        lng: -96.82,
+        accuracy: 10,
+        altitude: null,
+        speed: 15,
+        source: 'gps' as const,
+      },
+      {
+        id: 2,
+        timestamp: new Date(base.getTime() + 27 * 60_000),
+        lat: 33.25,
+        lng: -97.15,
+        accuracy: 10,
+        altitude: null,
+        speed: 0,
+        source: 'gps' as const,
+      },
+    ];
+    const trips = detectTrips(points, buildTripDetectionConfig(10, 5, 20));
+    expect(trips.some(trip => trip.kind === 'travel')).toBe(false);
+  });
+
+  it('does not overlap adjacent drive and stay times', () => {
+    const base = new Date('2026-06-13T01:25:00.000Z');
+    const point = (
+      minutes: number,
+      lat: number,
+      lng: number,
+      speed: number | null,
+    ): LocationPointRow => ({
+      id: minutes,
+      timestamp: new Date(base.getTime() + minutes * 60_000),
+      lat,
+      lng,
+      accuracy: 10,
+      altitude: null,
+      speed,
+      source: 'gps',
+    });
+
+    const home = {lat: 33.25, lng: -97.15};
+    const shay = {lat: 33.22, lng: -96.82};
+    const points = [
+      point(0, home.lat, home.lng, 0),
+      point(30, home.lat + 0.01, home.lng + 0.01, 15),
+      point(33, home.lat + 0.02, home.lng + 0.015, 15),
+      point(36, shay.lat + 0.02, shay.lng + 0.01, 12),
+      point(37, shay.lat + 0.001, shay.lng + 0.0005, 4),
+      point(38, shay.lat + 0.0001, shay.lng, 0),
+      point(90, shay.lat + 0.0002, shay.lng + 0.0001, 0),
+      point(120, shay.lat + 0.03, shay.lng + 0.02, 15),
+      point(127, shay.lat + 0.04, shay.lng + 0.03, 15),
+      point(131, shay.lat + 0.045, shay.lng + 0.035, 12),
+      point(134, shay.lat + 0.05, shay.lng + 0.04, 0),
+    ];
+
+    const trips = detectTrips(points, buildTripDetectionConfig(10, 5, 20));
+    expect(trips.length).toBeGreaterThan(0);
+    for (let index = 0; index < trips.length - 1; index += 1) {
+      const left = trips[index]!;
+      const right = trips[index + 1]!;
+      if (left.kind === 'stay' && right.kind === 'stay') {
+        continue;
+      }
+      expect(left.kind).not.toBe(right.kind);
+      expect(left.endAt.getTime()).toBeLessThanOrEqual(right.startAt.getTime());
+      if (left.kind === 'travel' && right.kind === 'stay') {
+        expect(left.endAt.getTime()).toBe(right.startAt.getTime());
+      }
+      if (left.kind === 'stay' && right.kind === 'travel') {
+        expect(left.endAt.getTime()).toBe(right.startAt.getTime());
+      }
+    }
+  });
+
+  it('treats collinear few-point long routes as sparse', () => {
+    const base = new Date('2026-06-13T05:43:00.000Z');
+    const points = [
+      {
+        id: 1,
+        timestamp: base,
+        lat: 33.15,
+        lng: -96.82,
+        accuracy: 10,
+        altitude: null,
+        speed: 15,
+        source: 'gps' as const,
+      },
+      {
+        id: 2,
+        timestamp: new Date(base.getTime() + 20 * 60_000),
+        lat: 33.2,
+        lng: -97.0,
+        accuracy: 10,
+        altitude: null,
+        speed: 15,
+        source: 'gps' as const,
+      },
+      {
+        id: 3,
+        timestamp: new Date(base.getTime() + 46 * 60_000),
+        lat: 33.25,
+        lng: -97.15,
+        accuracy: 10,
+        altitude: null,
+        speed: 0,
+        source: 'gps' as const,
+      },
+    ];
+    expect(isSparseTravelRoute(points)).toBe(true);
+  });
+
+  it('aligns map visit anchor with drive arrival for Slim Chickens (Jun 12 export)', () => {
+    const fs = require('fs') as typeof import('fs');
+    const path = require('path') as typeof import('path');
+    const exportPath = path.join(__dirname, '..', 'all data.json');
+    if (!fs.existsSync(exportPath)) {
+      return;
+    }
+
+    const raw = JSON.parse(fs.readFileSync(exportPath, 'utf8')) as {
+      tables: {
+        location_points: Array<{
+          id: number;
+          timestamp: string;
+          lat: number;
+          lng: number;
+          accuracy: number | null;
+          altitude: number | null;
+          speed: number | null;
+          source: string;
+        }>;
+        saved_places: Array<{
+          id: number;
+          kind: string;
+          label: string;
+          lat: number;
+          lng: number;
+          radiusMeters: number;
+          createdAt: string;
+        }>;
+      };
+    };
+
+    const {endOfDay} = require('date-fns') as typeof import('date-fns');
+    const {
+      prepareDayHistoryTimeline,
+      getHistoryLookaheadEnd,
+    } = require('../src/lib/today-history') as typeof import('../src/lib/today-history');
+    const {buildHistoryMapPlan} =
+      require('../src/lib/history-map-plan') as typeof import('../src/lib/history-map-plan');
+    const {getDayRange} =
+      require('../src/lib/day-utils') as typeof import('../src/lib/day-utils');
+
+    const points = raw.tables.location_points.map(row => ({
+      ...row,
+      timestamp: new Date(row.timestamp),
+      source: row.source as LocationPointRow['source'],
+    }));
+    const savedPlaces = raw.tables.saved_places.map(row => ({
+      ...row,
+      createdAt: new Date(row.createdAt),
+    }));
+    const tripConfig = buildTripDetectionConfig(10, 5, 20);
+    const {start: dayStart} = getDayRange('2026-06-12');
+    const dayEnd = endOfDay(dayStart);
+    const entries = prepareDayHistoryTimeline(
+      '2026-06-12',
+      points.filter(point => point.timestamp >= dayStart && point.timestamp <= dayEnd),
+      points.filter(point => point.timestamp < dayStart),
+      tripConfig,
+      new Date('2026-06-13T07:24:00.000Z'),
+      points.filter(
+        point =>
+          point.timestamp > dayEnd &&
+          point.timestamp <= getHistoryLookaheadEnd(dayEnd),
+      ),
+      {savedPlaces},
+    );
+
+    const driveIndex = entries.findIndex(
+      entry =>
+        entry.kind === 'travel' &&
+        entry.endAt.toISOString() === '2026-06-13T03:39:19.000Z',
+    );
+    const visit = entries[driveIndex + 1];
+    expect(visit?.kind).toBe('stay');
+    if (visit?.kind !== 'stay') {
+      return;
+    }
+
+    const plan = buildHistoryMapPlan(entries, driveIndex, tripConfig);
+    const travelPoints = plan.selected?.travelPoints ?? [];
+    const marker = stayMapMarkerCoordinate(visit);
+    const last = travelPoints[travelPoints.length - 1]!;
+    const gapM =
+      distanceKm(
+        {lat: last.lat, lng: last.lng},
+        {lat: marker.latitude, lng: marker.longitude},
+      ) * 1000;
+
+    expect(gapM).toBeLessThanOrEqual(5);
+    expect(stayMapCentroid(visit).latitude).toBeCloseTo(marker.latitude, 5);
   });
 });

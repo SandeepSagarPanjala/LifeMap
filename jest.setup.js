@@ -99,6 +99,16 @@ jest.mock('react-native-background-geolocation', () => {
     static onLocation = jest.fn(() => ({remove: jest.fn()}));
     static onMotionChange = jest.fn(() => ({remove: jest.fn()}));
     static onHeartbeat = jest.fn(() => ({remove: jest.fn()}));
+    static onProviderChange = jest.fn(() => ({remove: jest.fn()}));
+    static onAuthorization = jest.fn(() => ({remove: jest.fn()}));
+    static Event = {
+      Location: 'location',
+      Heartbeat: 'heartbeat',
+      MotionChange: 'motionchange',
+    };
+    static LocationRequest = {Always: 'Always'};
+    static getLocations = jest.fn().mockResolvedValue([]);
+    static destroyLocations = jest.fn().mockResolvedValue(true);
     static getCurrentPosition = jest.fn().mockResolvedValue({
       timestamp: new Date().toISOString(),
       coords: {
@@ -109,6 +119,7 @@ jest.mock('react-native-background-geolocation', () => {
         speed: 0,
       },
     });
+    static changePace = jest.fn().mockResolvedValue({enabled: true});
     static ready = jest.fn().mockResolvedValue({enabled: false});
     static requestPermission = jest.fn().mockResolvedValue(AuthorizationStatus.Always);
     static getState = jest.fn().mockResolvedValue({enabled: false});

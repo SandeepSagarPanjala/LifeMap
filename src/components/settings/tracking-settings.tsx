@@ -5,9 +5,13 @@ import {formatDistanceToNow} from 'date-fns';
 import {LocateFixed} from 'lucide-react-native';
 
 import {getLatestLocationPoint} from '@/db/repositories/location-points';
+import {getSetting, setSetting} from '@/db/repositories/settings';
 import {getLocationService} from '@/location/transistorsoft-location-service';
 import type {LocationAuthorizationStatus} from '@/location/types';
-import {TRACKING_DISTANCE_FILTER_METERS} from '@/lib/tracking-presets';
+import {
+  SETTINGS_KEY_TRACKING_MAX_RELIABILITY,
+  TRACKING_DISTANCE_FILTER_METERS,
+} from '@/lib/tracking-presets';
 import {Icon} from '@/components/ui/icon';
 import {Text} from '@/components/ui/text';
 import {useThemeColors} from '@/hooks/use-theme-colors';
@@ -31,6 +35,7 @@ export function TrackingSettings() {
   const colors = useThemeColors();
   const [loading, setLoading] = useState(true);
   const [enabled, setEnabled] = useState(false);
+  const [maxReliability, setMaxReliability] = useState(true);
   const [authorizationStatus, setAuthorizationStatus] =
     useState<LocationAuthorizationStatus>('not_determined');
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
@@ -41,8 +46,10 @@ export function TrackingSettings() {
       const service = getLocationService();
       const state = await service.getState();
       const latest = await getLatestLocationPoint();
+      const storedMax = await getSetting(SETTINGS_KEY_TRACKING_MAX_RELIABILITY);
 
       setEnabled(state.enabled);
+      setMaxReliability(storedMax === null ? true : storedMax === 'true');
       setAuthorizationStatus(state.authorizationStatus);
       setLastSavedAt(latest?.timestamp ?? null);
     } finally {
@@ -71,6 +78,13 @@ export function TrackingSettings() {
     const status = await getLocationService().requestPermission();
     setAuthorizationStatus(status);
     await refresh();
+  };
+
+  const handleMaxReliabilityToggle = async () => {
+    const next = !maxReliability;
+    await setSetting(SETTINGS_KEY_TRACKING_MAX_RELIABILITY, next ? 'true' : 'false');
+    setMaxReliability(next);
+    await getLocationService().applyTrackingProfile(next);
   };
 
   return (
@@ -105,7 +119,7 @@ export function TrackingSettings() {
       ) : null}
       <Text variant="muted" className="mt-2 text-sm leading-5">
         {enabled
-          ? `Records your location about every ${TRACKING_DISTANCE_FILTER_METERS} m while moving and saves every fix the SDK sends. A heartbeat still pings every 30 minutes if the SDK goes quiet.`
+          ? `Records your location about every ${TRACKING_DISTANCE_FILTER_METERS} m while moving and saves every fix the SDK sends. Heartbeat checks every minute when maximum reliability is on.`
           : 'Background tracking is off — LifeMap is not saving new GPS points while the app is closed. Your existing map and history still work from data already saved.'}
       </Text>
       {!enabled ? (
@@ -124,27 +138,27 @@ export function TrackingSettings() {
         </Pressable>
       ) : null}
 
-      <View className="border-border mt-4 border-t pt-4 opacity-60">
+      <View className="border-border mt-4 border-t pt-4">
         <View className="flex-row items-center gap-3">
           <View className="flex-1">
             <Text className="font-medium">Maximum reliability</Text>
             <Text variant="muted" className="mt-1 text-sm leading-5">
-              Keeps GPS active even when still. Better drive coverage, higher battery
-              use (~10–15%/day). Test the current departure watchdog on real drives
-              first — enable this only if gaps remain.
+              Keeps GPS active when still and checks every minute in the background.
+              Better drive coverage; uses more battery (~10–15%/day). Turn off for
+              balanced mode if battery is a concern.
             </Text>
           </View>
           <Pressable
             accessibilityRole="switch"
-            accessibilityState={{checked: false, disabled: true}}
-            disabled
-            className="bg-muted h-6 w-11 rounded-full px-0.5">
-            <View className="mt-0.5 ml-0 h-5 w-5 rounded-full bg-white" />
+            accessibilityState={{checked: maxReliability, disabled: !enabled}}
+            disabled={!enabled}
+            onPress={() => void handleMaxReliabilityToggle()}
+            className={`h-6 w-11 rounded-full px-0.5 ${maxReliability && enabled ? 'bg-primary' : 'bg-muted'}`}>
+            <View
+              className={`mt-0.5 h-5 w-5 rounded-full bg-white ${maxReliability && enabled ? 'ml-auto' : 'ml-0'}`}
+            />
           </Pressable>
         </View>
-        <Text variant="muted" className="mt-2 text-xs">
-          Coming soon — placeholder while we validate the new heartbeat departure checks.
-        </Text>
       </View>
     </View>
   );

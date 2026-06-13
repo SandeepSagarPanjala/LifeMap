@@ -1,0 +1,4 @@
+# Copy to transistor-license.properties (android/) and paste your Android JWT.
+# Trial expires 2026-07-13 — do not commit transistor-license.properties.
+
+license=paste-android-jwt-here

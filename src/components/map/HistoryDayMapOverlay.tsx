@@ -4,7 +4,7 @@ import {HistoryRoutePath} from '@/components/map/HistoryRoutePath';
 import {StayAreasOverlay} from '@/components/map/StayAreasOverlay';
 import {StayDurationCallout} from '@/components/map/StayDurationCallout';
 import {TripRouteOverlay} from '@/components/map/TripRouteOverlay';
-import {VisitApproachConnector} from '@/components/map/VisitApproachConnector';
+import {VisitInAreaPaths} from '@/components/map/VisitInAreaPaths';
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import type {DriveEndpointLabel} from '@/lib/drive-endpoint-label';
 import type {HistoryMapPlan} from '@/lib/history-map-plan';
@@ -85,30 +85,26 @@ export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
             endAt={selected.entry.endAt}
             startLabel={selectedDriveStartLabel}
             endLabel={selectedDriveEndLabel}
+            anchorStartStay={selected.anchorStartStay}
+            anchorEndStay={selected.anchorEndStay}
           />
-          {plan.nextStay != null && !isPlaying ? (
-            <VisitApproachConnector
-              routePoints={selected.travelPoints}
-              visit={plan.nextStay}
-            />
-          ) : null}
         </>
       ) : null}
 
       {selected?.entry.kind === 'stay' &&
       selected.inboundPoints != null &&
       !isPlaying ? (
-        <>
-          <TripRouteOverlay points={selected.inboundPoints} emphasized />
-          <VisitApproachConnector
-            routePoints={selected.inboundPoints}
-            visit={selected.entry}
-          />
-        </>
+        <TripRouteOverlay
+          points={selected.inboundPoints}
+          emphasized
+          anchorStartStay={selected.anchorStartStay}
+          anchorEndStay={selected.anchorEndStay}
+        />
       ) : null}
 
       {selected?.entry.kind === 'stay' && !isPlaying ? (
         <>
+          <VisitInAreaPaths visit={selected.entry} tripConfig={tripConfig} />
           <StayAreasOverlay
             stays={[selected.entry]}
             tripConfig={tripConfig}

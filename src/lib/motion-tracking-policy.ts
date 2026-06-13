@@ -8,13 +8,25 @@ export const HEARTBEAT_CHECK_INTERVAL_SEC = 60;
 export const HEARTBEAT_DEPARTURE_DISTANCE_METERS = 100;
 
 /** After this long without a save, speed on heartbeat can force moving mode (ms). */
-export const DEPARTURE_WATCHDOG_MIN_MS = 15 * 60_000;
+export const DEPARTURE_WATCHDOG_MIN_MS = 5 * 60_000;
 
-/** Minimum speed (m/s) on heartbeat to treat as possible departure (~7 km/h). */
-export const MIN_DEPARTURE_SPEED_MS = 2;
+/** Minimum speed (m/s) on heartbeat / onLocation to treat as drive departure (~10 mph). */
+export const MIN_DEPARTURE_SPEED_MS = 4.5;
 
 /** Ignore speed-based departure when accuracy is worse than this (m). */
 export const MAX_DEPARTURE_ACCURACY_METERS = 75;
+
+/** Stopping threshold for heartbeat getCurrentPosition (m) — see CurrentPositionRequest. */
+export const HEARTBEAT_DESIRED_ACCURACY_METERS = 25;
+
+/** Options for heartbeat / headless fresh GPS — centralized per Transistor docs. */
+export const HEARTBEAT_CURRENT_POSITION_REQUEST = {
+  timeout: 30,
+  maximumAge: 0,
+  desiredAccuracy: HEARTBEAT_DESIRED_ACCURACY_METERS,
+  samples: 1,
+  persist: false,
+} as const;
 
 /** Max plausible speed between consecutive saved points when drawing a line (m/s). ~200 km/h */
 export const MAX_PLAUSIBLE_SPEED_MS = 55;

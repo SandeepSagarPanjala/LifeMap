@@ -3,6 +3,7 @@ import {Polyline} from 'react-native-maps';
 
 import type {LocationPointRow} from '@/db/repositories/location-days';
 import {toMapCoordinates} from '@/lib/location-geo';
+import {isSparseTravelRoute} from '@/lib/trip-detection';
 import {
   HISTORY_FUTURE_ROUTE_BORDER,
   HISTORY_FUTURE_ROUTE_FILL,
@@ -25,7 +26,7 @@ export const HistoryRoutePath = memo(function HistoryRoutePath({
 }: HistoryRoutePathProps) {
   const coordinates = useMemo(() => toMapCoordinates(points), [points]);
 
-  if (coordinates.length < 2) {
+  if (coordinates.length < 2 || isSparseTravelRoute(points)) {
     return null;
   }
 

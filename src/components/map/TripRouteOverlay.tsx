@@ -5,7 +5,9 @@ import {DriveEndpointLabels} from '@/components/map/DriveEndpointLabels';
 import {TripPlaybackHead} from '@/components/map/TripPlaybackHead';
 import type {LocationPointRow} from '@/db/repositories/location-days';
 import type {DriveEndpointLabel} from '@/lib/drive-endpoint-label';
-import {toMapCoordinates} from '@/lib/location-geo';
+import {distanceKm, type MapCoordinate, toMapCoordinates} from '@/lib/location-geo';
+import type {DetectedTrip} from '@/lib/trip-detection';
+import {isSparseTravelRoute, stayMapMarkerCoordinate} from '@/lib/trip-detection';
 import {
   buildDensePlaybackSamples,
   getTripPlaybackFrame,
@@ -29,6 +31,8 @@ type TripRouteOverlayProps = {
   endAt?: Date;
   startLabel?: DriveEndpointLabel;
   endLabel?: DriveEndpointLabel;
+  anchorStartStay?: DetectedTrip | null;
+  anchorEndStay?: DetectedTrip | null;
 };
 
 export const TripRouteOverlay = memo(function TripRouteOverlay({
@@ -39,8 +43,11 @@ export const TripRouteOverlay = memo(function TripRouteOverlay({
   endAt,
   startLabel,
   endLabel,
+  anchorStartStay = null,
+  anchorEndStay = null,
 }: TripRouteOverlayProps) {
   const coordinates = useMemo(() => toMapCoordinates(points), [points]);
+  const sparseRoute = useMemo(() => isSparseTravelRoute(points), [points]);
   const denseSamples = useMemo(() => buildDensePlaybackSamples(points), [points]);
 
   const frame = useMemo(() => {
@@ -63,20 +70,57 @@ export const TripRouteOverlay = memo(function TripRouteOverlay({
     !isPlaying &&
     startAt != null &&
     endAt != null &&
-    coordinates.length >= 2;
-  const routeStart = startLabel?.savedPlace
-    ? {latitude: startLabel.savedPlace.lat, longitude: startLabel.savedPlace.lng}
-    : coordinates[0]!;
-  const routeEnd = endLabel?.savedPlace
-    ? {latitude: endLabel.savedPlace.lat, longitude: endLabel.savedPlace.lng}
-    : coordinates[coordinates.length - 1]!;
+    coordinates.length >= 1;
+  const drawRouteLine = coordinates.length > 1 && !sparseRoute;
+
+  const routeStart = useMemo((): MapCoordinate => {
+    if (startLabel?.savedPlace) {
+      return {
+        latitude: startLabel.savedPlace.lat,
+        longitude: startLabel.savedPlace.lng,
+      };
+    }
+    if (anchorStartStay) {
+      return stayMapMarkerCoordinate(anchorStartStay);
+    }
+    return coordinates[0] ?? {latitude: 0, longitude: 0};
+  }, [anchorStartStay, coordinates, startLabel]);
+
+  const routeEnd = useMemo((): MapCoordinate => {
+    if (endLabel?.savedPlace) {
+      return {
+        latitude: endLabel.savedPlace.lat,
+        longitude: endLabel.savedPlace.lng,
+      };
+    }
+    if (anchorEndStay) {
+      return stayMapMarkerCoordinate(anchorEndStay);
+    }
+    return coordinates[coordinates.length - 1] ?? {latitude: 0, longitude: 0};
+  }, [anchorEndStay, coordinates, endLabel]);
+
+  const routeLineCoordinates = useMemo(() => {
+    if (coordinates.length === 0) {
+      return [routeStart, routeEnd];
+    }
+    const line = [...coordinates];
+    const first = line[0]!;
+    const last = line[line.length - 1]!;
+    if (distanceKm(first, routeStart) * 1000 > 8) {
+      line.unshift(routeStart);
+    }
+    if (distanceKm(last, routeEnd) * 1000 > 8) {
+      line.push(routeEnd);
+    }
+    return line;
+  }, [coordinates, routeEnd, routeStart]);
 
   return (
     <>
-      {coordinates.length > 1 ? (
+      {drawRouteLine ? (
         <>
           <Polyline
-            coordinates={coordinates}
+            coordinates={routeLineCoordinates}
             strokeColor={routeBorder}
             strokeWidth={ROUTE_PATH_BORDER_WIDTH}
             lineCap="round"
@@ -84,7 +128,7 @@ export const TripRouteOverlay = memo(function TripRouteOverlay({
             zIndex={emphasized ? 3 : 1}
           />
           <Polyline
-            coordinates={coordinates}
+            coordinates={routeLineCoordinates}
             strokeColor={routeFill}
             strokeWidth={ROUTE_PATH_FILL_WIDTH}
             lineCap="round"

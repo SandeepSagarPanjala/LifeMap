@@ -1,5 +1,6 @@
 import type {LocationPointRow} from '@/db/repositories/location-days';
 import {
+  extendTravelToVisitArrival,
   getTravelDisplayPoints,
   getVisitInboundTravelPoints,
   isPlayableTimelineEntry,
@@ -14,6 +15,8 @@ export type HistoryMapSelected = {
   entry: DetectedTrip;
   travelPoints: LocationPointRow[] | null;
   inboundPoints: LocationPointRow[] | null;
+  anchorStartStay: DetectedTrip | null;
+  anchorEndStay: DetectedTrip | null;
 };
 
 export type HistoryMapPlan = {
@@ -79,28 +82,43 @@ export function buildHistoryMapPlan(
     if (selectedIndex >= 0 && index === selectedIndex) {
       let travelPoints: LocationPointRow[] | null = null;
       let inboundPoints: LocationPointRow[] | null = null;
+      let anchorStartStay: DetectedTrip | null = null;
+      let anchorEndStay: DetectedTrip | null = null;
 
       if (entry.kind === 'travel') {
-        travelPoints = getTravelDisplayPoints(
-          entry,
-          stayBeforeEntryIndex(entries, index),
-          staysBeforeEntryIndex(entries, index),
-          config,
+        anchorStartStay = stayBeforeEntryIndex(entries, index);
+        anchorEndStay = findNextStayAfter(entries, index);
+        travelPoints = extendTravelToVisitArrival(
+          getTravelDisplayPoints(
+            entry,
+            anchorStartStay,
+            staysBeforeEntryIndex(entries, index),
+            config,
+          ),
+          anchorEndStay,
         );
       } else if (index > 0) {
         const prior = entries[index - 1];
         if (prior?.kind === 'travel') {
+          anchorStartStay = stayBeforeEntryIndex(entries, index - 1);
+          anchorEndStay = entry;
           inboundPoints = getVisitInboundTravelPoints(
             prior,
             entry,
-            stayBeforeEntryIndex(entries, index - 1),
+            anchorStartStay,
             staysBeforeEntryIndex(entries, index - 1),
             config,
           );
         }
       }
 
-      selected = {entry, travelPoints, inboundPoints};
+      selected = {
+        entry,
+        travelPoints,
+        inboundPoints,
+        anchorStartStay,
+        anchorEndStay,
+      };
       continue;
     }
 
