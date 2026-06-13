@@ -1,5 +1,13 @@
 import {useEffect, useState} from 'react';
-import {Image, StyleSheet, View, type ImageStyle, type StyleProp} from 'react-native';
+import {
+  Image,
+  Pressable,
+  StyleSheet,
+  View,
+  type ImageResizeMode,
+  type ImageStyle,
+  type StyleProp,
+} from 'react-native';
 import ReactNativeBlobUtil from 'react-native-blob-util';
 
 import {Text} from '@/components/ui/text';
@@ -11,9 +19,18 @@ import {
 type MomentPreviewImageProps = {
   contentPath: string;
   style?: StyleProp<ImageStyle>;
+  resizeMode?: ImageResizeMode;
+  onPress?: () => void;
+  accessibilityLabel?: string;
 };
 
-export function MomentPreviewImage({contentPath, style}: MomentPreviewImageProps) {
+export function MomentPreviewImage({
+  contentPath,
+  style,
+  resizeMode = 'cover',
+  onPress,
+  accessibilityLabel,
+}: MomentPreviewImageProps) {
   const [uri, setUri] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
 
@@ -69,16 +86,30 @@ export function MomentPreviewImage({contentPath, style}: MomentPreviewImageProps
     return <View style={[styles.placeholder, style]} />;
   }
 
-  return (
+  const image = (
     <Image
       source={{uri}}
       style={style}
-      resizeMode="cover"
+      resizeMode={resizeMode}
       accessibilityIgnoresInvertColors
       onError={() => {
         void loadBase64Fallback();
       }}
     />
+  );
+
+  if (onPress == null) {
+    return image;
+  }
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? 'View full photo'}
+      onPress={onPress}
+      style={({pressed}) => [pressed ? styles.pressed : null]}>
+      {image}
+    </Pressable>
   );
 }
 
@@ -87,5 +118,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#F2F2F7',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  pressed: {
+    opacity: 0.92,
   },
 });

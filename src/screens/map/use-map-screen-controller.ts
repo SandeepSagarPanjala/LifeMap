@@ -37,6 +37,7 @@ import {
   countMoments,
   countMomentsForEntry,
   filterMomentsForEntry,
+  shouldHideSavedPlaceMomentCluster,
   shouldShowDayMomentSummaryBar,
   type MomentCounts,
 } from '@/lib/moments/moment-counts';
@@ -79,7 +80,6 @@ import {
 } from '@/lib/saved-places';
 import {shouldShowSavedPlaceCircles} from '@/lib/saved-places-map';
 import {getCurrentOpenVisit} from '@/lib/today-history';
-import {capturePhotoFromCamera} from '@/lib/moments/capture-photo';
 import {
   isPlayableTimelineEntry,
   firstPlayableTimelineIndex,
@@ -488,6 +488,13 @@ export function useMapScreenController() {
     [historyMomentMapPinsRaw, savedPlaces, clusterMomentsOnMap],
   );
 
+  const selectedEntryMomentCounts = useMemo((): MomentCounts | undefined => {
+    if (!selectedEntry) {
+      return undefined;
+    }
+    return countMomentsForEntry(dayMoments, selectedEntry);
+  }, [dayMoments, selectedEntry]);
+
   const savedPlaceMomentClusters = useMemo((): SavedPlaceMomentClusterOnMap[] => {
     const raw = showDayJourney
       ? dayMomentMapPinsRaw
@@ -497,8 +504,24 @@ export function useMapScreenController() {
     if (raw.length === 0 || !clusterMomentsOnMap) {
       return [];
     }
-    return partitionMomentMapPins(raw, savedPlaces, true).savedPlaceClusters.map(
-      cluster => ({
+
+    const calloutSavedPlaceId = showDayJourney
+      ? currentOpenVisitSavedPlace?.id
+      : selectedSavedPlace?.id;
+    const calloutMomentCounts = showDayJourney
+      ? currentVisitMomentCounts
+      : selectedEntryMomentCounts;
+
+    return partitionMomentMapPins(raw, savedPlaces, true).savedPlaceClusters
+      .filter(
+        cluster =>
+          !shouldHideSavedPlaceMomentCluster(
+            cluster.place.id,
+            calloutSavedPlaceId,
+            calloutMomentCounts,
+          ),
+      )
+      .map(cluster => ({
         placeId: cluster.place.id,
         counts: cluster.counts,
         onPress: () => {
@@ -508,23 +531,19 @@ export function useMapScreenController() {
             title: `${savedPlaceDisplayLabel(cluster.place)} moments`,
           });
         },
-      }),
-    );
+      }));
   }, [
     clusterMomentsOnMap,
+    currentOpenVisitSavedPlace?.id,
+    currentVisitMomentCounts,
     dayMomentMapPinsRaw,
     historyMomentMapPinsRaw,
     savedPlaces,
+    selectedEntryMomentCounts,
+    selectedSavedPlace?.id,
     showDayJourney,
     showHistoryMap,
   ]);
-
-  const selectedEntryMomentCounts = useMemo((): MomentCounts | undefined => {
-    if (!selectedEntry) {
-      return undefined;
-    }
-    return countMomentsForEntry(dayMoments, selectedEntry);
-  }, [dayMoments, selectedEntry]);
 
   const momentsPreviewOpen = momentsPreviewScope != null;
   const momentsPreviewMoments = useMemo(() => {
@@ -947,20 +966,17 @@ export function useMapScreenController() {
   );
   const isAtSavedPlaceLimit = savedPlaces.length >= MAX_SAVED_PLACES;
 
-  const handleCaptureCamera = useCallback(async () => {
+  const handleCaptureCamera = useCallback(() => {
     if (captureInFlightRef.current) {
       return;
     }
     captureInFlightRef.current = true;
     try {
-      const moment = await capturePhotoFromCamera();
-      if (moment) {
-        await refreshDayMoments();
-      }
+      navigation.navigate('CapturePhoto');
     } finally {
       captureInFlightRef.current = false;
     }
-  }, [refreshDayMoments]);
+  }, [navigation]);
 
   const handleCaptureVoice = useCallback(() => {
     setVoiceMemoSheetOpen(true);

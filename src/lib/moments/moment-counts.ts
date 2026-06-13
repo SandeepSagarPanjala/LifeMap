@@ -52,6 +52,19 @@ export function shouldShowDayMomentSummaryBar(
   return true;
 }
 
+/** Hide the saved-place cluster pill when a stay callout already shows those moments. */
+export function shouldHideSavedPlaceMomentCluster(
+  placeId: number,
+  calloutSavedPlaceId: number | null | undefined,
+  calloutMomentCounts: MomentCounts | undefined,
+): boolean {
+  return (
+    calloutSavedPlaceId === placeId &&
+    calloutMomentCounts != null &&
+    hasMomentCounts(calloutMomentCounts)
+  );
+}
+
 export function countMoments(moments: MomentRow[]): MomentCounts {
   const counts = emptyMomentCounts();
   for (const moment of moments) {

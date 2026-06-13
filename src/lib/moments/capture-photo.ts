@@ -13,13 +13,21 @@ import {
   MOMENT_IMAGE_FILE_EXTENSION,
   persistFileToMomentSandbox,
 } from '@/lib/moments/moment-storage';
+import {normalizeCameraPhoto} from '@/lib/moments/normalize-camera-photo';
 
 const CAMERA_OPTIONS: CameraOptions = {
   mediaType: 'photo',
   cameraType: 'back',
   quality: 1,
-  saveToPhotos: true,
+  saveToPhotos: false,
   presentationStyle: 'fullScreen',
+};
+
+export type CameraPhotoDraft = {
+  sourceUri: string;
+  sourceWidth: number;
+  sourceHeight: number;
+  sourceBytes: number | null;
 };
 
 export function getCameraLaunchErrorMessage(response: ImagePickerResponse): string | null {
@@ -47,7 +55,7 @@ export async function saveCaptureToPhotoLibrary(sourceUri: string): Promise<void
   await CameraRoll.save(sourceUri, {type: 'photo'});
 }
 
-export async function capturePhotoFromCamera(): Promise<MomentRow | null> {
+export async function launchCameraPhotoDraft(): Promise<CameraPhotoDraft | null> {
   const response = await launchCamera(CAMERA_OPTIONS);
   const errorMessage = getCameraLaunchErrorMessage(response);
   if (response.didCancel) {
@@ -64,10 +72,28 @@ export async function capturePhotoFromCamera(): Promise<MomentRow | null> {
     return null;
   }
 
+  let normalized;
   try {
-    if (!CAMERA_OPTIONS.saveToPhotos) {
-      await saveCaptureToPhotoLibrary(asset.uri);
-    }
+    normalized = await normalizeCameraPhoto(asset.uri);
+  } catch {
+    Alert.alert('Could not prepare photo', 'Failed to orient the photo for editing.');
+    return null;
+  }
+
+  return {
+    sourceUri: normalized.uri,
+    sourceWidth: normalized.width,
+    sourceHeight: normalized.height,
+    sourceBytes: asset.fileSize ?? null,
+  };
+}
+
+export async function savePhotoMoment(
+  sourceUri: string,
+  sourceBytes: number | null,
+): Promise<MomentRow> {
+  try {
+    await saveCaptureToPhotoLibrary(sourceUri);
   } catch {
     Alert.alert(
       'Photo saved in LifeMap',
@@ -77,32 +103,39 @@ export async function capturePhotoFromCamera(): Promise<MomentRow | null> {
 
   let compressedUri: string;
   try {
-    compressedUri = await compressMomentImage(asset.uri);
+    compressedUri = await compressMomentImage(sourceUri);
   } catch {
-    Alert.alert('Could not save photo', 'Failed to compress the photo for LifeMap.');
-    return null;
+    throw new Error('Failed to compress the photo for LifeMap.');
   }
 
-  let sandboxFile: {contentPath: string; contentBytes: number};
-  try {
-    sandboxFile = await persistFileToMomentSandbox(
-      compressedUri,
-      MOMENT_IMAGE_FILE_EXTENSION,
-    );
-  } catch (error) {
-    Alert.alert(
-      'Could not save photo',
-      error instanceof Error ? error.message : 'Failed to store the photo on this device.',
-    );
-    return null;
-  }
+  const sandboxFile = await persistFileToMomentSandbox(
+    compressedUri,
+    MOMENT_IMAGE_FILE_EXTENSION,
+  );
 
   return insertMoment({
     type: 'photo',
     timestamp: new Date(),
     contentPath: sandboxFile.contentPath,
     contentBytes: sandboxFile.contentBytes,
-    sourceBytes: asset.fileSize ?? null,
+    sourceBytes,
     contentFormat: IMAGE_COMPRESS_FORMAT,
   });
+}
+
+/** @deprecated Use launchCameraPhotoDraft + savePhotoMoment */
+export async function capturePhotoFromCamera(): Promise<MomentRow | null> {
+  const draft = await launchCameraPhotoDraft();
+  if (!draft) {
+    return null;
+  }
+  try {
+    return await savePhotoMoment(draft.sourceUri, draft.sourceBytes);
+  } catch (error) {
+    Alert.alert(
+      'Could not save photo',
+      error instanceof Error ? error.message : 'Something went wrong.',
+    );
+    return null;
+  }
 }

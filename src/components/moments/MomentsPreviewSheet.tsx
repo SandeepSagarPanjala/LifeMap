@@ -1,15 +1,18 @@
-import {useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
   Alert,
-  Animated,
-  Easing,
+  Dimensions,
+  FlatList,
   Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
 } from 'react-native';
 import {AudioLines, Camera, NotebookPen, Pause, Play, Trash2, X} from 'lucide-react-native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 import {SavedPlaceIcon} from '@/components/map/SavedPlaceIcon';
 import {CAPTURE_BUTTON_THEMES} from '@/components/map/map-capture-button-theme';
@@ -18,13 +21,10 @@ import {Text} from '@/components/ui/text';
 import type {MomentRow} from '@/db/repositories/moments';
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import {useMomentPreviewContexts} from '@/hooks/use-moment-preview-contexts';
-import {useThemeColors} from '@/hooks/use-theme-colors';
 import type {DistanceUnit} from '@/lib/location-geo';
-import {
-  type MomentPreviewContext,
-} from '@/lib/moments/moment-preview-context';
 import {formatVoiceDurationMs} from '@/lib/moments/format-voice-duration';
 import {resolveExistingMomentContentPath} from '@/lib/moments/moment-media-uri';
+import type {MomentPreviewContext} from '@/lib/moments/moment-preview-context';
 import {
   createVoiceRecorderSession,
   getVoiceRecordingErrorMessage,
@@ -32,8 +32,6 @@ import {
 import {matchSavedPlaceForStay} from '@/lib/saved-places';
 import type {DayTimelineEntry} from '@/lib/trip-detection';
 import {formatTripClockTime} from '@/lib/trip-format';
-
-const SHEET_OFFSCREEN = 520;
 
 type MomentsPreviewSheetProps = {
   visible: boolean;
@@ -68,7 +66,7 @@ function voiceDurationLabel(moment: MomentRow): string | null {
   return formatVoiceDurationMs(seconds * 1000);
 }
 
-function MomentTypeIcon({moment}: {moment: MomentRow}) {
+function MomentTypeIcon({moment, size = 18}: {moment: MomentRow; size?: number}) {
   const theme =
     moment.type === 'voice'
       ? CAPTURE_BUTTON_THEMES.voice
@@ -84,12 +82,67 @@ function MomentTypeIcon({moment}: {moment: MomentRow}) {
 
   return (
     <View style={[styles.typeOrb, {backgroundColor: theme.badgeBg}]}>
-      <Icon size={18} color={theme.icon} strokeWidth={2.25} />
+      <Icon size={size} color={theme.icon} strokeWidth={2.25} />
     </View>
   );
 }
 
-function VoicePreviewRow({
+function MomentInfoHeader({
+  moment,
+  context,
+  savedPlaces,
+  timelineEntries,
+}: {
+  moment: MomentRow;
+  context?: MomentPreviewContext;
+  savedPlaces: readonly SavedPlaceRow[];
+  timelineEntries: DayTimelineEntry[];
+}) {
+  const stayEntry =
+    context?.entryKind === 'stay'
+      ? timelineEntries.find(
+          entry => entry.id === context.entryId && entry.kind === 'stay',
+        )
+      : null;
+  const savedPlace =
+    stayEntry?.kind === 'stay'
+      ? matchSavedPlaceForStay(stayEntry, savedPlaces)
+      : null;
+
+  return (
+    <View style={styles.infoHeader}>
+      <View style={styles.infoTopRow}>
+        <MomentTypeIcon moment={moment} size={16} />
+        <Text style={styles.infoTime}>{formatTripClockTime(moment.timestamp)}</Text>
+      </View>
+
+      {context ? (
+        <View style={styles.infoContext}>
+          <View style={styles.infoPlaceLine}>
+            <Text style={styles.infoKind}>{context.kindLabel}</Text>
+            {savedPlace ? (
+              <View style={styles.infoPlaceRow}>
+                <SavedPlaceIcon kind={savedPlace.kind} size={14} />
+                <Text style={styles.infoPlace} numberOfLines={1}>
+                  {context.placeLabel}
+                </Text>
+              </View>
+            ) : context.placeLabel ? (
+              <Text style={styles.infoPlace} numberOfLines={1}>
+                {context.placeLabel}
+              </Text>
+            ) : null}
+          </View>
+          <Text style={styles.infoStats}>
+            {context.timeLabel} · {context.statsLabel}
+          </Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function VoiceMomentPage({
   moment,
   isPlaying,
   onToggle,
@@ -102,203 +155,130 @@ function VoicePreviewRow({
   const duration = voiceDurationLabel(moment);
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={isPlaying ? 'Pause voice memo' : 'Play voice memo'}
-      onPress={onToggle}
-      style={styles.voiceRow}>
-      <View style={[styles.playCircle, {backgroundColor: theme.badgeBg}]}>
-        {isPlaying ? (
-          <Pause size={20} color={theme.icon} strokeWidth={2.25} />
-        ) : (
-          <Play size={20} color={theme.icon} strokeWidth={2.25} />
-        )}
-      </View>
-      <Text className="text-sm font-medium">
-        {isPlaying ? 'Playing…' : 'Voice memo'}
-        {duration ? ` · ${duration}` : ''}
-      </Text>
-    </Pressable>
-  );
-}
-
-function MomentPreviewContextRow({
-  context,
-  savedPlaces,
-  timelineEntries,
-}: {
-  context: MomentPreviewContext;
-  savedPlaces: readonly SavedPlaceRow[];
-  timelineEntries: DayTimelineEntry[];
-}) {
-  const stayEntry =
-    context.entryKind === 'stay'
-      ? timelineEntries.find(
-          entry => entry.id === context.entryId && entry.kind === 'stay',
-        )
-      : null;
-  const savedPlace =
-    stayEntry?.kind === 'stay'
-      ? matchSavedPlaceForStay(stayEntry, savedPlaces)
-      : null;
-
-  return (
-    <View style={styles.contextRow}>
-      <Text variant="muted" className="text-[10px] uppercase tracking-wide">
-        {context.kindLabel}
-      </Text>
-      {savedPlace ? (
-        <View style={styles.contextPlaceRow}>
-          <SavedPlaceIcon kind={savedPlace.kind} size={14} />
-          <Text className="text-sm font-semibold" numberOfLines={1}>
-            {context.placeLabel}
-          </Text>
+    <View style={styles.voicePage}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={isPlaying ? 'Pause voice memo' : 'Play voice memo'}
+        onPress={onToggle}
+        style={styles.voicePlayButton}>
+        <View style={[styles.voicePlayCircle, {backgroundColor: theme.badgeBg}]}>
+          {isPlaying ? (
+            <Pause size={36} color={theme.icon} strokeWidth={2.25} />
+          ) : (
+            <Play size={36} color={theme.icon} strokeWidth={2.25} />
+          )}
         </View>
-      ) : context.placeLabel ? (
-        <Text className="text-sm font-semibold" numberOfLines={1}>
-          {context.placeLabel}
+        <Text style={styles.voiceLabel}>
+          {isPlaying ? 'Playing…' : 'Voice memo'}
         </Text>
-      ) : null}
-      <Text variant="muted" className="text-xs">
-        {context.timeLabel} · {context.statsLabel}
-      </Text>
+        {duration ? <Text style={styles.voiceDuration}>{duration}</Text> : null}
+      </Pressable>
     </View>
   );
 }
 
-function MomentPreviewCard({
-  moment,
-  context,
-  savedPlaces,
-  timelineEntries,
-  isPlayingVoice,
-  onToggleVoice,
-  onDelete,
-  deleting,
-}: {
-  moment: MomentRow;
-  context?: MomentPreviewContext;
-  savedPlaces: readonly SavedPlaceRow[];
-  timelineEntries: DayTimelineEntry[];
-  isPlayingVoice: boolean;
-  onToggleVoice: () => void;
-  onDelete: () => void;
-  deleting: boolean;
-}) {
+function NoteMomentPage({moment}: {moment: MomentRow}) {
   const moodLabel = moment.moodLabel?.trim();
 
   return (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <MomentTypeIcon moment={moment} />
-        <Text variant="muted" className="flex-1 text-sm">
-          {formatTripClockTime(moment.timestamp)}
-        </Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Delete ${momentDeleteNoun(moment.type)}`}
-          disabled={deleting}
-          hitSlop={8}
-          onPress={onDelete}
-          style={[styles.deleteButton, deleting ? styles.deleteButtonDisabled : null]}>
-          <Trash2 size={18} color="#FF3B30" strokeWidth={2.25} />
-        </Pressable>
-      </View>
+    <ScrollView
+      style={styles.noteScroll}
+      contentContainerStyle={styles.noteScrollContent}
+      showsVerticalScrollIndicator={false}>
+      {moment.title?.trim() ? (
+        <Text style={styles.noteTitle}>{moment.title.trim()}</Text>
+      ) : null}
+      {moment.textBody?.trim() ? (
+        <Text style={styles.noteBody}>{moment.textBody.trim()}</Text>
+      ) : null}
+      {moodLabel ? <Text style={styles.noteMood}>Mood · {moodLabel}</Text> : null}
+      {moment.contentPath ? (
+        <MomentPreviewImage
+          contentPath={moment.contentPath}
+          style={styles.notePhoto}
+          resizeMode="contain"
+        />
+      ) : null}
+    </ScrollView>
+  );
+}
 
-      {context ? (
-        <MomentPreviewContextRow
-          context={context}
-          savedPlaces={savedPlaces}
-          timelineEntries={timelineEntries}
+function MomentPagerPage({
+  moment,
+  pageWidth,
+  isPlayingVoice,
+  onToggleVoice,
+}: {
+  moment: MomentRow;
+  pageWidth: number;
+  isPlayingVoice: boolean;
+  onToggleVoice: () => void;
+}) {
+  return (
+    <View style={[styles.page, {width: pageWidth}]}>
+      {moment.type === 'photo' && moment.contentPath ? (
+        <MomentPreviewImage
+          contentPath={moment.contentPath}
+          style={styles.photoPage}
+          resizeMode="contain"
         />
       ) : null}
 
-      {moment.type === 'photo' && moment.contentPath ? (
-        <MomentPreviewImage contentPath={moment.contentPath} style={styles.photo} />
-      ) : null}
-
       {moment.type === 'voice' ? (
-        <VoicePreviewRow
+        <VoiceMomentPage
           moment={moment}
           isPlaying={isPlayingVoice}
           onToggle={onToggleVoice}
         />
       ) : null}
 
-      {moment.type === 'note' ? (
-        <View style={styles.noteBody}>
-          {moment.title?.trim() ? (
-            <Text className="text-base font-semibold">{moment.title.trim()}</Text>
-          ) : null}
-          {moment.textBody?.trim() ? (
-            <Text className="text-sm leading-5">{moment.textBody.trim()}</Text>
-          ) : null}
-          {moodLabel ? (
-            <Text variant="muted" className="text-xs">
-              Mood · {moodLabel}
-            </Text>
-          ) : null}
-          {moment.contentPath ? (
-            <MomentPreviewImage contentPath={moment.contentPath} style={styles.notePhoto} />
-          ) : null}
-        </View>
-      ) : null}
+      {moment.type === 'note' ? <NoteMomentPage moment={moment} /> : null}
+    </View>
+  );
+}
+
+function PaginationDots({count, activeIndex}: {count: number; activeIndex: number}) {
+  if (count <= 1) {
+    return null;
+  }
+
+  return (
+    <View style={styles.dotsRow}>
+      {Array.from({length: count}, (_, index) => (
+        <View
+          key={index}
+          style={[styles.dot, index === activeIndex ? styles.dotActive : null]}
+        />
+      ))}
     </View>
   );
 }
 
 export function MomentsPreviewSheet({
   visible,
-  title,
   moments,
   timelineEntries,
   savedPlaces,
   distanceUnit,
-  previewEntry = null,
   onClose,
   onDeleteMoment,
 }: MomentsPreviewSheetProps) {
-  const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
+  const pageWidth = Dimensions.get('window').width;
   const momentContexts = useMomentPreviewContexts(
     moments,
     timelineEntries,
     savedPlaces,
     distanceUnit,
   );
-  const resolvedTitle = useMemo(() => {
-    if (previewEntry?.kind === 'stay') {
-      const firstContext = moments[0]
-        ? momentContexts.get(moments[0].id)
-        : undefined;
-      const place = firstContext?.placeLabel?.trim();
-      if (place) {
-        return `${place} moments`;
-      }
-      return 'Visit moments';
-    }
 
-    if (moments.length === 1) {
-      const context = momentContexts.get(moments[0]!.id);
-      if (context?.placeLabel?.trim()) {
-        return `${context.placeLabel.trim()} moments`;
-      }
-      if (context?.entryKind === 'stay') {
-        return 'Visit moments';
-      }
-      if (context?.entryKind === 'travel') {
-        return 'Drive moments';
-      }
-    }
-
-    return title;
-  }, [momentContexts, moments, previewEntry, title]);
-  const [mounted, setMounted] = useState(visible);
+  const [activeIndex, setActiveIndex] = useState(0);
   const [playingVoiceId, setPlayingVoiceId] = useState<number | null>(null);
   const [deletingMomentId, setDeletingMomentId] = useState<number | null>(null);
-  const backdropOpacity = useRef(new Animated.Value(0)).current;
-  const sheetTranslateY = useRef(new Animated.Value(SHEET_OFFSCREEN)).current;
-  const closingRef = useRef(false);
+  const pagerRef = useRef<FlatList<MomentRow>>(null);
   const playerRef = useRef(createVoiceRecorderSession());
+
+  const activeMoment = moments[activeIndex] ?? null;
 
   const stopVoice = useCallback(async () => {
     try {
@@ -309,87 +289,33 @@ export function MomentsPreviewSheet({
     setPlayingVoiceId(null);
   }, []);
 
-  useLayoutEffect(() => {
+  const closeViewer = useCallback(() => {
+    void stopVoice().finally(onClose);
+  }, [onClose, stopVoice]);
+
+  useEffect(() => {
     if (visible) {
-      closingRef.current = false;
-      setMounted(true);
+      setActiveIndex(0);
+      pagerRef.current?.scrollToOffset({offset: 0, animated: false});
     }
   }, [visible]);
 
-  const animateIn = useCallback(() => {
-    backdropOpacity.setValue(0);
-    sheetTranslateY.setValue(SHEET_OFFSCREEN);
-    Animated.parallel([
-      Animated.timing(backdropOpacity, {
-        toValue: 1,
-        duration: 220,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(sheetTranslateY, {
-        toValue: 0,
-        duration: 320,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [backdropOpacity, sheetTranslateY]);
-
-  const animateOut = useCallback(
-    (onDone: () => void) => {
-      Animated.parallel([
-        Animated.timing(backdropOpacity, {
-          toValue: 0,
-          duration: 180,
-          easing: Easing.in(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(sheetTranslateY, {
-          toValue: SHEET_OFFSCREEN,
-          duration: 240,
-          easing: Easing.in(Easing.cubic),
-          useNativeDriver: true,
-        }),
-      ]).start(({finished}) => {
-        if (finished) {
-          onDone();
-        }
+  useEffect(() => {
+    if (activeIndex >= moments.length) {
+      const nextIndex = Math.max(0, moments.length - 1);
+      setActiveIndex(nextIndex);
+      pagerRef.current?.scrollToOffset({
+        offset: nextIndex * pageWidth,
+        animated: false,
       });
-    },
-    [backdropOpacity, sheetTranslateY],
-  );
-
-  const closeSheet = useCallback(() => {
-    if (closingRef.current) {
-      return;
     }
-    closingRef.current = true;
-    void stopVoice().finally(() => {
-      animateOut(() => {
-        closingRef.current = false;
-        setMounted(false);
-        onClose();
-      });
-    });
-  }, [animateOut, onClose, stopVoice]);
+  }, [activeIndex, moments.length, pageWidth]);
 
   useEffect(() => {
-    if (!visible && mounted && !closingRef.current) {
-      closingRef.current = true;
-      void stopVoice().finally(() => {
-        animateOut(() => {
-          closingRef.current = false;
-          setMounted(false);
-        });
-      });
+    if (visible && moments.length === 0) {
+      closeViewer();
     }
-  }, [animateOut, mounted, stopVoice, visible]);
-
-  useEffect(() => {
-    if (mounted && visible) {
-      animateIn();
-    }
-  }, [animateIn, mounted, visible]);
+  }, [closeViewer, moments.length, visible]);
 
   useEffect(() => {
     return () => {
@@ -397,6 +323,25 @@ export function MomentsPreviewSheet({
       playerRef.current.dispose();
     };
   }, [stopVoice]);
+
+  const handleMomentumScrollEnd = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const index = Math.round(event.nativeEvent.contentOffset.x / pageWidth);
+      const clamped = Math.max(0, Math.min(index, moments.length - 1));
+      if (clamped === activeIndex) {
+        return;
+      }
+      setActiveIndex(clamped);
+      const nextMoment = moments[clamped];
+      if (
+        playingVoiceId != null &&
+        (nextMoment == null || nextMoment.id !== playingVoiceId)
+      ) {
+        void stopVoice();
+      }
+    },
+    [activeIndex, moments, pageWidth, playingVoiceId, stopVoice],
+  );
 
   const toggleVoice = useCallback(
     async (moment: MomentRow) => {
@@ -470,65 +415,105 @@ export function MomentsPreviewSheet({
     [deletingMomentId, onDeleteMoment, playingVoiceId, stopVoice],
   );
 
-  useEffect(() => {
-    if (visible && mounted && moments.length === 0) {
-      closeSheet();
-    }
-  }, [closeSheet, mounted, moments.length, visible]);
+  const renderPage = useCallback(
+    ({item}: {item: MomentRow}) => (
+      <MomentPagerPage
+        moment={item}
+        pageWidth={pageWidth}
+        isPlayingVoice={playingVoiceId === item.id}
+        onToggleVoice={() => void toggleVoice(item)}
+      />
+    ),
+    [pageWidth, playingVoiceId, toggleVoice],
+  );
 
-  if (!mounted) {
+  const keyExtractor = useCallback((item: MomentRow) => String(item.id), []);
+
+  const headerContext = useMemo(
+    () =>
+      activeMoment != null ? momentContexts.get(activeMoment.id) : undefined,
+    [activeMoment, momentContexts],
+  );
+
+  if (!visible) {
     return null;
   }
 
   return (
-    <Modal transparent visible={mounted} animationType="none" onRequestClose={closeSheet}>
+    <Modal
+      visible={visible}
+      animationType="fade"
+      presentationStyle="fullScreen"
+      onRequestClose={closeViewer}>
       <View style={styles.root}>
-        <Animated.View style={[styles.backdrop, {opacity: backdropOpacity}]}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={closeSheet} />
-        </Animated.View>
+        <FlatList
+          ref={pagerRef}
+          style={styles.pager}
+          data={moments}
+          horizontal
+          pagingEnabled
+          bounces={moments.length > 1}
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={keyExtractor}
+          renderItem={renderPage}
+          onMomentumScrollEnd={handleMomentumScrollEnd}
+          getItemLayout={(_, index) => ({
+            length: pageWidth,
+            offset: pageWidth * index,
+            index,
+          })}
+        />
 
-        <Animated.View
-          style={[
-            styles.sheet,
-            {backgroundColor: colors.background, transform: [{translateY: sheetTranslateY}]},
-          ]}>
-          <View style={styles.header}>
-            <Text className="text-lg font-semibold">{resolvedTitle}</Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Close moments preview"
-              onPress={closeSheet}
-              hitSlop={8}
-              style={styles.closeButton}>
-              <X size={20} color={colors.mutedForeground} strokeWidth={2.25} />
-            </Pressable>
+        <View
+          pointerEvents="box-none"
+          style={[styles.topChrome, {paddingTop: insets.top + 8}]}>
+          <View style={styles.topChromeRow}>
+            {activeMoment ? (
+              <MomentInfoHeader
+                moment={activeMoment}
+                context={headerContext}
+                savedPlaces={savedPlaces}
+                timelineEntries={timelineEntries}
+              />
+            ) : null}
+
+            {activeMoment ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Delete ${momentDeleteNoun(activeMoment.type)}`}
+                disabled={deletingMomentId === activeMoment.id}
+                hitSlop={8}
+                onPress={() => confirmDeleteMoment(activeMoment)}
+                style={[
+                  styles.topDeleteButton,
+                  deletingMomentId === activeMoment.id ? styles.disabled : null,
+                ]}>
+                <Trash2 size={20} color="#FF453A" strokeWidth={2.25} />
+              </Pressable>
+            ) : null}
           </View>
+        </View>
 
-          {moments.length === 0 ? (
-            <View style={styles.empty}>
-              <Text variant="muted">No moments to preview.</Text>
+        <View
+          pointerEvents="box-none"
+          style={[styles.bottomChrome, {paddingBottom: insets.bottom + 16}]}>
+          <View style={styles.bottomRow}>
+            <View style={[styles.bottomRowSide, styles.bottomRowSideLeft]}>
+              <View style={styles.bottomRowBalance} />
             </View>
-          ) : (
-            <ScrollView
-              style={styles.scroll}
-              contentContainerStyle={styles.scrollContent}
-              showsVerticalScrollIndicator={false}>
-              {moments.map(moment => (
-                <MomentPreviewCard
-                  key={moment.id}
-                  moment={moment}
-                  context={momentContexts.get(moment.id)}
-                  savedPlaces={savedPlaces}
-                  timelineEntries={timelineEntries}
-                  isPlayingVoice={playingVoiceId === moment.id}
-                  onToggleVoice={() => void toggleVoice(moment)}
-                  onDelete={() => confirmDeleteMoment(moment)}
-                  deleting={deletingMomentId === moment.id}
-                />
-              ))}
-            </ScrollView>
-          )}
-        </Animated.View>
+            <PaginationDots count={moments.length} activeIndex={activeIndex} />
+            <View style={[styles.bottomRowSide, styles.bottomRowSideRight]}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Close moments"
+                onPress={closeViewer}
+                hitSlop={8}
+                style={styles.chromeIconButton}>
+                <X size={22} color="#FFFFFF" strokeWidth={2.25} />
+              </Pressable>
+            </View>
+          </View>
+        </View>
       </View>
     </Modal>
   );
@@ -537,108 +522,208 @@ export function MomentsPreviewSheet({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    justifyContent: 'flex-end',
+    backgroundColor: '#000000',
   },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+  pager: {
+    flex: 1,
   },
-  sheet: {
-    maxHeight: '72%',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingBottom: 24,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 18,
-    paddingBottom: 12,
-  },
-  closeButton: {
-    width: 32,
-    height: 32,
-    alignItems: 'center',
+  page: {
+    flex: 1,
     justifyContent: 'center',
+    backgroundColor: '#000000',
   },
-  scroll: {
-    flexGrow: 0,
-  },
-  scrollContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-    gap: 12,
-  },
-  empty: {
-    paddingHorizontal: 20,
-    paddingVertical: 28,
-    alignItems: 'center',
-  },
-  card: {
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#E5E5EA',
-    backgroundColor: '#FFFFFF',
-    padding: 12,
-    gap: 10,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  contextRow: {
-    gap: 2,
-    paddingBottom: 2,
-  },
-  contextPlaceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  deleteButton: {
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  deleteButtonDisabled: {
-    opacity: 0.45,
-  },
-  typeOrb: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  photo: {
+  photoPage: {
     width: '100%',
-    height: 220,
-    borderRadius: 10,
-    backgroundColor: '#F2F2F7',
+    height: '100%',
   },
-  voiceRow: {
+  topChrome: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingLeft: 16,
+    paddingRight: 12,
+  },
+  topChromeRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
     gap: 12,
   },
-  playCircle: {
+  topDeleteButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    flexShrink: 0,
+  },
+  bottomChrome: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 12,
+  },
+  bottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+  },
+  bottomRowSide: {
+    flex: 1,
+    justifyContent: 'center',
+    minHeight: 40,
+  },
+  bottomRowSideLeft: {
+    alignItems: 'flex-start',
+  },
+  bottomRowSideRight: {
+    alignItems: 'flex-end',
+  },
+  bottomRowBalance: {
+    width: 40,
+    height: 40,
+  },
+  chromeIconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  infoHeader: {
+    flex: 1,
+    minWidth: 0,
+    gap: 4,
+  },
+  infoTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  infoTime: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  infoContext: {
+    gap: 2,
+  },
+  infoPlaceLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  infoKind: {
+    color: 'rgba(255,255,255,0.65)',
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+  },
+  infoPlaceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  infoPlace: {
+    flexShrink: 1,
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  infoStats: {
+    color: 'rgba(255,255,255,0.72)',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  typeOrb: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  voicePage: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  voicePlayButton: {
+    alignItems: 'center',
+    gap: 14,
+  },
+  voicePlayCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  voiceLabel: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  voiceDuration: {
+    color: 'rgba(255,255,255,0.72)',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  noteScroll: {
+    flex: 1,
+  },
+  noteScrollContent: {
+    paddingHorizontal: 24,
+    paddingTop: 120,
+    paddingBottom: 80,
+    gap: 12,
+  },
+  noteTitle: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '700',
   },
   noteBody: {
-    gap: 8,
+    color: 'rgba(255,255,255,0.92)',
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  noteMood: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 13,
+    fontWeight: '500',
   },
   notePhoto: {
     width: '100%',
-    height: 160,
-    borderRadius: 10,
-    backgroundColor: '#F2F2F7',
+    height: 280,
+    borderRadius: 12,
+    backgroundColor: '#111111',
+  },
+  dotsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.28)',
+  },
+  dotActive: {
+    backgroundColor: '#FFFFFF',
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+  },
+  disabled: {
+    opacity: 0.45,
   },
 });

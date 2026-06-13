@@ -5,6 +5,7 @@ export type RootStackParamList = {
   Settings: undefined;
   DayDetail: {date: string};
   CaptureNote: undefined;
+  CapturePhoto: undefined;
 };
 
 export type RootStackScreenProps<T extends keyof RootStackParamList> = NativeStackScreenProps<

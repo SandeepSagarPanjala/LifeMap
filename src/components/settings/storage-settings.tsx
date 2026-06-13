@@ -1,14 +1,11 @@
 import {useCallback, useState} from 'react';
-import {ActivityIndicator, Alert, Pressable, View} from 'react-native';
+import {ActivityIndicator, View} from 'react-native';
 import {useFocusEffect} from '@react-navigation/native';
 import {HardDrive} from 'lucide-react-native';
 
 import {Icon} from '@/components/ui/icon';
 import {Text} from '@/components/ui/text';
-import {
-  getAppStorageBreakdown,
-  vacuumDatabase,
-} from '@/db/repositories/storage-stats';
+import {getAppStorageBreakdown} from '@/db/repositories/storage-stats';
 import {formatStorageBytes} from '@/lib/format-storage';
 import type {StorageBreakdownItem} from '@/lib/app-storage-breakdown';
 import {useThemeColors} from '@/hooks/use-theme-colors';
@@ -16,7 +13,6 @@ import {useThemeColors} from '@/hooks/use-theme-colors';
 export function StorageSettings() {
   const colors = useThemeColors();
   const [loading, setLoading] = useState(true);
-  const [compacting, setCompacting] = useState(false);
   const [breakdown, setBreakdown] = useState<Awaited<
     ReturnType<typeof getAppStorageBreakdown>
   > | null>(null);
@@ -36,42 +32,6 @@ export function StorageSettings() {
     }, [refresh]),
   );
 
-  const confirmCompactDatabase = () => {
-    const reclaimable = breakdown?.databaseFreeBytes ?? 0;
-    Alert.alert(
-      'Compact database?',
-      `SQLite keeps empty pages after deletes. This reclaims about ${formatStorageBytes(reclaimable)} on disk. Your data is not deleted.`,
-      [
-        {text: 'Cancel', style: 'cancel'},
-        {
-          text: 'Compact',
-          onPress: () => {
-            void runCompactDatabase();
-          },
-        },
-      ],
-    );
-  };
-
-  const runCompactDatabase = async () => {
-    setCompacting(true);
-    try {
-      const result = await vacuumDatabase();
-      await refresh();
-      Alert.alert(
-        'Database compacted',
-        `Reduced from ${formatStorageBytes(result.beforeBytes)} to ${formatStorageBytes(result.afterBytes)}.`,
-      );
-    } catch (error) {
-      Alert.alert(
-        'Could not compact database',
-        error instanceof Error ? error.message : 'Something went wrong.',
-      );
-    } finally {
-      setCompacting(false);
-    }
-  };
-
   return (
     <View className="bg-card border-border rounded-2xl border p-4">
       <View className="flex-row items-center gap-3">
@@ -88,41 +48,16 @@ export function StorageSettings() {
       {loading ? (
         <ActivityIndicator className="mt-4" />
       ) : breakdown ? (
-        <>
-          <View className="border-border mt-4 overflow-hidden rounded-xl border">
-            <StorageTableHeader />
-            {breakdown.items.map(item => (
-              <StorageTableRow
-                key={item.key}
-                item={item}
-                emphasized={item.category === 'total'}
-              />
-            ))}
-          </View>
-
-          {breakdown.databaseFreeBytes > 0 ? (
-            <Text variant="muted" className="mt-3 text-xs leading-4">
-              {formatStorageBytes(breakdown.databaseFreeBytes)} of the DB file
-              is empty space from deleted rows. Compact to shrink it on disk.
-            </Text>
-          ) : null}
-
-          {breakdown.databaseFreeBytes > 0 ? (
-            <Pressable
-              accessibilityRole="button"
-              disabled={compacting}
-              onPress={confirmCompactDatabase}
-              className={`border-border mt-3 self-start rounded-full border px-3 py-2 ${
-                compacting ? 'opacity-50' : ''
-              }`}>
-              {compacting ? (
-                <ActivityIndicator />
-              ) : (
-                <Text className="text-sm font-medium">Compact database</Text>
-              )}
-            </Pressable>
-          ) : null}
-        </>
+        <View className="border-border mt-4 overflow-hidden rounded-xl border">
+          <StorageTableHeader />
+          {breakdown.items.map(item => (
+            <StorageTableRow
+              key={item.key}
+              item={item}
+              emphasized={item.category === 'total'}
+            />
+          ))}
+        </View>
       ) : null}
     </View>
   );

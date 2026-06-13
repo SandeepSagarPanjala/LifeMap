@@ -153,7 +153,60 @@ jest.mock('react-native-image-picker', () => ({
   launchImageLibrary: jest.fn(),
 }));
 
+jest.mock('react-native-vision-camera', () => {
+  const React = require('react');
+  const {View} = require('react-native');
+  const Camera = React.forwardRef((props, ref) => <View ref={ref} {...props} />);
+  const photoOutput = {
+    capturePhotoToFile: jest.fn().mockResolvedValue({filePath: '/tmp/photo.jpg'}),
+    capturePhoto: jest.fn(),
+    prepareSettings: jest.fn(),
+  };
+  return {
+    Camera,
+    useCameraDevice: jest.fn(() => ({id: 'back'})),
+    useCameraPermission: jest.fn(() => ({
+      hasPermission: true,
+      requestPermission: jest.fn().mockResolvedValue(true),
+    })),
+    usePhotoOutput: jest.fn(() => photoOutput),
+  };
+});
+
+jest.mock('react-native-color-matrix-image-filters', () => {
+  const matrix = () => Array(20).fill(0);
+  return {
+    ColorMatrix: ({children}) => children,
+    concatColorMatrices: (...matrices) => matrices[matrices.length - 1] ?? matrix(),
+    brightness: matrix,
+    contrast: matrix,
+    cool: matrix,
+    grayscale: matrix,
+    saturate: matrix,
+    sepia: matrix,
+    warm: matrix,
+  };
+});
+
+jest.mock('react-native-view-shot', () => {
+  const React = require('react');
+  const {View} = require('react-native');
+  return {
+    __esModule: true,
+    default: React.forwardRef((props, ref) => <View ref={ref} {...props} />),
+    captureRef: jest.fn(async () => 'file:///tmp/filtered.jpg'),
+  };
+});
+
 jest.mock('react-native-compressor', () => ({
+  getImageMetaData: jest.fn(async () => ({
+    ImageWidth: 4032,
+    ImageHeight: 3024,
+    Orientation: 6,
+    size: 1_000_000,
+    extension: 'jpg',
+    exif: {},
+  })),
   Image: {
     compress: jest.fn(),
   },

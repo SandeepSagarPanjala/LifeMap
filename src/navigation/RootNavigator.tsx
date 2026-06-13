@@ -6,6 +6,7 @@ import {useMemo} from 'react';
 import type {RootStackParamList} from '@/navigation/types';
 import {DayDetailScreen} from '@/screens/DayDetailScreen';
 import {CaptureNoteScreen} from '@/screens/capture/CaptureNoteScreen';
+import {CapturePhotoScreen} from '@/screens/capture/CapturePhotoScreen';
 import {MapScreen} from '@/screens/MapScreen';
 import {SettingsScreen} from '@/screens/SettingsScreen';
 import {useThemeColors} from '@/hooks/use-theme-colors';
@@ -55,6 +56,15 @@ export function RootNavigator() {
         <Stack.Screen
           name="CaptureNote"
           component={CaptureNoteScreen}
+          options={{
+            headerShown: false,
+            presentation: 'fullScreenModal',
+            animation: 'slide_from_bottom',
+          }}
+        />
+        <Stack.Screen
+          name="CapturePhoto"
+          component={CapturePhotoScreen}
           options={{
             headerShown: false,
             presentation: 'fullScreenModal',

@@ -4,6 +4,7 @@ import {
   countMomentsForEntry,
   emptyMomentCounts,
   filterMomentsForEntry,
+  shouldHideSavedPlaceMomentCluster,
   shouldShowDayMomentSummaryBar,
 } from '../src/lib/moments/moment-counts';
 import type {MomentRow} from '../src/db/repositories/moments';
@@ -137,6 +138,15 @@ describe('moment counts', () => {
     const visitCounts = {photo: 1, voice: 0, note: 0};
     expect(shouldShowDayMomentSummaryBar(dayCounts, stay, visitCounts)).toBe(
       true,
+    );
+  });
+
+  it('hides the saved-place cluster when the stay callout already shows moments', () => {
+    const counts = {photo: 3, voice: 1, note: 1};
+    expect(shouldHideSavedPlaceMomentCluster(7, 7, counts)).toBe(true);
+    expect(shouldHideSavedPlaceMomentCluster(7, 8, counts)).toBe(false);
+    expect(shouldHideSavedPlaceMomentCluster(7, 7, emptyMomentCounts())).toBe(
+      false,
     );
   });
 });
