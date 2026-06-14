@@ -1,5 +1,7 @@
 import {getDatabase} from '@/db/client';
 
+import {syncSavedPlaceGeofences} from '@/location/geofence-registry';
+import {startNativeLocationTracking} from '@/location/native-location-persist';
 import {getLocationService, resetLocationService} from './transistorsoft-location-service';
 import type {LocationAuthorizationStatus} from './types';
 
@@ -25,6 +27,8 @@ export function bootstrapLocationTracking(): Promise<LocationAuthorizationStatus
       await service.configure();
       const authorization = await service.requestPermission();
       await service.syncEnabledFromSettings();
+      await startNativeLocationTracking();
+      await syncSavedPlaceGeofences();
 
       return authorization;
     })();

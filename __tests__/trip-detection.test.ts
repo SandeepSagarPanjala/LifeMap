@@ -20,6 +20,7 @@ import {
   staysBeforeEntryIndex,
   stayBeforeEntryIndex,
   isSparseTravelRoute,
+  mergeStaySpansAcrossSparseGaps,
 } from '../src/lib/trip-detection';
 import {distanceKm} from '../src/lib/location-geo';
 import {buildTripDetectionConfig} from '../src/lib/trip-settings';
@@ -1068,5 +1069,26 @@ describe('findSavedPlaceStaySpans', () => {
 
     expect(gapM).toBeLessThanOrEqual(5);
     expect(stayMapCentroid(visit).latitude).toBeCloseTo(marker.latitude, 5);
+  });
+
+  it('merges same-place stay spans across sparse GPS gaps', () => {
+    const charger = {lat: 33.12, lng: -96.82};
+    const points = makePoints([
+      {minutes: 0, ...charger},
+      {minutes: 8, ...charger},
+      {minutes: 35, ...charger},
+      {minutes: 43, ...charger},
+    ]);
+    points[2]!.timestamp = new Date(points[1]!.timestamp.getTime() + 27 * 60_000);
+    points[3]!.timestamp = new Date(points[2]!.timestamp.getTime() + 8 * 60_000);
+
+    const dwellConfig = buildTripDetectionConfig(10, 5, 50);
+    const rawSpans = [
+      {start: 0, end: 1},
+      {start: 2, end: 3},
+    ];
+    const merged = mergeStaySpansAcrossSparseGaps(points, rawSpans, dwellConfig);
+
+    expect(merged).toEqual([{start: 0, end: 3}]);
   });
 });

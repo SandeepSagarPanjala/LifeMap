@@ -119,7 +119,7 @@ export function TrackingSettings() {
       ) : null}
       <Text variant="muted" className="mt-2 text-sm leading-5">
         {enabled
-          ? `Records your location about every ${TRACKING_DISTANCE_FILTER_METERS} m while moving and saves every fix the SDK sends. Heartbeat checks every minute when maximum reliability is on.`
+          ? `Saves every ${TRACKING_DISTANCE_FILTER_METERS} m while moving. Motion departures and 100 m drift save immediately; backup ping every ${maxReliability ? '10' : '30'} min when still. Native queue drains when the app opens.`
           : 'Background tracking is off — LifeMap is not saving new GPS points while the app is closed. Your existing map and history still work from data already saved.'}
       </Text>
       {!enabled ? (
@@ -143,9 +143,9 @@ export function TrackingSettings() {
           <View className="flex-1">
             <Text className="font-medium">Maximum reliability</Text>
             <Text variant="muted" className="mt-1 text-sm leading-5">
-              Keeps GPS active when still and checks every minute in the background.
-              Better drive coverage; uses more battery (~10–15%/day). Turn off for
-              balanced mode if battery is a concern.
+              Keeps GPS active when still, checks every minute, and saves on motion
+              departures. iOS also wakes on geofence exits, visit departures, and
+              significant location changes — even when the app is closed.
             </Text>
           </View>
           <Pressable

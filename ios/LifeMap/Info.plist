@@ -58,6 +58,7 @@
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
 		<string>com.transistorsoft.fetch</string>
+		<string>com.sunrio.lifemap.location-wake</string>
 	</array>
 	<key>RCTNewArchEnabled</key>
 	<true/>

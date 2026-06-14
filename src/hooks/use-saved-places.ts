@@ -4,6 +4,7 @@ import {
   listSavedPlaces,
   type SavedPlaceRow,
 } from '@/db/repositories/saved-places';
+import {syncSavedPlaceGeofences} from '@/location/geofence-registry';
 
 export function useSavedPlaces(): {
   places: SavedPlaceRow[];
@@ -19,6 +20,7 @@ export function useSavedPlaces(): {
     const next = await listSavedPlaces();
     setPlaces(next);
     setLoading(false);
+    await syncSavedPlaceGeofences(next);
   }, []);
 
   useEffect(() => {

@@ -55,9 +55,14 @@ export function AppBootstrap({children, enableLocationTracking = false}: AppBoot
       if (
         enableLocationTracking &&
         hasCompletedPrivacyOnboarding &&
-        nextState === 'active'
+        (nextState === 'active' || nextState === 'background')
       ) {
-        void getLocationService().drainNativeQueue().catch(() => undefined);
+        const service = getLocationService();
+        if (nextState === 'active') {
+          void service.refreshPersistPipeline().catch(() => undefined);
+        } else {
+          void service.drainNativeQueue().catch(() => undefined);
+        }
       }
     });
     return () => subscription.remove();

@@ -232,6 +232,9 @@ const STALE_WAKE_MIN_GAP_MS = 10 * 60_000;
 const STALE_WAKE_MAX_DIST_M = 400;
 const STALE_WAKE_MAX_SPEED_KMH = 2;
 
+/** Merge stay spans across sparse GPS at the same place (charger, meal, etc.). */
+const SAME_PLACE_SPARSE_GAP_MAX_MS = 60 * 60_000;
+
 function impliedSpeedKmh(distM: number, gapMs: number): number {
   if (gapMs <= 0) {
     return 0;
@@ -993,7 +996,11 @@ function findAllStaySpans(
   config: TripDetectionConfig,
   savedPlaces: readonly SavedPlaceRow[],
 ): StaySpan[] {
-  const generic = findStaySpans(points, config);
+  const generic = mergeStaySpansAcrossSparseGaps(
+    points,
+    findStaySpans(points, config),
+    config,
+  );
   if (savedPlaces.length === 0) {
     return generic;
   }
@@ -1160,6 +1167,65 @@ export function findStaySpans(
   }
 
   return spans;
+}
+
+function isSamePlaceSparseGapResume(
+  points: LocationPointRow[],
+  previous: StaySpan,
+  next: StaySpan,
+  config: TripDetectionConfig,
+): boolean {
+  if (next.start <= previous.end) {
+    return false;
+  }
+  const gapMs =
+    points[next.start]!.timestamp.getTime() -
+    points[previous.end]!.timestamp.getTime();
+  if (gapMs < STALE_WAKE_MIN_GAP_MS || gapMs > SAME_PLACE_SPARSE_GAP_MAX_MS) {
+    return false;
+  }
+  const lastPrev = points[previous.end]!;
+  const firstNext = points[next.start]!;
+  if (arePointsSamePlace(lastPrev, firstNext, config)) {
+    return true;
+  }
+  return distanceKm(lastPrev, firstNext) * 1000 <= VENUE_MAX_SPREAD_M;
+}
+
+/** @internal Test helper */
+export function mergeStaySpansAcrossSparseGaps(
+  points: LocationPointRow[],
+  spans: StaySpan[],
+  config: TripDetectionConfig,
+): StaySpan[] {
+  if (spans.length <= 1) {
+    return spans;
+  }
+
+  const minDwellMs = config.dwellMinutes * 60_000;
+  const merged: StaySpan[] = [spans[0]!];
+
+  for (let index = 1; index < spans.length; index += 1) {
+    const current = spans[index]!;
+    const previous = merged[merged.length - 1]!;
+
+    if (
+      isSamePlaceSparseGapResume(points, previous, current, config) &&
+      points[current.end]!.timestamp.getTime() -
+        points[previous.start]!.timestamp.getTime() >=
+        minDwellMs
+    ) {
+      merged[merged.length - 1] = {
+        start: previous.start,
+        end: current.end,
+      };
+      continue;
+    }
+
+    merged.push(current);
+  }
+
+  return merged;
 }
 
 /** Same place within dwell radius (+ GPS drift buffer). */

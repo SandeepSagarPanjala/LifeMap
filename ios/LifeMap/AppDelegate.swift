@@ -2,6 +2,7 @@ import UIKit
 import React
 import React_RCTAppDelegate
 import ReactAppDependencyProvider
+import BackgroundTasks
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -14,6 +15,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
+    registerBackgroundWakeTask()
+
     let delegate = ReactNativeDelegate()
     let factory = RCTReactNativeFactory(delegate: delegate)
     delegate.dependencyProvider = RCTAppDependencyProvider()
@@ -29,7 +32,49 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
       launchOptions: launchOptions
     )
 
+    _ = TransistorBridge.drainPersistedLocations()
+    LocationWakeCoordinator.shared.start()
+
     return true
+  }
+
+  func applicationDidBecomeActive(_ application: UIApplication) {
+    _ = TransistorBridge.drainPersistedLocations()
+    scheduleBackgroundWakeTask()
+  }
+
+  func applicationDidEnterBackground(_ application: UIApplication) {
+    scheduleBackgroundWakeTask()
+  }
+
+  private func registerBackgroundWakeTask() {
+    BGTaskScheduler.shared.register(
+      forTaskWithIdentifier: "com.sunrio.lifemap.location-wake",
+      using: nil
+    ) { task in
+      guard let refreshTask = task as? BGAppRefreshTask else {
+        task.setTaskCompleted(success: false)
+        return
+      }
+      self.handleBackgroundWake(task: refreshTask)
+    }
+  }
+
+  private func scheduleBackgroundWakeTask() {
+    let request = BGAppRefreshTaskRequest(identifier: "com.sunrio.lifemap.location-wake")
+    request.earliestBeginDate = Date(timeIntervalSinceNow: 15 * 60)
+    try? BGTaskScheduler.shared.submit(request)
+  }
+
+  private func handleBackgroundWake(task: BGAppRefreshTask) {
+    scheduleBackgroundWakeTask()
+    task.expirationHandler = {
+      task.setTaskCompleted(success: false)
+    }
+
+    let imported = TransistorBridge.drainPersistedLocations()
+    LocationWakeCoordinator.shared.start()
+    task.setTaskCompleted(success: imported >= 0)
   }
 }
 

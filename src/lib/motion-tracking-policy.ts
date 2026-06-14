@@ -1,6 +1,9 @@
 /** If no row written for this long while tracking, heartbeat requests a fresh GPS fix. */
 export const STATIONARY_PING_MIN_MS = 30 * 60_000;
 
+/** Shorter backup ping when maximum reliability is on (still at one place). */
+export const STATIONARY_PING_MIN_MS_MAX_RELIABILITY = 10 * 60_000;
+
 /** Heartbeat interval (seconds) — Android minimum 60; used to check stationary ping. */
 export const HEARTBEAT_CHECK_INTERVAL_SEC = 60;
 

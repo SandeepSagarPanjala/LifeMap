@@ -17,6 +17,7 @@ export type DepartureWatchdogInput = {
   sinceLastSaveMs: number;
   lastSaved: LocationPointLike | null;
   fresh: FreshLocationSample;
+  stationaryPingMinMs?: number;
 };
 
 export type DepartureWatchdogResult = {
@@ -54,11 +55,13 @@ export function evaluateDepartureWatchdog(
   input: DepartureWatchdogInput,
 ): DepartureWatchdogResult {
   const {sinceLastSaveMs, lastSaved, fresh} = input;
+  const stationaryPingMinMs =
+    input.stationaryPingMinMs ?? STATIONARY_PING_MIN_MS;
 
   if (lastSaved == null) {
     return {
       forceMoving: false,
-      shouldPersist: sinceLastSaveMs >= STATIONARY_PING_MIN_MS,
+      shouldPersist: sinceLastSaveMs >= stationaryPingMinMs,
       source: 'heartbeat_ping',
       reason: 'no_baseline',
       distanceMeters: null,
@@ -90,7 +93,7 @@ export function evaluateDepartureWatchdog(
     };
   }
 
-  if (sinceLastSaveMs >= STATIONARY_PING_MIN_MS) {
+  if (sinceLastSaveMs >= stationaryPingMinMs) {
     return {
       forceMoving: false,
       shouldPersist: true,

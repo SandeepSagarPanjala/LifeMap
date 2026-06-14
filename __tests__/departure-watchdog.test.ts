@@ -3,6 +3,7 @@ import {
   DEPARTURE_WATCHDOG_MIN_MS,
   HEARTBEAT_DEPARTURE_DISTANCE_METERS,
   STATIONARY_PING_MIN_MS,
+  STATIONARY_PING_MIN_MS_MAX_RELIABILITY,
 } from '../src/lib/motion-tracking-policy';
 
 const theater = {lat: 33.217236, lng: -96.822545};
@@ -68,6 +69,24 @@ describe('evaluateDepartureWatchdog', () => {
         accuracy: 10,
         speed: 0,
       },
+    });
+
+    expect(result.forceMoving).toBe(false);
+    expect(result.shouldPersist).toBe(true);
+    expect(result.source).toBe('heartbeat_ping');
+    expect(result.reason).toBe('stationary_ping');
+  });
+
+  it('persists shorter stationary ping when max reliability interval is set', () => {
+    const result = evaluateDepartureWatchdog({
+      sinceLastSaveMs: STATIONARY_PING_MIN_MS_MAX_RELIABILITY,
+      lastSaved: theater,
+      fresh: {
+        ...theater,
+        accuracy: 10,
+        speed: 0,
+      },
+      stationaryPingMinMs: STATIONARY_PING_MIN_MS_MAX_RELIABILITY,
     });
 
     expect(result.forceMoving).toBe(false);

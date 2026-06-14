@@ -38,40 +38,39 @@ describe('tracking diagnostics defaults', () => {
     resetTrackingDiagnosticsForTests();
   });
 
-  it('persists diagnostics as disabled on first launch', async () => {
-    const store = installSettingsStore({
-      tracking_diagnostics_default_off_applied_v1: 'true',
-    });
+  it('persists diagnostics as enabled on first launch', async () => {
+    const store = installSettingsStore();
 
-    await expect(getTrackingDiagnosticsEnabled()).resolves.toBe(false);
+    await expect(getTrackingDiagnosticsEnabled()).resolves.toBe(true);
 
-    expect(store.get(SETTINGS_KEY_TRACKING_DIAGNOSTICS_ENABLED)).toBe('false');
+    expect(store.get(SETTINGS_KEY_TRACKING_DIAGNOSTICS_ENABLED)).toBe('true');
+    expect(store.get('tracking_diagnostics_default_on_applied_v2')).toBe('true');
   });
 
-  it('turns diagnostics off once for existing installs', async () => {
+  it('migrates existing installs to diagnostics on once', async () => {
     const store = installSettingsStore({
-      [SETTINGS_KEY_TRACKING_DIAGNOSTICS_ENABLED]: 'true',
-    });
-
-    await expect(getTrackingDiagnosticsEnabled()).resolves.toBe(false);
-
-    expect(store.get(SETTINGS_KEY_TRACKING_DIAGNOSTICS_ENABLED)).toBe('false');
-    expect(store.get('tracking_diagnostics_default_off_applied_v1')).toBe('true');
-  });
-
-  it('respects an explicit enabled setting after migration', async () => {
-    installSettingsStore({
-      tracking_diagnostics_default_off_applied_v1: 'true',
-      [SETTINGS_KEY_TRACKING_DIAGNOSTICS_ENABLED]: 'true',
+      [SETTINGS_KEY_TRACKING_DIAGNOSTICS_ENABLED]: 'false',
     });
 
     await expect(getTrackingDiagnosticsEnabled()).resolves.toBe(true);
+
+    expect(store.get(SETTINGS_KEY_TRACKING_DIAGNOSTICS_ENABLED)).toBe('true');
+    expect(store.get('tracking_diagnostics_default_on_applied_v2')).toBe('true');
+  });
+
+  it('respects an explicit disabled setting after migration', async () => {
+    installSettingsStore({
+      tracking_diagnostics_default_on_applied_v2: 'true',
+      [SETTINGS_KEY_TRACKING_DIAGNOSTICS_ENABLED]: 'false',
+    });
+
+    await expect(getTrackingDiagnosticsEnabled()).resolves.toBe(false);
     expect(mockedSetSetting).not.toHaveBeenCalled();
   });
 
   it('does not write diagnostics when disabled', async () => {
     installSettingsStore({
-      tracking_diagnostics_default_off_applied_v1: 'true',
+      tracking_diagnostics_default_on_applied_v2: 'true',
       [SETTINGS_KEY_TRACKING_DIAGNOSTICS_ENABLED]: 'false',
     });
 
@@ -80,18 +79,29 @@ describe('tracking diagnostics defaults', () => {
     expect(mockedInsertTrackingEvent).not.toHaveBeenCalled();
   });
 
-  it('writes diagnostics only after the user enables them', async () => {
+  it('writes diagnostics when enabled', async () => {
     installSettingsStore({
-      tracking_diagnostics_default_off_applied_v1: 'true',
-      [SETTINGS_KEY_TRACKING_DIAGNOSTICS_ENABLED]: 'false',
+      tracking_diagnostics_default_on_applied_v2: 'true',
+      [SETTINGS_KEY_TRACKING_DIAGNOSTICS_ENABLED]: 'true',
     });
 
-    await setTrackingDiagnosticsEnabled(true);
     await recordTrackingDiagnostic('motion_change', {isMoving: true});
 
     expect(mockedInsertTrackingEvent).toHaveBeenCalledWith({
       event: 'motion_change',
       details: {isMoving: true},
     });
+  });
+
+  it('allows the user to toggle diagnostics off', async () => {
+    installSettingsStore({
+      tracking_diagnostics_default_on_applied_v2: 'true',
+      [SETTINGS_KEY_TRACKING_DIAGNOSTICS_ENABLED]: 'true',
+    });
+
+    await setTrackingDiagnosticsEnabled(false);
+    await recordTrackingDiagnostic('motion_change', {isMoving: true});
+
+    expect(mockedInsertTrackingEvent).not.toHaveBeenCalled();
   });
 });

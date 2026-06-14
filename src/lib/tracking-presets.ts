@@ -11,8 +11,8 @@ export const SETTINGS_KEY_TRACKING_MAX_RELIABILITY = 'tracking_max_reliability';
 /** @deprecated Legacy settings key; all installs now use the fixed config. */
 export const SETTINGS_KEY_TRACKING_PRESET = 'tracking_preset';
 
-const STOP_TIMEOUT_MINUTES = 5;
-const STOP_DETECTION_DELAY_MS = 60_000;
+const STOP_TIMEOUT_MINUTES_BALANCED = 5;
+const STOP_DETECTION_DELAY_MS_BALANCED = 60_000;
 
 const NOTIFICATION = {
   title: 'LifeMap',
@@ -33,18 +33,19 @@ export function getTrackingConfig(maxReliability: boolean): Config {
     geolocation: {
       desiredAccuracy: BackgroundGeolocation.DesiredAccuracy.High,
       distanceFilter: TRACKING_DISTANCE_FILTER_METERS,
-      disableElasticity: false,
-      stopTimeout: STOP_TIMEOUT_MINUTES,
+      disableElasticity: maxReliability,
+      stopTimeout: maxReliability ? 1 : STOP_TIMEOUT_MINUTES_BALANCED,
       pausesLocationUpdatesAutomatically: !maxReliability,
       locationAuthorizationRequest: BackgroundGeolocation.LocationRequest.Always,
-      locationUpdateInterval: 60_000,
-      fastestLocationUpdateInterval: 60_000,
+      locationUpdateInterval: maxReliability ? 30_000 : 60_000,
+      fastestLocationUpdateInterval: maxReliability ? 30_000 : 60_000,
+      stationaryRadius: maxReliability ? 75 : 25,
     },
     activity: {
       disableStopDetection: maxReliability,
       disableMotionActivityUpdates: false,
-      stopDetectionDelay: STOP_DETECTION_DELAY_MS,
-      minimumActivityRecognitionConfidence: 55,
+      stopDetectionDelay: maxReliability ? 30_000 : STOP_DETECTION_DELAY_MS_BALANCED,
+      minimumActivityRecognitionConfidence: maxReliability ? 40 : 55,
       activityRecognitionInterval: 5000,
       motionTriggerDelay: 0,
     },
@@ -66,8 +67,10 @@ export function getTrackingConfig(maxReliability: boolean): Config {
       maxRecordsToPersist: -1,
     },
     logger: {
-      debug: false,
-      logLevel: BackgroundGeolocation.LogLevel.Warning,
+      debug: maxReliability,
+      logLevel: maxReliability
+        ? BackgroundGeolocation.LogLevel.Verbose
+        : BackgroundGeolocation.LogLevel.Warning,
     },
   };
 }
