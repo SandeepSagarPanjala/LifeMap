@@ -18,6 +18,7 @@
 		B2C3D4E81A68108700A75B9A /* LocationWakeCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E71A68108700A75B9A /* LocationWakeCoordinator.swift */; };
 		B2C3D4EA1A68108700A75B9A /* LocationPersistModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E91A68108700A75B9A /* LocationPersistModule.swift */; };
 		B2C3D4EC1A68108700A75B9A /* LocationPersistModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4EB1A68108700A75B9A /* LocationPersistModule.m */; };
+		C3D4E5F61A68108700A75B9A /* LifeMapTransistorSafe.m in Sources */ = {isa = PBXBuildFile; fileRef = C3D4E5F51A68108700A75B9A /* LifeMapTransistorSafe.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -36,6 +37,7 @@
 		B2C3D4E71A68108700A75B9A /* LocationWakeCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocationWakeCoordinator.swift; path = LifeMap/LocationWakeCoordinator.swift; sourceTree = "<group>"; };
 		B2C3D4E91A68108700A75B9A /* LocationPersistModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocationPersistModule.swift; path = LifeMap/LocationPersistModule.swift; sourceTree = "<group>"; };
 		B2C3D4EB1A68108700A75B9A /* LocationPersistModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = LocationPersistModule.m; path = LifeMap/LocationPersistModule.m; sourceTree = "<group>"; };
+		C3D4E5F51A68108700A75B9A /* LifeMapTransistorSafe.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = LifeMapTransistorSafe.m; path = LifeMap/LifeMapTransistorSafe.m; sourceTree = "<group>"; };
 		C1A2B3C41A680F5B00A75B9A /* LifeMap.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = LifeMap.debug.xcconfig; path = Config/LifeMap.debug.xcconfig; sourceTree = "<group>"; };
 		C1A2B3C51A680F5B00A75B9A /* LifeMap.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = LifeMap.release.xcconfig; path = Config/LifeMap.release.xcconfig; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
@@ -64,6 +66,7 @@
 				B2C3D4E71A68108700A75B9A /* LocationWakeCoordinator.swift */,
 				B2C3D4E91A68108700A75B9A /* LocationPersistModule.swift */,
 				B2C3D4EB1A68108700A75B9A /* LocationPersistModule.m */,
+				C3D4E5F51A68108700A75B9A /* LifeMapTransistorSafe.m */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
@@ -283,6 +286,7 @@
 				B2C3D4E81A68108700A75B9A /* LocationWakeCoordinator.swift in Sources */,
 				B2C3D4EA1A68108700A75B9A /* LocationPersistModule.swift in Sources */,
 				B2C3D4EC1A68108700A75B9A /* LocationPersistModule.m in Sources */,
+				C3D4E5F61A68108700A75B9A /* LifeMapTransistorSafe.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -314,6 +318,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.sunrio.lifemap;
 				PRODUCT_NAME = LifeMap;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_OBJC_BRIDGING_HEADER = LifeMap/LifeMap-Bridging-Header.h;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -345,6 +350,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.sunrio.lifemap;
 				PRODUCT_NAME = LifeMap;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_OBJC_BRIDGING_HEADER = LifeMap/LifeMap-Bridging-Header.h;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
 				VERSIONING_SYSTEM = "apple-generic";

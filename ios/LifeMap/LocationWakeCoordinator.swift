@@ -24,20 +24,21 @@ struct NativeGeofenceSpec: Codable {
   }
 
   @objc func start() {
+    startIfAuthorized()
+  }
+
+  @objc func startIfAuthorized() {
     guard !isStarted else {
+      return
+    }
+
+    let status = manager.authorizationStatus
+    guard status == .authorizedAlways else {
       return
     }
     isStarted = true
 
-    let status = manager.authorizationStatus
-    guard status == .authorizedAlways || status == .authorizedWhenInUse else {
-      return
-    }
-
-    if status == .authorizedAlways {
-      manager.allowsBackgroundLocationUpdates = true
-    }
-
+    manager.allowsBackgroundLocationUpdates = true
     manager.startMonitoringVisits()
     manager.startMonitoringSignificantLocationChanges()
   }
@@ -57,7 +58,7 @@ struct NativeGeofenceSpec: Codable {
     registeredGeofenceIds.removeAll()
   }
 
-  @objc func syncGeofences(_ specs: [NativeGeofenceSpec]) {
+  func syncGeofences(_ specs: [NativeGeofenceSpec]) {
     let status = manager.authorizationStatus
     guard status == .authorizedAlways else {
       return
@@ -203,33 +204,14 @@ struct NativeGeofenceSpec: Codable {
 
 enum TransistorBridge {
   static func forceMovingMode(reason: String) {
-    guard
-      let managerClass = NSClassFromString("TSLocationManager") as? NSObject.Type,
-      let shared = managerClass.perform(NSSelectorFromString("sharedInstance"))?
-        .takeUnretainedValue() as? NSObject
-    else {
-      return
-    }
-
-    _ = shared.perform(NSSelectorFromString("changePace:"), with: true)
+    LifeMapTransistorSafe.forceMovingMode()
     NSLog("[LifeMap] Transistor changePace(true) from %@", reason)
   }
 
   static func drainPersistedLocations() -> Int {
-    guard
-      let managerClass = NSClassFromString("TSLocationManager") as? NSObject.Type,
-      let shared = managerClass.perform(NSSelectorFromString("sharedInstance"))?
-        .takeUnretainedValue() as? NSObject,
-      let locations = shared.value(forKey: "locations") as? [Any]
-    else {
-      return 0
-    }
-
+    let locations = LifeMapTransistorSafe.drainLocations()
     var imported = 0
-    for item in locations {
-      guard let location = item as? CLLocation else {
-        continue
-      }
+    for case let location as CLLocation in locations {
       let point = LifeMapLocationInsert(
         timestampMs: Int64(location.timestamp.timeIntervalSince1970 * 1000),
         lat: location.coordinate.latitude,
@@ -243,8 +225,6 @@ enum TransistorBridge {
         imported += 1
       }
     }
-
-    _ = shared.perform(NSSelectorFromString("destroyLocations"))
     return imported
   }
 }

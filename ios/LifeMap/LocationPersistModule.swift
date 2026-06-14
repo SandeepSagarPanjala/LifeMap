@@ -12,7 +12,7 @@ class LocationPersistModule: NSObject {
     _ resolve: @escaping RCTPromiseResolveBlock,
     rejecter: @escaping RCTPromiseRejectBlock
   ) {
-    LocationWakeCoordinator.shared.start()
+    LocationWakeCoordinator.shared.startIfAuthorized()
     resolve([
       "started": true,
       "databasePath": LifeMapDatabase.shared.databasePath(),

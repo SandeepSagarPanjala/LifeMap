@@ -10,7 +10,6 @@
     "android:create-emulator": "bash scripts/create-android-emulator.sh",
     "ios": "bash scripts/run-ios-device.sh",
     "ios:sim": "react-native run-ios --simulator \"iPhone 17 Pro Max\"",
-    "ios:device": "bash scripts/run-ios-device.sh",
     "ios:release": "bash -c 'source scripts/ruby-env.sh && cd ios && bundle exec fastlane build'",
     "ios:beta": "bash -c 'source scripts/ruby-env.sh && cd ios && bundle exec fastlane beta'",
     "pod-install": "bash -c 'source scripts/ruby-env.sh && cd ios && bundle exec pod install'",

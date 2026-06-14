@@ -32,14 +32,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
       launchOptions: launchOptions
     )
 
-    _ = TransistorBridge.drainPersistedLocations()
-    LocationWakeCoordinator.shared.start()
-
     return true
   }
 
   func applicationDidBecomeActive(_ application: UIApplication) {
-    _ = TransistorBridge.drainPersistedLocations()
     scheduleBackgroundWakeTask()
   }
 
@@ -72,9 +68,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
       task.setTaskCompleted(success: false)
     }
 
-    let imported = TransistorBridge.drainPersistedLocations()
-    LocationWakeCoordinator.shared.start()
-    task.setTaskCompleted(success: imported >= 0)
+    LocationWakeCoordinator.shared.startIfAuthorized()
+    task.setTaskCompleted(success: true)
   }
 }
 
