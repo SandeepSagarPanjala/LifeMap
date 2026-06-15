@@ -1,45 +1,69 @@
-import {useCallback, useState} from 'react';
-import {ActivityIndicator, View} from 'react-native';
-import {useFocusEffect} from '@react-navigation/native';
+import {useCallback, useEffect, useState} from 'react';
+import {View} from 'react-native';
 import {HardDrive} from 'lucide-react-native';
 
+import {SettingsStatsRefreshBar} from '@/components/settings/settings-stats-refresh-bar';
 import {Icon} from '@/components/ui/icon';
 import {Text} from '@/components/ui/text';
-import {getAppStorageBreakdown} from '@/db/repositories/storage-stats';
+import type {AppStorageBreakdown} from '@/db/repositories/storage-stats';
 import {formatStorageBytes} from '@/lib/format-storage';
 import type {StorageBreakdownItem} from '@/lib/app-storage-breakdown';
+import {
+  computeAndCacheStorageBreakdown,
+  loadCachedStorageBreakdown,
+} from '@/lib/settings-stats';
 import {useThemeColors} from '@/hooks/use-theme-colors';
 
 export function StorageSettings() {
   const colors = useThemeColors();
-  const [loading, setLoading] = useState(true);
-  const [breakdown, setBreakdown] = useState<Awaited<
-    ReturnType<typeof getAppStorageBreakdown>
-  > | null>(null);
+  const [calculating, setCalculating] = useState(false);
+  const [breakdown, setBreakdown] = useState<AppStorageBreakdown | null>(null);
+  const [calculatedAt, setCalculatedAt] = useState<Date | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
+  const loadCache = useCallback(async () => {
     setErrorMessage(null);
     try {
-      setBreakdown(await getAppStorageBreakdown());
+      const cached = await loadCachedStorageBreakdown();
+      if (cached == null) {
+        setBreakdown(null);
+        setCalculatedAt(null);
+        return;
+      }
+      setBreakdown(cached.payload);
+      setCalculatedAt(cached.calculatedAt);
     } catch (error) {
       setBreakdown(null);
+      setCalculatedAt(null);
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : 'Could not load storage breakdown.',
+          : 'Could not load saved storage stats.',
       );
-    } finally {
-      setLoading(false);
     }
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      void refresh();
-    }, [refresh]),
-  );
+  const calculate = useCallback(async () => {
+    setCalculating(true);
+    setErrorMessage(null);
+    try {
+      const result = await computeAndCacheStorageBreakdown();
+      setBreakdown(result.payload);
+      setCalculatedAt(result.calculatedAt);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Could not calculate storage breakdown.',
+      );
+    } finally {
+      setCalculating(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadCache();
+  }, [loadCache]);
 
   return (
     <View className="bg-card border-border rounded-2xl border p-4">
@@ -54,9 +78,19 @@ export function StorageSettings() {
         </View>
       </View>
 
-      {loading ? (
-        <ActivityIndicator className="mt-4" />
-      ) : breakdown ? (
+      <SettingsStatsRefreshBar
+        calculatedAt={calculatedAt}
+        calculating={calculating}
+        onCalculate={() => void calculate()}
+      />
+
+      {errorMessage ? (
+        <Text variant="muted" className="mt-3 text-sm leading-5">
+          {errorMessage}
+        </Text>
+      ) : null}
+
+      {breakdown != null ? (
         <View className="border-border mt-4 overflow-hidden rounded-xl border">
           <StorageTableHeader />
           {breakdown.items.map(item => (
@@ -67,10 +101,6 @@ export function StorageSettings() {
             />
           ))}
         </View>
-      ) : errorMessage ? (
-        <Text variant="muted" className="mt-4 text-sm leading-5">
-          {errorMessage}
-        </Text>
       ) : null}
     </View>
   );

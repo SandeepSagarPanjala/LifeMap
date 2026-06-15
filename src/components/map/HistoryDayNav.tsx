@@ -4,6 +4,7 @@ import {ChevronLeft, ChevronRight} from 'lucide-react-native';
 
 import {getTodayDateKey, shiftDateKey} from '@/lib/day-utils';
 import {formatHistoryDayNavLabel, HISTORY_COLORS} from '@/lib/history-timeline';
+import {useAppStore} from '@/stores/app-store';
 
 const ICON_COLOR = HISTORY_COLORS.playhead;
 
@@ -20,12 +21,24 @@ export function HistoryDayNav({
 }: HistoryDayNavProps) {
   const now = useMemo(() => new Date(), []);
   const dayLabel = formatHistoryDayNavLabel(dateKey, now);
-  const isToday = dateKey === getTodayDateKey();
+  const todayKey = getTodayDateKey();
+  const earliestDateKey = useAppStore(state => state.historyEarliestDateKey);
+  const isToday = dateKey === todayKey;
   const canGoNextDay = !isToday;
+  const canGoPrevDay =
+    earliestDateKey == null || dateKey > earliestDateKey;
 
   const goPrevDay = useCallback(() => {
-    onDateKeyChange(shiftDateKey(dateKey, -1));
-  }, [dateKey, onDateKeyChange]);
+    if (!canGoPrevDay) {
+      return;
+    }
+    const nextKey = shiftDateKey(dateKey, -1);
+    if (earliestDateKey != null && nextKey < earliestDateKey) {
+      onDateKeyChange(earliestDateKey);
+      return;
+    }
+    onDateKeyChange(nextKey);
+  }, [canGoPrevDay, dateKey, earliestDateKey, onDateKeyChange]);
 
   const goNextDay = useCallback(() => {
     if (canGoNextDay) {
@@ -39,12 +52,19 @@ export function HistoryDayNav({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Previous day"
+          disabled={!canGoPrevDay}
           onPress={goPrevDay}
           style={({pressed}) => [
             styles.sideBtn,
-            pressed ? styles.btnPressed : null,
+            !canGoPrevDay && styles.sideBtnDisabled,
+            pressed && canGoPrevDay ? styles.btnPressed : null,
           ]}>
-          <ChevronLeft size={18} color={ICON_COLOR} strokeWidth={2.5} />
+          <ChevronLeft
+            size={18}
+            color={ICON_COLOR}
+            strokeWidth={2.5}
+            opacity={canGoPrevDay ? 1 : 0.35}
+          />
         </Pressable>
 
         <View style={styles.divider} />

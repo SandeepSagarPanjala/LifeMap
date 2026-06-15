@@ -1,6 +1,5 @@
 import {
   useCallback,
-  useDeferredValue,
   useEffect,
   useMemo,
   useRef,
@@ -63,6 +62,7 @@ import {
   formatMapDateLabel,
 } from '@/lib/history-timeline';
 import {followTodayDateKeyRoll, getTodayDateKey} from '@/lib/day-utils';
+import {clampDateKeyToHistoryBounds} from '@/lib/history-calendar-bounds';
 import {regionForCoordinates, toMapCoordinates} from '@/lib/location-geo';
 import {
   animateRecenterToUser,
@@ -80,7 +80,6 @@ import {
   SavedPlaceLimitError,
   savedPlaceDisplayLabel,
 } from '@/lib/saved-places';
-import {shouldShowSavedPlaceCircles} from '@/lib/saved-places-map';
 import {getCurrentOpenVisit} from '@/lib/today-history';
 import {
   isPlayableTimelineEntry,
@@ -174,7 +173,6 @@ export function useMapScreenController() {
     | {kind: 'moment-ids'; momentIds: number[]; title: string}
     | null
   >(null);
-  const [showSavedPlaceCircles, setShowSavedPlaceCircles] = useState(true);
   const [clusterMomentsOnMap, setClusterMomentsOnMap] = useState(false);
 
   const {places: savedPlaces, hasHome, hasWork, refresh: refreshSavedPlaces} =
@@ -195,7 +193,6 @@ export function useMapScreenController() {
   const hasCenteredOnOpenRef = useRef(false);
   const needsDefaultCenterRef = useRef(true);
   const mapRegionRef = useRef<Region>(MAP_FALLBACK_REGION);
-  const showSavedPlaceCirclesRef = useRef(true);
   const clusterMomentsOnMapRef = useRef(false);
   const fitHistoryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const userCoordinateRef = useRef<MapUserCoordinate | null>(null);
@@ -206,9 +203,12 @@ export function useMapScreenController() {
 
   const playback = useTripPlayback();
   const historyPanelReady = useAfterInteractions(historyPanelOpen);
-  const deferredHistoryEntries = useDeferredValue(historyEntries);
-  const historyEntriesPending =
-    historyPanelOpen && deferredHistoryEntries !== historyEntries;
+
+  const historyReadyForDay =
+    historyData.dateKey === selectedDateKey &&
+    (historyData.entries.length > 0 || historyData.points.length > 0) &&
+    !historyLoading;
+  const historyBlockingLoader = historyLoading && !historyReadyForDay;
 
   const historyBadgeCount = useMemo(
     () => countHistoryTimelineEvents(historyEntries),
@@ -262,18 +262,19 @@ export function useMapScreenController() {
   const historyMapPlan = useMemo(
     () =>
       buildHistoryMapPlan(
-        deferredHistoryEntries,
+        historyEntries,
         selectedHistoryIndex,
         tripDetectionConfig,
+        historyData.points,
       ),
-    [deferredHistoryEntries, selectedHistoryIndex, tripDetectionConfig],
+    [historyData.points, historyEntries, selectedHistoryIndex, tripDetectionConfig],
   );
 
   const showHistoryPanelContent =
     historyPanelOpen &&
     historyPanelReady &&
-    !historyLoading &&
-    !historyEntriesPending;
+    historyReadyForDay &&
+    historyEntries.length > 0;
 
   const currentOpenVisit = useMemo(
     () =>
@@ -462,7 +463,8 @@ export function useMapScreenController() {
   );
 
   const showHistoryMap =
-    showHistoryPanelContent &&
+    historyPanelOpen &&
+    historyReadyForDay &&
     selectedHistoryIndex >= 0 &&
     historyMapPlan.selected != null;
   const dayMomentMapPinsRaw = useMemo((): MomentMapPin[] => {
@@ -626,11 +628,6 @@ export function useMapScreenController() {
 
   const onRegionChangeComplete = useCallback((region: Region) => {
     mapRegionRef.current = region;
-    const nextShowCircles = shouldShowSavedPlaceCircles(region.latitudeDelta);
-    if (nextShowCircles !== showSavedPlaceCirclesRef.current) {
-      showSavedPlaceCirclesRef.current = nextShowCircles;
-      setShowSavedPlaceCircles(nextShowCircles);
-    }
     const nextClusterMoments = shouldClusterMomentsOnMap(region.latitudeDelta);
     if (nextClusterMoments !== clusterMomentsOnMapRef.current) {
       clusterMomentsOnMapRef.current = nextClusterMoments;
@@ -732,7 +729,7 @@ export function useMapScreenController() {
 
   const handleSelectMapDate = useCallback(
     (dateKey: string) => {
-      setSelectedDateKey(dateKey);
+      setSelectedDateKey(clampDateKeyToHistoryBounds(dateKey));
       setSelectedHistoryIndex(-1);
       playback.stop();
     },
@@ -741,7 +738,7 @@ export function useMapScreenController() {
 
   const handleHistoryDateKeyChange = useCallback(
     (dateKey: string) => {
-      setSelectedDateKey(dateKey);
+      setSelectedDateKey(clampDateKeyToHistoryBounds(dateKey));
       setSelectedHistoryIndex(-1);
       playback.stop();
     },
@@ -911,8 +908,18 @@ export function useMapScreenController() {
     }
   }, [historyLoading, viewingToday, historyPanelOpen, selectedDateKey]);
 
+  const historyPointFitKey = useMemo(() => {
+    const points = historyData.points;
+    if (points.length === 0) {
+      return '0';
+    }
+    const first = points[0]!;
+    const last = points[points.length - 1]!;
+    return `${points.length}:${first.id}:${last.id}`;
+  }, [historyData.points]);
+
   useEffect(() => {
-    if (historyPanelOpen || historyLoading || !mapRef.current) {
+    if (historyPanelOpen || historyBlockingLoader || !mapRef.current) {
       return;
     }
 
@@ -939,9 +946,10 @@ export function useMapScreenController() {
     mapRef.current.animateToRegion(region, 400);
     mapRegionRef.current = region;
   }, [
+    historyBlockingLoader,
     historyData.points,
-    historyLoading,
     historyPanelOpen,
+    historyPointFitKey,
     selectedDateKey,
     userCoordinate,
     viewingToday,
@@ -1109,6 +1117,8 @@ export function useMapScreenController() {
     closeMomentsPreview,
     handleDeleteMoment,
     historyData,
+    historyLoading,
+    historyBlockingLoader,
     historyEntries,
     dayStays,
     dayTravels,
@@ -1150,7 +1160,6 @@ export function useMapScreenController() {
     canSaveFavorite,
     isAtSavedPlaceLimit,
     maxSavedPlaces: MAX_SAVED_PLACES,
-    showSavedPlaceCircles,
     savedPlaceMomentClusters,
     savePlaceCoordinate,
     savedPlacesSheetOpen,

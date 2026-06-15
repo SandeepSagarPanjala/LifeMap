@@ -3,6 +3,8 @@ import {asc, eq, sql} from 'drizzle-orm';
 import {getDatabase} from '../client';
 import {trips} from '../schema';
 
+import {deleteTripPointsForTripIds} from './trip-points';
+
 export type TripRow = {
   id: number;
   eventKey: string;
@@ -114,6 +116,55 @@ export async function insertTripIfAbsent(
   return getTripByEventKey(input.eventKey);
 }
 
+export async function upsertTrip(input: InsertTripInput): Promise<TripRow> {
+  const db = await getDatabase();
+  const rows = await db
+    .insert(trips)
+    .values({
+      eventKey: input.eventKey,
+      kind: input.kind,
+      dateKey: input.dateKey,
+      startAt: input.startAt,
+      endAt: input.endAt,
+      durationMs: input.durationMs,
+      distanceKm: input.distanceKm,
+      centroidLat: input.centroidLat,
+      centroidLng: input.centroidLng,
+      placeLookupCacheId: input.placeLookupCacheId ?? null,
+      selectedCandidateIndex: input.selectedCandidateIndex ?? null,
+      detectionVersion: input.detectionVersion,
+      closedAt: input.closedAt,
+    })
+    .onConflictDoUpdate({
+      target: trips.eventKey,
+      set: {
+        kind: input.kind,
+        dateKey: input.dateKey,
+        startAt: input.startAt,
+        endAt: input.endAt,
+        durationMs: input.durationMs,
+        distanceKm: input.distanceKm,
+        centroidLat: input.centroidLat,
+        centroidLng: input.centroidLng,
+        placeLookupCacheId: input.placeLookupCacheId ?? null,
+        selectedCandidateIndex: input.selectedCandidateIndex ?? null,
+        detectionVersion: input.detectionVersion,
+        closedAt: input.closedAt,
+      },
+    })
+    .returning();
+
+  const row = rows[0];
+  if (!row) {
+    const existing = await getTripByEventKey(input.eventKey);
+    if (existing == null) {
+      throw new Error(`Failed to upsert trip ${input.eventKey}`);
+    }
+    return existing;
+  }
+  return mapRow(row);
+}
+
 export async function setTripSelectedCandidateIndex(
   tripId: number,
   selectedCandidateIndex: number,
@@ -168,12 +219,19 @@ export async function countAllTrips(): Promise<number> {
 
 export async function deleteAllTrips(): Promise<number> {
   const db = await getDatabase();
+  const ids = await db.select({id: trips.id}).from(trips);
+  await deleteTripPointsForTripIds(ids.map(row => row.id));
   const deleted = await db.delete(trips).returning({id: trips.id});
   return deleted.length;
 }
 
 export async function deleteTripsForDay(dateKey: string): Promise<number> {
   const db = await getDatabase();
+  const ids = await db
+    .select({id: trips.id})
+    .from(trips)
+    .where(eq(trips.dateKey, dateKey));
+  await deleteTripPointsForTripIds(ids.map(row => row.id));
   const deleted = await db
     .delete(trips)
     .where(eq(trips.dateKey, dateKey))

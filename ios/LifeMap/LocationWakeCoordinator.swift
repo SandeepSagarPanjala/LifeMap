@@ -41,6 +41,14 @@ struct NativeGeofenceSpec: Codable {
     manager.allowsBackgroundLocationUpdates = true
     manager.startMonitoringVisits()
     manager.startMonitoringSignificantLocationChanges()
+    LifeMapNativePersistLoop.shared.start()
+  }
+
+  @objc func requestStaleRecovery(reason: String) {
+    DispatchQueue.main.async {
+      TransistorBridge.forceMovingMode(reason: "native_stale_recovery:\(reason)")
+      self.requestFreshLocation(source: "native_stale_recovery", forceMoving: false)
+    }
   }
 
   @objc func stop() {
@@ -48,6 +56,7 @@ struct NativeGeofenceSpec: Codable {
       return
     }
     isStarted = false
+    LifeMapNativePersistLoop.shared.stop()
     manager.stopMonitoringVisits()
     manager.stopMonitoringSignificantLocationChanges()
     for identifier in registeredGeofenceIds {

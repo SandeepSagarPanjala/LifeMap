@@ -9,6 +9,7 @@ import {MomentsPreviewSheet} from '@/components/moments/MomentsPreviewSheet';
 
 import {MapHistoryPanel} from './map/MapHistoryPanel';
 import {MapScreenFloatingControls} from './map/MapScreenFloatingControls';
+import {MapDayLoadingOverlay} from '@/components/map/MapDayLoadingOverlay';
 import {MapScreenMap} from './map/MapScreenMap';
 import {MapScreenTopBar} from './map/MapScreenTopBar';
 import {useMapScreenController} from './map/use-map-screen-controller';
@@ -19,6 +20,7 @@ export function MapScreen() {
   return (
     <View className="bg-background flex-1">
       <MapScreenMap controller={controller} />
+      <MapDayLoadingOverlay visible={controller.historyBlockingLoader} />
       <MapScreenFloatingControls controller={controller} />
       {controller.showDayMomentSummary ? (
         <View

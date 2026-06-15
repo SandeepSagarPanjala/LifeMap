@@ -7,25 +7,40 @@ import {
   initializeTrackingDiagnosticsEnabled,
   recordTrackingDiagnostic,
 } from '@/lib/tracking-diagnostics';
-import {useTripMaterializationBootstrap} from '@/hooks/use-trip-materialization-bootstrap';
+import {ensureHistoryCalendarBounds} from '@/lib/history-calendar-bounds';
+import {preloadTodayHistory} from '@/lib/history-preload';
+import {sealYesterdayIfNeeded} from '@/lib/trip-materialization';
 import {useAppStore} from '@/stores/app-store';
 
 type AppBootstrapProps = {
   children: React.ReactNode;
   /** When false, only the encrypted database is initialized. */
   enableLocationTracking?: boolean;
+  /** When false, defer today's history preload until the main app is visible. */
+  enableHistoryPreload?: boolean;
 };
 
-export function AppBootstrap({children, enableLocationTracking = false}: AppBootstrapProps) {
+export function AppBootstrap({
+  children,
+  enableLocationTracking = false,
+  enableHistoryPreload = false,
+}: AppBootstrapProps) {
   const hasCompletedPrivacyOnboarding = useAppStore(
     state => state.hasCompletedPrivacyOnboarding,
   );
 
-  useTripMaterializationBootstrap();
+  useEffect(() => {
+    void ensureDatabaseReady().then(() => sealYesterdayIfNeeded());
+  }, []);
 
   useEffect(() => {
-    void ensureDatabaseReady();
-  }, []);
+    if (!enableHistoryPreload || !hasCompletedPrivacyOnboarding) {
+      return;
+    }
+    void ensureHistoryCalendarBounds().then(() => {
+      void preloadTodayHistory();
+    });
+  }, [enableHistoryPreload, hasCompletedPrivacyOnboarding]);
 
   useEffect(() => {
     initializeTrackingDiagnosticsEnabled();
@@ -52,15 +67,12 @@ export function AppBootstrap({children, enableLocationTracking = false}: AppBoot
         next: nextState,
       });
 
-      if (
-        enableLocationTracking &&
-        hasCompletedPrivacyOnboarding &&
-        (nextState === 'active' || nextState === 'background')
-      ) {
+      if (enableLocationTracking && hasCompletedPrivacyOnboarding) {
         const service = getLocationService();
         if (nextState === 'active') {
+          void sealYesterdayIfNeeded();
           void service.refreshPersistPipeline().catch(() => undefined);
-        } else {
+        } else if (nextState === 'background') {
           void service.drainNativeQueue().catch(() => undefined);
         }
       }

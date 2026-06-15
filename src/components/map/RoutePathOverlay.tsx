@@ -3,6 +3,7 @@ import {Polyline} from 'react-native-maps';
 
 import type {LocationPointRow} from '@/db/repositories/location-days';
 import {buildDrawableRouteSegments} from '@/lib/route-segments';
+import {downsampleMapCoordinates, type MapCoordinate} from '@/lib/location-geo';
 import {
   ROUTE_PATH_BORDER,
   ROUTE_PATH_BORDER_WIDTH,
@@ -42,12 +43,17 @@ export const RoutePathOverlay = memo(function RoutePathOverlay({
 const RouteSegmentPolylines = memo(function RouteSegmentPolylines({
   coordinates,
 }: {
-  coordinates: {latitude: number; longitude: number}[];
+  coordinates: MapCoordinate[];
 }) {
+  const displayCoordinates = useMemo(
+    () => downsampleMapCoordinates(coordinates),
+    [coordinates],
+  );
+
   return (
     <>
       <Polyline
-        coordinates={coordinates}
+        coordinates={displayCoordinates}
         strokeColor={ROUTE_PATH_BORDER}
         strokeWidth={ROUTE_PATH_BORDER_WIDTH}
         lineCap="round"
@@ -55,7 +61,7 @@ const RouteSegmentPolylines = memo(function RouteSegmentPolylines({
         zIndex={1}
       />
       <Polyline
-        coordinates={coordinates}
+        coordinates={displayCoordinates}
         strokeColor={ROUTE_PATH_FILL}
         strokeWidth={ROUTE_PATH_FILL_WIDTH}
         lineCap="round"

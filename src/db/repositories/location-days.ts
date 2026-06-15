@@ -117,10 +117,28 @@ export async function getDateKeysWithLocationData(): Promise<string[]> {
   return [...keys].sort((a, b) => b.localeCompare(a));
 }
 
+export async function getEarliestLocationDateKey(): Promise<string | null> {
+  const db = await getDatabase();
+  const [row] = await db
+    .select({timestamp: sql<Date>`min(${locationPoints.timestamp})`})
+    .from(locationPoints);
+  if (row?.timestamp == null) {
+    return null;
+  }
+  return toDateKey(row.timestamp);
+}
+
 export async function getLocationDayFingerprint(
   dateKey: string,
 ): Promise<string> {
   const {start, end} = getDayRange(dateKey);
+  return getLocationPointsFingerprintInRange(start, end);
+}
+
+export async function getLocationPointsFingerprintInRange(
+  rangeStart: Date,
+  rangeEnd: Date,
+): Promise<string> {
   const db = await getDatabase();
   const [row] = await db
     .select({
@@ -130,8 +148,8 @@ export async function getLocationDayFingerprint(
     .from(locationPoints)
     .where(
       and(
-        gte(locationPoints.timestamp, start),
-        lte(locationPoints.timestamp, end),
+        gte(locationPoints.timestamp, rangeStart),
+        lte(locationPoints.timestamp, rangeEnd),
       ),
     );
   return `${row?.count ?? 0}:${row?.maxId ?? 0}`;

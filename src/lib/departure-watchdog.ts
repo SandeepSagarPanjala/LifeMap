@@ -6,7 +6,6 @@ import {
   MIN_DEPARTURE_SPEED_MS,
   STATIONARY_PING_MIN_MS,
 } from '@/lib/motion-tracking-policy';
-import {TRACKING_DISTANCE_FILTER_METERS} from '@/lib/tracking-presets';
 
 export type FreshLocationSample = LocationPointLike & {
   accuracy: number | null;
@@ -18,6 +17,7 @@ export type DepartureWatchdogInput = {
   lastSaved: LocationPointLike | null;
   fresh: FreshLocationSample;
   stationaryPingMinMs?: number;
+  departureWatchdogMinMs?: number;
 };
 
 export type DepartureWatchdogResult = {
@@ -57,6 +57,8 @@ export function evaluateDepartureWatchdog(
   const {sinceLastSaveMs, lastSaved, fresh} = input;
   const stationaryPingMinMs =
     input.stationaryPingMinMs ?? STATIONARY_PING_MIN_MS;
+  const departureWatchdogMinMs =
+    input.departureWatchdogMinMs ?? DEPARTURE_WATCHDOG_MIN_MS;
 
   if (lastSaved == null) {
     return {
@@ -80,13 +82,10 @@ export function evaluateDepartureWatchdog(
     };
   }
 
-  if (
-    sinceLastSaveMs >= DEPARTURE_WATCHDOG_MIN_MS &&
-    suggestsMovement(fresh)
-  ) {
+  if (sinceLastSaveMs >= departureWatchdogMinMs && suggestsMovement(fresh)) {
     return {
       forceMoving: true,
-      shouldPersist: driftMeters >= TRACKING_DISTANCE_FILTER_METERS,
+      shouldPersist: true,
       source: 'heartbeat_departure',
       reason: 'speed_watchdog',
       distanceMeters: driftMeters,

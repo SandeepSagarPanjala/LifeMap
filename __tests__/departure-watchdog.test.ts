@@ -1,6 +1,7 @@
 import {evaluateDepartureWatchdog} from '../src/lib/departure-watchdog';
 import {
   DEPARTURE_WATCHDOG_MIN_MS,
+  DEPARTURE_WATCHDOG_MIN_MS_MAX_RELIABILITY,
   HEARTBEAT_DEPARTURE_DISTANCE_METERS,
   STATIONARY_PING_MIN_MS,
   STATIONARY_PING_MIN_MS_MAX_RELIABILITY,
@@ -38,13 +39,33 @@ describe('evaluateDepartureWatchdog', () => {
         accuracy: 10,
         speed: 12,
       },
+      departureWatchdogMinMs: DEPARTURE_WATCHDOG_MIN_MS,
     });
 
     expect(result.forceMoving).toBe(true);
+    expect(result.shouldPersist).toBe(true);
     expect(result.reason).toBe('speed_watchdog');
   });
 
-  it('does not force moving on speed alone before 5 minutes', () => {
+  it('forces moving on speed watchdog after 90 seconds in max reliability', () => {
+    const result = evaluateDepartureWatchdog({
+      sinceLastSaveMs: DEPARTURE_WATCHDOG_MIN_MS_MAX_RELIABILITY,
+      lastSaved: theater,
+      fresh: {
+        lat: theater.lat + 0.0002,
+        lng: theater.lng + 0.0002,
+        accuracy: 10,
+        speed: 12,
+      },
+      departureWatchdogMinMs: DEPARTURE_WATCHDOG_MIN_MS_MAX_RELIABILITY,
+    });
+
+    expect(result.forceMoving).toBe(true);
+    expect(result.shouldPersist).toBe(true);
+    expect(result.reason).toBe('speed_watchdog');
+  });
+
+  it('does not force moving on speed alone before watchdog window', () => {
     const result = evaluateDepartureWatchdog({
       sinceLastSaveMs: DEPARTURE_WATCHDOG_MIN_MS - 1,
       lastSaved: theater,
@@ -54,6 +75,7 @@ describe('evaluateDepartureWatchdog', () => {
         accuracy: 10,
         speed: 12,
       },
+      departureWatchdogMinMs: DEPARTURE_WATCHDOG_MIN_MS,
     });
 
     expect(result.forceMoving).toBe(false);

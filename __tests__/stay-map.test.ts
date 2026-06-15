@@ -37,4 +37,24 @@ describe('buildStayMapCircles', () => {
     expect(circles[0]?.center.latitude).toBe(33.23);
     expect(circles[0]?.center.longitude).toBe(-97.16);
   });
+
+  it('skips visit circles for stays at saved places', () => {
+    const circles = buildStayMapCircles(
+      [stay('home', 33.23, -97.16), stay('shop', 33.25, -97.14)],
+      150,
+      [
+        {
+          id: 1,
+          kind: 'home',
+          label: 'Home',
+          lat: 33.23,
+          lng: -97.16,
+          radiusMeters: 150,
+          createdAt: new Date(),
+        },
+      ],
+    );
+    expect(circles).toHaveLength(1);
+    expect(circles[0]?.key).toBe('shop');
+  });
 });

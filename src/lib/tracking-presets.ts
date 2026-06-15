@@ -1,6 +1,6 @@
 import BackgroundGeolocation, {type Config} from 'react-native-background-geolocation';
 
-import {HEARTBEAT_CHECK_INTERVAL_SEC} from '@/lib/motion-tracking-policy';
+import {HEARTBEAT_CHECK_INTERVAL_SEC, HEARTBEAT_CHECK_INTERVAL_SEC_MAX_RELIABILITY} from '@/lib/motion-tracking-policy';
 
 /** SDK distance filter while MOVING — every qualifying fix is saved. */
 export const TRACKING_DISTANCE_FILTER_METERS = 10;
@@ -45,7 +45,7 @@ export function getTrackingConfig(maxReliability: boolean): Config {
       disableStopDetection: maxReliability,
       disableMotionActivityUpdates: false,
       stopDetectionDelay: maxReliability ? 30_000 : STOP_DETECTION_DELAY_MS_BALANCED,
-      minimumActivityRecognitionConfidence: maxReliability ? 40 : 55,
+      minimumActivityRecognitionConfidence: 55,
       activityRecognitionInterval: 5000,
       motionTriggerDelay: 0,
     },
@@ -54,7 +54,9 @@ export function getTrackingConfig(maxReliability: boolean): Config {
       startOnBoot: true,
       enableHeadless: true,
       preventSuspend: maxReliability,
-      heartbeatInterval: HEARTBEAT_CHECK_INTERVAL_SEC,
+      heartbeatInterval: maxReliability
+        ? HEARTBEAT_CHECK_INTERVAL_SEC_MAX_RELIABILITY
+        : HEARTBEAT_CHECK_INTERVAL_SEC,
       foregroundService: true,
       notification: NOTIFICATION,
       backgroundPermissionRationale: BACKGROUND_PERMISSION_RATIONALE,
@@ -67,9 +69,10 @@ export function getTrackingConfig(maxReliability: boolean): Config {
       maxRecordsToPersist: -1,
     },
     logger: {
-      debug: maxReliability,
+      // Debug soundFX fire on every GPS/motion/heartbeat event — unusable while walking.
+      debug: false,
       logLevel: maxReliability
-        ? BackgroundGeolocation.LogLevel.Verbose
+        ? BackgroundGeolocation.LogLevel.Info
         : BackgroundGeolocation.LogLevel.Warning,
     },
   };

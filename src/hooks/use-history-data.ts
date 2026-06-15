@@ -1,20 +1,16 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
-import {useFocusEffect} from '@react-navigation/native';
-import {AppState, type AppStateStatus} from 'react-native';
 
-import {getDayHistoryFingerprint} from '@/lib/history-fingerprint';
-import {runWhenIdle} from '@/lib/run-when-idle';
-import {getLocationService} from '@/location/transistorsoft-location-service';
 import type {HistoryData} from '@/lib/history-data-types';
 import {
   historyCacheKey,
   historyDataCache,
 } from '@/lib/history-data-cache';
-import {subscribeLocationPointInserts} from '@/db/repositories/location-points';
-import {subscribeMomentChanges} from '@/db/repositories/moments';
-import {getDayRange, getTodayDateKey, toDateKey} from '@/lib/day-utils';
+import {getDayHistoryFingerprint} from '@/lib/history-fingerprint';
+import type {CoalescedLoadOptions} from '@/lib/history-day-load';
 import {useTripDetectionConfig} from '@/hooks/use-trip-detection-config';
+import {getDayRange, getTodayDateKey} from '@/lib/day-utils';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
+import {useAppStore} from '@/stores/app-store';
 
 export type {HistoryData} from '@/lib/history-data-types';
 
@@ -31,17 +27,16 @@ function emptyForDateKey(dateKey: string): HistoryData {
 async function loadHistoryForDay(
   dateKey: string,
   detectionConfig: TripDetectionConfig,
+  options?: CoalescedLoadOptions,
 ): Promise<HistoryData> {
-  const {loadHistoryWithMaterialization} = await import(
-    '@/lib/trip-materialization'
-  );
-  return loadHistoryWithMaterialization(dateKey, detectionConfig);
+  const {loadHistoryForDayCoalesced} = await import('@/lib/history-day-load');
+  return loadHistoryForDayCoalesced(dateKey, detectionConfig, options);
 }
 
 async function syncHistoryForDay(
   dateKey: string,
   detectionConfig: TripDetectionConfig,
-  options?: {force?: boolean},
+  options?: CoalescedLoadOptions,
 ): Promise<HistoryData> {
   const cacheKey = historyCacheKey(dateKey, detectionConfig);
   const fingerprint = await getDayHistoryFingerprint(dateKey);
@@ -56,26 +51,9 @@ async function syncHistoryForDay(
     return cached;
   }
 
-  const result = await loadHistoryForDay(dateKey, detectionConfig);
+  const result = await loadHistoryForDay(dateKey, detectionConfig, options);
   historyDataCache.write(cacheKey, result, fingerprint);
   return result;
-}
-
-/** Cheap DB check — skips trip detection when today's points are unchanged. */
-async function reloadHistoryIfChanged(
-  dateKey: string,
-  detectionConfig: TripDetectionConfig,
-): Promise<HistoryData | null> {
-  const cacheKey = historyCacheKey(dateKey, detectionConfig);
-  const fingerprint = await getDayHistoryFingerprint(dateKey);
-  if (
-    historyDataCache.getFingerprint(dateKey) === fingerprint &&
-    historyDataCache.has(cacheKey)
-  ) {
-    return null;
-  }
-
-  return syncHistoryForDay(dateKey, detectionConfig);
 }
 
 export function useHistoryForDay(dateKey: string): {
@@ -85,18 +63,67 @@ export function useHistoryForDay(dateKey: string): {
   refresh: () => void;
 } {
   const detectionConfig = useTripDetectionConfig();
+  const mapRefreshNonce = useAppStore(state => state.mapRefreshNonce);
   const initialCacheKey = historyCacheKey(dateKey, detectionConfig);
   const initialCached = historyDataCache.peek(initialCacheKey);
   const [data, setData] = useState<HistoryData>(
     initialCached ?? emptyForDateKey(dateKey),
   );
-  const [loading, setLoading] = useState(initialCached == null);
+  const [loading, setLoading] = useState(
+    initialCached == null || initialCached.dateKey !== dateKey,
+  );
   const [error, setError] = useState<string | null>(null);
-  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const dateKeyRef = useRef(dateKey);
-  const detectionConfigRef = useRef(detectionConfig);
-  dateKeyRef.current = dateKey;
-  detectionConfigRef.current = detectionConfig;
+  const mapRefreshNonceRef = useRef(mapRefreshNonce);
+  const loadGenerationRef = useRef(0);
+
+  const runSync = useCallback(
+    (targetDateKey: string, options?: {force?: boolean; showLoading?: boolean}) => {
+      const generation = ++loadGenerationRef.current;
+      if (options?.showLoading !== false) {
+        setLoading(true);
+      }
+      setError(null);
+
+      return syncHistoryForDay(targetDateKey, detectionConfig, {
+        force: options?.force,
+        onPartial: partial => {
+          if (generation !== loadGenerationRef.current) {
+            return;
+          }
+          setData(partial);
+          setLoading(false);
+        },
+      })
+        .then(result => {
+          if (generation !== loadGenerationRef.current) {
+            return result;
+          }
+          setData(result);
+          return result;
+        })
+        .catch((cause: unknown) => {
+          if (generation !== loadGenerationRef.current) {
+            throw cause;
+          }
+          const message =
+            cause instanceof Error
+              ? cause.message
+              : 'Could not load this day';
+          setError(message);
+          throw cause;
+        })
+        .finally(() => {
+          if (generation === loadGenerationRef.current) {
+            setLoading(false);
+          }
+        });
+    },
+    [detectionConfig],
+  );
+
+  const refresh = useCallback(() => {
+    void runSync(dateKey, {force: true, showLoading: true});
+  }, [dateKey, runSync]);
 
   useEffect(() => {
     const cacheKey = historyCacheKey(dateKey, detectionConfig);
@@ -106,170 +133,17 @@ export function useHistoryForDay(dateKey: string): {
       setLoading(false);
       return;
     }
-    setData(emptyForDateKey(dateKey));
     setLoading(true);
-  }, [dateKey, detectionConfig]);
-
-  const runSync = useCallback(
-    (options?: {force?: boolean; showLoading?: boolean}) => {
-      if (options?.showLoading) {
-        setLoading(true);
-      }
-      setError(null);
-
-      return syncHistoryForDay(dateKey, detectionConfig, options)
-        .then(result => {
-          setData(result);
-          return result;
-        })
-        .catch((cause: unknown) => {
-          const message =
-            cause instanceof Error
-              ? cause.message
-              : 'Could not load this day';
-          setError(message);
-          throw cause;
-        })
-        .finally(() => {
-          setLoading(false);
-        });
-    },
-    [dateKey, detectionConfig],
-  );
-
-  const refresh = useCallback(() => {
-    void runSync({force: true, showLoading: true});
-  }, [runSync]);
-
-  useFocusEffect(
-    useCallback(() => {
-      let cancelled = false;
-      const cacheKey = historyCacheKey(dateKey, detectionConfig);
-      const hasCached = historyDataCache.has(cacheKey);
-
-      if (!hasCached) {
-        setLoading(true);
-      }
-
-      const run = () => {
-        void runSync()
-          .catch(() => undefined)
-          .finally(() => {
-            if (!cancelled) {
-              setLoading(false);
-            }
-          });
-      };
-
-      const task = hasCached ? null : runWhenIdle(run);
-      if (hasCached) {
-        run();
-      }
-
-      return () => {
-        cancelled = true;
-        task?.cancel();
-      };
-    }, [dateKey, detectionConfig, runSync]),
-  );
+    void runSync(dateKey, {showLoading: false}).catch(() => undefined);
+  }, [dateKey, detectionConfig, runSync]);
 
   useEffect(() => {
-    let appState = AppState.currentState;
-
-    const onAppStateChange = (nextState: AppStateStatus) => {
-      const wasBackgrounded = appState === 'background' || appState === 'inactive';
-      appState = nextState;
-
-      if (nextState !== 'active' || !wasBackgrounded) {
-        return;
-      }
-
-      void getLocationService()
-        .drainNativeQueue()
-        .catch(() => undefined)
-        .finally(() => {
-          void syncHistoryForDay(
-            dateKeyRef.current,
-            detectionConfigRef.current,
-            {force: true},
-          )
-            .then(result => {
-              setData(result);
-            })
-            .catch(() => undefined);
-        })
-    };
-
-    const subscription = AppState.addEventListener('change', onAppStateChange);
-    return () => subscription.remove();
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (refreshTimerRef.current != null) {
-        clearTimeout(refreshTimerRef.current);
-        refreshTimerRef.current = null;
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    const unsubscribe = subscribeLocationPointInserts(point => {
-      if (toDateKey(point.timestamp) !== dateKeyRef.current) {
-        return;
-      }
-      if (AppState.currentState !== 'active') {
-        return;
-      }
-      if (refreshTimerRef.current != null) {
-        return;
-      }
-      refreshTimerRef.current = setTimeout(() => {
-        refreshTimerRef.current = null;
-        void reloadHistoryIfChanged(
-          dateKeyRef.current,
-          detectionConfigRef.current,
-        )
-          .then(result => {
-            if (result != null) {
-              setData(result);
-            }
-          })
-          .catch(() => undefined);
-      }, 800);
-    });
-
-    return unsubscribe;
-  }, []);
-
-  useEffect(() => {
-    const scheduleReload = (timestamp: Date) => {
-      if (toDateKey(timestamp) !== dateKeyRef.current) {
-        return;
-      }
-      if (AppState.currentState !== 'active') {
-        return;
-      }
-      if (refreshTimerRef.current != null) {
-        return;
-      }
-      refreshTimerRef.current = setTimeout(() => {
-        refreshTimerRef.current = null;
-        void reloadHistoryIfChanged(
-          dateKeyRef.current,
-          detectionConfigRef.current,
-        )
-          .then(result => {
-            if (result != null) {
-              setData(result);
-            }
-          })
-          .catch(() => undefined);
-      }, 800);
-    };
-
-    return subscribeMomentChanges(scheduleReload);
-  }, []);
+    if (mapRefreshNonce === mapRefreshNonceRef.current) {
+      return;
+    }
+    mapRefreshNonceRef.current = mapRefreshNonce;
+    void runSync(dateKey, {force: true, showLoading: true}).catch(() => undefined);
+  }, [dateKey, mapRefreshNonce, runSync]);
 
   return {data, loading, error, refresh};
 }

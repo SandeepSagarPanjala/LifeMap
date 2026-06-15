@@ -2,9 +2,8 @@ import {useEffect, useState} from 'react';
 import {AppState} from 'react-native';
 
 import {getLatestLocationPoint} from '@/db/repositories/location-points';
-import {subscribeLocationPointInserts} from '@/db/repositories/location-points';
 
-/** Live last-write time — used for tracking health UI (not full history reload). */
+/** Last GPS save time for gap warnings — no per-save map rerenders. */
 export function useLatestLocationSave(): Date | null {
   const [latestSaveAt, setLatestSaveAt] = useState<Date | null>(null);
 
@@ -20,10 +19,6 @@ export function useLatestLocationSave(): Date | null {
 
     void refresh();
 
-    const unsubscribe = subscribeLocationPointInserts(point => {
-      setLatestSaveAt(point.timestamp);
-    });
-
     const subscription = AppState.addEventListener('change', state => {
       if (state === 'active') {
         void refresh();
@@ -32,7 +27,6 @@ export function useLatestLocationSave(): Date | null {
 
     return () => {
       cancelled = true;
-      unsubscribe();
       subscription.remove();
     };
   }, []);

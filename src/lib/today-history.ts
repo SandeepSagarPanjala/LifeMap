@@ -18,6 +18,8 @@ import {stayMeetsMinimumVisitDwell} from '@/lib/visit-dwell';
 
 const LOOKBACK_HOURS = 48;
 const LOOKAHEAD_HOURS = 48;
+/** Past-day map loads only need enough context for midnight splits. */
+export const HISTORY_COMPACT_CONTEXT_HOURS = 12;
 
 function lastPointBefore(
   points: LocationPointRow[],
@@ -403,12 +405,18 @@ export function prepareTodayHistoryTimeline(
   );
 }
 
-export function getHistoryLookbackStart(dayStart: Date): Date {
-  return subHours(dayStart, LOOKBACK_HOURS);
+export function getHistoryLookbackStart(
+  dayStart: Date,
+  hours: number = LOOKBACK_HOURS,
+): Date {
+  return subHours(dayStart, hours);
 }
 
-export function getHistoryLookaheadEnd(dayEnd: Date): Date {
-  return addHours(dayEnd, LOOKAHEAD_HOURS);
+export function getHistoryLookaheadEnd(
+  dayEnd: Date,
+  hours: number = LOOKAHEAD_HOURS,
+): Date {
+  return addHours(dayEnd, hours);
 }
 
 /** @deprecated Use getHistoryLookbackStart */

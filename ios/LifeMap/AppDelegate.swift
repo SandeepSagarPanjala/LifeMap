@@ -69,6 +69,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     LocationWakeCoordinator.shared.startIfAuthorized()
+    LifeMapNativePersistLoop.shared.tickNow()
     task.setTaskCompleted(success: true)
   }
 }

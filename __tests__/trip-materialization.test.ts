@@ -1,4 +1,5 @@
 import {
+  buildTimelineFromStoredTrips,
   buildTimelineFromTrips,
   canReadDayFromMaterializedTrips,
 } from '@/lib/timeline-from-trips';
@@ -299,6 +300,66 @@ describe('buildTimelineFromTrips', () => {
       expect(timeline[0].points).toHaveLength(1);
       expect(timeline[0].points[0]?.lat).toBeCloseTo(33.05579, 4);
       expect(timeline[1].points[0]?.lat).toBeCloseTo(33.05124, 4);
+    }
+  });
+});
+
+describe('buildTimelineFromStoredTrips', () => {
+  it('hydrates stays with anchor points and drives from trip_points', () => {
+    const rows: TripRow[] = [
+      {
+        id: 1,
+        eventKey: 'stay:1:2',
+        kind: 'stay',
+        dateKey: '2026-06-01',
+        startAt: new Date(1_000),
+        endAt: new Date(2_000),
+        durationMs: 1_000,
+        distanceKm: 0,
+        centroidLat: 37.77,
+        centroidLng: -122.42,
+        placeLookupCacheId: null,
+        selectedCandidateIndex: null,
+        detectionVersion: 1,
+        closedAt: new Date(2_000),
+      },
+      {
+        id: 2,
+        eventKey: 'travel:2:3',
+        kind: 'travel',
+        dateKey: '2026-06-01',
+        startAt: new Date(3_000),
+        endAt: new Date(4_000),
+        durationMs: 1_000,
+        distanceKm: 1.2,
+        centroidLat: 37.78,
+        centroidLng: -122.41,
+        placeLookupCacheId: null,
+        selectedCandidateIndex: null,
+        detectionVersion: 1,
+        closedAt: new Date(4_000),
+      },
+    ];
+    const pointsByTripId = new Map([
+      [
+        2,
+        [
+          {id: 10, tripId: 2, seq: 0, lat: 37.77, lng: -122.42},
+          {id: 11, tripId: 2, seq: 1, lat: 37.78, lng: -122.41},
+        ],
+      ],
+    ]);
+
+    const timeline = buildTimelineFromStoredTrips(rows, pointsByTripId);
+    expect(timeline).toHaveLength(2);
+    expect(timeline[0]?.kind).toBe('stay');
+    expect(timeline[1]?.kind).toBe('travel');
+    if (timeline[0]?.kind === 'stay') {
+      expect(timeline[0].points).toHaveLength(1);
+      expect(timeline[0].points[0]?.lat).toBe(37.77);
+    }
+    if (timeline[1]?.kind === 'travel') {
+      expect(timeline[1].points).toHaveLength(2);
     }
   });
 });

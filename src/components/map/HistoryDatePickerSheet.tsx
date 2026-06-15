@@ -6,6 +6,7 @@ import {
   endOfWeek,
   format,
   isAfter,
+  isBefore,
   isSameDay,
   isSameMonth,
   startOfDay,
@@ -24,14 +25,13 @@ import {
 } from 'react-native';
 
 import {Text} from '@/components/ui/text';
-import {SkeletonPulse} from '@/components/ui/skeleton-pulse';
-import {useDateKeysForMonth} from '@/hooks/use-date-keys-for-month';
 import {
   getTodayDateKey,
   parseDateKey,
   toDateKey,
 } from '@/lib/day-utils';
 import {HISTORY_COLORS} from '@/lib/history-timeline';
+import {useAppStore} from '@/stores/app-store';
 
 const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const SHEET_OFFSCREEN = 420;
@@ -52,6 +52,19 @@ export function HistoryDatePickerSheet({
   const todayKey = getTodayDateKey();
   const today = useMemo(() => startOfDay(new Date()), []);
   const selectedDay = parseDateKey(selectedDateKey);
+  const earliestDateKey = useAppStore(state => state.historyEarliestDateKey);
+  const earliestDay = useMemo(
+    () =>
+      earliestDateKey != null
+        ? startOfDay(parseDateKey(earliestDateKey))
+        : today,
+    [earliestDateKey, today],
+  );
+  const earliestMonth = useMemo(
+    () => startOfMonth(earliestDay),
+    [earliestDay],
+  );
+  const todayMonth = useMemo(() => startOfMonth(today), [today]);
 
   const [mounted, setMounted] = useState(visible);
   const backdropOpacity = useRef(new Animated.Value(0)).current;
@@ -61,18 +74,21 @@ export function HistoryDatePickerSheet({
   const [visibleMonth, setVisibleMonth] = useState(() =>
     startOfMonth(selectedDay),
   );
-  const {dateKeysWithData, loading: dotsLoading} = useDateKeysForMonth(
-    visibleMonth,
-    visible,
-  );
 
   useLayoutEffect(() => {
     if (visible) {
       closingRef.current = false;
       setMounted(true);
-      setVisibleMonth(startOfMonth(parseDateKey(selectedDateKey)));
+      const month = startOfMonth(parseDateKey(selectedDateKey));
+      setVisibleMonth(
+        month < earliestMonth
+          ? earliestMonth
+          : month > todayMonth
+            ? todayMonth
+            : month,
+      );
     }
-  }, [visible, selectedDateKey]);
+  }, [visible, selectedDateKey, earliestMonth, todayMonth]);
 
   const animateIn = useCallback(() => {
     backdropOpacity.setValue(0);
@@ -154,6 +170,8 @@ export function HistoryDatePickerSheet({
   }, [animateIn, mounted, visible]);
 
   const monthLabel = format(visibleMonth, 'MMMM yyyy');
+  const canGoPrevMonth = visibleMonth > earliestMonth;
+  const canGoNextMonth = visibleMonth < todayMonth;
 
   const calendarDays = useMemo(() => {
     const monthStart = startOfMonth(visibleMonth);
@@ -164,11 +182,11 @@ export function HistoryDatePickerSheet({
   }, [visibleMonth]);
 
   const handleSelect = (day: Date) => {
-    const key = toDateKey(day);
-    if (isAfter(startOfDay(day), today)) {
+    const dayStart = startOfDay(day);
+    if (isAfter(dayStart, today) || isBefore(dayStart, earliestDay)) {
       return;
     }
-    closeSheet(() => onSelectDate(key));
+    closeSheet(() => onSelectDate(toDateKey(day)));
   };
 
   const goToToday = () => {
@@ -220,17 +238,39 @@ export function HistoryDatePickerSheet({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Previous month"
-              onPress={() => setVisibleMonth(month => subMonths(month, 1))}
-              style={styles.monthNavBtn}>
-              <ChevronLeft size={22} color={HISTORY_COLORS.playhead} />
+              disabled={!canGoPrevMonth}
+              onPress={() =>
+                canGoPrevMonth &&
+                setVisibleMonth(month => subMonths(month, 1))
+              }
+              style={[
+                styles.monthNavBtn,
+                !canGoPrevMonth && styles.monthNavBtnDisabled,
+              ]}>
+              <ChevronLeft
+                size={22}
+                color={HISTORY_COLORS.playhead}
+                opacity={canGoPrevMonth ? 1 : 0.35}
+              />
             </Pressable>
             <Text style={styles.monthTitle}>{monthLabel}</Text>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Next month"
-              onPress={() => setVisibleMonth(month => addMonths(month, 1))}
-              style={styles.monthNavBtn}>
-              <ChevronRight size={22} color={HISTORY_COLORS.playhead} />
+              disabled={!canGoNextMonth}
+              onPress={() =>
+                canGoNextMonth &&
+                setVisibleMonth(month => addMonths(month, 1))
+              }
+              style={[
+                styles.monthNavBtn,
+                !canGoNextMonth && styles.monthNavBtnDisabled,
+              ]}>
+              <ChevronRight
+                size={22}
+                color={HISTORY_COLORS.playhead}
+                opacity={canGoNextMonth ? 1 : 0.35}
+              />
             </Pressable>
           </View>
 
@@ -246,17 +286,19 @@ export function HistoryDatePickerSheet({
             {calendarDays.map(day => {
               const dateKey = toDateKey(day);
               const inMonth = isSameMonth(day, visibleMonth);
-              const isFuture = isAfter(startOfDay(day), today);
+              const dayStart = startOfDay(day);
+              const isFuture = isAfter(dayStart, today);
+              const isBeforeEarliest = isBefore(dayStart, earliestDay);
+              const isDisabled = isFuture || isBeforeEarliest;
               const isSelected = isSameDay(day, selectedDay);
               const isToday = dateKey === todayKey;
-              const hasData = dateKeysWithData.has(dateKey);
 
               return (
                 <Pressable
                   key={dateKey}
                   accessibilityRole="button"
                   accessibilityLabel={format(day, 'MMMM d, yyyy')}
-                  disabled={isFuture}
+                  disabled={isDisabled}
                   onPress={() => handleSelect(day)}
                   style={styles.dayCell}>
                   <View
@@ -269,23 +311,11 @@ export function HistoryDatePickerSheet({
                       style={[
                         styles.dayText,
                         !inMonth && styles.dayTextOutside,
-                        isFuture && styles.dayTextDisabled,
+                        isDisabled && styles.dayTextDisabled,
                         isSelected && styles.dayTextSelected,
-                        hasData && !isSelected && styles.dayTextHasData,
                       ]}>
                       {format(day, 'd')}
                     </Text>
-                    {dotsLoading && inMonth && !isFuture ? (
-                      <SkeletonPulse style={styles.dataDotSkeleton} />
-                    ) : null}
-                    {!dotsLoading && hasData ? (
-                      <View
-                        style={[
-                          styles.dataDot,
-                          isSelected && styles.dataDotSelected,
-                        ]}
-                      />
-                    ) : null}
                   </View>
                 </Pressable>
               );
@@ -360,6 +390,9 @@ const styles = StyleSheet.create({
     minWidth: 40,
     alignItems: 'center',
   },
+  monthNavBtnDisabled: {
+    opacity: 0.45,
+  },
   monthTitle: {
     fontSize: 16,
     fontWeight: '700',
@@ -414,26 +447,5 @@ const styles = StyleSheet.create({
   dayTextSelected: {
     color: '#FFFFFF',
     fontWeight: '700',
-  },
-  dayTextHasData: {
-    fontWeight: '700',
-  },
-  dataDot: {
-    position: 'absolute',
-    bottom: 4,
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: HISTORY_COLORS.stay,
-  },
-  dataDotSelected: {
-    backgroundColor: '#FFFFFF',
-  },
-  dataDotSkeleton: {
-    position: 'absolute',
-    bottom: 4,
-    width: 4,
-    height: 4,
-    borderRadius: 2,
   },
 });

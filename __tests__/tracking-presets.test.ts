@@ -18,11 +18,11 @@ describe('tracking presets', () => {
     expect(config.geolocation?.locationUpdateInterval).toBe(30_000);
     expect(config.activity?.disableStopDetection).toBe(true);
     expect(config.activity?.stopDetectionDelay).toBe(30_000);
-    expect(config.activity?.minimumActivityRecognitionConfidence).toBe(40);
-    expect(config.app?.heartbeatInterval).toBe(60);
+    expect(config.activity?.minimumActivityRecognitionConfidence).toBe(55);
+    expect(config.app?.heartbeatInterval).toBe(30);
     expect(config.app?.preventSuspend).toBe(true);
     expect(config.app?.enableHeadless).toBe(true);
-    expect(config.logger?.debug).toBe(true);
+    expect(config.logger?.debug).toBe(false);
   });
 
   it('returns balanced profile when maximum reliability is off', () => {
@@ -31,6 +31,7 @@ describe('tracking presets', () => {
     expect(config.geolocation?.pausesLocationUpdatesAutomatically).toBe(true);
     expect(config.app?.preventSuspend).toBe(false);
     expect(config.geolocation?.disableElasticity).toBe(false);
+    expect(config.app?.heartbeatInterval).toBe(60);
     expect(config.logger?.debug).toBe(false);
   });
 

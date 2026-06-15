@@ -135,6 +135,23 @@ CREATE INDEX IF NOT EXISTS \`moments_timestamp_idx\` ON \`moments\` (\`timestamp
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS \`moments_type_timestamp_idx\` ON \`moments\` (\`type\`, \`timestamp\`);`;
 
+const m0007 = `CREATE TABLE IF NOT EXISTS \`settings_stats_cache\` (
+	\`key\` text PRIMARY KEY NOT NULL,
+	\`payload_json\` text NOT NULL,
+	\`calculated_at\` integer NOT NULL
+);`;
+
+const m0008 = `CREATE TABLE IF NOT EXISTS \`trip_points\` (
+	\`id\` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	\`trip_id\` integer NOT NULL,
+	\`seq\` integer NOT NULL,
+	\`lat\` real NOT NULL,
+	\`lng\` real NOT NULL,
+	FOREIGN KEY (\`trip_id\`) REFERENCES \`trips\`(\`id\`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS \`trip_points_trip_id_seq_idx\` ON \`trip_points\` (\`trip_id\`, \`seq\`);`;
+
 export default {
   journal,
   migrations: {
@@ -145,5 +162,7 @@ export default {
     m0004,
     m0005,
     m0006,
+    m0007,
+    m0008,
   },
 };

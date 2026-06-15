@@ -1,6 +1,7 @@
 import {
   calculatePathDistanceKm,
   distanceKm,
+  downsampleMapCoordinates,
   formatDistance,
   regionForCoordinates,
 } from '../src/lib/location-geo';
@@ -34,5 +35,16 @@ describe('location-geo', () => {
     ]);
     expect(region.latitude).toBeCloseTo(37.775, 2);
     expect(region.latitudeDelta).toBeGreaterThan(0);
+  });
+
+  it('downsamples map polylines to a safe vertex cap', () => {
+    const dense = Array.from({length: 500}, (_, index) => ({
+      latitude: 33 + index * 0.0001,
+      longitude: -97 - index * 0.0001,
+    }));
+    const sampled = downsampleMapCoordinates(dense, 180);
+    expect(sampled).toHaveLength(180);
+    expect(sampled[0]).toEqual(dense[0]);
+    expect(sampled[sampled.length - 1]).toEqual(dense[dense.length - 1]);
   });
 });

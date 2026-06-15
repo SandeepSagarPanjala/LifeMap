@@ -5,7 +5,12 @@ import {DriveEndpointLabels} from '@/components/map/DriveEndpointLabels';
 import {TripPlaybackHead} from '@/components/map/TripPlaybackHead';
 import type {LocationPointRow} from '@/db/repositories/location-days';
 import type {DriveEndpointLabel} from '@/lib/drive-endpoint-label';
-import {distanceKm, type MapCoordinate, toMapCoordinates} from '@/lib/location-geo';
+import {
+  distanceKm,
+  downsampleMapCoordinates,
+  type MapCoordinate,
+  toDisplayMapCoordinates,
+} from '@/lib/location-geo';
 import type {DetectedTrip} from '@/lib/trip-detection';
 import {isSparseTravelRoute, stayMapMarkerCoordinate} from '@/lib/trip-detection';
 import {
@@ -46,32 +51,29 @@ export const TripRouteOverlay = memo(function TripRouteOverlay({
   anchorStartStay = null,
   anchorEndStay = null,
 }: TripRouteOverlayProps) {
-  const coordinates = useMemo(() => toMapCoordinates(points), [points]);
+  const coordinates = useMemo(() => toDisplayMapCoordinates(points), [points]);
   const sparseRoute = useMemo(() => isSparseTravelRoute(points), [points]);
-  const denseSamples = useMemo(() => buildDensePlaybackSamples(points), [points]);
+  const denseSamples = useMemo(() => {
+    if (playbackProgress == null) {
+      return null;
+    }
+    return buildDensePlaybackSamples(points);
+  }, [playbackProgress, points]);
 
   const frame = useMemo(() => {
-    if (playbackProgress == null) {
+    if (playbackProgress == null || denseSamples == null) {
       return null;
     }
     return getTripPlaybackFrame(points, playbackProgress, denseSamples);
   }, [denseSamples, playbackProgress, points]);
 
-  if (coordinates.length < 1) {
-    return null;
-  }
-
-  const isPlaying = playbackProgress != null;
-  const playedCoordinates = frame?.pathCoordinates ?? [];
-  const routeBorder = emphasized ? ROUTE_PATH_BORDER_SOLID : ROUTE_PATH_BORDER;
-  const routeFill = emphasized ? ROUTE_PATH_FILL_SOLID : ROUTE_PATH_FILL;
-  const showEndpointLabels =
-    emphasized &&
-    !isPlaying &&
-    startAt != null &&
-    endAt != null &&
-    coordinates.length >= 1;
-  const drawRouteLine = coordinates.length > 1 && !sparseRoute;
+  const playedCoordinates = useMemo(
+    () =>
+      frame?.pathCoordinates != null
+        ? downsampleMapCoordinates(frame.pathCoordinates, 240)
+        : [],
+    [frame?.pathCoordinates],
+  );
 
   const routeStart = useMemo((): MapCoordinate => {
     if (startLabel?.savedPlace) {
@@ -101,7 +103,7 @@ export const TripRouteOverlay = memo(function TripRouteOverlay({
 
   const routeLineCoordinates = useMemo(() => {
     if (coordinates.length === 0) {
-      return [routeStart, routeEnd];
+      return downsampleMapCoordinates([routeStart, routeEnd]);
     }
     const line = [...coordinates];
     const first = line[0]!;
@@ -112,8 +114,23 @@ export const TripRouteOverlay = memo(function TripRouteOverlay({
     if (distanceKm(last, routeEnd) * 1000 > 8) {
       line.push(routeEnd);
     }
-    return line;
+    return downsampleMapCoordinates(line);
   }, [coordinates, routeEnd, routeStart]);
+
+  if (coordinates.length < 1) {
+    return null;
+  }
+
+  const isPlaying = playbackProgress != null;
+  const routeBorder = emphasized ? ROUTE_PATH_BORDER_SOLID : ROUTE_PATH_BORDER;
+  const routeFill = emphasized ? ROUTE_PATH_FILL_SOLID : ROUTE_PATH_FILL;
+  const showEndpointLabels =
+    emphasized &&
+    !isPlaying &&
+    startAt != null &&
+    endAt != null &&
+    coordinates.length >= 1;
+  const drawRouteLine = coordinates.length > 1 && !sparseRoute;
 
   return (
     <>

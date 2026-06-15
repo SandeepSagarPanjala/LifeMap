@@ -1,5 +1,6 @@
 import {Circle} from 'react-native-maps';
 
+import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import {buildStayMapCircles} from '@/lib/stay-map';
 import type {DetectedTrip} from '@/lib/trip-detection';
 import {
@@ -20,6 +21,7 @@ export type StayAreasTone = 'default' | 'emphasized' | 'past' | 'future';
 type StayAreasOverlayProps = {
   stays: DetectedTrip[];
   tripConfig: TripDetectionConfig;
+  savedPlaces?: readonly SavedPlaceRow[];
   /** History scrub — single selected visit. */
   emphasized?: boolean;
   tone?: StayAreasTone;
@@ -55,10 +57,15 @@ const STAY_TONE_COLORS: Record<
 export function StayAreasOverlay({
   stays,
   tripConfig,
+  savedPlaces = [],
   emphasized = false,
   tone,
 }: StayAreasOverlayProps) {
-  const circles = buildStayMapCircles(stays, tripConfig.dwellRadiusMeters);
+  const circles = buildStayMapCircles(
+    stays,
+    tripConfig.dwellRadiusMeters,
+    savedPlaces,
+  );
   const resolvedTone = tone ?? (emphasized ? 'emphasized' : 'default');
   const {fill: fillColor, stroke: strokeColor, zIndex} =
     STAY_TONE_COLORS[resolvedTone];

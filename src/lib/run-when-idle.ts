@@ -10,6 +10,11 @@ type IdleGlobal = typeof globalThis & {
   cancelIdleCallback?: (handle: number) => void;
 };
 
+/** Yield so taps/animations can run before heavy synchronous work. */
+export function yieldToEventLoop(): Promise<void> {
+  return new Promise(resolve => setImmediate(resolve));
+}
+
 /** Schedule work when the JS thread is idle — replaces deprecated InteractionManager.runAfterInteractions. */
 export function runWhenIdle(
   callback: () => void,

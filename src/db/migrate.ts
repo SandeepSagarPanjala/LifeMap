@@ -89,6 +89,10 @@ export async function migrationAlreadyApplied(
       );
     case '0006_moments_mood':
       return columnExists(sqlite, 'moments', 'title');
+    case '0007_settings_stats_cache':
+      return tableExists(sqlite, 'settings_stats_cache');
+    case '0008_trip_points':
+      return tableExists(sqlite, 'trip_points');
     default:
       return false;
   }

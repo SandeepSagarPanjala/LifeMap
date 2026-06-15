@@ -7,14 +7,23 @@ export const STATIONARY_PING_MIN_MS_MAX_RELIABILITY = 10 * 60_000;
 /** Heartbeat interval (seconds) — Android minimum 60; used to check stationary ping. */
 export const HEARTBEAT_CHECK_INTERVAL_SEC = 60;
 
+/** Faster heartbeat when max reliability is on (iOS preventSuspend keeps JS warmer). */
+export const HEARTBEAT_CHECK_INTERVAL_SEC_MAX_RELIABILITY = 30;
+
 /** Drift from last save that forces moving mode even if motion API stayed still (m). */
 export const HEARTBEAT_DEPARTURE_DISTANCE_METERS = 100;
 
 /** After this long without a save, speed on heartbeat can force moving mode (ms). */
 export const DEPARTURE_WATCHDOG_MIN_MS = 5 * 60_000;
 
-/** Minimum speed (m/s) on heartbeat / onLocation to treat as drive departure (~10 mph). */
+/** Max-reliability drives need a much shorter stale window (CVS→Shay gap was minutes). */
+export const DEPARTURE_WATCHDOG_MIN_MS_MAX_RELIABILITY = 90_000;
+
+/** Minimum speed (m/s) on heartbeat to treat as drive departure (~10 mph). */
 export const MIN_DEPARTURE_SPEED_MS = 4.5;
+
+/** Any GPS fix at or above this speed keeps the SDK in moving mode (~7 km/h). */
+export const DRIVE_GPS_WAKE_SPEED_MS = 2.0;
 
 /** Ignore speed-based departure when accuracy is worse than this (m). */
 export const MAX_DEPARTURE_ACCURACY_METERS = 75;

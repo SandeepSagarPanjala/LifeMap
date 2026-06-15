@@ -1,145 +1,94 @@
 import {useEffect, useRef} from 'react';
 import {Animated, Easing, useColorScheme, useWindowDimensions, View} from 'react-native';
-import LottieView from 'lottie-react-native';
 
-import {AnimatedBrandTitle} from '@/components/splash/AnimatedBrandTitle';
+import {SplashBrandTitle} from '@/components/splash/SplashBrandTitle';
 import {SplashBackground} from '@/components/splash/SplashBackground';
-import {getSplashNavigateAtMs} from '@/components/splash/splash-timing';
+import {splashAnimationDurationMs} from '@/components/splash/splash-timing';
 import {Text} from '@/components/ui/text';
+import {ensureDatabaseReady} from '@/location/bootstrap';
 
 type AnimatedSplashScreenProps = {
   onFinish: () => void;
-  slowSplash?: boolean;
 };
 
-export function AnimatedSplashScreen({onFinish, slowSplash = false}: AnimatedSplashScreenProps) {
+export function AnimatedSplashScreen({onFinish}: AnimatedSplashScreenProps) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const {width, height} = useWindowDimensions();
-
-  const haze = useRef(new Animated.Value(0.6)).current;
-  const subtitleFade = useRef(new Animated.Value(0)).current;
-  const subtitleRise = useRef(new Animated.Value(20)).current;
-  const subtitleGlow = useRef(new Animated.Value(0.72)).current;
+  const underlineScale = useRef(new Animated.Value(0)).current;
+  const subtitleOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const hazeLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(haze, {
-          toValue: 0.85,
-          duration: 2200,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(haze, {
-          toValue: 0.6,
-          duration: 2200,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-      ])
-    );
+    let cancelled = false;
 
-    const subtitleIntro = Animated.parallel([
-      Animated.timing(subtitleFade, {
-        toValue: 1,
-        duration: 650,
-        delay: 1100,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(subtitleRise, {
-        toValue: 0,
-        duration: 650,
-        delay: 1100,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]);
+    Animated.timing(subtitleOpacity, {
+      toValue: 1,
+      duration: 280,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
 
-    const subtitlePulse = Animated.loop(
-      Animated.sequence([
-        Animated.timing(subtitleGlow, {
-          toValue: 1,
-          duration: 1800,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-        Animated.timing(subtitleGlow, {
-          toValue: 0.72,
-          duration: 1800,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-      ])
-    );
-
-    hazeLoop.start();
-    subtitleIntro.start(({finished}) => {
-      if (finished) {
-        subtitlePulse.start();
+    void (async () => {
+      const startedAt = Date.now();
+      try {
+        await ensureDatabaseReady();
+      } catch {
+        // Error boundary / next screen will surface DB failures.
       }
-    });
+      if (cancelled) {
+        return;
+      }
 
-    const navigateTimeout = setTimeout(() => {
-      hazeLoop.stop();
-      subtitlePulse.stop();
-      onFinish();
-    }, getSplashNavigateAtMs(slowSplash));
+      const duration = splashAnimationDurationMs(Date.now() - startedAt);
+      await new Promise<void>(resolve => {
+        Animated.timing(underlineScale, {
+          toValue: 1,
+          duration,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }).start(({finished}) => {
+          if (finished) {
+            resolve();
+          }
+        });
+      });
+
+      if (!cancelled) {
+        onFinish();
+      }
+    })();
 
     return () => {
-      clearTimeout(navigateTimeout);
-      hazeLoop.stop();
-      subtitlePulse.stop();
+      cancelled = true;
+      underlineScale.stopAnimation();
+      subtitleOpacity.stopAnimation();
     };
-  }, [haze, onFinish, slowSplash, subtitleFade, subtitleGlow, subtitleRise]);
-
-  const sunSize = Math.min(width * 0.42, 230);
-  const girlWidth = Math.min(width * 0.84, 420);
-  const girlHeight = Math.min(height * 0.44, 380);
+  }, [onFinish, subtitleOpacity, underlineScale]);
 
   return (
     <View className="flex-1">
       <SplashBackground width={width} height={height} isDark={isDark} />
 
-      <Animated.View
-        className="absolute left-0 right-0 top-[10%] items-center"
-        style={{opacity: haze}}>
-        <View
-          className={`h-36 w-36 rounded-full ${isDark ? 'bg-emerald-300/10' : 'bg-emerald-200/40'}`}
-        />
-      </Animated.View>
+      <View className="flex-1 items-center justify-center px-6">
+        <View className="items-center">
+          <SplashBrandTitle />
 
-      <View className="absolute left-0 right-0 top-[7%] items-center">
-        <LottieView
-          source={require('../../../assets/lottie/day-night-sun.json')}
-          autoPlay
-          loop
-          style={{width: sunSize, height: sunSize}}
-        />
-      </View>
+          <Animated.View
+            className="bg-primary mt-1 h-1 rounded-full"
+            style={{
+              width: 148,
+              transform: [{scaleX: underlineScale}],
+            }}
+          />
 
-      <View className="absolute bottom-[30%] left-0 right-0 items-center">
-        <LottieView
-          source={require('../../../assets/lottie/walking-girl.json')}
-          autoPlay
-          loop
-          style={{width: girlWidth, height: girlHeight}}
-        />
-      </View>
-
-      <View className="absolute bottom-[14%] left-0 right-0 items-center px-6">
-        <AnimatedBrandTitle />
-
-        <Animated.View
-          style={{
-            opacity: Animated.multiply(subtitleFade, subtitleGlow),
-            transform: [{translateY: subtitleRise}],
-          }}>
-          <Text variant="muted" className="text-muted-foreground mt-4 text-center text-xl leading-8">
-            Time moves. Memories stay.
-          </Text>
-        </Animated.View>
+          <Animated.View style={{opacity: subtitleOpacity}}>
+            <Text
+              variant="muted"
+              className="text-muted-foreground mt-4 text-center text-xl leading-8">
+              Time moves. Memories stay.
+            </Text>
+          </Animated.View>
+        </View>
       </View>
     </View>
   );

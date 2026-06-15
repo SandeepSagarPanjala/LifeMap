@@ -16,11 +16,13 @@ import {
   runLocationHeartbeat,
   toLocationSource,
 } from '@/location/location-persist-pipeline';
-import {MIN_DEPARTURE_SPEED_MS} from '@/lib/motion-tracking-policy';
+import {MIN_DEPARTURE_SPEED_MS, DRIVE_GPS_WAKE_SPEED_MS} from '@/lib/motion-tracking-policy';
 import {recordTrackingDiagnostic} from '@/lib/tracking-diagnostics';
 import {
   createTrackingMotionGuardState,
+  resetDepartureWake,
   resetTrackingMotionGuardState,
+  shouldApplyDepartureWake,
   shouldLogMotionChange,
   type TrackingMotionGuardState,
 } from '@/lib/tracking-diagnostic-guards';
@@ -66,6 +68,7 @@ export class TransistorSoftLocationService implements LocationService {
   private suppressOnLocationTimestampMs: number | null = null;
   private readonly motionGuard: TrackingMotionGuardState =
     createTrackingMotionGuardState();
+  private lastProviderSignature: string | null = null;
 
   async drainNativeQueue(): Promise<void> {
     await drainNativeLocationQueue();
@@ -103,8 +106,11 @@ export class TransistorSoftLocationService implements LocationService {
   }
 
   private async maybeWakeFromSpeed(location: Location): Promise<void> {
+    if (!shouldApplyDepartureWake(this.motionGuard)) {
+      return;
+    }
     const speed = location.coords.speed;
-    if (speed == null || speed < MIN_DEPARTURE_SPEED_MS) {
+    if (speed == null || speed < DRIVE_GPS_WAKE_SPEED_MS) {
       return;
     }
     const accuracy = location.coords.accuracy;
@@ -118,6 +124,7 @@ export class TransistorSoftLocationService implements LocationService {
         accuracy: accuracy >= 0 ? accuracy : null,
       });
     } catch (error) {
+      resetDepartureWake(this.motionGuard);
       if (__DEV__) {
         console.warn('[LifeMap] changePace(true) from GPS speed failed', error);
       }
@@ -189,6 +196,16 @@ export class TransistorSoftLocationService implements LocationService {
         void this.onHeartbeat();
       }),
       BackgroundGeolocation.onProviderChange(provider => {
+        const signature = JSON.stringify({
+          enabled: provider.enabled,
+          status: provider.status,
+          gps: provider.gps,
+          network: provider.network,
+        });
+        if (signature === this.lastProviderSignature) {
+          return;
+        }
+        this.lastProviderSignature = signature;
         void recordTrackingDiagnostic('provider_change', {
           enabled: provider.enabled,
           status: provider.status,
@@ -275,6 +292,7 @@ export class TransistorSoftLocationService implements LocationService {
     this.heartbeatInFlight = null;
     this.motionInFlight = null;
     this.configured = false;
+    this.lastProviderSignature = null;
     resetTrackingMotionGuardState(this.motionGuard);
   }
 }

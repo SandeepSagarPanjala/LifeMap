@@ -1,13 +1,9 @@
-/** Subtitle fade/rise finishes at delay + duration. */
-export const SPLASH_SUBTITLE_INTRO_END_MS = 1100 + 650;
+/** Minimum time so the underline animation is visible even when the DB opens instantly. */
+export const SPLASH_MIN_MS = 400;
 
-/** Pause after title, underline, and subtitle finish. */
-export const SPLASH_HOLD_AFTER_INTRO_MS = 1250;
+/** Safety cap — never block launch longer than this on a stuck migration. */
+export const SPLASH_MAX_MS = 8_000;
 
-export const SPLASH_NORMAL_TOTAL_MS = 3000;
-
-export const SPLASH_SLOW_TOTAL_MS = 45000;
-
-export function getSplashNavigateAtMs(slowSplash: boolean): number {
-  return slowSplash ? SPLASH_SLOW_TOTAL_MS : SPLASH_NORMAL_TOTAL_MS;
+export function splashAnimationDurationMs(elapsedMs: number): number {
+  return Math.min(SPLASH_MAX_MS, Math.max(SPLASH_MIN_MS, elapsedMs));
 }

@@ -9,7 +9,9 @@ import {DevSettings} from '@/components/settings/dev-settings';
 import {ExportSettings} from '@/components/settings/export-settings';
 import {HistoryDetectionSettings} from '@/components/settings/history-detection-settings';
 import {HistoryRepairSettings} from '@/components/settings/history-repair-settings';
+import {TripRebuildSettings} from '@/components/settings/trip-rebuild-settings';
 import {PreferencesSettings} from '@/components/settings/preferences-settings';
+import {MapRefreshSettings} from '@/components/settings/map-refresh-settings';
 import {SettingsSection} from '@/components/settings/settings-section';
 import {StorageSettings} from '@/components/settings/storage-settings';
 import {TrackingSettings} from '@/components/settings/tracking-settings';
@@ -30,6 +32,7 @@ export function SettingsScreen() {
           subtitle="Customize how LifeMap looks and records your day.">
           <AccentThemePicker />
           <PreferencesSettings />
+          <MapRefreshSettings />
           <TrackingSettings />
         </SettingsSection>
 
@@ -55,6 +58,7 @@ export function SettingsScreen() {
           title="Developer"
           subtitle="Export data, repair history, and internal debugging tools.">
           <ExportSettings />
+          <TripRebuildSettings />
           <HistoryRepairSettings />
           <DevSettings />
         </SettingsSection>

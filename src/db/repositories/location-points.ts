@@ -1,7 +1,8 @@
 import {and, desc, eq, gte, like, or, sql} from 'drizzle-orm';
 
-import {getDatabase} from '../client';
+import {getDatabase, getSqlite} from '../client';
 import {locationPoints} from '../schema';
+import {locationPointTimestampToStorageValue} from '@/lib/location-point-storage';
 
 export type NewLocationPoint = {
   timestamp: Date;
@@ -83,15 +84,19 @@ export async function insertLocationPoint(
     }
   }
 
-  await db.insert(locationPoints).values({
-    timestamp: point.timestamp,
-    lat: point.lat,
-    lng: point.lng,
-    accuracy: point.accuracy ?? null,
-    altitude: point.altitude ?? null,
-    speed: point.speed ?? null,
-    source,
-  });
+  const sqlite = await getSqlite();
+  await sqlite.execute(
+    `INSERT INTO location_points (timestamp, lat, lng, accuracy, altitude, speed, source) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [
+      locationPointTimestampToStorageValue(point.timestamp),
+      point.lat,
+      point.lng,
+      point.accuracy ?? null,
+      point.altitude ?? null,
+      point.speed ?? null,
+      source,
+    ],
+  );
   notifyInsert({timestamp: point.timestamp, lat: point.lat, lng: point.lng, source});
 }
 

@@ -22,6 +22,8 @@ type AppState = {
   preferredMapApp: PreferredMapApp;
   tripDwellMinutes: TripDwellMinutes;
   tripDwellRadiusMeters: TripRadiusMeters;
+  historyEarliestDateKey: string | null;
+  mapRefreshNonce: number;
   completePrivacyOnboarding: () => void;
   setAccentTheme: (theme: AccentThemeId) => void;
   setSlowSplashEnabled: (enabled: boolean) => void;
@@ -30,6 +32,8 @@ type AppState = {
   setPreferredMapApp: (app: PreferredMapApp) => void;
   setTripDwellMinutes: (minutes: TripDwellMinutes) => void;
   setTripDwellRadiusMeters: (meters: TripRadiusMeters) => void;
+  setHistoryEarliestDateKey: (dateKey: string) => void;
+  bumpMapRefresh: () => void;
 };
 
 export const useAppStore = create<AppState>()(
@@ -43,6 +47,8 @@ export const useAppStore = create<AppState>()(
       preferredMapApp: 'apple',
       tripDwellMinutes: DEFAULT_TRIP_DWELL_MINUTES,
       tripDwellRadiusMeters: DEFAULT_TRIP_DWELL_RADIUS_METERS,
+      historyEarliestDateKey: null,
+      mapRefreshNonce: 0,
       completePrivacyOnboarding: () => set({hasCompletedPrivacyOnboarding: true}),
       setAccentTheme: theme => set({accentTheme: theme}),
       setSlowSplashEnabled: enabled => set({slowSplashEnabled: enabled}),
@@ -52,6 +58,10 @@ export const useAppStore = create<AppState>()(
       setTripDwellMinutes: tripDwellMinutes => set({tripDwellMinutes}),
       setTripDwellRadiusMeters: tripDwellRadiusMeters =>
         set({tripDwellRadiusMeters}),
+      setHistoryEarliestDateKey: historyEarliestDateKey =>
+        set({historyEarliestDateKey}),
+      bumpMapRefresh: () =>
+        set(state => ({mapRefreshNonce: state.mapRefreshNonce + 1})),
     }),
     {
       name: 'lifemap-app',

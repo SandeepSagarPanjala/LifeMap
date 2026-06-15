@@ -1,5 +1,5 @@
 import {Pressable, View} from 'react-native';
-import {BookOpen, TimerReset} from 'lucide-react-native';
+import {BookOpen, type LucideIcon} from 'lucide-react-native';
 
 import {Icon} from '@/components/ui/icon';
 import {Text} from '@/components/ui/text';
@@ -13,7 +13,7 @@ function DevToggle({
   enabled,
   onToggle,
 }: {
-  icon: typeof TimerReset;
+  icon: LucideIcon;
   title: string;
   description: string;
   enabled: boolean;
@@ -49,8 +49,6 @@ function DevToggle({
 }
 
 export function DevSettings() {
-  const slowSplashEnabled = useAppStore(state => state.slowSplashEnabled);
-  const setSlowSplashEnabled = useAppStore(state => state.setSlowSplashEnabled);
   const devShowOnboarding = useAppStore(state => state.devShowOnboarding);
   const setDevShowOnboarding = useAppStore(state => state.setDevShowOnboarding);
 
@@ -60,13 +58,6 @@ export function DevSettings() {
 
   return (
     <View className="gap-4">
-      <DevToggle
-        icon={TimerReset}
-        title="Slow splash mode"
-        description="Keep splash for 45 seconds to review animation."
-        enabled={slowSplashEnabled}
-        onToggle={() => setSlowSplashEnabled(!slowSplashEnabled)}
-      />
       <DevToggle
         icon={BookOpen}
         title="Show onboarding every launch"

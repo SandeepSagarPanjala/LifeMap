@@ -1,13 +1,12 @@
-import {differenceInMilliseconds, endOfDay} from 'date-fns';
+import {differenceInMilliseconds, endOfDay, subDays} from 'date-fns';
 
 import {
+  getDateKeysWithLocationData,
   getLocationPointsForDay,
   getLocationPointsInRange,
 } from '@/db/repositories/location-days';
 import {
-  enqueueMaterializationJob,
   clearMaterializationQueue,
-  type MaterializationJob,
 } from '@/db/repositories/materialization-queue';
 import {
   deleteMotionLocationPoints,
@@ -16,9 +15,14 @@ import {getMomentsForDay} from '@/db/repositories/moments';
 import {
   deleteAllMaterializedDays,
   getMaterializedDay,
-  markMaterializedDayFailed,
   upsertMaterializedDay,
 } from '@/db/repositories/materialized-days';
+import {
+  dayHasStoredTripGeometry,
+  deleteAllTripPoints,
+  listTripPointsForDay,
+  replaceTripPoints,
+} from '@/db/repositories/trip-points';
 import {findPlaceLookupNearAnchor} from '@/db/repositories/place-lookup-cache';
 import {listSavedPlaces} from '@/db/repositories/saved-places';
 import {
@@ -29,24 +33,34 @@ import {
   insertTripIfAbsent,
   listTripsForDay,
   setTripPlaceLookupCacheId,
+  upsertTrip,
   type TripRow,
 } from '@/db/repositories/trips';
-import {getDayRange, getTodayDateKey} from '@/lib/day-utils';
+import {getDayRange, getTodayDateKey, parseDateKey, toDateKey} from '@/lib/day-utils';
 import type {HistoryData} from '@/lib/history-data-types';
 import {clearHistoryDataCache} from '@/lib/history-data-cache';
-import {runWhenIdle} from '@/lib/run-when-idle';
+import {yieldToEventLoop} from '@/lib/run-when-idle';
 import {
   getHistoryLookaheadEnd,
   getHistoryLookbackStart,
+  HISTORY_COMPACT_CONTEXT_HOURS,
   prepareDayHistoryTimeline,
 } from '@/lib/today-history';
 import {
   notifyMaterializationUpdated,
-  setMaterializationBusy,
 } from '@/lib/trip-materialization-events';
 import {
-  buildTimelineFromTrips,
+  buildTimelineFromStoredTrips,
 } from '@/lib/timeline-from-trips';
+import {flattenTimelinePoints, travelCentroidFromRoute} from '@/lib/trip-geometry';
+import {simplifyDriveRoute} from '@/lib/trip-route-simplify';
+import {resolveVisitAnchor} from '@/lib/visit-anchor';
+import {
+  mergeSealedAndLiveTimeline,
+  sealedThroughMs,
+  tailGpsStartMs,
+  TODAY_TAIL_CONTEXT_MS,
+} from '@/lib/today-sealed-history';
 import {
   type DayTimelineEntry,
   type DetectedTrip,
@@ -91,12 +105,6 @@ async function purgeMaterializedDayCache(
   clearHistoryDataCache();
   notifyMaterializationUpdated();
 }
-
-const WORKER_TIME_BUDGET_MS = 5_000;
-const WORKER_BATCH_SIZE = 3;
-
-let workerScheduled = false;
-let workerRunning = false;
 
 export function tripEventKey(
   trip: Pick<DetectedTrip, 'kind' | 'startAt' | 'endAt'>,
@@ -181,6 +189,17 @@ function travelCentroid(trip: DetectedTrip): {lat: number; lng: number} {
   };
 }
 
+function tripCentroidForPersist(
+  trip: DetectedTrip,
+  savedPlaces: Awaited<ReturnType<typeof listSavedPlaces>>,
+): {lat: number; lng: number} {
+  if (trip.kind === 'stay') {
+    return resolveVisitAnchor(trip.points, savedPlaces);
+  }
+  const simplified = simplifyDriveRoute(trip.points);
+  return travelCentroidFromRoute(simplified);
+}
+
 function tripCentroid(trip: DetectedTrip): {lat: number; lng: number} {
   if (trip.kind === 'stay') {
     const centroid = stayTripCentroid(trip);
@@ -200,27 +219,42 @@ async function loadLiveHistoryForDay(
   detectionConfig: TripDetectionConfig,
   referenceNow: Date = new Date(),
   forDisplay = true,
+  compactContext = false,
+  options?: {dayPointsFrom?: Date; tailDetect?: boolean},
 ): Promise<HistoryData> {
   const {start: dayStart} = getDayRange(dateKey);
   const isToday = dateKey === getTodayDateKey();
   const rangeEnd = isToday ? referenceNow : endOfDay(dayStart);
-  const lookbackStart = getHistoryLookbackStart(dayStart);
+  const contextHours = compactContext ? HISTORY_COMPACT_CONTEXT_HOURS : undefined;
   const dayEnd = endOfDay(dayStart);
-  const lookaheadEnd = getHistoryLookaheadEnd(dayEnd);
+  const isTailDetect =
+    options?.tailDetect === true && options?.dayPointsFrom != null;
+  const tailAnchor = options?.dayPointsFrom;
+  const lookbackStart = isTailDetect
+    ? new Date(tailAnchor!.getTime() - TODAY_TAIL_CONTEXT_MS)
+    : getHistoryLookbackStart(dayStart, contextHours);
+  const lookbackEnd = isTailDetect
+    ? new Date(tailAnchor!.getTime() - 1)
+    : new Date(dayStart.getTime() - 1);
+  const lookaheadEnd = getHistoryLookaheadEnd(dayEnd, contextHours);
+  const dayPointsLoader =
+    options?.dayPointsFrom != null
+      ? getLocationPointsInRange(options.dayPointsFrom, rangeEnd)
+      : getLocationPointsForDay(dateKey);
   const [dayPoints, lookbackPoints, lookaheadPoints, dayMoments, savedPlaces] =
     await Promise.all([
-    getLocationPointsForDay(dateKey),
-    getLocationPointsInRange(
-      lookbackStart,
-      new Date(dayStart.getTime() - 1),
-    ),
-    getLocationPointsInRange(
-      new Date(dayEnd.getTime() + 1),
-      lookaheadEnd,
-    ),
-    getMomentsForDay(dayStart, rangeEnd),
-    listSavedPlaces(),
-  ]);
+      dayPointsLoader,
+      getLocationPointsInRange(lookbackStart, lookbackEnd),
+      isTailDetect
+        ? Promise.resolve([])
+        : getLocationPointsInRange(
+            new Date(dayEnd.getTime() + 1),
+            lookaheadEnd,
+          ),
+      getMomentsForDay(dayStart, rangeEnd),
+      listSavedPlaces(),
+    ]);
+  await yieldToEventLoop();
   const entries = prepareDayHistoryTimeline(
     dateKey,
     dayPoints,
@@ -246,107 +280,246 @@ async function loadLiveHistoryForDay(
   };
 }
 
-export async function loadHistoryFromMaterializedTrips(
+export async function loadHistoryFromStoredTrips(
   dateKey: string,
+  tripRows?: TripRow[],
+  referenceNow?: Date,
 ): Promise<HistoryData> {
   const {start: dayStart} = getDayRange(dateKey);
-  const rangeEnd = endOfDay(dayStart);
-  const [tripRows, dayPoints] = await Promise.all([
-    listTripsForDay(dateKey),
-    getLocationPointsForDay(dateKey),
-  ]);
+  const isToday = dateKey === getTodayDateKey();
+  const rangeEnd =
+    referenceNow != null && isToday ? referenceNow : endOfDay(dayStart);
+  const rows = tripRows ?? (await listTripsForDay(dateKey));
 
-  if (tripRows.length === 0) {
+  if (rows.length === 0) {
     return {
       dateKey,
-      points: dayPoints,
+      points: [],
       entries: [],
       range: {startAt: dayStart, endAt: rangeEnd},
     };
   }
 
-  const entries = buildTimelineFromTrips(tripRows, dayPoints);
+  const pointsByTripId = await listTripPointsForDay(dateKey);
+  const entries = buildTimelineFromStoredTrips(rows, pointsByTripId);
 
   return {
     dateKey,
-    points: dayPoints,
+    points: flattenTimelinePoints(entries),
     entries,
     range: {startAt: dayStart, endAt: rangeEnd},
   };
 }
 
+/** @deprecated Use loadHistoryFromStoredTrips */
+export async function loadHistoryFromMaterializedTrips(
+  dateKey: string,
+): Promise<HistoryData> {
+  return loadHistoryFromStoredTrips(dateKey);
+}
+
+/** Today: sealed closed trips from DB + live tail from recent GPS only. */
+export async function loadTodayHistoryMerged(
+  detectionConfig: TripDetectionConfig,
+  referenceNow: Date = new Date(),
+  onPartial?: (data: HistoryData) => void,
+): Promise<HistoryData> {
+  const dateKey = getTodayDateKey();
+  const {start: dayStart} = getDayRange(dateKey);
+  const [tripRows, pointsByTripId] = await Promise.all([
+    listTripsForDay(dateKey),
+    listTripPointsForDay(dateKey),
+  ]);
+  const hasSealed =
+    tripRows.length > 0 && dayHasStoredTripGeometry(tripRows, pointsByTripId);
+
+  if (!hasSealed) {
+    return loadLiveHistoryForDay(
+      dateKey,
+      detectionConfig,
+      referenceNow,
+      true,
+      true,
+    );
+  }
+
+  const sealedEndMs = sealedThroughMs(tripRows)!;
+  const tailStart = new Date(tailGpsStartMs(sealedEndMs, dayStart.getTime()));
+  const sealedData = await loadHistoryFromStoredTrips(
+    dateKey,
+    tripRows,
+    referenceNow,
+  );
+  onPartial?.(sealedData);
+
+  const tailLive = await loadLiveHistoryForDay(
+    dateKey,
+    detectionConfig,
+    referenceNow,
+    true,
+    true,
+    {dayPointsFrom: tailStart, tailDetect: true},
+  );
+
+  const entries = mergeSealedAndLiveTimeline(
+    sealedData.entries,
+    tailLive.entries,
+    sealedEndMs,
+  );
+
+  return {
+    dateKey,
+    points: flattenTimelinePoints(entries),
+    entries,
+    range: {
+      startAt: dayStart,
+      endAt: referenceNow,
+    },
+  };
+}
+
+export type LoadHistoryOptions = {
+  force?: boolean;
+  onPartial?: (data: HistoryData) => void;
+};
+
+export async function loadHistoryForSelectedDay(
+  dateKey: string,
+  detectionConfig: TripDetectionConfig,
+  options?: LoadHistoryOptions,
+): Promise<HistoryData> {
+  const isToday = dateKey === getTodayDateKey();
+
+  if (!options?.force && !isToday) {
+    const tripRows = await listTripsForDay(dateKey);
+    if (tripRows.length > 0) {
+      const pointsByTripId = await listTripPointsForDay(dateKey);
+      if (dayHasStoredTripGeometry(tripRows, pointsByTripId)) {
+        return loadHistoryFromStoredTrips(dateKey, tripRows);
+      }
+    }
+  }
+
+  if (options?.force) {
+    const materializedDay = await getMaterializedDay(dateKey);
+    if (
+      materializedDay != null &&
+      materializedDay.detectionVersion < TRIP_DETECTION_VERSION
+    ) {
+      await purgeMaterializedDayCache(dateKey, materializedDay.pointCount);
+    }
+  }
+
+  const referenceNow = new Date();
+  const history = isToday
+    ? await loadTodayHistoryMerged(
+        detectionConfig,
+        referenceNow,
+        options?.onPartial,
+      )
+    : await loadLiveHistoryForDay(
+        dateKey,
+        detectionConfig,
+        referenceNow,
+        true,
+        true,
+      );
+
+  queuePersistClosedTrips(
+    dateKey,
+    detectionConfig,
+    history,
+    isToday,
+    options?.force === true,
+  );
+
+  return history;
+}
+
+function queuePersistClosedTrips(
+  dateKey: string,
+  detectionConfig: TripDetectionConfig,
+  history: HistoryData,
+  isToday: boolean,
+  force: boolean,
+): void {
+  const closedEntries = history.entries.filter(isClosedPlayableEntry);
+  setTimeout(() => {
+    void persistClosedTripsIncremental(
+      dateKey,
+      detectionConfig,
+      closedEntries,
+      {
+        fullReplace: !isToday || force,
+        pointCount: history.points.length,
+      },
+    ).catch(() => undefined);
+  }, 0);
+}
+
+/** @deprecated Use loadHistoryForSelectedDay */
 export async function loadHistoryWithMaterialization(
   dateKey: string,
   detectionConfig: TripDetectionConfig,
 ): Promise<HistoryData> {
-  let materializedDay = await getMaterializedDay(dateKey);
-
-  if (
-    materializedDay != null &&
-    materializedDay.detectionVersion < TRIP_DETECTION_VERSION
-  ) {
-    await purgeMaterializedDayCache(dateKey, materializedDay.pointCount);
-  }
-
-  const live = await loadLiveHistoryForDay(dateKey, detectionConfig);
-  void enqueueTripMaterializationForDay(dateKey, live.entries);
-  return live;
+  return loadHistoryForSelectedDay(dateKey, detectionConfig);
 }
 
 export function enqueueTripMaterializationForDay(
-  dateKey: string,
-  entries: DayTimelineEntry[],
+  _dateKey: string,
+  _entries: DayTimelineEntry[],
 ): void {
-  const closedEntries = entries.filter(isClosedPlayableEntry);
-  if (closedEntries.length === 0) {
-    return;
-  }
-
-  void enqueueMaterializationJob('persist_day', dateKey);
-
-  const isToday = dateKey === getTodayDateKey();
-  if (!isToday && !dayHasOpenVisit(entries)) {
-    void enqueueMaterializationJob('seal_day', dateKey);
-  }
-
-  scheduleTripMaterializationWorker();
+  // Background materialization removed — days compute when the user opens them.
 }
 
 export function scheduleTripMaterializationWorker(): void {
-  if (workerScheduled) {
-    return;
-  }
-  workerScheduled = true;
-  runWhenIdle(() => {
-    workerScheduled = false;
-    void drainMaterializationQueue();
-  });
+  // No-op — background worker removed.
 }
 
-async function persistClosedTripsForDay(
+export async function enqueueSealForPreviousDayIfNeeded(): Promise<void> {
+  await sealYesterdayIfNeeded();
+}
+
+export type PersistClosedTripsOptions = {
+  fullReplace?: boolean;
+  forceComplete?: boolean;
+  pointCount?: number;
+};
+
+export async function persistClosedTripsIncremental(
   dateKey: string,
   detectionConfig: TripDetectionConfig,
+  closedEntries: DetectedTrip[],
+  options: PersistClosedTripsOptions = {},
 ): Promise<number> {
-  const live = await loadLiveHistoryForDay(
-    dateKey,
-    detectionConfig,
-    new Date(),
-    false,
-  );
-  const closedEntries = live.entries.filter(isClosedPlayableEntry);
-  const closedAt = new Date();
-  const existingLabels = existingTripLabelsByEventKey(
-    await listTripsForDay(dateKey),
-  );
-  await deleteTripsForDay(dateKey);
-  let inserted = 0;
+  const isToday = dateKey === getTodayDateKey();
+  const existingTrips = await listTripsForDay(dateKey);
 
+  if (!options.fullReplace && isToday && closedEntries.length > 0) {
+    const existingKeys = new Set(existingTrips.map(row => row.eventKey));
+    const hasNewClosed = closedEntries.some(
+      entry => !existingKeys.has(tripEventKey(entry)),
+    );
+    if (!hasNewClosed && existingKeys.size >= closedEntries.length) {
+      return 0;
+    }
+  }
+
+  const closedAt = new Date();
+  const existingLabels = existingTripLabelsByEventKey(existingTrips);
+  const savedPlaces = await listSavedPlaces();
+
+  if (options.fullReplace) {
+    await deleteTripsForDay(dateKey);
+  }
+
+  let upserted = 0;
   for (const entry of closedEntries) {
-    const centroid = tripCentroid(entry);
+    const centroid = tripCentroidForPersist(entry, savedPlaces);
     const placeLookup = await findPlaceLookupNearAnchor(centroid);
     const eventKey = tripEventKey(entry);
     const labels = tripLabelForPersist(eventKey, existingLabels, placeLookup);
-    const row = await insertTripIfAbsent({
+    const row = await upsertTrip({
       eventKey,
       kind: entry.kind,
       dateKey,
@@ -361,148 +534,108 @@ async function persistClosedTripsForDay(
       detectionVersion: TRIP_DETECTION_VERSION,
       closedAt,
     });
-    if (row != null) {
-      inserted += 1;
+    upserted += 1;
+    if (entry.kind === 'travel') {
+      const route =
+        entry.points.length > 0
+          ? simplifyDriveRoute(entry.points)
+          : [{lat: centroid.lat, lng: centroid.lng}];
+      await replaceTripPoints(row.id, route);
     }
   }
 
-  const tripCount = await listTripsForDay(dateKey).then(rows => rows.length);
-  const pointCount = live.points.length;
+  const finalTripRows =
+    upserted > 0 || options.fullReplace
+      ? await listTripsForDay(dateKey)
+      : existingTrips;
+  const tripCount = finalTripRows.length;
+  const pointCount = options.pointCount ?? 0;
   const materializedDay = await getMaterializedDay(dateKey);
-  const isToday = dateKey === getTodayDateKey();
-  const status =
-    materializedDay?.status === 'complete'
-      ? 'complete'
-      : isToday
-        ? 'open'
-        : dayHasOpenVisit(live.entries)
-          ? 'partial'
-          : closedEntries.length > 0
-            ? 'partial'
-            : 'open';
+  const sealedMs = sealedThroughMs(finalTripRows);
+  const status = options.forceComplete
+    ? 'complete'
+    : isToday
+      ? 'open'
+      : closedEntries.length > 0
+        ? 'complete'
+        : 'open';
 
   await upsertMaterializedDay(dateKey, {
     status,
     detectionVersion: TRIP_DETECTION_VERSION,
     tripCount,
     pointCount,
-    sealedAt: materializedDay?.sealedAt ?? null,
+    sealedAt:
+      status === 'complete'
+        ? materializedDay?.sealedAt ?? closedAt
+        : sealedMs != null
+          ? new Date(sealedMs)
+          : materializedDay?.sealedAt ?? null,
   });
 
+  if (options.fullReplace || options.forceComplete || !isToday) {
+    clearHistoryDataCache();
+  }
   notifyMaterializationUpdated();
-  return inserted;
+  return upserted;
 }
 
-async function sealDay(
+/** @deprecated Use persistClosedTripsIncremental */
+async function persistClosedTripsForDay(
   dateKey: string,
   detectionConfig: TripDetectionConfig,
-): Promise<void> {
-  if (dateKey === getTodayDateKey()) {
-    return;
-  }
-
-  const live = await loadLiveHistoryForDay(
+  preloaded?: HistoryData,
+): Promise<number> {
+  const live =
+    preloaded ??
+    (await loadLiveHistoryForDay(
+      dateKey,
+      detectionConfig,
+      new Date(),
+      false,
+    ));
+  return persistClosedTripsIncremental(
     dateKey,
     detectionConfig,
-    new Date(),
-    false,
+    live.entries.filter(isClosedPlayableEntry),
+    {fullReplace: true, pointCount: live.points.length},
   );
-  if (dayHasOpenVisit(live.entries)) {
-    return;
-  }
-
-  await persistClosedTripsForDay(dateKey, detectionConfig);
-  const tripCount = (await listTripsForDay(dateKey)).length;
-  const pointCount = (await getLocationPointsForDay(dateKey)).length;
-
-  await upsertMaterializedDay(dateKey, {
-    status: 'complete',
-    detectionVersion: TRIP_DETECTION_VERSION,
-    tripCount,
-    pointCount,
-    sealedAt: new Date(),
-  });
-  notifyMaterializationUpdated();
 }
 
-async function processMaterializationJob(
-  job: MaterializationJob,
-  detectionConfig: TripDetectionConfig,
-): Promise<void> {
-  try {
-    if (job.jobType === 'persist_day') {
-      await persistClosedTripsForDay(job.dateKey, detectionConfig);
-    } else {
-      await sealDay(job.dateKey, detectionConfig);
-    }
-  } catch {
-    await markMaterializedDayFailed(job.dateKey, TRIP_DETECTION_VERSION);
-    throw new Error(`materialization failed for ${job.dateKey}`);
-  }
-}
-
-export async function drainMaterializationQueue(
-  detectionConfig: TripDetectionConfig = getDefaultTripDetectionConfig(),
-): Promise<void> {
-  if (workerRunning) {
-    return;
-  }
-
-  workerRunning = true;
-  setMaterializationBusy(true);
-  const deadline = Date.now() + WORKER_TIME_BUDGET_MS;
-
-  try {
-    while (Date.now() < deadline) {
-      const {claimPendingJobs, markJobDone, markJobFailed, countPendingJobs} =
-        await import('@/db/repositories/materialization-queue');
-      const jobs = await claimPendingJobs(WORKER_BATCH_SIZE);
-      if (jobs.length === 0) {
-        break;
-      }
-
-      for (const job of jobs) {
-        try {
-          await processMaterializationJob(job, detectionConfig);
-          await markJobDone(job.id);
-        } catch {
-          await markJobFailed(job.id);
-        }
-      }
-
-      if ((await countPendingJobs()) === 0) {
-        break;
-      }
-    }
-  } catch {
-    // Background materialization is best-effort.
-  } finally {
-    workerRunning = false;
-    setMaterializationBusy(false);
-
-    const {countPendingJobs} = await import(
-      '@/db/repositories/materialization-queue'
-    );
-    if ((await countPendingJobs()) > 0) {
-      scheduleTripMaterializationWorker();
-    }
-  }
-}
-
-export async function enqueueSealForPreviousDayIfNeeded(
-  previousDateKey: string,
-): Promise<void> {
-  if (previousDateKey === getTodayDateKey()) {
-    return;
-  }
-
-  const materializedDay = await getMaterializedDay(previousDateKey);
+/** Finalize yesterday once the calendar day has turned. */
+export async function sealYesterdayIfNeeded(): Promise<void> {
+  const todayKey = getTodayDateKey();
+  const yesterdayKey = toDateKey(subDays(parseDateKey(todayKey), 1));
+  const materializedDay = await getMaterializedDay(yesterdayKey);
   if (materializedDay?.status === 'complete') {
     return;
   }
 
-  await enqueueMaterializationJob('seal_day', previousDateKey);
-  scheduleTripMaterializationWorker();
+  const detectionConfig = getDefaultTripDetectionConfig();
+  const {end: dayEnd} = getDayRange(yesterdayKey);
+  const live = await loadLiveHistoryForDay(
+    yesterdayKey,
+    detectionConfig,
+    dayEnd,
+    false,
+    true,
+  );
+  await persistClosedTripsIncremental(
+    yesterdayKey,
+    detectionConfig,
+    live.entries.filter(isClosedPlayableEntry),
+    {
+      fullReplace: true,
+      forceComplete: true,
+      pointCount: live.points.length,
+    },
+  );
+}
+
+export async function drainMaterializationQueue(
+  _detectionConfig: TripDetectionConfig = getDefaultTripDetectionConfig(),
+): Promise<void> {
+  // No-op — background worker removed.
 }
 
 /** Create or refresh a trip row when the user labels an older visit. */
@@ -579,6 +712,7 @@ export async function resetMaterializedTripHistory(): Promise<ResetMaterializedT
       deleteAllMaterializedDays(),
       clearMaterializationQueue(),
     ]);
+  await deleteAllTripPoints();
 
   clearHistoryDataCache();
   notifyMaterializationUpdated();
@@ -587,6 +721,79 @@ export async function resetMaterializedTripHistory(): Promise<ResetMaterializedT
     tripsDeleted,
     materializedDaysDeleted,
     queueJobsDeleted,
+  };
+}
+
+export type RebuildPastTripsProgress = {
+  completed: number;
+  total: number;
+  dateKey: string;
+};
+
+export type RebuildPastTripsResult = {
+  daysProcessed: number;
+  tripsSaved: number;
+};
+
+function listPastDateKeysWithGps(): Promise<string[]> {
+  const todayKey = getTodayDateKey();
+  return getDateKeysWithLocationData().then(keys =>
+    keys.filter(key => key < todayKey).sort(),
+  );
+}
+
+/** Recompute visits/drives and simplified route geometry for one past day. */
+export async function rebuildPastDayTrips(
+  dateKey: string,
+  detectionConfig: TripDetectionConfig = getDefaultTripDetectionConfig(),
+): Promise<number> {
+  if (dateKey >= getTodayDateKey()) {
+    throw new Error('Trip rebuild is only available for past days.');
+  }
+
+  const live = await loadLiveHistoryForDay(
+    dateKey,
+    detectionConfig,
+    new Date(),
+    true,
+    true,
+  );
+  return persistClosedTripsIncremental(
+    dateKey,
+    detectionConfig,
+    live.entries.filter(isClosedPlayableEntry),
+    {fullReplace: true, pointCount: live.points.length},
+  );
+}
+
+/** Foreground rebuild for all past days that have GPS data. */
+export async function rebuildAllPastDayTrips(
+  detectionConfig: TripDetectionConfig = getDefaultTripDetectionConfig(),
+  onProgress?: (progress: RebuildPastTripsProgress) => void,
+): Promise<RebuildPastTripsResult> {
+  const dateKeys = await listPastDateKeysWithGps();
+  let tripsSaved = 0;
+
+  for (let index = 0; index < dateKeys.length; index += 1) {
+    const dateKey = dateKeys[index]!;
+    onProgress?.({
+      completed: index,
+      total: dateKeys.length,
+      dateKey,
+    });
+    tripsSaved += await rebuildPastDayTrips(dateKey, detectionConfig);
+    await yieldToEventLoop();
+  }
+
+  onProgress?.({
+    completed: dateKeys.length,
+    total: dateKeys.length,
+    dateKey: dateKeys[dateKeys.length - 1] ?? '',
+  });
+
+  return {
+    daysProcessed: dateKeys.length,
+    tripsSaved,
   };
 }
 

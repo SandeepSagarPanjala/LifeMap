@@ -31,6 +31,9 @@ export const SAVED_PLACE_MIN_DWELL_MINUTES = 1;
 /** Bump when visit/drive detection rules change — invalidates sealed day cache. */
 export const TRIP_DETECTION_VERSION = 11;
 
+/** Bump when stored route/visit geometry rules change — invalidates fast load path. */
+export const TRIP_GEOMETRY_VERSION = 1;
+
 export function buildTripDetectionConfig(
   gapMinutes: number,
   dwellMinutes: number,

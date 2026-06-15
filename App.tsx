@@ -22,7 +22,6 @@ function App() {
   const colorScheme = useColorScheme();
   const hasCompletedPrivacyOnboarding = useAppStore(state => state.hasCompletedPrivacyOnboarding);
   const completePrivacyOnboarding = useAppStore(state => state.completePrivacyOnboarding);
-  const slowSplashEnabled = useAppStore(state => state.slowSplashEnabled);
   const devShowOnboarding = useAppStore(state => state.devShowOnboarding);
   const showOnboarding =
     !onboardingDismissed &&
@@ -47,11 +46,14 @@ function App() {
   }, [completePrivacyOnboarding]);
 
   const enableLocationTracking = activeScreen === 'main';
+  const enableHistoryPreload = activeScreen === 'main';
 
   return (
     <AppErrorBoundary>
       <GestureHandlerRootView className="flex-1">
-        <AppBootstrap enableLocationTracking={enableLocationTracking}>
+        <AppBootstrap
+          enableLocationTracking={enableLocationTracking}
+          enableHistoryPreload={enableHistoryPreload}>
         <ThemeProvider>
           <SafeAreaProvider>
             <StatusBar
@@ -62,10 +64,7 @@ function App() {
             <View style={styles.screenHost}>
               {activeScreen === 'splash' ? (
                 <AppScreenTransition screenKey="splash">
-                  <AnimatedSplashScreen
-                    onFinish={handleSplashFinish}
-                    slowSplash={slowSplashEnabled}
-                  />
+                  <AnimatedSplashScreen onFinish={handleSplashFinish} />
                 </AppScreenTransition>
               ) : null}
 

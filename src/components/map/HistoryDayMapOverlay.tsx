@@ -9,10 +9,12 @@ import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import type {DriveEndpointLabel} from '@/lib/drive-endpoint-label';
 import type {HistoryMapPlan} from '@/lib/history-map-plan';
 import type {MomentCounts} from '@/lib/moments/moment-counts';
+import {matchSavedPlaceForStay} from '@/lib/saved-places';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
 
 type HistoryDayMapOverlayProps = {
   plan: HistoryMapPlan;
+  savedPlaces?: readonly SavedPlaceRow[];
   selectedSavedPlace?: SavedPlaceRow | null;
   selectedNearbyPlaceLabel?: string | null;
   selectedNearbyPlacePinned?: boolean;
@@ -27,6 +29,7 @@ type HistoryDayMapOverlayProps = {
 /** All day drives/visits on the map; selected event keeps full detail and labels. */
 export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
   plan,
+  savedPlaces = [],
   selectedSavedPlace = null,
   selectedNearbyPlaceLabel = null,
   selectedNearbyPlacePinned = false,
@@ -39,17 +42,13 @@ export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
 }: HistoryDayMapOverlayProps) {
   const selected = plan.selected;
   const isPlaying = playbackProgress != null;
+  const selectedIsSavedPlace =
+    selected?.entry.kind === 'stay' &&
+    (selectedSavedPlace != null ||
+      matchSavedPlaceForStay(selected.entry, savedPlaces) != null);
 
   return (
     <>
-      {plan.pastDrives.map((points, index) => (
-        <HistoryRoutePath
-          key={`past-drive-${index}`}
-          pathKey={`past-drive-${index}`}
-          points={points}
-          tone="past"
-        />
-      ))}
       {plan.nextDrive != null ? (
         <HistoryRoutePath
           key="next-drive"
@@ -58,17 +57,11 @@ export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
           tone="future"
         />
       ) : null}
-      {plan.pastStays.length > 0 ? (
-        <StayAreasOverlay
-          stays={plan.pastStays}
-          tripConfig={tripConfig}
-          tone="past"
-        />
-      ) : null}
       {plan.nextStay != null ? (
         <StayAreasOverlay
           stays={[plan.nextStay]}
           tripConfig={tripConfig}
+          savedPlaces={savedPlaces}
           tone="future"
         />
       ) : null}
@@ -102,27 +95,31 @@ export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
         />
       ) : null}
 
-      {selected?.entry.kind === 'stay' && !isPlaying ? (
+      {selected?.entry.kind === 'stay' && !isPlaying && !selectedIsSavedPlace ? (
         <>
           <VisitInAreaPaths visit={selected.entry} tripConfig={tripConfig} />
           <StayAreasOverlay
             stays={[selected.entry]}
             tripConfig={tripConfig}
+            savedPlaces={savedPlaces}
             tone="emphasized"
           />
-          <StayDurationCallout
-            trip={selected.entry}
-            savedPlace={selectedSavedPlace}
-            nearbyPlaceLabel={
-              selectedSavedPlace ? null : selectedNearbyPlaceLabel
-            }
-            nearbyPlacePinned={
-              !selectedSavedPlace && selectedNearbyPlacePinned
-            }
-            momentCounts={selectedEntryMomentCounts}
-            onPressMomentCounts={onPressSelectedEntryMoments}
-          />
         </>
+      ) : null}
+
+      {selected?.entry.kind === 'stay' && !isPlaying ? (
+        <StayDurationCallout
+          trip={selected.entry}
+          savedPlace={selectedSavedPlace}
+          nearbyPlaceLabel={
+            selectedSavedPlace ? null : selectedNearbyPlaceLabel
+          }
+          nearbyPlacePinned={
+            !selectedSavedPlace && selectedNearbyPlacePinned
+          }
+          momentCounts={selectedEntryMomentCounts}
+          onPressMomentCounts={onPressSelectedEntryMoments}
+        />
       ) : null}
     </>
   );

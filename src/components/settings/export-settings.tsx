@@ -4,12 +4,12 @@ import {ActivityIndicator, Alert, Pressable, Share, View} from 'react-native';
 import {CalendarDays, Database} from 'lucide-react-native';
 
 import {HistoryDatePickerSheet} from '@/components/map/HistoryDatePickerSheet';
+import {SettingsStatsRefreshBar} from '@/components/settings/settings-stats-refresh-bar';
 import {Icon} from '@/components/ui/icon';
 import {Text} from '@/components/ui/text';
 import {
   fetchDatabaseExportTable,
   fetchDatabaseExportTables,
-  getExportTableStats,
   type ExportTableStats,
 } from '@/db/repositories/database-export';
 import {deleteAllTrackingEvents} from '@/db/repositories/tracking-events';
@@ -27,6 +27,10 @@ import {getTodayDateKey, parseDateKey} from '@/lib/day-utils';
 import {formatStorageBytes} from '@/lib/format-storage';
 import {resolveExportPeriod} from '@/lib/export-period';
 import {
+  computeAndCacheExportTableStats,
+  loadCachedExportTableStats,
+} from '@/lib/settings-stats';
+import {
   getTrackingDiagnosticsEnabled,
   setTrackingDiagnosticsEnabled,
 } from '@/lib/tracking-diagnostics';
@@ -35,8 +39,9 @@ type ExportPickerTarget = DatabaseExportTableName | 'all_tables';
 
 export function ExportSettings() {
   const colors = useThemeColors();
-  const [loading, setLoading] = useState(true);
+  const [calculating, setCalculating] = useState(false);
   const [tableStats, setTableStats] = useState<ExportTableStats | null>(null);
+  const [calculatedAt, setCalculatedAt] = useState<Date | null>(null);
   const [diagnosticsEnabled, setDiagnosticsEnabled] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [deletingDiagnostics, setDeletingDiagnostics] = useState(false);
@@ -47,18 +52,36 @@ export function ExportSettings() {
   );
   const [selectedDayKey, setSelectedDayKey] = useState(getTodayDateKey());
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
+  const loadCache = useCallback(async () => {
     try {
-      setTableStats(await getExportTableStats());
+      const cached = await loadCachedExportTableStats();
+      if (cached == null) {
+        setTableStats(null);
+        setCalculatedAt(null);
+        return;
+      }
+      setTableStats(cached.payload);
+      setCalculatedAt(cached.calculatedAt);
+    } catch {
+      setTableStats(null);
+      setCalculatedAt(null);
+    }
+  }, []);
+
+  const calculate = useCallback(async () => {
+    setCalculating(true);
+    try {
+      const result = await computeAndCacheExportTableStats();
+      setTableStats(result.payload);
+      setCalculatedAt(result.calculatedAt);
     } finally {
-      setLoading(false);
+      setCalculating(false);
     }
   }, []);
 
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    void loadCache();
+  }, [loadCache]);
 
   useEffect(() => {
     void getTrackingDiagnosticsEnabled()
@@ -126,14 +149,15 @@ export function ExportSettings() {
     const next = !diagnosticsEnabled;
     setDiagnosticsEnabled(next);
     await setTrackingDiagnosticsEnabled(next);
-    await refresh();
   };
 
   const confirmDeleteDiagnostics = () => {
     const rowCount = tableStats?.counts.tracking_events ?? 0;
     Alert.alert(
       'Delete tracking diagnostics?',
-      `This removes ${rowCount.toLocaleString()} debug log rows from tracking_events. Your map, visits, drives, and GPS points are not affected.`,
+      rowCount > 0
+        ? `This removes ${rowCount.toLocaleString()} debug log rows from tracking_events. Your map, visits, drives, and GPS points are not affected.`
+        : 'This removes debug log rows from tracking_events. Your map, visits, drives, and GPS points are not affected.',
       [
         {text: 'Cancel', style: 'cancel'},
         {
@@ -157,7 +181,7 @@ export function ExportSettings() {
         const compacted = await vacuumDatabase();
         compactMessage = `\n\nDatabase compacted from ${formatStorageBytes(compacted.beforeBytes)} to ${formatStorageBytes(compacted.afterBytes)}.`;
       }
-      await refresh();
+      await calculate();
       Alert.alert(
         'Diagnostics deleted',
         `Removed ${deleted.toLocaleString()} tracking_events rows.${compactMessage}`,
@@ -194,7 +218,7 @@ export function ExportSettings() {
     setCompacting(true);
     try {
       const result = await vacuumDatabase();
-      await refresh();
+      await calculate();
       Alert.alert(
         'Database compacted',
         `Reduced from ${formatStorageBytes(result.beforeBytes)} to ${formatStorageBytes(result.afterBytes)}.`,
@@ -214,7 +238,8 @@ export function ExportSettings() {
   const trackingEventsCount = tableStats?.counts.tracking_events ?? 0;
   const totalDbBytes = tableStats?.totalDbBytes ?? 0;
   const freeDbBytes = tableStats?.freeDbBytes ?? 0;
-  const tableActionsDisabled = exporting || deletingDiagnostics || compacting;
+  const tableActionsDisabled =
+    exporting || deletingDiagnostics || compacting || calculating;
 
   return (
     <>
@@ -224,15 +249,19 @@ export function ExportSettings() {
           <View className="flex-1">
             <Text className="font-medium">Export data</Text>
             <Text variant="muted" className="mt-1 text-sm leading-5">
-              Export one table or everything as JSON. Storage estimates use live
-              data size; the all tables row shows the DB file on disk.
+              Export one table or everything as JSON. Row counts and storage
+              estimates are saved after you calculate.
             </Text>
           </View>
         </View>
 
-        {loading ? (
-          <ActivityIndicator className="mt-4" />
-        ) : tableStats ? (
+        <SettingsStatsRefreshBar
+          calculatedAt={calculatedAt}
+          calculating={calculating}
+          onCalculate={() => void calculate()}
+        />
+
+        {tableStats != null ? (
           <>
             <View className="border-border mt-4 overflow-hidden rounded-xl border">
               <ExportTableHeader />

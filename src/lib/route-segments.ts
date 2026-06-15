@@ -5,6 +5,7 @@ import {
   SAME_PLACE_LINE_BREAK_MS,
 } from '@/lib/motion-tracking-policy';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
+import {isStoredRoutePoints} from '@/lib/trip-geometry';
 
 function shouldConnectPoints(
   a: LocationPointRow,
@@ -43,6 +44,11 @@ export function buildDrawableRouteSegments(
 ): MapCoordinate[][] {
   if (points.length < 2) {
     return points.length === 1 ? [toMapCoordinates(points)] : [];
+  }
+
+  // trip_points use evenly spaced fake timestamps — speed heuristics break the line.
+  if (isStoredRoutePoints(points)) {
+    return [toMapCoordinates(points)];
   }
 
   const sorted = [...points].sort(

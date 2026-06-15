@@ -1,4 +1,4 @@
-import {Circle, Marker} from 'react-native-maps';
+import {Marker} from 'react-native-maps';
 import {Fragment} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 
@@ -15,7 +15,6 @@ const SAVED_PLACE_MARKER_ANCHOR = {x: 0.5, y: 0.3} as const;
 /** Lift cluster pill above the saved-place badge (Marker.onPress — not Pressable inside Marker). */
 const CLUSTER_MARKER_ANCHOR = {x: 0.5, y: 1} as const;
 const CLUSTER_MARKER_CENTER_OFFSET = {x: 0, y: -38} as const;
-const CIRCLE_STROKE_WIDTH = 1.5;
 const MARKER_LABEL_MAX_WIDTH = 84;
 
 export type SavedPlaceMomentClusterOnMap = {
@@ -26,7 +25,6 @@ export type SavedPlaceMomentClusterOnMap = {
 
 type SavedPlacesMapOverlayProps = {
   places: SavedPlaceRow[];
-  showCircles: boolean;
   /** Hide the map pin when the callout label already shows this place. */
   hideMarkerPlaceId?: number | null;
   momentClusters?: SavedPlaceMomentClusterOnMap[];
@@ -34,7 +32,6 @@ type SavedPlacesMapOverlayProps = {
 
 export function SavedPlacesMapOverlay({
   places,
-  showCircles,
   hideMarkerPlaceId = null,
   momentClusters = [],
 }: SavedPlacesMapOverlayProps) {
@@ -56,34 +53,11 @@ export function SavedPlacesMapOverlay({
         const showCluster = cluster != null;
 
         if (!showMarker && !showCluster) {
-          return (
-            <Fragment key={place.id}>
-              {showCircles ? (
-                <Circle
-                  center={center}
-                  radius={place.radiusMeters}
-                  fillColor={style.fill}
-                  strokeColor={style.stroke}
-                  strokeWidth={CIRCLE_STROKE_WIDTH}
-                  zIndex={1}
-                />
-              ) : null}
-            </Fragment>
-          );
+          return null;
         }
 
         return (
           <Fragment key={place.id}>
-            {showCircles ? (
-              <Circle
-                center={center}
-                radius={place.radiusMeters}
-                fillColor={style.fill}
-                strokeColor={style.stroke}
-                strokeWidth={CIRCLE_STROKE_WIDTH}
-                zIndex={1}
-              />
-            ) : null}
             {showCluster ? (
               <Marker
                 coordinate={center}

@@ -48,7 +48,6 @@ export function MapScreenMap({controller}: MapScreenMapProps) {
     openSelectedEntryMomentsPreview,
     playback,
     savedPlaces,
-    showSavedPlaceCircles,
     savedPlaceMomentClusters,
   } = controller;
 
@@ -75,7 +74,6 @@ export function MapScreenMap({controller}: MapScreenMapProps) {
       onLongPress={handleMapLongPress}>
       <SavedPlacesMapOverlay
         places={savedPlaces}
-        showCircles={showSavedPlaceCircles}
         momentClusters={savedPlaceMomentClusters}
         hideMarkerPlaceId={
           showHistoryMap
@@ -92,6 +90,7 @@ export function MapScreenMap({controller}: MapScreenMapProps) {
             travels={dayTravels}
             stays={dayStays}
             tripConfig={tripDetectionConfig}
+            savedPlaces={savedPlaces}
             fallbackPoints={historyData.points}
           />
           <MomentMapOverlay
@@ -124,6 +123,7 @@ export function MapScreenMap({controller}: MapScreenMapProps) {
         <>
           <HistoryDayMapOverlay
             plan={historyMapPlan}
+            savedPlaces={savedPlaces}
             selectedSavedPlace={selectedSavedPlace}
             selectedNearbyPlaceLabel={
               selectedSavedPlace ? null : selectedVisitPlaceDisplay.primaryLabel

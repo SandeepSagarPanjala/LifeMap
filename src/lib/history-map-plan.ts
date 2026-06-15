@@ -9,6 +9,7 @@ import {
   type DayTimelineEntry,
   type DetectedTrip,
 } from '@/lib/trip-detection';
+import {resolveRoutePointsForPlayableTrip} from '@/lib/timeline-from-trips';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
 
 export type HistoryMapSelected = {
@@ -20,8 +21,6 @@ export type HistoryMapSelected = {
 };
 
 export type HistoryMapPlan = {
-  pastDrives: LocationPointRow[][];
-  pastStays: DetectedTrip[];
   /** First playable event after the selected index (transparent blue). */
   nextDrive: LocationPointRow[] | null;
   nextStay: DetectedTrip | null;
@@ -64,13 +63,33 @@ function findNextStayAfter(
   return null;
 }
 
+function playableTrips(entries: DayTimelineEntry[]): DetectedTrip[] {
+  return entries.filter((entry): entry is DetectedTrip =>
+    isPlayableTimelineEntry(entry),
+  );
+}
+
+function withRoutePoints(
+  trip: DetectedTrip,
+  playable: DetectedTrip[],
+  dayPoints: LocationPointRow[],
+): DetectedTrip {
+  if (trip.points.length > 0 || dayPoints.length === 0) {
+    return trip;
+  }
+  return {
+    ...trip,
+    points: resolveRoutePointsForPlayableTrip(trip, playable, dayPoints),
+  };
+}
+
 export function buildHistoryMapPlan(
   entries: DayTimelineEntry[],
   selectedIndex: number,
   config: TripDetectionConfig,
+  dayPoints: LocationPointRow[] = [],
 ): HistoryMapPlan {
-  const pastDrives: LocationPointRow[][] = [];
-  const pastStays: DetectedTrip[] = [];
+  const playable = playableTrips(entries);
   let selected: HistoryMapSelected | null = null;
 
   for (let index = 0; index < entries.length; index += 1) {
@@ -80,17 +99,18 @@ export function buildHistoryMapPlan(
     }
 
     if (selectedIndex >= 0 && index === selectedIndex) {
+      const hydrated = withRoutePoints(entry, playable, dayPoints);
       let travelPoints: LocationPointRow[] | null = null;
       let inboundPoints: LocationPointRow[] | null = null;
       let anchorStartStay: DetectedTrip | null = null;
       let anchorEndStay: DetectedTrip | null = null;
 
-      if (entry.kind === 'travel') {
+      if (hydrated.kind === 'travel') {
         anchorStartStay = stayBeforeEntryIndex(entries, index);
         anchorEndStay = findNextStayAfter(entries, index);
         travelPoints = extendTravelToVisitArrival(
           getTravelDisplayPoints(
-            entry,
+            hydrated,
             anchorStartStay,
             staysBeforeEntryIndex(entries, index),
             config,
@@ -100,11 +120,12 @@ export function buildHistoryMapPlan(
       } else if (index > 0) {
         const prior = entries[index - 1];
         if (prior?.kind === 'travel') {
+          const hydratedPrior = withRoutePoints(prior, playable, dayPoints);
           anchorStartStay = stayBeforeEntryIndex(entries, index - 1);
-          anchorEndStay = entry;
+          anchorEndStay = hydrated;
           inboundPoints = getVisitInboundTravelPoints(
-            prior,
-            entry,
+            hydratedPrior,
+            hydrated,
             anchorStartStay,
             staysBeforeEntryIndex(entries, index - 1),
             config,
@@ -113,32 +134,13 @@ export function buildHistoryMapPlan(
       }
 
       selected = {
-        entry,
+        entry: hydrated,
         travelPoints,
         inboundPoints,
         anchorStartStay,
         anchorEndStay,
       };
-      continue;
-    }
-
-    const isPast = selectedIndex >= 0 && index < selectedIndex;
-
-    if (entry.kind === 'travel') {
-      const points = getTravelDisplayPoints(
-        entry,
-        stayBeforeEntryIndex(entries, index),
-        staysBeforeEntryIndex(entries, index),
-        config,
-      );
-      if (points.length === 0) {
-        continue;
-      }
-      if (isPast) {
-        pastDrives.push(points);
-      }
-    } else if (isPast) {
-      pastStays.push(entry);
+      break;
     }
   }
 
@@ -150,8 +152,6 @@ export function buildHistoryMapPlan(
     selectedIndex >= 0 ? findNextStayAfter(entries, selectedIndex) : null;
 
   return {
-    pastDrives,
-    pastStays,
     nextDrive,
     nextStay,
     selected,

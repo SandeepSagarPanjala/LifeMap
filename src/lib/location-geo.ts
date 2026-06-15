@@ -50,6 +50,36 @@ export function toMapCoordinates(points: LocationPointLike[]): MapCoordinate[] {
   }));
 }
 
+/** Cap polyline vertices — MapKit blows up RAM with thousands of points per line. */
+export const MAX_MAP_POLYLINE_POINTS = 180;
+
+export function downsampleMapCoordinates(
+  coordinates: readonly MapCoordinate[],
+  maxPoints = MAX_MAP_POLYLINE_POINTS,
+): MapCoordinate[] {
+  if (coordinates.length <= maxPoints) {
+    return [...coordinates];
+  }
+  if (maxPoints < 2) {
+    return coordinates.length > 0 ? [coordinates[0]!] : [];
+  }
+
+  const step = (coordinates.length - 1) / (maxPoints - 1);
+  const result: MapCoordinate[] = [];
+  for (let i = 0; i < maxPoints; i += 1) {
+    const index = Math.min(coordinates.length - 1, Math.round(i * step));
+    result.push(coordinates[index]!);
+  }
+  return result;
+}
+
+export function toDisplayMapCoordinates(
+  points: LocationPointLike[],
+  maxPoints = MAX_MAP_POLYLINE_POINTS,
+): MapCoordinate[] {
+  return downsampleMapCoordinates(toMapCoordinates(points), maxPoints);
+}
+
 const DEFAULT_REGION: Region = {
   latitude: 37.7749,
   longitude: -122.4194,
