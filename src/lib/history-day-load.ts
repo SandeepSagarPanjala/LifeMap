@@ -1,4 +1,3 @@
-import {getTodayDateKey} from '@/lib/day-utils';
 import type {HistoryData} from '@/lib/history-data-types';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
 
@@ -10,15 +9,33 @@ export type CoalescedLoadOptions = LoadHistoryCallbacks & {
   force?: boolean;
 };
 
-type InflightToday = {
+type InflightEntry = {
   promise: Promise<HistoryData>;
   onPartials: Array<(data: HistoryData) => void>;
   lastPartial?: HistoryData;
 };
 
-const inflightToday = new Map<string, InflightToday>();
+const inflightByDateKey = new Map<string, InflightEntry>();
 
-/** One today load at a time — preload and map hook share the same promise. */
+let globalLoadGeneration = 0;
+
+/** Invalidate in-flight loads — only the latest generation may cache results. */
+export function beginHistoryDayLoad(): number {
+  globalLoadGeneration += 1;
+  return globalLoadGeneration;
+}
+
+export function isCurrentHistoryDayLoad(generation: number): boolean {
+  return generation === globalLoadGeneration;
+}
+
+/** @internal — reset between tests. */
+export function resetHistoryDayLoadStateForTests(): void {
+  globalLoadGeneration = 0;
+  inflightByDateKey.clear();
+}
+
+/** Share one in-flight promise per date key (all days, including today). */
 export async function loadHistoryForDayCoalesced(
   dateKey: string,
   detectionConfig: TripDetectionConfig,
@@ -26,29 +43,28 @@ export async function loadHistoryForDayCoalesced(
 ): Promise<HistoryData> {
   const {loadHistoryForSelectedDay} = await import('@/lib/trip-materialization');
 
-  if (dateKey !== getTodayDateKey() || options?.force) {
-    return loadHistoryForSelectedDay(dateKey, detectionConfig, options);
-  }
-
-  const existing = inflightToday.get(dateKey);
-  if (existing != null) {
-    if (options?.onPartial != null) {
-      existing.onPartials.push(options.onPartial);
-      if (existing.lastPartial != null) {
-        options.onPartial(existing.lastPartial);
+  if (!options?.force) {
+    const existing = inflightByDateKey.get(dateKey);
+    if (existing != null) {
+      if (options?.onPartial != null) {
+        existing.onPartials.push(options.onPartial);
+        if (existing.lastPartial != null) {
+          options.onPartial(existing.lastPartial);
+        }
       }
+      return existing.promise;
     }
-    return existing.promise;
   }
 
   const onPartials: Array<(data: HistoryData) => void> =
     options?.onPartial != null ? [options.onPartial] : [];
-  const entry: InflightToday = {
+  const entry: InflightEntry = {
     promise: Promise.resolve({} as HistoryData),
     onPartials,
   };
 
   entry.promise = loadHistoryForSelectedDay(dateKey, detectionConfig, {
+    force: options?.force,
     onPartial: partial => {
       entry.lastPartial = partial;
       for (const callback of onPartials) {
@@ -56,9 +72,12 @@ export async function loadHistoryForDayCoalesced(
       }
     },
   }).finally(() => {
-    inflightToday.delete(dateKey);
+    inflightByDateKey.delete(dateKey);
   });
 
-  inflightToday.set(dateKey, entry);
+  if (!options?.force) {
+    inflightByDateKey.set(dateKey, entry);
+  }
+
   return entry.promise;
 }

@@ -6,13 +6,19 @@ import {
   historyDataCache,
 } from '@/lib/history-data-cache';
 import {getDayHistoryFingerprint} from '@/lib/history-fingerprint';
-import type {CoalescedLoadOptions} from '@/lib/history-day-load';
+import {
+  beginHistoryDayLoad,
+  type CoalescedLoadOptions,
+  isCurrentHistoryDayLoad,
+} from '@/lib/history-day-load';
 import {useTripDetectionConfig} from '@/hooks/use-trip-detection-config';
 import {getDayRange, getTodayDateKey} from '@/lib/day-utils';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
-import {useAppStore} from '@/stores/app-store';
 
 export type {HistoryData} from '@/lib/history-data-types';
+
+/** Wait for rapid calendar day taps to settle before hitting the database. */
+const HISTORY_DAY_LOAD_DEBOUNCE_MS = 300;
 
 function emptyForDateKey(dateKey: string): HistoryData {
   const {start: dayStart} = getDayRange(dateKey);
@@ -36,7 +42,7 @@ async function loadHistoryForDay(
 async function syncHistoryForDay(
   dateKey: string,
   detectionConfig: TripDetectionConfig,
-  options?: CoalescedLoadOptions,
+  options?: CoalescedLoadOptions & {loadGeneration?: number},
 ): Promise<HistoryData> {
   const cacheKey = historyCacheKey(dateKey, detectionConfig);
   const fingerprint = await getDayHistoryFingerprint(dateKey);
@@ -52,6 +58,12 @@ async function syncHistoryForDay(
   }
 
   const result = await loadHistoryForDay(dateKey, detectionConfig, options);
+  if (
+    options?.loadGeneration != null &&
+    !isCurrentHistoryDayLoad(options.loadGeneration)
+  ) {
+    return result;
+  }
   historyDataCache.write(cacheKey, result, fingerprint);
   return result;
 }
@@ -63,7 +75,6 @@ export function useHistoryForDay(dateKey: string): {
   refresh: () => void;
 } {
   const detectionConfig = useTripDetectionConfig();
-  const mapRefreshNonce = useAppStore(state => state.mapRefreshNonce);
   const initialCacheKey = historyCacheKey(dateKey, detectionConfig);
   const initialCached = historyDataCache.peek(initialCacheKey);
   const [data, setData] = useState<HistoryData>(
@@ -73,12 +84,15 @@ export function useHistoryForDay(dateKey: string): {
     initialCached == null || initialCached.dateKey !== dateKey,
   );
   const [error, setError] = useState<string | null>(null);
-  const mapRefreshNonceRef = useRef(mapRefreshNonce);
   const loadGenerationRef = useRef(0);
 
   const runSync = useCallback(
-    (targetDateKey: string, options?: {force?: boolean; showLoading?: boolean}) => {
-      const generation = ++loadGenerationRef.current;
+    (
+      targetDateKey: string,
+      options?: {force?: boolean; showLoading?: boolean},
+    ) => {
+      const generation = beginHistoryDayLoad();
+      loadGenerationRef.current = generation;
       if (options?.showLoading !== false) {
         setLoading(true);
       }
@@ -86,6 +100,7 @@ export function useHistoryForDay(dateKey: string): {
 
       return syncHistoryForDay(targetDateKey, detectionConfig, {
         force: options?.force,
+        loadGeneration: generation,
         onPartial: partial => {
           if (generation !== loadGenerationRef.current) {
             return;
@@ -133,17 +148,14 @@ export function useHistoryForDay(dateKey: string): {
       setLoading(false);
       return;
     }
-    setLoading(true);
-    void runSync(dateKey, {showLoading: false}).catch(() => undefined);
-  }, [dateKey, detectionConfig, runSync]);
 
-  useEffect(() => {
-    if (mapRefreshNonce === mapRefreshNonceRef.current) {
-      return;
-    }
-    mapRefreshNonceRef.current = mapRefreshNonce;
-    void runSync(dateKey, {force: true, showLoading: true}).catch(() => undefined);
-  }, [dateKey, mapRefreshNonce, runSync]);
+    setLoading(true);
+    const timer = setTimeout(() => {
+      void runSync(dateKey, {showLoading: false}).catch(() => undefined);
+    }, HISTORY_DAY_LOAD_DEBOUNCE_MS);
+
+    return () => clearTimeout(timer);
+  }, [dateKey, detectionConfig, runSync]);
 
   return {data, loading, error, refresh};
 }

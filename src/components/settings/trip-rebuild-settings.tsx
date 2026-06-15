@@ -1,29 +1,22 @@
 import {useCallback, useState} from 'react';
-import {format, subDays} from 'date-fns';
+import {format} from 'date-fns';
 import {ActivityIndicator, Alert, Modal, Pressable, View} from 'react-native';
 import {Route} from 'lucide-react-native';
 
-import {HistoryDatePickerSheet} from '@/components/map/HistoryDatePickerSheet';
 import {Icon} from '@/components/ui/icon';
 import {Text} from '@/components/ui/text';
 import {useTripDetectionConfig} from '@/hooks/use-trip-detection-config';
 import {useThemeColors} from '@/hooks/use-theme-colors';
-import {getTodayDateKey, parseDateKey} from '@/lib/day-utils';
+import {parseDateKey} from '@/lib/day-utils';
 import {clearHistoryDataCache} from '@/lib/history-data-cache';
 import {
   rebuildAllPastDayTrips,
-  rebuildPastDayTrips,
   type RebuildPastTripsProgress,
 } from '@/lib/trip-materialization';
 
 export function TripRebuildSettings() {
   const colors = useThemeColors();
   const detectionConfig = useTripDetectionConfig();
-  const todayKey = getTodayDateKey();
-  const defaultPastKey = format(subDays(parseDateKey(todayKey), 1), 'yyyy-MM-dd');
-
-  const [dayPickerVisible, setDayPickerVisible] = useState(false);
-  const [selectedDayKey, setSelectedDayKey] = useState(defaultPastKey);
   const [rebuilding, setRebuilding] = useState(false);
   const [progress, setProgress] = useState<RebuildPastTripsProgress | null>(
     null,
@@ -49,38 +42,6 @@ export function TripRebuildSettings() {
       setProgress(null);
     }
   }, [detectionConfig]);
-
-  const runRebuildDay = useCallback(
-    async (dateKey: string) => {
-      if (dateKey >= todayKey) {
-        Alert.alert(
-          'Past days only',
-          'Trip rebuild is available for past days. Today uses live GPS.',
-        );
-        return;
-      }
-
-      setRebuilding(true);
-      setProgress({completed: 0, total: 1, dateKey});
-      try {
-        const tripsSaved = await rebuildPastDayTrips(dateKey, detectionConfig);
-        clearHistoryDataCache();
-        Alert.alert(
-          'Day rebuilt',
-          `Saved ${tripsSaved.toLocaleString()} trips for ${format(parseDateKey(dateKey), 'MMM d, yyyy')}.`,
-        );
-      } catch (error) {
-        Alert.alert(
-          'Could not rebuild day',
-          error instanceof Error ? error.message : 'Something went wrong.',
-        );
-      } finally {
-        setRebuilding(false);
-        setProgress(null);
-      }
-    },
-    [detectionConfig, todayKey],
-  );
 
   const confirmRebuildAll = () => {
     Alert.alert(
@@ -129,33 +90,7 @@ export function TripRebuildSettings() {
             Rebuild all past days
           </Text>
         </Pressable>
-
-        <Pressable
-          accessibilityRole="button"
-          disabled={rebuilding}
-          onPress={() => setDayPickerVisible(true)}
-          className={`border-border mt-3 items-center rounded-full border px-4 py-3 ${
-            rebuilding ? 'opacity-50' : ''
-          }`}>
-          <Text className="font-medium">Rebuild one day</Text>
-        </Pressable>
-
-        <Text variant="muted" className="mt-3 text-xs leading-4">
-          On-demand only — shows progress while running. Today is excluded;
-          open today on the map for live tracking.
-        </Text>
       </View>
-
-      <HistoryDatePickerSheet
-        visible={dayPickerVisible}
-        selectedDateKey={selectedDayKey}
-        onSelectDate={dateKey => {
-          setSelectedDayKey(dateKey);
-          setDayPickerVisible(false);
-          void runRebuildDay(dateKey);
-        }}
-        onClose={() => setDayPickerVisible(false)}
-      />
 
       <Modal visible={rebuilding} transparent animationType="fade">
         <View className="flex-1 items-center justify-center bg-black/50 px-6">
