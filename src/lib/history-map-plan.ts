@@ -21,8 +21,10 @@ export type HistoryMapSelected = {
   entry: DetectedTrip;
   travelPoints: LocationPointRow[] | null;
   inboundPoints: LocationPointRow[] | null;
+  outboundPoints: LocationPointRow[] | null;
   anchorStartStay: DetectedTrip | null;
   anchorEndStay: DetectedTrip | null;
+  outboundEndStay: DetectedTrip | null;
   /** Qualifying visit immediately after a selected drive (food stop, charger, etc.). */
   arrivalVisit: DetectedTrip | null;
   /** Short drive after an arrival visit (e.g. Whataburger → Tesla charger). */
@@ -69,6 +71,35 @@ function findDepartureDriveAfterVisit(
   dayPoints: LocationPointRow[],
 ): LocationPointRow[] | null {
   return findNextTravelAfter(entries, afterIndex, config, dayPoints);
+}
+
+function findOutboundDriveAfterStay(
+  entries: DayTimelineEntry[],
+  stayIndex: number,
+  config: TripDetectionConfig,
+  dayPoints: LocationPointRow[],
+): {points: LocationPointRow[]; endStay: DetectedTrip | null} | null {
+  const playable = playableTrips(entries);
+  for (let index = stayIndex + 1; index < entries.length; index += 1) {
+    const entry = entries[index];
+    if (!isPlayableTimelineEntry(entry) || entry.kind !== 'travel') {
+      continue;
+    }
+    const hydrated = withRoutePoints(entry, playable, dayPoints);
+    const points = getTravelDisplayPoints(
+      hydrated,
+      stayBeforeEntryIndex(entries, index),
+      staysBeforeEntryIndex(entries, index),
+      config,
+    );
+    if (points.length > 0) {
+      return {
+        points,
+        endStay: findNextStayAfter(entries, index),
+      };
+    }
+  }
+  return null;
 }
 
 function findNextStayAfter(
@@ -127,8 +158,10 @@ export function buildHistoryMapPlan(
       const hydrated = withRoutePoints(entry, playable, dayPoints);
       let travelPoints: LocationPointRow[] | null = null;
       let inboundPoints: LocationPointRow[] | null = null;
+      let outboundPoints: LocationPointRow[] | null = null;
       let anchorStartStay: DetectedTrip | null = null;
       let anchorEndStay: DetectedTrip | null = null;
+      let outboundEndStay: DetectedTrip | null = null;
 
       let arrivalVisit: DetectedTrip | null = null;
       let departureDrivePoints: LocationPointRow[] | null = null;
@@ -175,14 +208,24 @@ export function buildHistoryMapPlan(
             config,
           );
         }
+        const outbound = findOutboundDriveAfterStay(
+          entries,
+          index,
+          config,
+          dayPoints,
+        );
+        outboundPoints = outbound?.points ?? null;
+        outboundEndStay = outbound?.endStay ?? null;
       }
 
       selected = {
         entry: hydrated,
         travelPoints,
         inboundPoints,
+        outboundPoints,
         anchorStartStay,
         anchorEndStay,
+        outboundEndStay,
         arrivalVisit,
         departureDrivePoints,
       };

@@ -4,11 +4,9 @@ import {HistoryRoutePath} from '@/components/map/HistoryRoutePath';
 import {StayAreasOverlay} from '@/components/map/StayAreasOverlay';
 import {StayDurationCallout} from '@/components/map/StayDurationCallout';
 import {TripRouteOverlay} from '@/components/map/TripRouteOverlay';
-import {VisitInAreaPaths} from '@/components/map/VisitInAreaPaths';
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import type {DriveEndpointLabel} from '@/lib/drive-endpoint-label';
 import type {HistoryMapPlan} from '@/lib/history-map-plan';
-import {shouldDrawVisitInAreaPaths} from '@/lib/trip-detection';
 import type {MomentCounts} from '@/lib/moments/moment-counts';
 import {matchSavedPlaceForStay} from '@/lib/saved-places';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
@@ -46,7 +44,7 @@ export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
   const selectedIsSavedPlace =
     selected?.entry.kind === 'stay' &&
     (selectedSavedPlace != null ||
-      matchSavedPlaceForStay(selected.entry, savedPlaces) != null);
+      matchSavedPlaceForStay(selected.entry, [...savedPlaces]) != null);
 
   return (
     <>
@@ -82,7 +80,7 @@ export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
             trip={selected.arrivalVisit}
             savedPlace={matchSavedPlaceForStay(
               selected.arrivalVisit,
-              savedPlaces,
+              [...savedPlaces],
             )}
           />
         </>
@@ -126,11 +124,20 @@ export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
         />
       ) : null}
 
+      {selected?.entry.kind === 'stay' &&
+      selected.outboundPoints != null &&
+      selected.outboundPoints.length > 0 &&
+      !isPlaying ? (
+        <TripRouteOverlay
+          points={selected.outboundPoints}
+          emphasized
+          anchorStartStay={selected.entry}
+          anchorEndStay={selected.outboundEndStay}
+        />
+      ) : null}
+
       {selected?.entry.kind === 'stay' && !isPlaying && !selectedIsSavedPlace ? (
         <>
-          {shouldDrawVisitInAreaPaths(selected.entry) ? (
-            <VisitInAreaPaths visit={selected.entry} tripConfig={tripConfig} />
-          ) : null}
           <StayAreasOverlay
             stays={[selected.entry]}
             tripConfig={tripConfig}
