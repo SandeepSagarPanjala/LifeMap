@@ -246,9 +246,32 @@ export class TransistorSoftLocationService implements LocationService {
     };
   }
 
+  /** After start(), the SDK defaults to STATIONARY — force MOVING when max reliability is on. */
+  private async forceMovingAfterStart(reason: string): Promise<void> {
+    if (!(await readMaxReliability())) {
+      return;
+    }
+
+    try {
+      await BackgroundGeolocation.changePace(true);
+      shouldApplyDepartureWake(this.motionGuard);
+      await recordTrackingDiagnostic('start_force_moving', {reason});
+    } catch (error) {
+      resetDepartureWake(this.motionGuard);
+      await recordTrackingDiagnostic('start_force_moving_error', {
+        reason,
+        message: error instanceof Error ? error.message : 'unknown',
+      });
+      if (__DEV__) {
+        console.warn('[LifeMap] changePace(true) after start failed', error);
+      }
+    }
+  }
+
   async start(): Promise<void> {
     await BackgroundGeolocation.start();
     await drainNativeLocationQueue();
+    await this.forceMovingAfterStart('user_start');
     await setSetting(SETTINGS_KEY_TRACKING_ENABLED, 'true');
     await recordTrackingDiagnostic('tracking_enabled', {enabled: true});
   }
@@ -283,6 +306,13 @@ export class TransistorSoftLocationService implements LocationService {
     }
 
     await this.applyTrackingProfile();
+
+    if (enabled) {
+      const current = await BackgroundGeolocation.getState();
+      if (current.enabled) {
+        await this.forceMovingAfterStart('bootstrap');
+      }
+    }
   }
 
   dispose(): void {
