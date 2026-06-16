@@ -266,8 +266,15 @@ export function useMapScreenController() {
         selectedHistoryIndex,
         tripDetectionConfig,
         historyData.points,
+        savedPlaces,
       ),
-    [historyData.points, historyEntries, selectedHistoryIndex, tripDetectionConfig],
+    [
+      historyData.points,
+      historyEntries,
+      savedPlaces,
+      selectedHistoryIndex,
+      tripDetectionConfig,
+    ],
   );
 
   const showHistoryPanelContent =

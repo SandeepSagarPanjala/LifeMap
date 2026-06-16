@@ -50,9 +50,9 @@ import {
   notifyMaterializationUpdated,
 } from '@/lib/trip-materialization-events';
 import {
-  buildTimelineFromStoredTrips,
+  hydrateTravelRoutesFromDayPoints,
 } from '@/lib/timeline-from-trips';
-import {flattenTimelinePoints, travelCentroidFromRoute} from '@/lib/trip-geometry';
+import {travelCentroidFromRoute} from '@/lib/trip-geometry';
 import {simplifyDriveRoute} from '@/lib/trip-route-simplify';
 import {resolveVisitAnchor} from '@/lib/visit-anchor';
 import {
@@ -284,6 +284,7 @@ export async function loadHistoryFromStoredTrips(
   dateKey: string,
   tripRows?: TripRow[],
   referenceNow?: Date,
+  detectionConfig: TripDetectionConfig = getDefaultTripDetectionConfig(),
 ): Promise<HistoryData> {
   const {start: dayStart} = getDayRange(dateKey);
   const isToday = dateKey === getTodayDateKey();
@@ -300,12 +301,37 @@ export async function loadHistoryFromStoredTrips(
     };
   }
 
-  const pointsByTripId = await listTripPointsForDay(dateKey);
-  const entries = buildTimelineFromStoredTrips(rows, pointsByTripId);
+  const lookbackStart = getHistoryLookbackStart(
+    dayStart,
+    HISTORY_COMPACT_CONTEXT_HOURS,
+  );
+  const [rawDayPoints, lookbackPoints, savedPlaces] = await Promise.all([
+    isToday && referenceNow != null
+      ? getLocationPointsInRange(dayStart, referenceNow)
+      : getLocationPointsForDay(dateKey),
+    getLocationPointsInRange(
+      lookbackStart,
+      new Date(dayStart.getTime() - 1),
+    ),
+    listSavedPlaces(),
+  ]);
+  const entries = hydrateTravelRoutesFromDayPoints(
+    prepareDayHistoryTimeline(
+      dateKey,
+      rawDayPoints,
+      lookbackPoints,
+      detectionConfig,
+      rangeEnd,
+      [],
+      {savedPlaces},
+      true,
+    ),
+    rawDayPoints,
+  );
 
   return {
     dateKey,
-    points: flattenTimelinePoints(entries),
+    points: rawDayPoints,
     entries,
     range: {startAt: dayStart, endAt: rangeEnd},
   };
@@ -361,15 +387,20 @@ export async function loadTodayHistoryMerged(
     {dayPointsFrom: tailStart, tailDetect: true},
   );
 
-  const entries = mergeSealedAndLiveTimeline(
+  const mergedEntries = mergeSealedAndLiveTimeline(
     sealedData.entries,
     tailLive.entries,
     sealedEndMs,
   );
+  const rawDayPoints = await getLocationPointsInRange(dayStart, referenceNow);
+  const entries = hydrateTravelRoutesFromDayPoints(
+    mergedEntries,
+    rawDayPoints,
+  );
 
   return {
     dateKey,
-    points: flattenTimelinePoints(entries),
+    points: rawDayPoints,
     entries,
     range: {
       startAt: dayStart,
@@ -391,11 +422,22 @@ export async function loadHistoryForSelectedDay(
   const isToday = dateKey === getTodayDateKey();
 
   if (!options?.force && !isToday) {
-    const tripRows = await listTripsForDay(dateKey);
+    const [tripRows, materializedDay] = await Promise.all([
+      listTripsForDay(dateKey),
+      getMaterializedDay(dateKey),
+    ]);
     if (tripRows.length > 0) {
       const pointsByTripId = await listTripPointsForDay(dateKey);
-      if (dayHasStoredTripGeometry(tripRows, pointsByTripId)) {
-        return loadHistoryFromStoredTrips(dateKey, tripRows);
+      if (
+        materializedDay?.detectionVersion === TRIP_DETECTION_VERSION &&
+        dayHasStoredTripGeometry(tripRows, pointsByTripId)
+      ) {
+        return loadHistoryFromStoredTrips(
+          dateKey,
+          tripRows,
+          undefined,
+          detectionConfig,
+        );
       }
     }
   }
@@ -751,12 +793,13 @@ export async function rebuildPastDayTrips(
     throw new Error('Trip rebuild is only available for past days.');
   }
 
+  const {end: dayEnd} = getDayRange(dateKey);
   const live = await loadLiveHistoryForDay(
     dateKey,
     detectionConfig,
-    new Date(),
+    dayEnd,
     true,
-    true,
+    false,
   );
   return persistClosedTripsIncremental(
     dateKey,

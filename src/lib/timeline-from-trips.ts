@@ -10,6 +10,7 @@ import {
   tripRowToDetectedTripWithGeometry,
 } from '@/lib/trip-geometry';
 import {
+  isPlayableTimelineEntry,
   type DayTimelineEntry,
   type DetectedTrip,
   type TimelineGap,
@@ -193,14 +194,20 @@ export function buildTimelineFromTrips(
   return insertGapsBetweenTrips(playable);
 }
 
-export function resolveRoutePointsForPlayableTrip(
+/** True when `dayPoints` are raw GPS rows (not synthetic trip route / stay anchors). */
+export function isRawGpsDayPoints(
+  points: readonly LocationPointRow[],
+): boolean {
+  return points.some(
+    point => point.source !== 'route' && point.source !== 'anchor',
+  );
+}
+
+function collectRoutePointsForTrip(
   trip: DetectedTrip,
   playableTrips: DetectedTrip[],
-  dayPoints: LocationPointRow[],
+  dayPoints: readonly LocationPointRow[],
 ): LocationPointRow[] {
-  if (trip.points.length > 0) {
-    return trip.points;
-  }
   const sorted = [...playableTrips].sort(
     (a, b) => a.startAt.getTime() - b.startAt.getTime(),
   );
@@ -211,24 +218,60 @@ export function resolveRoutePointsForPlayableTrip(
   const sortedPoints = [...dayPoints].sort(
     (a, b) => a.timestamp.getTime() - b.timestamp.getTime(),
   );
-  const pseudoRow: TripRow = {
-    id: trip.materializedTripId ?? 0,
-    eventKey: trip.id,
-    kind: trip.kind,
-    dateKey: '',
-    startAt: trip.startAt,
-    endAt: trip.endAt,
-    durationMs: trip.durationMs,
-    distanceKm: trip.distanceKm,
-    centroidLat: 0,
-    centroidLng: 0,
-    placeLookupCacheId: null,
-    selectedCandidateIndex: null,
-    detectionVersion: 0,
-    closedAt: trip.endAt,
-  };
-  const bounds = tripPointBounds(pseudoRow, index, sorted.map(toPseudoTripRow));
+  const pseudoRows = sorted.map(toPseudoTripRow);
+  const bounds = tripPointBounds(toPseudoTripRow(trip), index, pseudoRows);
   return collectPointsForBounds(sortedPoints, bounds, 0).points;
+}
+
+/** Map routes should follow saved GPS — not the simplified trip_points cache. */
+export function resolveRoutePointsForPlayableTrip(
+  trip: DetectedTrip,
+  playableTrips: DetectedTrip[],
+  dayPoints: LocationPointRow[],
+): LocationPointRow[] {
+  if (dayPoints.length === 0) {
+    return trip.points;
+  }
+
+  const fromDay = collectRoutePointsForTrip(trip, playableTrips, dayPoints);
+  if (isRawGpsDayPoints(dayPoints) && fromDay.length >= 2) {
+    return fromDay;
+  }
+
+  if (trip.points.length > 0) {
+    return trip.points;
+  }
+
+  return fromDay;
+}
+
+/** Replace sparse stored trip routes with the day's raw GPS for map display. */
+export function hydrateTravelRoutesFromDayPoints(
+  entries: readonly DayTimelineEntry[],
+  dayPoints: readonly LocationPointRow[],
+): DayTimelineEntry[] {
+  if (dayPoints.length === 0 || !isRawGpsDayPoints(dayPoints)) {
+    return [...entries];
+  }
+
+  const playable = entries.filter((entry): entry is DetectedTrip =>
+    isPlayableTimelineEntry(entry),
+  );
+
+  return entries.map(entry => {
+    if (!isPlayableTimelineEntry(entry) || entry.kind !== 'travel') {
+      return entry;
+    }
+    const resolved = resolveRoutePointsForPlayableTrip(
+      entry,
+      playable,
+      [...dayPoints],
+    );
+    if (resolved.length === 0) {
+      return entry;
+    }
+    return {...entry, points: resolved};
+  });
 }
 
 function toPseudoTripRow(trip: DetectedTrip): TripRow {

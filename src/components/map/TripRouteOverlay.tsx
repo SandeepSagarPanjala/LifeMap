@@ -8,6 +8,8 @@ import type {DriveEndpointLabel} from '@/lib/drive-endpoint-label';
 import {
   distanceKm,
   downsampleMapCoordinates,
+  MAX_EMPHASIZED_TRIP_POLYLINE_POINTS,
+  MAX_MAP_POLYLINE_POINTS,
   type MapCoordinate,
   toDisplayMapCoordinates,
 } from '@/lib/location-geo';
@@ -51,7 +53,13 @@ export const TripRouteOverlay = memo(function TripRouteOverlay({
   anchorStartStay = null,
   anchorEndStay = null,
 }: TripRouteOverlayProps) {
-  const coordinates = useMemo(() => toDisplayMapCoordinates(points), [points]);
+  const polylineCap = emphasized
+    ? MAX_EMPHASIZED_TRIP_POLYLINE_POINTS
+    : MAX_MAP_POLYLINE_POINTS;
+  const coordinates = useMemo(
+    () => toDisplayMapCoordinates(points, polylineCap),
+    [points, polylineCap],
+  );
   const sparseRoute = useMemo(() => isSparseTravelRoute(points), [points]);
   const denseSamples = useMemo(() => {
     if (playbackProgress == null) {
@@ -114,8 +122,8 @@ export const TripRouteOverlay = memo(function TripRouteOverlay({
     if (distanceKm(last, routeEnd) * 1000 > 8) {
       line.push(routeEnd);
     }
-    return downsampleMapCoordinates(line);
-  }, [coordinates, routeEnd, routeStart]);
+    return downsampleMapCoordinates(line, polylineCap);
+  }, [coordinates, polylineCap, routeEnd, routeStart]);
 
   if (coordinates.length < 1) {
     return null;

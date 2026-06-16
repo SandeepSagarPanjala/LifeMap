@@ -1,7 +1,7 @@
 export const DEFAULT_TRIP_GAP_MINUTES = 10;
 export const DEFAULT_TRIP_DWELL_MINUTES = 5;
 /** Fixed same-place radius for visit detection (not exposed in Settings). */
-export const HISTORY_SAME_PLACE_RADIUS_METERS = 20;
+export const HISTORY_SAME_PLACE_RADIUS_METERS = 75;
 export const DEFAULT_TRIP_DWELL_RADIUS_METERS = HISTORY_SAME_PLACE_RADIUS_METERS;
 
 /** Stops during a drive (Whataburger, charger, etc.) — lower than home dwell. */
@@ -14,7 +14,7 @@ export const MIN_STOP_CLUSTER_RADIUS_METERS = 50;
 export const TRIP_DWELL_CHOICES = [5, 10, 20, 30, 40, 50, 60] as const;
 
 /** How close saves must be to count as the same place. */
-export const TRIP_RADIUS_CHOICES = [20, 25, 50, 100, 150] as const;
+export const TRIP_RADIUS_CHOICES = [20, 25, 50, 75, 100, 150] as const;
 
 export type TripDwellMinutes = (typeof TRIP_DWELL_CHOICES)[number];
 export type TripRadiusMeters = (typeof TRIP_RADIUS_CHOICES)[number];
@@ -29,7 +29,7 @@ export type TripDetectionConfig = {
 export const SAVED_PLACE_MIN_DWELL_MINUTES = 1;
 
 /** Bump when visit/drive detection rules change — invalidates sealed day cache. */
-export const TRIP_DETECTION_VERSION = 11;
+export const TRIP_DETECTION_VERSION = 13;
 
 /** Bump when stored route/visit geometry rules change — invalidates fast load path. */
 export const TRIP_GEOMETRY_VERSION = 1;

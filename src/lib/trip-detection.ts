@@ -81,6 +81,9 @@ const MIN_TRAVEL_DISTANCE_M = 40;
 /** Long drives need multiple fixes — 2-point straight lines are tracking gaps, not routes. */
 const MIN_TRAVEL_POINTS_FOR_LONG_DRIVE = 3;
 const LONG_DRIVE_DISTANCE_M = 200;
+/** Compact food/charger stops — skip dashed in-area paths (orange zone is enough). */
+const MIN_VISIT_IN_AREA_SPREAD_M = 100;
+const MIN_VISIT_IN_AREA_PATH_M = 120;
 
 /** Long hops slower than this are gaps, not drives (see docs/timeline-model.md). */
 const MIN_MEANINGFUL_DRIVE_IMPLIED_KMH = 8;
@@ -1391,8 +1394,13 @@ function findStopSpansInTravel(
     const stationary =
       calculatePathDistanceKm(clusterPoints) * 1000 <= MAX_STOP_CLUSTER_PATH_M;
     const interior = index > 0 && end < points.length - 1;
+    const arrivalStop = end === points.length - 1 && index > 0;
 
-    if (stationary && interior && spanMs >= minTripStopMs) {
+    if (
+      stationary &&
+      (interior || arrivalStop) &&
+      spanMs >= minTripStopMs
+    ) {
       const stopStartMs = points[index]!.timestamp.getTime();
       const stopEndMs = points[end]!.timestamp.getTime();
       if (!spanOverlapsMoment(stopStartMs, stopEndMs, momentTimestamps)) {
@@ -2002,10 +2010,26 @@ export function stayMapMarkerCoordinate(
 }
 
 /** Dashed map paths for wandering inside the orange visit area. */
+export function shouldDrawVisitInAreaPaths(visit: DetectedTrip): boolean {
+  const core = visitCorePoints(visit);
+  if (core.length < 3) {
+    return false;
+  }
+  const spreadM = maxSpreadFromAnchorM(core, 0, core.length - 1);
+  if (spreadM < MIN_VISIT_IN_AREA_SPREAD_M) {
+    return false;
+  }
+  const pathM = calculatePathDistanceKm(core) * 1000;
+  return pathM >= MIN_VISIT_IN_AREA_PATH_M;
+}
+
 export function visitInAreaRouteSegments(
   visit: DetectedTrip,
   config: TripDetectionConfig,
 ): {latitude: number; longitude: number}[][] {
+  if (!shouldDrawVisitInAreaPaths(visit)) {
+    return [];
+  }
   return buildDrawableRouteSegments(visitCorePoints(visit), config);
 }
 

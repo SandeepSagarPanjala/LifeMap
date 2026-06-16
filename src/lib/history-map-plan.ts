@@ -9,8 +9,13 @@ import {
   type DayTimelineEntry,
   type DetectedTrip,
 } from '@/lib/trip-detection';
-import {resolveRoutePointsForPlayableTrip} from '@/lib/timeline-from-trips';
+import {isArrivalVisitAfterDrive} from '@/lib/arrival-visit';
+import {
+  isRawGpsDayPoints,
+  resolveRoutePointsForPlayableTrip,
+} from '@/lib/timeline-from-trips';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
+import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 
 export type HistoryMapSelected = {
   entry: DetectedTrip;
@@ -18,6 +23,10 @@ export type HistoryMapSelected = {
   inboundPoints: LocationPointRow[] | null;
   anchorStartStay: DetectedTrip | null;
   anchorEndStay: DetectedTrip | null;
+  /** Qualifying visit immediately after a selected drive (food stop, charger, etc.). */
+  arrivalVisit: DetectedTrip | null;
+  /** Short drive after an arrival visit (e.g. Whataburger → Tesla charger). */
+  departureDrivePoints: LocationPointRow[] | null;
 };
 
 export type HistoryMapPlan = {
@@ -31,14 +40,17 @@ function findNextTravelAfter(
   entries: DayTimelineEntry[],
   afterIndex: number,
   config: TripDetectionConfig,
+  dayPoints: LocationPointRow[],
 ): LocationPointRow[] | null {
+  const playable = playableTrips(entries);
   for (let index = afterIndex + 1; index < entries.length; index += 1) {
     const entry = entries[index];
     if (!isPlayableTimelineEntry(entry) || entry.kind !== 'travel') {
       continue;
     }
+    const hydrated = withRoutePoints(entry, playable, dayPoints);
     const points = getTravelDisplayPoints(
-      entry,
+      hydrated,
       stayBeforeEntryIndex(entries, index),
       staysBeforeEntryIndex(entries, index),
       config,
@@ -48,6 +60,15 @@ function findNextTravelAfter(
     }
   }
   return null;
+}
+
+function findDepartureDriveAfterVisit(
+  entries: DayTimelineEntry[],
+  afterIndex: number,
+  config: TripDetectionConfig,
+  dayPoints: LocationPointRow[],
+): LocationPointRow[] | null {
+  return findNextTravelAfter(entries, afterIndex, config, dayPoints);
 }
 
 function findNextStayAfter(
@@ -74,7 +95,10 @@ function withRoutePoints(
   playable: DetectedTrip[],
   dayPoints: LocationPointRow[],
 ): DetectedTrip {
-  if (trip.points.length > 0 || dayPoints.length === 0) {
+  if (dayPoints.length === 0) {
+    return trip;
+  }
+  if (trip.kind !== 'travel' || !isRawGpsDayPoints(dayPoints)) {
     return trip;
   }
   return {
@@ -88,6 +112,7 @@ export function buildHistoryMapPlan(
   selectedIndex: number,
   config: TripDetectionConfig,
   dayPoints: LocationPointRow[] = [],
+  savedPlaces: readonly SavedPlaceRow[] = [],
 ): HistoryMapPlan {
   const playable = playableTrips(entries);
   let selected: HistoryMapSelected | null = null;
@@ -105,9 +130,28 @@ export function buildHistoryMapPlan(
       let anchorStartStay: DetectedTrip | null = null;
       let anchorEndStay: DetectedTrip | null = null;
 
+      let arrivalVisit: DetectedTrip | null = null;
+      let departureDrivePoints: LocationPointRow[] | null = null;
+
       if (hydrated.kind === 'travel') {
         anchorStartStay = stayBeforeEntryIndex(entries, index);
         anchorEndStay = findNextStayAfter(entries, index);
+        if (
+          isArrivalVisitAfterDrive(
+            hydrated,
+            anchorEndStay,
+            config,
+            savedPlaces,
+          )
+        ) {
+          arrivalVisit = anchorEndStay;
+          departureDrivePoints = findDepartureDriveAfterVisit(
+            entries,
+            index,
+            config,
+            dayPoints,
+          );
+        }
         travelPoints = extendTravelToVisitArrival(
           getTravelDisplayPoints(
             hydrated,
@@ -139,6 +183,8 @@ export function buildHistoryMapPlan(
         inboundPoints,
         anchorStartStay,
         anchorEndStay,
+        arrivalVisit,
+        departureDrivePoints,
       };
       break;
     }
@@ -146,7 +192,12 @@ export function buildHistoryMapPlan(
 
   const nextDrive =
     selectedIndex >= 0
-      ? findNextTravelAfter(entries, selectedIndex, config)
+      ? findNextTravelAfter(
+          entries,
+          selectedIndex,
+          config,
+          dayPoints,
+        )
       : null;
   const nextStay =
     selectedIndex >= 0 ? findNextStayAfter(entries, selectedIndex) : null;
