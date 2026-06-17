@@ -35,6 +35,7 @@ export function MapScreenFloatingControls({
     handleCaptureNote,
     historyBadgeCount,
     trackingGapWarning,
+    emptySelectedDayMessage,
   } = controller;
 
   return (
@@ -56,7 +57,25 @@ export function MapScreenFloatingControls({
       <MapVoiceButton bottom={voiceButtonBottom} onPress={handleCaptureVoice} />
       <MapNoteButton bottom={noteButtonBottom} onPress={handleCaptureNote} />
 
-      {trackingGapWarning && !historyPanelOpen ? (
+      {emptySelectedDayMessage && !historyPanelOpen ? (
+        <View
+          style={{
+            position: 'absolute',
+            left: 16,
+            right: 16,
+            bottom: placesButtonBottom + 64,
+            backgroundColor: '#111827',
+            borderRadius: 12,
+            paddingHorizontal: 12,
+            paddingVertical: 10,
+          }}>
+          <Text style={{color: '#FFFFFF', fontSize: 13, textAlign: 'center'}}>
+            {emptySelectedDayMessage}
+          </Text>
+        </View>
+      ) : null}
+
+      {trackingGapWarning && !historyPanelOpen && !emptySelectedDayMessage ? (
         <View
           style={{
             position: 'absolute',

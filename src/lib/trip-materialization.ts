@@ -1,7 +1,7 @@
 import {differenceInMilliseconds, endOfDay, subDays} from 'date-fns';
 
 import {
-  getDateKeysWithLocationData,
+  listDateKeysWithLocationDataBefore,
 } from '@/db/repositories/location-days';
 import {
   deleteMotionLocationPoints,
@@ -819,10 +819,7 @@ export type RebuildPastTripsResult = {
 };
 
 function listPastDateKeysWithGps(): Promise<string[]> {
-  const todayKey = getTodayDateKey();
-  return getDateKeysWithLocationData().then(keys =>
-    keys.filter(key => key < todayKey).sort(),
-  );
+  return listDateKeysWithLocationDataBefore(getTodayDateKey());
 }
 
 /** Recompute visits/drives for one past day using the point-explorer algorithm. */

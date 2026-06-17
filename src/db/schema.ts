@@ -116,15 +116,6 @@ export const materializedDays = sqliteTable('materialized_days', {
   updatedAt: integer('updated_at', {mode: 'timestamp'}).notNull(),
 });
 
-export const materializationQueue = sqliteTable('materialization_queue', {
-  id: integer('id').primaryKey({autoIncrement: true}),
-  jobType: text('job_type').notNull(),
-  dateKey: text('date_key').notNull(),
-  status: text('status').notNull().default('pending'),
-  attempts: integer('attempts').notNull().default(0),
-  createdAt: integer('created_at', {mode: 'timestamp'}).notNull(),
-});
-
 export const settingsStatsCache = sqliteTable('settings_stats_cache', {
   key: text('key').primaryKey(),
   payloadJson: text('payload_json').notNull(),

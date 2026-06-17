@@ -29,8 +29,8 @@ describe('database export', () => {
     const tables = {
       location_points: [{id: 1}],
       trips: [],
+      trip_points: [],
       materialized_days: [],
-      materialization_queue: [],
       tracking_events: [],
       saved_places: [{id: 1}],
       place_lookup_cache: [],
@@ -73,8 +73,8 @@ describe('database export', () => {
       sumExportTableRowCounts({
         location_points: 10,
         trips: 2,
+        trip_points: 0,
         materialized_days: 1,
-        materialization_queue: 0,
         tracking_events: 3,
         saved_places: 1,
         place_lookup_cache: 4,

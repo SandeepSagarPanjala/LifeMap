@@ -166,6 +166,10 @@ ALTER TABLE \`trip_points\` ADD COLUMN \`location_point_id\` integer;
 --> statement-breakpoint
 ALTER TABLE \`trip_points\` ADD COLUMN \`source\` text DEFAULT 'gps';`;
 
+const m0011 = `DROP INDEX IF EXISTS \`materialization_queue_status_idx\`;
+--> statement-breakpoint
+DROP TABLE IF EXISTS \`materialization_queue\`;`;
+
 export default {
   journal,
   migrations: {
@@ -180,5 +184,6 @@ export default {
     m0008,
     m0009,
     m0010,
+    m0011,
   },
 };

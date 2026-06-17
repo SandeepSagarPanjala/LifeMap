@@ -35,6 +35,8 @@ export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
     openHistoryDatePicker,
     selectedEntryMomentCounts,
     openSelectedEntryMomentsPreview,
+    viewingToday,
+    historyHasGpsData,
   } = controller;
 
   if (!historyPanelOpen) {
@@ -77,6 +79,8 @@ export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
               scrubOnEvent ? openSelectedEntryMomentsPreview : undefined
             }
             scrubOnEmpty={historyEntries.length > 0 && !scrubOnEvent}
+            emptyDayWithoutData={!historyHasGpsData}
+            viewingToday={viewingToday}
             distanceUnit={distanceUnit}
             isPlaying={playback.isPlaying}
             onPlay={handlePlayHistory}

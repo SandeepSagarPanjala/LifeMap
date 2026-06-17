@@ -3,7 +3,6 @@ import {and, asc, eq, gte, lte, sql} from 'drizzle-orm';
 import {getDatabase} from '../client';
 import {
   locationPoints,
-  materializationQueue,
   materializedDays,
   moments,
   placeLookupCache,
@@ -35,7 +34,6 @@ export async function countExportTableRows(): Promise<
     tripCount,
     tripPointCount,
     materializedDayCount,
-    queueCount,
     trackingEventCount,
     savedPlaceCount,
     placeLookupCount,
@@ -46,7 +44,6 @@ export async function countExportTableRows(): Promise<
     db.select({count: sql<number>`count(*)`}).from(trips),
     db.select({count: sql<number>`count(*)`}).from(tripPoints),
     db.select({count: sql<number>`count(*)`}).from(materializedDays),
-    db.select({count: sql<number>`count(*)`}).from(materializationQueue),
     db.select({count: sql<number>`count(*)`}).from(trackingEvents),
     db.select({count: sql<number>`count(*)`}).from(savedPlaces),
     db.select({count: sql<number>`count(*)`}).from(placeLookupCache),
@@ -59,7 +56,6 @@ export async function countExportTableRows(): Promise<
     trips: Number(tripCount[0]?.count ?? 0),
     trip_points: Number(tripPointCount[0]?.count ?? 0),
     materialized_days: Number(materializedDayCount[0]?.count ?? 0),
-    materialization_queue: Number(queueCount[0]?.count ?? 0),
     tracking_events: Number(trackingEventCount[0]?.count ?? 0),
     saved_places: Number(savedPlaceCount[0]?.count ?? 0),
     place_lookup_cache: Number(placeLookupCount[0]?.count ?? 0),
@@ -111,7 +107,6 @@ export async function fetchDatabaseExportTables(
     tripRows,
     tripPointRows,
     materializedDayRows,
-    queueRows,
     trackingEventRows,
     savedPlaceRows,
     placeLookupRows,
@@ -202,18 +197,6 @@ export async function fetchDatabaseExportTables(
                 lte(materializedDays.dateKey, toDateKey(endAt)),
               ),
             ),
-    period.scope === 'all'
-      ? db.select().from(materializationQueue).orderBy(asc(materializationQueue.createdAt))
-      : db
-          .select()
-          .from(materializationQueue)
-          .where(
-            and(
-              gte(materializationQueue.createdAt, startAt),
-              lte(materializationQueue.createdAt, endAt),
-            ),
-          )
-          .orderBy(asc(materializationQueue.createdAt)),
     db
       .select()
       .from(trackingEvents)
@@ -285,14 +268,6 @@ export async function fetchDatabaseExportTables(
       pointCount: row.pointCount,
       sealedAt: iso(row.sealedAt),
       updatedAt: iso(row.updatedAt),
-    })),
-    materialization_queue: queueRows.map(row => ({
-      id: row.id,
-      jobType: row.jobType,
-      dateKey: row.dateKey,
-      status: row.status,
-      attempts: row.attempts,
-      createdAt: iso(row.createdAt),
     })),
     tracking_events: trackingEventRows.map(row => ({
       id: row.id,

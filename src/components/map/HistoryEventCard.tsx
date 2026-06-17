@@ -36,6 +36,9 @@ type HistoryEventCardProps = {
   onPressMomentCounts?: () => void;
   /** Timeline has data but no event is selected yet. */
   scrubOnEmpty?: boolean;
+  /** Selected day finished loading with no GPS rows. */
+  emptyDayWithoutData?: boolean;
+  viewingToday?: boolean;
   distanceUnit: DistanceUnit;
   isPlaying: boolean;
   onPlay: () => void;
@@ -85,6 +88,8 @@ export function HistoryEventCard({
   momentCounts,
   onPressMomentCounts,
   scrubOnEmpty = false,
+  emptyDayWithoutData = false,
+  viewingToday = false,
   distanceUnit,
   isPlaying,
   onPlay,
@@ -94,15 +99,23 @@ export function HistoryEventCard({
   const colors = useThemeColors();
 
   if (entry == null) {
+    const title = scrubOnEmpty
+      ? 'Select an event'
+      : emptyDayWithoutData
+        ? 'No location data'
+        : 'No history yet';
+    const subtitle = scrubOnEmpty
+      ? 'Tap a visit or drive on the bar, or use the arrows.'
+      : emptyDayWithoutData
+        ? 'LifeMap has no saved points for this day. Try another date.'
+        : viewingToday
+          ? 'Your timeline fills in from install to now as LifeMap saves locations.'
+          : 'Your timeline fills in as LifeMap saves locations.';
     return (
       <View style={styles.card}>
-        <Text className="font-medium">
-          {scrubOnEmpty ? 'Select an event' : 'No history yet'}
-        </Text>
+        <Text className="font-medium">{title}</Text>
         <Text variant="muted" className="mt-1 text-sm">
-          {scrubOnEmpty
-            ? 'Tap a visit or drive on the bar, or use the arrows.'
-            : 'Your timeline fills in from install to now as LifeMap saves locations.'}
+          {subtitle}
         </Text>
       </View>
     );

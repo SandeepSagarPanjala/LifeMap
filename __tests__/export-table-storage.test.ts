@@ -5,8 +5,8 @@ describe('estimateExportTableStorageBytes', () => {
     const counts = {
       location_points: 10,
       trips: 0,
+      trip_points: 0,
       materialized_days: 0,
-      materialization_queue: 0,
       tracking_events: 90,
       saved_places: 0,
       place_lookup_cache: 0,
@@ -25,8 +25,8 @@ describe('estimateExportTableStorageBytes', () => {
       {
         location_points: 0,
         trips: 0,
+        trip_points: 0,
         materialized_days: 0,
-        materialization_queue: 0,
         tracking_events: 0,
         saved_places: 0,
         place_lookup_cache: 0,

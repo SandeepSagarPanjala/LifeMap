@@ -71,6 +71,13 @@
       "when": 1788902000000,
       "tag": "0010_trip_point_metadata",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1788903000000,
+      "tag": "0011_drop_materialization_queue",
+      "breakpoints": true
     }
   ]
 }

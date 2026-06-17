@@ -84,8 +84,7 @@ export async function migrationAlreadyApplied(
     case '0005_trips_materialization':
       return (
         (await tableExists(sqlite, 'trips')) &&
-        (await tableExists(sqlite, 'materialized_days')) &&
-        (await tableExists(sqlite, 'materialization_queue'))
+        (await tableExists(sqlite, 'materialized_days'))
       );
     case '0006_moments_mood':
       return columnExists(sqlite, 'moments', 'title');
@@ -97,6 +96,8 @@ export async function migrationAlreadyApplied(
       return columnExists(sqlite, 'trips', 'segment_order');
     case '0010_trip_point_metadata':
       return columnExists(sqlite, 'trip_points', 'recorded_at');
+    case '0011_drop_materialization_queue':
+      return !(await tableExists(sqlite, 'materialization_queue'));
     default:
       return false;
   }

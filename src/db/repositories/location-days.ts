@@ -1,6 +1,6 @@
 import {and, asc, gte, lte, sql} from 'drizzle-orm';
 
-import {getDayRange, toDateKey} from '@/lib/day-utils';
+import {getDayRange, shiftDateKey, toDateKey} from '@/lib/day-utils';
 
 import {getDatabase} from '../client';
 import {locationPoints} from '../schema';
@@ -30,20 +30,27 @@ export async function getLocationPointsInRange(
     .orderBy(asc(locationPoints.timestamp));
 }
 
-/**
- * @deprecated Prefer getDateKeysWithLocationDataInRange for calendar UI.
- * Scans every row — avoid on large multi-year databases.
- */
-export async function getDateKeysWithLocationData(): Promise<string[]> {
-  const db = await getDatabase();
-  const rows = await db
-    .select({timestamp: locationPoints.timestamp})
-    .from(locationPoints);
-  const keys = new Set<string>();
-  for (const row of rows) {
-    keys.add(toDateKey(row.timestamp));
+/** Calendar days strictly before `beforeDateKey` that have at least one GPS row. */
+export async function listDateKeysWithLocationDataBefore(
+  beforeDateKey: string,
+): Promise<string[]> {
+  const earliest = await getEarliestLocationDateKey();
+  if (earliest == null || earliest >= beforeDateKey) {
+    return [];
   }
-  return [...keys].sort((a, b) => b.localeCompare(a));
+
+  const keys: string[] = [];
+  let cursor = earliest;
+  while (cursor < beforeDateKey) {
+    const {start, end} = getDayRange(cursor);
+    const fingerprint = await getLocationPointsFingerprintInRange(start, end);
+    const pointCount = Number(fingerprint.split(':')[0] ?? 0);
+    if (pointCount > 0) {
+      keys.push(cursor);
+    }
+    cursor = shiftDateKey(cursor, 1);
+  }
+  return keys;
 }
 
 export async function getEarliestLocationDateKey(): Promise<string | null> {

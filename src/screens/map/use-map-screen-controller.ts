@@ -204,16 +204,32 @@ export function useMapScreenController() {
   const playback = useTripPlayback();
   const historyPanelReady = useAfterInteractions(historyPanelOpen);
 
-  const historyReadyForDay =
-    historyData.dateKey === selectedDateKey &&
-    (historyData.entries.length > 0 || historyData.points.length > 0) &&
-    !historyLoading;
-  const historyBlockingLoader = historyLoading && !historyReadyForDay;
+  const historyDayLoaded =
+    historyData.dateKey === selectedDateKey && !historyLoading;
+  const historyHasGpsData =
+    historyData.entries.length > 0 || historyData.points.length > 0;
+  const historyReadyForDay = historyDayLoaded && historyHasGpsData;
+  const historyBlockingLoader = historyLoading && !historyDayLoaded;
 
   const historyBadgeCount = useMemo(
     () => countHistoryTimelineEvents(historyEntries),
     [historyEntries],
   );
+  const emptySelectedDayMessage = useMemo(() => {
+    if (!historyDayLoaded || historyHasGpsData || historyPanelOpen) {
+      return null;
+    }
+    if (viewingToday) {
+      return null;
+    }
+    return 'No saved location data for this day.';
+  }, [
+    historyDayLoaded,
+    historyHasGpsData,
+    historyPanelOpen,
+    viewingToday,
+  ]);
+
   const trackingGapWarning = useMemo(() => {
     if (!viewingToday) {
       return null;
@@ -278,10 +294,7 @@ export function useMapScreenController() {
   );
 
   const showHistoryPanelContent =
-    historyPanelOpen &&
-    historyPanelReady &&
-    historyReadyForDay &&
-    historyEntries.length > 0;
+    historyPanelOpen && historyPanelReady && historyDayLoaded;
 
   const currentOpenVisit = useMemo(
     () =>
@@ -1132,6 +1145,9 @@ export function useMapScreenController() {
     historyMapPlan,
     historyBadgeCount,
     trackingGapWarning,
+    emptySelectedDayMessage,
+    viewingToday,
+    historyHasGpsData,
     historyPanelOpen,
     historyPanelY,
     historyDatePickerOpen,
