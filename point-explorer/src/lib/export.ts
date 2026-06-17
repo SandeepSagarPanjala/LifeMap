@@ -5,7 +5,6 @@ import type {
   ParsedPoint,
   SavedPlaceRow,
   UploadDataKind,
-  UploadMode,
 } from '../types';
 
 const DATE_KEY_FORMATTER = new Intl.DateTimeFormat('en-CA', {
@@ -128,10 +127,6 @@ export function uniqueDateKeys(points: ParsedPoint[]): string[] {
   return [...keys].sort();
 }
 
-export function dateKeyForDate(date: Date): string {
-  return DATE_KEY_FORMATTER.format(date);
-}
-
 /** First instant of a calendar day in America/Chicago. */
 export function chicagoDayStart(dayKey: string): Date {
   let lo = Date.parse(`${dayKey}T00:00:00Z`) - 36 * 3_600_000;
@@ -198,9 +193,4 @@ export function detectUploadDataKind(raw: unknown): UploadDataKind {
     return 'location_points';
   }
   return 'unknown';
-}
-
-export function inferDefaultUploadMode(raw: unknown): UploadMode {
-  const kind = detectUploadDataKind(raw);
-  return kind === 'stored_trips' ? 'plot' : 'detect';
 }

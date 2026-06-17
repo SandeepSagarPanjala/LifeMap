@@ -88,7 +88,3 @@ export async function fetchNearbyPlaceLookup(
     candidates: dedupeCandidates(merged),
   };
 }
-
-export function isPlaceLookupNativeAvailable(): boolean {
-  return nativeModule?.lookupNearbyPlace != null;
-}

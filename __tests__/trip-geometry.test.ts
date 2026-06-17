@@ -1,9 +1,5 @@
 import type {LocationPointRow} from '@/db/repositories/location-days';
 import {bearingDegrees} from '@/lib/location-geo';
-import {
-  pointToSegmentDistanceMeters,
-  simplifyDriveRoute,
-} from '@/lib/trip-route-simplify';
 import {geographicMedoid, resolveVisitAnchor} from '@/lib/visit-anchor';
 
 function point(
@@ -59,59 +55,6 @@ describe('resolveVisitAnchor', () => {
     );
     expect(anchor.lat).toBe(33.214);
     expect(anchor.lng).toBe(-97.132);
-  });
-});
-
-describe('simplifyDriveRoute', () => {
-  it('keeps a corner when bearing changes sharply', () => {
-    const straightNorth = [
-      point(33.0, -97.0, 0),
-      point(33.001, -97.0, 1),
-      point(33.002, -97.0, 2),
-    ];
-    const withRightTurn = [
-      point(33.0, -97.0, 0),
-      point(33.001, -97.0, 1),
-      point(33.0015, -97.0, 2),
-      point(33.0015, -96.999, 3),
-      point(33.0015, -96.998, 4),
-    ];
-
-    expect(simplifyDriveRoute(straightNorth)).toHaveLength(2);
-    const simplifiedTurn = simplifyDriveRoute(withRightTurn);
-    expect(simplifiedTurn.length).toBeGreaterThan(2);
-    expect(
-      simplifiedTurn.some(
-        candidate =>
-          candidate.lat === withRightTurn[2]!.lat &&
-          candidate.lng === withRightTurn[2]!.lng,
-      ),
-    ).toBe(true);
-  });
-
-  it('drops dense collinear points', () => {
-    const dense: LocationPointRow[] = [];
-    for (let i = 0; i < 20; i += 1) {
-      dense.push(point(33.0 + i * 0.00005, -97.0, i));
-    }
-    const simplified = simplifyDriveRoute(dense);
-    expect(simplified.length).toBeLessThan(dense.length);
-    expect(simplified[0]).toEqual({lat: dense[0]!.lat, lng: dense[0]!.lng});
-    expect(simplified[simplified.length - 1]).toEqual({
-      lat: dense[dense.length - 1]!.lat,
-      lng: dense[dense.length - 1]!.lng,
-    });
-  });
-});
-
-describe('pointToSegmentDistanceMeters', () => {
-  it('returns ~0 for a point on the segment', () => {
-    const distance = pointToSegmentDistanceMeters(
-      {lat: 33.0, lng: -97.0},
-      {lat: 33.0, lng: -97.0},
-      {lat: 33.01, lng: -97.0},
-    );
-    expect(distance).toBeLessThan(1);
   });
 });
 

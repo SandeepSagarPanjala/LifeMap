@@ -159,19 +159,3 @@ export function matchDriveEndSavedPlace(
   }
   return null;
 }
-
-export function driveSavedPlaceLabel(
-  fromLabel?: string,
-  toLabel?: string,
-): string {
-  if (fromLabel && toLabel) {
-    return `Drive · ${fromLabel} → ${toLabel}`;
-  }
-  if (fromLabel) {
-    return `Drive · ${fromLabel} →`;
-  }
-  if (toLabel) {
-    return `Drive · → ${toLabel}`;
-  }
-  return 'Drive';
-}

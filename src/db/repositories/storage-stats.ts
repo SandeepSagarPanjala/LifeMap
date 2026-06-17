@@ -15,20 +15,10 @@ import {
   MOMENTS_TMP_DIRECTORY,
 } from '@/lib/moments/moment-storage';
 
-import {getTodayDateKey} from '@/lib/day-utils';
 import {computeDatabaseFileStats} from '@/lib/database-file-stats';
 
 import {getSqlite} from '../client';
-import {countLocationPoints} from './location-points';
-import {getLocationPointsForDay} from './location-days';
 import {getAllMoments, type MomentRow, type MomentType} from './moments';
-
-export type DatabaseStorageStats = {
-  totalBytes: number;
-  todayBytesEstimate: number;
-  totalLocationRows: number;
-  todayLocationRows: number;
-};
 
 export type AppStorageBreakdown = {
   items: StorageBreakdownItem[];
@@ -194,27 +184,6 @@ async function groupMomentStorageByType(
       category: 'moment' as const,
     };
   });
-}
-
-export async function getDatabaseStorageStats(): Promise<DatabaseStorageStats> {
-  const [totalBytes, totalLocationRows, todayPoints] = await Promise.all([
-    getDatabaseFileBytes(),
-    countLocationPoints(),
-    getLocationPointsForDay(getTodayDateKey()),
-  ]);
-
-  const todayLocationRows = todayPoints.length;
-  const todayBytesEstimate =
-    totalLocationRows > 0
-      ? Math.round(totalBytes * (todayLocationRows / totalLocationRows))
-      : 0;
-
-  return {
-    totalBytes,
-    todayBytesEstimate,
-    totalLocationRows,
-    todayLocationRows,
-  };
 }
 
 export async function getAppStorageBreakdown(): Promise<AppStorageBreakdown> {

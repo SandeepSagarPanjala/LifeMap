@@ -175,17 +175,6 @@ export async function upsertTrip(input: InsertTripInput): Promise<TripRow> {
   return mapRow(row);
 }
 
-export async function setTripSelectedCandidateIndex(
-  tripId: number,
-  selectedCandidateIndex: number,
-): Promise<void> {
-  const db = await getDatabase();
-  await db
-    .update(trips)
-    .set({selectedCandidateIndex})
-    .where(eq(trips.id, tripId));
-}
-
 export async function setTripPlaceLookupCacheId(
   tripId: number,
   placeLookupCacheId: number,
@@ -217,14 +206,6 @@ export async function updateTripLabelSelection(
 export async function countTripsForDay(dateKey: string): Promise<number> {
   const rows = await listTripsForDay(dateKey);
   return rows.length;
-}
-
-export async function countAllTrips(): Promise<number> {
-  const db = await getDatabase();
-  const [row] = await db
-    .select({count: sql<number>`cast(count(*) as integer)`})
-    .from(trips);
-  return row?.count ?? 0;
 }
 
 export async function deleteAllTrips(): Promise<number> {

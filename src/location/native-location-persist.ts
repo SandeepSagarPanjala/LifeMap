@@ -50,13 +50,6 @@ export async function startNativeLocationTracking(): Promise<void> {
   await nativeModule!.startNativeTracking();
 }
 
-export async function stopNativeLocationTracking(): Promise<void> {
-  if (!isNativeLocationPersistAvailable()) {
-    return;
-  }
-  await nativeModule!.stopNativeTracking();
-}
-
 export async function nativePersistLocation(
   location: Location,
   source: string,

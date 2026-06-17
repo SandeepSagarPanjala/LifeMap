@@ -41,7 +41,7 @@ pnpm ios
 pnpm ios:device
 ```
 
-To target a different phone, update `IOS_PHYSICAL_DEVICE_UDID` in `src/lib/constants.ts` and `scripts/run-ios-device.sh`.
+To target a different phone, set `IOS_DEVICE_UDID` when running `pnpm ios` (see `scripts/run-ios-device.sh`).
 
 ### iOS — simulator
 

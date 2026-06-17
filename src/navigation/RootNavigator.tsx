@@ -4,7 +4,6 @@ import {useColorScheme} from 'react-native';
 import {useMemo} from 'react';
 
 import type {RootStackParamList} from '@/navigation/types';
-import {DayDetailScreen} from '@/screens/DayDetailScreen';
 import {CaptureNoteScreen} from '@/screens/capture/CaptureNoteScreen';
 import {CapturePhotoScreen} from '@/screens/capture/CapturePhotoScreen';
 import {MapScreen} from '@/screens/MapScreen';
@@ -43,14 +42,6 @@ export function RootNavigator() {
             title: 'Settings',
             headerBackTitle: 'Map',
             presentation: 'card',
-          }}
-        />
-        <Stack.Screen
-          name="DayDetail"
-          component={DayDetailScreen}
-          options={{
-            title: 'Day',
-            headerBackTitle: 'Back',
           }}
         />
         <Stack.Screen

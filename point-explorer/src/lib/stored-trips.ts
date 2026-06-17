@@ -1,9 +1,6 @@
 import {dateKeyForTimestamp} from './export';
 import type {Stop} from './stops';
 import type {
-  DriveSegment,
-  MissingSegment,
-  StaySegment,
   TripResult,
   TripSegment,
 } from './trips';
@@ -101,37 +98,6 @@ function spreadM(points: ParsedPoint[], center: {lat: number; lng: number}): num
     max = Math.max(max, haversineM(center, point));
   }
   return max;
-}
-
-function parsePointRow(
-  row: {
-    id: number;
-    timestamp: string;
-    lat: number;
-    lng: number;
-    accuracy?: number | null;
-    altitude?: number | null;
-    speed?: number | null;
-    source?: string;
-  },
-  fallbackId: number,
-): ParsedPoint | null {
-  if (typeof row.lat !== 'number' || typeof row.lng !== 'number' || !row.timestamp) {
-    return null;
-  }
-  const at = new Date(row.timestamp);
-  return {
-    id: row.id ?? fallbackId,
-    timestamp: row.timestamp,
-    lat: row.lat,
-    lng: row.lng,
-    accuracy: row.accuracy ?? null,
-    altitude: row.altitude ?? null,
-    speed: row.speed ?? null,
-    source: row.source ?? 'trip',
-    at,
-    dateKey: dateKeyForTimestamp(row.timestamp),
-  };
 }
 
 function tripPointsToParsed(

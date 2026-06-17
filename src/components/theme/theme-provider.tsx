@@ -5,7 +5,6 @@ import type {ReactNode} from 'react';
 import {
   ACCENT_THEMES,
   themeTokensToCssVars,
-  type AccentThemeId,
 } from '@/lib/color-themes';
 import {useAppStore} from '@/stores/app-store';
 
@@ -24,8 +23,4 @@ export function ThemeProvider({children}: ThemeProviderProps) {
       {children}
     </View>
   );
-}
-
-export function useAccentThemeId(): AccentThemeId {
-  return useAppStore(state => state.accentTheme);
 }

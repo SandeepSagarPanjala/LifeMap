@@ -7,7 +7,6 @@ import {
 } from './stops';
 import {
   matchSavedPlaceForPoint,
-  matchSavedPlaceForStop,
 } from './saved-places';
 import {
   formatDistance,
@@ -255,16 +254,6 @@ export function explainPoint(
     };
   }
 
-  if (segment.kind === 'missing') {
-    return {
-      assignment: 'missing',
-      segmentOrder: segment.order,
-      segmentLabel: 'Missing gap',
-      reasons: ['This point is not in a missing segment (missing has no GPS).'],
-      hints: [],
-    };
-  }
-
   if (segment.kind === 'stay') {
     const dist = haversineM(segment.stop, point);
     const reasons = [
@@ -293,46 +282,37 @@ export function explainPoint(
     };
   }
 
-  const reasons = [
-    `Member of drive segment #${segment.order}.`,
-    moving
-      ? `Speed ${speedMph(point.speed)} — moving (≥ ${config.movingSpeedMps} m/s), supports drive classification.`
-      : `Speed ${speedMph(point.speed)} — stationary fix on the drive path (common at lights or GPS lag).`,
-    `Drive connects ${segment.fromSavedPlaceLabel ?? 'unknown'} → ${segment.toSavedPlaceLabel ?? 'unknown'}.`,
-  ];
+  if (segment.kind === 'drive') {
+    const reasons = [
+      `Member of drive segment #${segment.order}.`,
+      moving
+        ? `Speed ${speedMph(point.speed)} — moving (≥ ${config.movingSpeedMps} m/s), supports drive classification.`
+        : `Speed ${speedMph(point.speed)} — stationary fix on the drive path (common at lights or GPS lag).`,
+      `Drive connects ${segment.fromSavedPlaceLabel ?? 'unknown'} → ${segment.toSavedPlaceLabel ?? 'unknown'}.`,
+    ];
 
-  if (savedPlace) {
-    hints.push(
-      `GPS places you inside “${savedPlace.label}” while the segment is still a drive — likely arriving, leaving, or jitter near the edge.`,
-    );
+    if (savedPlace) {
+      hints.push(
+        `GPS places you inside “${savedPlace.label}” while the segment is still a drive — likely arriving, leaving, or jitter near the edge.`,
+      );
+    }
+
+    return {
+      assignment: 'drive',
+      segmentOrder: segment.order,
+      segmentLabel: [segment.fromSavedPlaceLabel, segment.toSavedPlaceLabel]
+        .filter(Boolean)
+        .join(' → ') || 'Drive',
+      reasons,
+      hints,
+    };
   }
 
   return {
-    assignment: 'drive',
+    assignment: 'unassigned',
     segmentOrder: segment.order,
-    segmentLabel: [segment.fromSavedPlaceLabel, segment.toSavedPlaceLabel]
-      .filter(Boolean)
-      .join(' → ') || 'Drive',
-    reasons,
-    hints,
+    segmentLabel: 'Unknown segment',
+    reasons: ['Point is in an unrecognized segment kind.'],
+    hints: [],
   };
-}
-
-export function explainStopDetection(
-  stop: import('./stops').Stop,
-  points: ParsedPoint[],
-  savedPlaces: SavedPlaceRow[],
-): string[] {
-  const place = matchSavedPlaceForStop(stop, points, savedPlaces);
-  const lines = [
-    `${points.length} points over ${formatDuration(stop.durationMs)}.`,
-    `Spread ${Math.round(stop.spreadM)} m from cluster centre.`,
-  ];
-  if (stop.inferred) {
-    lines.push('Inferred from sparse GPS gap (time high, distance low).');
-  }
-  if (place) {
-    lines.push(`Inside saved place: ${place.label}.`);
-  }
-  return lines;
 }
