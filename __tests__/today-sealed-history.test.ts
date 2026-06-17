@@ -7,6 +7,7 @@ import {
   trimSealedAtBoundary,
 } from '@/lib/today-sealed-history';
 import type {TripRow} from '@/db/repositories/trips';
+import {makeTripRow} from './trip-row-fixture';
 
 function stay(id: string, startMs: number, endMs: number, open = false): DetectedTrip {
   const startAt = new Date(startMs);
@@ -72,38 +73,21 @@ function travel(id: string, startMs: number, endMs: number): DetectedTrip {
 describe('sealedThroughMs', () => {
   it('returns the latest closed trip end', () => {
     const rows: TripRow[] = [
-      {
+      makeTripRow({
         id: 1,
         eventKey: 'a',
         kind: 'stay',
-        dateKey: '2026-06-15',
         startAt: new Date(1_000),
         endAt: new Date(5_000),
-        durationMs: 4_000,
-        distanceKm: 0,
-        centroidLat: 0,
-        centroidLng: 0,
-        placeLookupCacheId: null,
-        selectedCandidateIndex: null,
-        detectionVersion: 1,
-        closedAt: new Date(5_000),
-      },
-      {
+      }),
+      makeTripRow({
         id: 2,
         eventKey: 'b',
         kind: 'travel',
-        dateKey: '2026-06-15',
         startAt: new Date(5_000),
         endAt: new Date(9_000),
-        durationMs: 4_000,
         distanceKm: 1,
-        centroidLat: 0,
-        centroidLng: 0,
-        placeLookupCacheId: null,
-        selectedCandidateIndex: null,
-        detectionVersion: 1,
-        closedAt: new Date(9_000),
-      },
+      }),
     ];
     expect(sealedThroughMs(rows)).toBe(9_000);
   });

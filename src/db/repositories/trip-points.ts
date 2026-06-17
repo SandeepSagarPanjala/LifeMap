@@ -1,5 +1,6 @@
 import {asc, eq, inArray, sql} from 'drizzle-orm';
 
+import type {LocationPointRow} from '@/db/repositories/location-days';
 import {getDatabase} from '../client';
 import {tripPoints, trips} from '../schema';
 
@@ -11,6 +12,9 @@ export type TripPointRow = {
   seq: number;
   lat: number;
   lng: number;
+  recordedAt: Date | null;
+  locationPointId: number | null;
+  source: string | null;
 };
 
 function mapRow(row: typeof tripPoints.$inferSelect): TripPointRow {
@@ -20,6 +24,9 @@ function mapRow(row: typeof tripPoints.$inferSelect): TripPointRow {
     seq: row.seq,
     lat: row.lat,
     lng: row.lng,
+    recordedAt: row.recordedAt ?? null,
+    locationPointId: row.locationPointId ?? null,
+    source: row.source ?? null,
   };
 }
 
@@ -73,6 +80,9 @@ export async function listTripPointsForDay(
       seq: tripPoints.seq,
       lat: tripPoints.lat,
       lng: tripPoints.lng,
+      recordedAt: tripPoints.recordedAt,
+      locationPointId: tripPoints.locationPointId,
+      source: tripPoints.source,
     })
     .from(tripPoints)
     .innerJoin(trips, eq(tripPoints.tripId, trips.id))
@@ -96,18 +106,41 @@ export async function replaceTripPoints(
   tripId: number,
   coordinates: readonly {lat: number; lng: number}[],
 ): Promise<void> {
+  await replaceTripPointsFromLocations(
+    tripId,
+    coordinates.map((coordinate, seq) => ({
+      id: -(tripId * 10_000 + seq),
+      timestamp: new Date(),
+      lat: coordinate.lat,
+      lng: coordinate.lng,
+      accuracy: null,
+      altitude: null,
+      speed: null,
+      source: 'route',
+    })),
+  );
+}
+
+/** Persist full segment GPS — stays and drives — for history replay without location_points. */
+export async function replaceTripPointsFromLocations(
+  tripId: number,
+  points: readonly LocationPointRow[],
+): Promise<void> {
   const db = await getDatabase();
   await db.delete(tripPoints).where(eq(tripPoints.tripId, tripId));
-  if (coordinates.length === 0) {
+  if (points.length === 0) {
     return;
   }
 
   await db.insert(tripPoints).values(
-    coordinates.map((coordinate, seq) => ({
+    points.map((point, seq) => ({
       tripId,
       seq,
-      lat: coordinate.lat,
-      lng: coordinate.lng,
+      lat: point.lat,
+      lng: point.lng,
+      recordedAt: point.timestamp,
+      locationPointId: point.id > 0 ? point.id : null,
+      source: point.source,
     })),
   );
 }
@@ -153,7 +186,7 @@ export function dayHasStoredTripGeometry(
   }
 
   for (const row of tripRows) {
-    if (row.kind !== 'travel') {
+    if (row.kind === 'missing') {
       continue;
     }
     const route = pointsByTripId.get(row.id);

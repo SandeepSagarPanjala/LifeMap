@@ -1,4 +1,10 @@
-import type {DatabaseExport, LocationExport, LocationPointRow, ParsedPoint} from '../types';
+import type {
+  DatabaseExport,
+  LocationExport,
+  LocationPointRow,
+  ParsedPoint,
+  SavedPlaceRow,
+} from '../types';
 
 const DATE_KEY_FORMATTER = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'America/Chicago',
@@ -83,7 +89,76 @@ export function parseExport(raw: unknown): ParsedPoint[] {
   return points;
 }
 
+export function parseSavedPlaces(raw: unknown): SavedPlaceRow[] {
+  if (!raw || typeof raw !== 'object') {
+    return [];
+  }
+  const rows = (raw as DatabaseExport).tables?.saved_places;
+  if (!Array.isArray(rows)) {
+    return [];
+  }
+  const places: SavedPlaceRow[] = [];
+  for (const row of rows) {
+    if (
+      typeof row.id !== 'number' ||
+      typeof row.label !== 'string' ||
+      typeof row.lat !== 'number' ||
+      typeof row.lng !== 'number' ||
+      typeof row.radiusMeters !== 'number'
+    ) {
+      continue;
+    }
+    places.push({
+      id: row.id,
+      kind: row.kind,
+      label: row.label,
+      lat: row.lat,
+      lng: row.lng,
+      radiusMeters: row.radiusMeters,
+      createdAt: row.createdAt,
+    });
+  }
+  return places;
+}
+
 export function uniqueDateKeys(points: ParsedPoint[]): string[] {
   const keys = new Set(points.map(p => p.dateKey));
   return [...keys].sort();
+}
+
+export function dateKeyForDate(date: Date): string {
+  return DATE_KEY_FORMATTER.format(date);
+}
+
+/** First instant of a calendar day in America/Chicago. */
+export function chicagoDayStart(dayKey: string): Date {
+  let lo = Date.parse(`${dayKey}T00:00:00Z`) - 36 * 3_600_000;
+  let hi = Date.parse(`${dayKey}T00:00:00Z`) + 12 * 3_600_000;
+
+  while (lo < hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    const key = dateKeyForTimestamp(new Date(mid).toISOString());
+    if (key < dayKey) {
+      lo = mid + 1;
+    } else {
+      hi = mid;
+    }
+  }
+  return new Date(lo);
+}
+
+/** First instant of the next calendar day in America/Chicago. */
+export function chicagoDayEnd(dayKey: string): Date {
+  const start = chicagoDayStart(dayKey);
+  const shifted = new Date(start.getTime() + 86_400_000);
+  return chicagoDayStart(dateKeyForTimestamp(shifted.toISOString()));
+}
+
+export function addDaysToDateKey(dayKey: string, delta: number): string {
+  if (delta === 0) {
+    return dayKey;
+  }
+  const start = chicagoDayStart(dayKey);
+  const shifted = new Date(start.getTime() + delta * 86_400_000);
+  return dateKeyForTimestamp(shifted.toISOString());
 }

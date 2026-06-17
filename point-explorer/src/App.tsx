@@ -5,24 +5,147 @@ import {
   formatDateLabel,
   formatTimestamp,
   parseExport,
+  parseSavedPlaces,
   uniqueDateKeys,
 } from './lib/export';
 import {
+  DEFAULT_STOP_CONFIG,
+  formatDuration,
+  detectStops,
+  type Stop,
+} from './lib/stops';
+import {
+  detectTrips,
+  detectTripsForDay,
+  MERGE_STAY_MAX_DISTANCE_M,
+  MIN_DRIVE_DISTANCE_M,
+  MISSING_MIN_DISTANCE_M,
+  MISSING_MIN_GAP_MS,
+  SAVED_PLACE_MIN_DWELL_MS,
+  type TripSegment,
+} from './lib/trips';
+import {describeTripSegment} from './lib/segment-display';
+import {
+  explainPoint,
+  explainSegment,
+  findSegmentForPoint,
+} from './lib/explain';
+import {
+  countBySource,
+  filterPointsBySources,
+  sourceLabel,
+  TRIP_PLOT_SOURCES,
+  uniqueSources,
+} from './lib/sources';
+import {
   adjacentPointId,
   indexOfPointId,
-  sortPointsById,
+  sortPointsByTime,
 } from './lib/point-nav';
-import type {ParsedPoint} from './types';
+import type {ParsedPoint, SavedPlaceRow} from './types';
 
 import './App.css';
 
+type ExplorerMode = 'plot' | 'stops' | 'trips' | 'explain' | 'power';
+type PowerRunResult = {
+  startedAt: Date;
+  finishedAt: Date;
+  elapsedMs: number;
+  pointCount: number;
+  segmentCount: number;
+  inputStartAt: Date | null;
+  inputEndAt: Date | null;
+};
+
+function TripSegmentList({
+  segments,
+  selectedSegmentId,
+  onSelectSegment,
+  onShowFullTrip,
+  onDownload,
+}: {
+  segments: TripSegment[];
+  selectedSegmentId: string | null;
+  onSelectSegment: (segment: TripSegment) => void;
+  onShowFullTrip: () => void;
+  onDownload: () => void;
+}) {
+  return (
+    <section className="trip-panel" aria-label="Trip segments">
+      <div className="trip-panel-header">
+        <span className="field-label">{segments.length} segments</span>
+        <div className="source-filter-actions">
+          {selectedSegmentId != null ? (
+            <button type="button" className="link-btn" onClick={onShowFullTrip}>
+              Show all
+            </button>
+          ) : null}
+          <button type="button" className="link-btn" onClick={onDownload}>
+            JSON
+          </button>
+        </div>
+      </div>
+      {segments.length === 0 ? (
+        <p className="source-filter-hint">No stays or drives found.</p>
+      ) : (
+        <ol className="segment-list">
+          {segments.map((segment, index) => {
+            const isActive = segment.id === selectedSegmentId;
+            const display = describeTripSegment(segment);
+            return (
+              <li key={segment.id}>
+                <button
+                  type="button"
+                  className={
+                    isActive ? 'segment-card is-active' : 'segment-card'
+                  }
+                  onClick={() => onSelectSegment(segment)}>
+                  <div className="segment-card-top">
+                    <span className="segment-index">{index + 1}</span>
+                    <span
+                      className={`segment-kind segment-kind-${display.variant}`}>
+                      {display.kind}
+                    </span>
+                    {display.subtitle ? (
+                      <span className="segment-subtitle">{display.subtitle}</span>
+                    ) : null}
+                  </div>
+                  <div className="segment-time">{display.timeRange}</div>
+                  <div className="segment-stats">
+                    {display.stats.map(stat => (
+                      <span key={stat} className="segment-stat">
+                        {stat}
+                      </span>
+                    ))}
+                  </div>
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </section>
+  );
+}
+
 export function App() {
   const [allPoints, setAllPoints] = useState<ParsedPoint[]>([]);
+  const [savedPlaces, setSavedPlaces] = useState<SavedPlaceRow[]>([]);
   const [fileName, setFileName] = useState<string | null>(null);
   const [dateKey, setDateKey] = useState<string>('all');
+  const [mode, setMode] = useState<ExplorerMode>('plot');
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [pointNavMode, setPointNavMode] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedSources, setSelectedSources] = useState<Set<string>>(new Set());
+  const [plottedPoints, setPlottedPoints] = useState<ParsedPoint[] | null>(null);
+  const [stops, setStops] = useState<Stop[] | null>(null);
+  const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
+  const [segments, setSegments] = useState<TripSegment[] | null>(null);
+  const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
+  const [tripPoints, setTripPoints] = useState<ParsedPoint[] | null>(null);
+  const [tripStops, setTripStops] = useState<Stop[] | null>(null);
+  const [powerResult, setPowerResult] = useState<PowerRunResult | null>(null);
 
   const dateKeys = useMemo(() => uniqueDateKeys(allPoints), [allPoints]);
 
@@ -33,15 +156,58 @@ export function App() {
     return allPoints.filter(p => p.dateKey === dateKey);
   }, [allPoints, dateKey]);
 
-  const pointsById = useMemo(
-    () => sortPointsById(filteredPoints),
+  const availableSources = useMemo(
+    () => uniqueSources(filteredPoints),
     [filteredPoints],
   );
 
-  const selectedPoint = useMemo(
-    () => filteredPoints.find(p => p.id === selectedId) ?? null,
-    [filteredPoints, selectedId],
+  const sourceCounts = useMemo(
+    () => countBySource(filteredPoints),
+    [filteredPoints],
   );
+
+  const plotCount = useMemo(() => {
+    if (selectedSources.size === 0) {
+      return 0;
+    }
+    return filterPointsBySources(filteredPoints, selectedSources).length;
+  }, [filteredPoints, selectedSources]);
+
+  const pointsById = useMemo(() => {
+    const base = plottedPoints ?? [];
+    if (selectedStopId != null && stops != null) {
+      const stop = stops.find(s => s.id === selectedStopId);
+      if (stop) {
+        const idSet = new Set(stop.pointIds);
+        return sortPointsByTime(base.filter(p => idSet.has(p.id)));
+      }
+    }
+    return sortPointsByTime(base);
+  }, [plottedPoints, selectedStopId, stops]);
+
+  const selectedPoint = useMemo(
+    () => plottedPoints?.find(p => p.id === selectedId) ?? null,
+    [plottedPoints, selectedId],
+  );
+
+  const selectedSegment = useMemo(
+    () => segments?.find(segment => segment.id === selectedSegmentId) ?? null,
+    [segments, selectedSegmentId],
+  );
+
+  const segmentExplanation = useMemo(() => {
+    if (mode !== 'explain' || selectedSegment == null) {
+      return null;
+    }
+    return explainSegment(selectedSegment, savedPlaces);
+  }, [mode, selectedSegment, savedPlaces]);
+
+  const pointExplanation = useMemo(() => {
+    if (mode !== 'explain' || selectedPoint == null || segments == null) {
+      return null;
+    }
+    return explainPoint(selectedPoint, segments, savedPlaces);
+  }, [mode, selectedPoint, segments, savedPlaces]);
 
   const selectedIdIndex = useMemo(
     () => indexOfPointId(pointsById, selectedId),
@@ -53,7 +219,9 @@ export function App() {
       return;
     }
     setPointNavMode(true);
-    if (selectedId == null) {
+    const inSequence =
+      selectedId != null && pointsById.some(p => p.id === selectedId);
+    if (!inSequence) {
       setSelectedId(pointsById[0]!.id);
     }
   }, [pointsById, selectedId]);
@@ -100,17 +268,31 @@ export function App() {
     setError(null);
     try {
       const text = await file.text();
-      const parsed = parseExport(JSON.parse(text));
+      const raw = JSON.parse(text);
+      const parsed = parseExport(raw);
       setAllPoints(parsed);
+      setSavedPlaces(parseSavedPlaces(raw));
       setFileName(file.name);
       setDateKey('all');
       setSelectedId(null);
       setPointNavMode(false);
+      setSelectedSources(new Set(uniqueSources(parsed)));
+      setPlottedPoints(null);
+      setStops(null);
+      setSelectedStopId(null);
+      setSegments(null);
+      setSelectedSegmentId(null);
+      setTripPoints(null);
+      setTripStops(null);
+      setPowerResult(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to parse JSON');
       setAllPoints([]);
+      setSavedPlaces([]);
       setFileName(null);
       setPointNavMode(false);
+      setSelectedSources(new Set());
+      setPlottedPoints(null);
     }
   }, []);
 
@@ -134,6 +316,374 @@ export function App() {
     },
     [loadFile],
   );
+
+  const toggleSource = useCallback((source: string) => {
+    setSelectedSources(previous => {
+      const next = new Set(previous);
+      if (next.has(source)) {
+        next.delete(source);
+      } else {
+        next.add(source);
+      }
+      return next;
+    });
+    setPlottedPoints(null);
+    setStops(null);
+    setSelectedStopId(null);
+    setSelectedId(null);
+    setPointNavMode(false);
+  }, []);
+
+  const selectAllSources = useCallback(() => {
+    setSelectedSources(new Set(availableSources));
+    setPlottedPoints(null);
+    setStops(null);
+    setSelectedStopId(null);
+    setSelectedId(null);
+    setPointNavMode(false);
+  }, [availableSources]);
+
+  const clearAllSources = useCallback(() => {
+    setSelectedSources(new Set());
+    setPlottedPoints(null);
+    setStops(null);
+    setSelectedStopId(null);
+    setSelectedId(null);
+    setPointNavMode(false);
+  }, []);
+
+  const resetTripState = useCallback(() => {
+    setSegments(null);
+    setSelectedSegmentId(null);
+    setTripPoints(null);
+    setTripStops(null);
+    setPowerResult(null);
+  }, []);
+
+  const changeMode = useCallback(
+    (next: ExplorerMode) => {
+      setMode(next);
+      // Trips are per-day — pick the most recent date when entering Trips
+      // with "All dates" still selected.
+      if (
+        (next === 'trips' || next === 'explain') &&
+        dateKey === 'all' &&
+        dateKeys.length > 0
+      ) {
+        setDateKey(dateKeys[dateKeys.length - 1]!);
+      }
+      setPlottedPoints(null);
+      setStops(null);
+      setSelectedId(null);
+      setSelectedStopId(null);
+      setPointNavMode(false);
+      resetTripState();
+    },
+    [resetTripState, dateKey, dateKeys],
+  );
+
+  const buildDayTrips = useCallback(() => {
+    if (dateKey === 'all') {
+      return null;
+    }
+    const tripSources = new Set<string>(TRIP_PLOT_SOURCES);
+    setSelectedSources(tripSources);
+    const tripSourcePoints = filterPointsBySources(allPoints, tripSources);
+    return detectTripsForDay(
+      dateKey,
+      tripSourcePoints,
+      undefined,
+      savedPlaces,
+    );
+  }, [dateKey, allPoints, savedPlaces]);
+
+  const applyTripResult = useCallback((result: ReturnType<typeof detectTripsForDay>) => {
+    setTripPoints(result.points);
+    setTripStops(result.stops);
+    setSegments(result.segments);
+    setSelectedSegmentId(null);
+    setPlottedPoints(result.points);
+    setStops(result.stops);
+    setSelectedStopId(null);
+    setSelectedId(null);
+    setPointNavMode(false);
+    setPowerResult(null);
+  }, []);
+
+  const handleDetectTrips = useCallback(() => {
+    const result = buildDayTrips();
+    if (result != null) {
+      applyTripResult(result);
+    }
+  }, [applyTripResult, buildDayTrips]);
+
+  const handlePowerTest = useCallback(() => {
+    const tripSources = new Set<string>(TRIP_PLOT_SOURCES);
+    setSelectedSources(tripSources);
+    const filtered = filterPointsBySources(filteredPoints, tripSources);
+    const inputStartAt = filtered.length > 0 ? filtered[0]!.at : null;
+    const inputEndAt =
+      filtered.length > 0 ? filtered[filtered.length - 1]!.at : null;
+    const startedAt = new Date();
+    const startedPerf = performance.now();
+    const result = detectTrips(filtered, undefined, savedPlaces);
+    const finishedAt = new Date();
+    const elapsedMs = performance.now() - startedPerf;
+    setPowerResult({
+      startedAt,
+      finishedAt,
+      elapsedMs,
+      pointCount: filtered.length,
+      segmentCount: result.segments.length,
+      inputStartAt,
+      inputEndAt,
+    });
+  }, [filteredPoints, savedPlaces]);
+
+  const handleDownloadTrips = useCallback(() => {
+    if (segments == null || segments.length === 0) {
+      return;
+    }
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      source: fileName,
+      dateFilter: dateKey,
+      segmentCount: segments.length,
+      stops: (tripStops ?? []).map(stop => ({
+        id: stop.id,
+        arrivedAt: stop.arrivedAt.toISOString(),
+        leftAt: stop.leftAt.toISOString(),
+        durationMs: stop.durationMs,
+        center: {lat: stop.lat, lng: stop.lng},
+        spreadM: Math.round(stop.spreadM),
+        pointCount: stop.pointCount,
+      })),
+      segments: segments.map(segment => {
+        if (segment.kind === 'missing') {
+          return {
+            kind: 'missing' as const,
+            order: segment.order,
+            startAt: segment.startAt.toISOString(),
+            endAt: segment.endAt.toISOString(),
+            durationMs: segment.durationMs,
+            distanceM: Math.round(segment.distanceM),
+            fromKind: segment.fromKind,
+            toKind: segment.toKind,
+            from: {lat: segment.fromLat, lng: segment.fromLng},
+            to: {lat: segment.toLat, lng: segment.toLng},
+            path: [],
+          };
+        }
+        const path = segment.points.map(p => ({
+          id: p.id,
+          timestamp: p.timestamp,
+          lat: p.lat,
+          lng: p.lng,
+          speed: p.speed,
+          source: p.source,
+        }));
+        if (segment.kind === 'stay') {
+          return {
+            kind: 'stay' as const,
+            order: segment.order,
+            stopId: segment.stop.id,
+            savedPlaceLabel: segment.savedPlaceLabel ?? null,
+            savedPlaceId: segment.savedPlaceId ?? null,
+            arrivedAt: segment.startAt.toISOString(),
+            leftAt: segment.endAt.toISOString(),
+            durationMs: segment.durationMs,
+            center: {lat: segment.stop.lat, lng: segment.stop.lng},
+            spreadM: Math.round(segment.stop.spreadM),
+            pointCount: segment.stop.pointCount,
+            path,
+          };
+        }
+        return {
+          kind: 'drive' as const,
+          order: segment.order,
+          startAt: segment.startAt.toISOString(),
+          endAt: segment.endAt.toISOString(),
+          durationMs: segment.durationMs,
+          distanceM: Math.round(segment.distanceM),
+          fromStopId: segment.fromStop?.id ?? null,
+          toStopId: segment.toStop?.id ?? null,
+          fromSavedPlaceLabel: segment.fromSavedPlaceLabel ?? null,
+          fromSavedPlaceId: segment.fromSavedPlaceId ?? null,
+          toSavedPlaceLabel: segment.toSavedPlaceLabel ?? null,
+          toSavedPlaceId: segment.toSavedPlaceId ?? null,
+          path,
+        };
+      }),
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: 'application/json',
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    const stamp = dateKey === 'all' ? 'all-dates' : dateKey;
+    anchor.href = url;
+    anchor.download = `trips-${stamp}.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }, [segments, tripStops, fileName, dateKey]);
+
+  const showFullTrip = useCallback(() => {
+    if (tripPoints == null) {
+      return;
+    }
+    setSelectedSegmentId(null);
+    setPlottedPoints(tripPoints);
+    setStops(tripStops ?? []);
+    setSelectedStopId(null);
+    setSelectedId(null);
+    setPointNavMode(false);
+  }, [tripPoints, tripStops]);
+
+  const onSelectSegment = useCallback(
+    (segment: TripSegment) => {
+      setSelectedId(null);
+      setPointNavMode(false);
+
+      if (selectedSegmentId === segment.id) {
+        setSelectedSegmentId(null);
+        setPlottedPoints(tripPoints);
+        setStops(tripStops ?? []);
+        setSelectedStopId(null);
+        return;
+      }
+
+      setSelectedSegmentId(segment.id);
+      if (segment.kind === 'missing') {
+        return;
+      }
+      setPlottedPoints(segment.points);
+      if (segment.kind === 'stay') {
+        setStops([segment.stop]);
+        setSelectedStopId(segment.stop.id);
+      } else {
+        const context = [segment.fromStop, segment.toStop].filter(
+          (s): s is Stop => s != null,
+        );
+        setStops(context);
+        setSelectedStopId(null);
+      }
+    },
+    [selectedSegmentId, tripPoints, tripStops],
+  );
+
+  const handleSelectPoint = useCallback(
+    (id: number) => {
+      setSelectedId(id);
+      if (mode !== 'explain' || segments == null) {
+        return;
+      }
+      const segment = findSegmentForPoint(id, segments);
+      if (segment == null || segment.kind === 'missing') {
+        return;
+      }
+      setSelectedSegmentId(segment.id);
+      setPlottedPoints(segment.points);
+      if (segment.kind === 'stay') {
+        setStops([segment.stop]);
+        setSelectedStopId(segment.stop.id);
+      } else {
+        const context = [segment.fromStop, segment.toStop].filter(
+          (s): s is Stop => s != null,
+        );
+        setStops(context);
+        setSelectedStopId(null);
+      }
+    },
+    [mode, segments],
+  );
+
+  const handlePlot = useCallback(() => {
+    const next = filterPointsBySources(filteredPoints, selectedSources);
+    setPlottedPoints(next);
+    setStops(null);
+    setSelectedStopId(null);
+    setSelectedId(null);
+    setPointNavMode(false);
+  }, [filteredPoints, selectedSources]);
+
+  const handlePlotTrip = useCallback(() => {
+    const tripSources = new Set<string>(TRIP_PLOT_SOURCES);
+    setSelectedSources(tripSources);
+    const next = filterPointsBySources(filteredPoints, tripSources);
+    setPlottedPoints(next);
+    setStops(null);
+    setSelectedStopId(null);
+    setSelectedId(null);
+    setPointNavMode(false);
+  }, [filteredPoints]);
+
+  const handleDetectStops = useCallback(() => {
+    const tripSources = new Set<string>(TRIP_PLOT_SOURCES);
+    setSelectedSources(tripSources);
+    const next = filterPointsBySources(filteredPoints, tripSources);
+    setPlottedPoints(next);
+    setStops(detectStops(next));
+    setSelectedId(null);
+    setPointNavMode(false);
+  }, [filteredPoints]);
+
+  const toggleStop = useCallback((stopId: string) => {
+    setSelectedStopId(previous => (previous === stopId ? null : stopId));
+  }, []);
+
+  const visibleStops = useMemo(() => {
+    if (stops == null) {
+      return [];
+    }
+    if (selectedStopId == null) {
+      return stops;
+    }
+    return stops.filter(stop => stop.id === selectedStopId);
+  }, [stops, selectedStopId]);
+
+  const highlightedPointIds = useMemo(() => {
+    if (selectedStopId == null) {
+      return null;
+    }
+    const stop = stops?.find(s => s.id === selectedStopId);
+    return stop ? new Set(stop.pointIds) : null;
+  }, [stops, selectedStopId]);
+
+  useEffect(() => {
+    setSelectedSources(previous => {
+      const next = new Set<string>();
+      for (const source of availableSources) {
+        if (previous.has(source)) {
+          next.add(source);
+        }
+      }
+      if (next.size === previous.size) {
+        let unchanged = true;
+        for (const source of next) {
+          if (!previous.has(source)) {
+            unchanged = false;
+            break;
+          }
+        }
+        if (unchanged) {
+          return previous;
+        }
+      }
+      return next;
+    });
+    setPlottedPoints(null);
+    setStops(null);
+    setSelectedStopId(null);
+    setSelectedId(null);
+    setPointNavMode(false);
+    setSegments(null);
+    setSelectedSegmentId(null);
+    setTripPoints(null);
+    setTripStops(null);
+  }, [availableSources]);
 
   const canGoPrev = adjacentPointId(pointsById, selectedId, -1) != null;
   const canGoNext = adjacentPointId(pointsById, selectedId, 1) != null;
@@ -164,31 +714,66 @@ export function App() {
 
         {fileName ? (
           <>
-            <section className="meta">
-              <div>
-                <span className="label">File</span>
-                <span>{fileName}</span>
-              </div>
-              <div>
-                <span className="label">Total points</span>
-                <span>{allPoints.length.toLocaleString()}</span>
-              </div>
-              <div>
-                <span className="label">Showing</span>
-                <span>{filteredPoints.length.toLocaleString()}</span>
-              </div>
-            </section>
+            <details className="meta-details">
+              <summary className="meta-summary">
+                <span>Data summary</span>
+                <span className="meta-summary-value">{fileName}</span>
+              </summary>
+              <section className="meta">
+                <div>
+                  <span className="label">File</span>
+                  <span className="meta-value">{fileName}</span>
+                </div>
+                <div>
+                  <span className="label">Total points</span>
+                  <span className="meta-value">
+                    {allPoints.length.toLocaleString()}
+                  </span>
+                </div>
+                <div>
+                  <span className="label">Date filter</span>
+                  <span className="meta-value">
+                    {filteredPoints.length.toLocaleString()}
+                  </span>
+                </div>
+                <div>
+                  <span className="label">Plotted</span>
+                  <span className="meta-value">
+                    {plottedPoints != null
+                      ? plottedPoints.length.toLocaleString()
+                      : '—'}
+                  </span>
+                </div>
+              </section>
+            </details>
 
             <label className="field">
-              <span className="field-label">Date (America/Chicago)</span>
+              <span className="field-label">
+                {mode === 'trips'
+                  ? 'Trip date (America/Chicago)'
+                  : mode === 'explain'
+                    ? 'Explain date (America/Chicago)'
+                  : mode === 'power'
+                    ? 'Power test range (America/Chicago)'
+                    : 'Date (America/Chicago)'}
+              </span>
               <select
-                value={dateKey}
+                value={dateKey === 'all' && (mode === 'trips' || mode === 'explain') ? '' : dateKey}
                 onChange={event => {
                   setDateKey(event.target.value);
+                  setPlottedPoints(null);
+                  setStops(null);
+                  setSelectedStopId(null);
                   setSelectedId(null);
                   setPointNavMode(false);
+                  setSegments(null);
+                  setSelectedSegmentId(null);
+                  setTripPoints(null);
+                  setTripStops(null);
                 }}>
-                <option value="all">All dates ({dateKeys.length})</option>
+                {mode !== 'trips' && mode !== 'explain' ? (
+                  <option value="all">All dates ({dateKeys.length})</option>
+                ) : null}
                 {dateKeys.map(key => (
                   <option key={key} value={key}>
                     {formatDateLabel(key)} (
@@ -196,7 +781,393 @@ export function App() {
                   </option>
                 ))}
               </select>
+              {mode === 'trips' || mode === 'explain' ? (
+                <p className="source-filter-hint">
+                  {mode === 'trips'
+                    ? 'Trips are built for the selected day only.'
+                    : 'Build trips, then click a segment or map point for why.'}
+                </p>
+              ) : null}
             </label>
+
+            <div className="mode-tabs" role="tablist" aria-label="Explorer mode">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === 'plot'}
+                className={mode === 'plot' ? 'mode-tab is-active' : 'mode-tab'}
+                onClick={() => changeMode('plot')}>
+                Plot
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === 'stops'}
+                className={mode === 'stops' ? 'mode-tab is-active' : 'mode-tab'}
+                onClick={() => changeMode('stops')}>
+                Stops
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === 'trips'}
+                className={mode === 'trips' ? 'mode-tab is-active' : 'mode-tab'}
+                onClick={() => changeMode('trips')}>
+                Trips
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === 'explain'}
+                className={mode === 'explain' ? 'mode-tab is-active' : 'mode-tab'}
+                onClick={() => changeMode('explain')}>
+                Explain
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === 'power'}
+                className={mode === 'power' ? 'mode-tab is-active' : 'mode-tab'}
+                onClick={() => changeMode('power')}>
+                Power
+              </button>
+            </div>
+
+            {mode === 'plot' ? (
+              <section className="source-filter" aria-label="Source types to plot">
+                <div className="source-filter-header">
+                  <span className="field-label">Source types</span>
+                  <div className="source-filter-actions">
+                    <button type="button" className="link-btn" onClick={selectAllSources}>
+                      All
+                    </button>
+                    <button type="button" className="link-btn" onClick={clearAllSources}>
+                      None
+                    </button>
+                  </div>
+                </div>
+                <div className="source-checkboxes">
+                  {availableSources.map(source => {
+                    const checked = selectedSources.has(source);
+                    const count = sourceCounts.get(source) ?? 0;
+                    return (
+                      <label key={source} className="source-checkbox">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleSource(source)}
+                        />
+                        <span className="source-checkbox-text">
+                          <span className="source-checkbox-name">
+                            {sourceLabel(source)}
+                          </span>
+                          <span className="source-checkbox-count">
+                            {count.toLocaleString()}
+                          </span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <button
+                  type="button"
+                  className="plot-btn"
+                  disabled={selectedSources.size === 0 || plotCount === 0}
+                  onClick={handlePlot}>
+                  Plot {plotCount.toLocaleString()} point{plotCount === 1 ? '' : 's'}
+                </button>
+                <button
+                  type="button"
+                  className="trip-btn"
+                  onClick={handlePlotTrip}>
+                  Plot trip points (merged track)
+                </button>
+                <p className="source-filter-hint">
+                  Choose one or more sources, then click Plot. Merged track = gps
+                  + native_queue + motion_departure + native_queue:motionchange.
+                </p>
+              </section>
+            ) : mode === 'stops' ? (
+              <section className="stops-mode" aria-label="Identify stops">
+                <button
+                  type="button"
+                  className="stops-btn"
+                  onClick={handleDetectStops}>
+                  Identify stops (circle them)
+                </button>
+                <p className="source-filter-hint">
+                  Uses the merged trip track. A stop = stayed ≥ 5 min within 75 m
+                  (driving points excluded by speed).
+                </p>
+
+                {stops != null ? (
+                  <section className="stops-panel" aria-label="Detected stops">
+                    <div className="stops-panel-header">
+                      <span className="field-label">Stops ({stops.length})</span>
+                      {selectedStopId != null ? (
+                        <button
+                          type="button"
+                          className="link-btn"
+                          onClick={() => setSelectedStopId(null)}>
+                          Show all
+                        </button>
+                      ) : null}
+                    </div>
+                    {stops.length === 0 ? (
+                      <p className="source-filter-hint">
+                        No stops ≥ 5 min found for this selection.
+                      </p>
+                    ) : (
+                      <ol className="stops-list">
+                        {stops.map((stop, index) => {
+                          const isActive = stop.id === selectedStopId;
+                          return (
+                            <li key={stop.id}>
+                              <button
+                                type="button"
+                                className={
+                                  isActive
+                                    ? 'stops-list-item is-active'
+                                    : 'stops-list-item'
+                                }
+                                onClick={() => toggleStop(stop.id)}>
+                                <span className="stops-list-index">
+                                  {index + 1}
+                                </span>
+                                <span className="stops-list-text">
+                                  <span className="stops-list-time">
+                                    {formatTimestamp(stop.arrivedAt.toISOString())
+                                      .replace(/, \d{4}/, '')}
+                                  </span>
+                                  <span className="stops-list-meta">
+                                    {formatDuration(stop.durationMs)} ·{' '}
+                                    {stop.pointCount} pts · spread{' '}
+                                    {Math.round(stop.spreadM)} m
+                                  </span>
+                                </span>
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ol>
+                    )}
+                  </section>
+                ) : null}
+              </section>
+            ) : mode === 'trips' ? (
+              <section className="stops-mode" aria-label="Trips">
+                <button
+                  type="button"
+                  className="stops-btn"
+                  disabled={dateKey === 'all'}
+                  onClick={handleDetectTrips}>
+                  Identify trips (stays + drives)
+                </button>
+                <p className="source-filter-hint">
+                  {dateKey === 'all'
+                    ? 'Pick a date above, then identify trips.'
+                    : `${filteredPoints.length.toLocaleString()} points · ${formatDateLabel(dateKey)}`}
+                </p>
+                <details className="meta-details">
+                  <summary className="meta-summary">
+                    <span>Trips algorithm info</span>
+                    <span className="meta-summary-value">Visit + drive rules</span>
+                  </summary>
+                  <section className="meta">
+                    <div>
+                      <span className="label">Visit (stay) rule</span>
+                      <span className="meta-value">
+                        Stationary within {DEFAULT_STOP_CONFIG.radiusM} m for at
+                        least {Math.round(DEFAULT_STOP_CONFIG.minDwellMs / 60000)} min.
+                        Sparse gaps up to{' '}
+                        {Math.round(DEFAULT_STOP_CONFIG.sparseBridgeMaxDistanceM)} m
+                        can bridge when fixes are ≥{' '}
+                        {Math.round(DEFAULT_STOP_CONFIG.sparseBridgeMinGapMs / 60000)}{' '}
+                        min apart.
+                      </span>
+                    </div>
+                    <div>
+                      <span className="label">Moving speed gate</span>
+                      <span className="meta-value">
+                        Point is moving when speed ≥{' '}
+                        {DEFAULT_STOP_CONFIG.movingSpeedMps} m/s.
+                      </span>
+                    </div>
+                    <div>
+                      <span className="label">Sparse GPS inferred visit</span>
+                      <span className="meta-value">
+                        High time gap + low distance: gap ≥{' '}
+                        {Math.round(DEFAULT_STOP_CONFIG.minDwellMs / 60000)} min and
+                        displacement ≤ {DEFAULT_STOP_CONFIG.radiusM} m.
+                      </span>
+                    </div>
+                    <div>
+                      <span className="label">Saved place special visit</span>
+                      <span className="meta-value">
+                        Inside the same saved place for at least{' '}
+                        {Math.round(SAVED_PLACE_MIN_DWELL_MS / 60000)} min counts as
+                        a stay.
+                      </span>
+                    </div>
+                    <div>
+                      <span className="label">Real drive rule</span>
+                      <span className="meta-value">
+                        Moving points with path ≥ {MIN_DRIVE_DISTANCE_M} m always
+                        count (loop-back drives). Otherwise displacement must be ≥
+                        {DEFAULT_STOP_CONFIG.radiusM} m, then either moving points
+                        exist or path ≥ {MIN_DRIVE_DISTANCE_M} m.
+                      </span>
+                    </div>
+                    <div>
+                      <span className="label">Adjacent stay merge rule</span>
+                      <span className="meta-value">
+                        Consecutive stays are merged when centers are within{' '}
+                        {MERGE_STAY_MAX_DISTANCE_M} m (same place).
+                      </span>
+                    </div>
+                    <div>
+                      <span className="label">Missing segment rule</span>
+                      <span className="meta-value">
+                        Inserted only when gap distance ≥ {MISSING_MIN_DISTANCE_M} m
+                        and gap time ≥ {Math.round(MISSING_MIN_GAP_MS / 60000)} min.
+                      </span>
+                    </div>
+                    <div>
+                      <span className="label">Day boundary rule</span>
+                      <span className="meta-value">
+                        Home stays split at midnight. Drives and non-home stays
+                        crossing midnight appear in full on both days (last on
+                        previous day, first on next day).
+                      </span>
+                    </div>
+                    <div>
+                      <span className="label">Accuracy filter</span>
+                      <span className="meta-value">
+                        Points with accuracy worse than{' '}
+                        {DEFAULT_STOP_CONFIG.maxAccuracyM} m are ignored.
+                      </span>
+                    </div>
+                  </section>
+                </details>
+
+                {segments != null ? (
+                  <TripSegmentList
+                    segments={segments}
+                    selectedSegmentId={selectedSegmentId}
+                    onSelectSegment={onSelectSegment}
+                    onShowFullTrip={showFullTrip}
+                    onDownload={handleDownloadTrips}
+                  />
+                ) : null}
+              </section>
+            ) : mode === 'explain' ? (
+              <section className="stops-mode" aria-label="Explain trips">
+                <button
+                  type="button"
+                  className="stops-btn"
+                  disabled={dateKey === 'all'}
+                  onClick={handleDetectTrips}>
+                  Build trips &amp; explanations
+                </button>
+                <p className="source-filter-hint">
+                  {dateKey === 'all'
+                    ? 'Pick a date, then build explanations.'
+                    : 'Click a segment or any map point to see why.'}
+                </p>
+
+                {segments != null ? (
+                  <>
+                    <TripSegmentList
+                      segments={segments}
+                      selectedSegmentId={selectedSegmentId}
+                      onSelectSegment={onSelectSegment}
+                      onShowFullTrip={showFullTrip}
+                      onDownload={handleDownloadTrips}
+                    />
+                    {segmentExplanation != null ? (
+                      <section className="explain-panel" aria-label="Segment explanation">
+                        <h3 className="explain-title">{segmentExplanation.title}</h3>
+                        <p className="explain-kind">
+                          Classified as{' '}
+                          <strong>{segmentExplanation.kind.toUpperCase()}</strong>
+                        </p>
+                        <ul className="explain-list">
+                          {segmentExplanation.reasons.map(reason => (
+                            <li key={reason}>{reason}</li>
+                          ))}
+                        </ul>
+                        {segmentExplanation.notes.length > 0 ? (
+                          <ul className="explain-notes">
+                            {segmentExplanation.notes.map(note => (
+                              <li key={note}>{note}</li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </section>
+                    ) : (
+                      <p className="source-filter-hint">
+                        Select a segment above to see why it is a stay or drive.
+                      </p>
+                    )}
+                  </>
+                ) : null}
+              </section>
+            ) : (
+              <section className="power-mode" aria-label="Power benchmark">
+                <button
+                  type="button"
+                  className="stops-btn"
+                  onClick={handlePowerTest}>
+                  Run trip detection benchmark
+                </button>
+                <p className="source-filter-hint">
+                  Measures only algorithm time for detectTrips on merged trip
+                  sources.
+                </p>
+                {powerResult ? (
+                  <section className="power-panel" aria-label="Benchmark result">
+                    <div>
+                      <span className="label">Run start</span>
+                      <span className="meta-value">
+                        {formatTimestamp(powerResult.startedAt.toISOString())}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="label">Run end</span>
+                      <span className="meta-value">
+                        {formatTimestamp(powerResult.finishedAt.toISOString())}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="label">Elapsed</span>
+                      <span className="meta-value">
+                        {powerResult.elapsedMs.toFixed(2)} ms
+                      </span>
+                    </div>
+                    <div>
+                      <span className="label">Input points</span>
+                      <span className="meta-value">
+                        {powerResult.pointCount.toLocaleString()}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="label">Input range</span>
+                      <span className="meta-value">
+                        {powerResult.inputStartAt && powerResult.inputEndAt
+                          ? `${formatTimestamp(powerResult.inputStartAt.toISOString())} → ${formatTimestamp(powerResult.inputEndAt.toISOString())}`
+                          : 'No input points'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="label">Output segments</span>
+                      <span className="meta-value">
+                        {powerResult.segmentCount.toLocaleString()}
+                      </span>
+                    </div>
+                  </section>
+                ) : null}
+              </section>
+            )}
 
             {pointNavMode ? (
               <section className="point-nav" aria-label="Point-to-point navigation">
@@ -241,7 +1212,8 @@ export function App() {
                 {selectedIdIndex >= 0 ? (
                   <p className="point-nav-sub">
                     {selectedIdIndex + 1} of {pointsById.length.toLocaleString()}{' '}
-                    on this date · by point ID
+                    {selectedStopId != null ? 'in this stop' : 'on this date'} ·
+                    by time
                   </p>
                 ) : null}
                 {prevPointId != null || nextPointId != null ? (
@@ -255,7 +1227,7 @@ export function App() {
                   ← → arrow keys · Esc to exit
                 </p>
               </section>
-            ) : filteredPoints.length > 0 ? (
+            ) : plottedPoints != null && plottedPoints.length > 0 ? (
               <button
                 type="button"
                 className="secondary-btn"
@@ -265,8 +1237,32 @@ export function App() {
             ) : null}
 
             {selectedPoint ? (
-              <section className="detail">
+              <section
+                className={
+                  mode === 'explain' ? 'detail explain-detail' : 'detail'
+                }>
                 <h2>Point #{selectedPoint.id}</h2>
+                {mode === 'explain' && pointExplanation != null ? (
+                  <>
+                    <p className="explain-kind">
+                      {pointExplanation.assignment === 'unassigned'
+                        ? 'Not in any segment'
+                        : `${pointExplanation.assignment.toUpperCase()} · segment #${pointExplanation.segmentOrder}${pointExplanation.segmentLabel ? ` · ${pointExplanation.segmentLabel}` : ''}`}
+                    </p>
+                    <ul className="explain-list">
+                      {pointExplanation.reasons.map(reason => (
+                        <li key={reason}>{reason}</li>
+                      ))}
+                    </ul>
+                    {pointExplanation.hints.length > 0 ? (
+                      <ul className="explain-notes">
+                        {pointExplanation.hints.map(hint => (
+                          <li key={hint}>{hint}</li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </>
+                ) : null}
                 <dl>
                   <dt>Time</dt>
                   <dd>{formatTimestamp(selectedPoint.timestamp)}</dd>
@@ -288,7 +1284,9 @@ export function App() {
               <p className="muted">
                 {pointNavMode
                   ? 'Select a point on the map or use the arrows.'
-                  : 'Click a point on the map for details.'}
+                  : mode === 'explain'
+                    ? 'Click a map point to see why it belongs to a stay or drive.'
+                    : 'Click a point on the map for details.'}
               </p>
             )}
           </>
@@ -302,24 +1300,79 @@ export function App() {
         onDragOver={event => event.preventDefault()}
         onDrop={onDrop}>
         {allPoints.length > 0 ? (
-          <>
-            {pointNavMode ? (
-              <div className="map-nav-overlay">
-                <button
-                  type="button"
-                  className="map-nav-exit"
-                  onClick={exitPointNav}>
-                  Exit point-to-point
-                </button>
-              </div>
-            ) : null}
-            <PointsMap
-              points={filteredPoints}
-              selectedId={selectedId}
-              onSelectId={setSelectedId}
-              focusSelected={pointNavMode}
-            />
-          </>
+          plottedPoints != null ? (
+            <>
+              {pointNavMode ? (
+                <div className="map-nav-overlay">
+                  <button
+                    type="button"
+                    className="map-nav-exit"
+                    onClick={exitPointNav}>
+                    Exit point-to-point
+                  </button>
+                </div>
+              ) : null}
+              <PointsMap
+                points={plottedPoints}
+                stops={visibleStops}
+                selectedStopId={selectedStopId}
+                onSelectStop={toggleStop}
+                highlightedPointIds={highlightedPointIds}
+                selectedId={selectedId}
+                onSelectId={mode === 'explain' ? handleSelectPoint : setSelectedId}
+                focusSelected={pointNavMode}
+              />
+            </>
+          ) : (
+            <div className="map-placeholder">
+              {mode === 'plot' ? (
+                <>
+                  <p>Ready to plot</p>
+                  <p className="muted">
+                    Select source types in the sidebar and click{' '}
+                    <strong>Plot</strong>
+                  </p>
+                </>
+              ) : mode === 'stops' ? (
+                <>
+                  <p>Ready to find stops</p>
+                  <p className="muted">
+                    Click <strong>Identify stops</strong> in the sidebar
+                  </p>
+                </>
+              ) : mode === 'trips' ? (
+                <>
+                  <p>Ready to build trips</p>
+                  <p className="muted">
+                    {dateKey === 'all'
+                      ? 'Select a date in the sidebar, then click Identify trips'
+                      : (
+                          <>
+                            Click <strong>Identify trips</strong> for{' '}
+                            {formatDateLabel(dateKey)}
+                          </>
+                        )}
+                  </p>
+                </>
+              ) : mode === 'explain' ? (
+                <>
+                  <p>Ready to explain trips</p>
+                  <p className="muted">
+                    Click <strong>Build trips &amp; explanations</strong> in the
+                    sidebar
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p>Ready to benchmark</p>
+                  <p className="muted">
+                    Click <strong>Run trip detection benchmark</strong> in the
+                    sidebar
+                  </p>
+                </>
+              )}
+            </div>
+          )
         ) : (
           <div className="map-placeholder">
             <p>Map preview</p>

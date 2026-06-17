@@ -5,6 +5,7 @@ import type {MaterializedDayRow} from '@/db/repositories/materialized-days';
 import type {TripPointRow} from '@/db/repositories/trip-points';
 import type {TripRow} from '@/db/repositories/trips';
 import {
+  locationPointsForTripRow,
   syntheticRoutePoints,
   syntheticStayPoint,
   tripRowToDetectedTripWithGeometry,
@@ -123,16 +124,45 @@ export function buildTimelineFromStoredTrips(
   pointsByTripId: ReadonlyMap<number, TripPointRow[]>,
 ): DayTimelineEntry[] {
   const sorted = [...tripRows].sort(
-    (a, b) => a.startAt.getTime() - b.startAt.getTime(),
+    (a, b) =>
+      a.segmentOrder - b.segmentOrder ||
+      a.startAt.getTime() - b.startAt.getTime(),
   );
-  const playable = sorted.map(row => {
+  return sorted.map(row => {
+    if (row.kind === 'missing') {
+      return {
+        id: row.eventKey,
+        kind: 'gap' as const,
+        points: [],
+        startAt: row.startAt,
+        endAt: row.endAt,
+        durationMs: row.durationMs,
+        distanceKm: row.distanceKm,
+      };
+    }
     if (row.kind === 'stay') {
-      return tripRowToDetectedTrip(row, [syntheticStayPoint(row)]);
+      const route = pointsByTripId.get(row.id) ?? [];
+      return {
+        ...tripRowToDetectedTrip(
+          row,
+          locationPointsForTripRow(row, route),
+        ),
+        materializedTripId: row.id,
+        segmentOrder: row.segmentOrder,
+        savedPlaceLabel: row.savedPlaceLabel ?? undefined,
+        savedPlaceId: row.savedPlaceId ?? undefined,
+        inferred: row.inferred,
+      };
     }
     const route = pointsByTripId.get(row.id) ?? [];
-    return tripRowToDetectedTrip(row, syntheticRoutePoints(row, route));
+    return {
+      ...tripRowToDetectedTrip(row, locationPointsForTripRow(row, route)),
+      materializedTripId: row.id,
+      segmentOrder: row.segmentOrder,
+      savedPlaceLabel: row.savedPlaceLabel ?? undefined,
+      savedPlaceId: row.savedPlaceId ?? undefined,
+    };
   });
-  return insertGapsBetweenTrips(playable);
 }
 
 function insertGapsBetweenTrips(entries: DetectedTrip[]): DayTimelineEntry[] {
@@ -286,6 +316,10 @@ function toPseudoTripRow(trip: DetectedTrip): TripRow {
     distanceKm: trip.distanceKm,
     centroidLat: 0,
     centroidLng: 0,
+    segmentOrder: trip.segmentOrder ?? 0,
+    savedPlaceLabel: trip.savedPlaceLabel ?? null,
+    savedPlaceId: trip.savedPlaceId ?? null,
+    inferred: trip.inferred ?? false,
     placeLookupCacheId: null,
     selectedCandidateIndex: null,
     detectionVersion: 0,

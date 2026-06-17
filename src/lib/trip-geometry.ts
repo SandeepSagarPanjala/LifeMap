@@ -31,22 +31,49 @@ export function syntheticRoutePoints(
     return [];
   }
 
+  return storedTripPointsToLocationRows(trip, route);
+}
+
+/** Rehydrate saved trip_points into timeline GPS rows. */
+export function storedTripPointsToLocationRows(
+  trip: TripRow,
+  route: readonly TripPointRow[],
+): LocationPointRow[] {
+  if (route.length === 0) {
+    return [];
+  }
+
   const startMs = trip.startAt.getTime();
   const endMs = trip.endAt.getTime();
   const spanMs = Math.max(1, endMs - startMs);
 
   return route.map((point, index) => ({
-    id: -(trip.id * 10_000 + point.seq),
-    timestamp: new Date(
-      startMs + (spanMs * index) / Math.max(1, route.length - 1),
-    ),
+    id:
+      point.locationPointId ??
+      -(trip.id * 10_000 + point.seq),
+    timestamp:
+      point.recordedAt ??
+      new Date(startMs + (spanMs * index) / Math.max(1, route.length - 1)),
     lat: point.lat,
     lng: point.lng,
     accuracy: null,
     altitude: null,
     speed: null,
-    source: 'route',
+    source: point.source ?? 'route',
   }));
+}
+
+export function locationPointsForTripRow(
+  trip: TripRow,
+  route: readonly TripPointRow[],
+): LocationPointRow[] {
+  if (route.length > 0) {
+    return storedTripPointsToLocationRows(trip, route);
+  }
+  if (trip.kind === 'stay') {
+    return [syntheticStayPoint(trip)];
+  }
+  return [];
 }
 
 export function flattenTimelinePoints(
@@ -83,13 +110,17 @@ export function tripRowToDetectedTripWithGeometry(
 ): DetectedTrip {
   return {
     id: `materialized-${row.id}`,
-    kind: row.kind,
+    kind: row.kind === 'travel' ? 'travel' : 'stay',
     points,
     startAt: row.startAt,
     endAt: row.endAt,
     distanceKm: row.distanceKm,
     durationMs: row.durationMs,
     materializedTripId: row.id,
+    segmentOrder: row.segmentOrder,
+    savedPlaceLabel: row.savedPlaceLabel ?? undefined,
+    savedPlaceId: row.savedPlaceId ?? undefined,
+    inferred: row.inferred,
   };
 }
 

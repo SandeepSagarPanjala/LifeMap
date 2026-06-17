@@ -10,6 +10,11 @@ import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import {calculatePathDistanceKm, distanceKm} from '@/lib/location-geo';
 import type {LocationPointLike} from '@/lib/location-geo';
 import {buildDrawableRouteSegments} from '@/lib/route-segments';
+import {toDateKey} from '@/lib/day-utils';
+import {
+  buildSegmentationTimeline,
+  detectTripsFromPoints,
+} from '@/lib/segmentation';
 import {
   MIN_STOP_CLUSTER_RADIUS_METERS,
   MIN_TRIP_STOP_MINUTES,
@@ -58,6 +63,11 @@ export type DetectedTrip = {
   openThroughNow?: boolean;
   /** Persisted trip row — per-visit label overrides. */
   materializedTripId?: number;
+  /** Display order within the day (1-based). */
+  segmentOrder?: number;
+  savedPlaceLabel?: string;
+  savedPlaceId?: number;
+  inferred?: boolean;
 };
 
 export type TimelineGap = {
@@ -1628,91 +1638,28 @@ export function detectTrips(
   config: TripDetectionConfig,
   options: TripTimelineOptions = {},
 ): DetectedTrip[] {
-  const momentTimestamps = options.momentTimestamps ?? [];
-  const savedPlaces = options.savedPlaces ?? [];
-  const deduped = dedupeLocationPoints(points);
-  const stays = findAllStaySpans(deduped, config, savedPlaces);
-  if (stays.length === 0) {
-    return [];
+  return detectTripsFromPoints(points, config, options);
+}
+
+function inferPrimaryDateKey(points: LocationPointRow[]): string {
+  if (points.length === 0) {
+    return toDateKey(new Date());
   }
-
-  const trips: DetectedTrip[] = [];
-  let tripIndex = 0;
-  let cursor = 0;
-
-  for (let stayIndex = 0; stayIndex < stays.length; stayIndex += 1) {
-    let staySpan = stays[stayIndex]!;
-    let travelEnd = staySpan.start - 1;
-    const priorStayEnd =
-      stayIndex > 0 ? stays[stayIndex - 1]!.end : null;
-
-    if (priorStayEnd != null) {
-      const split = splitStayAfterShortDeparture(
-        deduped,
-        staySpan,
-        priorStayEnd,
-        config,
-      );
-      travelEnd = split.travelEnd;
-      staySpan = split.stay;
-    }
-
-    if (travelEnd >= cursor) {
-      const travelPoints = buildTravelSlice(
-        deduped,
-        cursor,
-        travelEnd,
-        priorStayEnd,
-      );
-      if (travelPoints.length > 0) {
-        const travel = makeTrip(travelPoints, 'travel', tripIndex);
-        if (isMeaningfulTravel(travel)) {
-          trips.push(travel);
-          tripIndex += 1;
-        }
-      }
-    }
-
-    trips.push(
-      makeTrip(
-        deduped.slice(staySpan.start, staySpan.end + 1),
-        'stay',
-        tripIndex,
-      ),
-    );
-    tripIndex += 1;
-    cursor = staySpan.end + 1;
+  const counts = new Map<string, number>();
+  for (const point of points) {
+    const key = toDateKey(point.timestamp);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
   }
+  return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]![0]!;
+}
 
-  if (cursor < deduped.length) {
-    const lastStay = stays[stays.length - 1]!;
-    const travelPoints = buildTravelSlice(
-      deduped,
-      cursor,
-      deduped.length - 1,
-      lastStay.end,
-    );
-    if (travelPoints.length > 0) {
-      const travel = makeTrip(travelPoints, 'travel', tripIndex);
-      if (isMeaningfulTravel(travel)) {
-        trips.push(travel);
-      }
-    }
-  }
-
-  const merged = mergeAdjacentSameAreaStays(
-    collapseMomentCaptureStays(
-      splitTravelsAtStops(trips, config, momentTimestamps),
-      momentTimestamps,
-      config,
-    ),
-    config,
-  );
-  const withoutNoise = dropNoiseTravels(merged);
-  const bounded = normalizeVisitTravelBoundaries(withoutNoise);
-  const closed = closeStayEndsAtNextLeg(bounded, config);
-  const alternating = enforceStrictAlternation(closed, config);
-  return enforceAdjacentContinuity(alternating);
+export function buildDayTimeline(
+  points: LocationPointRow[],
+  config: TripDetectionConfig,
+  options: TripTimelineOptions = {},
+): DayTimelineEntry[] {
+  const dateKey = inferPrimaryDateKey(points);
+  return buildSegmentationTimeline(dateKey, points, config, options);
 }
 
 /** @deprecated Use mergeAdjacentSameAreaStays */
@@ -1721,36 +1668,6 @@ export function mergeSameAreaTrips(
   config: TripDetectionConfig,
 ): DetectedTrip[] {
   return mergeAdjacentSameAreaStays(trips, config);
-}
-
-export function buildDayTimeline(
-  points: LocationPointRow[],
-  config: TripDetectionConfig,
-  options: TripTimelineOptions = {},
-): DayTimelineEntry[] {
-  const trips = detectTrips(points, config, options);
-  if (trips.length === 0) {
-    return [];
-  }
-
-  const timeline: DayTimelineEntry[] = [];
-  let gapIndex = 0;
-
-  for (let index = 0; index < trips.length; index += 1) {
-    const trip = trips[index]!;
-
-    if (index > 0) {
-      const previous = trips[index - 1]!;
-      if (shouldShowTimelineGap(previous, trip, config)) {
-        timeline.push(makeGap(previous.endAt, trip.startAt, gapIndex));
-        gapIndex += 1;
-      }
-    }
-
-    timeline.push(trip);
-  }
-
-  return timeline;
 }
 
 export function buildDayTimelineNewestFirst(

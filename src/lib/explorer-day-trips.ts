@@ -1,0 +1,68 @@
+import type {LocationPointRow} from '@/db/repositories/location-days';
+import {getLocationPointsForDay} from '@/db/repositories/location-days';
+import type {SavedPlaceRow} from '@/db/repositories/saved-places';
+import {listSavedPlaces} from '@/db/repositories/saved-places';
+import {shiftDateKey} from '@/lib/day-utils';
+import {
+  buildSegmentationTimeline,
+  detectSegmentsForDay,
+} from '@/lib/segmentation';
+import {
+  dedupeLocationPoints,
+  type DayTimelineEntry,
+} from '@/lib/trip-detection';
+import type {TripDetectionConfig} from '@/lib/trip-settings';
+
+/** GPS rows for prev + day + next — same window as point-explorer `detectTripsForDay`. */
+export async function loadExplorerGpsWindow(
+  dateKey: string,
+): Promise<{windowPoints: LocationPointRow[]; dayPointCount: number}> {
+  const prevKey = shiftDateKey(dateKey, -1);
+  const nextKey = shiftDateKey(dateKey, 1);
+  const [prevPoints, dayPoints, nextPoints] = await Promise.all([
+    getLocationPointsForDay(prevKey),
+    getLocationPointsForDay(dateKey),
+    getLocationPointsForDay(nextKey),
+  ]);
+  return {
+    windowPoints: dedupeLocationPoints([
+      ...prevPoints,
+      ...dayPoints,
+      ...nextPoints,
+    ]),
+    dayPointCount: dayPoints.length,
+  };
+}
+
+/** Point-explorer day timeline — no mobile post-processing. */
+export function buildExplorerDayTimeline(
+  dateKey: string,
+  windowPoints: readonly LocationPointRow[],
+  config: TripDetectionConfig,
+  savedPlaces: readonly SavedPlaceRow[] = [],
+): DayTimelineEntry[] {
+  return buildSegmentationTimeline(dateKey, windowPoints, config, {
+    savedPlaces,
+  });
+}
+
+export async function buildExplorerDayTimelineFromGps(
+  dateKey: string,
+  config: TripDetectionConfig,
+  savedPlaces?: readonly SavedPlaceRow[],
+): Promise<{
+  entries: DayTimelineEntry[];
+  dayPointCount: number;
+}> {
+  const places = savedPlaces ?? (await listSavedPlaces());
+  const {windowPoints, dayPointCount} = await loadExplorerGpsWindow(dateKey);
+  const entries = buildExplorerDayTimeline(
+    dateKey,
+    windowPoints,
+    config,
+    places,
+  );
+  return {entries, dayPointCount};
+}
+
+export {detectSegmentsForDay};

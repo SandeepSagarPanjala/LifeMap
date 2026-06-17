@@ -18,11 +18,22 @@ export type LocationExport = {
 };
 
 /** Full database export from LifeMap Settings → All tables. */
+export type SavedPlaceRow = {
+  id: number;
+  kind: 'home' | 'work' | 'favorite';
+  label: string;
+  lat: number;
+  lng: number;
+  radiusMeters: number;
+  createdAt?: string;
+};
+
 export type DatabaseExport = {
   exportedAt?: string;
   scope?: string;
   tables?: {
     location_points?: LocationPointRow[];
+    saved_places?: SavedPlaceRow[];
   };
 };
 

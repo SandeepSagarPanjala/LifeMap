@@ -1,8 +1,15 @@
 import type {ParsedPoint} from '../types';
 
-/** Points ordered by database id (what #1469 → #1470 means). */
+/** Points ordered by database id (insertion/save order). */
 export function sortPointsById(points: ParsedPoint[]): ParsedPoint[] {
   return [...points].sort((a, b) => a.id - b.id);
+}
+
+/** Points ordered by the actual GPS fix time (chronological path order). */
+export function sortPointsByTime(points: ParsedPoint[]): ParsedPoint[] {
+  return [...points].sort(
+    (a, b) => a.at.getTime() - b.at.getTime() || a.id - b.id,
+  );
 }
 
 export function indexOfPointId(

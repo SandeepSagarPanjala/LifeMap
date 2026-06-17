@@ -152,6 +152,20 @@ const m0008 = `CREATE TABLE IF NOT EXISTS \`trip_points\` (
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS \`trip_points_trip_id_seq_idx\` ON \`trip_points\` (\`trip_id\`, \`seq\`);`;
 
+const m0009 = `ALTER TABLE \`trips\` ADD COLUMN \`segment_order\` integer DEFAULT 0 NOT NULL;
+--> statement-breakpoint
+ALTER TABLE \`trips\` ADD COLUMN \`saved_place_label\` text;
+--> statement-breakpoint
+ALTER TABLE \`trips\` ADD COLUMN \`saved_place_id\` integer;
+--> statement-breakpoint
+ALTER TABLE \`trips\` ADD COLUMN \`inferred\` integer DEFAULT 0 NOT NULL;`;
+
+const m0010 = `ALTER TABLE \`trip_points\` ADD COLUMN \`recorded_at\` integer;
+--> statement-breakpoint
+ALTER TABLE \`trip_points\` ADD COLUMN \`location_point_id\` integer;
+--> statement-breakpoint
+ALTER TABLE \`trip_points\` ADD COLUMN \`source\` text DEFAULT 'gps';`;
+
 export default {
   journal,
   migrations: {
@@ -164,5 +178,7 @@ export default {
     m0006,
     m0007,
     m0008,
+    m0009,
+    m0010,
   },
 };

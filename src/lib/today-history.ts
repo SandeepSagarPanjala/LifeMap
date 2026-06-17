@@ -5,13 +5,13 @@ import {getDayRange, toDateKey} from '@/lib/day-utils';
 import {calculatePathDistanceKm} from '@/lib/location-geo';
 import {
   arePointsSamePlace,
-  buildDayTimeline,
   dedupeLocationPoints,
   type DayTimelineEntry,
   type DetectedTrip,
   type TripTimelineOptions,
 } from '@/lib/trip-detection';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
+import {buildSegmentationTimeline} from '@/lib/segmentation';
 import {matchSavedPlaceForStay, shouldSplitStayAtMidnight} from '@/lib/saved-places';
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import {stayMeetsMinimumVisitDwell} from '@/lib/visit-dwell';
@@ -308,7 +308,12 @@ export function prepareDayHistoryTimeline(
   ]);
   const savedPlaces = timelineOptions.savedPlaces ?? [];
   const lastBeforeDay = lastPointBefore(combined, dayStart);
-  const raw = buildDayTimeline(combined, config, timelineOptions);
+  const raw = buildSegmentationTimeline(
+    dateKey,
+    combined,
+    config,
+    timelineOptions,
+  );
 
   const filtered = dropMidDriveNoiseStays(
     raw

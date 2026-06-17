@@ -8,7 +8,7 @@ import {deleteTripPointsForTripIds} from './trip-points';
 export type TripRow = {
   id: number;
   eventKey: string;
-  kind: 'stay' | 'travel';
+  kind: 'stay' | 'travel' | 'missing';
   dateKey: string;
   startAt: Date;
   endAt: Date;
@@ -16,6 +16,10 @@ export type TripRow = {
   distanceKm: number;
   centroidLat: number;
   centroidLng: number;
+  segmentOrder: number;
+  savedPlaceLabel: string | null;
+  savedPlaceId: number | null;
+  inferred: boolean;
   placeLookupCacheId: number | null;
   selectedCandidateIndex: number | null;
   detectionVersion: number;
@@ -34,6 +38,10 @@ function mapRow(row: typeof trips.$inferSelect): TripRow {
     distanceKm: row.distanceKm,
     centroidLat: row.centroidLat,
     centroidLng: row.centroidLng,
+    segmentOrder: row.segmentOrder,
+    savedPlaceLabel: row.savedPlaceLabel,
+    savedPlaceId: row.savedPlaceId,
+    inferred: row.inferred === 1,
     placeLookupCacheId: row.placeLookupCacheId,
     selectedCandidateIndex: row.selectedCandidateIndex,
     detectionVersion: row.detectionVersion,
@@ -47,7 +55,7 @@ export async function listTripsForDay(dateKey: string): Promise<TripRow[]> {
     .select()
     .from(trips)
     .where(eq(trips.dateKey, dateKey))
-    .orderBy(asc(trips.startAt));
+    .orderBy(asc(trips.segmentOrder), asc(trips.startAt));
   return rows.map(mapRow);
 }
 
@@ -71,7 +79,7 @@ export async function getTripByEventKey(
 
 export type InsertTripInput = {
   eventKey: string;
-  kind: 'stay' | 'travel';
+  kind: 'stay' | 'travel' | 'missing';
   dateKey: string;
   startAt: Date;
   endAt: Date;
@@ -79,11 +87,37 @@ export type InsertTripInput = {
   distanceKm: number;
   centroidLat: number;
   centroidLng: number;
+  segmentOrder?: number;
+  savedPlaceLabel?: string | null;
+  savedPlaceId?: number | null;
+  inferred?: boolean;
   placeLookupCacheId?: number | null;
   selectedCandidateIndex?: number | null;
   detectionVersion: number;
   closedAt: Date;
 };
+
+function tripValues(input: InsertTripInput) {
+  return {
+    eventKey: input.eventKey,
+    kind: input.kind,
+    dateKey: input.dateKey,
+    startAt: input.startAt,
+    endAt: input.endAt,
+    durationMs: input.durationMs,
+    distanceKm: input.distanceKm,
+    centroidLat: input.centroidLat,
+    centroidLng: input.centroidLng,
+    segmentOrder: input.segmentOrder ?? 0,
+    savedPlaceLabel: input.savedPlaceLabel ?? null,
+    savedPlaceId: input.savedPlaceId ?? null,
+    inferred: input.inferred ? 1 : 0,
+    placeLookupCacheId: input.placeLookupCacheId ?? null,
+    selectedCandidateIndex: input.selectedCandidateIndex ?? null,
+    detectionVersion: input.detectionVersion,
+    closedAt: input.closedAt,
+  };
+}
 
 export async function insertTripIfAbsent(
   input: InsertTripInput,
@@ -91,21 +125,7 @@ export async function insertTripIfAbsent(
   const db = await getDatabase();
   const inserted = await db
     .insert(trips)
-    .values({
-      eventKey: input.eventKey,
-      kind: input.kind,
-      dateKey: input.dateKey,
-      startAt: input.startAt,
-      endAt: input.endAt,
-      durationMs: input.durationMs,
-      distanceKm: input.distanceKm,
-      centroidLat: input.centroidLat,
-      centroidLng: input.centroidLng,
-      placeLookupCacheId: input.placeLookupCacheId ?? null,
-      selectedCandidateIndex: input.selectedCandidateIndex ?? null,
-      detectionVersion: input.detectionVersion,
-      closedAt: input.closedAt,
-    })
+    .values(tripValues(input))
     .onConflictDoNothing({target: trips.eventKey})
     .returning();
 
@@ -120,21 +140,7 @@ export async function upsertTrip(input: InsertTripInput): Promise<TripRow> {
   const db = await getDatabase();
   const rows = await db
     .insert(trips)
-    .values({
-      eventKey: input.eventKey,
-      kind: input.kind,
-      dateKey: input.dateKey,
-      startAt: input.startAt,
-      endAt: input.endAt,
-      durationMs: input.durationMs,
-      distanceKm: input.distanceKm,
-      centroidLat: input.centroidLat,
-      centroidLng: input.centroidLng,
-      placeLookupCacheId: input.placeLookupCacheId ?? null,
-      selectedCandidateIndex: input.selectedCandidateIndex ?? null,
-      detectionVersion: input.detectionVersion,
-      closedAt: input.closedAt,
-    })
+    .values(tripValues(input))
     .onConflictDoUpdate({
       target: trips.eventKey,
       set: {
@@ -146,6 +152,10 @@ export async function upsertTrip(input: InsertTripInput): Promise<TripRow> {
         distanceKm: input.distanceKm,
         centroidLat: input.centroidLat,
         centroidLng: input.centroidLng,
+        segmentOrder: input.segmentOrder ?? 0,
+        savedPlaceLabel: input.savedPlaceLabel ?? null,
+        savedPlaceId: input.savedPlaceId ?? null,
+        inferred: input.inferred ? 1 : 0,
         placeLookupCacheId: input.placeLookupCacheId ?? null,
         selectedCandidateIndex: input.selectedCandidateIndex ?? null,
         detectionVersion: input.detectionVersion,

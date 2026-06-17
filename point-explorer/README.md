@@ -5,7 +5,8 @@ Standalone internal web app to visualize LifeMap `location_points` JSON exports.
 ## What it does
 
 - Load LifeMap JSON exports: location-points (`rows`) or full database (`tables.location_points`)
-- Plot every save on an OpenStreetMap map (blue dots, chronological blue path)
+- Filter by **source type** with checkboxes (`gps`, `native_queue`, `motion_departure`, `native_queue:motionchange`, plus any others in the file)
+- Click **Plot** to draw only the selected sources on the map (blue dots, chronological blue path)
 - Filter by **date** (America/Chicago calendar day)
 - Click a point for id, time, coordinates, accuracy, source
 

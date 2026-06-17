@@ -75,7 +75,7 @@ export const placeLookupCache = sqliteTable('place_lookup_cache', {
 export const trips = sqliteTable('trips', {
   id: integer('id').primaryKey({autoIncrement: true}),
   eventKey: text('event_key').notNull().unique(),
-  kind: text('kind', {enum: ['stay', 'travel']}).notNull(),
+  kind: text('kind', {enum: ['stay', 'travel', 'missing']}).notNull(),
   dateKey: text('date_key').notNull(),
   startAt: integer('start_at', {mode: 'timestamp'}).notNull(),
   endAt: integer('end_at', {mode: 'timestamp'}).notNull(),
@@ -83,6 +83,10 @@ export const trips = sqliteTable('trips', {
   distanceKm: real('distance_km').notNull(),
   centroidLat: real('centroid_lat').notNull(),
   centroidLng: real('centroid_lng').notNull(),
+  segmentOrder: integer('segment_order').notNull().default(0),
+  savedPlaceLabel: text('saved_place_label'),
+  savedPlaceId: integer('saved_place_id'),
+  inferred: integer('inferred').notNull().default(0),
   placeLookupCacheId: integer('place_lookup_cache_id'),
   selectedCandidateIndex: integer('selected_candidate_index'),
   detectionVersion: integer('detection_version').notNull(),
@@ -97,6 +101,9 @@ export const tripPoints = sqliteTable('trip_points', {
   seq: integer('seq').notNull(),
   lat: real('lat').notNull(),
   lng: real('lng').notNull(),
+  recordedAt: integer('recorded_at', {mode: 'timestamp'}),
+  locationPointId: integer('location_point_id'),
+  source: text('source').default('gps'),
 });
 
 export const materializedDays = sqliteTable('materialized_days', {

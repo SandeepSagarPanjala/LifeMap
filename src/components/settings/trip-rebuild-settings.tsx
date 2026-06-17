@@ -30,7 +30,7 @@ export function TripRebuildSettings() {
       clearHistoryDataCache();
       Alert.alert(
         'Trips rebuilt',
-        `Processed ${result.daysProcessed.toLocaleString()} past days and saved ${result.tripsSaved.toLocaleString()} trips with simplified routes.`,
+        `Processed ${result.daysProcessed.toLocaleString()} past days and saved ${result.tripsSaved.toLocaleString()} trip segments.`,
       );
     } catch (error) {
       Alert.alert(
@@ -46,7 +46,7 @@ export function TripRebuildSettings() {
   const confirmRebuildAll = () => {
     Alert.alert(
       'Rebuild all past trips?',
-      'This reads GPS for every past day, rebuilds visits and drives, and saves simplified map routes. Your raw location points are not deleted.\n\nThis runs now and may take a few minutes.',
+      'This deletes cached trips for all past days, rebuilds visits and drives from GPS, and saves segment routes. Your raw location points are not deleted.\n\nThis runs now and may take a few minutes.',
       [
         {text: 'Cancel', style: 'cancel'},
         {
@@ -73,8 +73,8 @@ export function TripRebuildSettings() {
           <View className="flex-1">
             <Text className="font-medium">Rebuild trip routes</Text>
             <Text variant="muted" className="mt-1 text-sm leading-5">
-              Recompute visits and drives from GPS, then save simplified routes
-              for faster map loads on past days.
+              Recompute visits and drives from GPS using the same rules as the
+              point explorer, then save segment routes for past days.
             </Text>
           </View>
         </View>

@@ -13,6 +13,7 @@ import {
 import {TRIP_DETECTION_VERSION} from '@/lib/trip-settings';
 import type {TripRow} from '@/db/repositories/trips';
 import type {DetectedTrip} from '@/lib/trip-detection';
+import {makeTripRow} from './trip-row-fixture';
 
 function stay(
   startMs: number,
@@ -65,22 +66,16 @@ describe('tripLabelForPersist', () => {
   it('keeps a visit-specific label when the day is re-materialized', () => {
     const eventKey = tripEventKey(stay(1_000, 2_000));
     const existing = existingTripLabelsByEventKey([
-      {
+      makeTripRow({
         id: 3,
         eventKey,
         kind: 'stay',
-        dateKey: '2026-06-09',
         startAt: new Date(1_000),
         endAt: new Date(2_000),
-        durationMs: 1_000,
-        distanceKm: 0,
-        centroidLat: 33.21,
-        centroidLng: -97.13,
+        detectionVersion: 2,
         placeLookupCacheId: 12,
         selectedCandidateIndex: 2,
-        detectionVersion: 2,
-        closedAt: new Date(2_000),
-      },
+      }),
     ]);
 
     expect(
@@ -111,7 +106,7 @@ describe('tripLabelForPersist', () => {
 
 describe('isImplausibleMaterializedTravel', () => {
   it('flags Jun 8 corrupt 22hr cached drive', () => {
-    const corrupt: TripRow = {
+    const corrupt = makeTripRow({
       id: 416,
       eventKey: 'travel:1:2',
       kind: 'travel',
@@ -122,16 +117,14 @@ describe('isImplausibleMaterializedTravel', () => {
       distanceKm: 31.35,
       centroidLat: 33.23,
       centroidLng: -97.02,
-      placeLookupCacheId: null,
-      selectedCandidateIndex: null,
       detectionVersion: 1,
       closedAt: new Date(),
-    };
+    });
     expect(isImplausibleMaterializedTravel(corrupt)).toBe(true);
   });
 
   it('allows a normal half-hour commute', () => {
-    const commute: TripRow = {
+    const commute = makeTripRow({
       id: 1,
       eventKey: 'travel:1:2',
       kind: 'travel',
@@ -142,11 +135,9 @@ describe('isImplausibleMaterializedTravel', () => {
       distanceKm: 27.6,
       centroidLat: 33.23,
       centroidLng: -97.02,
-      placeLookupCacheId: null,
-      selectedCandidateIndex: null,
       detectionVersion: 2,
       closedAt: new Date(),
-    };
+    });
     expect(isImplausibleMaterializedTravel(commute)).toBe(false);
   });
 });
@@ -188,38 +179,27 @@ describe('canReadDayFromMaterializedTrips', () => {
 describe('buildTimelineFromTrips', () => {
   it('rehydrates playable entries with materialized ids and inserts gaps', () => {
     const rows: TripRow[] = [
-      {
+      makeTripRow({
         id: 7,
         eventKey: 'stay:1000:2000',
         kind: 'stay',
         dateKey: '2026-06-01',
         startAt: new Date(1_000),
         endAt: new Date(2_000),
-        durationMs: 1_000,
-        distanceKm: 0,
         centroidLat: 37.77,
         centroidLng: -122.42,
-        placeLookupCacheId: null,
-        selectedCandidateIndex: null,
-        detectionVersion: 1,
-        closedAt: new Date(2_000),
-      },
-      {
+      }),
+      makeTripRow({
         id: 8,
         eventKey: 'travel:200000:201000',
         kind: 'travel',
         dateKey: '2026-06-01',
         startAt: new Date(200_000),
         endAt: new Date(201_000),
-        durationMs: 1_000,
         distanceKm: 1.2,
         centroidLat: 37.78,
         centroidLng: -122.41,
-        placeLookupCacheId: null,
-        selectedCandidateIndex: null,
-        detectionVersion: 1,
-        closedAt: new Date(201_000),
-      },
+      }),
     ];
 
     const timeline = buildTimelineFromTrips(rows, []);
@@ -237,38 +217,28 @@ describe('buildTimelineFromTrips', () => {
     const libraryAt = new Date('2026-06-06T19:49:17.000Z');
     const departAt = new Date('2026-06-06T19:58:55.000Z');
     const rows: TripRow[] = [
-      {
+      makeTripRow({
         id: 1,
         eventKey: 'stay:1:2',
         kind: 'stay',
         dateKey: '2026-06-06',
         startAt: new Date('2026-06-06T18:06:00.000Z'),
         endAt: departAt,
-        durationMs: 1,
-        distanceKm: 0,
         centroidLat: 33.05579,
         centroidLng: -96.83429,
-        placeLookupCacheId: null,
-        selectedCandidateIndex: null,
-        detectionVersion: 1,
         closedAt: departAt,
-      },
-      {
+      }),
+      makeTripRow({
         id: 2,
         eventKey: 'travel:2:3',
         kind: 'travel',
         dateKey: '2026-06-06',
         startAt: departAt,
         endAt: new Date('2026-06-06T20:13:00.000Z'),
-        durationMs: 1,
-        distanceKm: 1,
         centroidLat: 33.05,
         centroidLng: -96.833,
-        placeLookupCacheId: null,
-        selectedCandidateIndex: null,
-        detectionVersion: 1,
         closedAt: new Date('2026-06-06T20:13:00.000Z'),
-      },
+      }),
     ];
     const routePoints = [
       {
@@ -307,38 +277,27 @@ describe('buildTimelineFromTrips', () => {
 describe('buildTimelineFromStoredTrips', () => {
   it('hydrates stays with anchor points and drives from trip_points', () => {
     const rows: TripRow[] = [
-      {
+      makeTripRow({
         id: 1,
         eventKey: 'stay:1:2',
         kind: 'stay',
         dateKey: '2026-06-01',
         startAt: new Date(1_000),
         endAt: new Date(2_000),
-        durationMs: 1_000,
-        distanceKm: 0,
         centroidLat: 37.77,
         centroidLng: -122.42,
-        placeLookupCacheId: null,
-        selectedCandidateIndex: null,
-        detectionVersion: 1,
-        closedAt: new Date(2_000),
-      },
-      {
+      }),
+      makeTripRow({
         id: 2,
         eventKey: 'travel:2:3',
         kind: 'travel',
         dateKey: '2026-06-01',
         startAt: new Date(3_000),
         endAt: new Date(4_000),
-        durationMs: 1_000,
         distanceKm: 1.2,
         centroidLat: 37.78,
         centroidLng: -122.41,
-        placeLookupCacheId: null,
-        selectedCandidateIndex: null,
-        detectionVersion: 1,
-        closedAt: new Date(4_000),
-      },
+      }),
     ];
     const pointsByTripId = new Map([
       [

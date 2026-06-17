@@ -57,6 +57,20 @@
       "when": 1788900000000,
       "tag": "0008_trip_points",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1788901000000,
+      "tag": "0009_trip_segment_metadata",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788902000000,
+      "tag": "0010_trip_point_metadata",
+      "breakpoints": true
     }
   ]
 }
