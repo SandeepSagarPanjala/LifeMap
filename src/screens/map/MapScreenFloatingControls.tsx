@@ -36,6 +36,7 @@ export function MapScreenFloatingControls({
     historyBadgeCount,
     trackingGapWarning,
     emptySelectedDayMessage,
+    viewingToday,
   } = controller;
 
   return (
@@ -49,6 +50,7 @@ export function MapScreenFloatingControls({
       />
       <MapCalendarButton
         bottom={calendarButtonBottom}
+        highlighted={!viewingToday}
         onPress={openHistoryDatePicker}
       />
       <MapPlacesButton bottom={placesButtonBottom} onPress={openSavedPlacesSheet} />

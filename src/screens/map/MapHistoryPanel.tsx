@@ -1,6 +1,5 @@
 import {Animated, StyleSheet} from 'react-native';
 
-import {HistoryDayNav} from '@/components/map/HistoryDayNav';
 import {HistoryEventCard} from '@/components/map/HistoryEventCard';
 import {HistoryPanelSkeleton} from '@/components/map/HistoryPanelSkeleton';
 import {HistoryTimelineBar} from '@/components/map/HistoryTimelineBar';
@@ -28,11 +27,9 @@ export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
     playback,
     handlePlayHistory,
     handleZoomVisit,
-    selectedDateKey,
     selectedHistoryIndex,
     selectHistoryIndex,
-    handleHistoryDateKeyChange,
-    openHistoryDatePicker,
+    selectedDateKey,
     selectedEntryMomentCounts,
     openSelectedEntryMomentsPreview,
     viewingToday,
@@ -54,11 +51,6 @@ export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
       ]}>
       {showHistoryPanelContent ? (
         <>
-          <HistoryDayNav
-            dateKey={selectedDateKey}
-            onDateKeyChange={handleHistoryDateKeyChange}
-            onOpenDatePicker={openHistoryDatePicker}
-          />
           <HistoryEventCard
             entry={scrubOnEvent ? selectedEntry : null}
             savedPlace={scrubOnEvent ? selectedSavedPlace : null}

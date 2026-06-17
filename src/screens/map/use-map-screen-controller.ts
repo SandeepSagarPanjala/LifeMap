@@ -61,8 +61,13 @@ import {
   formatHistoryDayNavLabel,
   formatMapDateLabel,
 } from '@/lib/history-timeline';
-import {followTodayDateKeyRoll, getTodayDateKey} from '@/lib/day-utils';
+import {
+  followTodayDateKeyRoll,
+  getTodayDateKey,
+  shiftDateKey,
+} from '@/lib/day-utils';
 import {clampDateKeyToHistoryBounds} from '@/lib/history-calendar-bounds';
+import {useAppStore} from '@/stores/app-store';
 import {regionForCoordinates, toMapCoordinates} from '@/lib/location-geo';
 import {
   animateRecenterToUser,
@@ -95,7 +100,6 @@ import {
 } from '@/lib/user-coordinate-throttle';
 import {buildMapAttributionInsets} from '@/lib/map-attribution-insets';
 import type {RootStackParamList} from '@/navigation/types';
-import {useAppStore} from '@/stores/app-store';
 
 import {
   DAY_MOMENT_SUMMARY_ABOVE_BAR_GAP,
@@ -111,6 +115,7 @@ import {
   MAP_SETTINGS_TOP_GAP,
   MAP_STACK_BUTTON_GAP,
   MAP_STACK_BUTTON_SIZE,
+  mapDateNavAnchorBottom,
   mapStackButtonBottom,
   mapStackTotalHeight,
 } from './map-screen-constants';
@@ -182,6 +187,10 @@ export function useMapScreenController() {
     useHistoryForDay(selectedDateKey);
   const latestLocationSaveAt = useLatestLocationSave();
   const viewingToday = selectedDateKey === todayKey;
+  const earliestDateKey = useAppStore(state => state.historyEarliestDateKey);
+  const canGoPrevDay =
+    earliestDateKey == null || selectedDateKey > earliestDateKey;
+  const canGoNextDay = !viewingToday;
   const mapDateLabel = useMemo(
     () => formatMapDateLabel(selectedDateKey, todayKey),
     [selectedDateKey, todayKey],
@@ -410,6 +419,16 @@ export function useMapScreenController() {
   const voiceButtonBottom = mapStackButtonBottom(stackBaseBottom, 1);
   const noteButtonBottom = mapStackButtonBottom(stackBaseBottom, 2);
   const dayMomentSummaryBottom = insets.bottom + DAY_MOMENT_SUMMARY_BOTTOM_GAP;
+
+  const dateNavAnchorBottom = useMemo(
+    () =>
+      mapDateNavAnchorBottom({
+        insetBottom: insets.bottom,
+        historyPanelOpen,
+        showDayMomentSummary,
+      }),
+    [historyPanelOpen, insets.bottom, showDayMomentSummary],
+  );
 
   const leftStackHeight = mapStackTotalHeight(
     MAP_LEFT_STACK_COUNT,
@@ -764,6 +783,35 @@ export function useMapScreenController() {
     },
     [playback],
   );
+
+  const goToToday = useCallback(() => {
+    handleHistoryDateKeyChange(todayKey);
+    setHistoryPanelOpen(false);
+  }, [handleHistoryDateKeyChange, todayKey]);
+
+  const goToPrevDay = useCallback(() => {
+    if (!canGoPrevDay) {
+      return;
+    }
+    const nextKey = shiftDateKey(selectedDateKey, -1);
+    if (earliestDateKey != null && nextKey < earliestDateKey) {
+      handleHistoryDateKeyChange(earliestDateKey);
+      return;
+    }
+    handleHistoryDateKeyChange(nextKey);
+  }, [
+    canGoPrevDay,
+    earliestDateKey,
+    handleHistoryDateKeyChange,
+    selectedDateKey,
+  ]);
+
+  const goToNextDay = useCallback(() => {
+    if (!canGoNextDay) {
+      return;
+    }
+    handleHistoryDateKeyChange(shiftDateKey(selectedDateKey, 1));
+  }, [canGoNextDay, handleHistoryDateKeyChange, selectedDateKey]);
 
   const handleToggleHistoryPanel = useCallback(() => {
     setHistoryPanelOpen(open => {
@@ -1148,6 +1196,12 @@ export function useMapScreenController() {
     emptySelectedDayMessage,
     viewingToday,
     historyHasGpsData,
+    canGoPrevDay,
+    canGoNextDay,
+    goToPrevDay,
+    goToNextDay,
+    goToToday,
+    dateNavAnchorBottom,
     historyPanelOpen,
     historyPanelY,
     historyDatePickerOpen,

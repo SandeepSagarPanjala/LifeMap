@@ -20,12 +20,33 @@ type MapScreenTopBarProps = {
 export function MapScreenTopBar({controller}: MapScreenTopBarProps) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const colors = useThemeColors();
-  const {insets, mapDateLabel} = controller;
+  const {
+    insets,
+    mapDateLabel,
+    viewingToday,
+    dateNavAnchorBottom,
+    canGoPrevDay,
+    canGoNextDay,
+    goToPrevDay,
+    goToNextDay,
+    goToToday,
+  } = controller;
   const settingsTop = insets.top + MAP_SETTINGS_TOP_GAP;
+  const showDateNavigation = !viewingToday;
 
   return (
     <View pointerEvents="box-none" style={styles.bar}>
-      <MapDateLabel label={mapDateLabel} topInset={insets.top} />
+      <MapDateLabel
+        label={mapDateLabel}
+        topInset={insets.top}
+        showNavigation={showDateNavigation}
+        anchorBottom={showDateNavigation ? dateNavAnchorBottom : undefined}
+        canGoPrev={canGoPrevDay}
+        canGoNext={canGoNextDay}
+        onPrev={goToPrevDay}
+        onNext={goToNextDay}
+        onClose={goToToday}
+      />
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Settings"
@@ -44,6 +65,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    zIndex: 20,
+    elevation: 20,
   },
   settingsButton: {
     position: 'absolute',

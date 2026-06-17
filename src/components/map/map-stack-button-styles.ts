@@ -2,6 +2,7 @@ import {StyleSheet} from 'react-native';
 
 export const MAP_STACK_BUTTON_LEFT = 16;
 export const MAP_STACK_BUTTON_RIGHT = 16;
+export const MAP_SOFT_BLUE_BUTTON_BG = '#E8F2FF';
 
 export const mapStackButtonStyles = StyleSheet.create({
   button: {
@@ -18,8 +19,8 @@ export const mapStackButtonStyles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 4,
   },
-  buttonActive: {
-    borderWidth: 2,
+  buttonSoftBlue: {
+    backgroundColor: MAP_SOFT_BLUE_BUTTON_BG,
   },
   badge: {
     position: 'absolute',

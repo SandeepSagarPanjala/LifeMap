@@ -34,7 +34,7 @@ export function MapHistoryButton({
       style={[
         mapStackButtonStyles.button,
         {bottom, left: MAP_STACK_BUTTON_LEFT},
-        active && [mapStackButtonStyles.buttonActive, {borderColor: colors.primary}],
+        active && mapStackButtonStyles.buttonSoftBlue,
       ]}>
       <History size={22} color={colors.primary} strokeWidth={2.25} />
       {eventCount > 0 ? (
