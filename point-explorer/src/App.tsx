@@ -2,12 +2,20 @@ import {useCallback, useEffect, useMemo, useState} from 'react';
 
 import {PointsMap} from './components/PointsMap';
 import {
+  detectUploadDataKind,
   formatDateLabel,
   formatTimestamp,
   parseExport,
   parseSavedPlaces,
   uniqueDateKeys,
 } from './lib/export';
+import {
+  buildTripResultForDay,
+  collectAllStoredTripPoints,
+  loadStoredTripExport,
+  uniqueTripDateKeys,
+  type StoredTripExport,
+} from './lib/stored-trips';
 import {
   DEFAULT_STOP_CONFIG,
   formatDuration,
@@ -42,7 +50,7 @@ import {
   indexOfPointId,
   sortPointsByTime,
 } from './lib/point-nav';
-import type {ParsedPoint, SavedPlaceRow} from './types';
+import type {ParsedPoint, SavedPlaceRow, UploadMode} from './types';
 
 import './App.css';
 
@@ -131,6 +139,10 @@ function TripSegmentList({
 export function App() {
   const [allPoints, setAllPoints] = useState<ParsedPoint[]>([]);
   const [savedPlaces, setSavedPlaces] = useState<SavedPlaceRow[]>([]);
+  const [storedTripExport, setStoredTripExport] = useState<StoredTripExport | null>(
+    null,
+  );
+  const [uploadMode, setUploadMode] = useState<UploadMode>('detect');
   const [fileName, setFileName] = useState<string | null>(null);
   const [dateKey, setDateKey] = useState<string>('all');
   const [mode, setMode] = useState<ExplorerMode>('plot');
@@ -147,7 +159,14 @@ export function App() {
   const [tripStops, setTripStops] = useState<Stop[] | null>(null);
   const [powerResult, setPowerResult] = useState<PowerRunResult | null>(null);
 
-  const dateKeys = useMemo(() => uniqueDateKeys(allPoints), [allPoints]);
+  const dateKeys = useMemo(() => {
+    if (storedTripExport != null) {
+      return uniqueTripDateKeys(storedTripExport);
+    }
+    return uniqueDateKeys(allPoints);
+  }, [allPoints, storedTripExport]);
+
+  const isPlotUpload = storedTripExport != null;
 
   const filteredPoints = useMemo(() => {
     if (dateKey === 'all') {
@@ -264,59 +283,6 @@ export function App() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [exitPointNav, goNextPoint, goPrevPoint, pointNavMode]);
 
-  const loadFile = useCallback(async (file: File) => {
-    setError(null);
-    try {
-      const text = await file.text();
-      const raw = JSON.parse(text);
-      const parsed = parseExport(raw);
-      setAllPoints(parsed);
-      setSavedPlaces(parseSavedPlaces(raw));
-      setFileName(file.name);
-      setDateKey('all');
-      setSelectedId(null);
-      setPointNavMode(false);
-      setSelectedSources(new Set(uniqueSources(parsed)));
-      setPlottedPoints(null);
-      setStops(null);
-      setSelectedStopId(null);
-      setSegments(null);
-      setSelectedSegmentId(null);
-      setTripPoints(null);
-      setTripStops(null);
-      setPowerResult(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to parse JSON');
-      setAllPoints([]);
-      setSavedPlaces([]);
-      setFileName(null);
-      setPointNavMode(false);
-      setSelectedSources(new Set());
-      setPlottedPoints(null);
-    }
-  }, []);
-
-  const onFileChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      if (file) {
-        void loadFile(file);
-      }
-    },
-    [loadFile],
-  );
-
-  const onDrop = useCallback(
-    (event: React.DragEvent) => {
-      event.preventDefault();
-      const file = event.dataTransfer.files[0];
-      if (file?.name.endsWith('.json')) {
-        void loadFile(file);
-      }
-    },
-    [loadFile],
-  );
-
   const toggleSource = useCallback((source: string) => {
     setSelectedSources(previous => {
       const next = new Set(previous);
@@ -360,28 +326,6 @@ export function App() {
     setPowerResult(null);
   }, []);
 
-  const changeMode = useCallback(
-    (next: ExplorerMode) => {
-      setMode(next);
-      // Trips are per-day — pick the most recent date when entering Trips
-      // with "All dates" still selected.
-      if (
-        (next === 'trips' || next === 'explain') &&
-        dateKey === 'all' &&
-        dateKeys.length > 0
-      ) {
-        setDateKey(dateKeys[dateKeys.length - 1]!);
-      }
-      setPlottedPoints(null);
-      setStops(null);
-      setSelectedId(null);
-      setSelectedStopId(null);
-      setPointNavMode(false);
-      resetTripState();
-    },
-    [resetTripState, dateKey, dateKeys],
-  );
-
   const buildDayTrips = useCallback(() => {
     if (dateKey === 'all') {
       return null;
@@ -410,12 +354,141 @@ export function App() {
     setPowerResult(null);
   }, []);
 
+  const loadFile = useCallback(
+    async (file: File) => {
+      setError(null);
+      try {
+        const text = await file.text();
+        const raw = JSON.parse(text);
+        const kind = detectUploadDataKind(raw);
+
+        if (uploadMode === 'detect') {
+          if (kind !== 'location_points') {
+            throw new Error(
+              'Detect mode needs location_points. Switch to Plot for trips + trip_points.',
+            );
+          }
+          const parsed = parseExport(raw);
+          setAllPoints(parsed);
+          setSavedPlaces(parseSavedPlaces(raw));
+          setStoredTripExport(null);
+          setFileName(file.name);
+          setDateKey('all');
+          setSelectedId(null);
+          setPointNavMode(false);
+          setSelectedSources(new Set(uniqueSources(parsed)));
+          setPlottedPoints(null);
+          setStops(null);
+          setSelectedStopId(null);
+          setSegments(null);
+          setSelectedSegmentId(null);
+          setTripPoints(null);
+          setTripStops(null);
+          setPowerResult(null);
+          return;
+        }
+
+        if (kind !== 'stored_trips') {
+          throw new Error(
+            'Plot mode needs trips + trip_points. Switch to Detect for location_points.',
+          );
+        }
+        const stored = loadStoredTripExport(raw);
+        const tripDates = uniqueTripDateKeys(stored);
+        if (tripDates.length === 0) {
+          throw new Error('Plot export has no trips.');
+        }
+        const latestDate = tripDates[tripDates.length - 1]!;
+        const storedPoints = collectAllStoredTripPoints(stored);
+        setStoredTripExport(stored);
+        setAllPoints(storedPoints);
+        setSavedPlaces(stored.savedPlaces);
+        setFileName(file.name);
+        setDateKey(latestDate);
+        setMode('trips');
+        setSelectedId(null);
+        setPointNavMode(false);
+        setSelectedSources(new Set(uniqueSources(storedPoints)));
+        applyTripResult(buildTripResultForDay(stored, latestDate));
+        setPowerResult(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to parse JSON');
+        setAllPoints([]);
+        setSavedPlaces([]);
+        setStoredTripExport(null);
+        setFileName(null);
+        setPointNavMode(false);
+        setSelectedSources(new Set());
+        setPlottedPoints(null);
+      }
+    },
+    [applyTripResult, uploadMode],
+  );
+
+  const onFileChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (file) {
+        void loadFile(file);
+      }
+    },
+    [loadFile],
+  );
+
+  const onDrop = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
+      const file = event.dataTransfer.files[0];
+      if (file?.name.endsWith('.json')) {
+        void loadFile(file);
+      }
+    },
+    [loadFile],
+  );
+
+  const changeMode = useCallback(
+    (next: ExplorerMode) => {
+      setMode(next);
+      if (
+        (next === 'trips' || next === 'explain') &&
+        dateKey === 'all' &&
+        dateKeys.length > 0
+      ) {
+        setDateKey(dateKeys[dateKeys.length - 1]!);
+      }
+      setPlottedPoints(null);
+      setStops(null);
+      setSelectedId(null);
+      setSelectedStopId(null);
+      setPointNavMode(false);
+      if (
+        storedTripExport != null &&
+        (next === 'trips' || next === 'explain')
+      ) {
+        const key =
+          dateKey === 'all' && dateKeys.length > 0
+            ? dateKeys[dateKeys.length - 1]!
+            : dateKey;
+        if (key !== 'all') {
+          applyTripResult(buildTripResultForDay(storedTripExport, key));
+          return;
+        }
+      }
+      resetTripState();
+    },
+    [resetTripState, dateKey, dateKeys, storedTripExport, applyTripResult],
+  );
+
   const handleDetectTrips = useCallback(() => {
+    if (storedTripExport != null && dateKey !== 'all') {
+      applyTripResult(buildTripResultForDay(storedTripExport, dateKey));
+      return;
+    }
     const result = buildDayTrips();
     if (result != null) {
       applyTripResult(result);
     }
-  }, [applyTripResult, buildDayTrips]);
+  }, [applyTripResult, buildDayTrips, dateKey, storedTripExport]);
 
   const handlePowerTest = useCallback(() => {
     const tripSources = new Set<string>(TRIP_PLOT_SOURCES);
@@ -653,6 +726,9 @@ export function App() {
   }, [stops, selectedStopId]);
 
   useEffect(() => {
+    if (storedTripExport != null) {
+      return;
+    }
     setSelectedSources(previous => {
       const next = new Set<string>();
       for (const source of availableSources) {
@@ -683,7 +759,7 @@ export function App() {
     setSelectedSegmentId(null);
     setTripPoints(null);
     setTripStops(null);
-  }, [availableSources]);
+  }, [availableSources, storedTripExport]);
 
   const canGoPrev = adjacentPointId(pointsById, selectedId, -1) != null;
   const canGoNext = adjacentPointId(pointsById, selectedId, 1) != null;
@@ -698,6 +774,38 @@ export function App() {
           <p className="subtitle">Internal tool — not part of LifeMap app</p>
         </header>
 
+        <div
+          className="upload-mode"
+          role="radiogroup"
+          aria-label="Upload mode">
+          <label className="upload-mode-option">
+            <input
+              type="radio"
+              name="uploadMode"
+              value="detect"
+              checked={uploadMode === 'detect'}
+              onChange={() => setUploadMode('detect')}
+            />
+            <span className="upload-mode-text">
+              <strong>Detect</strong>
+              <span className="upload-mode-hint">location_points → run algorithm</span>
+            </span>
+          </label>
+          <label className="upload-mode-option">
+            <input
+              type="radio"
+              name="uploadMode"
+              value="plot"
+              checked={uploadMode === 'plot'}
+              onChange={() => setUploadMode('plot')}
+            />
+            <span className="upload-mode-text">
+              <strong>Plot</strong>
+              <span className="upload-mode-hint">trips + trip_points from mobile</span>
+            </span>
+          </label>
+        </div>
+
         <label className="file-btn">
           Load JSON export
           <input
@@ -708,7 +816,12 @@ export function App() {
           />
         </label>
 
-        <p className="hint">Drop <code>all data.json</code> anywhere on this page</p>
+        <p className="hint">
+          Drop a JSON export anywhere on this page.{' '}
+          {uploadMode === 'detect'
+            ? 'Use location_points (GPS export or full database).'
+            : 'Use trips + trip_points from mobile Settings export.'}
+        </p>
 
         {error ? <p className="error">{error}</p> : null}
 
@@ -725,11 +838,23 @@ export function App() {
                   <span className="meta-value">{fileName}</span>
                 </div>
                 <div>
-                  <span className="label">Total points</span>
+                  <span className="label">
+                    {isPlotUpload ? 'Stored trips' : 'Total points'}
+                  </span>
                   <span className="meta-value">
-                    {allPoints.length.toLocaleString()}
+                    {isPlotUpload
+                      ? storedTripExport!.trips.length.toLocaleString()
+                      : allPoints.length.toLocaleString()}
                   </span>
                 </div>
+                {isPlotUpload ? (
+                  <div>
+                    <span className="label">Trip points</span>
+                    <span className="meta-value">
+                      {allPoints.length.toLocaleString()}
+                    </span>
+                  </div>
+                ) : null}
                 <div>
                   <span className="label">Date filter</span>
                   <span className="meta-value">
@@ -760,7 +885,14 @@ export function App() {
               <select
                 value={dateKey === 'all' && (mode === 'trips' || mode === 'explain') ? '' : dateKey}
                 onChange={event => {
-                  setDateKey(event.target.value);
+                  const nextDate = event.target.value;
+                  setDateKey(nextDate);
+                  if (storedTripExport != null && nextDate !== 'all') {
+                    applyTripResult(
+                      buildTripResultForDay(storedTripExport, nextDate),
+                    );
+                    return;
+                  }
                   setPlottedPoints(null);
                   setStops(null);
                   setSelectedStopId(null);
@@ -956,17 +1088,26 @@ export function App() {
               </section>
             ) : mode === 'trips' ? (
               <section className="stops-mode" aria-label="Trips">
-                <button
-                  type="button"
-                  className="stops-btn"
-                  disabled={dateKey === 'all'}
-                  onClick={handleDetectTrips}>
-                  Identify trips (stays + drives)
-                </button>
+                {!isPlotUpload ? (
+                  <button
+                    type="button"
+                    className="stops-btn"
+                    disabled={dateKey === 'all'}
+                    onClick={handleDetectTrips}>
+                    Identify trips (stays + drives)
+                  </button>
+                ) : (
+                  <p className="source-filter-hint">
+                    Plotted from mobile trips export. Change date to view another
+                    day.
+                  </p>
+                )}
                 <p className="source-filter-hint">
                   {dateKey === 'all'
                     ? 'Pick a date above, then identify trips.'
-                    : `${filteredPoints.length.toLocaleString()} points · ${formatDateLabel(dateKey)}`}
+                    : isPlotUpload
+                      ? `${segments?.length ?? 0} segments · ${formatDateLabel(dateKey)}`
+                      : `${filteredPoints.length.toLocaleString()} points · ${formatDateLabel(dateKey)}`}
                 </p>
                 <details className="meta-details">
                   <summary className="meta-summary">
@@ -1291,7 +1432,9 @@ export function App() {
             )}
           </>
         ) : (
-          <p className="empty">Load an export to plot saved GPS rows.</p>
+          <p className="empty">
+            Load an export — Detect for GPS points, Plot for stored trips.
+          </p>
         )}
       </aside>
 
@@ -1376,7 +1519,7 @@ export function App() {
         ) : (
           <div className="map-placeholder">
             <p>Map preview</p>
-            <p className="muted">Load <strong>all data.json</strong> to see every save</p>
+            <p className="muted">Load a JSON export using Detect or Plot mode</p>
           </div>
         )}
       </main>

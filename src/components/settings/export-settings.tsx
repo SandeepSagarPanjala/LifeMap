@@ -269,8 +269,8 @@ export function ExportSettings() {
                 <ExportTableRow
                   key={tableName}
                   tableName={tableName}
-                  count={tableStats.counts[tableName]}
-                  storageBytes={tableStats.storageBytes[tableName]}
+                  count={tableStats.counts[tableName] ?? 0}
+                  storageBytes={tableStats.storageBytes[tableName] ?? 0}
                   disabled={tableActionsDisabled}
                   onPickDay={() => openDayPicker(tableName)}
                   onExportAll={() => void shareExport(tableName, 'all')}
@@ -440,7 +440,7 @@ function ExportTableRow({
         {label}
       </Text>
       <Text className="w-11 text-right text-xs font-medium">
-        {count.toLocaleString()}
+        {(count ?? 0).toLocaleString()}
       </Text>
       <Text
         className={`w-14 text-right text-[10px] font-medium ${

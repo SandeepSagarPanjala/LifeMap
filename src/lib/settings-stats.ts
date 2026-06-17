@@ -3,6 +3,9 @@ import {
   type ExportTableStats,
 } from '@/db/repositories/database-export';
 import {
+  normalizeExportTableCounts,
+} from '@/lib/database-export';
+import {
   readSettingsStatsCache,
   SETTINGS_STATS_CACHE_KEYS,
   writeSettingsStatsCache,
@@ -34,9 +37,21 @@ export async function computeAndCacheStorageBreakdown(): Promise<
 export async function loadCachedExportTableStats(): Promise<
   CachedSettingsStats<ExportTableStats> | null
 > {
-  return readSettingsStatsCache<ExportTableStats>(
+  const cached = await readSettingsStatsCache<ExportTableStats>(
     SETTINGS_STATS_CACHE_KEYS.exportTableStats,
   );
+  if (cached == null) {
+    return null;
+  }
+
+  return {
+    ...cached,
+    payload: {
+      ...cached.payload,
+      counts: normalizeExportTableCounts(cached.payload.counts),
+      storageBytes: normalizeExportTableCounts(cached.payload.storageBytes),
+    },
+  };
 }
 
 export async function computeAndCacheExportTableStats(): Promise<

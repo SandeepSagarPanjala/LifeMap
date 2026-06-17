@@ -42,17 +42,22 @@ function stopConfigFromTripConfig(
 
 function parsedToLocationRow(point: {
   id: number;
-  timestamp: Date;
+  timestamp?: Date;
+  at?: Date;
   lat: number;
   lng: number;
   accuracy: number | null;
   altitude: number | null;
   speed: number | null;
   source: string;
-}): LocationPointRow {
+}): LocationPointRow | null {
+  const timestamp = point.timestamp ?? point.at;
+  if (timestamp == null) {
+    return null;
+  }
   return {
     id: point.id,
-    timestamp: point.timestamp,
+    timestamp,
     lat: point.lat,
     lng: point.lng,
     accuracy: point.accuracy,
@@ -63,7 +68,9 @@ function parsedToLocationRow(point: {
 }
 
 function staySegmentToTrip(segment: StaySegment): DetectedTrip {
-  const points = segment.points.map(parsedToLocationRow);
+  const points = segment.points
+    .map(parsedToLocationRow)
+    .filter((point): point is LocationPointRow => point != null);
   return {
     id: segment.id,
     kind: 'stay',
@@ -80,7 +87,9 @@ function staySegmentToTrip(segment: StaySegment): DetectedTrip {
 }
 
 function driveSegmentToTrip(segment: DriveSegment): DetectedTrip {
-  const points = segment.points.map(parsedToLocationRow);
+  const points = segment.points
+    .map(parsedToLocationRow)
+    .filter((point): point is LocationPointRow => point != null);
   return {
     id: segment.id,
     kind: 'travel',

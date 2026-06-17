@@ -191,6 +191,30 @@ function travelCentroid(trip: DetectedTrip): {lat: number; lng: number} {
   };
 }
 
+function geometryPointsForPersist(
+  entry: DetectedTrip,
+  centroid: {lat: number; lng: number},
+): LocationPointRow[] {
+  if (entry.points.length > 0) {
+    return entry.points;
+  }
+  if (entry.kind === 'stay') {
+    return [
+      {
+        id: -1,
+        timestamp: entry.startAt,
+        lat: centroid.lat,
+        lng: centroid.lng,
+        accuracy: null,
+        altitude: null,
+        speed: null,
+        source: 'anchor',
+      },
+    ];
+  }
+  return [];
+}
+
 function tripCentroidForPersist(
   trip: DetectedTrip,
   savedPlaces: Awaited<ReturnType<typeof listSavedPlaces>>,
@@ -447,7 +471,7 @@ export async function loadHistoryForSelectedDay(
     await persistClosedTripsIncremental(
       dateKey,
       detectionConfig,
-      entries.filter(isClosedPlayableEntry),
+      entries.filter(isPersistableTimelineEntry),
       {
         fullReplace: true,
         forceComplete: true,
@@ -607,8 +631,9 @@ export async function persistClosedTripsIncremental(
       closedAt,
     });
     upserted += 1;
-    if (entry.points.length > 0) {
-      await replaceTripPointsFromLocations(row.id, entry.points);
+    const geometry = geometryPointsForPersist(entry, centroid);
+    if (geometry.length > 0) {
+      await replaceTripPointsFromLocations(row.id, geometry);
     }
   }
 
@@ -661,7 +686,7 @@ async function persistClosedTripsForDay(
   return persistClosedTripsIncremental(
     dateKey,
     detectionConfig,
-    entries.filter(isClosedPlayableEntry),
+    entries.filter(isPersistableTimelineEntry),
     {fullReplace: true, pointCount: dayPointCount},
   );
 }
@@ -683,7 +708,7 @@ export async function sealYesterdayIfNeeded(): Promise<void> {
   await persistClosedTripsIncremental(
     yesterdayKey,
     detectionConfig,
-    entries.filter(isClosedPlayableEntry),
+    entries.filter(isPersistableTimelineEntry),
     {
       fullReplace: true,
       forceComplete: true,
@@ -816,7 +841,7 @@ export async function rebuildPastDayTrips(
   return persistClosedTripsIncremental(
     dateKey,
     detectionConfig,
-    entries.filter(isClosedPlayableEntry),
+    entries.filter(isPersistableTimelineEntry),
     {
       fullReplace: true,
       forceComplete: true,

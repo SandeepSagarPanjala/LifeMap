@@ -69,6 +69,41 @@ body {
   background: #0066d6;
 }
 
+.upload-mode {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.upload-mode-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #f2f2f7;
+  cursor: pointer;
+}
+
+.upload-mode-option input {
+  margin-top: 3px;
+}
+
+.upload-mode-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.82rem;
+  color: #1c1c1e;
+}
+
+.upload-mode-hint {
+  font-size: 0.75rem;
+  color: #636366;
+  font-weight: 400;
+}
+
 .mode-tabs {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));

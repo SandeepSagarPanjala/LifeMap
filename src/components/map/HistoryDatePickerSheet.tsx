@@ -22,6 +22,7 @@ import {
   Pressable,
   StyleSheet,
   View,
+  type LayoutChangeEvent,
 } from 'react-native';
 
 import {Text} from '@/components/ui/text';
@@ -34,7 +35,7 @@ import {HISTORY_COLORS} from '@/lib/history-timeline';
 import {useAppStore} from '@/stores/app-store';
 
 const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-const SHEET_OFFSCREEN = 420;
+const DEFAULT_SHEET_HEIGHT = 480;
 
 type HistoryDatePickerSheetProps = {
   visible: boolean;
@@ -68,81 +69,107 @@ export function HistoryDatePickerSheet({
 
   const [mounted, setMounted] = useState(visible);
   const backdropOpacity = useRef(new Animated.Value(0)).current;
-  const sheetTranslateY = useRef(new Animated.Value(SHEET_OFFSCREEN)).current;
+  const sheetTranslateY = useRef(
+    new Animated.Value(DEFAULT_SHEET_HEIGHT),
+  ).current;
+  const sheetHeightRef = useRef(DEFAULT_SHEET_HEIGHT);
   const closingRef = useRef(false);
+  const animationRef = useRef<Animated.CompositeAnimation | null>(null);
 
   const [visibleMonth, setVisibleMonth] = useState(() =>
     startOfMonth(selectedDay),
   );
 
+  const offscreenOffset = useCallback(
+    () => sheetHeightRef.current + 32,
+    [],
+  );
+
+  const stopAnimations = useCallback(() => {
+    animationRef.current?.stop();
+    animationRef.current = null;
+    backdropOpacity.stopAnimation();
+    sheetTranslateY.stopAnimation();
+  }, [backdropOpacity, sheetTranslateY]);
+
+  const syncVisibleMonth = useCallback(() => {
+    const month = startOfMonth(parseDateKey(selectedDateKey));
+    setVisibleMonth(
+      month < earliestMonth
+        ? earliestMonth
+        : month > todayMonth
+          ? todayMonth
+          : month,
+    );
+  }, [earliestMonth, selectedDateKey, todayMonth]);
+
   useLayoutEffect(() => {
     if (visible) {
       closingRef.current = false;
       setMounted(true);
-      const month = startOfMonth(parseDateKey(selectedDateKey));
-      setVisibleMonth(
-        month < earliestMonth
-          ? earliestMonth
-          : month > todayMonth
-            ? todayMonth
-            : month,
-      );
+      syncVisibleMonth();
     }
-  }, [visible, selectedDateKey, earliestMonth, todayMonth]);
+  }, [visible, syncVisibleMonth]);
 
   const animateIn = useCallback(() => {
+    stopAnimations();
+    const offset = offscreenOffset();
     backdropOpacity.setValue(0);
-    sheetTranslateY.setValue(SHEET_OFFSCREEN);
-    Animated.parallel([
+    sheetTranslateY.setValue(offset);
+    animationRef.current = Animated.parallel([
       Animated.timing(backdropOpacity, {
         toValue: 1,
-        duration: 220,
+        duration: 240,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
       Animated.timing(sheetTranslateY, {
         toValue: 0,
-        duration: 320,
-        easing: Easing.out(Easing.cubic),
+        duration: 340,
+        easing: Easing.bezier(0.22, 1, 0.36, 1),
         useNativeDriver: true,
       }),
-    ]).start();
-  }, [backdropOpacity, sheetTranslateY]);
+    ]);
+    animationRef.current.start(() => {
+      animationRef.current = null;
+    });
+  }, [backdropOpacity, offscreenOffset, sheetTranslateY, stopAnimations]);
 
   const animateOut = useCallback(
-    (onDone: () => void) => {
-      Animated.parallel([
+    (onDone?: () => void) => {
+      stopAnimations();
+      const offset = offscreenOffset();
+      animationRef.current = Animated.parallel([
         Animated.timing(backdropOpacity, {
           toValue: 0,
-          duration: 180,
+          duration: 220,
           easing: Easing.in(Easing.cubic),
           useNativeDriver: true,
         }),
         Animated.timing(sheetTranslateY, {
-          toValue: SHEET_OFFSCREEN,
-          duration: 240,
-          easing: Easing.in(Easing.cubic),
+          toValue: offset,
+          duration: 280,
+          easing: Easing.bezier(0.4, 0, 0.2, 1),
           useNativeDriver: true,
         }),
-      ]).start(({finished}) => {
-        if (finished) {
-          onDone();
-        }
+      ]);
+      animationRef.current.start(() => {
+        animationRef.current = null;
+        onDone?.();
       });
     },
-    [backdropOpacity, sheetTranslateY],
+    [backdropOpacity, offscreenOffset, sheetTranslateY, stopAnimations],
   );
 
-  const closeSheet = useCallback(
+  const beginClose = useCallback(
     (afterClose?: () => void) => {
       if (closingRef.current) {
         return;
       }
       closingRef.current = true;
+      onClose();
       animateOut(() => {
-        closingRef.current = false;
         setMounted(false);
-        onClose();
         afterClose?.();
       });
     },
@@ -150,24 +177,36 @@ export function HistoryDatePickerSheet({
   );
 
   const dismiss = useCallback(() => {
-    closeSheet();
-  }, [closeSheet]);
+    beginClose();
+  }, [beginClose]);
 
   useEffect(() => {
     if (!visible && mounted && !closingRef.current) {
-      closingRef.current = true;
-      animateOut(() => {
-        closingRef.current = false;
-        setMounted(false);
-      });
+      beginClose();
     }
-  }, [animateOut, mounted, visible]);
+  }, [beginClose, mounted, visible]);
 
   useEffect(() => {
     if (mounted && visible) {
       animateIn();
     }
   }, [animateIn, mounted, visible]);
+
+  useEffect(() => {
+    return () => {
+      stopAnimations();
+    };
+  }, [stopAnimations]);
+
+  const handleSheetLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      const height = event.nativeEvent.layout.height;
+      if (height > 0) {
+        sheetHeightRef.current = height;
+      }
+    },
+    [],
+  );
 
   const monthLabel = format(visibleMonth, 'MMMM yyyy');
   const canGoPrevMonth = visibleMonth > earliestMonth;
@@ -186,11 +225,13 @@ export function HistoryDatePickerSheet({
     if (isAfter(dayStart, today) || isBefore(dayStart, earliestDay)) {
       return;
     }
-    closeSheet(() => onSelectDate(toDateKey(day)));
+    onSelectDate(toDateKey(day));
+    beginClose();
   };
 
   const goToToday = () => {
-    closeSheet(() => onSelectDate(todayKey));
+    onSelectDate(todayKey);
+    beginClose();
   };
 
   if (!mounted) {
@@ -217,6 +258,7 @@ export function HistoryDatePickerSheet({
         />
 
         <Animated.View
+          onLayout={handleSheetLayout}
           style={[
             styles.sheet,
             {transform: [{translateY: sheetTranslateY}]},

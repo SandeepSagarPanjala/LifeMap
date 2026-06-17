@@ -9,6 +9,33 @@ export type LocationPointRow = {
   source: string;
 };
 
+export type StoredTripExportRow = {
+  id: number;
+  kind: 'stay' | 'travel' | 'missing';
+  dateKey: string;
+  startAt: string;
+  endAt: string;
+  durationMs: number;
+  distanceKm: number;
+  centroidLat: number;
+  centroidLng: number;
+  segmentOrder: number;
+  savedPlaceLabel: string | null;
+  savedPlaceId: number | null;
+  inferred: boolean;
+};
+
+export type StoredTripPointExportRow = {
+  id?: number;
+  tripId: number;
+  seq: number;
+  lat: number;
+  lng: number;
+  recordedAt: string | null;
+  locationPointId: number | null;
+  source: string | null;
+};
+
 export type LocationExport = {
   exportedAt?: string;
   table?: string;
@@ -33,9 +60,14 @@ export type DatabaseExport = {
   scope?: string;
   tables?: {
     location_points?: LocationPointRow[];
+    trips?: StoredTripExportRow[];
+    trip_points?: StoredTripPointExportRow[];
     saved_places?: SavedPlaceRow[];
   };
 };
+
+export type UploadDataKind = 'location_points' | 'stored_trips' | 'unknown';
+export type UploadMode = 'detect' | 'plot';
 
 export type ParsedPoint = LocationPointRow & {
   at: Date;

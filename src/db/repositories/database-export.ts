@@ -10,6 +10,7 @@ import {
   savedPlaces,
   settings,
   trackingEvents,
+  tripPoints,
   trips,
 } from '../schema';
 import type {ExportPeriod} from '@/lib/export-period';
@@ -32,6 +33,7 @@ export async function countExportTableRows(): Promise<
   const [
     locationPointCount,
     tripCount,
+    tripPointCount,
     materializedDayCount,
     queueCount,
     trackingEventCount,
@@ -42,6 +44,7 @@ export async function countExportTableRows(): Promise<
   ] = await Promise.all([
     db.select({count: sql<number>`count(*)`}).from(locationPoints),
     db.select({count: sql<number>`count(*)`}).from(trips),
+    db.select({count: sql<number>`count(*)`}).from(tripPoints),
     db.select({count: sql<number>`count(*)`}).from(materializedDays),
     db.select({count: sql<number>`count(*)`}).from(materializationQueue),
     db.select({count: sql<number>`count(*)`}).from(trackingEvents),
@@ -54,6 +57,7 @@ export async function countExportTableRows(): Promise<
   return {
     location_points: Number(locationPointCount[0]?.count ?? 0),
     trips: Number(tripCount[0]?.count ?? 0),
+    trip_points: Number(tripPointCount[0]?.count ?? 0),
     materialized_days: Number(materializedDayCount[0]?.count ?? 0),
     materialization_queue: Number(queueCount[0]?.count ?? 0),
     tracking_events: Number(trackingEventCount[0]?.count ?? 0),
@@ -105,6 +109,7 @@ export async function fetchDatabaseExportTables(
   const [
     locationPointRows,
     tripRows,
+    tripPointRows,
     materializedDayRows,
     queueRows,
     trackingEventRows,
@@ -134,6 +139,53 @@ export async function fetchDatabaseExportTables(
               and(gte(trips.startAt, startAt), lte(trips.startAt, endAt)),
             )
             .orderBy(asc(trips.startAt)),
+    dateKey
+      ? db
+          .select({
+            id: tripPoints.id,
+            tripId: tripPoints.tripId,
+            seq: tripPoints.seq,
+            lat: tripPoints.lat,
+            lng: tripPoints.lng,
+            recordedAt: tripPoints.recordedAt,
+            locationPointId: tripPoints.locationPointId,
+            source: tripPoints.source,
+          })
+          .from(tripPoints)
+          .innerJoin(trips, eq(tripPoints.tripId, trips.id))
+          .where(eq(trips.dateKey, dateKey))
+          .orderBy(asc(tripPoints.tripId), asc(tripPoints.seq))
+      : period.scope === 'all'
+        ? db
+            .select({
+              id: tripPoints.id,
+              tripId: tripPoints.tripId,
+              seq: tripPoints.seq,
+              lat: tripPoints.lat,
+              lng: tripPoints.lng,
+              recordedAt: tripPoints.recordedAt,
+              locationPointId: tripPoints.locationPointId,
+              source: tripPoints.source,
+            })
+            .from(tripPoints)
+            .orderBy(asc(tripPoints.tripId), asc(tripPoints.seq))
+        : db
+            .select({
+              id: tripPoints.id,
+              tripId: tripPoints.tripId,
+              seq: tripPoints.seq,
+              lat: tripPoints.lat,
+              lng: tripPoints.lng,
+              recordedAt: tripPoints.recordedAt,
+              locationPointId: tripPoints.locationPointId,
+              source: tripPoints.source,
+            })
+            .from(tripPoints)
+            .innerJoin(trips, eq(tripPoints.tripId, trips.id))
+            .where(
+              and(gte(trips.startAt, startAt), lte(trips.startAt, endAt)),
+            )
+            .orderBy(asc(tripPoints.tripId), asc(tripPoints.seq)),
     dateKey
       ? db
           .select()
@@ -206,10 +258,24 @@ export async function fetchDatabaseExportTables(
       distanceKm: row.distanceKm,
       centroidLat: row.centroidLat,
       centroidLng: row.centroidLng,
+      segmentOrder: row.segmentOrder,
+      savedPlaceLabel: row.savedPlaceLabel,
+      savedPlaceId: row.savedPlaceId,
+      inferred: row.inferred === 1,
       placeLookupCacheId: row.placeLookupCacheId,
       selectedCandidateIndex: row.selectedCandidateIndex,
       detectionVersion: row.detectionVersion,
       closedAt: iso(row.closedAt),
+    })),
+    trip_points: tripPointRows.map(row => ({
+      id: row.id,
+      tripId: row.tripId,
+      seq: row.seq,
+      lat: row.lat,
+      lng: row.lng,
+      recordedAt: iso(row.recordedAt),
+      locationPointId: row.locationPointId,
+      source: row.source,
     })),
     materialized_days: materializedDayRows.map(row => ({
       dateKey: row.dateKey,

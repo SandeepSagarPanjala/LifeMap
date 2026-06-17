@@ -4,6 +4,7 @@ import {exportPeriodLabel} from '@/lib/export-period';
 export type DatabaseExportTables = {
   location_points: unknown[];
   trips: unknown[];
+  trip_points: unknown[];
   materialized_days: unknown[];
   materialization_queue: unknown[];
   tracking_events: unknown[];
@@ -18,6 +19,7 @@ export type DatabaseExportTableName = keyof DatabaseExportTables;
 export const DATABASE_EXPORT_TABLE_NAMES: DatabaseExportTableName[] = [
   'location_points',
   'trips',
+  'trip_points',
   'materialized_days',
   'materialization_queue',
   'tracking_events',
@@ -31,6 +33,7 @@ export function emptyDatabaseExportTables(): DatabaseExportTables {
   return {
     location_points: [],
     trips: [],
+    trip_points: [],
     materialized_days: [],
     materialization_queue: [],
     tracking_events: [],
@@ -42,12 +45,32 @@ export function emptyDatabaseExportTables(): DatabaseExportTables {
 }
 
 export function sumExportTableRowCounts(
-  counts: Record<DatabaseExportTableName, number>,
+  counts: Partial<Record<DatabaseExportTableName, number>>,
 ): number {
   return DATABASE_EXPORT_TABLE_NAMES.reduce(
-    (sum, tableName) => sum + counts[tableName],
+    (sum, tableName) => sum + (counts[tableName] ?? 0),
     0,
   );
+}
+
+export function emptyExportTableCounts(): Record<DatabaseExportTableName, number> {
+  return Object.fromEntries(
+    DATABASE_EXPORT_TABLE_NAMES.map(tableName => [tableName, 0]),
+  ) as Record<DatabaseExportTableName, number>;
+}
+
+/** Fill in zero for tables added after stats were cached. */
+export function normalizeExportTableCounts(
+  counts: Partial<Record<DatabaseExportTableName, number>>,
+): Record<DatabaseExportTableName, number> {
+  const normalized = emptyExportTableCounts();
+  for (const tableName of DATABASE_EXPORT_TABLE_NAMES) {
+    const value = counts[tableName];
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      normalized[tableName] = value;
+    }
+  }
+  return normalized;
 }
 
 export type DatabaseExportPayload = {

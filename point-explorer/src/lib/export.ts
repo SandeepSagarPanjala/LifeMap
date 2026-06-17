@@ -4,6 +4,8 @@ import type {
   LocationPointRow,
   ParsedPoint,
   SavedPlaceRow,
+  UploadDataKind,
+  UploadMode,
 } from '../types';
 
 const DATE_KEY_FORMATTER = new Intl.DateTimeFormat('en-CA', {
@@ -161,4 +163,44 @@ export function addDaysToDateKey(dayKey: string, delta: number): string {
   const start = chicagoDayStart(dayKey);
   const shifted = new Date(start.getTime() + delta * 86_400_000);
   return dateKeyForTimestamp(shifted.toISOString());
+}
+
+function hasLocationPointRows(raw: Record<string, unknown>): boolean {
+  if (Array.isArray(raw.rows) && raw.rows.length > 0) {
+    return true;
+  }
+  const tables = raw.tables as Record<string, unknown> | undefined;
+  return (
+    Array.isArray(tables?.location_points) && tables.location_points.length > 0
+  );
+}
+
+function hasStoredTripRows(raw: Record<string, unknown>): boolean {
+  const tables = raw.tables as Record<string, unknown> | undefined;
+  if (Array.isArray(tables?.trips) && tables.trips.length > 0) {
+    return true;
+  }
+  if (Array.isArray(raw.trips) && raw.trips.length > 0) {
+    return true;
+  }
+  return Array.isArray(raw.segments) && raw.segments.length > 0;
+}
+
+export function detectUploadDataKind(raw: unknown): UploadDataKind {
+  if (!raw || typeof raw !== 'object') {
+    return 'unknown';
+  }
+  const record = raw as Record<string, unknown>;
+  if (hasStoredTripRows(record)) {
+    return 'stored_trips';
+  }
+  if (hasLocationPointRows(record)) {
+    return 'location_points';
+  }
+  return 'unknown';
+}
+
+export function inferDefaultUploadMode(raw: unknown): UploadMode {
+  const kind = detectUploadDataKind(raw);
+  return kind === 'stored_trips' ? 'plot' : 'detect';
 }

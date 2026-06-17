@@ -93,8 +93,67 @@ export async function migrationAlreadyApplied(
       return tableExists(sqlite, 'settings_stats_cache');
     case '0008_trip_points':
       return tableExists(sqlite, 'trip_points');
+    case '0009_trip_segment_metadata':
+      return columnExists(sqlite, 'trips', 'segment_order');
+    case '0010_trip_point_metadata':
+      return columnExists(sqlite, 'trip_points', 'recorded_at');
     default:
       return false;
+  }
+}
+
+/** Repair columns when the journal is behind the bundled schema. */
+export async function ensureTripSegmentMetadataColumns(sqlite: DB): Promise<void> {
+  if (!(await tableExists(sqlite, 'trips'))) {
+    return;
+  }
+  if (!(await columnExists(sqlite, 'trips', 'segment_order'))) {
+    await executeMigrationStatement(
+      sqlite,
+      `ALTER TABLE trips ADD COLUMN segment_order integer DEFAULT 0 NOT NULL`,
+    );
+  }
+  if (!(await columnExists(sqlite, 'trips', 'saved_place_label'))) {
+    await executeMigrationStatement(
+      sqlite,
+      `ALTER TABLE trips ADD COLUMN saved_place_label text`,
+    );
+  }
+  if (!(await columnExists(sqlite, 'trips', 'saved_place_id'))) {
+    await executeMigrationStatement(
+      sqlite,
+      `ALTER TABLE trips ADD COLUMN saved_place_id integer`,
+    );
+  }
+  if (!(await columnExists(sqlite, 'trips', 'inferred'))) {
+    await executeMigrationStatement(
+      sqlite,
+      `ALTER TABLE trips ADD COLUMN inferred integer DEFAULT 0 NOT NULL`,
+    );
+  }
+}
+
+export async function ensureTripPointMetadataColumns(sqlite: DB): Promise<void> {
+  if (!(await tableExists(sqlite, 'trip_points'))) {
+    return;
+  }
+  if (!(await columnExists(sqlite, 'trip_points', 'recorded_at'))) {
+    await executeMigrationStatement(
+      sqlite,
+      `ALTER TABLE trip_points ADD COLUMN recorded_at integer`,
+    );
+  }
+  if (!(await columnExists(sqlite, 'trip_points', 'location_point_id'))) {
+    await executeMigrationStatement(
+      sqlite,
+      `ALTER TABLE trip_points ADD COLUMN location_point_id integer`,
+    );
+  }
+  if (!(await columnExists(sqlite, 'trip_points', 'source'))) {
+    await executeMigrationStatement(
+      sqlite,
+      `ALTER TABLE trip_points ADD COLUMN source text DEFAULT 'gps'`,
+    );
   }
 }
 

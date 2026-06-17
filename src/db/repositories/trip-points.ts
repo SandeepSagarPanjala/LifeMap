@@ -1,7 +1,8 @@
 import {asc, eq, inArray, sql} from 'drizzle-orm';
 
 import type {LocationPointRow} from '@/db/repositories/location-days';
-import {getDatabase} from '../client';
+import {getDatabase, getSqlite} from '../client';
+import {ensureTripPointMetadataColumns} from '../migrate';
 import {tripPoints, trips} from '../schema';
 
 import type {TripRow} from './trips';
@@ -16,6 +17,17 @@ export type TripPointRow = {
   locationPointId: number | null;
   source: string | null;
 };
+
+let tripPointSchemaEnsured = false;
+
+async function ensureTripPointSchema(): Promise<void> {
+  if (tripPointSchemaEnsured) {
+    return;
+  }
+  const sqlite = await getSqlite();
+  await ensureTripPointMetadataColumns(sqlite);
+  tripPointSchemaEnsured = true;
+}
 
 function mapRow(row: typeof tripPoints.$inferSelect): TripPointRow {
   return {
@@ -126,6 +138,7 @@ export async function replaceTripPointsFromLocations(
   tripId: number,
   points: readonly LocationPointRow[],
 ): Promise<void> {
+  await ensureTripPointSchema();
   const db = await getDatabase();
   await db.delete(tripPoints).where(eq(tripPoints.tripId, tripId));
   if (points.length === 0) {
@@ -140,7 +153,7 @@ export async function replaceTripPointsFromLocations(
       lng: point.lng,
       recordedAt: point.timestamp,
       locationPointId: point.id > 0 ? point.id : null,
-      source: point.source,
+      source: point.source ?? 'gps',
     })),
   );
 }
