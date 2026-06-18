@@ -11,6 +11,7 @@ import {
   PLACE_LOOKUP_VENUE_RADIUS_M,
 } from '@/lib/place-lookup-venue';
 import {resolveVisitPlaceDisplay} from '@/lib/place-lookup-display';
+import {isVisitPlaceLabelConfirmed} from '@/lib/place-lookup-types';
 import type {PlaceLookupRow} from '@/lib/place-lookup-types';
 import type {DetectedTrip} from '@/lib/trip-detection';
 
@@ -92,6 +93,21 @@ describe('place lookup display', () => {
     const display = resolveVisitPlaceDisplay(row);
     expect(display.primaryLabel).toBe('123 Main St');
     expect(display.isAreaDefault).toBe(true);
+    expect(isVisitPlaceLabelConfirmed(display)).toBe(true);
+  });
+
+  it('treats unselected lookup labels as not confirmed', () => {
+    const row = placeRow(33.21, -97.13);
+    const display = resolveVisitPlaceDisplay(row);
+    expect(display.primaryLabel).toBe('Walmart');
+    expect(isVisitPlaceLabelConfirmed(display)).toBe(false);
+  });
+
+  it('uses a custom trip label when provided', () => {
+    const row = placeRow(33.21, -97.13);
+    const display = resolveVisitPlaceDisplay(row, {customLabel: 'Client HQ'});
+    expect(display.primaryLabel).toBe('Client HQ');
+    expect(isVisitPlaceLabelConfirmed(display)).toBe(true);
   });
 });
 

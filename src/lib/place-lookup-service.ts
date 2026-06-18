@@ -3,13 +3,18 @@ import {
   completePlaceLookup,
   failPlaceLookup,
   findPlaceLookupNearAnchor,
+  getPlaceLookupById,
   insertPendingPlaceLookup,
+  mergePlaceLookupCandidates,
+  updatePlaceLookupVenueRadius,
 } from '@/db/repositories/place-lookup-cache';
 import {notifyPlaceLookupUpdated} from '@/lib/place-lookup-events';
 import {fetchNearbyPlaceLookup} from '@/lib/place-lookup-native';
 import {
+  nextPlaceLookupRadiusM,
   placeLookupAnchorKey,
   PLACE_LOOKUP_SESSION_BUDGET,
+  PLACE_LOOKUP_VENUE_RADIUS_M,
 } from '@/lib/place-lookup-venue';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
 import {matchSavedPlaceForStay} from '@/lib/saved-places';
@@ -76,7 +81,11 @@ async function performPlaceLookup(anchor: {lat: number; lng: number}): Promise<v
       notifyPlaceLookupUpdated();
     }
 
-    const result = await fetchNearbyPlaceLookup(anchor.lat, anchor.lng);
+    const result = await fetchNearbyPlaceLookup(
+      anchor.lat,
+      anchor.lng,
+      existing?.venueRadiusMeters ?? PLACE_LOOKUP_VENUE_RADIUS_M,
+    );
     await completePlaceLookup(rowId, {
       addressLine: result.addressLine,
       candidates: result.candidates,
@@ -118,6 +127,47 @@ export async function enqueuePlaceLookupsForStays(
       break;
     }
     await enqueuePlaceLookupForStay(stay, savedPlaces, config);
+  }
+}
+
+export async function expandPlaceLookupArea(cacheId: number): Promise<boolean> {
+  const row = await getPlaceLookupById(cacheId);
+  if (!row) {
+    return false;
+  }
+
+  const nextRadius = nextPlaceLookupRadiusM(row.venueRadiusMeters);
+  if (nextRadius == null) {
+    return false;
+  }
+
+  const key = placeLookupAnchorKey(row.anchorLat, row.anchorLng);
+  if (inFlightKeys.has(key)) {
+    return false;
+  }
+
+  inFlightKeys.add(key);
+  try {
+    await updatePlaceLookupVenueRadius(cacheId, nextRadius);
+    notifyPlaceLookupUpdated();
+
+    const result = await fetchNearbyPlaceLookup(
+      row.anchorLat,
+      row.anchorLng,
+      nextRadius,
+    );
+    await mergePlaceLookupCandidates(cacheId, {
+      addressLine: result.addressLine,
+      candidates: result.candidates,
+      venueRadiusMeters: nextRadius,
+    });
+    return true;
+  } catch {
+    await failPlaceLookup(cacheId);
+    return false;
+  } finally {
+    inFlightKeys.delete(key);
+    notifyPlaceLookupUpdated();
   }
 }
 

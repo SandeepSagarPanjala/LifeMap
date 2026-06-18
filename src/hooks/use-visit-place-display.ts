@@ -7,6 +7,7 @@ import {
 import {
   getTripByEventKey,
   getTripById,
+  updateTripCustomLabel,
   updateTripLabelSelection,
 } from '@/db/repositories/trips';
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
@@ -19,6 +20,8 @@ import {
   subscribePlaceLookup,
   notifyPlaceLookupUpdated,
 } from '@/lib/place-lookup-events';
+import {expandPlaceLookupArea} from '@/lib/place-lookup-service';
+import {PLACE_LOOKUP_VENUE_RADIUS_M} from '@/lib/place-lookup-venue';
 import {
   getMaterializationRevision,
   subscribeMaterialization,
@@ -36,11 +39,13 @@ import {
 const EMPTY_DISPLAY: VisitPlaceDisplay = {
   source: 'none',
   primaryLabel: null,
+  customLabel: null,
   candidates: [],
   selectedIndex: 0,
   cacheId: null,
   materializedTripId: null,
   loading: false,
+  venueRadiusMeters: PLACE_LOOKUP_VENUE_RADIUS_M,
   isAreaDefault: false,
   isTripLabel: false,
 };
@@ -67,11 +72,14 @@ function displayForTripAndCache(
   trip: NonNullable<Awaited<ReturnType<typeof getTripById>>>,
   cacheRow: NonNullable<Awaited<ReturnType<typeof getPlaceLookupById>>>,
 ): VisitPlaceDisplay {
-  const hasTripLabel = trip.selectedCandidateIndex != null;
+  const customLabel = trip.savedPlaceLabel?.trim() || null;
+  const hasTripLabel =
+    customLabel != null || trip.selectedCandidateIndex != null;
   return {
     ...resolveVisitPlaceDisplay(cacheRow, {
       selectedIndexOverride: trip.selectedCandidateIndex,
       isTripLabel: hasTripLabel,
+      customLabel,
     }),
     materializedTripId: trip.id,
   };
@@ -198,5 +206,50 @@ export function useSelectVisitPlaceCandidate() {
 
     await setPlaceLookupSelectedIndex(args.cacheId, args.selectedIndex);
     notifyPlaceLookupUpdated();
+  }, []);
+}
+
+export type SetCustomVisitPlaceLabelArgs = {
+  cacheId: number | null;
+  label: string;
+  stay: DetectedTrip;
+  dateKey: string;
+  materializedTripId?: number | null;
+};
+
+export function useSetCustomVisitPlaceLabel() {
+  return useCallback(async (args: SetCustomVisitPlaceLabelArgs) => {
+    const trimmed = args.label.trim();
+    if (!trimmed) {
+      return;
+    }
+
+    const trip = await ensureTripForClosedStay(args.stay, args.dateKey);
+    const tripId = trip?.id ?? args.materializedTripId ?? null;
+    if (tripId == null) {
+      return;
+    }
+
+    let cacheId = args.cacheId ?? trip?.placeLookupCacheId ?? null;
+    if (cacheId == null) {
+      const anchor = stayTripCentroid(args.stay);
+      const row = await findPlaceLookupNearAnchor({
+        lat: anchor.latitude,
+        lng: anchor.longitude,
+      });
+      cacheId = row?.id ?? null;
+    }
+
+    await updateTripCustomLabel(tripId, trimmed, cacheId);
+    notifyMaterializationUpdated();
+  }, []);
+}
+
+export function useExpandVisitPlaceLookupArea() {
+  return useCallback(async (cacheId: number | null) => {
+    if (cacheId == null) {
+      return false;
+    }
+    return expandPlaceLookupArea(cacheId);
   }, []);
 }

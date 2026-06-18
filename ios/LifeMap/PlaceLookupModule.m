@@ -4,6 +4,7 @@
 
 RCT_EXTERN_METHOD(lookupNearbyPlace:(double)lat
                   lng:(double)lng
+                  radiusM:(double)radiusM
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 

@@ -40,6 +40,7 @@ import {
   filterMomentsForStayEntry,
   shouldHideSavedPlaceMomentCluster,
   shouldShowDayMomentSummaryBar,
+  hasMomentCounts,
   type MomentCounts,
 } from '@/lib/moments/moment-counts';
 import {
@@ -50,7 +51,9 @@ import {
   shouldClusterMomentsOnMap,
 } from '@/lib/moments/moment-map-clustering';
 import {
+  useExpandVisitPlaceLookupArea,
   useSelectVisitPlaceCandidate,
+  useSetCustomVisitPlaceLabel,
   useVisitPlaceDisplay,
 } from '@/hooks/use-visit-place-display';
 import {useTripDetectionConfig} from '@/hooks/use-trip-detection-config';
@@ -98,6 +101,10 @@ import {
   shouldRefreshUserCoordinate,
   type MapUserCoordinate,
 } from '@/lib/user-coordinate-throttle';
+import {
+  isVisitPlaceLabelConfirmed,
+  visitPlaceDefaultLabel,
+} from '@/lib/place-lookup-types';
 import {buildMapAttributionInsets} from '@/lib/map-attribution-insets';
 import type {RootStackParamList} from '@/navigation/types';
 
@@ -116,6 +123,7 @@ import {
   MAP_STACK_BUTTON_GAP,
   MAP_STACK_BUTTON_SIZE,
   mapDateNavAnchorBottom,
+  mapHistoryPanelContentHeight,
   mapStackButtonBottom,
   mapStackTotalHeight,
 } from './map-screen-constants';
@@ -158,6 +166,13 @@ export function useMapScreenController() {
   }, [syncSelectedDateKeyForTodayRoll]);
   const [historyDatePickerOpen, setHistoryDatePickerOpen] = useState(false);
   const [historyPanelOpen, setHistoryPanelOpen] = useState(false);
+  const [placeLabelEditStay, setPlaceLabelEditStay] = useState<DetectedTrip | null>(
+    null,
+  );
+  const [historyPanelContentHeight, setHistoryPanelContentHeight] = useState<
+    number | null
+  >(null);
+  const [expandingVisitPlaceArea, setExpandingVisitPlaceArea] = useState(false);
   const [selectedHistoryIndex, setSelectedHistoryIndex] = useState(-1);
   const [userCoordinate, setUserCoordinate] = useState<MapUserCoordinate | null>(
     null,
@@ -196,6 +211,16 @@ export function useMapScreenController() {
     [selectedDateKey, todayKey],
   );
   const historyEntries = historyData.entries;
+
+  useEffect(() => {
+    setPlaceLabelEditStay(null);
+  }, [selectedHistoryIndex, selectedDateKey]);
+
+  useEffect(() => {
+    if (!historyPanelOpen) {
+      setHistoryPanelContentHeight(null);
+    }
+  }, [historyPanelOpen]);
 
   const captureInFlightRef = useRef(false);
   const mapRef = useRef<MapView>(null);
@@ -354,6 +379,50 @@ export function useMapScreenController() {
   const selectedStay =
     selectedPlayable?.kind === 'stay' ? selectedPlayable : null;
 
+  const historyScrubOnEvent =
+    historyPanelOpen && selectedHistoryIndex >= 0 && selectedEntry != null;
+
+  const showPlaceLabelCard =
+    historyScrubOnEvent && placeLabelEditStay != null;
+
+  const selectedEntryMomentCounts = useMemo((): MomentCounts | undefined => {
+    if (!selectedEntry) {
+      return undefined;
+    }
+    return countMomentsForEntry(dayMoments, selectedEntry);
+  }, [dayMoments, selectedEntry]);
+
+  const historyEventCardHasMoments =
+    historyScrubOnEvent &&
+    selectedEntryMomentCounts != null &&
+    hasMomentCounts(selectedEntryMomentCounts);
+
+  const estimatedHistoryPanelContentHeight = mapHistoryPanelContentHeight(
+    showPlaceLabelCard,
+    historyEventCardHasMoments,
+  );
+  const resolvedHistoryPanelContentHeight =
+    historyPanelContentHeight ?? estimatedHistoryPanelContentHeight;
+
+  const handleHistoryPanelContentLayout = useCallback(
+    (event: {nativeEvent: {layout: {height: number}}}) => {
+      const nextHeight = Math.ceil(event.nativeEvent.layout.height);
+      setHistoryPanelContentHeight(current =>
+        current === nextHeight ? current : nextHeight,
+      );
+    },
+    [],
+  );
+
+  useEffect(() => {
+    setHistoryPanelContentHeight(null);
+  }, [
+    selectedHistoryIndex,
+    selectedDateKey,
+    showPlaceLabelCard,
+    historyEventCardHasMoments,
+  ]);
+
   const showDayJourney = !historyPanelOpen && !playback.isPlaying;
   const dayMomentCounts = useMemo(
     () => countMoments(dayMoments),
@@ -405,7 +474,8 @@ export function useMapScreenController() {
       DAY_MOMENT_SUMMARY_ABOVE_BAR_GAP
     : 0;
 
-  const historyPanelBottom = insets.bottom + MAP_HISTORY_PANEL_HEIGHT;
+  const historyPanelBottom =
+    insets.bottom + resolvedHistoryPanelContentHeight;
   const stackBaseBottom = historyPanelOpen
     ? historyPanelBottom + MAP_HISTORY_FLOATING_CONTROLS_GAP
     : insets.bottom + MAP_LOCATE_BUTTON_BOTTOM_GAP + daySummaryBarReserve;
@@ -426,8 +496,18 @@ export function useMapScreenController() {
         insetBottom: insets.bottom,
         historyPanelOpen,
         showDayMomentSummary,
+        historyAddressCardVisible: showPlaceLabelCard,
+        historyEventCardHasMoments,
+        historyPanelContentHeight: resolvedHistoryPanelContentHeight,
       }),
-    [historyPanelOpen, insets.bottom, showDayMomentSummary],
+    [
+      historyPanelOpen,
+      insets.bottom,
+      showDayMomentSummary,
+      showPlaceLabelCard,
+      historyEventCardHasMoments,
+      resolvedHistoryPanelContentHeight,
+    ],
   );
 
   const leftStackHeight = mapStackTotalHeight(
@@ -472,32 +552,151 @@ export function useMapScreenController() {
     savedPlaces,
   );
 
+  const placeLabelEditDisplay = useVisitPlaceDisplay(
+    placeLabelEditStay,
+    savedPlaces,
+  );
+
+  const visitPlaceLabelInEventCard = useMemo(() => {
+    if (!historyScrubOnEvent || selectedSavedPlace != null) {
+      return null;
+    }
+    if (isVisitPlaceLabelConfirmed(selectedVisitPlaceDisplay)) {
+      return selectedVisitPlaceDisplay.primaryLabel;
+    }
+    return visitPlaceDefaultLabel(selectedVisitPlaceDisplay);
+  }, [
+    historyScrubOnEvent,
+    selectedSavedPlace,
+    selectedVisitPlaceDisplay,
+  ]);
+
+  const openPlaceLabelCardForStay = useCallback(
+    (stay: DetectedTrip) => {
+      if (matchSavedPlaceForStay(stay, savedPlaces)) {
+        return;
+      }
+      setPlaceLabelEditStay(stay);
+    },
+    [savedPlaces],
+  );
+
+  const openVisitPlaceLabelCard = useCallback(() => {
+    if (selectedStay) {
+      openPlaceLabelCardForStay(selectedStay);
+    }
+  }, [openPlaceLabelCardForStay, selectedStay]);
+
+  const openDriveStartLabelCard = useCallback(() => {
+    const stay = selectedTravelAdjacentStays.previousStay;
+    if (stay) {
+      openPlaceLabelCardForStay(stay);
+    }
+  }, [openPlaceLabelCardForStay, selectedTravelAdjacentStays.previousStay]);
+
+  const openDriveEndLabelCard = useCallback(() => {
+    const stay = selectedTravelAdjacentStays.nextStay;
+    if (stay) {
+      openPlaceLabelCardForStay(stay);
+    }
+  }, [openPlaceLabelCardForStay, selectedTravelAdjacentStays.nextStay]);
+
+  const canEditDriveStartLabel =
+    selectedTravelAdjacentStays.previousStay != null &&
+    selectedDriveEndpointLabels.start.source !== 'saved';
+  const canEditDriveEndLabel =
+    selectedTravelAdjacentStays.nextStay != null &&
+    selectedDriveEndpointLabels.end.source !== 'saved';
+
   const currentOpenVisitPlaceDisplay = useVisitPlaceDisplay(
     currentOpenVisit,
     savedPlaces,
   );
 
   const selectVisitPlaceCandidate = useSelectVisitPlaceCandidate();
+  const setCustomVisitPlaceLabel = useSetCustomVisitPlaceLabel();
+  const expandVisitPlaceLookupArea = useExpandVisitPlaceLookupArea();
 
   const handleSelectVisitPlaceIndex = useCallback(
     (index: number) => {
-      if (!selectedStay) {
+      if (!placeLabelEditStay) {
         return;
       }
       void selectVisitPlaceCandidate({
-        cacheId: selectedVisitPlaceDisplay.cacheId,
+        cacheId: placeLabelEditDisplay.cacheId,
         selectedIndex: index,
-        stay: selectedStay,
+        stay: placeLabelEditStay,
         dateKey: selectedDateKey,
-        materializedTripId: selectedVisitPlaceDisplay.materializedTripId,
+        materializedTripId: placeLabelEditDisplay.materializedTripId,
       });
     },
     [
+      placeLabelEditDisplay.cacheId,
+      placeLabelEditDisplay.materializedTripId,
+      placeLabelEditStay,
       selectVisitPlaceCandidate,
       selectedDateKey,
-      selectedStay,
-      selectedVisitPlaceDisplay.cacheId,
-      selectedVisitPlaceDisplay.materializedTripId,
+    ],
+  );
+
+  const handleDonePlaceLabel = useCallback(() => {
+    const stay = placeLabelEditStay;
+    if (!stay) {
+      return;
+    }
+    void selectVisitPlaceCandidate({
+      cacheId: placeLabelEditDisplay.cacheId,
+      selectedIndex: placeLabelEditDisplay.selectedIndex,
+      stay,
+      dateKey: selectedDateKey,
+      materializedTripId: placeLabelEditDisplay.materializedTripId,
+    }).finally(() => {
+      setPlaceLabelEditStay(null);
+    });
+  }, [
+    placeLabelEditDisplay.cacheId,
+    placeLabelEditDisplay.materializedTripId,
+    placeLabelEditDisplay.selectedIndex,
+    placeLabelEditStay,
+    selectVisitPlaceCandidate,
+    selectedDateKey,
+  ]);
+
+  const handleExpandVisitPlaceArea = useCallback(() => {
+    if (!placeLabelEditStay || placeLabelEditDisplay.cacheId == null) {
+      return;
+    }
+    setExpandingVisitPlaceArea(true);
+    void expandVisitPlaceLookupArea(placeLabelEditDisplay.cacheId).finally(
+      () => setExpandingVisitPlaceArea(false),
+    );
+  }, [
+    expandVisitPlaceLookupArea,
+    placeLabelEditDisplay.cacheId,
+    placeLabelEditStay,
+  ]);
+
+  const handleSaveCustomVisitPlaceLabel = useCallback(
+    (label: string) => {
+      if (!placeLabelEditStay) {
+        return;
+      }
+      void setCustomVisitPlaceLabel({
+        cacheId: placeLabelEditDisplay.cacheId,
+        label,
+        stay: placeLabelEditStay,
+        dateKey: selectedDateKey,
+        materializedTripId: placeLabelEditDisplay.materializedTripId,
+      }).then(() => {
+        setPlaceLabelEditStay(null);
+      });
+    },
+    [
+      placeLabelEditDisplay.cacheId,
+      placeLabelEditDisplay.materializedTripId,
+      placeLabelEditStay,
+      selectedDateKey,
+      setCustomVisitPlaceLabel,
     ],
   );
 
@@ -547,13 +746,6 @@ export function useMapScreenController() {
       ).individualPins,
     [historyMomentMapPinsRaw, savedPlaces, clusterMomentsOnMap],
   );
-
-  const selectedEntryMomentCounts = useMemo((): MomentCounts | undefined => {
-    if (!selectedEntry) {
-      return undefined;
-    }
-    return countMomentsForEntry(dayMoments, selectedEntry);
-  }, [dayMoments, selectedEntry]);
 
   const savedPlaceMomentClusters = useMemo((): SavedPlaceMomentClusterOnMap[] => {
     const raw = showDayJourney
@@ -788,6 +980,13 @@ export function useMapScreenController() {
     handleHistoryDateKeyChange(todayKey);
     setHistoryPanelOpen(false);
   }, [handleHistoryDateKeyChange, todayKey]);
+
+  const closeHistoryPanel = useCallback(() => {
+    setHistoryPanelOpen(false);
+    setPlaceLabelEditStay(null);
+    playback.stop();
+    setSelectedHistoryIndex(-1);
+  }, [playback]);
 
   const goToPrevDay = useCallback(() => {
     if (!canGoPrevDay) {
@@ -1201,9 +1400,11 @@ export function useMapScreenController() {
     goToPrevDay,
     goToNextDay,
     goToToday,
+    closeHistoryPanel,
     dateNavAnchorBottom,
     historyPanelOpen,
     historyPanelY,
+    handleHistoryPanelContentLayout,
     historyDatePickerOpen,
     selectedDateKey,
     mapDateLabel,
@@ -1227,8 +1428,20 @@ export function useMapScreenController() {
     selectedSavedPlace,
     selectedDriveEndpointLabels,
     selectedVisitPlaceDisplay,
+    visitPlaceLabelInEventCard,
+    showPlaceLabelCard,
+    placeLabelEditDisplay,
+    openVisitPlaceLabelCard,
+    openDriveStartLabelCard,
+    openDriveEndLabelCard,
+    canEditDriveStartLabel,
+    canEditDriveEndLabel,
+    handleDonePlaceLabel,
     currentOpenVisitPlaceDisplay,
     handleSelectVisitPlaceIndex,
+    handleExpandVisitPlaceArea,
+    handleSaveCustomVisitPlaceLabel,
+    expandingVisitPlaceArea,
     savedPlaces,
     hasHome,
     hasWork,

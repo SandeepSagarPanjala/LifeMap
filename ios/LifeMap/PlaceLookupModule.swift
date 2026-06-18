@@ -13,6 +13,7 @@ class PlaceLookupModule: NSObject {
   @objc func lookupNearbyPlace(
     _ lat: Double,
     lng: Double,
+    radiusM: Double,
     resolver: @escaping RCTPromiseResolveBlock,
     rejecter: @escaping RCTPromiseRejectBlock
   ) {
@@ -20,6 +21,7 @@ class PlaceLookupModule: NSObject {
     let location = CLLocation(latitude: lat, longitude: lng)
     var collectedCandidates: [[String: Any]] = []
     var addressLine: String?
+    let searchRadius = max(50, min(radiusM, 5000))
 
     let geocoder = CLGeocoder()
     geocoder.reverseGeocodeLocation(location) { placemarks, geocodeError in
@@ -39,7 +41,7 @@ class PlaceLookupModule: NSObject {
       }
 
       if #available(iOS 16.0, *) {
-        let poiRequest = MKLocalPointsOfInterestRequest(center: coordinate, radius: 250)
+        let poiRequest = MKLocalPointsOfInterestRequest(center: coordinate, radius: searchRadius)
         let search = MKLocalSearch(request: poiRequest)
         search.start { response, searchError in
           if let items = response?.mapItems {

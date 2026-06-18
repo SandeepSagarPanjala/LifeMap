@@ -7,12 +7,15 @@ import {
   MAP_SETTINGS_SIZE,
   MAP_SETTINGS_TOP_GAP,
   MAP_STACK_BUTTON_SIZE,
+  MAP_DATE_NAV_ROW_GAP,
 } from '@/screens/map/map-screen-constants';
 
 type MapDateLabelProps = {
   label: string;
   topInset: number;
   showNavigation?: boolean;
+  /** Close button only, docked above the history panel (today + history mode). */
+  showCloseOnly?: boolean;
   /** When set, docks the navigation cluster above the history panel. */
   anchorBottom?: number;
   canGoPrev?: boolean;
@@ -23,12 +26,12 @@ type MapDateLabelProps = {
 };
 
 const MAP_CLOSE_ICON_COLOR = '#E0352B';
-const MAP_DATE_NAV_ROW_GAP = 10;
 
 export function MapDateLabel({
   label,
   topInset,
   showNavigation = false,
+  showCloseOnly = false,
   anchorBottom,
   canGoPrev = false,
   canGoNext = false,
@@ -38,6 +41,23 @@ export function MapDateLabel({
 }: MapDateLabelProps) {
   const colors = useThemeColors();
   const top = topInset + MAP_SETTINGS_TOP_GAP;
+
+  if (showCloseOnly && anchorBottom != null) {
+    return (
+      <View
+        pointerEvents="box-none"
+        accessibilityRole="toolbar"
+        accessibilityLabel="Close history"
+        style={[styles.navWrap, {bottom: anchorBottom}]}>
+        <MapCircleButton
+          accessibilityLabel="Close history"
+          variant="softRed"
+          onPress={() => onClose?.()}>
+          <X size={20} color={MAP_CLOSE_ICON_COLOR} strokeWidth={2.5} />
+        </MapCircleButton>
+      </View>
+    );
+  }
 
   if (!showNavigation) {
     return (

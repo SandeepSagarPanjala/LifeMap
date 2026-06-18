@@ -53,11 +53,14 @@ export async function loadVisitPlaceDisplayForStay(
     if (trip) {
       const cacheRow = await resolveCacheRowForTrip(trip, stay);
       if (cacheRow) {
-        const hasTripLabel = trip.selectedCandidateIndex != null;
+        const customLabel = trip.savedPlaceLabel?.trim() || null;
+        const hasTripLabel =
+          customLabel != null || trip.selectedCandidateIndex != null;
         return {
           ...resolveVisitPlaceDisplay(cacheRow, {
             selectedIndexOverride: trip.selectedCandidateIndex,
             isTripLabel: hasTripLabel,
+            customLabel,
           }),
           materializedTripId: trip.id,
         };

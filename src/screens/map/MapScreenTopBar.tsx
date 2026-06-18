@@ -24,29 +24,50 @@ export function MapScreenTopBar({controller}: MapScreenTopBarProps) {
     insets,
     mapDateLabel,
     viewingToday,
+    historyPanelOpen,
     dateNavAnchorBottom,
     canGoPrevDay,
     canGoNextDay,
     goToPrevDay,
     goToNextDay,
     goToToday,
+    closeHistoryPanel,
   } = controller;
   const settingsTop = insets.top + MAP_SETTINGS_TOP_GAP;
+  const showHistoryClose = historyPanelOpen && viewingToday;
   const showDateNavigation = !viewingToday;
 
   return (
     <View pointerEvents="box-none" style={styles.bar}>
-      <MapDateLabel
-        label={mapDateLabel}
-        topInset={insets.top}
-        showNavigation={showDateNavigation}
-        anchorBottom={showDateNavigation ? dateNavAnchorBottom : undefined}
-        canGoPrev={canGoPrevDay}
-        canGoNext={canGoNextDay}
-        onPrev={goToPrevDay}
-        onNext={goToNextDay}
-        onClose={goToToday}
-      />
+      {viewingToday ? (
+        <MapDateLabel
+          label={mapDateLabel}
+          topInset={insets.top}
+          showNavigation={false}
+        />
+      ) : null}
+      {showHistoryClose ? (
+        <MapDateLabel
+          label={mapDateLabel}
+          topInset={insets.top}
+          showCloseOnly
+          anchorBottom={dateNavAnchorBottom}
+          onClose={closeHistoryPanel}
+        />
+      ) : null}
+      {showDateNavigation ? (
+        <MapDateLabel
+          label={mapDateLabel}
+          topInset={insets.top}
+          showNavigation
+          anchorBottom={dateNavAnchorBottom}
+          canGoPrev={canGoPrevDay}
+          canGoNext={canGoNextDay}
+          onPrev={goToPrevDay}
+          onNext={goToNextDay}
+          onClose={goToToday}
+        />
+      ) : null}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Settings"

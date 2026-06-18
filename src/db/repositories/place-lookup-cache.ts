@@ -108,6 +108,56 @@ export async function setPlaceLookupSelectedIndex(
     .where(eq(placeLookupCache.id, id));
 }
 
+export async function updatePlaceLookupVenueRadius(
+  id: number,
+  venueRadiusMeters: number,
+): Promise<void> {
+  const db = await getDatabase();
+  await db
+    .update(placeLookupCache)
+    .set({
+      venueRadiusMeters,
+      lookupStatus: 'pending',
+      fetchedAt: null,
+    })
+    .where(eq(placeLookupCache.id, id));
+}
+
+export async function mergePlaceLookupCandidates(
+  id: number,
+  payload: {
+    addressLine: string | null;
+    candidates: PlaceLookupCandidate[];
+    venueRadiusMeters: number;
+  },
+): Promise<void> {
+  const existing = await getPlaceLookupById(id);
+  const mergedCandidates = [...(existing?.candidates ?? [])];
+  const seen = new Set(
+    mergedCandidates.map(candidate => candidate.name.trim().toLowerCase()),
+  );
+  for (const candidate of payload.candidates) {
+    const key = candidate.name.trim().toLowerCase();
+    if (!key || seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    mergedCandidates.push(candidate);
+  }
+
+  const db = await getDatabase();
+  await db
+    .update(placeLookupCache)
+    .set({
+      addressLine: payload.addressLine ?? existing?.addressLine ?? null,
+      candidatesJson: JSON.stringify(mergedCandidates),
+      venueRadiusMeters: payload.venueRadiusMeters,
+      lookupStatus: 'complete',
+      fetchedAt: new Date(),
+    })
+    .where(eq(placeLookupCache.id, id));
+}
+
 export async function getPlaceLookupById(
   id: number,
 ): Promise<PlaceLookupRow | null> {

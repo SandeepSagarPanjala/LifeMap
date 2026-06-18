@@ -1,10 +1,9 @@
 import LottieView from 'lottie-react-native';
 import {Pressable, StyleSheet, View} from 'react-native';
-import {Play} from 'lucide-react-native';
+import {Pencil, Play} from 'lucide-react-native';
 
 import {DriveRouteStrip} from '@/components/map/DriveRouteStrip';
 import {SavedPlaceIcon} from '@/components/map/SavedPlaceIcon';
-import {VisitPlaceLabelPager} from '@/components/map/VisitPlaceLabelPager';
 import {MomentCountsRow} from '@/components/moments/MomentCountsRow';
 import {Text} from '@/components/ui/text';
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
@@ -13,7 +12,6 @@ import type {MomentCounts} from '@/lib/moments/moment-counts';
 import {hasMomentCounts} from '@/lib/moments/moment-counts';
 import type {DriveEndpointLabel} from '@/lib/drive-endpoint-label';
 import {savedPlaceDisplayLabel} from '@/lib/saved-places';
-import type {VisitPlaceDisplay} from '@/lib/place-lookup-types';
 import type {DayTimelineEntry} from '@/lib/trip-detection';
 import {
   formatStayVisitLabel,
@@ -28,10 +26,14 @@ const VISIT_LOTTIE = require('../../../assets/lottie/visit-relax.json');
 type HistoryEventCardProps = {
   entry: DayTimelineEntry | null;
   savedPlace?: SavedPlaceRow | null;
-  visitPlaceDisplay?: VisitPlaceDisplay | null;
-  onSelectVisitPlaceIndex?: (index: number) => void;
+  visitPlaceLabel?: string | null;
+  onEditVisitPlaceLabel?: () => void;
   driveStartLabel?: DriveEndpointLabel;
   driveEndLabel?: DriveEndpointLabel;
+  canEditDriveStartLabel?: boolean;
+  canEditDriveEndLabel?: boolean;
+  onEditDriveStartLabel?: () => void;
+  onEditDriveEndLabel?: () => void;
   momentCounts?: MomentCounts;
   onPressMomentCounts?: () => void;
   /** Timeline has data but no event is selected yet. */
@@ -81,10 +83,14 @@ function driveCardStatsLine(
 export function HistoryEventCard({
   entry,
   savedPlace = null,
-  visitPlaceDisplay = null,
-  onSelectVisitPlaceIndex,
+  visitPlaceLabel = null,
+  onEditVisitPlaceLabel,
   driveStartLabel,
   driveEndLabel,
+  canEditDriveStartLabel = false,
+  canEditDriveEndLabel = false,
+  onEditDriveStartLabel,
+  onEditDriveEndLabel,
   momentCounts,
   onPressMomentCounts,
   scrubOnEmpty = false,
@@ -161,16 +167,25 @@ export function HistoryEventCard({
                   {savedPlaceDisplayLabel(savedPlace)}
                 </Text>
               </View>
-            ) : visitPlaceDisplay?.primaryLabel ? (
-              <VisitPlaceLabelPager
-                display={visitPlaceDisplay}
-                onSelectIndex={index => onSelectVisitPlaceIndex?.(index)}
-              />
-            ) : visitPlaceDisplay?.loading ? (
-              <Text variant="muted" className="text-sm">
-                Finding nearby place…
-              </Text>
-            ) : null}
+            ) : (
+              <View style={styles.visitPlaceRow}>
+                {visitPlaceLabel ? (
+                  <Text className="text-base font-semibold" numberOfLines={1}>
+                    {visitPlaceLabel}
+                  </Text>
+                ) : null}
+                {onEditVisitPlaceLabel ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Edit place label"
+                    onPress={onEditVisitPlaceLabel}
+                    hitSlop={8}
+                    style={styles.visitEditButton}>
+                    <Pencil size={14} color={colors.primary} strokeWidth={2.25} />
+                  </Pressable>
+                ) : null}
+              </View>
+            )}
           </View>
           <VisitCardIcon />
           <View
@@ -193,6 +208,10 @@ export function HistoryEventCard({
           endAt={entry.endAt}
           startLabel={driveStartLabel}
           endLabel={driveEndLabel}
+          canEditStartLabel={canEditDriveStartLabel}
+          canEditEndLabel={canEditDriveEndLabel}
+          onEditStartLabel={onEditDriveStartLabel}
+          onEditEndLabel={onEditDriveEndLabel}
           statsLine={driveCardStatsLine(entry, distanceUnit)}
           isPlaying={isPlaying}
           playButtonColor={colors.primary}
@@ -274,6 +293,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     flexShrink: 1,
+    minWidth: 0,
+  },
+  visitEditButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#F2F2F7',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   visitLottieAnchor: {
     position: 'absolute',

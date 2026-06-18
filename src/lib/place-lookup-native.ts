@@ -5,9 +5,14 @@ import type {
   NativePlaceLookupResult,
   PlaceLookupCandidate,
 } from '@/lib/place-lookup-types';
+import {PLACE_LOOKUP_VENUE_RADIUS_M} from '@/lib/place-lookup-venue';
 
 type PlaceLookupNativeModule = {
-  lookupNearbyPlace(lat: number, lng: number): Promise<NativePlaceLookupResult>;
+  lookupNearbyPlace(
+    lat: number,
+    lng: number,
+    radiusM: number,
+  ): Promise<NativePlaceLookupResult>;
 };
 
 const nativeModule = NativeModules.PlaceLookupModule as
@@ -32,18 +37,19 @@ function dedupeCandidates(
     unique.push(candidate);
   }
 
-  return unique.slice(0, 5);
+  return unique.slice(0, 8);
 }
 
 export async function fetchNearbyPlaceLookup(
   lat: number,
   lng: number,
+  radiusM = PLACE_LOOKUP_VENUE_RADIUS_M,
 ): Promise<NativePlaceLookupResult> {
   if (!nativeModule?.lookupNearbyPlace) {
     return {addressLine: null, candidates: []};
   }
 
-  const result = await nativeModule.lookupNearbyPlace(lat, lng);
+  const result = await nativeModule.lookupNearbyPlace(lat, lng, radiusM);
   const candidates = dedupeCandidates(result.candidates ?? []);
 
   if (Platform.OS === 'android') {

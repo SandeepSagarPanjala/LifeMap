@@ -1,8 +1,11 @@
-import {Animated, StyleSheet} from 'react-native';
+import {useState} from 'react';
+import {Animated, StyleSheet, View} from 'react-native';
 
 import {HistoryEventCard} from '@/components/map/HistoryEventCard';
 import {HistoryPanelSkeleton} from '@/components/map/HistoryPanelSkeleton';
 import {HistoryTimelineBar} from '@/components/map/HistoryTimelineBar';
+import {VisitPlaceAddressCard} from '@/components/map/VisitPlaceAddressCard';
+import {VisitPlaceCustomLabelSheet} from '@/components/map/VisitPlaceCustomLabelSheet';
 
 import type {MapScreenController} from './use-map-screen-controller';
 
@@ -21,7 +24,19 @@ export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
     selectedSavedPlace,
     selectedDriveEndpointLabels,
     selectedVisitPlaceDisplay,
+    placeLabelEditDisplay,
     handleSelectVisitPlaceIndex,
+    handleExpandVisitPlaceArea,
+    handleSaveCustomVisitPlaceLabel,
+    handleDonePlaceLabel,
+    expandingVisitPlaceArea,
+    showPlaceLabelCard,
+    visitPlaceLabelInEventCard,
+    openVisitPlaceLabelCard,
+    openDriveStartLabelCard,
+    openDriveEndLabelCard,
+    canEditDriveStartLabel,
+    canEditDriveEndLabel,
     historyEntries,
     distanceUnit,
     playback,
@@ -34,7 +49,10 @@ export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
     openSelectedEntryMomentsPreview,
     viewingToday,
     historyHasGpsData,
+    handleHistoryPanelContentLayout,
   } = controller;
+
+  const [customLabelOpen, setCustomLabelOpen] = useState(false);
 
   if (!historyPanelOpen) {
     return null;
@@ -50,16 +68,32 @@ export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
         },
       ]}>
       {showHistoryPanelContent ? (
-        <>
+        <View onLayout={handleHistoryPanelContentLayout}>
+          {showPlaceLabelCard ? (
+            <VisitPlaceAddressCard
+              display={placeLabelEditDisplay}
+              expandingArea={expandingVisitPlaceArea}
+              onSelectIndex={handleSelectVisitPlaceIndex}
+              onExpandArea={handleExpandVisitPlaceArea}
+              onRequestCustomLabel={() => setCustomLabelOpen(true)}
+              onDone={handleDonePlaceLabel}
+            />
+          ) : null}
           <HistoryEventCard
             entry={scrubOnEvent ? selectedEntry : null}
             savedPlace={scrubOnEvent ? selectedSavedPlace : null}
-            visitPlaceDisplay={
-              scrubOnEvent && selectedEntry?.kind === 'stay'
-                ? selectedVisitPlaceDisplay
-                : null
+            visitPlaceLabel={visitPlaceLabelInEventCard}
+            onEditVisitPlaceLabel={
+              scrubOnEvent &&
+              selectedEntry?.kind === 'stay' &&
+              selectedSavedPlace == null
+                ? openVisitPlaceLabelCard
+                : undefined
             }
-            onSelectVisitPlaceIndex={handleSelectVisitPlaceIndex}
+            canEditDriveStartLabel={scrubOnEvent && canEditDriveStartLabel}
+            canEditDriveEndLabel={scrubOnEvent && canEditDriveEndLabel}
+            onEditDriveStartLabel={openDriveStartLabelCard}
+            onEditDriveEndLabel={openDriveEndLabelCard}
             driveStartLabel={
               scrubOnEvent ? selectedDriveEndpointLabels.start : undefined
             }
@@ -85,7 +119,16 @@ export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
             selectedIndex={selectedHistoryIndex}
             onSelectIndex={selectHistoryIndex}
           />
-        </>
+          <VisitPlaceCustomLabelSheet
+            visible={customLabelOpen}
+            initialValue={placeLabelEditDisplay.customLabel ?? ''}
+            onClose={() => setCustomLabelOpen(false)}
+            onSave={label => {
+              handleSaveCustomVisitPlaceLabel(label);
+              setCustomLabelOpen(false);
+            }}
+          />
+        </View>
       ) : (
         <HistoryPanelSkeleton />
       )}

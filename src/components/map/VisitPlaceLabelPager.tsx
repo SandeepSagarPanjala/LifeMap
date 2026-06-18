@@ -13,15 +13,19 @@ import type {VisitPlaceDisplay} from '@/lib/place-lookup-types';
 
 type VisitPlaceLabelPagerProps = {
   display: VisitPlaceDisplay;
+  compact?: boolean;
   onSelectIndex: (index: number) => void;
 };
 
 const PAGE_WIDTH = 220;
+const PAGE_WIDTH_COMPACT = 168;
 
 export function VisitPlaceLabelPager({
   display,
+  compact = false,
   onSelectIndex,
 }: VisitPlaceLabelPagerProps) {
+  const pageWidth = compact ? PAGE_WIDTH_COMPACT : PAGE_WIDTH;
   const scrollRef = useRef<ScrollView>(null);
   const [pageIndex, setPageIndex] = useState(display.selectedIndex);
 
@@ -33,7 +37,7 @@ export function VisitPlaceLabelPager({
   const handleMomentumEnd = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
       const nextIndex = Math.round(
-        event.nativeEvent.contentOffset.x / PAGE_WIDTH,
+        event.nativeEvent.contentOffset.x / pageWidth,
       );
       const clamped = Math.max(0, Math.min(nextIndex, candidates.length - 1));
       setPageIndex(clamped);
@@ -41,7 +45,7 @@ export function VisitPlaceLabelPager({
         onSelectIndex(clamped);
       }
     },
-    [candidates.length, display.selectedIndex, onSelectIndex],
+    [candidates.length, display.selectedIndex, onSelectIndex, pageWidth],
   );
 
   const showUserPin = display.isAreaDefault || display.isTripLabel;
@@ -58,19 +62,19 @@ export function VisitPlaceLabelPager({
   }
 
   return (
-    <View style={styles.wrap}>
+    <View style={[styles.wrap, compact && styles.wrapCompact]}>
       <ScrollView
         ref={scrollRef}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        contentOffset={{x: display.selectedIndex * PAGE_WIDTH, y: 0}}
-        snapToInterval={PAGE_WIDTH}
+        contentOffset={{x: display.selectedIndex * pageWidth, y: 0}}
+        snapToInterval={pageWidth}
         decelerationRate="fast"
         onMomentumScrollEnd={handleMomentumEnd}
         style={styles.scroll}>
         {candidates.map((candidate, index) => (
-          <View key={`${candidate.name}-${index}`} style={styles.page}>
+          <View key={`${candidate.name}-${index}`} style={[styles.page, {width: pageWidth}]}>
             <VisitPlaceLabelWithPin
               name={candidate.name}
               showPin={
@@ -101,11 +105,13 @@ const styles = StyleSheet.create({
     minWidth: 0,
     maxWidth: PAGE_WIDTH,
   },
+  wrapCompact: {
+    maxWidth: PAGE_WIDTH_COMPACT,
+  },
   scroll: {
     flexGrow: 0,
   },
   page: {
-    width: PAGE_WIDTH,
     paddingRight: 8,
   },
   dots: {

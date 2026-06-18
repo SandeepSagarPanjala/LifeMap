@@ -3,6 +3,20 @@ import {distanceKm, type LocationPointLike} from '@/lib/location-geo';
 /** Matches {@link MAX_STAY_ENVELOPE_SPREAD_M} in trip-detection. */
 export const PLACE_LOOKUP_VENUE_RADIUS_M = 250;
 
+export const PLACE_LOOKUP_RADIUS_STEPS = [250, 500, 750, 1000] as const;
+
+export const PLACE_LOOKUP_MAX_RADIUS_M =
+  PLACE_LOOKUP_RADIUS_STEPS[PLACE_LOOKUP_RADIUS_STEPS.length - 1];
+
+export function nextPlaceLookupRadiusM(current: number): number | null {
+  for (const step of PLACE_LOOKUP_RADIUS_STEPS) {
+    if (step > current) {
+      return step;
+    }
+  }
+  return null;
+}
+
 export const PLACE_LOOKUP_SESSION_BUDGET = 10;
 
 export function placeLookupAnchorKey(lat: number, lng: number): string {

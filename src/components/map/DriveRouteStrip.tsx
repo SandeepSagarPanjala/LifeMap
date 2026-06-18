@@ -1,13 +1,13 @@
 import LottieView from 'lottie-react-native';
 import {Pressable, StyleSheet, Text as RNText, View} from 'react-native';
-import {Pause, Play} from 'lucide-react-native';
+import {Pause, Pencil, Play} from 'lucide-react-native';
 
 import {DriveEndpointPlaceRow} from '@/components/map/DriveEndpointPlaceRow';
 import {Text} from '@/components/ui/text';
+import {useThemeColors} from '@/hooks/use-theme-colors';
 import type {DriveEndpointLabel} from '@/lib/drive-endpoint-label';
 import {hasDriveEndpointLabel} from '@/lib/drive-endpoint-label';
-import {HISTORY_COLORS} from '@/lib/history-timeline';
-import {formatTripClockTime, formatTripTimeRange} from '@/lib/trip-format';
+import {formatTripTimeRange} from '@/lib/trip-format';
 
 const DRIVE_LOTTIE = require('../../../assets/lottie/drive-car.json');
 
@@ -16,12 +16,17 @@ const CAR_CLIP_WIDTH = 72;
 const CAR_CLIP_HEIGHT = 44;
 const CAR_RENDER_WIDTH = 210;
 const CAR_RENDER_HEIGHT = 120;
+const EDIT_BUTTON_SIZE = 28;
 
 type DriveRouteStripProps = {
   startAt: Date;
   endAt: Date;
   startLabel?: DriveEndpointLabel;
   endLabel?: DriveEndpointLabel;
+  canEditStartLabel?: boolean;
+  canEditEndLabel?: boolean;
+  onEditStartLabel?: () => void;
+  onEditEndLabel?: () => void;
   statsLine: string;
   isPlaying: boolean;
   playButtonColor: string;
@@ -41,17 +46,52 @@ function DriveCarLottie() {
   );
 }
 
-function TimeColumn({
-  caption,
-  time,
-}: {
-  caption: 'Start' | 'Finish';
-  time: Date;
-}) {
+function TimeRangeLine({startAt, endAt}: {startAt: Date; endAt: Date}) {
   return (
-    <View style={styles.timeColumn}>
-      <Text style={styles.timeCaption}>{caption}</Text>
-      <Text style={styles.timeValue}>{formatTripClockTime(time)}</Text>
+    <Text style={styles.timeRange}>{formatTripTimeRange(startAt, endAt)}</Text>
+  );
+}
+
+function DriveEndpointEditButton({onPress}: {onPress: () => void}) {
+  const colors = useThemeColors();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Edit place label"
+      onPress={onPress}
+      hitSlop={8}
+      style={styles.editButton}>
+      <Pencil size={14} color={colors.primary} strokeWidth={2.25} />
+    </Pressable>
+  );
+}
+
+function DriveRouteEndpoint({
+  label,
+  canEdit,
+  onEdit,
+}: {
+  label?: DriveEndpointLabel;
+  canEdit?: boolean;
+  onEdit?: () => void;
+}) {
+  const hasText = label != null && hasDriveEndpointLabel(label);
+  if (!hasText && !canEdit) {
+    return null;
+  }
+
+  return (
+    <View style={styles.routeEndpoint}>
+      {hasText ? (
+        <DriveEndpointPlaceRow
+          label={label!}
+          iconSize={14}
+          textStyle={styles.routeText}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        />
+      ) : null}
+      {canEdit && onEdit ? <DriveEndpointEditButton onPress={onEdit} /> : null}
     </View>
   );
 }
@@ -59,12 +99,23 @@ function TimeColumn({
 function DriveRouteLine({
   startLabel,
   endLabel,
+  canEditStartLabel,
+  canEditEndLabel,
+  onEditStartLabel,
+  onEditEndLabel,
 }: {
   startLabel?: DriveEndpointLabel;
   endLabel?: DriveEndpointLabel;
+  canEditStartLabel?: boolean;
+  canEditEndLabel?: boolean;
+  onEditStartLabel?: () => void;
+  onEditEndLabel?: () => void;
 }) {
-  const hasStart = startLabel != null && hasDriveEndpointLabel(startLabel);
-  const hasEnd = endLabel != null && hasDriveEndpointLabel(endLabel);
+  const hasStart =
+    (startLabel != null && hasDriveEndpointLabel(startLabel)) ||
+    canEditStartLabel;
+  const hasEnd =
+    (endLabel != null && hasDriveEndpointLabel(endLabel)) || canEditEndLabel;
 
   if (!hasStart && !hasEnd) {
     return null;
@@ -73,15 +124,11 @@ function DriveRouteLine({
   return (
     <View style={styles.routeRow}>
       {hasStart ? (
-        <View style={styles.routeEndpoint}>
-          <DriveEndpointPlaceRow
-            label={startLabel!}
-            iconSize={14}
-            textStyle={styles.routeText}
-            numberOfLines={1}
-            ellipsizeMode="tail"
-          />
-        </View>
+        <DriveRouteEndpoint
+          label={startLabel}
+          canEdit={canEditStartLabel}
+          onEdit={onEditStartLabel}
+        />
       ) : null}
       {hasStart && hasEnd ? (
         <RNText style={styles.routeArrow} accessibilityLabel="to">
@@ -89,15 +136,11 @@ function DriveRouteLine({
         </RNText>
       ) : null}
       {hasEnd ? (
-        <View style={styles.routeEndpoint}>
-          <DriveEndpointPlaceRow
-            label={endLabel!}
-            iconSize={14}
-            textStyle={styles.routeText}
-            numberOfLines={1}
-            ellipsizeMode="tail"
-          />
-        </View>
+        <DriveRouteEndpoint
+          label={endLabel}
+          canEdit={canEditEndLabel}
+          onEdit={onEditEndLabel}
+        />
       ) : null}
     </View>
   );
@@ -108,6 +151,10 @@ export function DriveRouteStrip({
   endAt,
   startLabel,
   endLabel,
+  canEditStartLabel = false,
+  canEditEndLabel = false,
+  onEditStartLabel,
+  onEditEndLabel,
   statsLine,
   isPlaying,
   playButtonColor,
@@ -116,11 +163,20 @@ export function DriveRouteStrip({
   const hasLabels =
     (startLabel != null && hasDriveEndpointLabel(startLabel)) ||
     (endLabel != null && hasDriveEndpointLabel(endLabel));
+  const showRouteRow =
+    hasLabels || canEditStartLabel || canEditEndLabel;
 
   return (
     <View style={styles.wrap}>
-      {hasLabels ? (
-        <DriveRouteLine startLabel={startLabel} endLabel={endLabel} />
+      {showRouteRow ? (
+        <DriveRouteLine
+          startLabel={startLabel}
+          endLabel={endLabel}
+          canEditStartLabel={canEditStartLabel}
+          canEditEndLabel={canEditEndLabel}
+          onEditStartLabel={onEditStartLabel}
+          onEditEndLabel={onEditEndLabel}
+        />
       ) : (
         <RNText style={styles.routeFallback} numberOfLines={1}>
           {formatTripTimeRange(startAt, endAt)}
@@ -133,11 +189,7 @@ export function DriveRouteStrip({
         </View>
 
         <View style={styles.detailsColumn}>
-          <View style={styles.timesRow}>
-            <TimeColumn caption="Start" time={startAt} />
-            <View style={styles.timeDivider} />
-            <TimeColumn caption="Finish" time={endAt} />
-          </View>
+          <TimeRangeLine startAt={startAt} endAt={endAt} />
           <Text variant="muted" className="text-center text-sm">
             {statsLine}
           </Text>
@@ -162,7 +214,8 @@ export function DriveRouteStrip({
 const styles = StyleSheet.create({
   wrap: {
     width: '100%',
-    gap: 8,
+    gap: 4,
+    minHeight: 68,
   },
   routeRow: {
     flexDirection: 'row',
@@ -170,9 +223,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: '100%',
     minWidth: 0,
-    gap: 8,
+    gap: 10,
   },
   routeEndpoint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     flexShrink: 1,
     minWidth: 0,
     maxWidth: '46%',
@@ -181,11 +237,22 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
+  editButton: {
+    width: EDIT_BUTTON_SIZE,
+    height: EDIT_BUTTON_SIZE,
+    borderRadius: EDIT_BUTTON_SIZE / 2,
+    backgroundColor: '#F2F2F7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    marginRight: 8,
+  },
   routeArrow: {
     flexShrink: 0,
     fontSize: 15,
     fontWeight: '600',
     color: '#8E8E93',
+    marginLeft: 2,
   },
   routeFallback: {
     fontSize: 16,
@@ -222,38 +289,15 @@ const styles = StyleSheet.create({
   detailsColumn: {
     flex: 1,
     minWidth: 0,
-    gap: 4,
+    gap: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  timesRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-    gap: 16,
-  },
-  timeColumn: {
-    minWidth: 0,
-    alignItems: 'center',
-  },
-  timeCaption: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: HISTORY_COLORS.travel,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
-  timeValue: {
-    marginTop: 2,
-    fontSize: 16,
+  timeRange: {
+    fontSize: 18,
     fontWeight: '600',
     color: '#1C1C1E',
-  },
-  timeDivider: {
-    width: StyleSheet.hairlineWidth,
-    alignSelf: 'stretch',
-    backgroundColor: '#E5E5EA',
-    marginVertical: 2,
+    textAlign: 'center',
   },
   playButton: {
     width: PLAY_BUTTON_SIZE,

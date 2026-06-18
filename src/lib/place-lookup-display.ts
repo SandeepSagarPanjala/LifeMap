@@ -1,9 +1,15 @@
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
+import {PLACE_LOOKUP_VENUE_RADIUS_M} from '@/lib/place-lookup-venue';
 import type {
   PlaceLookupRow,
   VisitPlaceDisplay,
   VisitPlaceDisplayCandidate,
 } from '@/lib/place-lookup-types';
+
+const EMPTY_DISPLAY_BASE = {
+  customLabel: null,
+  venueRadiusMeters: PLACE_LOOKUP_VENUE_RADIUS_M,
+} as const;
 
 export function buildVisitPlaceCandidates(
   row: PlaceLookupRow,
@@ -32,6 +38,7 @@ export function resolveVisitPlaceDisplay(
     loading?: boolean;
     selectedIndexOverride?: number | null;
     isTripLabel?: boolean;
+    customLabel?: string | null;
   },
 ): VisitPlaceDisplay {
   if (!row || row.lookupStatus === 'pending') {
@@ -45,6 +52,8 @@ export function resolveVisitPlaceDisplay(
       loading: options?.loading ?? row?.lookupStatus === 'pending',
       isAreaDefault: false,
       isTripLabel: false,
+      ...EMPTY_DISPLAY_BASE,
+      venueRadiusMeters: row?.venueRadiusMeters ?? PLACE_LOOKUP_VENUE_RADIUS_M,
     };
   }
 
@@ -59,10 +68,30 @@ export function resolveVisitPlaceDisplay(
       loading: false,
       isAreaDefault: false,
       isTripLabel: false,
+      ...EMPTY_DISPLAY_BASE,
+      venueRadiusMeters: row.venueRadiusMeters,
     };
   }
 
   const candidates = buildVisitPlaceCandidates(row);
+  const customLabel = options?.customLabel?.trim() || null;
+
+  if (customLabel) {
+    return {
+      source: 'lookup',
+      primaryLabel: customLabel,
+      customLabel,
+      candidates,
+      selectedIndex: 0,
+      cacheId: row.id,
+      materializedTripId: null,
+      loading: false,
+      isAreaDefault: false,
+      isTripLabel: true,
+      venueRadiusMeters: row.venueRadiusMeters,
+    };
+  }
+
   if (candidates.length === 0) {
     return {
       source: 'none',
@@ -74,6 +103,8 @@ export function resolveVisitPlaceDisplay(
       loading: false,
       isAreaDefault: false,
       isTripLabel: false,
+      ...EMPTY_DISPLAY_BASE,
+      venueRadiusMeters: row.venueRadiusMeters,
     };
   }
 
@@ -93,6 +124,7 @@ export function resolveVisitPlaceDisplay(
   return {
     source: 'lookup',
     primaryLabel: candidates[selectedIndex]?.name ?? null,
+    customLabel: null,
     candidates,
     selectedIndex,
     cacheId: row.id,
@@ -100,6 +132,7 @@ export function resolveVisitPlaceDisplay(
     loading: false,
     isAreaDefault: !hasTripOverride && row.selectedCandidateIndex != null,
     isTripLabel: options?.isTripLabel === true && hasTripOverride,
+    venueRadiusMeters: row.venueRadiusMeters,
   };
 }
 
@@ -109,6 +142,7 @@ export function savedPlaceVisitDisplay(
   return {
     source: 'saved',
     primaryLabel: place.label,
+    customLabel: null,
     candidates: [{name: place.label, kind: 'poi'}],
     selectedIndex: 0,
     cacheId: null,
@@ -116,5 +150,6 @@ export function savedPlaceVisitDisplay(
     loading: false,
     isAreaDefault: false,
     isTripLabel: false,
+    venueRadiusMeters: PLACE_LOOKUP_VENUE_RADIUS_M,
   };
 }

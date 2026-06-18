@@ -196,6 +196,29 @@ export async function updateTripLabelSelection(
     .update(trips)
     .set({
       selectedCandidateIndex,
+      savedPlaceLabel: null,
+      ...(placeLookupCacheId != null
+        ? {placeLookupCacheId}
+        : {}),
+    })
+    .where(eq(trips.id, tripId));
+}
+
+export async function updateTripCustomLabel(
+  tripId: number,
+  label: string,
+  placeLookupCacheId?: number | null,
+): Promise<void> {
+  const trimmed = label.trim();
+  if (!trimmed) {
+    return;
+  }
+  const db = await getDatabase();
+  await db
+    .update(trips)
+    .set({
+      savedPlaceLabel: trimmed,
+      selectedCandidateIndex: null,
       ...(placeLookupCacheId != null
         ? {placeLookupCacheId}
         : {}),

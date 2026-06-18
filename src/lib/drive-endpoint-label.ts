@@ -83,6 +83,10 @@ export function hasDriveEndpointLabel(label: DriveEndpointLabel): boolean {
   return label.text != null && label.text.length > 0;
 }
 
+export function isDriveEndpointLabelEditable(label: DriveEndpointLabel): boolean {
+  return label.source !== 'saved' && label.savedPlace == null;
+}
+
 export function formatDriveRouteTitle(
   startLabel?: DriveEndpointLabel,
   endLabel?: DriveEndpointLabel,

@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useState} from 'react';
+import {useEffect, useMemo, useState, useSyncExternalStore} from 'react';
 
 import {
   driveEndpointLabelFromVisitDisplay,
@@ -7,6 +7,10 @@ import {
   type DriveEndpointLabel,
 } from '@/lib/drive-endpoint-label';
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
+import {
+  getMaterializationRevision,
+  subscribeMaterialization,
+} from '@/lib/trip-materialization-events';
 import type {DetectedTrip} from '@/lib/trip-detection';
 import {loadVisitPlaceDisplayForStay} from '@/lib/visit-place-label';
 
@@ -55,6 +59,11 @@ export function useDriveEndpointLabels(
 
   const [start, setStart] = useState(startSync);
   const [end, setEnd] = useState(endSync);
+  const materializationRevision = useSyncExternalStore(
+    subscribeMaterialization,
+    getMaterializationRevision,
+    getMaterializationRevision,
+  );
 
   useEffect(() => {
     setStart(startSync);
@@ -78,7 +87,7 @@ export function useDriveEndpointLabels(
     return () => {
       cancelled = true;
     };
-  }, [previousStay, savedPlaces, startSync]);
+  }, [previousStay, savedPlaces, startSync, materializationRevision]);
 
   useEffect(() => {
     if (!nextStay || endSync.source === 'saved') {
@@ -95,7 +104,7 @@ export function useDriveEndpointLabels(
     return () => {
       cancelled = true;
     };
-  }, [endSync, nextStay, savedPlaces]);
+  }, [endSync, nextStay, savedPlaces, materializationRevision]);
 
   return {
     start: previousStay ? start : EMPTY_DRIVE_ENDPOINT_LABEL,

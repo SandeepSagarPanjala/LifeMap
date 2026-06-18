@@ -11,17 +11,26 @@ export const MAP_SETTINGS_TOP_GAP = 8;
 export const MAP_SETTINGS_SIZE = 44;
 export const MAP_SETTINGS_STACK_GAP = 8;
 export const MAP_LOCATE_BUTTON_BOTTOM_GAP = 20;
-/** Full history panel (day nav + event card with moments + timeline bar). */
-export const MAP_HISTORY_PANEL_HEIGHT = 208;
+/** Full history panel when address + event + timeline are visible. */
+export const MAP_HISTORY_PANEL_HEIGHT = 308;
+export const MAP_HISTORY_TIMELINE_HEIGHT = 72;
+export const MAP_HISTORY_EVENT_CARD_HEIGHT = 100;
+/** Extra height when the event card shows a moment counts row. */
+export const MAP_HISTORY_EVENT_CARD_MOMENTS_EXTRA_HEIGHT = 44;
+/** Height of the address-selection card (pager + action row). */
+export const MAP_HISTORY_ADDRESS_CARD_HEIGHT = 128;
+export const MAP_HISTORY_ADDRESS_CARD_GAP = 8;
 export const MAP_HISTORY_FLOATING_CONTROLS_GAP = 8;
 /** Gap between history panel top and past-day date navigation cluster. */
 export const MAP_HISTORY_DATE_NAV_GAP = 8;
-/** Tighter gap when history panel is open (date nav sits just above the card). */
-export const MAP_HISTORY_DATE_NAV_ABOVE_PANEL_GAP = 2;
-/** Trim layout panel height so date nav hugs the visible history card top. */
-export const MAP_HISTORY_DATE_NAV_PANEL_TRIM = 10;
+/** Gap between date navigation and the panel content below it. */
+export const MAP_HISTORY_DATE_NAV_ABOVE_PANEL_GAP = 8;
 export const MAP_STACK_BUTTON_SIZE = 44;
 export const MAP_STACK_BUTTON_GAP = 8;
+/** Close button + gap + date row in MapDateLabel navigation mode. */
+export const MAP_DATE_NAV_ROW_GAP = 10;
+export const MAP_DATE_NAV_CLUSTER_HEIGHT =
+  MAP_SETTINGS_SIZE + MAP_DATE_NAV_ROW_GAP + MAP_STACK_BUTTON_SIZE;
 export const MAP_LEFT_STACK_COUNT = 4;
 export const MAP_RIGHT_STACK_COUNT = 3;
 
@@ -44,18 +53,48 @@ export function mapStackTotalHeight(buttonCount: number, buttonSize: number, gap
   return buttonCount * buttonSize + (buttonCount - 1) * gap;
 }
 
+export function mapHistoryPanelContentHeight(
+  historyAddressCardVisible: boolean,
+  historyEventCardHasMoments = false,
+): number {
+  return (
+    MAP_HISTORY_TIMELINE_HEIGHT +
+    MAP_HISTORY_EVENT_CARD_HEIGHT +
+    (historyEventCardHasMoments
+      ? MAP_HISTORY_EVENT_CARD_MOMENTS_EXTRA_HEIGHT
+      : 0) +
+    (historyAddressCardVisible
+      ? MAP_HISTORY_ADDRESS_CARD_GAP + MAP_HISTORY_ADDRESS_CARD_HEIGHT
+      : 0)
+  );
+}
+
 export function mapDateNavAnchorBottom(params: {
   insetBottom: number;
   historyPanelOpen: boolean;
   showDayMomentSummary: boolean;
+  historyAddressCardVisible?: boolean;
+  historyEventCardHasMoments?: boolean;
+  /** Measured or estimated full history panel content height. */
+  historyPanelContentHeight?: number;
 }): number {
-  const {insetBottom, historyPanelOpen, showDayMomentSummary} = params;
+  const {
+    insetBottom,
+    historyPanelOpen,
+    showDayMomentSummary,
+    historyAddressCardVisible = false,
+    historyEventCardHasMoments = false,
+    historyPanelContentHeight,
+  } = params;
   if (historyPanelOpen) {
+    const panelTopFromBottom =
+      historyPanelContentHeight ??
+      mapHistoryPanelContentHeight(
+        historyAddressCardVisible,
+        historyEventCardHasMoments,
+      );
     return (
-      insetBottom +
-      MAP_HISTORY_PANEL_HEIGHT -
-      MAP_HISTORY_DATE_NAV_PANEL_TRIM +
-      MAP_HISTORY_DATE_NAV_ABOVE_PANEL_GAP
+      insetBottom + panelTopFromBottom + MAP_HISTORY_DATE_NAV_ABOVE_PANEL_GAP
     );
   }
   if (showDayMomentSummary) {

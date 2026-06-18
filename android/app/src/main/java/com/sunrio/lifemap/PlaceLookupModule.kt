@@ -16,7 +16,7 @@ class PlaceLookupModule(reactContext: ReactApplicationContext) :
   override fun getName(): String = "PlaceLookupModule"
 
   @ReactMethod
-  fun lookupNearbyPlace(lat: Double, lng: Double, promise: Promise) {
+  fun lookupNearbyPlace(lat: Double, lng: Double, radiusM: Double, promise: Promise) {
     val context = reactApplicationContext
     if (!Geocoder.isPresent()) {
       promise.resolve(emptyResult(null))
