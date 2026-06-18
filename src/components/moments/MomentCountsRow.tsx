@@ -1,4 +1,4 @@
-import {Camera, AudioLines, NotebookPen} from 'lucide-react-native';
+import {AudioLines, Camera, NotebookPen, Video} from 'lucide-react-native';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 
 import {
@@ -56,6 +56,15 @@ export function MomentCountsRow({
         <MomentCountChip
           count={counts.photo}
           icon={Camera}
+          theme={CAPTURE_BUTTON_THEMES.camera}
+          iconSize={iconSize}
+          compact={compact}
+        />
+      ) : null}
+      {counts.video > 0 ? (
+        <MomentCountChip
+          count={counts.video}
+          icon={Video}
           theme={CAPTURE_BUTTON_THEMES.camera}
           iconSize={iconSize}
           compact={compact}

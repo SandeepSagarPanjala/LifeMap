@@ -47,8 +47,9 @@ export async function captureFilteredPhotoUri(
   viewShotRef: RefObject<ElementRef<typeof ViewShotComponent> | null>,
   filterId: PhotoFilterId,
   sourceUri: string,
+  forceCapture = false,
 ): Promise<string> {
-  if (filterId === 'original') {
+  if (filterId === 'original' && !forceCapture) {
     return sourceUri;
   }
   if (viewShotRef.current == null) {

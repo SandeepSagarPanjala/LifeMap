@@ -1,10 +1,12 @@
 import {useEffect, useState} from 'react';
 import {
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   TextInput,
-  View,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
@@ -38,59 +40,80 @@ export function VisitPlaceCustomLabelSheet({
       transparent
       animationType="fade"
       onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable
-          style={[styles.sheet, {paddingBottom: insets.bottom + 16}]}
-          onPress={event => event.stopPropagation()}>
-          <Text className="text-lg font-semibold">Custom place name</Text>
-          <Text variant="muted" className="mt-1 text-sm">
-            Enter a label if none of the nearby options fit.
-          </Text>
-          <TextInput
-            autoFocus
-            value={value}
-            onChangeText={setValue}
-            placeholder="e.g. Client office"
-            style={styles.input}
-            returnKeyType="done"
-            onSubmitEditing={() => {
-              const trimmed = value.trim();
-              if (trimmed) {
-                onSave(trimmed);
-              }
-            }}
-          />
-          <View style={styles.actions}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.flex}
+        keyboardVerticalOffset={insets.top}>
+        <Pressable style={styles.backdrop} onPress={onClose}>
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={[
+              styles.scrollContent,
+              {paddingBottom: insets.bottom + 16},
+            ]}
+            bounces={false}>
             <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Cancel custom label"
-              onPress={onClose}
-              style={[styles.button, styles.cancelButton]}>
-              <Text className="font-medium">Cancel</Text>
+              style={styles.sheet}
+              onPress={event => event.stopPropagation()}>
+              <Text className="text-lg font-semibold">Custom place name</Text>
+              <Text variant="muted" className="mt-1 text-sm">
+                Enter a label if none of the nearby options fit.
+              </Text>
+              <TextInput
+                autoFocus
+                value={value}
+                onChangeText={setValue}
+                placeholder="e.g. Client office"
+                placeholderTextColor="#8E8E93"
+                style={styles.input}
+                returnKeyType="done"
+                onSubmitEditing={() => {
+                  const trimmed = value.trim();
+                  if (trimmed) {
+                    onSave(trimmed);
+                  }
+                }}
+              />
+              <View style={styles.actions}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Cancel custom label"
+                  onPress={onClose}
+                  style={[styles.button, styles.cancelButton]}>
+                  <Text className="font-medium">Cancel</Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Save custom label"
+                  disabled={!value.trim()}
+                  onPress={() => onSave(value.trim())}
+                  style={[
+                    styles.button,
+                    styles.saveButton,
+                    !value.trim() && styles.saveButtonDisabled,
+                  ]}>
+                  <Text className="font-semibold text-white">Save</Text>
+                </Pressable>
+              </View>
             </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Save custom label"
-              disabled={!value.trim()}
-              onPress={() => onSave(value.trim())}
-              style={[
-                styles.button,
-                styles.saveButton,
-                !value.trim() && styles.saveButtonDisabled,
-              ]}>
-              <Text className="font-semibold text-white">Save</Text>
-            </Pressable>
-          </View>
+          </ScrollView>
         </Pressable>
-      </Pressable>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'flex-end',
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'flex-end',
   },
   sheet: {
@@ -114,6 +137,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     marginTop: 16,
+    marginBottom: 4,
   },
   button: {
     flex: 1,

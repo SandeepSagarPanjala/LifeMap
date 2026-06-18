@@ -162,14 +162,35 @@ jest.mock('react-native-vision-camera', () => {
     capturePhoto: jest.fn(),
     prepareSettings: jest.fn(),
   };
+  const videoOutput = {
+    createRecorder: jest.fn().mockResolvedValue({
+      startRecording: jest.fn().mockResolvedValue(undefined),
+      stopRecording: jest.fn().mockResolvedValue(undefined),
+      cancelRecording: jest.fn().mockResolvedValue(undefined),
+    }),
+  };
   return {
     Camera,
-    useCameraDevice: jest.fn(() => ({id: 'back'})),
+    useCameraDevice: jest.fn(() => ({id: 'back', hasFlash: true})),
     useCameraPermission: jest.fn(() => ({
       hasPermission: true,
       requestPermission: jest.fn().mockResolvedValue(true),
     })),
+    useMicrophonePermission: jest.fn(() => ({
+      hasPermission: true,
+      requestPermission: jest.fn().mockResolvedValue(true),
+    })),
     usePhotoOutput: jest.fn(() => photoOutput),
+    useVideoOutput: jest.fn(() => videoOutput),
+  };
+});
+
+jest.mock('react-native-video', () => {
+  const React = require('react');
+  const {View} = require('react-native');
+  return {
+    __esModule: true,
+    default: React.forwardRef((props, ref) => <View ref={ref} {...props} />),
   };
 });
 
@@ -208,7 +229,10 @@ jest.mock('react-native-compressor', () => ({
     exif: {},
   })),
   Image: {
-    compress: jest.fn(),
+    compress: jest.fn(async (uri: string) => uri),
+  },
+  Video: {
+    compress: jest.fn(async (uri: string) => uri),
   },
 }));
 

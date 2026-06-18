@@ -11,9 +11,10 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native';
-import {AudioLines, Camera, NotebookPen, Pause, Play, Trash2, X} from 'lucide-react-native';
+import {AudioLines, Camera, NotebookPen, Pause, Play, Trash2, Video, X} from 'lucide-react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
+import {MomentVideoPlayer} from '@/components/capture/MomentVideoPlayer';
 import {SavedPlaceIcon} from '@/components/map/SavedPlaceIcon';
 import {CAPTURE_BUTTON_THEMES} from '@/components/map/map-capture-button-theme';
 import {MomentPreviewImage} from '@/components/moments/MomentPreviewImage';
@@ -23,7 +24,7 @@ import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import {useMomentPreviewContexts} from '@/hooks/use-moment-preview-contexts';
 import type {DistanceUnit} from '@/lib/location-geo';
 import {formatVoiceDurationMs} from '@/lib/moments/format-voice-duration';
-import {resolveExistingMomentContentPath} from '@/lib/moments/moment-media-uri';
+import {momentVideoUri, resolveExistingMomentContentPath} from '@/lib/moments/moment-media-uri';
 import type {MomentPreviewContext} from '@/lib/moments/moment-preview-context';
 import {
   createVoiceRecorderSession,
@@ -72,13 +73,17 @@ function MomentTypeIcon({moment, size = 18}: {moment: MomentRow; size?: number})
       ? CAPTURE_BUTTON_THEMES.voice
       : moment.type === 'note'
         ? CAPTURE_BUTTON_THEMES.note
-        : CAPTURE_BUTTON_THEMES.camera;
+        : moment.type === 'video'
+          ? CAPTURE_BUTTON_THEMES.camera
+          : CAPTURE_BUTTON_THEMES.camera;
   const Icon =
     moment.type === 'voice'
       ? AudioLines
       : moment.type === 'note'
         ? NotebookPen
-        : Camera;
+        : moment.type === 'video'
+          ? Video
+          : Camera;
 
   return (
     <View style={[styles.typeOrb, {backgroundColor: theme.badgeBg}]}>
@@ -137,6 +142,16 @@ function MomentInfoHeader({
             {context.timeLabel} · {context.statsLabel}
           </Text>
         </View>
+      ) : null}
+      {moment.type === 'photo' && moment.caption?.trim() ? (
+        <Text style={styles.infoCaption} numberOfLines={3}>
+          {moment.caption.trim()}
+        </Text>
+      ) : null}
+      {moment.type === 'video' && moment.caption?.trim() ? (
+        <Text style={styles.infoCaption} numberOfLines={3}>
+          {moment.caption.trim()}
+        </Text>
       ) : null}
     </View>
   );
@@ -203,14 +218,39 @@ function NoteMomentPage({moment}: {moment: MomentRow}) {
   );
 }
 
+function VideoMomentPage({
+  moment,
+  isActive,
+}: {
+  moment: MomentRow;
+  isActive: boolean;
+}) {
+  if (!moment.contentPath) {
+    return null;
+  }
+
+  return (
+    <View style={styles.videoPage}>
+      <MomentVideoPlayer
+        uri={momentVideoUri(moment.contentPath)}
+        style={styles.videoPlayer}
+        paused={!isActive}
+        repeat
+      />
+    </View>
+  );
+}
+
 function MomentPagerPage({
   moment,
   pageWidth,
+  isActive,
   isPlayingVoice,
   onToggleVoice,
 }: {
   moment: MomentRow;
   pageWidth: number;
+  isActive: boolean;
   isPlayingVoice: boolean;
   onToggleVoice: () => void;
 }) {
@@ -222,6 +262,10 @@ function MomentPagerPage({
           style={styles.photoPage}
           resizeMode="contain"
         />
+      ) : null}
+
+      {moment.type === 'video' && moment.contentPath ? (
+        <VideoMomentPage moment={moment} isActive={isActive} />
       ) : null}
 
       {moment.type === 'voice' ? (
@@ -416,15 +460,16 @@ export function MomentsPreviewSheet({
   );
 
   const renderPage = useCallback(
-    ({item}: {item: MomentRow}) => (
+    ({item, index}: {item: MomentRow; index: number}) => (
       <MomentPagerPage
         moment={item}
         pageWidth={pageWidth}
+        isActive={index === activeIndex}
         isPlayingVoice={playingVoiceId === item.id}
         onToggleVoice={() => void toggleVoice(item)}
       />
     ),
-    [pageWidth, playingVoiceId, toggleVoice],
+    [activeIndex, pageWidth, playingVoiceId, toggleVoice],
   );
 
   const keyExtractor = useCallback((item: MomentRow) => String(item.id), []);
@@ -536,6 +581,15 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  videoPage: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+  },
+  videoPlayer: {
+    width: '100%',
+    height: '100%',
+  },
   topChrome: {
     position: 'absolute',
     top: 0,
@@ -640,6 +694,13 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.72)',
     fontSize: 12,
     fontWeight: '500',
+  },
+  infoCaption: {
+    marginTop: 8,
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '500',
+    lineHeight: 20,
   },
   typeOrb: {
     width: 28,

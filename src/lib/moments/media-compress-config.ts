@@ -18,3 +18,18 @@ export const DEFAULT_IMAGE_COMPRESS_OPTIONS: ImageCompressOptions = {
 /** Voice memo defaults for Phase 4. */
 export const VOICE_MAX_DURATION_MS = 5 * 60_000;
 export const VOICE_CONTENT_FORMAT = 'aac' as const;
+
+/** Video moment defaults. */
+export const VIDEO_MAX_DURATION_MS = 5 * 60_000;
+export const VIDEO_CONTENT_FORMAT = 'mp4' as const;
+export const VIDEO_COMPRESS_MAX_SIZE = 1280;
+
+export type VideoCompressOptions = {
+  compressionMethod: 'auto' | 'manual';
+  maxSize: number;
+};
+
+export const DEFAULT_VIDEO_COMPRESS_OPTIONS: VideoCompressOptions = {
+  compressionMethod: 'auto',
+  maxSize: VIDEO_COMPRESS_MAX_SIZE,
+};

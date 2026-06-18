@@ -82,6 +82,11 @@ export function momentImageUri(contentPath: string): string {
   return Platform.OS === 'ios' ? `file://${path}` : `file://${path}`;
 }
 
+/** URI for video players. */
+export function momentVideoUri(contentPath: string): string {
+  return momentImageUri(contentPath);
+}
+
 /** Plain filesystem path for native audio players. */
 export function momentPlayerPath(contentPath: string): string {
   return resolveMomentContentPath(contentPath);

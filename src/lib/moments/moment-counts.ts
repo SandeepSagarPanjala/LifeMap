@@ -14,6 +14,7 @@ import {
 
 export type MomentCounts = {
   photo: number;
+  video: number;
   voice: number;
   note: number;
 };
@@ -26,15 +27,20 @@ export type TravelMomentMarker = {
 };
 
 export function emptyMomentCounts(): MomentCounts {
-  return {photo: 0, voice: 0, note: 0};
+  return {photo: 0, video: 0, voice: 0, note: 0};
 }
 
 export function hasMomentCounts(counts: MomentCounts): boolean {
-  return counts.photo > 0 || counts.voice > 0 || counts.note > 0;
+  return counts.photo > 0 || counts.video > 0 || counts.voice > 0 || counts.note > 0;
 }
 
 export function momentCountsEqual(a: MomentCounts, b: MomentCounts): boolean {
-  return a.photo === b.photo && a.voice === b.voice && a.note === b.note;
+  return (
+    a.photo === b.photo &&
+    a.video === b.video &&
+    a.voice === b.voice &&
+    a.note === b.note
+  );
 }
 
 /** Hide the docked day bar when the open-visit callout already shows every moment today. */
@@ -74,6 +80,8 @@ export function countMoments(moments: MomentRow[]): MomentCounts {
   for (const moment of moments) {
     if (moment.type === 'photo') {
       counts.photo += 1;
+    } else if (moment.type === 'video') {
+      counts.video += 1;
     } else if (moment.type === 'voice') {
       counts.voice += 1;
     } else if (moment.type === 'note') {
@@ -107,6 +115,8 @@ export function countMomentsForEntry(
     }
     if (moment.type === 'photo') {
       counts.photo += 1;
+    } else if (moment.type === 'video') {
+      counts.video += 1;
     } else if (moment.type === 'voice') {
       counts.voice += 1;
     } else if (moment.type === 'note') {
@@ -235,6 +245,8 @@ export function countMomentsForStayEntry(
 export function addToCounts(counts: MomentCounts, moment: MomentRow): void {
   if (moment.type === 'photo') {
     counts.photo += 1;
+  } else if (moment.type === 'video') {
+    counts.video += 1;
   } else if (moment.type === 'voice') {
     counts.voice += 1;
   } else if (moment.type === 'note') {

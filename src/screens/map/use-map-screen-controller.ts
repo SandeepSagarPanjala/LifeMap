@@ -430,7 +430,7 @@ export function useMapScreenController() {
   );
   const currentVisitMomentCounts = useMemo((): MomentCounts => {
     if (!currentOpenVisit) {
-      return {photo: 0, voice: 0, note: 0};
+      return {photo: 0, video: 0, voice: 0, note: 0};
     }
     return countMomentsForStayEntry(dayMoments, currentOpenVisit, {
       savedPlace: currentOpenVisitSavedPlace,

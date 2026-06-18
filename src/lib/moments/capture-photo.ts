@@ -47,12 +47,19 @@ export function getCameraLaunchErrorMessage(response: ImagePickerResponse): stri
 }
 
 /** Save full-res capture to Photos when the picker did not already. */
-export async function saveCaptureToPhotoLibrary(sourceUri: string): Promise<void> {
+export async function saveMomentToGallery(
+  sourceUri: string,
+  type: 'photo' | 'video',
+): Promise<void> {
   if (Platform.OS === 'ios') {
-    await CameraRoll.saveAsset(sourceUri, {type: 'photo'});
+    await CameraRoll.saveAsset(sourceUri, {type});
     return;
   }
-  await CameraRoll.save(sourceUri, {type: 'photo'});
+  await CameraRoll.save(sourceUri, {type});
+}
+
+export async function saveCaptureToPhotoLibrary(sourceUri: string): Promise<void> {
+  await saveMomentToGallery(sourceUri, 'photo');
 }
 
 export async function launchCameraPhotoDraft(): Promise<CameraPhotoDraft | null> {
@@ -91,6 +98,7 @@ export async function launchCameraPhotoDraft(): Promise<CameraPhotoDraft | null>
 export async function savePhotoMoment(
   sourceUri: string,
   sourceBytes: number | null,
+  caption?: string | null,
 ): Promise<MomentRow> {
   try {
     await saveCaptureToPhotoLibrary(sourceUri);
@@ -120,6 +128,7 @@ export async function savePhotoMoment(
     contentBytes: sandboxFile.contentBytes,
     sourceBytes,
     contentFormat: IMAGE_COMPRESS_FORMAT,
+    caption: caption?.trim() || null,
   });
 }
 
