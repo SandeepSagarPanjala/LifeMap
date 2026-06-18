@@ -13,7 +13,7 @@ export function MapNoteButton({bottom, onPress}: MapNoteButtonProps) {
       bottom={bottom}
       variant="note"
       icon={NotebookPen}
-      accessibilityLabel="Write a note"
+      accessibilityLabel="Open diary"
       onPress={onPress}
     />
   );

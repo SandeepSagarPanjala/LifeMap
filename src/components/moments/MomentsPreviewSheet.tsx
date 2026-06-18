@@ -8,6 +8,7 @@ import {
   ScrollView,
   StyleSheet,
   View,
+  useWindowDimensions,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native';
@@ -24,6 +25,9 @@ import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import {useMomentPreviewContexts} from '@/hooks/use-moment-preview-contexts';
 import type {DistanceUnit} from '@/lib/location-geo';
 import {formatVoiceDurationMs} from '@/lib/moments/format-voice-duration';
+import {notePhotoAttachmentPaths} from '@/lib/moments/note-photo-attachments';
+import {getEmotionContextTokenByLabel} from '@/lib/moments/emotion-context-tokens';
+import {getEmotionTokenByLabel, parseEmotionMoodLabel} from '@/lib/moments/emotion-tokens';
 import {momentVideoUri, resolveExistingMomentContentPath} from '@/lib/moments/moment-media-uri';
 import type {MomentPreviewContext} from '@/lib/moments/moment-preview-context';
 import {
@@ -192,13 +196,145 @@ function VoiceMomentPage({
   );
 }
 
-function NoteMomentPage({moment}: {moment: MomentRow}) {
+function noteVoiceDurationLabel(moment: MomentRow): string | null {
+  if (!moment.voiceAttachmentPath) {
+    return null;
+  }
+  const seconds = moment.caption ? Number(moment.caption) : NaN;
+  if (!Number.isFinite(seconds) || seconds <= 0) {
+    return null;
+  }
+  return formatVoiceDurationMs(seconds * 1000);
+}
+
+const NOTE_PREVIEW_HORIZONTAL_PADDING = 24;
+const NOTE_PHOTO_GAP = 8;
+
+function NotePhotoTile({
+  path,
+  width,
+  height,
+}: {
+  path: string;
+  width: number;
+  height: number;
+}) {
+  return (
+    <MomentPreviewImage
+      contentPath={path}
+      style={[styles.notePhoto, {width, height}]}
+      resizeMode="cover"
+    />
+  );
+}
+
+function NotePhotoGrid({paths}: {paths: string[]}) {
+  const {width: windowWidth} = useWindowDimensions();
+  const gridWidth = windowWidth - NOTE_PREVIEW_HORIZONTAL_PADDING * 2;
+  const halfWidth = (gridWidth - NOTE_PHOTO_GAP) / 2;
+  const tileHeight = halfWidth;
+
+  if (paths.length === 0) {
+    return null;
+  }
+
+  if (paths.length === 1) {
+    return (
+      <NotePhotoTile path={paths[0]!} width={gridWidth} height={gridWidth * 0.72} />
+    );
+  }
+
+  const rows: Array<Array<{path: string; span: 'half' | 'full'}>> = [];
+
+  if (paths.length === 2) {
+    rows.push([
+      {path: paths[0]!, span: 'half'},
+      {path: paths[1]!, span: 'half'},
+    ]);
+  } else if (paths.length === 3) {
+    rows.push([
+      {path: paths[0]!, span: 'half'},
+      {path: paths[1]!, span: 'half'},
+    ]);
+    rows.push([{path: paths[2]!, span: 'full'}]);
+  } else if (paths.length === 4) {
+    rows.push([
+      {path: paths[0]!, span: 'half'},
+      {path: paths[1]!, span: 'half'},
+    ]);
+    rows.push([
+      {path: paths[2]!, span: 'half'},
+      {path: paths[3]!, span: 'half'},
+    ]);
+  } else {
+    rows.push([
+      {path: paths[0]!, span: 'half'},
+      {path: paths[1]!, span: 'half'},
+    ]);
+    rows.push([
+      {path: paths[2]!, span: 'half'},
+      {path: paths[3]!, span: 'half'},
+    ]);
+    rows.push([{path: paths[4]!, span: 'full'}]);
+  }
+
+  return (
+    <View style={styles.notePhotoGrid}>
+      {rows.map((row, rowIndex) => (
+        <View key={`row-${rowIndex}`} style={styles.notePhotoRow}>
+          {row.map(item =>
+            item.span === 'full' ? (
+              <NotePhotoTile
+                key={item.path}
+                path={item.path}
+                width={gridWidth}
+                height={tileHeight}
+              />
+            ) : (
+              <NotePhotoTile
+                key={item.path}
+                path={item.path}
+                width={halfWidth}
+                height={tileHeight}
+              />
+            ),
+          )}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function NoteMomentPage({
+  moment,
+  isPlayingVoice,
+  onToggleVoice,
+  contentInsetTop,
+}: {
+  moment: MomentRow;
+  isPlayingVoice: boolean;
+  onToggleVoice: () => void;
+  contentInsetTop: number;
+}) {
   const moodLabel = moment.moodLabel?.trim();
+  const parsedMood = moodLabel ? parseEmotionMoodLabel(moodLabel) : null;
+  const emotionToken = parsedMood
+    ? getEmotionTokenByLabel(parsedMood.emotionLabel)
+    : null;
+  const contextToken = parsedMood?.contextLabel
+    ? getEmotionContextTokenByLabel(parsedMood.contextLabel)
+    : null;
+  const voiceDuration = noteVoiceDurationLabel(moment);
+  const voiceTheme = CAPTURE_BUTTON_THEMES.voice;
+  const photoPaths = notePhotoAttachmentPaths(moment);
 
   return (
     <ScrollView
       style={styles.noteScroll}
-      contentContainerStyle={styles.noteScrollContent}
+      contentContainerStyle={[
+        styles.noteScrollContent,
+        {paddingTop: contentInsetTop},
+      ]}
       showsVerticalScrollIndicator={false}>
       {moment.title?.trim() ? (
         <Text style={styles.noteTitle}>{moment.title.trim()}</Text>
@@ -206,14 +342,49 @@ function NoteMomentPage({moment}: {moment: MomentRow}) {
       {moment.textBody?.trim() ? (
         <Text style={styles.noteBody}>{moment.textBody.trim()}</Text>
       ) : null}
-      {moodLabel ? <Text style={styles.noteMood}>Mood · {moodLabel}</Text> : null}
-      {moment.contentPath ? (
-        <MomentPreviewImage
-          contentPath={moment.contentPath}
-          style={styles.notePhoto}
-          resizeMode="contain"
-        />
+      {emotionToken ? (
+        <View style={styles.noteEmotionRow}>
+          <View
+            style={[styles.noteEmotionSticker, {backgroundColor: emotionToken.tint}]}>
+            <Text style={styles.noteEmotionEmoji}>{emotionToken.sticker}</Text>
+          </View>
+          <View style={styles.noteEmotionCopy}>
+            <Text style={styles.noteMood}>{emotionToken.label}</Text>
+            {contextToken ? (
+              <View style={styles.noteContextRow}>
+                <Text style={styles.noteContextSticker}>{contextToken.sticker}</Text>
+                <Text style={styles.noteContextLabel}>{contextToken.label}</Text>
+              </View>
+            ) : parsedMood?.contextLabel ? (
+              <Text style={styles.noteContextLabel}>{parsedMood.contextLabel}</Text>
+            ) : null}
+          </View>
+        </View>
+      ) : moodLabel ? (
+        <Text style={styles.noteMood}>{moodLabel}</Text>
       ) : null}
+      {moment.voiceAttachmentPath ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={isPlayingVoice ? 'Pause voice message' : 'Play voice message'}
+          onPress={onToggleVoice}
+          style={styles.noteVoiceRow}>
+          <View style={[styles.noteVoicePlay, {backgroundColor: voiceTheme.badgeBg}]}>
+            {isPlayingVoice ? (
+              <Pause size={18} color={voiceTheme.icon} strokeWidth={2.25} />
+            ) : (
+              <Play size={18} color={voiceTheme.icon} strokeWidth={2.25} />
+            )}
+          </View>
+          <View style={styles.noteVoiceCopy}>
+            <Text style={styles.noteVoiceLabel}>Voice message</Text>
+            {voiceDuration ? (
+              <Text style={styles.noteVoiceDuration}>{voiceDuration}</Text>
+            ) : null}
+          </View>
+        </Pressable>
+      ) : null}
+      {photoPaths.length > 0 ? <NotePhotoGrid paths={photoPaths} /> : null}
     </ScrollView>
   );
 }
@@ -247,12 +418,14 @@ function MomentPagerPage({
   isActive,
   isPlayingVoice,
   onToggleVoice,
+  noteContentInsetTop,
 }: {
   moment: MomentRow;
   pageWidth: number;
   isActive: boolean;
   isPlayingVoice: boolean;
   onToggleVoice: () => void;
+  noteContentInsetTop: number;
 }) {
   return (
     <View style={[styles.page, {width: pageWidth}]}>
@@ -276,7 +449,14 @@ function MomentPagerPage({
         />
       ) : null}
 
-      {moment.type === 'note' ? <NoteMomentPage moment={moment} /> : null}
+      {moment.type === 'note' ? (
+        <NoteMomentPage
+          moment={moment}
+          isPlayingVoice={isPlayingVoice}
+          onToggleVoice={onToggleVoice}
+          contentInsetTop={noteContentInsetTop}
+        />
+      ) : null}
     </View>
   );
 }
@@ -319,6 +499,7 @@ export function MomentsPreviewSheet({
   const [activeIndex, setActiveIndex] = useState(0);
   const [playingVoiceId, setPlayingVoiceId] = useState<number | null>(null);
   const [deletingMomentId, setDeletingMomentId] = useState<number | null>(null);
+  const [noteContentInsetTop, setNoteContentInsetTop] = useState(112);
   const pagerRef = useRef<FlatList<MomentRow>>(null);
   const playerRef = useRef(createVoiceRecorderSession());
 
@@ -389,10 +570,16 @@ export function MomentsPreviewSheet({
 
   const toggleVoice = useCallback(
     async (moment: MomentRow) => {
-      if (!moment.contentPath) {
+      const voicePath =
+        moment.type === 'voice'
+          ? moment.contentPath
+          : moment.type === 'note'
+            ? moment.voiceAttachmentPath
+            : null;
+      if (!voicePath) {
         return;
       }
-      const existingPath = await resolveExistingMomentContentPath(moment.contentPath);
+      const existingPath = await resolveExistingMomentContentPath(voicePath);
       if (!existingPath) {
         Alert.alert(
           'Voice memo unavailable',
@@ -467,9 +654,10 @@ export function MomentsPreviewSheet({
         isActive={index === activeIndex}
         isPlayingVoice={playingVoiceId === item.id}
         onToggleVoice={() => void toggleVoice(item)}
+        noteContentInsetTop={noteContentInsetTop}
       />
     ),
-    [activeIndex, pageWidth, playingVoiceId, toggleVoice],
+    [activeIndex, noteContentInsetTop, pageWidth, playingVoiceId, toggleVoice],
   );
 
   const keyExtractor = useCallback((item: MomentRow) => String(item.id), []);
@@ -511,6 +699,9 @@ export function MomentsPreviewSheet({
 
         <View
           pointerEvents="box-none"
+          onLayout={event => {
+            setNoteContentInsetTop(event.nativeEvent.layout.height + 12);
+          }}
           style={[styles.topChrome, {paddingTop: insets.top + 8}]}>
           <View style={styles.topChromeRow}>
             {activeMoment ? (
@@ -740,10 +931,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   noteScrollContent: {
-    paddingHorizontal: 24,
-    paddingTop: 120,
+    paddingHorizontal: NOTE_PREVIEW_HORIZONTAL_PADDING,
     paddingBottom: 80,
     gap: 12,
+    width: '100%',
   },
   noteTitle: {
     color: '#FFFFFF',
@@ -755,14 +946,90 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
   },
-  noteMood: {
-    color: 'rgba(255,255,255,0.6)',
+  noteVoiceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    width: '100%',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  noteVoicePlay: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noteVoiceCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  noteVoiceLabel: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  noteVoiceDuration: {
+    color: 'rgba(255,255,255,0.72)',
     fontSize: 13,
     fontWeight: '500',
   },
-  notePhoto: {
+  noteMood: {
+    color: 'rgba(255,255,255,0.92)',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  noteEmotionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     width: '100%',
-    height: 280,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  noteEmotionSticker: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noteEmotionEmoji: {
+    fontSize: 22,
+    lineHeight: 26,
+  },
+  noteEmotionCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  noteContextRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  noteContextSticker: {
+    fontSize: 14,
+    lineHeight: 16,
+  },
+  noteContextLabel: {
+    color: 'rgba(255,255,255,0.72)',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  notePhotoGrid: {
+    width: '100%',
+    gap: NOTE_PHOTO_GAP,
+  },
+  notePhotoRow: {
+    flexDirection: 'row',
+    gap: NOTE_PHOTO_GAP,
+  },
+  notePhoto: {
     borderRadius: 12,
     backgroundColor: '#111111',
   },

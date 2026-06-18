@@ -170,6 +170,12 @@ const m0011 = `DROP INDEX IF EXISTS \`materialization_queue_status_idx\`;
 --> statement-breakpoint
 DROP TABLE IF EXISTS \`materialization_queue\`;`;
 
+const m0012 = `ALTER TABLE \`moments\` ADD COLUMN \`voice_attachment_path\` text;
+--> statement-breakpoint
+ALTER TABLE \`moments\` ADD COLUMN \`voice_attachment_bytes\` integer;`;
+
+const m0013 = `ALTER TABLE \`moments\` ADD COLUMN \`photo_attachments_json\` text;`;
+
 export default {
   journal,
   migrations: {
@@ -185,5 +191,7 @@ export default {
     m0009,
     m0010,
     m0011,
+    m0012,
+    m0013,
   },
 };

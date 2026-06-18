@@ -19,7 +19,8 @@ describe('isCaptureNoteDraftDirty', () => {
         title: '',
         textBody: '',
         hasPhoto: false,
-        moodTouched: false,
+        hasVoice: false,
+        hasEmotion: false,
       }),
     ).toBe(false);
     expect(
@@ -27,7 +28,8 @@ describe('isCaptureNoteDraftDirty', () => {
         title: 'Hi',
         textBody: '',
         hasPhoto: false,
-        moodTouched: false,
+        hasVoice: false,
+        hasEmotion: false,
       }),
     ).toBe(true);
     expect(
@@ -35,7 +37,8 @@ describe('isCaptureNoteDraftDirty', () => {
         title: '',
         textBody: '',
         hasPhoto: true,
-        moodTouched: false,
+        hasVoice: false,
+        hasEmotion: false,
       }),
     ).toBe(true);
     expect(
@@ -43,7 +46,17 @@ describe('isCaptureNoteDraftDirty', () => {
         title: '',
         textBody: '',
         hasPhoto: false,
-        moodTouched: true,
+        hasVoice: true,
+        hasEmotion: false,
+      }),
+    ).toBe(true);
+    expect(
+      isCaptureNoteDraftDirty({
+        title: '',
+        textBody: '',
+        hasPhoto: false,
+        hasVoice: false,
+        hasEmotion: true,
       }),
     ).toBe(true);
   });

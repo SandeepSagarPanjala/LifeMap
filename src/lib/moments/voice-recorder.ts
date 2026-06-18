@@ -40,17 +40,42 @@ export function createVoiceRecorderSession(
   let activeRecordPath: string | null = null;
   let durationMs = 0;
   let stoppingForCap = false;
+  let disposed = false;
 
-  const handleRecordProgress = (event: RecordBackType) => {
-    durationMs = event.currentPosition;
-    callbacks.onDurationMs?.(durationMs);
-    if (!stoppingForCap && durationMs >= VOICE_MAX_DURATION_MS) {
-      stoppingForCap = true;
-      callbacks.onMaxDurationReached?.();
+  const removeListenersSafely = () => {
+    try {
+      sound.removeRecordBackListener();
+    } catch {
+      // Native recorder may already be torn down.
+    }
+    try {
+      sound.removePlayBackListener();
+    } catch {
+      // Native player may already be torn down.
+    }
+    try {
+      sound.removePlaybackEndListener();
+    } catch {
+      // Native player may already be torn down.
     }
   };
 
   const discardRecording = async (filePath?: string | null) => {
+    const paths = new Set<string>();
+    if (activeRecordPath) {
+      paths.add(activeRecordPath);
+    }
+    if (filePath) {
+      paths.add(filePath);
+    }
+
+    if (disposed) {
+      for (const path of paths) {
+        await deleteMomentContentFile(path);
+      }
+      return;
+    }
+
     try {
       await sound.stopRecorder();
     } catch {
@@ -61,17 +86,8 @@ export function createVoiceRecorderSession(
     } catch {
       // Not playing.
     }
-    sound.removeRecordBackListener();
-    sound.removePlayBackListener();
-    sound.removePlaybackEndListener();
+    removeListenersSafely();
 
-    const paths = new Set<string>();
-    if (activeRecordPath) {
-      paths.add(activeRecordPath);
-    }
-    if (filePath) {
-      paths.add(filePath);
-    }
     for (const path of paths) {
       await deleteMomentContentFile(path);
     }
@@ -79,6 +95,15 @@ export function createVoiceRecorderSession(
     activeRecordPath = null;
     durationMs = 0;
     stoppingForCap = false;
+  };
+
+  const handleRecordProgress = (event: RecordBackType) => {
+    durationMs = event.currentPosition;
+    callbacks.onDurationMs?.(durationMs);
+    if (!stoppingForCap && durationMs >= VOICE_MAX_DURATION_MS) {
+      stoppingForCap = true;
+      callbacks.onMaxDurationReached?.();
+    }
   };
 
   return {
@@ -92,11 +117,11 @@ export function createVoiceRecorderSession(
     },
 
     async stopRecording() {
-      if (!activeRecordPath) {
+      if (!activeRecordPath || disposed) {
         throw new Error('No active voice recording.');
       }
       const filePath = await sound.stopRecorder();
-      sound.removeRecordBackListener();
+      removeListenersSafely();
       stoppingForCap = false;
       const resolvedPath = filePath || activeRecordPath;
       activeRecordPath = null;
@@ -113,16 +138,43 @@ export function createVoiceRecorderSession(
     },
 
     async stopPreview() {
+      if (disposed) {
+        return;
+      }
       await sound.stopPlayer();
-      sound.removePlayBackListener();
-      sound.removePlaybackEndListener();
+      removeListenersSafely();
     },
 
     discardRecording,
 
     dispose() {
-      void discardRecording();
-      sound.dispose();
+      if (disposed) {
+        return;
+      }
+      disposed = true;
+      void (async () => {
+        try {
+          await sound.stopRecorder();
+        } catch {
+          // Not recording.
+        }
+        try {
+          await sound.stopPlayer();
+        } catch {
+          // Not playing.
+        }
+        removeListenersSafely();
+        try {
+          sound.dispose();
+        } catch {
+          // Already disposed.
+        }
+        const path = activeRecordPath;
+        activeRecordPath = null;
+        if (path) {
+          await deleteMomentContentFile(path);
+        }
+      })();
     },
   };
 }

@@ -80,10 +80,10 @@
       "breakpoints": true
     },
     {
-      "idx": 11,
+      "idx": 13,
       "version": "7",
-      "when": 1788903000000,
-      "tag": "0011_drop_materialization_queue",
+      "when": 1788905000000,
+      "tag": "0013_note_photo_attachments",
       "breakpoints": true
     }
   ]

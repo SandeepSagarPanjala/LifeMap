@@ -182,7 +182,6 @@ export function useMapScreenController() {
     longitude: number;
   } | null>(null);
   const [savedPlacesSheetOpen, setSavedPlacesSheetOpen] = useState(false);
-  const [voiceMemoSheetOpen, setVoiceMemoSheetOpen] = useState(false);
   const [momentsPreviewScope, setMomentsPreviewScope] = useState<
     | {kind: 'day'}
     | {
@@ -486,8 +485,7 @@ export function useMapScreenController() {
   const placesButtonBottom = mapStackButtonBottom(stackBaseBottom, 3);
 
   const cameraButtonBottom = mapStackButtonBottom(stackBaseBottom, 0);
-  const voiceButtonBottom = mapStackButtonBottom(stackBaseBottom, 1);
-  const noteButtonBottom = mapStackButtonBottom(stackBaseBottom, 2);
+  const noteButtonBottom = mapStackButtonBottom(stackBaseBottom, 1);
   const dayMomentSummaryBottom = insets.bottom + DAY_MOMENT_SUMMARY_BOTTOM_GAP;
 
   const dateNavAnchorBottom = useMemo(
@@ -1291,18 +1289,6 @@ export function useMapScreenController() {
     }
   }, [navigation]);
 
-  const handleCaptureVoice = useCallback(() => {
-    setVoiceMemoSheetOpen(true);
-  }, []);
-
-  const closeVoiceMemoSheet = useCallback(() => {
-    setVoiceMemoSheetOpen(false);
-  }, []);
-
-  const handleVoiceMemoSaved = useCallback(async () => {
-    await refreshDayMoments();
-  }, [refreshDayMoments]);
-
   const handleCaptureNote = useCallback(() => {
     navigation.navigate('CaptureNote');
   }, [navigation]);
@@ -1365,13 +1351,8 @@ export function useMapScreenController() {
     calendarButtonBottom,
     historyButtonBottom,
     cameraButtonBottom,
-    voiceButtonBottom,
     noteButtonBottom,
     handleCaptureCamera,
-    handleCaptureVoice,
-    closeVoiceMemoSheet,
-    handleVoiceMemoSaved,
-    voiceMemoSheetOpen,
     handleCaptureNote,
     momentsPreviewOpen,
     momentsPreviewTitle,

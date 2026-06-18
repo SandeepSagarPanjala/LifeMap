@@ -9,7 +9,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import {AudioLines, Mic, Pause, Play, Square, Trash2} from 'lucide-react-native';
+import {AudioLines, Mic, Pause, Play, Square} from 'lucide-react-native';
 
 import {CAPTURE_BUTTON_THEMES} from '@/components/map/map-capture-button-theme';
 import {Text} from '@/components/ui/text';
@@ -29,13 +29,23 @@ const SHEET_OFFSCREEN = 420;
 
 type VoiceMemoPhase = 'idle' | 'recording' | 'preview' | 'saving';
 
+export type VoiceMemoSaveTarget = 'moment' | 'diary';
+
 type VoiceMemoSheetProps = {
   visible: boolean;
   onClose: () => void;
   onSaved: () => Promise<void>;
+  saveTarget?: VoiceMemoSaveTarget;
+  onDiaryAttach?: (attachment: {uri: string; durationMs: number}) => void;
 };
 
-export function VoiceMemoSheet({visible, onClose, onSaved}: VoiceMemoSheetProps) {
+export function VoiceMemoSheet({
+  visible,
+  onClose,
+  onSaved,
+  saveTarget = 'moment',
+  onDiaryAttach,
+}: VoiceMemoSheetProps) {
   const colors = useThemeColors();
   const voiceTheme = CAPTURE_BUTTON_THEMES.voice;
 
@@ -260,6 +270,20 @@ export function VoiceMemoSheet({visible, onClose, onSaved}: VoiceMemoSheetProps)
     setPhase('saving');
     try {
       await recorderRef.current.stopPreview();
+      if (saveTarget === 'diary') {
+        onDiaryAttach?.({uri: previewPath, durationMs});
+        setPreviewPath(null);
+        closingRef.current = true;
+        animateOut(() => {
+          closingRef.current = false;
+          setMounted(false);
+          setPhase('idle');
+          setDurationMs(0);
+          setIsPlayingPreview(false);
+          onClose();
+        });
+        return;
+      }
       await saveVoiceMoment(previewPath, durationMs);
       setPreviewPath(null);
       await onSaved();
@@ -287,6 +311,7 @@ export function VoiceMemoSheet({visible, onClose, onSaved}: VoiceMemoSheetProps)
 
   const durationLabel = formatVoiceDurationMs(durationMs);
   const capLabel = formatVoiceDurationCap();
+  const isDiaryAttach = saveTarget === 'diary';
 
   return (
     <Modal
@@ -302,7 +327,7 @@ export function VoiceMemoSheet({visible, onClose, onSaved}: VoiceMemoSheetProps)
         />
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Close voice memo"
+          accessibilityLabel={isDiaryAttach ? 'Discard voice memo' : 'Close voice memo'}
           style={styles.dismissTap}
           onPress={closeSheet}
         />
@@ -318,7 +343,9 @@ export function VoiceMemoSheet({visible, onClose, onSaved}: VoiceMemoSheetProps)
             {phase === 'recording'
               ? `Recording… max ${capLabel}`
               : phase === 'preview'
-                ? 'Preview your memo, then save or discard.'
+                ? saveTarget === 'diary'
+                  ? 'Preview your memo, then add it to this diary entry.'
+                  : 'Preview your memo, then save or discard.'
                 : `Record up to ${capLabel} and save to your day.`}
           </Text>
 
@@ -391,7 +418,9 @@ export function VoiceMemoSheet({visible, onClose, onSaved}: VoiceMemoSheetProps)
                   onPress={() => void handleSave()}
                   style={[styles.saveButton, {backgroundColor: colors.primary}]}>
                   <AudioLines size={18} color={colors.primaryForeground} strokeWidth={2.25} />
-                  <Text className="text-primary-foreground font-medium">Save moment</Text>
+                  <Text className="text-primary-foreground font-medium">
+                    {saveTarget === 'diary' ? 'Add to diary' : 'Save moment'}
+                  </Text>
                 </Pressable>
               </View>
             ) : null}
@@ -404,14 +433,13 @@ export function VoiceMemoSheet({visible, onClose, onSaved}: VoiceMemoSheetProps)
             ) : null}
           </View>
 
-          {phase === 'preview' ? (
+          {phase === 'preview' && !isDiaryAttach ? (
             <View style={styles.footerActions}>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Discard recording"
                 onPress={handleDiscard}
                 style={styles.discardButton}>
-                <Trash2 size={16} color="#EF4444" strokeWidth={2.25} />
                 <Text className="text-sm font-medium text-red-500">Discard</Text>
               </Pressable>
               <Pressable accessibilityRole="button" onPress={closeSheet}>
@@ -420,13 +448,13 @@ export function VoiceMemoSheet({visible, onClose, onSaved}: VoiceMemoSheetProps)
                 </Text>
               </Pressable>
             </View>
-          ) : (
+          ) : phase !== 'preview' && !isDiaryAttach ? (
             <Pressable accessibilityRole="button" onPress={closeSheet} style={styles.cancelOnly}>
               <Text variant="muted" className="text-sm">
                 Cancel
               </Text>
             </Pressable>
-          )}
+          ) : null}
         </Animated.View>
       </View>
     </Modal>

@@ -171,6 +171,18 @@ export async function ensureMomentsMoodColumns(sqlite: DB): Promise<void> {
     {name: 'content_bytes', ddl: 'ALTER TABLE moments ADD COLUMN content_bytes integer'},
     {name: 'source_bytes', ddl: 'ALTER TABLE moments ADD COLUMN source_bytes integer'},
     {name: 'content_format', ddl: 'ALTER TABLE moments ADD COLUMN content_format text'},
+    {
+      name: 'voice_attachment_path',
+      ddl: 'ALTER TABLE moments ADD COLUMN voice_attachment_path text',
+    },
+    {
+      name: 'voice_attachment_bytes',
+      ddl: 'ALTER TABLE moments ADD COLUMN voice_attachment_bytes integer',
+    },
+    {
+      name: 'photo_attachments_json',
+      ddl: 'ALTER TABLE moments ADD COLUMN photo_attachments_json text',
+    },
   ];
   for (const column of columns) {
     if (!(await columnExists(sqlite, 'moments', column.name))) {

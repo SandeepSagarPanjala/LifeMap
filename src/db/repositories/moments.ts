@@ -1,6 +1,7 @@
 import {and, asc, desc, eq, gte, lte, sql} from 'drizzle-orm';
 
 import {deleteMomentContentFile} from '@/lib/moments/moment-storage';
+import {parseNotePhotoAttachments} from '@/lib/moments/note-photo-attachments';
 import {getDayRange} from '@/lib/day-utils';
 
 import {getDatabase} from '../client';
@@ -16,6 +17,9 @@ export type MomentRow = {
   lat: number | null;
   lng: number | null;
   contentPath: string | null;
+  voiceAttachmentPath: string | null;
+  voiceAttachmentBytes: number | null;
+  photoAttachmentsJson: string | null;
   textBody: string | null;
   caption: string | null;
   title: string | null;
@@ -40,6 +44,9 @@ export type NewMoment = {
   moodScore?: number | null;
   moodLabel?: string | null;
   contentPath?: string | null;
+  voiceAttachmentPath?: string | null;
+  voiceAttachmentBytes?: number | null;
+  photoAttachmentsJson?: string | null;
   contentBytes?: number | null;
   sourceBytes?: number | null;
   contentFormat?: string | null;
@@ -55,6 +62,9 @@ function mapRow(row: typeof moments.$inferSelect): MomentRow {
     lat: row.lat ?? null,
     lng: row.lng ?? null,
     contentPath: row.contentPath ?? null,
+    voiceAttachmentPath: row.voiceAttachmentPath ?? null,
+    voiceAttachmentBytes: row.voiceAttachmentBytes ?? null,
+    photoAttachmentsJson: row.photoAttachmentsJson ?? null,
     textBody: row.textBody ?? null,
     caption: row.caption ?? null,
     title: row.title ?? null,
@@ -88,6 +98,9 @@ export async function insertMoment(input: NewMoment): Promise<MomentRow> {
       moodLabel: input.moodLabel ?? null,
       placeLabel: input.placeLabel ?? null,
       contentPath: input.contentPath ?? null,
+      voiceAttachmentPath: input.voiceAttachmentPath ?? null,
+      voiceAttachmentBytes: input.voiceAttachmentBytes ?? null,
+      photoAttachmentsJson: input.photoAttachmentsJson ?? null,
       contentBytes: input.contentBytes ?? null,
       sourceBytes: input.sourceBytes ?? null,
       contentFormat: input.contentFormat ?? null,
@@ -175,5 +188,9 @@ export async function deleteMoment(id: number): Promise<void> {
   const db = await getDatabase();
   await db.delete(moments).where(eq(moments.id, id));
   await deleteMomentContentFile(existing.contentPath);
+  await deleteMomentContentFile(existing.voiceAttachmentPath);
+  for (const attachment of parseNotePhotoAttachments(existing.photoAttachmentsJson)) {
+    await deleteMomentContentFile(attachment.path);
+  }
   notifyMomentChange(existing.timestamp);
 }

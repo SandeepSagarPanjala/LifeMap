@@ -14,6 +14,7 @@ import {
 import {
   MOMENTS_TMP_DIRECTORY,
 } from '@/lib/moments/moment-storage';
+import {notePhotoAttachmentPaths} from '@/lib/moments/note-photo-attachments';
 
 import {computeDatabaseFileStats} from '@/lib/database-file-stats';
 
@@ -146,12 +147,17 @@ async function resolveMomentFileBytes(moment: MomentRow): Promise<number> {
 function referencedMomentPaths(moments: MomentRow[]): Set<string> {
   const paths = new Set<string>();
   for (const moment of moments) {
-    if (!moment.contentPath) {
-      continue;
+    for (const path of notePhotoAttachmentPaths(moment)) {
+      const relative = momentStorageRelativePath(path);
+      if (relative) {
+        paths.add(relative);
+      }
     }
-    const relative = momentStorageRelativePath(moment.contentPath);
-    if (relative) {
-      paths.add(relative);
+    if (moment.voiceAttachmentPath) {
+      const relative = momentStorageRelativePath(moment.voiceAttachmentPath);
+      if (relative) {
+        paths.add(relative);
+      }
     }
   }
   return paths;
