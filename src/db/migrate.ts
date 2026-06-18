@@ -158,15 +158,38 @@ export async function ensureTripPointMetadataColumns(sqlite: DB): Promise<void> 
   }
 }
 
-async function readLastAppliedMillis(sqlite: DB): Promise<number> {
-  const result = await sqlite.executeAsync(
-    `SELECT created_at AS createdAt
-     FROM "${MIGRATIONS_TABLE}"
-     ORDER BY created_at DESC
-     LIMIT 1`,
-  );
-  const row = result.rows?.[0] as {createdAt?: number | string} | undefined;
-  return row?.createdAt != null ? Number(row.createdAt) : 0;
+/** Repair moments columns when migration 0006 was skipped by journal drift. */
+export async function ensureMomentsMoodColumns(sqlite: DB): Promise<void> {
+  if (!(await tableExists(sqlite, 'moments'))) {
+    return;
+  }
+  const columns: Array<{name: string; ddl: string}> = [
+    {name: 'title', ddl: 'ALTER TABLE moments ADD COLUMN title text'},
+    {name: 'mood_score', ddl: 'ALTER TABLE moments ADD COLUMN mood_score real'},
+    {name: 'mood_label', ddl: 'ALTER TABLE moments ADD COLUMN mood_label text'},
+    {name: 'finished_at', ddl: 'ALTER TABLE moments ADD COLUMN finished_at integer'},
+    {name: 'content_bytes', ddl: 'ALTER TABLE moments ADD COLUMN content_bytes integer'},
+    {name: 'source_bytes', ddl: 'ALTER TABLE moments ADD COLUMN source_bytes integer'},
+    {name: 'content_format', ddl: 'ALTER TABLE moments ADD COLUMN content_format text'},
+  ];
+  for (const column of columns) {
+    if (!(await columnExists(sqlite, 'moments', column.name))) {
+      await executeMigrationStatement(sqlite, column.ddl);
+    }
+  }
+}
+
+export async function collectPendingMigrations(
+  sqlite: DB,
+  prepared: PreparedMigration[] = prepareMigrations(),
+): Promise<PreparedMigration[]> {
+  const pending: PreparedMigration[] = [];
+  for (const migration of prepared) {
+    if (!(await migrationAlreadyApplied(sqlite, migration))) {
+      pending.push(migration);
+    }
+  }
+  return pending;
 }
 
 async function ensureMigrationsTable(sqlite: DB): Promise<void> {
@@ -193,6 +216,27 @@ async function recordMigration(
   );
 }
 
+async function migrationRecorded(
+  executor: SqlExecutor,
+  hash: string,
+): Promise<boolean> {
+  const result = (await executor.execute(
+    `SELECT id FROM "${MIGRATIONS_TABLE}" WHERE hash = ? LIMIT 1`,
+    [hash],
+  )) as {rows?: unknown[]};
+  return (result.rows?.length ?? 0) > 0;
+}
+
+async function recordMigrationIfMissing(
+  migration: PreparedMigration,
+  executor: SqlExecutor,
+): Promise<void> {
+  if (await migrationRecorded(executor, migration.hash)) {
+    return;
+  }
+  await recordMigration(migration, executor);
+}
+
 async function bootstrapExistingMigrationJournal(
   sqlite: DB,
   prepared: PreparedMigration[],
@@ -201,7 +245,7 @@ async function bootstrapExistingMigrationJournal(
     if (!(await migrationAlreadyApplied(sqlite, migration))) {
       continue;
     }
-    await recordMigration(migration, sqlite);
+    await recordMigrationIfMissing(migration, sqlite);
   }
 }
 
@@ -243,10 +287,7 @@ export async function runMigrations(sqlite: DB): Promise<void> {
     await bootstrapExistingMigrationJournal(sqlite, prepared);
   }
 
-  const lastAppliedMillis = await readLastAppliedMillis(sqlite);
-  const pending = prepared.filter(
-    migration => migration.folderMillis > lastAppliedMillis,
-  );
+  const pending = await collectPendingMigrations(sqlite, prepared);
   if (pending.length === 0) {
     return;
   }
@@ -256,7 +297,7 @@ export async function runMigrations(sqlite: DB): Promise<void> {
       for (const statement of migration.sql) {
         await executeMigrationStatement(tx, statement);
       }
-      await recordMigration(migration, tx);
+      await recordMigrationIfMissing(migration, tx);
     }
   });
 }

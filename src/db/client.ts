@@ -3,6 +3,7 @@ import { drizzle } from 'drizzle-orm/op-sqlite';
 
 import {
   runMigrations,
+  ensureMomentsMoodColumns,
   ensureTripPointMetadataColumns,
   ensureTripSegmentMetadataColumns,
 } from './migrate';
@@ -10,21 +11,26 @@ import { getOrCreateDatabaseKey } from './keychain';
 
 export type Database = ReturnType<typeof drizzle>;
 
-let dbPromise: Promise<Database> | null = null;
-let sqlitePromise: Promise<DB> | null = null;
+let initPromise: Promise<{db: Database; sqlite: DB}> | null = null;
+
+function getInitPromise(): Promise<{db: Database; sqlite: DB}> {
+  if (!initPromise) {
+    initPromise = initDatabase();
+  }
+  return initPromise;
+}
 
 export function getDatabase(): Promise<Database> {
-  if (!dbPromise) {
-    dbPromise = initDatabase().then(({ db }) => db);
-  }
-  return dbPromise;
+  return getInitPromise().then(({db}) => db);
 }
 
 export function getSqlite(): Promise<DB> {
-  if (!sqlitePromise) {
-    sqlitePromise = initDatabase().then(({ sqlite }) => sqlite);
-  }
-  return sqlitePromise;
+  return getInitPromise().then(({sqlite}) => sqlite);
+}
+
+/** Reset singleton for tests only. */
+export function resetDatabaseClientForTests(): void {
+  initPromise = null;
 }
 
 async function initDatabase(): Promise<{ db: Database; sqlite: DB }> {
@@ -35,11 +41,14 @@ async function initDatabase(): Promise<{ db: Database; sqlite: DB }> {
     encryptionKey: key,
   });
 
+  await sqlite.execute('PRAGMA busy_timeout = 5000');
+
   const db = drizzle(sqlite);
 
   await runMigrations(sqlite);
   await ensureTripSegmentMetadataColumns(sqlite);
   await ensureTripPointMetadataColumns(sqlite);
+  await ensureMomentsMoodColumns(sqlite);
 
   return { db, sqlite };
 }

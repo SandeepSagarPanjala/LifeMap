@@ -1,13 +1,21 @@
 import * as Keychain from 'react-native-keychain';
-import { getDatabase } from '../src/db/client';
+import {getDatabase, getSqlite, resetDatabaseClientForTests} from '../src/db/client';
 import * as schema from '../src/db/schema';
 
 jest.mock('@op-engineering/op-sqlite');
 jest.mock('../src/db/migrate', () => ({
   runMigrations: jest.fn().mockResolvedValue(undefined),
+  ensureTripSegmentMetadataColumns: jest.fn().mockResolvedValue(undefined),
+  ensureTripPointMetadataColumns: jest.fn().mockResolvedValue(undefined),
+  ensureMomentsMoodColumns: jest.fn().mockResolvedValue(undefined),
 }));
 
 describe('database layer (Phase 1)', () => {
+  beforeEach(() => {
+    resetDatabaseClientForTests();
+    jest.clearAllMocks();
+  });
+
   it('stores encryption key in Keychain, not AsyncStorage', async () => {
     const getGenericPasswordSpy = jest
       .spyOn(Keychain, 'getGenericPassword')
@@ -37,10 +45,13 @@ describe('database layer (Phase 1)', () => {
 
   it('applies migrations idempotently on app launch', async () => {
     const {runMigrations} = jest.requireMock('../src/db/migrate');
+    const {open} = jest.requireMock('@op-engineering/op-sqlite');
 
     await getDatabase();
     await getDatabase();
+    await getSqlite();
 
+    expect(open).toHaveBeenCalledTimes(1);
     expect(runMigrations).toHaveBeenCalledTimes(1);
   });
 
