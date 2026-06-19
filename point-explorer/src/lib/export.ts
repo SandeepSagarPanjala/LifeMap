@@ -1,10 +1,10 @@
 import type {
-  DatabaseExport,
-  LocationExport,
   LocationPointRow,
+  MomentRow,
   ParsedPoint,
   SavedPlaceRow,
   UploadDataKind,
+  UploadMode,
 } from '../types';
 
 const DATE_KEY_FORMATTER = new Intl.DateTimeFormat('en-CA', {
@@ -43,20 +43,91 @@ export function formatDateLabel(dateKey: string): string {
   }).format(date);
 }
 
+function normalizeExportPayload(raw: unknown): Record<string, unknown> | null {
+  let value: unknown = raw;
+
+  for (let depth = 0; depth < 4; depth += 1) {
+    if (typeof value === 'string') {
+      try {
+        value = JSON.parse(value);
+      } catch {
+        return null;
+      }
+      continue;
+    }
+
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return null;
+    }
+
+    const record = value as Record<string, unknown>;
+    if (
+      record.tables != null ||
+      Array.isArray(record.rows) ||
+      record.trips != null ||
+      record.segments != null ||
+      record.location_points != null
+    ) {
+      return record;
+    }
+
+    let unwrapped: unknown = null;
+    for (const key of ['data', 'payload', 'export', 'body', 'message']) {
+      const nested = record[key];
+      if (nested != null && typeof nested === 'object') {
+        unwrapped = nested;
+        break;
+      }
+    }
+
+    if (unwrapped == null) {
+      return record;
+    }
+    value = unwrapped;
+  }
+
+  return null;
+}
+
+function getExportTables(
+  raw: Record<string, unknown>,
+): Record<string, unknown> | undefined {
+  const tables = raw.tables;
+  return tables != null && typeof tables === 'object' && !Array.isArray(tables)
+    ? (tables as Record<string, unknown>)
+    : undefined;
+}
+
+function getExportRowCounts(
+  raw: Record<string, unknown>,
+): Record<string, unknown> | undefined {
+  const rowCounts = raw.rowCounts;
+  return rowCounts != null &&
+    typeof rowCounts === 'object' &&
+    !Array.isArray(rowCounts)
+    ? (rowCounts as Record<string, unknown>)
+    : undefined;
+}
+
 function extractLocationRows(raw: unknown): LocationPointRow[] | null {
-  if (!raw || typeof raw !== 'object') {
+  const record = normalizeExportPayload(raw);
+  if (record == null) {
     return null;
   }
 
-  const locationExport = raw as LocationExport;
-  if (Array.isArray(locationExport.rows)) {
-    return locationExport.rows;
+  if (Array.isArray(record.rows)) {
+    return record.rows as LocationPointRow[];
   }
 
-  const databaseExport = raw as DatabaseExport;
-  const rows = databaseExport.tables?.location_points;
-  if (Array.isArray(rows)) {
-    return rows;
+  const tables = getExportTables(record);
+  const fromTables = tables?.location_points;
+  if (Array.isArray(fromTables)) {
+    return fromTables as LocationPointRow[];
+  }
+
+  const topLevel = record.location_points;
+  if (Array.isArray(topLevel)) {
+    return topLevel as LocationPointRow[];
   }
 
   return null;
@@ -91,10 +162,11 @@ export function parseExport(raw: unknown): ParsedPoint[] {
 }
 
 export function parseSavedPlaces(raw: unknown): SavedPlaceRow[] {
-  if (!raw || typeof raw !== 'object') {
+  const record = normalizeExportPayload(raw);
+  if (record == null) {
     return [];
   }
-  const rows = (raw as DatabaseExport).tables?.saved_places;
+  const rows = getExportTables(record)?.saved_places;
   if (!Array.isArray(rows)) {
     return [];
   }
@@ -120,6 +192,34 @@ export function parseSavedPlaces(raw: unknown): SavedPlaceRow[] {
     });
   }
   return places;
+}
+
+export function parseMoments(raw: unknown): MomentRow[] {
+  const record = normalizeExportPayload(raw);
+  if (record == null) {
+    return [];
+  }
+  const rows = getExportTables(record)?.moments;
+  if (!Array.isArray(rows)) {
+    return [];
+  }
+  const moments: MomentRow[] = [];
+  for (const row of rows) {
+    if (!row || typeof row !== 'object') {
+      continue;
+    }
+    const entry = row as Record<string, unknown>;
+    if (typeof entry.id !== 'number' || typeof entry.timestamp !== 'string') {
+      continue;
+    }
+    moments.push({
+      id: entry.id,
+      timestamp: entry.timestamp,
+      lat: typeof entry.lat === 'number' ? entry.lat : null,
+      lng: typeof entry.lng === 'number' ? entry.lng : null,
+    });
+  }
+  return moments;
 }
 
 export function uniqueDateKeys(points: ParsedPoint[]): string[] {
@@ -164,14 +264,34 @@ function hasLocationPointRows(raw: Record<string, unknown>): boolean {
   if (Array.isArray(raw.rows) && raw.rows.length > 0) {
     return true;
   }
-  const tables = raw.tables as Record<string, unknown> | undefined;
-  return (
-    Array.isArray(tables?.location_points) && tables.location_points.length > 0
-  );
+
+  const tables = getExportTables(raw);
+  if (
+    Array.isArray(tables?.location_points) &&
+    tables.location_points.length > 0
+  ) {
+    return true;
+  }
+
+  if (Array.isArray(raw.location_points) && raw.location_points.length > 0) {
+    return true;
+  }
+
+  const rowCounts = getExportRowCounts(raw);
+  const count = rowCounts?.location_points;
+  if (typeof count === 'number' && count > 0) {
+    return Array.isArray(tables?.location_points) || Array.isArray(raw.location_points);
+  }
+
+  if (raw.exportKind === 'original_data') {
+    return Array.isArray(tables?.location_points);
+  }
+
+  return false;
 }
 
 function hasStoredTripRows(raw: Record<string, unknown>): boolean {
-  const tables = raw.tables as Record<string, unknown> | undefined;
+  const tables = getExportTables(raw);
   if (Array.isArray(tables?.trips) && tables.trips.length > 0) {
     return true;
   }
@@ -182,10 +302,10 @@ function hasStoredTripRows(raw: Record<string, unknown>): boolean {
 }
 
 export function detectUploadDataKind(raw: unknown): UploadDataKind {
-  if (!raw || typeof raw !== 'object') {
+  const record = normalizeExportPayload(raw);
+  if (record == null) {
     return 'unknown';
   }
-  const record = raw as Record<string, unknown>;
   if (hasStoredTripRows(record)) {
     return 'stored_trips';
   }
@@ -193,4 +313,26 @@ export function detectUploadDataKind(raw: unknown): UploadDataKind {
     return 'location_points';
   }
   return 'unknown';
+}
+
+export function inferDefaultUploadMode(raw: unknown): UploadMode {
+  const kind = detectUploadDataKind(raw);
+  return kind === 'stored_trips' ? 'plot' : 'detect';
+}
+
+export function describeExportPayload(raw: unknown): string {
+  const record = normalizeExportPayload(raw);
+  if (record == null) {
+    return 'unrecognized JSON';
+  }
+  const tables = getExportTables(record);
+  const tableKeys = tables != null ? Object.keys(tables) : [];
+  const exportKind =
+    typeof record.exportKind === 'string' ? record.exportKind : null;
+  const parts = [
+    exportKind != null ? `exportKind=${exportKind}` : null,
+    tableKeys.length > 0 ? `tables: ${tableKeys.join(', ')}` : null,
+    Array.isArray(record.rows) ? `rows: ${record.rows.length}` : null,
+  ].filter((part): part is string => part != null);
+  return parts.length > 0 ? parts.join(' · ') : 'no tables or rows found';
 }

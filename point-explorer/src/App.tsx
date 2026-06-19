@@ -3,9 +3,12 @@ import {useCallback, useEffect, useMemo, useState} from 'react';
 import {PointsMap} from './components/PointsMap';
 import {
   detectUploadDataKind,
+  describeExportPayload,
   formatDateLabel,
   formatTimestamp,
+  inferDefaultUploadMode,
   parseExport,
+  parseMoments,
   parseSavedPlaces,
   uniqueDateKeys,
 } from './lib/export';
@@ -32,7 +35,11 @@ import {
   SAVED_PLACE_MIN_DWELL_MS,
   type TripSegment,
 } from './lib/trips';
-import {describeTripSegment} from './lib/segment-display';
+import {describeTripSegment, stayPointCountLabel} from './lib/segment-display';
+import {
+  displayPointsForSegment,
+  plotPointsFromSegments,
+} from './lib/stay-geometry';
 import {
   explainPoint,
   explainSegment,
@@ -50,7 +57,7 @@ import {
   indexOfPointId,
   sortPointsByTime,
 } from './lib/point-nav';
-import type {ParsedPoint, SavedPlaceRow, UploadMode} from './types';
+import type {MomentRow, ParsedPoint, SavedPlaceRow, UploadMode} from './types';
 
 import './App.css';
 
@@ -71,12 +78,16 @@ function TripSegmentList({
   onSelectSegment,
   onShowFullTrip,
   onDownload,
+  canonicalizeStayGeometry,
+  moments,
 }: {
   segments: TripSegment[];
   selectedSegmentId: string | null;
   onSelectSegment: (segment: TripSegment) => void;
   onShowFullTrip: () => void;
   onDownload: () => void;
+  canonicalizeStayGeometry: boolean;
+  moments: readonly MomentRow[];
 }) {
   return (
     <section className="trip-panel" aria-label="Trip segments">
@@ -100,6 +111,17 @@ function TripSegmentList({
           {segments.map((segment, index) => {
             const isActive = segment.id === selectedSegmentId;
             const display = describeTripSegment(segment);
+            const stats =
+              segment.kind === 'stay'
+                ? [
+                    formatDuration(segment.durationMs),
+                    stayPointCountLabel(
+                      segment,
+                      canonicalizeStayGeometry,
+                      moments,
+                    ),
+                  ]
+                : display.stats;
             return (
               <li key={segment.id}>
                 <button
@@ -120,7 +142,7 @@ function TripSegmentList({
                   </div>
                   <div className="segment-time">{display.timeRange}</div>
                   <div className="segment-stats">
-                    {display.stats.map(stat => (
+                    {stats.map(stat => (
                       <span key={stat} className="segment-stat">
                         {stat}
                       </span>
@@ -158,6 +180,9 @@ export function App() {
   const [tripPoints, setTripPoints] = useState<ParsedPoint[] | null>(null);
   const [tripStops, setTripStops] = useState<Stop[] | null>(null);
   const [powerResult, setPowerResult] = useState<PowerRunResult | null>(null);
+  const [moments, setMoments] = useState<MomentRow[]>([]);
+  const [canonicalizeStayGeometry, setCanonicalizeStayGeometry] =
+    useState(true);
 
   const dateKeys = useMemo(() => {
     if (storedTripExport != null) {
@@ -341,18 +366,25 @@ export function App() {
     );
   }, [dateKey, allPoints, savedPlaces]);
 
-  const applyTripResult = useCallback((result: ReturnType<typeof detectTripsForDay>) => {
-    setTripPoints(result.points);
-    setTripStops(result.stops);
-    setSegments(result.segments);
-    setSelectedSegmentId(null);
-    setPlottedPoints(result.points);
-    setStops(result.stops);
-    setSelectedStopId(null);
-    setSelectedId(null);
-    setPointNavMode(false);
-    setPowerResult(null);
-  }, []);
+  const applyTripResult = useCallback(
+    (result: ReturnType<typeof detectTripsForDay>) => {
+      setTripPoints(result.points);
+      setTripStops(result.stops);
+      setSegments(result.segments);
+      setSelectedSegmentId(null);
+      setPlottedPoints(
+        canonicalizeStayGeometry
+          ? plotPointsFromSegments(result.segments, true, moments)
+          : result.points,
+      );
+      setStops(result.stops);
+      setSelectedStopId(null);
+      setSelectedId(null);
+      setPointNavMode(false);
+      setPowerResult(null);
+    },
+    [canonicalizeStayGeometry, moments],
+  );
 
   const loadFile = useCallback(
     async (file: File) => {
@@ -361,16 +393,20 @@ export function App() {
         const text = await file.text();
         const raw = JSON.parse(text);
         const kind = detectUploadDataKind(raw);
+        const effectiveMode =
+          kind === 'unknown' ? uploadMode : inferDefaultUploadMode(raw);
 
-        if (uploadMode === 'detect') {
+        if (effectiveMode === 'detect') {
           if (kind !== 'location_points') {
             throw new Error(
-              'Detect mode needs location_points. Switch to Plot for trips + trip_points.',
+              `Detect mode needs location_points inside tables (or rows). Found: ${describeExportPayload(raw)}.`,
             );
           }
+          setUploadMode('detect');
           const parsed = parseExport(raw);
           setAllPoints(parsed);
           setSavedPlaces(parseSavedPlaces(raw));
+          setMoments(parseMoments(raw));
           setStoredTripExport(null);
           setFileName(file.name);
           setDateKey('all');
@@ -390,9 +426,10 @@ export function App() {
 
         if (kind !== 'stored_trips') {
           throw new Error(
-            'Plot mode needs trips + trip_points. Switch to Detect for location_points.',
+            `Plot mode needs trips + trip_points inside tables. Found: ${describeExportPayload(raw)}.`,
           );
         }
+        setUploadMode('plot');
         const stored = loadStoredTripExport(raw);
         const tripDates = uniqueTripDateKeys(stored);
         if (tripDates.length === 0) {
@@ -403,6 +440,7 @@ export function App() {
         setStoredTripExport(stored);
         setAllPoints(storedPoints);
         setSavedPlaces(stored.savedPlaces);
+        setMoments([]);
         setFileName(file.name);
         setDateKey(latestDate);
         setMode('trips');
@@ -415,6 +453,7 @@ export function App() {
         setError(err instanceof Error ? err.message : 'Failed to parse JSON');
         setAllPoints([]);
         setSavedPlaces([]);
+        setMoments([]);
         setStoredTripExport(null);
         setFileName(null);
         setPointNavMode(false);
@@ -604,16 +643,20 @@ export function App() {
   }, [segments, tripStops, fileName, dateKey]);
 
   const showFullTrip = useCallback(() => {
-    if (tripPoints == null) {
+    if (tripPoints == null || segments == null) {
       return;
     }
     setSelectedSegmentId(null);
-    setPlottedPoints(tripPoints);
+    setPlottedPoints(
+      canonicalizeStayGeometry
+        ? plotPointsFromSegments(segments, true, moments)
+        : tripPoints,
+    );
     setStops(tripStops ?? []);
     setSelectedStopId(null);
     setSelectedId(null);
     setPointNavMode(false);
-  }, [tripPoints, tripStops]);
+  }, [canonicalizeStayGeometry, moments, segments, tripPoints, tripStops]);
 
   const onSelectSegment = useCallback(
     (segment: TripSegment) => {
@@ -622,7 +665,13 @@ export function App() {
 
       if (selectedSegmentId === segment.id) {
         setSelectedSegmentId(null);
-        setPlottedPoints(tripPoints);
+        setPlottedPoints(
+          tripPoints != null && segments != null
+            ? canonicalizeStayGeometry
+              ? plotPointsFromSegments(segments, true, moments)
+              : tripPoints
+            : tripPoints,
+        );
         setStops(tripStops ?? []);
         setSelectedStopId(null);
         return;
@@ -632,7 +681,9 @@ export function App() {
       if (segment.kind === 'missing') {
         return;
       }
-      setPlottedPoints(segment.points);
+      setPlottedPoints(
+        displayPointsForSegment(segment, canonicalizeStayGeometry, moments),
+      );
       if (segment.kind === 'stay') {
         setStops([segment.stop]);
         setSelectedStopId(segment.stop.id);
@@ -644,7 +695,7 @@ export function App() {
         setSelectedStopId(null);
       }
     },
-    [selectedSegmentId, tripPoints, tripStops],
+    [canonicalizeStayGeometry, moments, segments, selectedSegmentId, tripPoints, tripStops],
   );
 
   const handleSelectPoint = useCallback(
@@ -658,7 +709,9 @@ export function App() {
         return;
       }
       setSelectedSegmentId(segment.id);
-      setPlottedPoints(segment.points);
+      setPlottedPoints(
+        displayPointsForSegment(segment, canonicalizeStayGeometry, moments),
+      );
       if (segment.kind === 'stay') {
         setStops([segment.stop]);
         setSelectedStopId(segment.stop.id);
@@ -670,8 +723,28 @@ export function App() {
         setSelectedStopId(null);
       }
     },
-    [mode, segments],
+    [canonicalizeStayGeometry, mode, moments, segments],
   );
+
+  useEffect(() => {
+    if (segments == null || tripPoints == null) {
+      return;
+    }
+    if (selectedSegmentId != null) {
+      const segment = segments.find(item => item.id === selectedSegmentId);
+      if (segment != null && segment.kind !== 'missing') {
+        setPlottedPoints(
+          displayPointsForSegment(segment, canonicalizeStayGeometry, moments),
+        );
+      }
+      return;
+    }
+    setPlottedPoints(
+      canonicalizeStayGeometry
+        ? plotPointsFromSegments(segments, true, moments)
+        : tripPoints,
+    );
+  }, [canonicalizeStayGeometry, moments, segments, selectedSegmentId, tripPoints]);
 
   const handlePlot = useCallback(() => {
     const next = filterPointsBySources(filteredPoints, selectedSources);
@@ -1109,6 +1182,24 @@ export function App() {
                       ? `${segments?.length ?? 0} segments · ${formatDateLabel(dateKey)}`
                       : `${filteredPoints.length.toLocaleString()} points · ${formatDateLabel(dateKey)}`}
                 </p>
+                {!isPlotUpload ? (
+                  <label className="canonicalize-toggle">
+                    <input
+                      type="checkbox"
+                      checked={canonicalizeStayGeometry}
+                      onChange={event =>
+                        setCanonicalizeStayGeometry(event.target.checked)
+                      }
+                    />
+                    <span className="canonicalize-toggle-text">
+                      <strong>Canonical stay geometry</strong>
+                      <span className="upload-mode-hint">
+                        Plot stays as centroid + arrival + departure + moments
+                        (venue wanders keep a simplified path)
+                      </span>
+                    </span>
+                  </label>
+                ) : null}
                 <details className="meta-details">
                   <summary className="meta-summary">
                     <span>Trips algorithm info</span>
@@ -1198,6 +1289,8 @@ export function App() {
                     onSelectSegment={onSelectSegment}
                     onShowFullTrip={showFullTrip}
                     onDownload={handleDownloadTrips}
+                    canonicalizeStayGeometry={canonicalizeStayGeometry}
+                    moments={moments}
                   />
                 ) : null}
               </section>
@@ -1215,6 +1308,22 @@ export function App() {
                     ? 'Pick a date, then build explanations.'
                     : 'Click a segment or any map point to see why.'}
                 </p>
+                <label className="canonicalize-toggle">
+                  <input
+                    type="checkbox"
+                    checked={canonicalizeStayGeometry}
+                    onChange={event =>
+                      setCanonicalizeStayGeometry(event.target.checked)
+                    }
+                  />
+                  <span className="canonicalize-toggle-text">
+                    <strong>Canonical stay geometry</strong>
+                    <span className="upload-mode-hint">
+                      Map uses reduced stay points; explain still uses full
+                      detection set
+                    </span>
+                  </span>
+                </label>
 
                 {segments != null ? (
                   <>
@@ -1224,6 +1333,8 @@ export function App() {
                       onSelectSegment={onSelectSegment}
                       onShowFullTrip={showFullTrip}
                       onDownload={handleDownloadTrips}
+                      canonicalizeStayGeometry={canonicalizeStayGeometry}
+                      moments={moments}
                     />
                     {segmentExplanation != null ? (
                       <section className="explain-panel" aria-label="Segment explanation">

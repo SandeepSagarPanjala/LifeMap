@@ -117,7 +117,7 @@ function haversineM(
   return 2 * EARTH_RADIUS_M * Math.asin(Math.sqrt(h));
 }
 
-function pathLengthM(points: ParsedPoint[]): number {
+export function pathLengthM(points: ParsedPoint[]): number {
   let total = 0;
   for (let i = 0; i < points.length - 1; i += 1) {
     total += haversineM(points[i]!, points[i + 1]!);
@@ -604,7 +604,8 @@ function clipStay(
 
 /**
  * Per-day trip view:
- * - Home stays crossing midnight are split at midnight.
+ * - Home stays crossing midnight are split at midnight (including middle
+ *   calendar days of a multi-day home visit).
  * - Drives and non-home stays crossing midnight appear in full on both days.
  */
 export function projectSegmentsForDay(
@@ -636,9 +637,13 @@ export function projectSegmentsForDay(
         if (clipped != null) {
           projected.push({segment: clipped, sortKey: segment.startAt.getTime()});
         }
-      }
-      if (endKey === dayKey) {
+      } else if (endKey === dayKey) {
         const clipped = clipStay(segment, dayStart, segment.endAt);
+        if (clipped != null) {
+          projected.push({segment: clipped, sortKey: dayStart.getTime()});
+        }
+      } else if (dayKey > startKey && dayKey < endKey) {
+        const clipped = clipStay(segment, dayStart, dayEnd);
         if (clipped != null) {
           projected.push({segment: clipped, sortKey: dayStart.getTime()});
         }

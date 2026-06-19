@@ -9,6 +9,7 @@ Standalone internal web app to visualize LifeMap exports. **Not** part of the Li
 - Filter by **source type** with checkboxes (`gps`, `native_queue`, etc.)
 - Filter by **date** (America/Chicago calendar day)
 - Stops, trips, explain, and benchmark modes
+- **Canonical stay geometry** (toggle on Trips / Explain): plot stays as centroid + arrival + departure + moment-nearest points; venue wanders keep a simplified path. Detection still uses every GPS fix.
 
 ## Run locally
 
@@ -48,6 +49,21 @@ Use when you export raw GPS from LifeMap. The explorer runs trip detection, then
   "tables": {
     "location_points": [{ "id": 1, "timestamp": "...", "lat": 33.21, "lng": -97.13, ... }],
     "saved_places": []
+  }
+}
+```
+
+**Original data export** (Settings → original data export):
+
+```json
+{
+  "exportKind": "original_data",
+  "tables": {
+    "location_points": [{ "id": 1, "timestamp": "...", "lat": 33.21, "lng": -97.13, ... }],
+    "saved_places": [],
+    "moments": [],
+    "settings": [],
+    "place_lookup_cache": []
   }
 }
 ```

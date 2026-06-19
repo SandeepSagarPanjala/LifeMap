@@ -2,6 +2,7 @@ import {differenceInMilliseconds, endOfDay, subDays} from 'date-fns';
 
 import {
   listDateKeysWithLocationDataBefore,
+  type LocationPointRow,
 } from '@/db/repositories/location-days';
 import {
   deleteMotionLocationPoints,
@@ -19,6 +20,7 @@ import {
 } from '@/db/repositories/trip-points';
 import {findPlaceLookupNearAnchor} from '@/db/repositories/place-lookup-cache';
 import {listSavedPlaces} from '@/db/repositories/saved-places';
+import {getMomentsForDay, type MomentRow} from '@/db/repositories/moments';
 import {
   deleteAllTrips,
   deleteTripsForDay,
@@ -46,6 +48,7 @@ import {
   notifyMaterializationUpdated,
 } from '@/lib/trip-materialization-events';
 import {resolveVisitAnchor} from '@/lib/visit-anchor';
+import {canonicalizeStayGeometry} from '@/lib/stay-geometry';
 import {
   mergeSealedAndLiveTimeline,
   sealedThroughMs,
@@ -194,23 +197,27 @@ function travelCentroid(trip: DetectedTrip): {lat: number; lng: number} {
 function geometryPointsForPersist(
   entry: DetectedTrip,
   centroid: {lat: number; lng: number},
+  moments: readonly MomentRow[],
 ): LocationPointRow[] {
-  if (entry.points.length > 0) {
-    return entry.points;
+  if (entry.kind === 'travel') {
+    return entry.points.length > 0 ? entry.points : [];
   }
   if (entry.kind === 'stay') {
-    return [
-      {
-        id: -1,
-        timestamp: entry.startAt,
-        lat: centroid.lat,
-        lng: centroid.lng,
-        accuracy: null,
-        altitude: null,
-        speed: null,
-        source: 'anchor',
-      },
-    ];
+    if (entry.points.length === 0) {
+      return [
+        {
+          id: -1,
+          timestamp: entry.startAt,
+          lat: centroid.lat,
+          lng: centroid.lng,
+          accuracy: null,
+          altitude: null,
+          speed: null,
+          source: 'anchor',
+        },
+      ];
+    }
+    return canonicalizeStayGeometry(entry, centroid, moments);
   }
   return [];
 }
@@ -575,6 +582,8 @@ export async function persistClosedTripsIncremental(
   const closedAt = new Date();
   const existingLabels = existingTripLabelsByEventKey(existingTrips);
   const savedPlaces = await listSavedPlaces();
+  const {start: dayStart, end: dayEnd} = getDayRange(dateKey);
+  const dayMoments = await getMomentsForDay(dayStart, dayEnd);
 
   if (options.fullReplace) {
     await deleteTripsForDay(dateKey);
@@ -631,7 +640,7 @@ export async function persistClosedTripsIncremental(
       closedAt,
     });
     upserted += 1;
-    const geometry = geometryPointsForPersist(entry, centroid);
+    const geometry = geometryPointsForPersist(entry, centroid, dayMoments);
     if (geometry.length > 0) {
       await replaceTripPointsFromLocations(row.id, geometry);
     }

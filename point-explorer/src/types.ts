@@ -57,17 +57,29 @@ export type SavedPlaceRow = {
 
 export type DatabaseExport = {
   exportedAt?: string;
+  exportKind?: 'original_data' | string;
   scope?: string;
+  rowCounts?: Partial<Record<string, number>>;
   tables?: {
     location_points?: LocationPointRow[];
     trips?: StoredTripExportRow[];
     trip_points?: StoredTripPointExportRow[];
     saved_places?: SavedPlaceRow[];
+    moments?: unknown[];
+    settings?: unknown[];
+    place_lookup_cache?: unknown[];
   };
 };
 
 export type UploadDataKind = 'location_points' | 'stored_trips' | 'unknown';
 export type UploadMode = 'detect' | 'plot';
+
+export type MomentRow = {
+  id: number;
+  timestamp: string;
+  lat: number | null;
+  lng: number | null;
+};
 
 export type ParsedPoint = LocationPointRow & {
   at: Date;

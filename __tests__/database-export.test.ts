@@ -1,8 +1,11 @@
 import {
   buildDatabaseExportJson,
+  buildOriginalDataExportJson,
   buildSingleTableExportJson,
   databaseExportFileLabel,
+  originalDataExportFileLabel,
   sumExportTableRowCounts,
+  sumOriginalDataExportRowCounts,
 } from '../src/lib/database-export';
 import {resolveExportPeriod} from '../src/lib/export-period';
 
@@ -82,5 +85,38 @@ describe('database export', () => {
         settings: 2,
       }),
     ).toBe(28);
+
+    expect(
+      sumOriginalDataExportRowCounts({
+        location_points: 10,
+        trips: 2,
+        saved_places: 1,
+        place_lookup_cache: 4,
+        moments: 5,
+        settings: 2,
+      }),
+    ).toBe(22);
+  });
+
+  it('builds original data export JSON with only raw tables', () => {
+    const period = resolveExportPeriod('all');
+    const payload = JSON.parse(
+      buildOriginalDataExportJson(period, {
+        location_points: [{id: 1}],
+        saved_places: [{id: 1}],
+        moments: [],
+        settings: [{key: 'distance_unit', value: 'mi'}],
+        place_lookup_cache: [{id: 1}],
+      }),
+    );
+
+    expect(payload.exportKind).toBe('original_data');
+    expect(payload.rowCounts.location_points).toBe(1);
+    expect(payload.rowCounts.settings).toBe(1);
+    expect(payload.tables.trips).toBeUndefined();
+    expect(payload.tables.location_points).toHaveLength(1);
+    expect(originalDataExportFileLabel(period)).toBe(
+      'lifemap-original-data-all.json',
+    );
   });
 });

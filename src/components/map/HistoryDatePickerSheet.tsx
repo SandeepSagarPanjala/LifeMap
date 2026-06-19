@@ -167,9 +167,10 @@ export function HistoryDatePickerSheet({
         return;
       }
       closingRef.current = true;
-      onClose();
       animateOut(() => {
         setMounted(false);
+        closingRef.current = false;
+        onClose();
         afterClose?.();
       });
     },

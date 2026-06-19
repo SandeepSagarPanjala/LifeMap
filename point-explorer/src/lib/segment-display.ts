@@ -1,5 +1,7 @@
 import {formatDuration} from './stops';
-import {formatDistance, type TripSegment} from './trips';
+import {formatDistance, type StaySegment, type TripSegment} from './trips';
+import {canonicalizeStaySegmentPoints} from './stay-geometry';
+import type {MomentRow} from '../types';
 
 const TZ = 'America/Chicago';
 
@@ -35,6 +37,22 @@ export type SegmentDisplay = {
   timeRange: string;
   stats: string[];
 };
+
+export function stayPointCountLabel(
+  segment: StaySegment,
+  canonicalizeStays: boolean,
+  moments: readonly MomentRow[] = [],
+): string {
+  const rawCount = segment.points.length;
+  if (!canonicalizeStays) {
+    return `${rawCount} pts`;
+  }
+  const plottedCount = canonicalizeStaySegmentPoints(segment, moments).length;
+  if (plottedCount >= rawCount) {
+    return `${rawCount} pts`;
+  }
+  return `${rawCount} pts → ${plottedCount} plotted`;
+}
 
 export function describeTripSegment(segment: TripSegment): SegmentDisplay {
   const timeRange = formatTimeRange(segment.startAt, segment.endAt);

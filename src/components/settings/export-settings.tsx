@@ -1,6 +1,6 @@
 import {format} from 'date-fns';
 import {useCallback, useEffect, useState} from 'react';
-import {ActivityIndicator, Alert, Pressable, Share, View} from 'react-native';
+import {ActivityIndicator, Alert, InteractionManager, Pressable, Share, View} from 'react-native';
 import {CalendarDays, Database} from 'lucide-react-native';
 
 import {HistoryDatePickerSheet} from '@/components/map/HistoryDatePickerSheet';
@@ -17,10 +17,15 @@ import {vacuumDatabase} from '@/db/repositories/storage-stats';
 import {useThemeColors} from '@/hooks/use-theme-colors';
 import {
   buildDatabaseExportJson,
+  buildOriginalDataExportJson,
   buildSingleTableExportJson,
   DATABASE_EXPORT_TABLE_NAMES,
   databaseExportFileLabel,
+  originalDataExportFileLabel,
+  pickOriginalDataExportTables,
   sumExportTableRowCounts,
+  sumOriginalDataExportRowCounts,
+  sumOriginalDataExportStorageBytes,
   type DatabaseExportTableName,
 } from '@/lib/database-export';
 import {getTodayDateKey, parseDateKey} from '@/lib/day-utils';
@@ -35,7 +40,13 @@ import {
   setTrackingDiagnosticsEnabled,
 } from '@/lib/tracking-diagnostics';
 
-type ExportPickerTarget = DatabaseExportTableName | 'all_tables';
+type ExportPickerTarget =
+  | DatabaseExportTableName
+  | 'all_tables'
+  | 'original_data';
+
+/** Wait for the date picker modal to finish closing before opening the share sheet. */
+const EXPORT_SHARE_DELAY_MS = 360;
 
 export function ExportSettings() {
   const colors = useThemeColors();
@@ -120,6 +131,30 @@ export function ExportSettings() {
         return;
       }
 
+      if (target === 'original_data') {
+        const tables = pickOriginalDataExportTables(
+          await fetchDatabaseExportTables(period),
+        );
+        const totalRows = Object.values(tables).reduce(
+          (sum, rows) => sum + rows.length,
+          0,
+        );
+        if (totalRows === 0) {
+          Alert.alert(
+            'Nothing to export',
+            scope === 'all'
+              ? 'No original data rows in the database yet.'
+              : `No original data rows for ${formatDayLabel(period.dateKey ?? getTodayDateKey())}.`,
+          );
+          return;
+        }
+        await Share.share({
+          message: buildOriginalDataExportJson(period, tables),
+          title: originalDataExportFileLabel(period),
+        });
+        return;
+      }
+
       const rows = await fetchDatabaseExportTable(target, period);
       if (rows.length === 0) {
         Alert.alert(
@@ -135,6 +170,11 @@ export function ExportSettings() {
         message: buildSingleTableExportJson(target, period, rows),
         title: databaseExportFileLabel(period, target),
       });
+    } catch (error) {
+      Alert.alert(
+        'Could not export',
+        error instanceof Error ? error.message : 'Something went wrong.',
+      );
     } finally {
       setExporting(false);
     }
@@ -235,6 +275,14 @@ export function ExportSettings() {
 
   const totalRows =
     tableStats != null ? sumExportTableRowCounts(tableStats.counts) : 0;
+  const originalDataRows =
+    tableStats != null
+      ? sumOriginalDataExportRowCounts(tableStats.counts)
+      : 0;
+  const originalDataStorageBytes =
+    tableStats != null
+      ? sumOriginalDataExportStorageBytes(tableStats.storageBytes)
+      : 0;
   const trackingEventsCount = tableStats?.counts.tracking_events ?? 0;
   const totalDbBytes = tableStats?.totalDbBytes ?? 0;
   const freeDbBytes = tableStats?.freeDbBytes ?? 0;
@@ -284,6 +332,15 @@ export function ExportSettings() {
                 emphasized
                 onPickDay={() => openDayPicker('all_tables')}
                 onExportAll={() => void shareExport('all_tables', 'all')}
+              />
+              <ExportTableRow
+                tableName="original_data"
+                count={originalDataRows}
+                storageBytes={originalDataStorageBytes}
+                disabled={tableActionsDisabled}
+                emphasized
+                onPickDay={() => openDayPicker('original_data')}
+                onExportAll={() => void shareExport('original_data', 'all')}
               />
             </View>
 
@@ -363,12 +420,17 @@ export function ExportSettings() {
         selectedDateKey={selectedDayKey}
         onSelectDate={dateKey => {
           setSelectedDayKey(dateKey);
-          setDayPickerVisible(false);
           const target = pickerTarget;
           setPickerTarget(null);
-          if (target != null) {
-            void shareExport(target, 'day', dateKey);
+          if (target == null) {
+            return;
           }
+          const exportTarget = target;
+          setTimeout(() => {
+            InteractionManager.runAfterInteractions(() => {
+              void shareExport(exportTarget, 'day', dateKey);
+            });
+          }, EXPORT_SHARE_DELAY_MS);
         }}
         onClose={() => {
           setDayPickerVisible(false);
@@ -427,7 +489,12 @@ function ExportTableRow({
   onExportAll: () => void;
 }) {
   const colors = useThemeColors();
-  const label = tableName === 'all_tables' ? 'all tables' : tableName;
+  const label =
+    tableName === 'all_tables'
+      ? 'all tables'
+      : tableName === 'original_data'
+        ? 'original data export'
+        : tableName;
 
   return (
     <View

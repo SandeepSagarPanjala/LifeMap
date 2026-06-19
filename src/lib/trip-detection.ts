@@ -10,6 +10,7 @@ import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import {calculatePathDistanceKm, distanceKm} from '@/lib/location-geo';
 import type {LocationPointLike} from '@/lib/location-geo';
 import {buildDrawableRouteSegments} from '@/lib/route-segments';
+import {canonicalizeStayGeometry} from '@/lib/stay-geometry';
 import {toDateKey} from '@/lib/day-utils';
 import {
   buildSegmentationTimeline,
@@ -1896,13 +1897,16 @@ export function visitCorePoints(visit: DetectedTrip): LocationPointRow[] {
   return sorted.slice(arrivalIndex, departureIndex + 1);
 }
 
-/** Map display uses in-area core — not turn-in pings still attached to the visit row. */
+/** Map display uses canonical stay geometry — not every noisy in-area GPS save. */
 export function stayMapDisplayPoints(stay: DetectedTrip): LocationPointRow[] {
   if (stay.kind !== 'stay') {
     return stay.points;
   }
-  const core = visitCorePoints(stay);
-  return core.length > 0 ? core : stay.points;
+  const centroid = stayTripCentroid(stay);
+  return canonicalizeStayGeometry(stay, {
+    lat: centroid.latitude,
+    lng: centroid.longitude,
+  });
 }
 
 export function stayMapCentroid(stay: DetectedTrip): {
@@ -1928,6 +1932,9 @@ export function stayMapMarkerCoordinate(
 
 /** Dashed map paths for wandering inside the orange visit area. */
 export function shouldDrawVisitInAreaPaths(visit: DetectedTrip): boolean {
+  if (visit.savedPlaceLabel != null || visit.savedPlaceId != null) {
+    return false;
+  }
   const core = visitCorePoints(visit);
   if (core.length < 3) {
     return false;

@@ -104,6 +104,29 @@ body {
   font-weight: 400;
 }
 
+.canonicalize-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 10px 0 12px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #f2f2f7;
+  cursor: pointer;
+}
+
+.canonicalize-toggle input {
+  margin-top: 3px;
+}
+
+.canonicalize-toggle-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.82rem;
+  color: #1c1c1e;
+}
+
 .mode-tabs {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));

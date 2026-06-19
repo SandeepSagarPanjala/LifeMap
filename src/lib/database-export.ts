@@ -27,6 +27,23 @@ export const DATABASE_EXPORT_TABLE_NAMES: DatabaseExportTableName[] = [
   'settings',
 ];
 
+/** Raw capture tables — GPS, places, moments, settings, and lookup cache. */
+export const ORIGINAL_DATA_EXPORT_TABLE_NAMES = [
+  'location_points',
+  'saved_places',
+  'moments',
+  'settings',
+  'place_lookup_cache',
+] as const satisfies readonly DatabaseExportTableName[];
+
+export type OriginalDataExportTableName =
+  (typeof ORIGINAL_DATA_EXPORT_TABLE_NAMES)[number];
+
+export type OriginalDataExportTables = Pick<
+  DatabaseExportTables,
+  OriginalDataExportTableName
+>;
+
 export function emptyDatabaseExportTables(): DatabaseExportTables {
   return {
     location_points: [],
@@ -48,6 +65,36 @@ export function sumExportTableRowCounts(
     (sum, tableName) => sum + (counts[tableName] ?? 0),
     0,
   );
+}
+
+export function sumOriginalDataExportRowCounts(
+  counts: Partial<Record<DatabaseExportTableName, number>>,
+): number {
+  return ORIGINAL_DATA_EXPORT_TABLE_NAMES.reduce(
+    (sum, tableName) => sum + (counts[tableName] ?? 0),
+    0,
+  );
+}
+
+export function sumOriginalDataExportStorageBytes(
+  storageBytes: Partial<Record<DatabaseExportTableName, number>>,
+): number {
+  return ORIGINAL_DATA_EXPORT_TABLE_NAMES.reduce(
+    (sum, tableName) => sum + (storageBytes[tableName] ?? 0),
+    0,
+  );
+}
+
+export function pickOriginalDataExportTables(
+  tables: DatabaseExportTables,
+): OriginalDataExportTables {
+  return {
+    location_points: tables.location_points,
+    saved_places: tables.saved_places,
+    moments: tables.moments,
+    settings: tables.settings,
+    place_lookup_cache: tables.place_lookup_cache,
+  };
 }
 
 export function emptyExportTableCounts(): Record<DatabaseExportTableName, number> {
@@ -124,4 +171,49 @@ export function buildSingleTableExportJson(
   const tables = emptyDatabaseExportTables();
   tables[table] = rows;
   return buildDatabaseExportJson(period, tables);
+}
+
+export type OriginalDataExportPayload = {
+  exportedAt: string;
+  exportKind: 'original_data';
+  scope: ExportPeriod['scope'];
+  dateKey?: string;
+  period: {
+    startAt: string;
+    endAt: string;
+  };
+  rowCounts: Record<OriginalDataExportTableName, number>;
+  tables: OriginalDataExportTables;
+};
+
+export function buildOriginalDataExportJson(
+  period: ExportPeriod,
+  tables: OriginalDataExportTables,
+): string {
+  const rowCounts = Object.fromEntries(
+    ORIGINAL_DATA_EXPORT_TABLE_NAMES.map(tableName => [
+      tableName,
+      tables[tableName].length,
+    ]),
+  ) as Record<OriginalDataExportTableName, number>;
+
+  const payload: OriginalDataExportPayload = {
+    exportedAt: new Date().toISOString(),
+    exportKind: 'original_data',
+    scope: period.scope,
+    dateKey: period.dateKey,
+    period: {
+      startAt: period.startAt.toISOString(),
+      endAt: period.endAt.toISOString(),
+    },
+    rowCounts,
+    tables,
+  };
+
+  return JSON.stringify(payload, null, 2);
+}
+
+export function originalDataExportFileLabel(period: ExportPeriod): string {
+  const periodPart = exportPeriodLabel(period);
+  return `lifemap-original-data-${periodPart}.json`;
 }
