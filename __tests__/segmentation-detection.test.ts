@@ -1,13 +1,5 @@
-import fs from 'node:fs';
-import path from 'node:path';
-
 import type {LocationPointRow} from '@/db/repositories/location-days';
-import {toDateKey} from '@/lib/day-utils';
-import {
-  buildDayTimeline,
-  buildSegmentationTimeline,
-  detectTripsFromPoints,
-} from '@/lib/segmentation';
+import {buildDayTimeline, detectTripsFromPoints} from '@/lib/segmentation';
 import {buildTripDetectionConfig} from '@/lib/trip-settings';
 
 const HOME = {lat: 33.21, lng: -97.13};
@@ -27,49 +19,6 @@ function makePoints(
     speed: null,
     source: 'gps',
   }));
-}
-
-function loadWindowForDay(dateKey: string): LocationPointRow[] {
-  const file = path.join(__dirname, '..', 'all data.json');
-  if (!fs.existsSync(file)) {
-    return [];
-  }
-  const raw = JSON.parse(fs.readFileSync(file, 'utf8')) as {
-    tables: {
-      location_points: Array<{
-        id: number;
-        timestamp: string;
-        lat: number;
-        lng: number;
-        accuracy: number | null;
-        altitude: number | null;
-        speed: number | null;
-        source: string;
-      }>;
-    };
-  };
-  const anchor = new Date(`${dateKey}T12:00:00`);
-  const prev = toDateKey(new Date(anchor.getTime() - 86_400_000));
-  const next = toDateKey(new Date(anchor.getTime() + 86_400_000));
-  const keys = new Set([prev, dateKey, next]);
-  return raw.tables.location_points
-    .map(row => ({
-      ...row,
-      timestamp: new Date(row.timestamp),
-      source: row.source as LocationPointRow['source'],
-    }))
-    .filter(point => keys.has(toDateKey(point.timestamp)));
-}
-
-function expectAlternatingStayTravel(
-  kinds: Array<'stay' | 'travel' | 'gap'>,
-): void {
-  const playable = kinds.filter(
-    (kind): kind is 'stay' | 'travel' => kind !== 'gap',
-  );
-  for (let index = 0; index < playable.length - 1; index += 1) {
-    expect(playable[index]).not.toBe(playable[index + 1]);
-  }
 }
 
 describe('segmentation detection (current algorithm)', () => {
@@ -213,83 +162,6 @@ describe('segmentation detection (current algorithm)', () => {
       );
 
       expect(timeline.filter(entry => entry.kind === 'stay')).toHaveLength(1);
-    });
-  });
-
-  describe('timeline invariants', () => {
-    it('alternates stays and drives on export days', () => {
-      const points = loadWindowForDay('2026-06-04');
-      if (points.length === 0) {
-        return;
-      }
-
-      const timeline = buildSegmentationTimeline(
-        '2026-06-04',
-        points,
-        buildTripDetectionConfig(10, 10, 25),
-      );
-
-      expectAlternatingStayTravel(timeline.map(entry => entry.kind));
-    });
-  });
-
-  describe('export regressions (all data.json)', () => {
-    const exportConfig = buildTripDetectionConfig(10, 10, 25);
-
-    it('Jun 4 projects to alternating stays and drives', () => {
-      const points = loadWindowForDay('2026-06-04');
-      if (points.length === 0) {
-        return;
-      }
-
-      const timeline = buildSegmentationTimeline('2026-06-04', points, exportConfig);
-      const kinds = timeline.map(entry => entry.kind);
-
-      expect(kinds.filter(kind => kind === 'stay')).toHaveLength(4);
-      expect(kinds.filter(kind => kind === 'travel')).toHaveLength(3);
-      expect(kinds.filter(kind => kind === 'gap')).toHaveLength(0);
-      expectAlternatingStayTravel(kinds);
-    });
-
-    it('Jun 4 includes the evening Galleria drive segment', () => {
-      const points = loadWindowForDay('2026-06-04');
-      if (points.length === 0) {
-        return;
-      }
-
-      const timeline = buildSegmentationTimeline('2026-06-04', points, exportConfig);
-      const eveningDrive = timeline.find(
-        entry =>
-          entry.kind === 'travel' &&
-          entry.points.some(point => point.id === 1470 || point.id === 1467),
-      );
-
-      expect(eveningDrive).toBeDefined();
-      expect(eveningDrive?.kind).toBe('travel');
-    });
-
-    it('Jun 6 charger stop is part of the evening drive segment (not split into its own visit)', () => {
-      const points = loadWindowForDay('2026-06-06');
-      if (points.length === 0) {
-        return;
-      }
-
-      const segments = buildSegmentationTimeline(
-        '2026-06-06',
-        points,
-        buildTripDetectionConfig(10, 5, 25),
-      );
-      const driveWith16329 = segments.find(
-        entry =>
-          entry.kind === 'travel' && entry.points.some(point => point.id === 16329),
-      );
-      const stayWith16329 = segments.find(
-        entry =>
-          entry.kind === 'stay' && entry.points.some(point => point.id === 16329),
-      );
-
-      expect(driveWith16329).toBeDefined();
-      expect(stayWith16329).toBeUndefined();
     });
   });
 });

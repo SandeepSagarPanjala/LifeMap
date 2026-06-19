@@ -9,6 +9,7 @@ import {buildTripDetectionConfig} from '../src/lib/trip-settings';
 import {getDayRange} from '../src/lib/day-utils';
 import type {LocationPointRow} from '../src/db/repositories/location-days';
 import {mapExportSavedPlace} from './helpers/fixtures';
+import {ALL_DATA_EXPORT_PATH} from './helpers/personal-export';
 import {endOfDay} from 'date-fns';
 
 const config = buildTripDetectionConfig(10, 10, 25);
@@ -262,7 +263,7 @@ describe('prepareTodayHistoryTimeline', () => {
   it('keeps home visit separate from cross-day drive when persisting (Jun 8 export)', () => {
     const fs = require('fs') as typeof import('fs');
     const path = require('path') as typeof import('path');
-    const exportPath = path.join(__dirname, '..', 'all data.json');
+    const exportPath = ALL_DATA_EXPORT_PATH;
     if (!fs.existsSync(exportPath)) {
       return;
     }
@@ -346,7 +347,7 @@ describe('prepareTodayHistoryTimeline', () => {
   it('keeps a brief saved-place stop between two drives (Jun 13 Shay export)', () => {
     const fs = require('fs') as typeof import('fs');
     const path = require('path') as typeof import('path');
-    const exportPath = path.join(__dirname, '..', 'all data.json');
+    const exportPath = ALL_DATA_EXPORT_PATH;
     if (!fs.existsSync(exportPath)) {
       return;
     }
@@ -415,7 +416,7 @@ describe('prepareTodayHistoryTimeline', () => {
   it('detects Slim Chickens stop after Shay on Jun 12 export', () => {
     const fs = require('fs') as typeof import('fs');
     const path = require('path') as typeof import('path');
-    const exportPath = path.join(__dirname, '..', 'all data.json');
+    const exportPath = ALL_DATA_EXPORT_PATH;
     if (!fs.existsSync(exportPath)) {
       return;
     }
@@ -512,7 +513,7 @@ describe('prepareTodayHistoryTimeline', () => {
   it('shows full cross-midnight span for non-home stays on both days (Jun 12–13 7509)', () => {
     const fs = require('fs') as typeof import('fs');
     const path = require('path') as typeof import('path');
-    const exportPath = path.join(__dirname, '..', 'all data.json');
+    const exportPath = ALL_DATA_EXPORT_PATH;
     if (!fs.existsSync(exportPath)) {
       return;
     }

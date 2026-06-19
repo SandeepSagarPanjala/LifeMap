@@ -383,7 +383,7 @@ Implement **`getTrackingConfig(maxReliability: boolean): Config`** returning com
 
 ### LifeMap evidence
 
-- User export `all data.json`: Jun 11–12 gaps, zero `isMoving: true`, zero `departure_force_moving`
+- User export `__personal__/all data.json`: Jun 11–12 gaps, zero `isMoving: true`, zero `departure_force_moving`
 - Life360 on same phone captured drives LifeMap missed — compare implied speed + point density
 
 ### Design stance
