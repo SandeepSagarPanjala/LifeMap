@@ -9,7 +9,6 @@ import {
   shouldHideSavedPlaceMomentCluster,
   shouldShowDayMomentSummaryBar,
 } from '../src/lib/moments/moment-counts';
-import type {LocationPointRow} from '../src/db/repositories/location-days';
 import type {MomentRow} from '../src/db/repositories/moments';
 import type {SavedPlaceRow} from '../src/db/repositories/saved-places';
 import type {DayTimelineEntry} from '../src/lib/trip-detection';
