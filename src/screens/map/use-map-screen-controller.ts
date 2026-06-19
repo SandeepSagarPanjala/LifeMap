@@ -160,9 +160,14 @@ export function useMapScreenController() {
         return;
       }
       syncSelectedDateKeyForTodayRoll(getTodayDateKey());
+      if (selectedDateKey === getTodayDateKey()) {
+        void import('@/lib/today-refresh-scheduler').then(module => {
+          module.scheduleTodayImmediateMapRefresh();
+        });
+      }
     });
     return () => subscription.remove();
-  }, [syncSelectedDateKeyForTodayRoll]);
+  }, [selectedDateKey, syncSelectedDateKeyForTodayRoll]);
   const [historyDatePickerOpen, setHistoryDatePickerOpen] = useState(false);
   const [historyPanelOpen, setHistoryPanelOpen] = useState(false);
   const [placeLabelEditStay, setPlaceLabelEditStay] = useState<DetectedTrip | null>(

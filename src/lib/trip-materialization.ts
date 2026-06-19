@@ -57,6 +57,11 @@ import {
   mergeSealedAndLiveTimeline,
   sealedThroughMs,
 } from '@/lib/today-sealed-history';
+import { getSealableTodayEntries } from '@/lib/today-seal-policy';
+import {
+  buildTodayDisplayHistory,
+  historyDataFromEntries,
+} from '@/lib/today-live-history';
 import {
   type DayTimelineEntry,
   type DetectedTrip,
@@ -292,45 +297,24 @@ async function materializePastDayFromGps(
   );
 }
 
-async function buildExplorerHistoryForDay(
-  dateKey: string,
-  detectionConfig: TripDetectionConfig,
-  referenceNow: Date = new Date(),
-): Promise<HistoryData> {
-  const { start: dayStart } = getDayRange(dateKey);
-  const isToday = dateKey === getTodayDateKey();
-  const rangeEnd = isToday ? referenceNow : endOfDay(dayStart);
-  const { entries } = await buildExplorerDayTimelineFromGps(
-    dateKey,
-    detectionConfig,
-  );
-  await yieldToEventLoop();
-  return {
-    dateKey,
-    points: flattenTimelinePoints(
-      entries.filter((entry): entry is DetectedTrip =>
-        isPlayableTimelineEntry(entry),
-      ),
-    ),
-    entries,
-    range: {
-      startAt: dayStart,
-      endAt: rangeEnd,
-    },
-  };
-}
+export type LoadHistoryFromStoredTripsOptions = {
+  /** When false, sealed rows stay closed — live tail supplies the open visit. */
+  markLastStayOpen?: boolean;
+};
 
 export async function loadHistoryFromStoredTrips(
   dateKey: string,
   tripRows?: TripRow[],
   referenceNow?: Date,
   _detectionConfig: TripDetectionConfig = getDefaultTripDetectionConfig(),
+  options: LoadHistoryFromStoredTripsOptions = {},
 ): Promise<HistoryData> {
   const { start: dayStart } = getDayRange(dateKey);
   const isToday = dateKey === getTodayDateKey();
   const rangeEnd =
     referenceNow != null && isToday ? referenceNow : endOfDay(dayStart);
   const rows = tripRows ?? (await listTripsForDay(dateKey));
+  const markLastStayOpen = options.markLastStayOpen ?? true;
 
   if (rows.length === 0) {
     return {
@@ -345,7 +329,7 @@ export async function loadHistoryFromStoredTrips(
 
   let entries = buildTimelineFromStoredTrips(rows, pointsByTripId);
 
-  if (isToday && referenceNow != null) {
+  if (isToday && referenceNow != null && markLastStayOpen) {
     let lastStayIdx = -1;
     for (let index = entries.length - 1; index >= 0; index -= 1) {
       if (entries[index]?.kind === 'stay') {
@@ -387,7 +371,26 @@ export async function loadHistoryFromMaterializedTrips(
   return loadHistoryFromStoredTrips(dateKey);
 }
 
-/** Today: sealed closed trips from DB + live tail from recent GPS only. */
+/** Persist settled today segments — skips the live tail buffer. */
+export async function persistTodaySealableSegments(
+  dateKey: string,
+  detectionConfig: TripDetectionConfig,
+  referenceNow: Date = new Date(),
+): Promise<number> {
+  const { entries, dayPointCount } = await buildExplorerDayTimelineFromGps(
+    dateKey,
+    detectionConfig,
+  );
+  const sealable = getSealableTodayEntries(entries, referenceNow, detectionConfig);
+  if (sealable.length === 0) {
+    return 0;
+  }
+  return persistClosedTripsIncremental(dateKey, detectionConfig, sealable, {
+    pointCount: dayPointCount,
+  });
+}
+
+/** Today: sealed closed trips from DB + live display timeline for the map. */
 export async function loadTodayHistoryMerged(
   detectionConfig: TripDetectionConfig,
   referenceNow: Date = new Date(),
@@ -395,6 +398,12 @@ export async function loadTodayHistoryMerged(
 ): Promise<HistoryData> {
   const dateKey = getTodayDateKey();
   const { start: dayStart } = getDayRange(dateKey);
+  const liveHistory = await buildTodayDisplayHistory(
+    dateKey,
+    detectionConfig,
+    referenceNow,
+  );
+
   const [tripRows, pointsByTripId] = await Promise.all([
     listTripsForDay(dateKey),
     listTripPointsForDay(dateKey),
@@ -403,17 +412,8 @@ export async function loadTodayHistoryMerged(
     tripRows.length > 0 && dayHasStoredTripGeometry(tripRows, pointsByTripId);
 
   if (!hasSealed) {
-    const { entries, dayPointCount } = await buildExplorerDayTimelineFromGps(
-      dateKey,
-      detectionConfig,
-    );
-    await persistClosedTripsIncremental(
-      dateKey,
-      detectionConfig,
-      entries.filter(isClosedPlayableEntry),
-      { pointCount: dayPointCount },
-    );
-    return loadHistoryFromStoredTrips(dateKey, undefined, referenceNow);
+    onPartial?.(liveHistory);
+    return liveHistory;
   }
 
   const sealedEndMs = sealedThroughMs(tripRows)!;
@@ -421,34 +421,24 @@ export async function loadTodayHistoryMerged(
     dateKey,
     tripRows,
     referenceNow,
+    detectionConfig,
+    { markLastStayOpen: false },
   );
   onPartial?.(sealedData);
 
-  const tailLive = await buildExplorerHistoryForDay(
-    dateKey,
-    detectionConfig,
-    referenceNow,
-  );
-
   const mergedEntries = mergeSealedAndLiveTimeline(
     sealedData.entries,
-    tailLive.entries,
+    liveHistory.entries,
     sealedEndMs,
   );
 
-  return {
+  return historyDataFromEntries(
     dateKey,
-    points: flattenTimelinePoints(
-      mergedEntries.filter((entry): entry is DetectedTrip =>
-        isPlayableTimelineEntry(entry),
-      ),
-    ),
-    entries: mergedEntries,
-    range: {
-      startAt: dayStart,
-      endAt: referenceNow,
-    },
-  };
+    dayStart,
+    referenceNow,
+    mergedEntries,
+    liveHistory.dayPointCount,
+  );
 }
 
 export type LoadHistoryOptions = {
@@ -520,36 +510,15 @@ export async function loadHistoryForSelectedDay(
     options?.onPartial,
   );
 
-  queuePersistClosedTrips(
-    dateKey,
-    detectionConfig,
-    history,
-    true,
-    options?.force === true,
-  );
-
-  return history;
-}
-
-function queuePersistClosedTrips(
-  dateKey: string,
-  detectionConfig: TripDetectionConfig,
-  history: HistoryData,
-  isToday: boolean,
-  force: boolean,
-): void {
-  const closedEntries = history.entries.filter(isPersistableTimelineEntry);
   setTimeout(() => {
-    void persistClosedTripsIncremental(
+    void persistTodaySealableSegments(
       dateKey,
       detectionConfig,
-      closedEntries,
-      {
-        fullReplace: !isToday || force,
-        pointCount: history.points.length,
-      },
+      referenceNow,
     ).catch(() => undefined);
   }, 0);
+
+  return history;
 }
 
 /** @deprecated Use loadHistoryForSelectedDay */

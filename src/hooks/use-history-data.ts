@@ -13,6 +13,7 @@ import {
 } from '@/lib/history-day-load';
 import {useTripDetectionConfig} from '@/hooks/use-trip-detection-config';
 import {getDayRange, getTodayDateKey} from '@/lib/day-utils';
+import {subscribeTodayHistoryRefresh} from '@/lib/today-refresh-scheduler';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
 
 export type {HistoryData} from '@/lib/history-data-types';
@@ -140,22 +141,39 @@ export function useHistoryForDay(dateKey: string): {
     void runSync(dateKey, {force: true, showLoading: true});
   }, [dateKey, runSync]);
 
+  const viewingToday = dateKey === getTodayDateKey();
+
+  useEffect(() => {
+    if (!viewingToday) {
+      return;
+    }
+    return subscribeTodayHistoryRefresh(() => {
+      void runSync(dateKey, {force: true, showLoading: false}).catch(
+        () => undefined,
+      );
+    });
+  }, [dateKey, runSync, viewingToday]);
+
   useEffect(() => {
     const cacheKey = historyCacheKey(dateKey, detectionConfig);
     const cached = historyDataCache.peek(cacheKey);
-    if (cached != null) {
+
+    if (cached != null && !viewingToday) {
       setData(cached);
       setLoading(false);
       return;
     }
 
-    setLoading(true);
+    setLoading(cached == null || cached.dateKey !== dateKey);
     const timer = setTimeout(() => {
-      void runSync(dateKey, {showLoading: false}).catch(() => undefined);
+      void runSync(dateKey, {
+        showLoading: cached == null,
+        force: viewingToday,
+      }).catch(() => undefined);
     }, HISTORY_DAY_LOAD_DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
-  }, [dateKey, detectionConfig, runSync]);
+  }, [dateKey, detectionConfig, runSync, viewingToday]);
 
   return {data, loading, error, refresh};
 }

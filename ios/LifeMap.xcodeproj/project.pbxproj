@@ -14,14 +14,14 @@
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
 		A1B2C3D61A68108700A75B9A /* PlaceLookupModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D41A68108700A75B9A /* PlaceLookupModule.swift */; };
 		A1B2C3D71A68108700A75B9A /* PlaceLookupModule.m in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D51A68108700A75B9A /* PlaceLookupModule.m */; };
-		E5F6A7B81A68108700A75B9A /* AppVersionModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5F6A7B61A68108700A75B9A /* AppVersionModule.swift */; };
-		E5F6A7B91A68108700A75B9A /* AppVersionModule.m in Sources */ = {isa = PBXBuildFile; fileRef = E5F6A7B71A68108700A75B9A /* AppVersionModule.m */; };
 		B2C3D4E61A68108700A75B9A /* LifeMapDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E51A68108700A75B9A /* LifeMapDatabase.swift */; };
 		B2C3D4E81A68108700A75B9A /* LocationWakeCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E71A68108700A75B9A /* LocationWakeCoordinator.swift */; };
 		B2C3D4EA1A68108700A75B9A /* LocationPersistModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E91A68108700A75B9A /* LocationPersistModule.swift */; };
 		B2C3D4EC1A68108700A75B9A /* LocationPersistModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4EB1A68108700A75B9A /* LocationPersistModule.m */; };
 		C3D4E5F61A68108700A75B9A /* LifeMapTransistorSafe.m in Sources */ = {isa = PBXBuildFile; fileRef = C3D4E5F51A68108700A75B9A /* LifeMapTransistorSafe.m */; };
 		D4E5F6A71A68108700A75B9A /* LifeMapNativePersistLoop.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4E5F6A61A68108700A75B9A /* LifeMapNativePersistLoop.swift */; };
+		E5F6A7B81A68108700A75B9A /* AppVersionModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5F6A7B61A68108700A75B9A /* AppVersionModule.swift */; };
+		E5F6A7B91A68108700A75B9A /* AppVersionModule.m in Sources */ = {isa = PBXBuildFile; fileRef = E5F6A7B71A68108700A75B9A /* AppVersionModule.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -36,8 +36,6 @@
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = LifeMap/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		A1B2C3D41A68108700A75B9A /* PlaceLookupModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PlaceLookupModule.swift; path = LifeMap/PlaceLookupModule.swift; sourceTree = "<group>"; };
 		A1B2C3D51A68108700A75B9A /* PlaceLookupModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PlaceLookupModule.m; path = LifeMap/PlaceLookupModule.m; sourceTree = "<group>"; };
-		E5F6A7B61A68108700A75B9A /* AppVersionModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppVersionModule.swift; path = LifeMap/AppVersionModule.swift; sourceTree = "<group>"; };
-		E5F6A7B71A68108700A75B9A /* AppVersionModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = AppVersionModule.m; path = LifeMap/AppVersionModule.m; sourceTree = "<group>"; };
 		B2C3D4E51A68108700A75B9A /* LifeMapDatabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LifeMapDatabase.swift; path = LifeMap/LifeMapDatabase.swift; sourceTree = "<group>"; };
 		B2C3D4E71A68108700A75B9A /* LocationWakeCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocationWakeCoordinator.swift; path = LifeMap/LocationWakeCoordinator.swift; sourceTree = "<group>"; };
 		B2C3D4E91A68108700A75B9A /* LocationPersistModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocationPersistModule.swift; path = LifeMap/LocationPersistModule.swift; sourceTree = "<group>"; };
@@ -46,6 +44,8 @@
 		C1A2B3C51A680F5B00A75B9A /* LifeMap.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = LifeMap.release.xcconfig; path = Config/LifeMap.release.xcconfig; sourceTree = "<group>"; };
 		C3D4E5F51A68108700A75B9A /* LifeMapTransistorSafe.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = LifeMapTransistorSafe.m; path = LifeMap/LifeMapTransistorSafe.m; sourceTree = "<group>"; };
 		D4E5F6A61A68108700A75B9A /* LifeMapNativePersistLoop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LifeMapNativePersistLoop.swift; path = LifeMap/LifeMapNativePersistLoop.swift; sourceTree = "<group>"; };
+		E5F6A7B61A68108700A75B9A /* AppVersionModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppVersionModule.swift; path = LifeMap/AppVersionModule.swift; sourceTree = "<group>"; };
+		E5F6A7B71A68108700A75B9A /* AppVersionModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = AppVersionModule.m; path = LifeMap/AppVersionModule.m; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
@@ -312,7 +312,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 18;
+				CURRENT_PROJECT_VERSION = 19;
 				DEVELOPMENT_TEAM = SRTH66N3SH;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = LifeMap/Info.plist;
@@ -345,7 +345,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 18;
+				CURRENT_PROJECT_VERSION = 19;
 				DEVELOPMENT_TEAM = SRTH66N3SH;
 				INFOPLIST_FILE = LifeMap/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
