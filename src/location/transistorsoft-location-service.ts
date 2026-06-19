@@ -5,7 +5,7 @@ import BackgroundGeolocation, {
   type Subscription,
 } from 'react-native-background-geolocation';
 
-import {getSetting, setSetting} from '@/db/repositories/settings';
+import { getSetting, setSetting } from '@/db/repositories/settings';
 import {
   drainNativeLocationQueue,
   handleMotionChangePersist,
@@ -16,8 +16,8 @@ import {
   runLocationHeartbeat,
   toLocationSource,
 } from '@/location/location-persist-pipeline';
-import {MIN_DEPARTURE_SPEED_MS, DRIVE_GPS_WAKE_SPEED_MS} from '@/lib/motion-tracking-policy';
-import {recordTrackingDiagnostic} from '@/lib/tracking-diagnostics';
+import { DRIVE_GPS_WAKE_SPEED_MS } from '@/lib/motion-tracking-policy';
+import { recordTrackingDiagnostic } from '@/lib/tracking-diagnostics';
 import {
   createTrackingMotionGuardState,
   resetDepartureWake,
@@ -33,10 +33,14 @@ import {
   TRACKING_DISTANCE_FILTER_METERS,
 } from '@/lib/tracking-presets';
 
-import type {LocationAuthorizationStatus, LocationService, LocationServiceState} from './types';
+import type {
+  LocationAuthorizationStatus,
+  LocationService,
+  LocationServiceState,
+} from './types';
 
 function mapAuthorizationStatus(status: number): LocationAuthorizationStatus {
-  const {AuthorizationStatus} = BackgroundGeolocation;
+  const { AuthorizationStatus } = BackgroundGeolocation;
 
   switch (status) {
     case AuthorizationStatus.Always:
@@ -83,8 +87,7 @@ export class TransistorSoftLocationService implements LocationService {
   }
 
   async applyTrackingProfile(maxReliability?: boolean): Promise<void> {
-    const enabled =
-      maxReliability ?? (await readMaxReliability());
+    const enabled = maxReliability ?? (await readMaxReliability());
     if (!this.configured) {
       return;
     }
@@ -182,7 +185,7 @@ export class TransistorSoftLocationService implements LocationService {
         }
         try {
           await this.maybeWakeFromSpeed(location);
-          await persistLocationFromSdk(location, 'gps', {dedupe: true});
+          await persistLocationFromSdk(location, 'gps', { dedupe: true });
         } catch (error) {
           if (__DEV__) {
             console.warn('[LifeMap] Failed to persist location', error);
@@ -255,7 +258,7 @@ export class TransistorSoftLocationService implements LocationService {
     try {
       await BackgroundGeolocation.changePace(true);
       shouldApplyDepartureWake(this.motionGuard);
-      await recordTrackingDiagnostic('start_force_moving', {reason});
+      await recordTrackingDiagnostic('start_force_moving', { reason });
     } catch (error) {
       resetDepartureWake(this.motionGuard);
       await recordTrackingDiagnostic('start_force_moving_error', {
@@ -273,13 +276,13 @@ export class TransistorSoftLocationService implements LocationService {
     await drainNativeLocationQueue();
     await this.forceMovingAfterStart('user_start');
     await setSetting(SETTINGS_KEY_TRACKING_ENABLED, 'true');
-    await recordTrackingDiagnostic('tracking_enabled', {enabled: true});
+    await recordTrackingDiagnostic('tracking_enabled', { enabled: true });
   }
 
   async stop(): Promise<void> {
     await BackgroundGeolocation.stop();
     await setSetting(SETTINGS_KEY_TRACKING_ENABLED, 'false');
-    await recordTrackingDiagnostic('tracking_enabled', {enabled: false});
+    await recordTrackingDiagnostic('tracking_enabled', { enabled: false });
   }
 
   async setEnabled(enabled: boolean): Promise<void> {
@@ -297,12 +300,16 @@ export class TransistorSoftLocationService implements LocationService {
     if (enabled && !state.enabled) {
       await BackgroundGeolocation.start();
       await drainNativeLocationQueue();
-      await recordTrackingDiagnostic('tracking_sync_started', {enabledFromSettings: true});
+      await recordTrackingDiagnostic('tracking_sync_started', {
+        enabledFromSettings: true,
+      });
     }
 
     if (!enabled && state.enabled) {
       await BackgroundGeolocation.stop();
-      await recordTrackingDiagnostic('tracking_sync_stopped', {enabledFromSettings: false});
+      await recordTrackingDiagnostic('tracking_sync_stopped', {
+        enabledFromSettings: false,
+      });
     }
 
     await this.applyTrackingProfile();
@@ -365,7 +372,7 @@ export async function handleHeadlessLocationEvent(
       const saved = await persistLocationFromSdk(
         location,
         toLocationSource('headless', location.event),
-        {dedupe: true},
+        { dedupe: true },
       );
       if (saved) {
         await recordTrackingDiagnostic('headless_location_saved', {

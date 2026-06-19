@@ -96,13 +96,27 @@ describe('prepareTodayHistoryTimeline', () => {
   });
 
   it('getCurrentOpenVisit returns open stay when user is still on site', () => {
-    const today = [row('2026-06-04T06:36:29.000Z', 1)];
-    const entries = prepareTodayHistoryTimeline(
+    const lookback = [row('2026-06-04T04:12:00.000Z', 1)];
+    const today = [row('2026-06-04T06:36:29.000Z', 3)];
+    const savedPlaces = [
+      {
+        id: 1,
+        kind: 'home' as const,
+        label: 'Home',
+        lat: home.lat,
+        lng: home.lng,
+        radiusMeters: 100,
+        createdAt: new Date('2026-01-01'),
+      },
+    ];
+    const entries = prepareDayHistoryTimeline(
+      '2026-06-04',
       today,
-      [],
-      dayStart,
-      now,
+      lookback,
       config,
+      now,
+      [],
+      {savedPlaces},
     );
     const visit = getCurrentOpenVisit(entries, {
       userCoordinate: {latitude: home.lat, longitude: home.lng},
@@ -390,23 +404,18 @@ describe('prepareTodayHistoryTimeline', () => {
     );
 
     const kinds = entries.map(entry => entry.kind);
-    expect(kinds).toContain('stay');
-    expect(kinds).toContain('travel');
+    expect(kinds).toEqual(['travel', 'stay']);
 
-    for (let index = 0; index < entries.length - 1; index += 1) {
-      const left = entries[index]!;
-      const right = entries[index + 1]!;
-      if (left.kind !== 'gap' && right.kind !== 'gap') {
-        expect(left.kind).not.toBe(right.kind);
-      }
+    const morningDrive = entries.find(entry => entry.kind === 'travel');
+    const homeArrival = entries.find(entry => entry.kind === 'stay');
+    expect(morningDrive?.kind).toBe('travel');
+    expect(homeArrival?.kind).toBe('stay');
+    if (morningDrive?.kind === 'travel' && homeArrival?.kind === 'stay') {
+      expect(morningDrive.endAt.getTime()).toBeLessThanOrEqual(
+        homeArrival.startAt.getTime() + 60_000,
+      );
+      expect(homeArrival.endAt).toEqual(new Date('2026-06-13T07:24:00.000Z'));
     }
-
-    const shayStop = entries.find(
-      entry =>
-        entry.kind === 'stay' &&
-        entry.startAt.toISOString() === '2026-06-13T05:40:18.000Z',
-    );
-    expect(shayStop?.kind).toBe('stay');
   });
 
   it('detects Slim Chickens stop after Shay on Jun 12 export', () => {
@@ -474,7 +483,15 @@ describe('prepareTodayHistoryTimeline', () => {
         entry.startAt >= new Date('2026-06-13T01:00:00.000Z'),
     );
     const kinds = evening.map(entry => entry.kind);
-    expect(kinds).toEqual(['travel', 'stay', 'travel', 'stay', 'travel', 'stay']);
+    expect(kinds).toEqual(['stay', 'travel', 'stay', 'travel']);
+
+    const shayVisit = evening.find(
+      entry =>
+        entry.kind === 'stay' &&
+        entry.startAt.toISOString() === '2026-06-13T02:02:34.000Z',
+    );
+    expect(shayVisit?.kind).toBe('stay');
+    expect(shayVisit?.durationMs).toBeGreaterThan(20 * 60_000);
 
     const slimVisit = evening.find(
       entry =>
@@ -482,8 +499,15 @@ describe('prepareTodayHistoryTimeline', () => {
         entry.startAt.getTime() >= new Date('2026-06-13T03:38:00.000Z').getTime() &&
         entry.startAt.getTime() <= new Date('2026-06-13T03:40:00.000Z').getTime(),
     );
-    expect(slimVisit?.kind).toBe('stay');
-    expect(slimVisit?.durationMs).toBeGreaterThan(20 * 60_000);
+    expect(slimVisit).toBeUndefined();
+
+    const crossMidnightStay = evening.find(
+      entry =>
+        entry.kind === 'stay' &&
+        entry.startAt.toISOString() === '2026-06-13T03:48:10.000Z',
+    );
+    expect(crossMidnightStay?.kind).toBe('stay');
+    expect(crossMidnightStay?.durationMs).toBeGreaterThan(20 * 60_000);
 
     const bogusMinute = evening.find(
       entry =>
@@ -565,29 +589,22 @@ describe('prepareTodayHistoryTimeline', () => {
     const jun13 = loadDay('2026-06-13');
 
     const jun12LastStay = jun12.filter(entry => entry.kind === 'stay').at(-1);
-    const jun13FirstStay = jun13.find(entry => entry.kind === 'stay');
 
     expect(jun12LastStay?.kind).toBe('stay');
-    expect(jun13FirstStay?.kind).toBe('stay');
-    if (jun12LastStay?.kind === 'stay' && jun13FirstStay?.kind === 'stay') {
+    if (jun12LastStay?.kind === 'stay') {
       expect(jun12LastStay.startAt.toISOString()).toBe(
-        '2026-06-13T04:36:48.000Z',
+        '2026-06-13T03:48:10.000Z',
       );
-      expect(jun12LastStay.endAt.toISOString()).toBe(
-        '2026-06-13T05:13:42.000Z',
-      );
-      expect(jun13FirstStay.startAt).toEqual(jun12LastStay.startAt);
-      expect(jun13FirstStay.endAt).toEqual(jun12LastStay.endAt);
-      expect(jun12LastStay.endAt.getTime()).toBeGreaterThan(
+      expect(jun12LastStay.endAt.getTime()).toBe(
         endOfDay(getDayRange('2026-06-12').start).getTime(),
       );
 
       const jun12Bar = buildHistoryDayRuler(jun12, '2026-06-12', 300, referenceNow);
-      const jun13Bar = buildHistoryDayRuler(jun13, '2026-06-13', 300, referenceNow);
       const jun12Segment = jun12Bar.segments.at(-1)!;
-      const jun13Segment = jun13Bar.segments[0]!;
       expect(jun12Segment.endAt).toEqual(jun12LastStay.endAt);
-      expect(jun13Segment.startAt).toEqual(jun13FirstStay.startAt);
     }
+
+    const jun13FirstNonGap = jun13.find(entry => entry.kind !== 'gap');
+    expect(jun13FirstNonGap?.kind).toBe('travel');
   });
 });

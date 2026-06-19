@@ -4,10 +4,8 @@ import {fileURLToPath} from 'url';
 import {format} from 'date-fns';
 
 import {distanceKm} from '../src/lib/location-geo';
-import {
-  buildDayTimeline,
-  dedupeLocationPoints,
-} from '../src/lib/trip-detection';
+import {dedupeLocationPoints} from '../src/lib/trip-detection';
+import {buildDayTimeline} from '../src/lib/segmentation';
 import {buildTripDetectionConfig} from '../src/lib/trip-settings';
 import type {LocationPointRow} from '../src/db/repositories/location-days';
 

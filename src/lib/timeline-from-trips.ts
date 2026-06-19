@@ -6,8 +6,6 @@ import type {TripPointRow} from '@/db/repositories/trip-points';
 import type {TripRow} from '@/db/repositories/trips';
 import {
   locationPointsForTripRow,
-  syntheticRoutePoints,
-  syntheticStayPoint,
   tripRowToDetectedTripWithGeometry,
 } from '@/lib/trip-geometry';
 import {

@@ -1,10 +1,6 @@
 import {readFileSync} from 'fs';
 
-import {
-  detectTrips,
-  findSavedPlaceStaySpans,
-  findStaySpans,
-} from '../src/lib/trip-detection.ts';
+import {detectTripsFromPoints} from '../src/lib/segmentation/index.ts';
 import {buildTripDetectionConfig} from '../src/lib/trip-settings.ts';
 
 const raw = JSON.parse(readFileSync('all data.json', 'utf8')) as {
@@ -55,35 +51,9 @@ const slice = all.filter(
 );
 
 console.log('slice points', slice.length);
-const generic = findStaySpans(slice, config);
-const saved = findSavedPlaceStaySpans(slice, savedPlaces);
 
-console.log('\ngeneric stay spans:');
-for (const s of generic) {
-  console.log(
-    `  ${fmt(slice[s.start]!.timestamp)} - ${fmt(slice[s.end]!.timestamp)} idx ${s.start}-${s.end} pts=${s.end - s.start + 1}`,
-  );
-}
-
-console.log('\nsaved place spans:');
-for (const s of saved) {
-  const place = savedPlaces.find(
-    p =>
-      slice.slice(s.start, s.end + 1).some(pt => {
-        const d =
-          Math.sqrt(
-            (pt.lat - p.lat) ** 2 + ((pt.lng - p.lng) * Math.cos((pt.lat * Math.PI) / 180)) ** 2,
-          ) * 111000;
-        return d <= p.radiusMeters;
-      }),
-  );
-  console.log(
-    `  ${place?.label ?? '?'} ${fmt(slice[s.start]!.timestamp)} - ${fmt(slice[s.end]!.timestamp)} idx ${s.start}-${s.end}`,
-  );
-}
-
-const trips = detectTrips(slice, config, {savedPlaces});
-console.log('\ndetectTrips on slice:');
+const trips = detectTripsFromPoints(slice, config, {savedPlaces});
+console.log('\ndetectTripsFromPoints on slice:');
 for (const t of trips) {
   console.log(`${t.kind} ${fmt(t.startAt)} - ${fmt(t.endAt)} pts=${t.points.length}`);
 }

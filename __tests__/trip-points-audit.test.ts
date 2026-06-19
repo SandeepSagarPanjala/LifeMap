@@ -121,7 +121,6 @@ describe('trip_points audit from all data.json', () => {
     let stayPointsCanonical = 0;
     let stayPointsRaw = 0;
     let travelPointsCanonical = 0;
-    let travelPointsRaw = 0;
     let tripCount = 0;
     let stayCount = 0;
     let travelCount = 0;
@@ -181,7 +180,6 @@ describe('trip_points audit from all data.json', () => {
           }
         } else {
           travelCount += 1;
-          travelPointsRaw += raw;
           travelPointsCanonical += raw;
         }
       }

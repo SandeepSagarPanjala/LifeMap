@@ -1,6 +1,7 @@
 import {ScrollView} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 
+import {AppVersionFooter} from '@/components/settings/app-version-footer';
 import {AccentThemePicker} from '@/components/settings/accent-theme-picker';
 import {DevSettings} from '@/components/settings/dev-settings';
 import {ExportSettings} from '@/components/settings/export-settings';
@@ -37,6 +38,8 @@ export function SettingsScreen() {
           <ExportSettings />
           <DevSettings />
         </SettingsSection>
+
+        <AppVersionFooter />
       </ScrollView>
     </SafeAreaView>
   );

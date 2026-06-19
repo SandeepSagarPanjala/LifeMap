@@ -1,5 +1,6 @@
 import type {LocationPointRow} from '@/db/repositories/location-days';
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
+import {toDateKey} from '@/lib/day-utils';
 import {
   type DayTimelineEntry,
   type DetectedTrip,
@@ -182,6 +183,41 @@ export function detectTripsFromPoints(
         segment.kind === 'stay' || segment.kind === 'drive',
     )
     .map(segment => segmentToTimelineEntry(segment) as DetectedTrip);
+}
+
+function inferPrimaryDateKey(points: readonly LocationPointRow[]): string {
+  if (points.length === 0) {
+    return toDateKey(new Date());
+  }
+  const counts = new Map<string, number>();
+  for (const point of points) {
+    const key = toDateKey(point.timestamp);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]![0]!;
+}
+
+/** Convenience for scripts/tests — app uses `buildSegmentationTimeline` with an explicit date key. */
+export function buildDayTimeline(
+  points: readonly LocationPointRow[],
+  config: TripDetectionConfig,
+  options: TripTimelineOptions = {},
+): DayTimelineEntry[] {
+  return buildSegmentationTimeline(
+    inferPrimaryDateKey(points),
+    points,
+    config,
+    options,
+  );
+}
+
+/** Convenience alias for scripts/tests. */
+export function detectTrips(
+  points: readonly LocationPointRow[],
+  config: TripDetectionConfig,
+  options: TripTimelineOptions = {},
+): DetectedTrip[] {
+  return detectTripsFromPoints(points, config, options);
 }
 
 export function tripEventKeyFromSegment(segment: TripSegment): string {

@@ -3,11 +3,8 @@ import path from 'node:path';
 
 import type {LocationPointRow} from '@/db/repositories/location-days';
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
-import {getDayRange, toDateKey} from '@/lib/day-utils';
-import {
-  buildExplorerDayTimeline,
-  loadExplorerGpsWindow,
-} from '@/lib/explorer-day-trips';
+import {toDateKey} from '@/lib/day-utils';
+import {buildExplorerDayTimeline} from '@/lib/explorer-day-trips';
 import {detectSegmentsForDay} from '@/lib/segmentation';
 import {getDefaultTripDetectionConfig} from '@/lib/trip-materialization';
 

@@ -1,12 +1,10 @@
-import {differenceInMilliseconds, endOfDay, subDays} from 'date-fns';
+import { differenceInMilliseconds, endOfDay, subDays } from 'date-fns';
 
 import {
   listDateKeysWithLocationDataBefore,
   type LocationPointRow,
 } from '@/db/repositories/location-days';
-import {
-  deleteMotionLocationPoints,
-} from '@/db/repositories/location-points';
+import { deleteMotionLocationPoints } from '@/db/repositories/location-points';
 import {
   deleteAllMaterializedDays,
   getMaterializedDay,
@@ -18,9 +16,9 @@ import {
   listTripPointsForDay,
   replaceTripPointsFromLocations,
 } from '@/db/repositories/trip-points';
-import {findPlaceLookupNearAnchor} from '@/db/repositories/place-lookup-cache';
-import {listSavedPlaces} from '@/db/repositories/saved-places';
-import {getMomentsForDay, type MomentRow} from '@/db/repositories/moments';
+import { findPlaceLookupNearAnchor } from '@/db/repositories/place-lookup-cache';
+import { listSavedPlaces } from '@/db/repositories/saved-places';
+import { getMomentsForDay, type MomentRow } from '@/db/repositories/moments';
 import {
   deleteAllTrips,
   deleteTripsForDay,
@@ -32,28 +30,29 @@ import {
   upsertTrip,
   type TripRow,
 } from '@/db/repositories/trips';
-import {getDayRange, getTodayDateKey, parseDateKey, toDateKey} from '@/lib/day-utils';
-import type {HistoryData} from '@/lib/history-data-types';
-import {clearHistoryDataCache} from '@/lib/history-data-cache';
-import {yieldToEventLoop} from '@/lib/run-when-idle';
-import {buildExplorerDayTimelineFromGps} from '@/lib/explorer-day-trips';
 import {
-  buildTimelineFromStoredTrips,
-} from '@/lib/timeline-from-trips';
+  getDayRange,
+  getTodayDateKey,
+  parseDateKey,
+  toDateKey,
+} from '@/lib/day-utils';
+import type { HistoryData } from '@/lib/history-data-types';
+import { clearHistoryDataCache } from '@/lib/history-data-cache';
+import { yieldToEventLoop } from '@/lib/run-when-idle';
+import { buildExplorerDayTimelineFromGps } from '@/lib/explorer-day-trips';
+import { buildTimelineFromStoredTrips } from '@/lib/timeline-from-trips';
 import {
   flattenTimelinePoints,
   travelCentroidFromRoute,
 } from '@/lib/trip-geometry';
-import {
-  notifyMaterializationUpdated,
-} from '@/lib/trip-materialization-events';
-import {resolveVisitAnchor} from '@/lib/visit-anchor';
-import {canonicalizeStayGeometry} from '@/lib/stay-geometry';
+import { notifyMaterializationUpdated } from '@/lib/trip-materialization-events';
+import { resolveVisitAnchor } from '@/lib/visit-anchor';
+import { canonicalizeStayGeometry } from '@/lib/stay-geometry';
 import {
   getGeometryPersistFingerprint,
   isCanonicalTravelGeometryEnabled,
 } from '@/lib/trip-geometry-settings';
-import {canonicalizeTravelGeometry} from '@/lib/travel-geometry';
+import { canonicalizeTravelGeometry } from '@/lib/travel-geometry';
 import {
   mergeSealedAndLiveTimeline,
   sealedThroughMs,
@@ -145,10 +144,7 @@ export function existingTripLabelsByEventKey(
 ): Map<string, PersistedTripLabel> {
   const map = new Map<string, PersistedTripLabel>();
   for (const row of rows) {
-    if (
-      row.selectedCandidateIndex != null ||
-      row.placeLookupCacheId != null
-    ) {
+    if (row.selectedCandidateIndex != null || row.placeLookupCacheId != null) {
       map.set(row.eventKey, {
         placeLookupCacheId: row.placeLookupCacheId,
         selectedCandidateIndex: row.selectedCandidateIndex,
@@ -161,7 +157,7 @@ export function existingTripLabelsByEventKey(
 export function tripLabelForPersist(
   eventKey: string,
   existingByEventKey: ReadonlyMap<string, PersistedTripLabel>,
-  placeLookup: {id: number; selectedCandidateIndex: number | null} | null,
+  placeLookup: { id: number; selectedCandidateIndex: number | null } | null,
 ): PersistedTripLabel {
   const existing = existingByEventKey.get(eventKey);
   if (existing?.selectedCandidateIndex != null) {
@@ -173,8 +169,7 @@ export function tripLabelForPersist(
   }
 
   return {
-    placeLookupCacheId:
-      existing?.placeLookupCacheId ?? placeLookup?.id ?? null,
+    placeLookupCacheId: existing?.placeLookupCacheId ?? placeLookup?.id ?? null,
     selectedCandidateIndex: placeLookup?.selectedCandidateIndex ?? null,
   };
 }
@@ -187,9 +182,9 @@ export function getDefaultTripDetectionConfig(): TripDetectionConfig {
   );
 }
 
-function travelCentroid(trip: DetectedTrip): {lat: number; lng: number} {
+function travelCentroid(trip: DetectedTrip): { lat: number; lng: number } {
   if (trip.points.length === 0) {
-    return {lat: 0, lng: 0};
+    return { lat: 0, lng: 0 };
   }
   const first = trip.points[0]!;
   const last = trip.points[trip.points.length - 1]!;
@@ -201,7 +196,7 @@ function travelCentroid(trip: DetectedTrip): {lat: number; lng: number} {
 
 function geometryPointsForPersist(
   entry: DetectedTrip,
-  centroid: {lat: number; lng: number},
+  centroid: { lat: number; lng: number },
   moments: readonly MomentRow[],
   canonicalizeTravel: boolean,
 ): LocationPointRow[] {
@@ -237,25 +232,19 @@ function geometryPointsForPersist(
 function tripCentroidForPersist(
   trip: DetectedTrip,
   savedPlaces: Awaited<ReturnType<typeof listSavedPlaces>>,
-): {lat: number; lng: number} {
+): { lat: number; lng: number } {
   if (trip.kind === 'stay') {
     return resolveVisitAnchor(trip.points, savedPlaces);
   }
   return travelCentroidFromRoute(trip.points);
 }
 
-function tripCentroid(trip: DetectedTrip): {lat: number; lng: number} {
+function tripCentroid(trip: DetectedTrip): { lat: number; lng: number } {
   if (trip.kind === 'stay') {
     const centroid = stayTripCentroid(trip);
-    return {lat: centroid.latitude, lng: centroid.longitude};
+    return { lat: centroid.latitude, lng: centroid.longitude };
   }
   return travelCentroid(trip);
-}
-
-function dayHasOpenVisit(entries: DayTimelineEntry[]): boolean {
-  return entries.some(
-    entry => entry.kind === 'stay' && entry.openThroughNow === true,
-  );
 }
 
 async function pastDayCanLoadFromStore(
@@ -287,7 +276,7 @@ async function materializePastDayFromGps(
   dateKey: string,
   detectionConfig: TripDetectionConfig,
 ): Promise<number> {
-  const {entries, dayPointCount} = await buildExplorerDayTimelineFromGps(
+  const { entries, dayPointCount } = await buildExplorerDayTimelineFromGps(
     dateKey,
     detectionConfig,
   );
@@ -308,10 +297,10 @@ async function buildExplorerHistoryForDay(
   detectionConfig: TripDetectionConfig,
   referenceNow: Date = new Date(),
 ): Promise<HistoryData> {
-  const {start: dayStart} = getDayRange(dateKey);
+  const { start: dayStart } = getDayRange(dateKey);
   const isToday = dateKey === getTodayDateKey();
   const rangeEnd = isToday ? referenceNow : endOfDay(dayStart);
-  const {entries, dayPointCount} = await buildExplorerDayTimelineFromGps(
+  const { entries } = await buildExplorerDayTimelineFromGps(
     dateKey,
     detectionConfig,
   );
@@ -331,22 +320,13 @@ async function buildExplorerHistoryForDay(
   };
 }
 
-/** @deprecated Use buildExplorerHistoryForDay */
-async function loadLiveHistoryForDay(
-  dateKey: string,
-  detectionConfig: TripDetectionConfig,
-  referenceNow: Date = new Date(),
-): Promise<HistoryData> {
-  return buildExplorerHistoryForDay(dateKey, detectionConfig, referenceNow);
-}
-
 export async function loadHistoryFromStoredTrips(
   dateKey: string,
   tripRows?: TripRow[],
   referenceNow?: Date,
   _detectionConfig: TripDetectionConfig = getDefaultTripDetectionConfig(),
 ): Promise<HistoryData> {
-  const {start: dayStart} = getDayRange(dateKey);
+  const { start: dayStart } = getDayRange(dateKey);
   const isToday = dateKey === getTodayDateKey();
   const rangeEnd =
     referenceNow != null && isToday ? referenceNow : endOfDay(dayStart);
@@ -357,7 +337,7 @@ export async function loadHistoryFromStoredTrips(
       dateKey,
       points: [],
       entries: [],
-      range: {startAt: dayStart, endAt: rangeEnd},
+      range: { startAt: dayStart, endAt: rangeEnd },
     };
   }
 
@@ -396,7 +376,7 @@ export async function loadHistoryFromStoredTrips(
       ),
     ),
     entries,
-    range: {startAt: dayStart, endAt: rangeEnd},
+    range: { startAt: dayStart, endAt: rangeEnd },
   };
 }
 
@@ -414,7 +394,7 @@ export async function loadTodayHistoryMerged(
   onPartial?: (data: HistoryData) => void,
 ): Promise<HistoryData> {
   const dateKey = getTodayDateKey();
-  const {start: dayStart} = getDayRange(dateKey);
+  const { start: dayStart } = getDayRange(dateKey);
   const [tripRows, pointsByTripId] = await Promise.all([
     listTripsForDay(dateKey),
     listTripPointsForDay(dateKey),
@@ -423,7 +403,7 @@ export async function loadTodayHistoryMerged(
     tripRows.length > 0 && dayHasStoredTripGeometry(tripRows, pointsByTripId);
 
   if (!hasSealed) {
-    const {entries, dayPointCount} = await buildExplorerDayTimelineFromGps(
+    const { entries, dayPointCount } = await buildExplorerDayTimelineFromGps(
       dateKey,
       detectionConfig,
     );
@@ -431,7 +411,7 @@ export async function loadTodayHistoryMerged(
       dateKey,
       detectionConfig,
       entries.filter(isClosedPlayableEntry),
-      {pointCount: dayPointCount},
+      { pointCount: dayPointCount },
     );
     return loadHistoryFromStoredTrips(dateKey, undefined, referenceNow);
   }
@@ -623,7 +603,7 @@ export async function persistClosedTripsIncremental(
   const closedAt = new Date();
   const existingLabels = existingTripLabelsByEventKey(existingTrips);
   const savedPlaces = await listSavedPlaces();
-  const {start: dayStart, end: dayEnd} = getDayRange(dateKey);
+  const { start: dayStart, end: dayEnd } = getDayRange(dateKey);
   const [dayMoments, canonicalizeTravel, geometryFingerprint] =
     await Promise.all([
       getMomentsForDay(dayStart, dayEnd),
@@ -641,8 +621,8 @@ export async function persistClosedTripsIncremental(
     segmentOrder += 1;
     if (entry.kind === 'gap') {
       const centroid = {
-        lat: (entry as TimelineGap & {fromLat?: number}).fromLat ?? 0,
-        lng: (entry as TimelineGap & {fromLng?: number}).fromLng ?? 0,
+        lat: (entry as TimelineGap & { fromLat?: number }).fromLat ?? 0,
+        lng: (entry as TimelineGap & { fromLng?: number }).fromLng ?? 0,
       };
       await upsertTrip({
         eventKey: tripEventKey(entry),
@@ -708,10 +688,10 @@ export async function persistClosedTripsIncremental(
   const status = options.forceComplete
     ? 'complete'
     : isToday
-      ? 'open'
-      : closedEntries.length > 0
-        ? 'complete'
-        : 'open';
+    ? 'open'
+    : closedEntries.length > 0
+    ? 'complete'
+    : 'open';
 
   await upsertMaterializedDay(dateKey, {
     status,
@@ -723,8 +703,8 @@ export async function persistClosedTripsIncremental(
       status === 'complete'
         ? materializedDay?.sealedAt ?? closedAt
         : sealedMs != null
-          ? new Date(sealedMs)
-          : materializedDay?.sealedAt ?? null,
+        ? new Date(sealedMs)
+        : materializedDay?.sealedAt ?? null,
   });
 
   if (options.fullReplace || options.forceComplete || !isToday) {
@@ -732,24 +712,6 @@ export async function persistClosedTripsIncremental(
   }
   notifyMaterializationUpdated();
   return upserted;
-}
-
-/** @deprecated Use persistClosedTripsIncremental */
-async function persistClosedTripsForDay(
-  dateKey: string,
-  detectionConfig: TripDetectionConfig,
-  preloaded?: HistoryData,
-): Promise<number> {
-  const {entries, dayPointCount} = await buildExplorerDayTimelineFromGps(
-    dateKey,
-    detectionConfig,
-  );
-  return persistClosedTripsIncremental(
-    dateKey,
-    detectionConfig,
-    entries.filter(isPersistableTimelineEntry),
-    {fullReplace: true, pointCount: dayPointCount},
-  );
 }
 
 /** Finalize yesterday once the calendar day has turned. */
@@ -813,7 +775,7 @@ export async function ensureTripForClosedStay(
     placeLookup?.id != null
   ) {
     await setTripPlaceLookupCacheId(trip.id, placeLookup.id);
-    trip = {...trip, placeLookupCacheId: placeLookup.id};
+    trip = { ...trip, placeLookupCacheId: placeLookup.id };
   }
 
   return trip;
@@ -827,7 +789,7 @@ export type ResetMaterializedTripHistoryResult = {
 
 /** Drop legacy motion rows and rebuild cached visit/drive summaries from GPS. */
 export async function purgeLegacyMotionLocationData(): Promise<
-  ResetMaterializedTripHistoryResult & {motionPointsDeleted: number}
+  ResetMaterializedTripHistoryResult & { motionPointsDeleted: number }
 > {
   const motionPointsDeleted = await deleteMotionLocationPoints();
   const reset = await resetMaterializedTripHistory();
@@ -914,5 +876,5 @@ export async function rebuildAllPastDayTrips(
   };
 }
 
-export type {TripRow};
-export {TRIP_DETECTION_VERSION} from '@/lib/trip-settings';
+export type { TripRow };
+export { TRIP_DETECTION_VERSION } from '@/lib/trip-settings';

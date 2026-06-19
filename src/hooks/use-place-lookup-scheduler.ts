@@ -1,5 +1,5 @@
 import {useEffect, useRef} from 'react';
-import {AppState, type AppStateStatus} from 'react-native';
+import {AppState} from 'react-native';
 
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import {runWhenIdle} from '@/lib/run-when-idle';

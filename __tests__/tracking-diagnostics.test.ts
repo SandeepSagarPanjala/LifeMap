@@ -15,7 +15,6 @@ import {
   getTrackingDiagnosticsEnabled,
   recordTrackingDiagnostic,
   resetTrackingDiagnosticsForTests,
-  setTrackingDiagnosticsEnabled,
   SETTINGS_KEY_TRACKING_DIAGNOSTICS_ENABLED,
   TRACKING_EVENTS_BLOAT_DISABLE_THRESHOLD,
 } from '@/lib/tracking-diagnostics';

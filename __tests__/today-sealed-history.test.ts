@@ -7,7 +7,7 @@ import {
   trimSealedAtBoundary,
 } from '@/lib/today-sealed-history';
 import type {TripRow} from '@/db/repositories/trips';
-import {makeTripRow} from './trip-row-fixture';
+import {makeTripRow} from './helpers/trip-row-fixture';
 
 function stay(id: string, startMs: number, endMs: number, open = false): DetectedTrip {
   const startAt = new Date(startMs);

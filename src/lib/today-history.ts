@@ -12,7 +12,7 @@ import {
 } from '@/lib/trip-detection';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
 import {buildSegmentationTimeline} from '@/lib/segmentation';
-import {matchSavedPlaceForStay, shouldSplitStayAtMidnight} from '@/lib/saved-places';
+import {shouldSplitStayAtMidnight} from '@/lib/saved-places';
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import {stayMeetsMinimumVisitDwell} from '@/lib/visit-dwell';
 

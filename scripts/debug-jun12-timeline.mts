@@ -1,6 +1,6 @@
 import {readFileSync} from 'fs';
 
-import {buildDayTimeline, detectTrips} from '../src/lib/trip-detection.ts';
+import {buildDayTimeline, detectTrips} from '../src/lib/segmentation/index.ts';
 import {prepareDayHistoryTimeline} from '../src/lib/today-history.ts';
 import {buildTripDetectionConfig} from '../src/lib/trip-settings.ts';
 import {distanceKm} from '../src/lib/location-geo.ts';

@@ -23,7 +23,6 @@ export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
     selectedEntry,
     selectedSavedPlace,
     selectedDriveEndpointLabels,
-    selectedVisitPlaceDisplay,
     placeLabelEditDisplay,
     handleSelectVisitPlaceIndex,
     handleExpandVisitPlaceArea,

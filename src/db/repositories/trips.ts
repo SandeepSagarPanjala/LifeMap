@@ -1,4 +1,4 @@
-import {asc, eq, sql} from 'drizzle-orm';
+import {asc, eq} from 'drizzle-orm';
 
 import {getDatabase} from '../client';
 import {trips} from '../schema';

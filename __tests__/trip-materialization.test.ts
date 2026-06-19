@@ -13,7 +13,7 @@ import {
 import {TRIP_DETECTION_VERSION} from '@/lib/trip-settings';
 import type {TripRow} from '@/db/repositories/trips';
 import type {DetectedTrip} from '@/lib/trip-detection';
-import {makeTripRow} from './trip-row-fixture';
+import {makeTripRow} from './helpers/trip-row-fixture';
 
 function stay(
   startMs: number,

@@ -1,13 +1,10 @@
-import {Alert} from 'react-native';
+import { Alert } from 'react-native';
 
-import {insertMoment, type MomentRow} from '@/db/repositories/moments';
-import {saveMomentToGallery} from '@/lib/moments/capture-photo';
-import {compressMomentVideo} from '@/lib/moments/compress-video';
-import {VIDEO_CONTENT_FORMAT} from '@/lib/moments/media-compress-config';
-import {
-  MOMENT_IMAGE_FILE_EXTENSION,
-  persistFileToMomentSandbox,
-} from '@/lib/moments/moment-storage';
+import { insertMoment, type MomentRow } from '@/db/repositories/moments';
+import { saveMomentToGallery } from '@/lib/moments/capture-photo';
+import { compressMomentVideo } from '@/lib/moments/compress-video';
+import { VIDEO_CONTENT_FORMAT } from '@/lib/moments/media-compress-config';
+import { persistFileToMomentSandbox } from '@/lib/moments/moment-storage';
 
 const MIN_VIDEO_DURATION_MS = 500;
 const MOMENT_VIDEO_FILE_EXTENSION = 'mp4';
@@ -31,7 +28,7 @@ export async function saveVideoMoment(
     throw new Error('Video is too short to save.');
   }
 
-  onProgress?.({label: 'Saving to Photos…'});
+  onProgress?.({ label: 'Saving to Photos…' });
   try {
     await saveMomentToGallery(sourceUri, 'video');
   } catch {
@@ -53,7 +50,7 @@ export async function saveVideoMoment(
     throw new Error('Failed to compress the video for LifeMap.');
   }
 
-  onProgress?.({label: 'Finishing up…'});
+  onProgress?.({ label: 'Finishing up…' });
   const sandboxFile = await persistFileToMomentSandbox(
     compressedUri,
     MOMENT_VIDEO_FILE_EXTENSION,
