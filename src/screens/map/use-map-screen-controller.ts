@@ -1021,7 +1021,7 @@ export function useMapScreenController() {
       }
       return next;
     });
-  }, [historyEntries.length, playback, todayKey]);
+  }, [historyEntries, playback, todayKey]);
 
   const handlePlayHistory = useCallback(() => {
     if (!selectedPlayable || selectedPlayable.kind !== 'travel') {

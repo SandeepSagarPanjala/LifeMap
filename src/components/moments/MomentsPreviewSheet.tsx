@@ -543,9 +543,10 @@ export function MomentsPreviewSheet({
   }, [closeViewer, moments.length, visible]);
 
   useEffect(() => {
+    const player = playerRef.current;
     return () => {
       void stopVoice();
-      playerRef.current.dispose();
+      player.dispose();
     };
   }, [stopVoice]);
 
