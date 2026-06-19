@@ -73,7 +73,7 @@ describe('prepareTodayHistoryTimeline', () => {
   it('extends last stay through end of day on a past day with no later saves', () => {
     const dayKey = '2026-06-03';
     const lastPing = new Date('2026-06-04T04:12:13.000Z');
-    const now = new Date('2026-06-04T12:00:00.000Z');
+    const referenceNow = new Date('2026-06-04T12:00:00.000Z');
     const dayPoints = [
       row('2026-06-03T23:49:00.000Z', 1),
       row(lastPing.toISOString(), 2),
@@ -84,7 +84,7 @@ describe('prepareTodayHistoryTimeline', () => {
       dayPoints,
       [],
       config,
-      now,
+      referenceNow,
     );
     const stay = entries[entries.length - 1];
     expect(stay?.kind).toBe('stay');
@@ -262,7 +262,6 @@ describe('prepareTodayHistoryTimeline', () => {
 
   it('keeps home visit separate from cross-day drive when persisting (Jun 8 export)', () => {
     const fs = require('fs') as typeof import('fs');
-    const path = require('path') as typeof import('path');
     const exportPath = ALL_DATA_EXPORT_PATH;
     if (!fs.existsSync(exportPath)) {
       return;
@@ -292,22 +291,22 @@ describe('prepareTodayHistoryTimeline', () => {
       };
     };
     const tripConfig = buildTripDetectionConfig(10, 5, 25);
-    const allPoints = raw.tables.location_points.map(row => ({
-      ...row,
-      timestamp: new Date(row.timestamp),
-      source: row.source as LocationPointRow['source'],
+    const allPoints = raw.tables.location_points.map(point => ({
+      ...point,
+      timestamp: new Date(point.timestamp),
+      source: point.source as LocationPointRow['source'],
     }));
 
     const dateKey = '2026-06-08';
-    const dayStart = new Date('2026-06-08T05:00:00.000Z');
+    const jun8DayStart = new Date('2026-06-08T05:00:00.000Z');
     const dayEnd = new Date('2026-06-09T04:59:59.999Z');
     const lookbackStart = new Date('2026-06-06T05:00:00.000Z');
     const lookaheadEnd = new Date('2026-06-10T05:00:00.000Z');
     const dayPoints = allPoints.filter(
-      p => p.timestamp >= dayStart && p.timestamp <= dayEnd,
+      p => p.timestamp >= jun8DayStart && p.timestamp <= dayEnd,
     );
     const lookbackPoints = allPoints.filter(
-      p => p.timestamp >= lookbackStart && p.timestamp < dayStart,
+      p => p.timestamp >= lookbackStart && p.timestamp < jun8DayStart,
     );
     const lookaheadPoints = allPoints.filter(
       p => p.timestamp > dayEnd && p.timestamp <= lookaheadEnd,
@@ -346,7 +345,6 @@ describe('prepareTodayHistoryTimeline', () => {
 
   it('keeps a brief saved-place stop between two drives (Jun 13 Shay export)', () => {
     const fs = require('fs') as typeof import('fs');
-    const path = require('path') as typeof import('path');
     const exportPath = ALL_DATA_EXPORT_PATH;
     if (!fs.existsSync(exportPath)) {
       return;
@@ -376,17 +374,17 @@ describe('prepareTodayHistoryTimeline', () => {
       };
     };
 
-    const points = raw.tables.location_points.map(row => ({
-      ...row,
-      timestamp: new Date(row.timestamp),
-      source: row.source as LocationPointRow['source'],
+    const points = raw.tables.location_points.map(point => ({
+      ...point,
+      timestamp: new Date(point.timestamp),
+      source: point.source as LocationPointRow['source'],
     }));
     const savedPlaces = raw.tables.saved_places.map(mapExportSavedPlace);
-    const dayStart = new Date('2026-06-13T05:00:00.000Z');
+    const jun13DayStart = new Date('2026-06-13T05:00:00.000Z');
     const dayPoints = points.filter(
-      point => point.timestamp >= dayStart && point.timestamp < new Date('2026-06-13T07:24:00.000Z'),
+      point => point.timestamp >= jun13DayStart && point.timestamp < new Date('2026-06-13T07:24:00.000Z'),
     );
-    const lookback = points.filter(point => point.timestamp < dayStart).slice(-80);
+    const lookback = points.filter(point => point.timestamp < jun13DayStart).slice(-80);
 
     const entries = prepareDayHistoryTimeline(
       '2026-06-13',
@@ -415,7 +413,6 @@ describe('prepareTodayHistoryTimeline', () => {
 
   it('detects Slim Chickens stop after Shay on Jun 12 export', () => {
     const fs = require('fs') as typeof import('fs');
-    const path = require('path') as typeof import('path');
     const exportPath = ALL_DATA_EXPORT_PATH;
     if (!fs.existsSync(exportPath)) {
       return;
@@ -445,19 +442,19 @@ describe('prepareTodayHistoryTimeline', () => {
       };
     };
 
-    const points = raw.tables.location_points.map(row => ({
-      ...row,
-      timestamp: new Date(row.timestamp),
-      source: row.source as LocationPointRow['source'],
+    const points = raw.tables.location_points.map(point => ({
+      ...point,
+      timestamp: new Date(point.timestamp),
+      source: point.source as LocationPointRow['source'],
     }));
     const savedPlaces = raw.tables.saved_places.map(mapExportSavedPlace);
-    const dayStart = new Date('2026-06-12T05:00:00.000Z');
+    const jun12DayStart = new Date('2026-06-12T05:00:00.000Z');
     const dayPoints = points.filter(
       point =>
-        point.timestamp >= dayStart &&
+        point.timestamp >= jun12DayStart &&
         point.timestamp < new Date('2026-06-13T05:00:00.000Z'),
     );
-    const lookback = points.filter(point => point.timestamp < dayStart).slice(-80);
+    const lookback = points.filter(point => point.timestamp < jun12DayStart).slice(-80);
 
     const entries = prepareDayHistoryTimeline(
       '2026-06-12',
@@ -512,7 +509,6 @@ describe('prepareTodayHistoryTimeline', () => {
 
   it('shows full cross-midnight span for non-home stays on both days (Jun 12–13 7509)', () => {
     const fs = require('fs') as typeof import('fs');
-    const path = require('path') as typeof import('path');
     const exportPath = ALL_DATA_EXPORT_PATH;
     if (!fs.existsSync(exportPath)) {
       return;
@@ -542,23 +538,23 @@ describe('prepareTodayHistoryTimeline', () => {
       };
     };
 
-    const points = raw.tables.location_points.map(row => ({
-      ...row,
-      timestamp: new Date(row.timestamp),
-      source: row.source as LocationPointRow['source'],
+    const points = raw.tables.location_points.map(point => ({
+      ...point,
+      timestamp: new Date(point.timestamp),
+      source: point.source as LocationPointRow['source'],
     }));
     const savedPlaces = raw.tables.saved_places.map(mapExportSavedPlace);
     const tripConfig = buildTripDetectionConfig(10, 5, 20);
     const referenceNow = new Date('2026-06-13T07:24:00.000Z');
 
     function loadDay(dateKey: string) {
-      const {start: dayStart} = getDayRange(dateKey);
-      const dayEnd = endOfDay(dayStart);
+      const {start: dayRangeStart} = getDayRange(dateKey);
+      const dayEnd = endOfDay(dayRangeStart);
       const lookaheadEnd = getHistoryLookaheadEnd(dayEnd);
       const dayPoints = points.filter(
-        point => point.timestamp >= dayStart && point.timestamp <= dayEnd,
+        point => point.timestamp >= dayRangeStart && point.timestamp <= dayEnd,
       );
-      const lookback = points.filter(point => point.timestamp < dayStart);
+      const lookback = points.filter(point => point.timestamp < dayRangeStart);
       const lookahead = points.filter(
         point => point.timestamp > dayEnd && point.timestamp <= lookaheadEnd,
       );

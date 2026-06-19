@@ -26,13 +26,13 @@ describe('map location utils', () => {
 
   it('centers the map on the user', () => {
     const animateToRegion = jest.fn();
-    const region = centerMapOnUser(
+    const centeredRegion = centerMapOnUser(
       {animateToRegion},
       {latitude: 33.5, longitude: -97.2},
       true,
     );
     expect(animateToRegion).toHaveBeenCalled();
-    expect(region.latitude).toBe(33.5);
-    expect(region.longitude).toBe(-97.2);
+    expect(centeredRegion.latitude).toBe(33.5);
+    expect(centeredRegion.longitude).toBe(-97.2);
   });
 });

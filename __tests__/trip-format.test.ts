@@ -28,8 +28,8 @@ describe('formatStayVisitLabel', () => {
   });
 
   it('does not stretch a recently ended visit when it is closed', () => {
-    const end = new Date('2026-06-04T10:34:00.000Z'); // 5:34 AM CDT
-    const label = formatStayVisitLabel(start, end, 60_000, {
+    const visitEnd = new Date('2026-06-04T10:34:00.000Z'); // 5:34 AM CDT
+    const label = formatStayVisitLabel(start, visitEnd, 60_000, {
       openThroughNow: false,
       now,
     });
