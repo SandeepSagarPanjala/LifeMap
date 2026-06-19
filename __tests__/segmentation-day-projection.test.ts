@@ -6,7 +6,7 @@ function parsedPoint(id: number, iso: string): ParsedPoint {
   const at = new Date(iso);
   return {
     id,
-    timestamp: iso,
+    timestamp: at,
     lat: 33.25,
     lng: -97.15,
     accuracy: 10,
@@ -53,7 +53,7 @@ const savedPlaces: SavedPlaceRow[] = [
     lat: 33.25,
     lng: -97.15,
     radiusMeters: 150,
-    createdAt: '2026-06-01T00:00:00.000Z',
+    createdAt: new Date('2026-06-01T00:00:00.000Z'),
   },
 ];
 

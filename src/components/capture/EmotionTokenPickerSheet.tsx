@@ -123,6 +123,9 @@ export function EmotionTokenPickerSheet({
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const {width: windowWidth, height: windowHeight} = useWindowDimensions();
+
+  const [mounted, setMounted] = useState(visible);
+  const [step, setStep] = useState<PickerStep>('emotion');
   const sheetHeight = Math.round(
     windowHeight *
       (step === 'context' ? SHEET_HEIGHT_RATIO_CONTEXT : SHEET_HEIGHT_RATIO_EMOTION),
@@ -130,8 +133,6 @@ export function EmotionTokenPickerSheet({
   const cellWidth =
     (windowWidth - 40 - GRID_GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS;
 
-  const [mounted, setMounted] = useState(visible);
-  const [step, setStep] = useState<PickerStep>('emotion');
   const [pendingEmotionId, setPendingEmotionId] = useState<EmotionTokenId | null>(
     selectedEmotionId,
   );

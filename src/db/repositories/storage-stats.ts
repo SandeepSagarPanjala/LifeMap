@@ -54,9 +54,9 @@ function pragmaNumber(
 async function readDatabaseFileStats(): Promise<DatabaseFileStats> {
   const sqlite = await getSqlite();
   const [pageCountResult, pageSizeResult, freelistResult] = await Promise.all([
-    sqlite.executeAsync('PRAGMA page_count'),
-    sqlite.executeAsync('PRAGMA page_size'),
-    sqlite.executeAsync('PRAGMA freelist_count'),
+    sqlite.execute('PRAGMA page_count'),
+    sqlite.execute('PRAGMA page_size'),
+    sqlite.execute('PRAGMA freelist_count'),
   ]);
   return computeDatabaseFileStats(
     pragmaNumber(pageCountResult.rows, 'page_count'),

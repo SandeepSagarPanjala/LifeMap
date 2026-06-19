@@ -192,7 +192,11 @@ export function momentMatchesStayLocation(
   }
 
   const centroid = stayTripCentroid(stay);
-  return distanceKm(location, centroid) * 1000 <= dwellRadiusMeters + 5;
+  return (
+    distanceKm(location, {lat: centroid.latitude, lng: centroid.longitude}) *
+      1000 <=
+    dwellRadiusMeters + 5
+  );
 }
 
 export function filterMomentsForStayEntry(

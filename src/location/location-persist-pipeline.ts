@@ -98,7 +98,11 @@ export async function persistLocationFromSdk(
     (source === 'motion' ||
       source.startsWith('motion') ||
       source.startsWith('headless:motion')) &&
-    shouldSkipMotionPersist(last, coords, timestampMs)
+    shouldSkipMotionPersist(
+      last,
+      {lat: coords.latitude, lng: coords.longitude},
+      timestampMs,
+    )
   ) {
     return false;
   }
@@ -217,19 +221,18 @@ export async function runLocationHeartbeat(
     }
 
     const {coords} = location;
-    const evaluation = evaluateDepartureWatchdog(
-      {
-        sinceLastSaveMs,
-        lastSaved: last,
-        fresh: {
-          lat: coords.latitude,
-          lng: coords.longitude,
-          accuracy: coords.accuracy >= 0 ? coords.accuracy : null,
-          speed: coords.speed != null && coords.speed >= 0 ? coords.speed : null,
-        },
+    const evaluation = evaluateDepartureWatchdog({
+      sinceLastSaveMs,
+      lastSaved: last,
+      fresh: {
+        lat: coords.latitude,
+        lng: coords.longitude,
+        accuracy: coords.accuracy >= 0 ? coords.accuracy : null,
+        speed: coords.speed != null && coords.speed >= 0 ? coords.speed : null,
       },
-      {stationaryPingMinMs, departureWatchdogMinMs},
-    );
+      stationaryPingMinMs,
+      departureWatchdogMinMs,
+    });
 
     if (evaluation.forceMoving) {
       await forceMovingMode(evaluation.reason, {

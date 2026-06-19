@@ -116,10 +116,16 @@ export const TripRouteOverlay = memo(function TripRouteOverlay({
     const line = [...coordinates];
     const first = line[0]!;
     const last = line[line.length - 1]!;
-    if (distanceKm(first, routeStart) * 1000 > 8) {
+    if (distanceKm(
+      {lat: first.latitude, lng: first.longitude},
+      {lat: routeStart.latitude, lng: routeStart.longitude},
+    ) * 1000 > 8) {
       line.unshift(routeStart);
     }
-    if (distanceKm(last, routeEnd) * 1000 > 8) {
+    if (distanceKm(
+      {lat: last.latitude, lng: last.longitude},
+      {lat: routeEnd.latitude, lng: routeEnd.longitude},
+    ) * 1000 > 8) {
       line.push(routeEnd);
     }
     return downsampleMapCoordinates(line, polylineCap);

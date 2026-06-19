@@ -25,10 +25,10 @@ import {
 } from './trips';
 
 export {
-  DEFAULT_STOP_CONFIG,
   detectTripsForDay,
   detectTrips as detectSegmentTrips,
 } from './trips';
+export {DEFAULT_STOP_CONFIG} from './stops';
 export {TRIP_PLOT_SOURCES} from './sources';
 
 function stopConfigFromTripConfig(

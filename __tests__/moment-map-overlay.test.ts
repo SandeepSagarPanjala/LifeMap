@@ -24,6 +24,9 @@ describe('buildMomentMapPins', () => {
           contentFormat: 'jpeg',
           shareVisibility: 'private',
           contentSyncState: 'local_only',
+          voiceAttachmentPath: null,
+          voiceAttachmentBytes: null,
+          photoAttachmentsJson: null,
         },
       ],
       [

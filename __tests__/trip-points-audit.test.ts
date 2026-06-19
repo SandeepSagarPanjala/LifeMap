@@ -3,6 +3,7 @@ import path from 'node:path';
 
 import type {LocationPointRow} from '@/db/repositories/location-days';
 import type {MomentRow} from '@/db/repositories/moments';
+import {mapExportMoment, mapExportSavedPlace} from './helpers/fixtures';
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import {toDateKey} from '@/lib/day-utils';
 import {buildExplorerDayTimeline} from '@/lib/explorer-day-trips';
@@ -58,19 +59,8 @@ function loadExport(): {
       speed: row.speed,
       source: row.source,
     })),
-    savedPlaces: raw.tables.saved_places,
-    moments: raw.tables.moments.map(row => ({
-      id: row.id,
-      timestamp: new Date(row.timestamp),
-      lat: row.lat,
-      lng: row.lng,
-      kind: row.kind as MomentRow['kind'],
-      filePath: null,
-      noteText: null,
-      durationMs: null,
-      savedPlaceId: null,
-      tripId: null,
-    })),
+    savedPlaces: raw.tables.saved_places.map(mapExportSavedPlace),
+    moments: raw.tables.moments.map(mapExportMoment),
   };
 }
 

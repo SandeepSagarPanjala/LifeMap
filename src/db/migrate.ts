@@ -46,7 +46,7 @@ export function prepareMigrations(
 }
 
 async function tableExists(sqlite: DB, tableName: string): Promise<boolean> {
-  const result = await sqlite.executeAsync(
+  const result = await sqlite.execute(
     `SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?`,
     [tableName],
   );
@@ -58,10 +58,11 @@ async function columnExists(
   tableName: string,
   columnName: string,
 ): Promise<boolean> {
-  const result = await sqlite.executeAsync(`PRAGMA table_info("${tableName}")`);
+  const result = await sqlite.execute(`PRAGMA table_info("${tableName}")`);
   return (
     result.rows?.some(
-      row => String((row as {name?: string}).name ?? '') === columnName,
+      (row: Record<string, unknown>) =>
+        String(row.name ?? '') === columnName,
     ) ?? false
   );
 }
@@ -225,7 +226,7 @@ export async function collectPendingMigrations(
 }
 
 async function ensureMigrationsTable(sqlite: DB): Promise<void> {
-  await sqlite.executeAsync(
+  await sqlite.execute(
     `CREATE TABLE IF NOT EXISTS "${MIGRATIONS_TABLE}" (
       id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
       hash TEXT NOT NULL,
@@ -234,9 +235,7 @@ async function ensureMigrationsTable(sqlite: DB): Promise<void> {
   );
 }
 
-type SqlExecutor = {
-  execute: (query: string, params?: unknown[]) => Promise<unknown>;
-};
+type SqlExecutor = Pick<DB, 'execute'>;
 
 async function recordMigration(
   migration: PreparedMigration,
@@ -308,7 +307,7 @@ export async function runMigrations(sqlite: DB): Promise<void> {
   const prepared = prepareMigrations();
   await ensureMigrationsTable(sqlite);
 
-  const migrationCount = await sqlite.executeAsync(
+  const migrationCount = await sqlite.execute(
     `SELECT COUNT(*) AS count FROM "${MIGRATIONS_TABLE}"`,
   );
   const appliedCount = Number(

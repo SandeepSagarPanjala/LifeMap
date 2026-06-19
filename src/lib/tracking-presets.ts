@@ -75,7 +75,7 @@ export function getTrackingConfig(maxReliability: boolean): Config {
         ? BackgroundGeolocation.LogLevel.Info
         : BackgroundGeolocation.LogLevel.Warning,
     },
-  };
+  } as Config;
 }
 
 /** @deprecated Use getTrackingConfig(maxReliability) */

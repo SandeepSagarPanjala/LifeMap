@@ -17,7 +17,6 @@ describe('moment preview context', () => {
     lng: -97.14,
     radiusMeters: 150,
     createdAt: new Date('2026-01-01T00:00:00.000Z'),
-    updatedAt: new Date('2026-01-01T00:00:00.000Z'),
   };
 
   const krogerStay: DayTimelineEntry = {
@@ -29,10 +28,10 @@ describe('moment preview context', () => {
         lat: 33.21,
         lng: -97.14,
         timestamp: new Date('2026-06-09T14:00:00.000Z'),
-        accuracyM: 10,
-        speedMps: 0,
-        headingDeg: null,
-        altitudeM: null,
+        accuracy: 10,
+        speed: 0,
+        altitude: null,
+        source: 'gps',
       },
     ],
     startAt: new Date('2026-06-09T14:00:00.000Z'),

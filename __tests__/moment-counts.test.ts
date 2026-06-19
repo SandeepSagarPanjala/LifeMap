@@ -9,9 +9,11 @@ import {
   shouldHideSavedPlaceMomentCluster,
   shouldShowDayMomentSummaryBar,
 } from '../src/lib/moments/moment-counts';
+import type {LocationPointRow} from '../src/db/repositories/location-days';
 import type {MomentRow} from '../src/db/repositories/moments';
 import type {SavedPlaceRow} from '../src/db/repositories/saved-places';
 import type {DayTimelineEntry} from '../src/lib/trip-detection';
+import {makeLocationPoint} from './helpers/fixtures';
 
 function moment(partial: Partial<MomentRow> & Pick<MomentRow, 'id' | 'type' | 'timestamp'>): MomentRow {
   return {
@@ -19,6 +21,9 @@ function moment(partial: Partial<MomentRow> & Pick<MomentRow, 'id' | 'type' | 't
     lat: null,
     lng: null,
     contentPath: null,
+    voiceAttachmentPath: null,
+    voiceAttachmentBytes: null,
+    photoAttachmentsJson: null,
     textBody: null,
     caption: null,
     title: null,
@@ -167,7 +172,14 @@ describe('moment counts', () => {
     const afternoonStay: DayTimelineEntry = {
       id: 'stay-afternoon',
       kind: 'stay',
-      points: [{lat: 33.1, lng: -97.1, timestamp: new Date('2026-06-08T15:00:00.000Z')}],
+      points: [
+        makeLocationPoint({
+          id: 1,
+          lat: 33.1,
+          lng: -97.1,
+          timestamp: new Date('2026-06-08T15:00:00.000Z'),
+        }),
+      ],
       startAt: new Date('2026-06-08T14:30:00.000Z'),
       endAt: new Date('2026-06-08T16:00:00.000Z'),
       distanceKm: 0,
@@ -177,7 +189,14 @@ describe('moment counts', () => {
     const eveningStay: DayTimelineEntry = {
       id: 'stay-evening',
       kind: 'stay',
-      points: [{lat: 33.1005, lng: -97.1005, timestamp: new Date('2026-06-08T22:47:00.000Z')}],
+      points: [
+        makeLocationPoint({
+          id: 2,
+          lat: 33.1005,
+          lng: -97.1005,
+          timestamp: new Date('2026-06-08T22:47:00.000Z'),
+        }),
+      ],
       startAt: new Date('2026-06-08T22:47:00.000Z'),
       endAt: new Date('2026-06-08T23:29:00.000Z'),
       distanceKm: 0,

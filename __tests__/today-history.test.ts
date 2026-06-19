@@ -8,6 +8,7 @@ import {buildHistoryDayRuler} from '../src/lib/history-timeline';
 import {buildTripDetectionConfig} from '../src/lib/trip-settings';
 import {getDayRange} from '../src/lib/day-utils';
 import type {LocationPointRow} from '../src/db/repositories/location-days';
+import {mapExportSavedPlace} from './helpers/fixtures';
 import {endOfDay} from 'date-fns';
 
 const config = buildTripDetectionConfig(10, 10, 25);
@@ -311,11 +312,7 @@ describe('prepareTodayHistoryTimeline', () => {
       p => p.timestamp > dayEnd && p.timestamp <= lookaheadEnd,
     );
     const referenceNow = new Date('2026-06-10T12:00:00.000Z');
-    const savedPlaces = (raw.tables.saved_places ?? []).map(place => ({
-      ...place,
-      kind: place.kind as 'home' | 'work' | 'favorite',
-      createdAt: new Date(place.createdAt),
-    }));
+    const savedPlaces = (raw.tables.saved_places ?? []).map(mapExportSavedPlace);
 
     const persistEntries = prepareDayHistoryTimeline(
       dateKey,
@@ -383,10 +380,7 @@ describe('prepareTodayHistoryTimeline', () => {
       timestamp: new Date(row.timestamp),
       source: row.source as LocationPointRow['source'],
     }));
-    const savedPlaces = raw.tables.saved_places.map(row => ({
-      ...row,
-      createdAt: new Date(row.createdAt),
-    }));
+    const savedPlaces = raw.tables.saved_places.map(mapExportSavedPlace);
     const dayStart = new Date('2026-06-13T05:00:00.000Z');
     const dayPoints = points.filter(
       point => point.timestamp >= dayStart && point.timestamp < new Date('2026-06-13T07:24:00.000Z'),
@@ -455,10 +449,7 @@ describe('prepareTodayHistoryTimeline', () => {
       timestamp: new Date(row.timestamp),
       source: row.source as LocationPointRow['source'],
     }));
-    const savedPlaces = raw.tables.saved_places.map(row => ({
-      ...row,
-      createdAt: new Date(row.createdAt),
-    }));
+    const savedPlaces = raw.tables.saved_places.map(mapExportSavedPlace);
     const dayStart = new Date('2026-06-12T05:00:00.000Z');
     const dayPoints = points.filter(
       point =>
@@ -555,11 +546,7 @@ describe('prepareTodayHistoryTimeline', () => {
       timestamp: new Date(row.timestamp),
       source: row.source as LocationPointRow['source'],
     }));
-    const savedPlaces = raw.tables.saved_places.map(row => ({
-      ...row,
-      kind: row.kind as 'home' | 'work' | 'favorite',
-      createdAt: new Date(row.createdAt),
-    }));
+    const savedPlaces = raw.tables.saved_places.map(mapExportSavedPlace);
     const tripConfig = buildTripDetectionConfig(10, 5, 20);
     const referenceNow = new Date('2026-06-13T07:24:00.000Z');
 

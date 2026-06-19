@@ -11,7 +11,7 @@ const KIND_PRIORITY: Record<SavedPlaceRow['kind'], number> = {
 
 export function matchSavedPlaceForPoint(
   point: LocationPointLike,
-  places: SavedPlaceRow[],
+  places: readonly SavedPlaceRow[],
 ): SavedPlaceRow | null {
   let match: SavedPlaceRow | null = null;
   let matchPriority = Number.POSITIVE_INFINITY;
@@ -39,7 +39,7 @@ export function matchSavedPlaceForPoint(
 
 export function matchSavedPlaceForStay(
   stay: DetectedTrip,
-  places: SavedPlaceRow[],
+  places: readonly SavedPlaceRow[],
 ): SavedPlaceRow | null {
   if (places.length === 0 || stay.points.length === 0) {
     return null;
@@ -75,7 +75,7 @@ export function shouldSplitStayAtMidnight(
 export function matchSavedPlaceForTripEndpoint(
   trip: DetectedTrip,
   endpoint: 'start' | 'end',
-  places: SavedPlaceRow[],
+  places: readonly SavedPlaceRow[],
 ): SavedPlaceRow | null {
   if (trip.points.length === 0 || places.length === 0) {
     return null;
@@ -91,7 +91,7 @@ export function matchSavedPlaceForTripEndpoint(
 export function matchDriveEndSavedPlace(
   travel: DetectedTrip,
   nextStay: DetectedTrip | null,
-  places: SavedPlaceRow[],
+  places: readonly SavedPlaceRow[],
 ): SavedPlaceRow | null {
   const fromEndpoint = matchSavedPlaceForTripEndpoint(travel, 'end', places);
   if (fromEndpoint != null) {
@@ -107,7 +107,7 @@ export function matchDriveEndSavedPlace(
 export function matchDriveStartSavedPlace(
   travel: DetectedTrip,
   previousStay: DetectedTrip | null,
-  places: SavedPlaceRow[],
+  places: readonly SavedPlaceRow[],
 ): SavedPlaceRow | null {
   const fromEndpoint = matchSavedPlaceForTripEndpoint(travel, 'start', places);
   if (fromEndpoint != null) {
@@ -133,7 +133,7 @@ export class SavedPlaceLimitError extends Error {
 }
 
 export function canAddSavedPlace(
-  places: SavedPlaceRow[],
+  places: readonly SavedPlaceRow[],
   kind: SavedPlaceKind,
 ): boolean {
   if (kind === 'home' && places.some(place => place.kind === 'home')) {

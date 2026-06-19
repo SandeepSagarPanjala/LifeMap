@@ -13,6 +13,7 @@ import {
 import {TRIP_DETECTION_VERSION} from '@/lib/trip-settings';
 import type {TripRow} from '@/db/repositories/trips';
 import type {DetectedTrip} from '@/lib/trip-detection';
+import {makeMaterializedDay, makeTripPoint} from './helpers/fixtures';
 import {makeTripRow} from './helpers/trip-row-fixture';
 
 function stay(
@@ -146,30 +147,27 @@ describe('canReadDayFromMaterializedTrips', () => {
   it('only reads complete days at the current detection version', () => {
     expect(
       canReadDayFromMaterializedTrips(
-        {
+        makeMaterializedDay({
           dateKey: '2026-06-01',
           status: 'complete',
           detectionVersion: TRIP_DETECTION_VERSION,
           tripCount: 2,
           pointCount: 10,
           sealedAt: new Date(),
-          updatedAt: new Date(),
-        },
+        }),
         TRIP_DETECTION_VERSION,
       ),
     ).toBe(true);
 
     expect(
       canReadDayFromMaterializedTrips(
-        {
+        makeMaterializedDay({
           dateKey: '2026-06-01',
           status: 'partial',
           detectionVersion: TRIP_DETECTION_VERSION,
           tripCount: 1,
           pointCount: 10,
-          sealedAt: null,
-          updatedAt: new Date(),
-        },
+        }),
         TRIP_DETECTION_VERSION,
       ),
     ).toBe(false);
@@ -303,8 +301,8 @@ describe('buildTimelineFromStoredTrips', () => {
       [
         2,
         [
-          {id: 10, tripId: 2, seq: 0, lat: 37.77, lng: -122.42},
-          {id: 11, tripId: 2, seq: 1, lat: 37.78, lng: -122.41},
+          makeTripPoint({id: 10, tripId: 2, seq: 0, lat: 37.77, lng: -122.42}),
+          makeTripPoint({id: 11, tripId: 2, seq: 1, lat: 37.78, lng: -122.41}),
         ],
       ],
     ]);

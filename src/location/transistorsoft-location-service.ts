@@ -78,12 +78,13 @@ export class TransistorSoftLocationService implements LocationService {
     await drainNativeLocationQueue();
   }
 
-  async refreshPersistPipeline(): Promise<void> {
+  async refreshPersistPipeline(): Promise<number | null> {
     const maxReliability = await readMaxReliability();
     const savedTimestampMs = await runLocationHeartbeat(maxReliability);
     if (savedTimestampMs != null) {
       this.suppressOnLocationTimestampMs = savedTimestampMs;
     }
+    return savedTimestampMs;
   }
 
   async applyTrackingProfile(maxReliability?: boolean): Promise<void> {

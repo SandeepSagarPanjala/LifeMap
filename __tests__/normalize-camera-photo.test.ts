@@ -38,14 +38,10 @@ describe('normalizeCameraPhoto', () => {
     const {Image} = require('react-native');
     const getSizeSpy = jest
       .spyOn(Image, 'getSize')
-      .mockImplementation(
-        (
-          _uri: string,
-          success: (width: number, height: number) => void,
-        ) => {
-          success(4032, 3024);
-        },
-      );
+      .mockImplementation((...args: unknown[]) => {
+        const success = args[1] as (width: number, height: number) => void;
+        success(4032, 3024);
+      });
 
     const result = await normalizeCameraPhoto('file:///tmp/photo.jpg');
 

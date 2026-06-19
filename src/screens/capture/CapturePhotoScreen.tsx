@@ -636,7 +636,6 @@ export function CapturePhotoScreen() {
         <ViewShot
           ref={exportShotRef}
           style={StyleSheet.absoluteFill}
-          collapsable={false}
           options={{format: 'jpg', quality: 1, result: 'tmpfile'}}>
           <View style={styles.photoStage}>
             <View

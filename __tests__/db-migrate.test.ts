@@ -18,7 +18,7 @@ describe('database migrations', () => {
   it('detects whether a migration is already applied', async () => {
     const prepared = prepareMigrations();
     const sqlite = {
-      executeAsync: jest.fn(async (query: string, params?: unknown[]) => {
+      execute: jest.fn(async (query: string, params?: unknown[]) => {
         if (
           query.includes('sqlite_master') &&
           params?.[0] === 'location_points'
@@ -43,7 +43,7 @@ describe('database migrations', () => {
   it('queues skipped earlier migrations after journal bootstrap drift', async () => {
     const prepared = prepareMigrations();
     const sqlite = {
-      executeAsync: jest.fn(async (query: string, params?: unknown[]) => {
+      execute: jest.fn(async (query: string, params?: unknown[]) => {
         if (
           query.includes('sqlite_master') &&
           params?.[0] === 'location_points'

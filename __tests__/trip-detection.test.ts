@@ -10,7 +10,8 @@ import {
   lastPlayableTimelineIndex,
 } from '../src/lib/trip-detection';
 import {buildTripDetectionConfig} from '../src/lib/trip-settings';
-import type {LocationPointRow, DetectedTrip} from '../src/lib/trip-detection';
+import type {LocationPointRow} from '../src/db/repositories/location-days';
+import type {DetectedTrip} from '../src/lib/trip-detection';
 
 const config = buildTripDetectionConfig(10, 10, 150);
 
@@ -156,7 +157,9 @@ describe('playable timeline navigation', () => {
     durationMs: 3_600_000,
   };
   const gap = {
+    id: 'gap-1',
     kind: 'gap' as const,
+    points: [] as const,
     startAt: new Date('2026-06-08T09:00:00'),
     endAt: new Date('2026-06-08T10:00:00'),
     durationMs: 3_600_000,

@@ -40,11 +40,11 @@ export type DetectedTrip = {
 export type TimelineGap = {
   id: string;
   kind: 'gap';
-  points: [];
+  points: readonly LocationPointRow[];
   startAt: Date;
   endAt: Date;
   durationMs: number;
-  distanceKm: 0;
+  distanceKm: number;
 };
 
 export type DayTimelineEntry = DetectedTrip | TimelineGap;
