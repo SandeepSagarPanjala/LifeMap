@@ -1,7 +1,9 @@
 import {formatDuration} from './stops';
 import {formatDistance, type StaySegment, type TripSegment} from './trips';
 import {canonicalizeStaySegmentPoints} from './stay-geometry';
+import {canonicalizeTravelSegmentPoints} from './travel-geometry';
 import type {MomentRow} from '../types';
+import type {DriveSegment} from './trips';
 
 const TZ = 'America/Chicago';
 
@@ -38,6 +40,16 @@ export type SegmentDisplay = {
   stats: string[];
 };
 
+function canonicalPointCountLabel(
+  rawCount: number,
+  plottedCount: number,
+): string {
+  if (plottedCount >= rawCount) {
+    return `${rawCount} pts`;
+  }
+  return `${rawCount} pts → ${plottedCount} plotted`;
+}
+
 export function stayPointCountLabel(
   segment: StaySegment,
   canonicalizeStays: boolean,
@@ -47,11 +59,24 @@ export function stayPointCountLabel(
   if (!canonicalizeStays) {
     return `${rawCount} pts`;
   }
-  const plottedCount = canonicalizeStaySegmentPoints(segment, moments).length;
-  if (plottedCount >= rawCount) {
+  return canonicalPointCountLabel(
+    rawCount,
+    canonicalizeStaySegmentPoints(segment, moments).length,
+  );
+}
+
+export function drivePointCountLabel(
+  segment: DriveSegment,
+  canonicalizeDrives: boolean,
+): string {
+  const rawCount = segment.points.length;
+  if (!canonicalizeDrives) {
     return `${rawCount} pts`;
   }
-  return `${rawCount} pts → ${plottedCount} plotted`;
+  return canonicalPointCountLabel(
+    rawCount,
+    canonicalizeTravelSegmentPoints(segment).length,
+  );
 }
 
 export function describeTripSegment(segment: TripSegment): SegmentDisplay {

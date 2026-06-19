@@ -50,6 +50,11 @@ import {
 import {resolveVisitAnchor} from '@/lib/visit-anchor';
 import {canonicalizeStayGeometry} from '@/lib/stay-geometry';
 import {
+  getGeometryPersistFingerprint,
+  isCanonicalTravelGeometryEnabled,
+} from '@/lib/trip-geometry-settings';
+import {canonicalizeTravelGeometry} from '@/lib/travel-geometry';
+import {
   mergeSealedAndLiveTimeline,
   sealedThroughMs,
 } from '@/lib/today-sealed-history';
@@ -198,9 +203,16 @@ function geometryPointsForPersist(
   entry: DetectedTrip,
   centroid: {lat: number; lng: number},
   moments: readonly MomentRow[],
+  canonicalizeTravel: boolean,
 ): LocationPointRow[] {
+  /** Persist pipeline: detection segments → stay canonical geometry → travel (if enabled). */
   if (entry.kind === 'travel') {
-    return entry.points.length > 0 ? entry.points : [];
+    if (entry.points.length === 0) {
+      return [];
+    }
+    return canonicalizeTravel
+      ? canonicalizeTravelGeometry(entry.points)
+      : entry.points;
   }
   if (entry.kind === 'stay') {
     if (entry.points.length === 0) {
@@ -243,6 +255,51 @@ function tripCentroid(trip: DetectedTrip): {lat: number; lng: number} {
 function dayHasOpenVisit(entries: DayTimelineEntry[]): boolean {
   return entries.some(
     entry => entry.kind === 'stay' && entry.openThroughNow === true,
+  );
+}
+
+async function pastDayCanLoadFromStore(
+  dateKey: string,
+  tripRows: readonly TripRow[],
+): Promise<boolean> {
+  if (tripRows.length === 0) {
+    return false;
+  }
+  const [pointsByTripId, materializedDay, geometryFingerprint] =
+    await Promise.all([
+      listTripPointsForDay(dateKey),
+      getMaterializedDay(dateKey),
+      getGeometryPersistFingerprint(),
+    ]);
+  return (
+    materializedDay?.detectionVersion === TRIP_DETECTION_VERSION &&
+    materializedDay.geometryFingerprint === geometryFingerprint &&
+    dayHasStoredTripGeometry(tripRows, pointsByTripId)
+  );
+}
+
+/**
+ * Past day materialization: 1st-algorithm detection on GPS, then persist
+ * trip_points with canonical stay geometry and travel geometry when enabled
+ * in Settings.
+ */
+async function materializePastDayFromGps(
+  dateKey: string,
+  detectionConfig: TripDetectionConfig,
+): Promise<number> {
+  const {entries, dayPointCount} = await buildExplorerDayTimelineFromGps(
+    dateKey,
+    detectionConfig,
+  );
+  return persistClosedTripsIncremental(
+    dateKey,
+    detectionConfig,
+    entries.filter(isPersistableTimelineEntry),
+    {
+      fullReplace: true,
+      forceComplete: true,
+      pointCount: dayPointCount,
+    },
   );
 }
 
@@ -443,11 +500,8 @@ export async function loadHistoryForSelectedDay(
     }
 
     if (tripRows.length > 0) {
-      const pointsByTripId = await listTripPointsForDay(dateKey);
-      if (
-        materializedDay?.detectionVersion === TRIP_DETECTION_VERSION &&
-        dayHasStoredTripGeometry(tripRows, pointsByTripId)
-      ) {
+      const canLoadFromStore = await pastDayCanLoadFromStore(dateKey, tripRows);
+      if (canLoadFromStore) {
         return loadHistoryFromStoredTrips(
           dateKey,
           tripRows,
@@ -471,20 +525,7 @@ export async function loadHistoryForSelectedDay(
   const referenceNow = new Date();
 
   if (!isToday) {
-    const {entries, dayPointCount} = await buildExplorerDayTimelineFromGps(
-      dateKey,
-      detectionConfig,
-    );
-    await persistClosedTripsIncremental(
-      dateKey,
-      detectionConfig,
-      entries.filter(isPersistableTimelineEntry),
-      {
-        fullReplace: true,
-        forceComplete: true,
-        pointCount: dayPointCount,
-      },
-    );
+    await materializePastDayFromGps(dateKey, detectionConfig);
     return loadHistoryFromStoredTrips(
       dateKey,
       undefined,
@@ -583,7 +624,12 @@ export async function persistClosedTripsIncremental(
   const existingLabels = existingTripLabelsByEventKey(existingTrips);
   const savedPlaces = await listSavedPlaces();
   const {start: dayStart, end: dayEnd} = getDayRange(dateKey);
-  const dayMoments = await getMomentsForDay(dayStart, dayEnd);
+  const [dayMoments, canonicalizeTravel, geometryFingerprint] =
+    await Promise.all([
+      getMomentsForDay(dayStart, dayEnd),
+      isCanonicalTravelGeometryEnabled(),
+      getGeometryPersistFingerprint(),
+    ]);
 
   if (options.fullReplace) {
     await deleteTripsForDay(dateKey);
@@ -640,7 +686,12 @@ export async function persistClosedTripsIncremental(
       closedAt,
     });
     upserted += 1;
-    const geometry = geometryPointsForPersist(entry, centroid, dayMoments);
+    const geometry = geometryPointsForPersist(
+      entry,
+      centroid,
+      dayMoments,
+      canonicalizeTravel,
+    );
     if (geometry.length > 0) {
       await replaceTripPointsFromLocations(row.id, geometry);
     }
@@ -667,6 +718,7 @@ export async function persistClosedTripsIncremental(
     detectionVersion: TRIP_DETECTION_VERSION,
     tripCount,
     pointCount,
+    geometryFingerprint,
     sealedAt:
       status === 'complete'
         ? materializedDay?.sealedAt ?? closedAt
@@ -710,20 +762,7 @@ export async function sealYesterdayIfNeeded(): Promise<void> {
   }
 
   const detectionConfig = getDefaultTripDetectionConfig();
-  const {entries, dayPointCount} = await buildExplorerDayTimelineFromGps(
-    yesterdayKey,
-    detectionConfig,
-  );
-  await persistClosedTripsIncremental(
-    yesterdayKey,
-    detectionConfig,
-    entries.filter(isPersistableTimelineEntry),
-    {
-      fullReplace: true,
-      forceComplete: true,
-      pointCount: dayPointCount,
-    },
-  );
+  await materializePastDayFromGps(yesterdayKey, detectionConfig);
 }
 
 export async function drainMaterializationQueue(
@@ -840,20 +879,7 @@ export async function rebuildPastDayTrips(
     throw new Error('Trip rebuild is only available for past days.');
   }
 
-  const {entries, dayPointCount} = await buildExplorerDayTimelineFromGps(
-    dateKey,
-    detectionConfig,
-  );
-  return persistClosedTripsIncremental(
-    dateKey,
-    detectionConfig,
-    entries.filter(isPersistableTimelineEntry),
-    {
-      fullReplace: true,
-      forceComplete: true,
-      pointCount: dayPointCount,
-    },
-  );
+  return materializePastDayFromGps(dateKey, detectionConfig);
 }
 
 /** Foreground rebuild for all past days that have GPS data. */

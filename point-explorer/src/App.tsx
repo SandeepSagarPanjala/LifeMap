@@ -35,10 +35,11 @@ import {
   SAVED_PLACE_MIN_DWELL_MS,
   type TripSegment,
 } from './lib/trips';
-import {describeTripSegment, stayPointCountLabel} from './lib/segment-display';
+import {describeTripSegment, drivePointCountLabel, stayPointCountLabel} from './lib/segment-display';
 import {
   displayPointsForSegment,
   plotPointsFromSegments,
+  usesCanonicalSegmentGeometry,
 } from './lib/stay-geometry';
 import {
   explainPoint,
@@ -79,6 +80,7 @@ function TripSegmentList({
   onShowFullTrip,
   onDownload,
   canonicalizeStayGeometry,
+  canonicalizeDriveGeometry,
   moments,
 }: {
   segments: TripSegment[];
@@ -87,6 +89,7 @@ function TripSegmentList({
   onShowFullTrip: () => void;
   onDownload: () => void;
   canonicalizeStayGeometry: boolean;
+  canonicalizeDriveGeometry: boolean;
   moments: readonly MomentRow[];
 }) {
   return (
@@ -121,7 +124,13 @@ function TripSegmentList({
                       moments,
                     ),
                   ]
-                : display.stats;
+                : segment.kind === 'drive'
+                  ? [
+                      formatDuration(segment.durationMs),
+                      display.stats[1] ?? '',
+                      drivePointCountLabel(segment, canonicalizeDriveGeometry),
+                    ]
+                  : display.stats;
             return (
               <li key={segment.id}>
                 <button
@@ -183,6 +192,8 @@ export function App() {
   const [moments, setMoments] = useState<MomentRow[]>([]);
   const [canonicalizeStayGeometry, setCanonicalizeStayGeometry] =
     useState(true);
+  const [canonicalizeDriveGeometry, setCanonicalizeDriveGeometry] =
+    useState(false);
 
   const dateKeys = useMemo(() => {
     if (storedTripExport != null) {
@@ -373,8 +384,16 @@ export function App() {
       setSegments(result.segments);
       setSelectedSegmentId(null);
       setPlottedPoints(
-        canonicalizeStayGeometry
-          ? plotPointsFromSegments(result.segments, true, moments)
+        usesCanonicalSegmentGeometry(
+          canonicalizeStayGeometry,
+          canonicalizeDriveGeometry,
+        )
+          ? plotPointsFromSegments(
+              result.segments,
+              canonicalizeStayGeometry,
+              moments,
+              canonicalizeDriveGeometry,
+            )
           : result.points,
       );
       setStops(result.stops);
@@ -383,7 +402,7 @@ export function App() {
       setPointNavMode(false);
       setPowerResult(null);
     },
-    [canonicalizeStayGeometry, moments],
+    [canonicalizeDriveGeometry, canonicalizeStayGeometry, moments],
   );
 
   const loadFile = useCallback(
@@ -648,15 +667,23 @@ export function App() {
     }
     setSelectedSegmentId(null);
     setPlottedPoints(
-      canonicalizeStayGeometry
-        ? plotPointsFromSegments(segments, true, moments)
+      usesCanonicalSegmentGeometry(
+        canonicalizeStayGeometry,
+        canonicalizeDriveGeometry,
+      )
+        ? plotPointsFromSegments(
+            segments,
+            canonicalizeStayGeometry,
+            moments,
+            canonicalizeDriveGeometry,
+          )
         : tripPoints,
     );
     setStops(tripStops ?? []);
     setSelectedStopId(null);
     setSelectedId(null);
     setPointNavMode(false);
-  }, [canonicalizeStayGeometry, moments, segments, tripPoints, tripStops]);
+  }, [canonicalizeDriveGeometry, canonicalizeStayGeometry, moments, segments, tripPoints, tripStops]);
 
   const onSelectSegment = useCallback(
     (segment: TripSegment) => {
@@ -667,8 +694,16 @@ export function App() {
         setSelectedSegmentId(null);
         setPlottedPoints(
           tripPoints != null && segments != null
-            ? canonicalizeStayGeometry
-              ? plotPointsFromSegments(segments, true, moments)
+            ? usesCanonicalSegmentGeometry(
+                canonicalizeStayGeometry,
+                canonicalizeDriveGeometry,
+              )
+              ? plotPointsFromSegments(
+                  segments,
+                  canonicalizeStayGeometry,
+                  moments,
+                  canonicalizeDriveGeometry,
+                )
               : tripPoints
             : tripPoints,
         );
@@ -682,7 +717,12 @@ export function App() {
         return;
       }
       setPlottedPoints(
-        displayPointsForSegment(segment, canonicalizeStayGeometry, moments),
+        displayPointsForSegment(
+          segment,
+          canonicalizeStayGeometry,
+          moments,
+          canonicalizeDriveGeometry,
+        ),
       );
       if (segment.kind === 'stay') {
         setStops([segment.stop]);
@@ -695,7 +735,7 @@ export function App() {
         setSelectedStopId(null);
       }
     },
-    [canonicalizeStayGeometry, moments, segments, selectedSegmentId, tripPoints, tripStops],
+    [canonicalizeDriveGeometry, canonicalizeStayGeometry, moments, segments, selectedSegmentId, tripPoints, tripStops],
   );
 
   const handleSelectPoint = useCallback(
@@ -710,7 +750,12 @@ export function App() {
       }
       setSelectedSegmentId(segment.id);
       setPlottedPoints(
-        displayPointsForSegment(segment, canonicalizeStayGeometry, moments),
+        displayPointsForSegment(
+          segment,
+          canonicalizeStayGeometry,
+          moments,
+          canonicalizeDriveGeometry,
+        ),
       );
       if (segment.kind === 'stay') {
         setStops([segment.stop]);
@@ -723,7 +768,7 @@ export function App() {
         setSelectedStopId(null);
       }
     },
-    [canonicalizeStayGeometry, mode, moments, segments],
+    [canonicalizeDriveGeometry, canonicalizeStayGeometry, mode, moments, segments],
   );
 
   useEffect(() => {
@@ -734,17 +779,37 @@ export function App() {
       const segment = segments.find(item => item.id === selectedSegmentId);
       if (segment != null && segment.kind !== 'missing') {
         setPlottedPoints(
-          displayPointsForSegment(segment, canonicalizeStayGeometry, moments),
+          displayPointsForSegment(
+            segment,
+            canonicalizeStayGeometry,
+            moments,
+            canonicalizeDriveGeometry,
+          ),
         );
       }
       return;
     }
     setPlottedPoints(
-      canonicalizeStayGeometry
-        ? plotPointsFromSegments(segments, true, moments)
+      usesCanonicalSegmentGeometry(
+        canonicalizeStayGeometry,
+        canonicalizeDriveGeometry,
+      )
+        ? plotPointsFromSegments(
+            segments,
+            canonicalizeStayGeometry,
+            moments,
+            canonicalizeDriveGeometry,
+          )
         : tripPoints,
     );
-  }, [canonicalizeStayGeometry, moments, segments, selectedSegmentId, tripPoints]);
+  }, [
+    canonicalizeDriveGeometry,
+    canonicalizeStayGeometry,
+    moments,
+    segments,
+    selectedSegmentId,
+    tripPoints,
+  ]);
 
   const handlePlot = useCallback(() => {
     const next = filterPointsBySources(filteredPoints, selectedSources);
@@ -1183,22 +1248,40 @@ export function App() {
                       : `${filteredPoints.length.toLocaleString()} points · ${formatDateLabel(dateKey)}`}
                 </p>
                 {!isPlotUpload ? (
-                  <label className="canonicalize-toggle">
-                    <input
-                      type="checkbox"
-                      checked={canonicalizeStayGeometry}
-                      onChange={event =>
-                        setCanonicalizeStayGeometry(event.target.checked)
-                      }
-                    />
-                    <span className="canonicalize-toggle-text">
-                      <strong>Canonical stay geometry</strong>
-                      <span className="upload-mode-hint">
-                        Plot stays as centroid + arrival + departure + moments
-                        (venue wanders keep a simplified path)
+                  <div className="canonicalize-toggles">
+                    <label className="canonicalize-toggle">
+                      <input
+                        type="checkbox"
+                        checked={canonicalizeStayGeometry}
+                        onChange={event =>
+                          setCanonicalizeStayGeometry(event.target.checked)
+                        }
+                      />
+                      <span className="canonicalize-toggle-text">
+                        <strong>Canonical stay geometry</strong>
+                        <span className="upload-mode-hint">
+                          Plot stays as centroid + arrival + departure + moments
+                          (venue wanders keep a simplified path)
+                        </span>
                       </span>
-                    </span>
-                  </label>
+                    </label>
+                    <label className="canonicalize-toggle">
+                      <input
+                        type="checkbox"
+                        checked={canonicalizeDriveGeometry}
+                        onChange={event =>
+                          setCanonicalizeDriveGeometry(event.target.checked)
+                        }
+                      />
+                      <span className="canonicalize-toggle-text">
+                        <strong>Canonical drive geometry</strong>
+                        <span className="upload-mode-hint">
+                          Turn-anchored Douglas–Peucker on drives (ε 15 m, keeps
+                          turns ≥ 25°)
+                        </span>
+                      </span>
+                    </label>
+                  </div>
                 ) : null}
                 <details className="meta-details">
                   <summary className="meta-summary">
@@ -1290,6 +1373,7 @@ export function App() {
                     onShowFullTrip={showFullTrip}
                     onDownload={handleDownloadTrips}
                     canonicalizeStayGeometry={canonicalizeStayGeometry}
+                    canonicalizeDriveGeometry={canonicalizeDriveGeometry}
                     moments={moments}
                   />
                 ) : null}
@@ -1308,22 +1392,40 @@ export function App() {
                     ? 'Pick a date, then build explanations.'
                     : 'Click a segment or any map point to see why.'}
                 </p>
-                <label className="canonicalize-toggle">
-                  <input
-                    type="checkbox"
-                    checked={canonicalizeStayGeometry}
-                    onChange={event =>
-                      setCanonicalizeStayGeometry(event.target.checked)
-                    }
-                  />
-                  <span className="canonicalize-toggle-text">
-                    <strong>Canonical stay geometry</strong>
-                    <span className="upload-mode-hint">
-                      Map uses reduced stay points; explain still uses full
-                      detection set
+                <div className="canonicalize-toggles">
+                  <label className="canonicalize-toggle">
+                    <input
+                      type="checkbox"
+                      checked={canonicalizeStayGeometry}
+                      onChange={event =>
+                        setCanonicalizeStayGeometry(event.target.checked)
+                      }
+                    />
+                    <span className="canonicalize-toggle-text">
+                      <strong>Canonical stay geometry</strong>
+                      <span className="upload-mode-hint">
+                        Map uses reduced stay points; explain still uses full
+                        detection set
+                      </span>
                     </span>
-                  </span>
-                </label>
+                  </label>
+                  <label className="canonicalize-toggle">
+                    <input
+                      type="checkbox"
+                      checked={canonicalizeDriveGeometry}
+                      onChange={event =>
+                        setCanonicalizeDriveGeometry(event.target.checked)
+                      }
+                    />
+                    <span className="canonicalize-toggle-text">
+                      <strong>Canonical drive geometry</strong>
+                      <span className="upload-mode-hint">
+                        Map uses simplified drive paths; explain still uses full
+                        detection set
+                      </span>
+                    </span>
+                  </label>
+                </div>
 
                 {segments != null ? (
                   <>
@@ -1334,6 +1436,7 @@ export function App() {
                       onShowFullTrip={showFullTrip}
                       onDownload={handleDownloadTrips}
                       canonicalizeStayGeometry={canonicalizeStayGeometry}
+                      canonicalizeDriveGeometry={canonicalizeDriveGeometry}
                       moments={moments}
                     />
                     {segmentExplanation != null ? (

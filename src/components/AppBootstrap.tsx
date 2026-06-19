@@ -10,6 +10,7 @@ import {
 import {ensureHistoryCalendarBounds} from '@/lib/history-calendar-bounds';
 import {preloadTodayHistory} from '@/lib/history-preload';
 import {sealYesterdayIfNeeded} from '@/lib/trip-materialization';
+import {warmCanonicalTravelGeometrySetting} from '@/lib/trip-geometry-settings';
 import {useAppStore} from '@/stores/app-store';
 
 type AppBootstrapProps = {
@@ -30,7 +31,10 @@ export function AppBootstrap({
   );
 
   useEffect(() => {
-    void ensureDatabaseReady().then(() => sealYesterdayIfNeeded());
+    void ensureDatabaseReady().then(async () => {
+      await warmCanonicalTravelGeometrySetting();
+      await sealYesterdayIfNeeded();
+    });
   }, []);
 
   useEffect(() => {
@@ -70,7 +74,9 @@ export function AppBootstrap({
       if (enableLocationTracking && hasCompletedPrivacyOnboarding) {
         const service = getLocationService();
         if (nextState === 'active') {
-          void sealYesterdayIfNeeded();
+          void warmCanonicalTravelGeometrySetting().then(() =>
+            sealYesterdayIfNeeded(),
+          );
           void service.refreshPersistPipeline().catch(() => undefined);
         } else if (nextState === 'background') {
           void service.drainNativeQueue().catch(() => undefined);

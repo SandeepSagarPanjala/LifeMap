@@ -1,4 +1,4 @@
-import {useCallback, useState} from 'react';
+import {useCallback, useEffect, useState} from 'react';
 import {format} from 'date-fns';
 import {ActivityIndicator, Alert, Modal, Pressable, View} from 'react-native';
 import {Route} from 'lucide-react-native';
@@ -10,6 +10,10 @@ import {useThemeColors} from '@/hooks/use-theme-colors';
 import {parseDateKey} from '@/lib/day-utils';
 import {clearHistoryDataCache} from '@/lib/history-data-cache';
 import {
+  isCanonicalTravelGeometryEnabled,
+  setCanonicalTravelGeometryEnabled,
+} from '@/lib/trip-geometry-settings';
+import {
   rebuildAllPastDayTrips,
   type RebuildPastTripsProgress,
 } from '@/lib/trip-materialization';
@@ -18,9 +22,24 @@ export function TripRebuildSettings() {
   const colors = useThemeColors();
   const detectionConfig = useTripDetectionConfig();
   const [rebuilding, setRebuilding] = useState(false);
+  const [canonicalTravelGeometry, setCanonicalTravelGeometry] = useState(true);
+  const [loadingTravelSetting, setLoadingTravelSetting] = useState(true);
   const [progress, setProgress] = useState<RebuildPastTripsProgress | null>(
     null,
   );
+
+  useEffect(() => {
+    void isCanonicalTravelGeometryEnabled()
+      .then(setCanonicalTravelGeometry)
+      .finally(() => setLoadingTravelSetting(false));
+  }, []);
+
+  const handleTravelGeometryToggle = useCallback(async () => {
+    const next = !canonicalTravelGeometry;
+    await setCanonicalTravelGeometryEnabled(next);
+    setCanonicalTravelGeometry(next);
+    clearHistoryDataCache();
+  }, [canonicalTravelGeometry]);
 
   const runRebuildAll = useCallback(async () => {
     setRebuilding(true);
@@ -76,6 +95,36 @@ export function TripRebuildSettings() {
               Recompute visits and drives from GPS using the same rules as the
               point explorer, then save segment routes for past days.
             </Text>
+          </View>
+        </View>
+
+        <View className="border-border mt-4 border-t pt-4">
+          <View className="flex-row items-center gap-3">
+            <View className="flex-1">
+              <Text className="font-medium">Canonical drive geometry</Text>
+              <Text variant="muted" className="mt-1 text-sm leading-5">
+                Simplify drive routes when saving trips — keeps turns, drops
+                redundant straight-line GPS. Also applies when yesterday is
+                sealed automatically.
+              </Text>
+            </View>
+            {loadingTravelSetting ? (
+              <ActivityIndicator />
+            ) : (
+              <Pressable
+                accessibilityRole="switch"
+                accessibilityState={{checked: canonicalTravelGeometry}}
+                onPress={() => void handleTravelGeometryToggle()}
+                className={`h-6 w-11 rounded-full px-0.5 ${
+                  canonicalTravelGeometry ? 'bg-primary' : 'bg-muted'
+                }`}>
+                <View
+                  className={`mt-0.5 h-5 w-5 rounded-full bg-white ${
+                    canonicalTravelGeometry ? 'ml-auto' : 'ml-0'
+                  }`}
+                />
+              </Pressable>
+            )}
           </View>
         </View>
 

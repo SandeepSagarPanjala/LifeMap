@@ -98,6 +98,12 @@ export async function migrationAlreadyApplied(
       return columnExists(sqlite, 'trip_points', 'recorded_at');
     case '0011_drop_materialization_queue':
       return !(await tableExists(sqlite, 'materialization_queue'));
+    case '0012_moments_voice':
+      return columnExists(sqlite, 'moments', 'voice_attachment_path');
+    case '0013_note_photo_attachments':
+      return columnExists(sqlite, 'moments', 'photo_attachments_json');
+    case '0014_materialized_day_geometry':
+      return columnExists(sqlite, 'materialized_days', 'geometry_fingerprint');
     default:
       return false;
   }
@@ -159,6 +165,20 @@ export async function ensureTripPointMetadataColumns(sqlite: DB): Promise<void> 
 }
 
 /** Repair moments columns when migration 0006 was skipped by journal drift. */
+export async function ensureMaterializedDayGeometryColumn(
+  sqlite: DB,
+): Promise<void> {
+  if (!(await tableExists(sqlite, 'materialized_days'))) {
+    return;
+  }
+  if (!(await columnExists(sqlite, 'materialized_days', 'geometry_fingerprint'))) {
+    await executeMigrationStatement(
+      sqlite,
+      `ALTER TABLE materialized_days ADD COLUMN geometry_fingerprint text`,
+    );
+  }
+}
+
 export async function ensureMomentsMoodColumns(sqlite: DB): Promise<void> {
   if (!(await tableExists(sqlite, 'moments'))) {
     return;

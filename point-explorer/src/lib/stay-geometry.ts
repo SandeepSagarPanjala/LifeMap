@@ -1,6 +1,7 @@
 import type {MomentRow, ParsedPoint} from '../types';
 import type {StaySegment, TripSegment} from './trips';
 import {pathLengthM} from './trips';
+import {canonicalizeTravelSegmentPoints} from './travel-geometry';
 
 /** Turn-in faster than this stays on the drive; slower = parked (visit starts). */
 const VISIT_ARRIVAL_SPEED_MS = 2;
@@ -293,6 +294,7 @@ export function displayPointsForSegment(
   segment: TripSegment,
   canonicalizeStays: boolean,
   moments: readonly MomentRow[] = [],
+  canonicalizeDrives = false,
 ): ParsedPoint[] {
   if (segment.kind === 'missing') {
     return [];
@@ -300,14 +302,18 @@ export function displayPointsForSegment(
   if (segment.kind === 'stay' && canonicalizeStays) {
     return canonicalizeStaySegmentPoints(segment, moments);
   }
+  if (segment.kind === 'drive' && canonicalizeDrives) {
+    return canonicalizeTravelSegmentPoints(segment);
+  }
   return segment.points;
 }
 
-/** Merged chronological plot track with optional stay canonicalization. */
+/** Merged chronological plot track with optional stay / drive canonicalization. */
 export function plotPointsFromSegments(
   segments: readonly TripSegment[],
   canonicalizeStays: boolean,
   moments: readonly MomentRow[] = [],
+  canonicalizeDrives = false,
 ): ParsedPoint[] {
   const byId = new Map<number, ParsedPoint>();
   for (const segment of segments) {
@@ -315,9 +321,17 @@ export function plotPointsFromSegments(
       segment,
       canonicalizeStays,
       moments,
+      canonicalizeDrives,
     )) {
       byId.set(point.id, point);
     }
   }
   return sortedPoints([...byId.values()]);
+}
+
+export function usesCanonicalSegmentGeometry(
+  canonicalizeStays: boolean,
+  canonicalizeDrives: boolean,
+): boolean {
+  return canonicalizeStays || canonicalizeDrives;
 }

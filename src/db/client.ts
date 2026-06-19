@@ -3,6 +3,7 @@ import { drizzle } from 'drizzle-orm/op-sqlite';
 
 import {
   runMigrations,
+  ensureMaterializedDayGeometryColumn,
   ensureMomentsMoodColumns,
   ensureTripPointMetadataColumns,
   ensureTripSegmentMetadataColumns,
@@ -49,6 +50,7 @@ async function initDatabase(): Promise<{ db: Database; sqlite: DB }> {
   await ensureTripSegmentMetadataColumns(sqlite);
   await ensureTripPointMetadataColumns(sqlite);
   await ensureMomentsMoodColumns(sqlite);
+  await ensureMaterializedDayGeometryColumn(sqlite);
 
   return { db, sqlite };
 }

@@ -80,10 +80,31 @@
       "breakpoints": true
     },
     {
+      "idx": 11,
+      "version": "7",
+      "when": 1788903000000,
+      "tag": "0011_drop_materialization_queue",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1788904000000,
+      "tag": "0012_moments_voice",
+      "breakpoints": true
+    },
+    {
       "idx": 13,
       "version": "7",
       "when": 1788905000000,
       "tag": "0013_note_photo_attachments",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1788906000000,
+      "tag": "0014_materialized_day_geometry",
       "breakpoints": true
     }
   ]

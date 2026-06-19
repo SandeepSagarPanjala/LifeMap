@@ -266,6 +266,7 @@ export async function fetchDatabaseExportTables(
       detectionVersion: row.detectionVersion,
       tripCount: row.tripCount,
       pointCount: row.pointCount,
+      geometryFingerprint: row.geometryFingerprint,
       sealedAt: iso(row.sealedAt),
       updatedAt: iso(row.updatedAt),
     })),

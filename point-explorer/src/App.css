@@ -104,6 +104,12 @@ body {
   font-weight: 400;
 }
 
+.canonicalize-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
 .canonicalize-toggle {
   display: flex;
   align-items: flex-start;

@@ -15,6 +15,7 @@ export type MaterializedDayRow = {
   detectionVersion: number;
   tripCount: number;
   pointCount: number;
+  geometryFingerprint: string | null;
   sealedAt: Date | null;
   updatedAt: Date;
 };
@@ -28,6 +29,7 @@ function mapRow(
     detectionVersion: row.detectionVersion,
     tripCount: row.tripCount,
     pointCount: row.pointCount,
+    geometryFingerprint: row.geometryFingerprint ?? null,
     sealedAt: row.sealedAt,
     updatedAt: row.updatedAt,
   };
@@ -52,6 +54,7 @@ export async function upsertMaterializedDay(
     detectionVersion: number;
     tripCount: number;
     pointCount: number;
+    geometryFingerprint?: string | null;
     sealedAt?: Date | null;
   },
 ): Promise<void> {
@@ -65,6 +68,7 @@ export async function upsertMaterializedDay(
       detectionVersion: patch.detectionVersion,
       tripCount: patch.tripCount,
       pointCount: patch.pointCount,
+      geometryFingerprint: patch.geometryFingerprint ?? null,
       sealedAt: patch.sealedAt ?? null,
       updatedAt: now,
     })
@@ -75,6 +79,7 @@ export async function upsertMaterializedDay(
         detectionVersion: patch.detectionVersion,
         tripCount: patch.tripCount,
         pointCount: patch.pointCount,
+        geometryFingerprint: patch.geometryFingerprint ?? null,
         sealedAt: patch.sealedAt ?? null,
         updatedAt: now,
       },
@@ -107,6 +112,7 @@ export async function markMaterializedDayFailed(
     detectionVersion,
     tripCount: existing?.tripCount ?? 0,
     pointCount: existing?.pointCount ?? 0,
+    geometryFingerprint: existing?.geometryFingerprint ?? null,
     sealedAt: existing?.sealedAt ?? null,
   });
 }

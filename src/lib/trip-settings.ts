@@ -32,7 +32,7 @@ export const SAVED_PLACE_MIN_DWELL_MINUTES = 1;
 export const TRIP_DETECTION_VERSION = 14;
 
 /** Bump when stored route/visit geometry rules change — invalidates fast load path. */
-export const TRIP_GEOMETRY_VERSION = 2;
+export const TRIP_GEOMETRY_VERSION = 3;
 
 export function buildTripDetectionConfig(
   gapMinutes: number,

@@ -176,6 +176,8 @@ ALTER TABLE \`moments\` ADD COLUMN \`voice_attachment_bytes\` integer;`;
 
 const m0013 = `ALTER TABLE \`moments\` ADD COLUMN \`photo_attachments_json\` text;`;
 
+const m0014 = `ALTER TABLE \`materialized_days\` ADD COLUMN \`geometry_fingerprint\` text;`;
+
 export default {
   journal,
   migrations: {
@@ -193,5 +195,6 @@ export default {
     m0011,
     m0012,
     m0013,
+    m0014,
   },
 };

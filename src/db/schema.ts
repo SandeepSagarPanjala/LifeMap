@@ -115,6 +115,7 @@ export const materializedDays = sqliteTable('materialized_days', {
   detectionVersion: integer('detection_version').notNull(),
   tripCount: integer('trip_count').notNull().default(0),
   pointCount: integer('point_count').notNull().default(0),
+  geometryFingerprint: text('geometry_fingerprint'),
   sealedAt: integer('sealed_at', {mode: 'timestamp'}),
   updatedAt: integer('updated_at', {mode: 'timestamp'}).notNull(),
 });
