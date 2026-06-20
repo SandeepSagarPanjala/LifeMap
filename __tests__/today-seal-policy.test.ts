@@ -1,7 +1,6 @@
 import {
   getSealableTodayEntries,
   getTodayLiveBufferStartIndex,
-  TODAY_LIVE_BUFFER_MAX_SEGMENTS,
 } from '@/lib/today-seal-policy';
 import {buildTripDetectionConfig} from '@/lib/trip-settings';
 import type {DetectedTrip} from '@/lib/trip-detection';
@@ -46,7 +45,7 @@ describe('today seal policy', () => {
     expect(getSealableTodayEntries(entries, now, config)).toHaveLength(0);
   });
 
-  it('seals settled prefix but keeps the last two segments live', () => {
+  it('seals settled drives even when they sit before an open stay', () => {
     const now = new Date('2026-06-19T22:00:00.000Z');
     const entries = [
       stay('home', now.getTime() - 8 * 60 * 60_000, now.getTime() - 3 * 60 * 60_000),
@@ -57,10 +56,10 @@ describe('today seal policy', () => {
     ];
 
     expect(getTodayLiveBufferStartIndex(entries, now, config)).toBe(
-      entries.length - TODAY_LIVE_BUFFER_MAX_SEGMENTS,
+      entries.length - 1,
     );
     expect(getSealableTodayEntries(entries, now, config).map(entry => entry.id)).toEqual(
-      ['home', 'out', 'shop'],
+      ['home', 'out', 'shop', 'back'],
     );
   });
 

@@ -18,11 +18,13 @@ function shouldStayLive(
   if (entry.openThroughNow) {
     return true;
   }
-  if (index >= count - TODAY_LIVE_BUFFER_MAX_SEGMENTS) {
-    return true;
-  }
   const dwellConfirmMs = config.dwellMinutes * 60_000;
-  return entry.endAt.getTime() > referenceNow.getTime() - dwellConfirmMs;
+  const endedRecently =
+    entry.endAt.getTime() > referenceNow.getTime() - dwellConfirmMs;
+  if (!endedRecently) {
+    return false;
+  }
+  return index >= count - TODAY_LIVE_BUFFER_MAX_SEGMENTS;
 }
 
 /** First index of the live tail — prefix `[0, liveStart)` is sealable when closed. */

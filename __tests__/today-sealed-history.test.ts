@@ -123,6 +123,28 @@ describe('mergeSealedAndLiveTimeline', () => {
     expect(merged).toHaveLength(1);
     expect(merged[0]?.kind).toBe('stay');
   });
+
+  it('keeps a return drive that starts before the sealed boundary', () => {
+    const cvsEnd = new Date('2026-06-19T21:55:59.000Z').getTime();
+    const sealed = [
+      stay('home', 1_000, cvsEnd - 20 * 60_000),
+      travel('to-cvs', cvsEnd - 20 * 60_000, cvsEnd - 12 * 60_000),
+      stay('cvs', cvsEnd - 12 * 60_000, cvsEnd),
+    ];
+    const live = [
+      ...sealed,
+      travel('home-drive', cvsEnd - 60_000, cvsEnd + 7 * 60_000),
+      stay('home-again', cvsEnd + 7 * 60_000, cvsEnd + 2 * 60 * 60_000, true),
+    ];
+    const merged = mergeSealedAndLiveTimeline(sealed, live, cvsEnd);
+    expect(merged.map(entry => entry.id)).toEqual([
+      'home',
+      'to-cvs',
+      'cvs',
+      'home-drive',
+      'home-again',
+    ]);
+  });
 });
 
 describe('tailGpsStartMs', () => {

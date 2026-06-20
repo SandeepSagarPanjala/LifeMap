@@ -48,7 +48,10 @@ export function filterLiveTailEntries(
     if (entry.endAt.getTime() <= sealedThrough) {
       continue;
     }
-    if (entry.startAt.getTime() < sealedThrough - BOUNDARY_CONTIGUOUS_MS) {
+    if (
+      entry.kind !== 'travel' &&
+      entry.startAt.getTime() < sealedThrough - BOUNDARY_CONTIGUOUS_MS
+    ) {
       continue;
     }
     result.push(entry);
