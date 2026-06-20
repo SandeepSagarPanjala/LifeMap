@@ -15,12 +15,15 @@ import {
 } from '@/lib/trip-geometry-settings';
 import {
   rebuildAllPastDayTrips,
+  rebuildTodayTrips,
   type RebuildPastTripsProgress,
 } from '@/lib/trip-materialization';
+import {scheduleTodayImmediateMapRefresh} from '@/lib/today-refresh-scheduler';
 
 export function TripRebuildSettings() {
   const colors = useThemeColors();
   const detectionConfig = useTripDetectionConfig();
+  const [rebuildingToday, setRebuildingToday] = useState(false);
   const [rebuilding, setRebuilding] = useState(false);
   const [canonicalTravelGeometry, setCanonicalTravelGeometry] = useState(true);
   const [loadingTravelSetting, setLoadingTravelSetting] = useState(true);
@@ -40,6 +43,45 @@ export function TripRebuildSettings() {
     setCanonicalTravelGeometry(next);
     clearHistoryDataCache();
   }, [canonicalTravelGeometry]);
+
+  const runRebuildToday = useCallback(async () => {
+    setRebuildingToday(true);
+    try {
+      const tripsSaved = await rebuildTodayTrips(detectionConfig);
+      clearHistoryDataCache();
+      scheduleTodayImmediateMapRefresh();
+      Alert.alert(
+        'Today rebuilt',
+        tripsSaved > 0
+          ? `Saved ${tripsSaved.toLocaleString()} trip segments from today's GPS.`
+          : 'Cleared stale trip cache. The map will show live detection until new segments seal.',
+      );
+    } catch (error) {
+      Alert.alert(
+        'Could not rebuild today',
+        error instanceof Error ? error.message : 'Something went wrong.',
+      );
+    } finally {
+      setRebuildingToday(false);
+    }
+  }, [detectionConfig]);
+
+  const confirmRebuildToday = () => {
+    Alert.alert(
+      'Rebuild today?',
+      'This deletes cached trips for today, rebuilds visits and drives from GPS, and saves segment routes. Your raw location points are not deleted.',
+      [
+        {text: 'Cancel', style: 'cancel'},
+        {
+          text: 'Rebuild today',
+          style: 'destructive',
+          onPress: () => {
+            void runRebuildToday();
+          },
+        },
+      ],
+    );
+  };
 
   const runRebuildAll = useCallback(async () => {
     setRebuilding(true);
@@ -130,10 +172,20 @@ export function TripRebuildSettings() {
 
         <Pressable
           accessibilityRole="button"
-          disabled={rebuilding}
+          disabled={rebuildingToday || rebuilding}
+          onPress={confirmRebuildToday}
+          className={`border-border mt-4 items-center rounded-full border px-4 py-3 ${
+            rebuildingToday || rebuilding ? 'opacity-50' : ''
+          }`}>
+          <Text className="font-medium">Rebuild today</Text>
+        </Pressable>
+
+        <Pressable
+          accessibilityRole="button"
+          disabled={rebuilding || rebuildingToday}
           onPress={confirmRebuildAll}
-          className={`bg-primary mt-4 items-center rounded-full px-4 py-3 ${
-            rebuilding ? 'opacity-50' : ''
+          className={`bg-primary mt-3 items-center rounded-full px-4 py-3 ${
+            rebuilding || rebuildingToday ? 'opacity-50' : ''
           }`}>
           <Text className="text-primary-foreground font-medium">
             Rebuild all past days
@@ -141,13 +193,17 @@ export function TripRebuildSettings() {
         </Pressable>
       </View>
 
-      <Modal visible={rebuilding} transparent animationType="fade">
+      <Modal visible={rebuilding || rebuildingToday} transparent animationType="fade">
         <View className="flex-1 items-center justify-center bg-black/50 px-6">
           <View className="bg-card w-full max-w-sm rounded-2xl p-5">
             <Text className="text-center text-base font-semibold">
-              Rebuilding trips
+              {rebuildingToday ? 'Rebuilding today' : 'Rebuilding trips'}
             </Text>
-            {progress?.dateKey ? (
+            {rebuildingToday ? (
+              <Text variant="muted" className="mt-2 text-center text-sm">
+                Recomputing from GPS…
+              </Text>
+            ) : progress?.dateKey ? (
               <Text variant="muted" className="mt-2 text-center text-sm">
                 {format(parseDateKey(progress.dateKey), 'MMM d, yyyy')}
               </Text>
@@ -165,7 +221,9 @@ export function TripRebuildSettings() {
             <View className="mt-3 flex-row items-center justify-center gap-2">
               <ActivityIndicator />
               <Text variant="muted" className="text-sm">
-                {progress != null && progress.total > 0
+                {rebuildingToday
+                  ? 'Working…'
+                  : progress != null && progress.total > 0
                   ? `${progress.completed} / ${progress.total} days`
                   : 'Working…'}
               </Text>

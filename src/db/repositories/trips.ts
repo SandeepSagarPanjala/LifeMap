@@ -1,4 +1,4 @@
-import {asc, eq} from 'drizzle-orm';
+import {and, asc, eq, inArray, notInArray} from 'drizzle-orm';
 
 import {getDatabase} from '../client';
 import {trips} from '../schema';
@@ -249,6 +249,38 @@ export async function deleteTripsForDay(dateKey: string): Promise<number> {
   const deleted = await db
     .delete(trips)
     .where(eq(trips.dateKey, dateKey))
+    .returning({id: trips.id});
+  return deleted.length;
+}
+
+/** Remove today rows superseded by a new sealable prefix (GPS untouched). */
+export async function deleteTripsForDayExceptEventKeys(
+  dateKey: string,
+  keepEventKeys: ReadonlySet<string>,
+): Promise<number> {
+  if (keepEventKeys.size === 0) {
+    return deleteTripsForDay(dateKey);
+  }
+
+  const db = await getDatabase();
+  const obsolete = await db
+    .select({id: trips.id})
+    .from(trips)
+    .where(
+      and(
+        eq(trips.dateKey, dateKey),
+        notInArray(trips.eventKey, [...keepEventKeys]),
+      ),
+    );
+  const obsoleteIds = obsolete.map(row => row.id);
+  if (obsoleteIds.length === 0) {
+    return 0;
+  }
+
+  await deleteTripPointsForTripIds(obsoleteIds);
+  const deleted = await db
+    .delete(trips)
+    .where(inArray(trips.id, obsoleteIds))
     .returning({id: trips.id});
   return deleted.length;
 }

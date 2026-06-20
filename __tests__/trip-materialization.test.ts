@@ -7,6 +7,7 @@ import {
   existingTripLabelsByEventKey,
   isClosedPlayableEntry,
   isImplausibleMaterializedTravel,
+  todaySealNeedsPersist,
   tripEventKey,
   tripLabelForPersist,
 } from '@/lib/trip-materialization';
@@ -60,6 +61,45 @@ describe('isClosedPlayableEntry', () => {
   it('treats closed stays and drives as persistable', () => {
     expect(isClosedPlayableEntry(stay(1, 2))).toBe(true);
     expect(isClosedPlayableEntry(travel(1, 2))).toBe(true);
+  });
+});
+
+describe('todaySealNeedsPersist', () => {
+  it('returns false when sealable prefix matches existing rows', () => {
+    const home = stay(1_000, 4_000);
+    const drive = travel(4_000, 5_000);
+    expect(
+      todaySealNeedsPersist(
+        [
+          {eventKey: tripEventKey(home)},
+          {eventKey: tripEventKey(drive)},
+        ],
+        [home, drive],
+      ),
+    ).toBe(false);
+  });
+
+  it('returns true when stale partial drives remain in the DB', () => {
+    const home = stay(1_000, 4_000);
+    const partialDrive = travel(4_000, 4_500);
+    const finalDrive = travel(4_000, 5_000);
+    expect(
+      todaySealNeedsPersist(
+        [
+          {eventKey: tripEventKey(home)},
+          {eventKey: tripEventKey(partialDrive)},
+        ],
+        [home, finalDrive],
+      ),
+    ).toBe(true);
+  });
+
+  it('returns true when a new closed segment appears', () => {
+    const home = stay(1_000, 4_000);
+    const drive = travel(4_000, 5_000);
+    expect(todaySealNeedsPersist([{eventKey: tripEventKey(home)}], [home, drive])).toBe(
+      true,
+    );
   });
 });
 

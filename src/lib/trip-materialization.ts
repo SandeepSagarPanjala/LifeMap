@@ -22,6 +22,7 @@ import { getMomentsForDay, type MomentRow } from '@/db/repositories/moments';
 import {
   deleteAllTrips,
   deleteTripsForDay,
+  deleteTripsForDayExceptEventKeys,
   getTripByEventKey,
   getTripById,
   insertTripIfAbsent,
@@ -115,6 +116,22 @@ export function tripEventKey(
     return `missing:${trip.startAt.getTime()}:${trip.endAt.getTime()}`;
   }
   return `${trip.kind}:${trip.startAt.getTime()}:${trip.endAt.getTime()}`;
+}
+
+/** Whether today's incremental seal should upsert or prune stale rows. */
+export function todaySealNeedsPersist(
+  existingTrips: readonly {eventKey: string}[],
+  closedEntries: ReadonlyArray<
+    Pick<DetectedTrip, 'kind' | 'startAt' | 'endAt'> | TimelineGap
+  >,
+): boolean {
+  const existingKeys = new Set(existingTrips.map(row => row.eventKey));
+  const sealableKeys = new Set(closedEntries.map(tripEventKey));
+  const hasObsolete = existingTrips.some(row => !sealableKeys.has(row.eventKey));
+  const hasNewClosed = closedEntries.some(
+    entry => !existingKeys.has(tripEventKey(entry)),
+  );
+  return hasNewClosed || hasObsolete;
 }
 
 export function isPersistableTimelineEntry(
@@ -560,11 +577,7 @@ export async function persistClosedTripsIncremental(
   const existingTrips = await listTripsForDay(dateKey);
 
   if (!options.fullReplace && isToday && closedEntries.length > 0) {
-    const existingKeys = new Set(existingTrips.map(row => row.eventKey));
-    const hasNewClosed = closedEntries.some(
-      entry => !existingKeys.has(tripEventKey(entry)),
-    );
-    if (!hasNewClosed && existingKeys.size >= closedEntries.length) {
+    if (!todaySealNeedsPersist(existingTrips, closedEntries)) {
       return 0;
     }
   }
@@ -582,6 +595,9 @@ export async function persistClosedTripsIncremental(
 
   if (options.fullReplace) {
     await deleteTripsForDay(dateKey);
+  } else if (isToday && closedEntries.length > 0) {
+    const keepEventKeys = new Set(closedEntries.map(tripEventKey));
+    await deleteTripsForDayExceptEventKeys(dateKey, keepEventKeys);
   }
 
   let upserted = 0;
@@ -811,6 +827,37 @@ export async function rebuildPastDayTrips(
   }
 
   return materializePastDayFromGps(dateKey, detectionConfig);
+}
+
+/** Wipe today's cached trips and re-seal the current prefix from GPS. */
+export async function rebuildTodayTrips(
+  detectionConfig: TripDetectionConfig = getDefaultTripDetectionConfig(),
+  referenceNow: Date = new Date(),
+): Promise<number> {
+  const dateKey = getTodayDateKey();
+  const {entries, dayPointCount} = await buildExplorerDayTimelineFromGps(
+    dateKey,
+    detectionConfig,
+  );
+  const sealable = getSealableTodayEntries(
+    entries,
+    referenceNow,
+    detectionConfig,
+  );
+
+  if (sealable.length === 0) {
+    const existing = await listTripsForDay(dateKey);
+    if (existing.length === 0) {
+      return 0;
+    }
+    await purgeMaterializedDayCache(dateKey, dayPointCount);
+    return 0;
+  }
+
+  return persistClosedTripsIncremental(dateKey, detectionConfig, sealable, {
+    fullReplace: true,
+    pointCount: dayPointCount,
+  });
 }
 
 /** Foreground rebuild for all past days that have GPS data. */
