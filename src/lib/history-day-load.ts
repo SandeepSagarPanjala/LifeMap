@@ -7,6 +7,7 @@ export type LoadHistoryCallbacks = {
 
 export type CoalescedLoadOptions = LoadHistoryCallbacks & {
   force?: boolean;
+  preferStored?: boolean;
 };
 
 type InflightEntry = {
@@ -65,6 +66,7 @@ export async function loadHistoryForDayCoalesced(
 
   entry.promise = loadHistoryForSelectedDay(dateKey, detectionConfig, {
     force: options?.force,
+    preferStored: options?.preferStored,
     onPartial: partial => {
       entry.lastPartial = partial;
       for (const callback of onPartials) {

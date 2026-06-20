@@ -43,6 +43,21 @@ function lastStayIndex(entries: DayTimelineEntry[]): number {
   return -1;
 }
 
+/** True when no playable segment follows — drives after a stay keep it closed. */
+function isTrailingPlayableEntry(
+  index: number,
+  entries: readonly DayTimelineEntry[],
+): boolean {
+  for (let nextIndex = index + 1; nextIndex < entries.length; nextIndex += 1) {
+    const next = entries[nextIndex]!;
+    if (next.kind === 'gap') {
+      continue;
+    }
+    return false;
+  }
+  return true;
+}
+
 function overlapsDayWindow(
   entry: DayTimelineEntry,
   dayStart: Date,
@@ -352,6 +367,7 @@ export function prepareDayHistoryTimeline(
     const isOpenStay =
       isToday &&
       isLastStay &&
+      isTrailingPlayableEntry(index, filtered) &&
       !isMidDriveNoiseStay(entry, raw, config, savedPlaces);
     const closeStayAtDayEnd =
       !isToday &&

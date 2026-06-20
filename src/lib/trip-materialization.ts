@@ -64,10 +64,10 @@ import {
   historyDataFromEntries,
 } from '@/lib/today-live-history';
 import {
-  type DayTimelineEntry,
-  type DetectedTrip,
   isPlayableTimelineEntry,
   stayTripCentroid,
+  type DayTimelineEntry,
+  type DetectedTrip,
   type TimelineGap,
 } from '@/lib/trip-detection';
 import {
@@ -319,6 +319,32 @@ export type LoadHistoryFromStoredTripsOptions = {
   markLastStayOpen?: boolean;
 };
 
+function lastPlayableTimelineEntry(
+  entries: readonly DayTimelineEntry[],
+): DetectedTrip | null {
+  for (let index = entries.length - 1; index >= 0; index -= 1) {
+    const entry = entries[index]!;
+    if (isPlayableTimelineEntry(entry)) {
+      return entry;
+    }
+  }
+  return null;
+}
+
+/** Sealed rows alone cannot represent today when a drive or open visit is still in progress. */
+export function todayStoredHistoryNeedsLiveTail(
+  entries: readonly DayTimelineEntry[],
+): boolean {
+  const last = lastPlayableTimelineEntry(entries);
+  if (last == null) {
+    return true;
+  }
+  if (last.kind === 'travel') {
+    return true;
+  }
+  return !last.openThroughNow;
+}
+
 export async function loadHistoryFromStoredTrips(
   dateKey: string,
   tripRows?: TripRow[],
@@ -354,7 +380,12 @@ export async function loadHistoryFromStoredTrips(
         break;
       }
     }
-    if (lastStayIdx >= 0) {
+    const hasTravelAfterLastStay =
+      lastStayIdx >= 0 &&
+      entries
+        .slice(lastStayIdx + 1)
+        .some(entry => entry.kind === 'travel');
+    if (lastStayIdx >= 0 && !hasTravelAfterLastStay) {
       const stay = entries[lastStayIdx] as DetectedTrip;
       entries = [
         ...entries.slice(0, lastStayIdx),
@@ -460,8 +491,39 @@ export async function loadTodayHistoryMerged(
 
 export type LoadHistoryOptions = {
   force?: boolean;
+  /** Read sealed trips from DB without running live GPS detection. */
+  preferStored?: boolean;
   onPartial?: (data: HistoryData) => void;
 };
+
+async function loadTodayFromStoredTripsIfAvailable(
+  dateKey: string,
+  detectionConfig: TripDetectionConfig,
+  referenceNow: Date = new Date(),
+): Promise<HistoryData | null> {
+  const [tripRows, pointsByTripId] = await Promise.all([
+    listTripsForDay(dateKey),
+    listTripPointsForDay(dateKey),
+  ]);
+  if (
+    tripRows.length === 0 ||
+    !dayHasStoredTripGeometry(tripRows, pointsByTripId)
+  ) {
+    return null;
+  }
+
+  const stored = await loadHistoryFromStoredTrips(
+    dateKey,
+    tripRows,
+    referenceNow,
+    detectionConfig,
+    {markLastStayOpen: true},
+  );
+  if (todayStoredHistoryNeedsLiveTail(stored.entries)) {
+    return null;
+  }
+  return stored;
+}
 
 export async function loadHistoryForSelectedDay(
   dateKey: string,
@@ -469,6 +531,25 @@ export async function loadHistoryForSelectedDay(
   options?: LoadHistoryOptions,
 ): Promise<HistoryData> {
   const isToday = dateKey === getTodayDateKey();
+  const referenceNow = new Date();
+
+  if (!options?.force && isToday) {
+    const stored = await loadTodayFromStoredTripsIfAvailable(
+      dateKey,
+      detectionConfig,
+      referenceNow,
+    );
+    if (stored != null) {
+      return stored;
+    }
+    if (options?.preferStored) {
+      return loadTodayHistoryMerged(
+        detectionConfig,
+        referenceNow,
+        options.onPartial,
+      );
+    }
+  }
 
   if (!options?.force && !isToday) {
     let [tripRows, materializedDay] = await Promise.all([
@@ -509,8 +590,6 @@ export async function loadHistoryForSelectedDay(
     }
   }
 
-  const referenceNow = new Date();
-
   if (!isToday) {
     await materializePastDayFromGps(dateKey, detectionConfig);
     return loadHistoryFromStoredTrips(
@@ -521,21 +600,11 @@ export async function loadHistoryForSelectedDay(
     );
   }
 
-  const history = await loadTodayHistoryMerged(
+  return loadTodayHistoryMerged(
     detectionConfig,
     referenceNow,
     options?.onPartial,
   );
-
-  setTimeout(() => {
-    void persistTodaySealableSegments(
-      dateKey,
-      detectionConfig,
-      referenceNow,
-    ).catch(() => undefined);
-  }, 0);
-
-  return history;
 }
 
 /** @deprecated Use loadHistoryForSelectedDay */

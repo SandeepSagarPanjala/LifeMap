@@ -121,9 +121,6 @@ export async function persistLocationFromSdk(
     },
     {dedupe: options?.dedupe},
   );
-  const {scheduleTodayRefreshAfterGps, scheduleTodayImmediateMapRefresh} =
-    await import('@/lib/today-refresh-scheduler');
-  scheduleTodayRefreshAfterGps();
   return true;
 }
 
@@ -311,9 +308,5 @@ export async function handleMotionChangePersist(
     await recordTrackingDiagnostic('motion_arrival_saved', {
       timestamp: locationTimestamp(location).toISOString(),
     });
-    const {scheduleTodayImmediateMapRefresh} = await import(
-      '@/lib/today-refresh-scheduler'
-    );
-    scheduleTodayImmediateMapRefresh();
   }
 }

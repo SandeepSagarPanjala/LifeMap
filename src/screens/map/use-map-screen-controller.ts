@@ -161,8 +161,8 @@ export function useMapScreenController() {
       }
       syncSelectedDateKeyForTodayRoll(getTodayDateKey());
       if (selectedDateKey === getTodayDateKey()) {
-        void import('@/lib/today-refresh-scheduler').then(module => {
-          module.scheduleTodayImmediateMapRefresh();
+        void         import('@/lib/today-refresh-scheduler').then(module => {
+          module.refreshTodayOnForeground();
         });
       }
     });
@@ -201,10 +201,13 @@ export function useMapScreenController() {
   const {places: savedPlaces, hasHome, hasWork, refresh: refreshSavedPlaces} =
     useSavedPlaces();
   const {dayMoments, refreshDayMoments} = useDayMoments(selectedDateKey);
-  const {data: historyData, loading: historyLoading} =
-    useHistoryForDay(selectedDateKey);
-  const latestLocationSaveAt = useLatestLocationSave();
   const viewingToday = selectedDateKey === todayKey;
+  const {data: historyData, loading: historyLoading} =
+    useHistoryForDay(selectedDateKey, {
+      active: historyPanelOpen || !viewingToday,
+      preferStored: historyPanelOpen,
+    });
+  const latestLocationSaveAt = useLatestLocationSave();
   const earliestDateKey = useAppStore(state => state.historyEarliestDateKey);
   const canGoPrevDay =
     earliestDateKey == null || selectedDateKey > earliestDateKey;

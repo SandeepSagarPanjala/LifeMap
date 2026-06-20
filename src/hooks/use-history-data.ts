@@ -21,6 +21,13 @@ export type {HistoryData} from '@/lib/history-data-types';
 /** Wait for rapid calendar day taps to settle before hitting the database. */
 const HISTORY_DAY_LOAD_DEBOUNCE_MS = 300;
 
+export type UseHistoryForDayOptions = {
+  /** When false, today is not loaded until the history panel opens. */
+  active?: boolean;
+  /** Read sealed trips from DB when opening history (no live GPS detection). */
+  preferStored?: boolean;
+};
+
 function emptyForDateKey(dateKey: string): HistoryData {
   const {start: dayStart} = getDayRange(dateKey);
   return {
@@ -69,12 +76,16 @@ async function syncHistoryForDay(
   return result;
 }
 
-export function useHistoryForDay(dateKey: string): {
+export function useHistoryForDay(
+  dateKey: string,
+  options: UseHistoryForDayOptions = {},
+): {
   data: HistoryData;
   loading: boolean;
   error: string | null;
   refresh: () => void;
 } {
+  const {active = true, preferStored = false} = options;
   const detectionConfig = useTripDetectionConfig();
   const initialCacheKey = historyCacheKey(dateKey, detectionConfig);
   const initialCached = historyDataCache.peek(initialCacheKey);
@@ -82,7 +93,7 @@ export function useHistoryForDay(dateKey: string): {
     initialCached ?? emptyForDateKey(dateKey),
   );
   const [loading, setLoading] = useState(
-    initialCached == null || initialCached.dateKey !== dateKey,
+    active && (initialCached == null || initialCached.dateKey !== dateKey),
   );
   const [error, setError] = useState<string | null>(null);
   const loadGenerationRef = useRef(0);
@@ -90,17 +101,22 @@ export function useHistoryForDay(dateKey: string): {
   const runSync = useCallback(
     (
       targetDateKey: string,
-      options?: {force?: boolean; showLoading?: boolean},
+      syncOptions?: {
+        force?: boolean;
+        preferStored?: boolean;
+        showLoading?: boolean;
+      },
     ) => {
       const generation = beginHistoryDayLoad();
       loadGenerationRef.current = generation;
-      if (options?.showLoading !== false) {
+      if (syncOptions?.showLoading !== false) {
         setLoading(true);
       }
       setError(null);
 
       return syncHistoryForDay(targetDateKey, detectionConfig, {
-        force: options?.force,
+        force: syncOptions?.force,
+        preferStored: syncOptions?.preferStored,
         loadGeneration: generation,
         onPartial: partial => {
           if (generation !== loadGenerationRef.current) {
@@ -148,15 +164,35 @@ export function useHistoryForDay(dateKey: string): {
       return;
     }
     return subscribeTodayHistoryRefresh(() => {
-      void runSync(dateKey, {force: true, showLoading: false}).catch(
-        () => undefined,
-      );
+      void runSync(dateKey, {
+        force: false,
+        preferStored: true,
+        showLoading: false,
+      }).catch(() => undefined);
     });
+  }, [dateKey, runSync, viewingToday]);
+
+  useEffect(() => {
+    if (!viewingToday) {
+      return;
+    }
+    void runSync(dateKey, {
+      preferStored: true,
+      showLoading: false,
+    }).catch(() => undefined);
   }, [dateKey, runSync, viewingToday]);
 
   useEffect(() => {
     const cacheKey = historyCacheKey(dateKey, detectionConfig);
     const cached = historyDataCache.peek(cacheKey);
+
+    if (!active) {
+      if (cached != null) {
+        setData(cached);
+      }
+      setLoading(false);
+      return;
+    }
 
     if (cached != null && !viewingToday) {
       setData(cached);
@@ -168,12 +204,20 @@ export function useHistoryForDay(dateKey: string): {
     const timer = setTimeout(() => {
       void runSync(dateKey, {
         showLoading: cached == null,
-        force: viewingToday,
+        force: false,
+        preferStored,
       }).catch(() => undefined);
     }, HISTORY_DAY_LOAD_DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
-  }, [dateKey, detectionConfig, runSync, viewingToday]);
+  }, [
+    active,
+    dateKey,
+    detectionConfig,
+    preferStored,
+    runSync,
+    viewingToday,
+  ]);
 
   return {data, loading, error, refresh};
 }

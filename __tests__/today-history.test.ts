@@ -165,6 +165,88 @@ describe('prepareTodayHistoryTimeline', () => {
     }
   });
 
+  it('does not extend a stay through a drive that follows it (Jun 19 export)', () => {
+    const fs = require('fs') as typeof import('fs');
+    const exportPath = ALL_DATA_EXPORT_PATH;
+    if (!fs.existsSync(exportPath)) {
+      return;
+    }
+
+    const raw = JSON.parse(fs.readFileSync(exportPath, 'utf8')) as {
+      tables: {
+        location_points: Array<{
+          id: number;
+          timestamp: string;
+          lat: number;
+          lng: number;
+          accuracy: number | null;
+          altitude: number | null;
+          speed: number | null;
+          source: string;
+        }>;
+        saved_places: Array<{
+          id: number;
+          kind: string;
+          label: string;
+          lat: number;
+          lng: number;
+          radiusMeters: number;
+          createdAt: string;
+        }>;
+      };
+    };
+    const tripConfig = buildTripDetectionConfig(10, 5, 75);
+    const allPoints = raw.tables.location_points.map(point => ({
+      ...point,
+      timestamp: new Date(point.timestamp),
+      source: point.source as LocationPointRow['source'],
+    }));
+    const dayStart = new Date('2026-06-19T05:00:00.000Z');
+    const dayEnd = new Date('2026-06-20T04:59:59.999Z');
+    const referenceNow = new Date('2026-06-20T00:50:00.000Z'); // 7:50 PM CDT, mid-drive
+    const dayPoints = allPoints.filter(
+      p => p.timestamp >= dayStart && p.timestamp <= referenceNow,
+    );
+    const lookback = allPoints.filter(p => p.timestamp < dayStart);
+    const savedPlaces = (raw.tables.saved_places ?? []).map(mapExportSavedPlace);
+
+    const entries = prepareDayHistoryTimeline(
+      '2026-06-19',
+      dayPoints,
+      lookback,
+      tripConfig,
+      referenceNow,
+      [],
+      {savedPlaces},
+    );
+
+    const evening = entries.filter(
+      entry =>
+        entry.kind !== 'gap' &&
+        entry.startAt.getTime() >= new Date('2026-06-20T00:00:00.000Z').getTime(),
+    );
+    const vishnuStay = evening.find(
+      entry => entry.kind === 'stay' && entry.savedPlaceLabel === 'Vishnu',
+    );
+    const followingTravel = evening.find(
+      (entry, index) =>
+        entry.kind === 'travel' &&
+        evening[index - 1]?.kind === 'stay' &&
+        (evening[index - 1] as {savedPlaceLabel?: string}).savedPlaceLabel ===
+          'Vishnu',
+    );
+
+    expect(vishnuStay?.kind).toBe('stay');
+    expect(followingTravel?.kind).toBe('travel');
+    if (vishnuStay?.kind === 'stay') {
+      expect(vishnuStay.openThroughNow).toBeFalsy();
+      expect(vishnuStay.endAt.getTime()).toBeLessThan(referenceNow.getTime());
+      expect(vishnuStay.endAt.getTime()).toBeLessThanOrEqual(
+        followingTravel!.endAt.getTime(),
+      );
+    }
+  });
+
   it('does not split a midnight drive into a fake visit and restart', () => {
     const road = {lat: 33.22, lng: -96.95};
     const moving = (iso: string, id: number, latOffset: number): LocationPointRow => ({

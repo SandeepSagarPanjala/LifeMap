@@ -18,7 +18,7 @@ import {
   rebuildTodayTrips,
   type RebuildPastTripsProgress,
 } from '@/lib/trip-materialization';
-import {scheduleTodayImmediateMapRefresh} from '@/lib/today-refresh-scheduler';
+import {refreshTodayOnForeground} from '@/lib/today-refresh-scheduler';
 
 export function TripRebuildSettings() {
   const colors = useThemeColors();
@@ -49,7 +49,7 @@ export function TripRebuildSettings() {
     try {
       const tripsSaved = await rebuildTodayTrips(detectionConfig);
       clearHistoryDataCache();
-      scheduleTodayImmediateMapRefresh();
+      refreshTodayOnForeground();
       Alert.alert(
         'Today rebuilt',
         tripsSaved > 0

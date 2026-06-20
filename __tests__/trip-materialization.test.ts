@@ -8,6 +8,7 @@ import {
   isClosedPlayableEntry,
   isImplausibleMaterializedTravel,
   todaySealNeedsPersist,
+  todayStoredHistoryNeedsLiveTail,
   tripEventKey,
   tripLabelForPersist,
 } from '@/lib/trip-materialization';
@@ -61,6 +62,26 @@ describe('isClosedPlayableEntry', () => {
   it('treats closed stays and drives as persistable', () => {
     expect(isClosedPlayableEntry(stay(1, 2))).toBe(true);
     expect(isClosedPlayableEntry(travel(1, 2))).toBe(true);
+  });
+});
+
+describe('todayStoredHistoryNeedsLiveTail', () => {
+  it('returns true when the sealed prefix ends on a drive', () => {
+    expect(
+      todayStoredHistoryNeedsLiveTail([
+        stay(1_000, 2_000),
+        travel(2_000, 3_000),
+      ]),
+    ).toBe(true);
+  });
+
+  it('returns false when the sealed prefix already has an open stay', () => {
+    expect(
+      todayStoredHistoryNeedsLiveTail([
+        travel(1_000, 2_000),
+        stay(2_000, 3_000, true),
+      ]),
+    ).toBe(false);
   });
 });
 
