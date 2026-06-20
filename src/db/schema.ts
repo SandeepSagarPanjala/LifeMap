@@ -60,6 +60,7 @@ export const savedPlaces = sqliteTable('saved_places', {
   lat: real('lat').notNull(),
   lng: real('lng').notNull(),
   radiusMeters: integer('radius_meters').notNull().default(150),
+  addressLine: text('address_line'),
   createdAt: integer('created_at', {mode: 'timestamp'}).notNull(),
 });
 

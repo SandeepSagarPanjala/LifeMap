@@ -2,8 +2,10 @@ import {desc, eq} from 'drizzle-orm';
 
 import {getDatabase} from '../client';
 import {savedPlaces} from '../schema';
+import {lookupSavedPlaceAddress} from '@/lib/saved-place-address';
 import {
   canAddSavedPlace,
+  normalizeSavedPlaceLabel,
   SavedPlaceLimitError,
 } from '@/lib/saved-places';
 
@@ -16,6 +18,7 @@ export type SavedPlaceRow = {
   lat: number;
   lng: number;
   radiusMeters: number;
+  addressLine: string | null;
   createdAt: Date;
 };
 
@@ -29,6 +32,7 @@ function mapRow(row: typeof savedPlaces.$inferSelect): SavedPlaceRow {
     lat: row.lat,
     lng: row.lng,
     radiusMeters: row.radiusMeters,
+    addressLine: row.addressLine ?? null,
     createdAt: row.createdAt,
   };
 }
@@ -49,6 +53,7 @@ export async function upsertHomePlace(
   if (!canAddSavedPlace(existing, 'home')) {
     throw new SavedPlaceLimitError();
   }
+  const addressLine = await lookupSavedPlaceAddress(lat, lng);
   await db.delete(savedPlaces).where(eq(savedPlaces.kind, 'home'));
   await db.insert(savedPlaces).values({
     kind: 'home',
@@ -56,6 +61,7 @@ export async function upsertHomePlace(
     lat,
     lng,
     radiusMeters,
+    addressLine,
     createdAt: new Date(),
   });
   const rows = await db
@@ -76,6 +82,7 @@ export async function upsertWorkPlace(
   if (!canAddSavedPlace(existing, 'work')) {
     throw new SavedPlaceLimitError();
   }
+  const addressLine = await lookupSavedPlaceAddress(lat, lng);
   await db.delete(savedPlaces).where(eq(savedPlaces.kind, 'work'));
   await db.insert(savedPlaces).values({
     kind: 'work',
@@ -83,6 +90,7 @@ export async function upsertWorkPlace(
     lat,
     lng,
     radiusMeters,
+    addressLine,
     createdAt: new Date(),
   });
   const rows = await db
@@ -100,20 +108,19 @@ export async function addFavoritePlace(
   radiusMeters = DEFAULT_SAVED_PLACE_RADIUS_METERS,
 ): Promise<SavedPlaceRow> {
   const db = await getDatabase();
-  const trimmed = label.trim();
-  if (!trimmed) {
-    throw new Error('Favorite name is required');
-  }
+  const trimmed = normalizeSavedPlaceLabel(label);
   const existing = await listSavedPlaces();
   if (!canAddSavedPlace(existing, 'favorite')) {
     throw new SavedPlaceLimitError();
   }
+  const addressLine = await lookupSavedPlaceAddress(lat, lng);
   await db.insert(savedPlaces).values({
     kind: 'favorite',
     label: trimmed,
     lat,
     lng,
     radiusMeters,
+    addressLine,
     createdAt: new Date(),
   });
   const rows = await db
@@ -123,6 +130,56 @@ export async function addFavoritePlace(
     .orderBy(desc(savedPlaces.id))
     .limit(1);
   return mapRow(rows[0]!);
+}
+
+export async function updateSavedPlaceAddressLine(
+  id: number,
+  addressLine: string,
+): Promise<SavedPlaceRow> {
+  const db = await getDatabase();
+  const trimmed = addressLine.trim();
+  if (!trimmed) {
+    throw new Error('Address is required');
+  }
+  const rows = await db
+    .select()
+    .from(savedPlaces)
+    .where(eq(savedPlaces.id, id))
+    .limit(1);
+  const existing = rows[0];
+  if (existing == null) {
+    throw new Error('Saved place not found');
+  }
+  await db
+    .update(savedPlaces)
+    .set({addressLine: trimmed})
+    .where(eq(savedPlaces.id, id));
+  return mapRow({...existing, addressLine: trimmed});
+}
+
+export async function updateFavoritePlaceLabel(
+  id: number,
+  label: string,
+): Promise<SavedPlaceRow> {
+  const db = await getDatabase();
+  const trimmed = normalizeSavedPlaceLabel(label);
+  const rows = await db
+    .select()
+    .from(savedPlaces)
+    .where(eq(savedPlaces.id, id))
+    .limit(1);
+  const existing = rows[0];
+  if (existing == null) {
+    throw new Error('Saved place not found');
+  }
+  if (existing.kind !== 'favorite') {
+    throw new Error('Only favorite places can be renamed');
+  }
+  await db
+    .update(savedPlaces)
+    .set({label: trimmed})
+    .where(eq(savedPlaces.id, id));
+  return mapRow({...existing, label: trimmed});
 }
 
 export async function deleteSavedPlace(id: number): Promise<void> {

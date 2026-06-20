@@ -1,4 +1,4 @@
-import {useEffect, useRef, useState} from 'react';
+import {useCallback, useEffect, useRef, useState} from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -25,6 +25,7 @@ import {
   Sparkles,
   X,
 } from 'lucide-react-native';
+import {BottomSheetModalProvider} from '@gorhom/bottom-sheet';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 import {EmotionTokenPickerSheet} from '@/components/capture/EmotionTokenPickerSheet';
@@ -61,6 +62,8 @@ import type {RootStackParamList} from '@/navigation/types';
 
 const KEYBOARD_TOOLBAR_GAP = 8;
 
+type DiaryFocusField = 'title' | 'body';
+
 export function CaptureNoteScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const colors = useThemeColors();
@@ -71,6 +74,8 @@ export function CaptureNoteScreen() {
   const voicePlayerRef = useRef(createVoiceRecorderSession());
   const openedAtRef = useRef(new Date());
   const titleInputRef = useRef<TextInput>(null);
+  const bodyInputRef = useRef<TextInput>(null);
+  const lastFocusedFieldRef = useRef<DiaryFocusField>('title');
 
   const [title, setTitle] = useState('');
   const [textBody, setTextBody] = useState('');
@@ -101,6 +106,14 @@ export function CaptureNoteScreen() {
     selectedEmotionId != null ? getEmotionToken(selectedEmotionId) : null;
   const selectedContext =
     selectedContextId != null ? getEmotionContextToken(selectedContextId) : null;
+
+  const restoreDiaryFocus = useCallback(() => {
+    if (lastFocusedFieldRef.current === 'body') {
+      bodyInputRef.current?.focus();
+      return;
+    }
+    titleInputRef.current?.focus();
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => titleInputRef.current?.focus(), 400);
@@ -295,6 +308,7 @@ export function CaptureNoteScreen() {
   };
 
   return (
+    <BottomSheetModalProvider>
     <View style={styles.root}>
       <View style={styles.mainColumn}>
         <View style={[styles.topBar, {paddingTop: insets.top + 6}]}>
@@ -341,16 +355,23 @@ export function CaptureNoteScreen() {
             placeholderTextColor="#C7C7CC"
             value={title}
             onChangeText={setTitle}
+            onFocus={() => {
+              lastFocusedFieldRef.current = 'title';
+            }}
             style={styles.titleInput}
             selectionColor={colors.primary}
             cursorColor={colors.primary}
             returnKeyType="next"
           />
           <TextInput
+            ref={bodyInputRef}
             placeholder="Start writing…"
             placeholderTextColor="#C7C7CC"
             value={textBody}
             onChangeText={setTextBody}
+            onFocus={() => {
+              lastFocusedFieldRef.current = 'body';
+            }}
             multiline
             textAlignVertical="top"
             style={styles.bodyInput}
@@ -481,14 +502,20 @@ export function CaptureNoteScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Record voice memo"
-              onPress={() => setVoiceSheetOpen(true)}
+              onPress={() => {
+                Keyboard.dismiss();
+                setVoiceSheetOpen(true);
+              }}
               style={styles.toolbarButton}>
               <AudioLines size={22} color="#8E8E93" strokeWidth={2} />
             </Pressable>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Pick emotion"
-              onPress={() => setEmotionSheetOpen(true)}
+              onPress={() => {
+                Keyboard.dismiss();
+                setEmotionSheetOpen(true);
+              }}
               style={styles.toolbarButton}>
               {selectedEmotion && selectedContext ? (
                 <View
@@ -515,6 +542,7 @@ export function CaptureNoteScreen() {
           setSelectedContextId(selection.context.id);
         }}
         onClose={() => setEmotionSheetOpen(false)}
+        onWillClose={restoreDiaryFocus}
       />
       <VoiceMemoSheet
         visible={voiceSheetOpen}
@@ -526,9 +554,11 @@ export function CaptureNoteScreen() {
           });
         }}
         onClose={() => setVoiceSheetOpen(false)}
+        onWillClose={restoreDiaryFocus}
         onSaved={async () => {}}
       />
     </View>
+    </BottomSheetModalProvider>
   );
 }
 

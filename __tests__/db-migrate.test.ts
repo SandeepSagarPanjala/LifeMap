@@ -7,12 +7,13 @@ import {
 describe('database migrations', () => {
   it('loads bundled sqlite migrations in journal order', () => {
     const prepared = prepareMigrations();
-    expect(prepared).toHaveLength(15);
+    expect(prepared).toHaveLength(16);
     expect(prepared[0]?.tag).toBe('0000_init');
     expect(prepared[0]?.sql[0]).toContain('CREATE TABLE `location_points`');
     expect(prepared[6]?.tag).toBe('0006_moments_mood');
     expect(prepared[11]?.tag).toBe('0011_drop_materialization_queue');
     expect(prepared[14]?.tag).toBe('0014_materialized_day_geometry');
+    expect(prepared[15]?.tag).toBe('0015_saved_place_address');
   });
 
   it('detects whether a migration is already applied', async () => {

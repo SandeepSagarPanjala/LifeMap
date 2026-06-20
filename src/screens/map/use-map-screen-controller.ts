@@ -17,9 +17,11 @@ import {
   addFavoritePlace,
   deleteSavedPlace,
   type SavedPlaceRow,
+  updateFavoritePlaceLabel,
   upsertHomePlace,
   upsertWorkPlace,
 } from '@/db/repositories/saved-places';
+import {historyPanelChromeHeight} from '@/components/map/HistoryPanelChrome';
 import {useAfterInteractions} from '@/hooks/use-after-interactions';
 import {useHistoryForDay} from '@/hooks/use-history-data';
 import {useLatestLocationSave} from '@/hooks/use-latest-location-save';
@@ -113,7 +115,7 @@ import {
   DAY_MOMENT_SUMMARY_BAR_HEIGHT,
   DAY_MOMENT_SUMMARY_BOTTOM_GAP,
   MAP_FALLBACK_REGION,
-  MAP_HISTORY_PANEL_HEIGHT,
+  MAP_HISTORY_DATE_NAV_ABOVE_PANEL_GAP,
   MAP_HISTORY_FLOATING_CONTROLS_GAP,
   MAP_LEFT_STACK_COUNT,
   MAP_LOCATE_BUTTON_BOTTOM_GAP,
@@ -170,6 +172,8 @@ export function useMapScreenController() {
   }, [selectedDateKey, syncSelectedDateKeyForTodayRoll]);
   const [historyDatePickerOpen, setHistoryDatePickerOpen] = useState(false);
   const [historyPanelOpen, setHistoryPanelOpen] = useState(false);
+  const [historyPanelChromeVisible, setHistoryPanelChromeVisible] =
+    useState(false);
   const [placeLabelEditStay, setPlaceLabelEditStay] = useState<DetectedTrip | null>(
     null,
   );
@@ -237,9 +241,8 @@ export function useMapScreenController() {
   const fitHistoryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const userCoordinateRef = useRef<MapUserCoordinate | null>(null);
   const lastUserCoordinateRefreshMsRef = useRef(0);
-  const historyPanelY = useRef(
-    new Animated.Value(MAP_HISTORY_PANEL_HEIGHT + 48),
-  ).current;
+  const historyPanelY = useRef(new Animated.Value(400)).current;
+  const historyPanelOpenRef = useRef(false);
 
   const playback = useTripPlayback();
   const historyPanelReady = useAfterInteractions(historyPanelOpen);
@@ -334,7 +337,9 @@ export function useMapScreenController() {
   );
 
   const showHistoryPanelContent =
-    historyPanelOpen && historyPanelReady && historyDayLoaded;
+    historyPanelChromeVisible &&
+    historyDayLoaded &&
+    (historyPanelOpen ? historyPanelReady : true);
 
   const currentOpenVisit = useMemo(
     () =>
@@ -386,7 +391,9 @@ export function useMapScreenController() {
     selectedPlayable?.kind === 'stay' ? selectedPlayable : null;
 
   const historyScrubOnEvent =
-    historyPanelOpen && selectedHistoryIndex >= 0 && selectedEntry != null;
+    historyPanelChromeVisible &&
+    selectedHistoryIndex >= 0 &&
+    selectedEntry != null;
 
   const showPlaceLabelCard =
     historyScrubOnEvent && placeLabelEditStay != null;
@@ -480,9 +487,21 @@ export function useMapScreenController() {
       DAY_MOMENT_SUMMARY_ABOVE_BAR_GAP
     : 0;
 
+  const historyPanelSlideDistance = useMemo(
+    () =>
+      resolvedHistoryPanelContentHeight +
+      MAP_HISTORY_DATE_NAV_ABOVE_PANEL_GAP +
+      historyPanelChromeHeight(viewingToday) +
+      24,
+    [resolvedHistoryPanelContentHeight, viewingToday],
+  );
+
   const historyPanelBottom =
-    insets.bottom + resolvedHistoryPanelContentHeight;
-  const stackBaseBottom = historyPanelOpen
+    insets.bottom +
+    historyPanelChromeHeight(viewingToday) +
+    MAP_HISTORY_DATE_NAV_ABOVE_PANEL_GAP +
+    resolvedHistoryPanelContentHeight;
+  const stackBaseBottom = historyPanelChromeVisible
     ? historyPanelBottom + MAP_HISTORY_FLOATING_CONTROLS_GAP
     : insets.bottom + MAP_LOCATE_BUTTON_BOTTOM_GAP + daySummaryBarReserve;
 
@@ -499,14 +518,13 @@ export function useMapScreenController() {
     () =>
       mapDateNavAnchorBottom({
         insetBottom: insets.bottom,
-        historyPanelOpen,
+        historyPanelOpen: false,
         showDayMomentSummary,
         historyAddressCardVisible: showPlaceLabelCard,
         historyEventCardHasMoments,
         historyPanelContentHeight: resolvedHistoryPanelContentHeight,
       }),
     [
-      historyPanelOpen,
       insets.bottom,
       showDayMomentSummary,
       showPlaceLabelCard,
@@ -533,14 +551,13 @@ export function useMapScreenController() {
   );
 
   const mapAttributionInsets = useMemo(() => {
-    const bottomClearance = historyPanelOpen
+    const bottomClearance = historyPanelChromeVisible
       ? insets.bottom + 8
       : locateButtonBottom + MAP_STACK_BUTTON_SIZE + 6;
     return buildMapAttributionInsets(bottomClearance);
-  }, [historyPanelOpen, insets.bottom, locateButtonBottom]);
+  }, [historyPanelChromeVisible, insets.bottom, locateButtonBottom]);
 
-  const scrubOnEvent =
-    historyPanelOpen && selectedHistoryIndex >= 0 && selectedEntry != null;
+  const scrubOnEvent = historyScrubOnEvent;
 
   usePlaceLookupScheduler({
     entries: historyEntries,
@@ -990,7 +1007,6 @@ export function useMapScreenController() {
     setHistoryPanelOpen(false);
     setPlaceLabelEditStay(null);
     playback.stop();
-    setSelectedHistoryIndex(-1);
   }, [playback]);
 
   const goToPrevDay = useCallback(() => {
@@ -1025,7 +1041,6 @@ export function useMapScreenController() {
       } else {
         playback.stop();
         setSelectedDateKey(todayKey);
-        setSelectedHistoryIndex(-1);
       }
       return next;
     });
@@ -1127,6 +1142,21 @@ export function useMapScreenController() {
     [refreshSavedPlaces],
   );
 
+  const handleEditFavoriteLabel = useCallback(
+    async (place: SavedPlaceRow, label: string) => {
+      try {
+        await updateFavoritePlaceLabel(place.id, label);
+        await refreshSavedPlaces();
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Could not rename place';
+        Alert.alert('Rename failed', message);
+        throw error;
+      }
+    },
+    [refreshSavedPlaces],
+  );
+
   const handleSelectSavedPlace = useCallback((place: SavedPlaceRow) => {
     if (!mapRef.current) {
       return;
@@ -1159,14 +1189,33 @@ export function useMapScreenController() {
   }, [selectedPlayable]);
 
   useEffect(() => {
-    Animated.spring(historyPanelY, {
-      toValue: historyPanelOpen ? 0 : MAP_HISTORY_PANEL_HEIGHT + 48,
-      damping: 24,
-      stiffness: 280,
-      mass: 0.85,
+    const opening = historyPanelOpen && !historyPanelOpenRef.current;
+    historyPanelOpenRef.current = historyPanelOpen;
+
+    if (opening) {
+      setHistoryPanelChromeVisible(true);
+      historyPanelY.setValue(historyPanelSlideDistance);
+    }
+
+    const animation = Animated.spring(historyPanelY, {
+      toValue: historyPanelOpen ? 0 : historyPanelSlideDistance,
+      damping: 22,
+      stiffness: 340,
+      mass: 0.7,
       useNativeDriver: true,
-    }).start();
-  }, [historyPanelOpen, historyPanelY]);
+    });
+
+    animation.start(({finished}) => {
+      if (finished && !historyPanelOpen) {
+        setHistoryPanelChromeVisible(false);
+        setSelectedHistoryIndex(-1);
+      }
+    });
+
+    return () => {
+      animation.stop();
+    };
+  }, [historyPanelOpen, historyPanelSlideDistance, historyPanelY]);
 
   useEffect(() => {
     if (!historyPanelOpen && viewingToday) {
@@ -1391,7 +1440,9 @@ export function useMapScreenController() {
     closeHistoryPanel,
     dateNavAnchorBottom,
     historyPanelOpen,
+    historyPanelChromeVisible,
     historyPanelY,
+    historyPanelSlideDistance,
     handleHistoryPanelContentLayout,
     historyDatePickerOpen,
     selectedDateKey,
@@ -1453,6 +1504,7 @@ export function useMapScreenController() {
     openSavedPlacesSheet,
     closeSavedPlacesSheet,
     handleDeleteSavedPlace,
+    handleEditFavoriteLabel,
     handleSelectSavedPlace,
     goToCurrentLocation,
     openHistoryDatePicker,

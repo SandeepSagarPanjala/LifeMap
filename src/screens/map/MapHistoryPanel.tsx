@@ -2,10 +2,12 @@ import {useState} from 'react';
 import {Animated, StyleSheet, View} from 'react-native';
 
 import {HistoryEventCard} from '@/components/map/HistoryEventCard';
+import {HistoryPanelChrome} from '@/components/map/HistoryPanelChrome';
 import {HistoryPanelSkeleton} from '@/components/map/HistoryPanelSkeleton';
 import {HistoryTimelineBar} from '@/components/map/HistoryTimelineBar';
 import {VisitPlaceAddressCard} from '@/components/map/VisitPlaceAddressCard';
 import {VisitPlaceCustomLabelSheet} from '@/components/map/VisitPlaceCustomLabelSheet';
+import {MAP_HISTORY_DATE_NAV_ABOVE_PANEL_GAP} from '@/screens/map/map-screen-constants';
 
 import type {MapScreenController} from './use-map-screen-controller';
 
@@ -15,7 +17,7 @@ type MapHistoryPanelProps = {
 
 export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
   const {
-    historyPanelOpen,
+    historyPanelChromeVisible,
     insets,
     historyPanelY,
     showHistoryPanelContent,
@@ -49,16 +51,26 @@ export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
     viewingToday,
     historyHasGpsData,
     handleHistoryPanelContentLayout,
+    mapDateLabel,
+    canGoPrevDay,
+    canGoNextDay,
+    goToPrevDay,
+    goToNextDay,
+    goToToday,
+    closeHistoryPanel,
   } = controller;
 
   const [customLabelOpen, setCustomLabelOpen] = useState(false);
+  const eventSelected =
+    selectedHistoryIndex >= 0 && selectedEntry != null;
 
-  if (!historyPanelOpen) {
+  if (!historyPanelChromeVisible) {
     return null;
   }
 
   return (
     <Animated.View
+      pointerEvents="box-none"
       style={[
         styles.host,
         {
@@ -66,8 +78,19 @@ export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
           transform: [{translateY: historyPanelY}],
         },
       ]}>
+      <HistoryPanelChrome
+        viewingToday={viewingToday}
+        label={mapDateLabel}
+        canGoPrev={canGoPrevDay}
+        canGoNext={canGoNextDay}
+        onPrev={goToPrevDay}
+        onNext={goToNextDay}
+        onClose={viewingToday ? closeHistoryPanel : goToToday}
+      />
       {showHistoryPanelContent ? (
-        <View onLayout={handleHistoryPanelContentLayout}>
+        <View
+          style={styles.content}
+          onLayout={handleHistoryPanelContentLayout}>
           {showPlaceLabelCard ? (
             <VisitPlaceAddressCard
               display={placeLabelEditDisplay}
@@ -79,7 +102,7 @@ export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
             />
           ) : null}
           <HistoryEventCard
-            entry={scrubOnEvent ? selectedEntry : null}
+            entry={eventSelected ? selectedEntry : null}
             savedPlace={scrubOnEvent ? selectedSavedPlace : null}
             visitPlaceLabel={visitPlaceLabelInEventCard}
             onEditVisitPlaceLabel={
@@ -103,7 +126,9 @@ export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
             onPressMomentCounts={
               scrubOnEvent ? openSelectedEntryMomentsPreview : undefined
             }
-            scrubOnEmpty={historyEntries.length > 0 && !scrubOnEvent}
+            scrubOnEmpty={
+              historyEntries.length > 0 && !eventSelected && showHistoryPanelContent
+            }
             emptyDayWithoutData={!historyHasGpsData}
             viewingToday={viewingToday}
             distanceUnit={distanceUnit}
@@ -129,7 +154,9 @@ export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
           />
         </View>
       ) : (
-        <HistoryPanelSkeleton />
+        <View style={styles.content}>
+          <HistoryPanelSkeleton />
+        </View>
       )}
     </Animated.View>
   );
@@ -142,5 +169,8 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 10,
     elevation: 10,
+  },
+  content: {
+    marginTop: MAP_HISTORY_DATE_NAV_ABOVE_PANEL_GAP,
   },
 });

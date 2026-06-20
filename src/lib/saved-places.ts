@@ -123,6 +123,21 @@ export function savedPlaceDisplayLabel(place: SavedPlaceRow): string {
   return place.label;
 }
 
+export const MAX_SAVED_PLACE_LABEL_LENGTH = 30;
+
+export function normalizeSavedPlaceLabel(label: string): string {
+  const trimmed = label.trim();
+  if (!trimmed) {
+    throw new Error('Place name is required');
+  }
+  if (trimmed.length > MAX_SAVED_PLACE_LABEL_LENGTH) {
+    throw new Error(
+      `Place name must be ${MAX_SAVED_PLACE_LABEL_LENGTH} characters or fewer`,
+    );
+  }
+  return trimmed;
+}
+
 export const MAX_SAVED_PLACES = 20;
 
 export class SavedPlaceLimitError extends Error {

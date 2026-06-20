@@ -283,6 +283,7 @@ export async function fetchDatabaseExportTables(
       lat: row.lat,
       lng: row.lng,
       radiusMeters: row.radiusMeters,
+      addressLine: row.addressLine,
       createdAt: iso(row.createdAt),
     })),
     place_lookup_cache: placeLookupRows.map(row => ({

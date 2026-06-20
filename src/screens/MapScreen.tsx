@@ -63,6 +63,7 @@ export function MapScreen() {
         places={controller.savedPlaces}
         onClose={controller.closeSavedPlacesSheet}
         onSelectPlace={controller.handleSelectSavedPlace}
+        onEditLabel={controller.handleEditFavoriteLabel}
         onDelete={controller.handleDeleteSavedPlace}
       />
       <MomentsPreviewSheet

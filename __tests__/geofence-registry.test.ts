@@ -11,6 +11,7 @@ describe('geofence registry', () => {
         lat: 33.1,
         lng: -96.8,
         radiusMeters: 20,
+        addressLine: null,
         createdAt: new Date('2026-01-01'),
       },
     ]);
@@ -33,6 +34,7 @@ describe('geofence registry', () => {
       lat: 33.2,
       lng: -96.7,
       radiusMeters: 150,
+      addressLine: null,
       createdAt: new Date('2026-01-01'),
     };
     expect(savedPlaceGeofenceSpecs([place])[0]?.radiusMeters).toBe(150);

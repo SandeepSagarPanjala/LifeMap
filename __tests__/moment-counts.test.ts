@@ -165,6 +165,7 @@ describe('moment counts', () => {
       lat: 33.1,
       lng: -97.1,
       radiusMeters: 120,
+      addressLine: null,
       createdAt: new Date('2026-01-01T00:00:00.000Z'),
     };
 
@@ -270,6 +271,7 @@ describe('moment counts', () => {
       lat: 33.1,
       lng: -97.1,
       radiusMeters: 120,
+      addressLine: null,
       createdAt: new Date('2026-01-01T00:00:00.000Z'),
     };
 

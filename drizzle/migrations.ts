@@ -178,6 +178,8 @@ const m0013 = `ALTER TABLE \`moments\` ADD COLUMN \`photo_attachments_json\` tex
 
 const m0014 = `ALTER TABLE \`materialized_days\` ADD COLUMN \`geometry_fingerprint\` text;`;
 
+const m0015 = `ALTER TABLE \`saved_places\` ADD COLUMN \`address_line\` text;`;
+
 export default {
   journal,
   migrations: {
@@ -196,5 +198,6 @@ export default {
     m0012,
     m0013,
     m0014,
+    m0015,
   },
 };

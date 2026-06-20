@@ -105,6 +105,8 @@ export async function migrationAlreadyApplied(
       return columnExists(sqlite, 'moments', 'photo_attachments_json');
     case '0014_materialized_day_geometry':
       return columnExists(sqlite, 'materialized_days', 'geometry_fingerprint');
+    case '0015_saved_place_address':
+      return columnExists(sqlite, 'saved_places', 'address_line');
     default:
       return false;
   }

@@ -1,30 +1,22 @@
-import {useCallback, useEffect, useLayoutEffect, useRef, useState} from 'react';
-import {
-  Alert,
-  Animated,
-  Easing,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View,
-} from 'react-native';
-import {Trash2} from 'lucide-react-native';
+import {useCallback, useEffect, useMemo, useState} from 'react';
+import {Alert, Pressable, StyleSheet, View} from 'react-native';
+import {Trash2, Pencil} from 'lucide-react-native';
 
+import {EditFavoriteLabelPanel} from '@/components/map/EditFavoriteLabelSheet';
 import {SavedPlaceIcon} from '@/components/map/SavedPlaceIcon';
 import {Text} from '@/components/ui/text';
+import {AppBottomSheet} from '@/components/ui/app-bottom-sheet';
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import {savedPlaceDisplayLabel} from '@/lib/saved-places';
 import {SAVED_PLACE_MAP_STYLE} from '@/lib/saved-places-map';
 import {useThemeColors} from '@/hooks/use-theme-colors';
-
-const SHEET_OFFSCREEN = 420;
 
 type SavedPlacesSheetProps = {
   visible: boolean;
   places: SavedPlaceRow[];
   onClose: () => void;
   onSelectPlace: (place: SavedPlaceRow) => void;
+  onEditLabel: (place: SavedPlaceRow, label: string) => Promise<void>;
   onDelete: (place: SavedPlaceRow) => Promise<void>;
 };
 
@@ -48,93 +40,28 @@ export function SavedPlacesSheet({
   places,
   onClose,
   onSelectPlace,
+  onEditLabel,
   onDelete,
 }: SavedPlacesSheetProps) {
   const colors = useThemeColors();
-  const sorted = sortPlaces(places);
+  const sorted = useMemo(() => sortPlaces(places), [places]);
+  const [editingPlace, setEditingPlace] = useState<SavedPlaceRow | null>(null);
+  const listSnapPoints = useMemo(() => ['58%'] as const, []);
 
-  const [mounted, setMounted] = useState(visible);
-  const backdropOpacity = useRef(new Animated.Value(0)).current;
-  const sheetTranslateY = useRef(new Animated.Value(SHEET_OFFSCREEN)).current;
-  const closingRef = useRef(false);
-
-  useLayoutEffect(() => {
-    if (visible) {
-      closingRef.current = false;
-      setMounted(true);
+  useEffect(() => {
+    if (!visible) {
+      setEditingPlace(null);
     }
   }, [visible]);
 
-  const animateIn = useCallback(() => {
-    backdropOpacity.setValue(0);
-    sheetTranslateY.setValue(SHEET_OFFSCREEN);
-    Animated.parallel([
-      Animated.timing(backdropOpacity, {
-        toValue: 1,
-        duration: 220,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(sheetTranslateY, {
-        toValue: 0,
-        duration: 320,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [backdropOpacity, sheetTranslateY]);
+  const closeListSheet = useCallback(() => {
+    setEditingPlace(null);
+    onClose();
+  }, [onClose]);
 
-  const animateOut = useCallback(
-    (onDone: () => void) => {
-      Animated.parallel([
-        Animated.timing(backdropOpacity, {
-          toValue: 0,
-          duration: 180,
-          easing: Easing.in(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(sheetTranslateY, {
-          toValue: SHEET_OFFSCREEN,
-          duration: 240,
-          easing: Easing.in(Easing.cubic),
-          useNativeDriver: true,
-        }),
-      ]).start(({finished}) => {
-        if (finished) {
-          onDone();
-        }
-      });
-    },
-    [backdropOpacity, sheetTranslateY],
-  );
-
-  const closeSheet = useCallback(() => {
-    if (closingRef.current) {
-      return;
-    }
-    closingRef.current = true;
-    animateOut(() => {
-      closingRef.current = false;
-      setMounted(false);
-      onClose();
-    });
-  }, [animateOut, onClose]);
-
-  useEffect(() => {
-    if (!visible && mounted && !closingRef.current) {
-      closingRef.current = true;
-      animateOut(() => {
-        closingRef.current = false;
-        setMounted(false);
-      });
-    }
-  }, [animateOut, mounted, visible]);
-
-  useEffect(() => {
-    if (mounted && visible) {
-      animateIn();
-    }
-  }, [animateIn, mounted, visible]);
+  const closeEditSheet = useCallback(() => {
+    setEditingPlace(null);
+  }, []);
 
   const confirmDelete = (place: SavedPlaceRow) => {
     Alert.alert(
@@ -146,66 +73,44 @@ export function SavedPlacesSheet({
           text: 'Remove',
           style: 'destructive',
           onPress: () => {
-            void onDelete(place);
+            onDelete(place);
           },
         },
       ],
     );
   };
 
-  if (!mounted) {
-    return null;
-  }
-
   return (
-    <Modal
-      visible={mounted}
-      transparent
-      animationType="none"
-      statusBarTranslucent
-      onRequestClose={closeSheet}>
-      <View style={styles.root}>
-        <Animated.View
-          pointerEvents="none"
-          style={[styles.backdrop, {opacity: backdropOpacity}]}
-        />
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Close saved places"
-          style={styles.dismissTap}
-          onPress={closeSheet}
-        />
+    <>
+      <AppBottomSheet
+        name="saved-places-list"
+        visible={visible}
+        onClose={closeListSheet}
+        snapPoints={[...listSnapPoints]}
+        scrollable>
+        <Text variant="h4" className="border-0 pb-0">
+          Saved places
+        </Text>
+        <Text variant="muted" className="mt-1 text-sm">
+          Long-press the map to add Home, Work, or a Favorite.
+        </Text>
 
-        <Animated.View
-          style={[styles.sheet, {transform: [{translateY: sheetTranslateY}]}]}>
-          <View style={styles.handle} />
-
-          <Text variant="h4" className="border-0 pb-0">
-            Saved places
+        {sorted.length === 0 ? (
+          <Text variant="muted" className="mt-6 text-sm">
+            No saved places yet.
           </Text>
-          <Text variant="muted" className="mt-1 text-sm">
-            Long-press the map to add Home, Work, or a Favorite.
-          </Text>
-
-          {sorted.length === 0 ? (
-            <Text variant="muted" className="mt-6 text-sm">
-              No saved places yet.
-            </Text>
-          ) : (
-            <ScrollView
-              style={styles.list}
-              contentContainerStyle={styles.listContent}
-              showsVerticalScrollIndicator={false}>
-              {sorted.map(place => {
-                const accent = SAVED_PLACE_MAP_STYLE[place.kind];
-                return (
+        ) : (
+          <View style={styles.list}>
+            {sorted.map(place => {
+              const accent = SAVED_PLACE_MAP_STYLE[place.kind];
+              return (
                 <View key={place.id} style={styles.row}>
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={`Show ${savedPlaceDisplayLabel(place)} on map`}
                     onPress={() => {
                       onSelectPlace(place);
-                      closeSheet();
+                      closeListSheet();
                     }}
                     style={styles.rowTap}>
                     <View
@@ -223,16 +128,34 @@ export function SavedPlacesSheet({
                       <Text className="font-medium">
                         {savedPlaceDisplayLabel(place)}
                       </Text>
-                      <Text variant="muted" className="text-xs">
-                        {place.radiusMeters} m radius
-                      </Text>
+                      {place.addressLine != null ? (
+                        <Text
+                          variant="muted"
+                          className="text-xs"
+                          numberOfLines={2}>
+                          {place.addressLine}
+                        </Text>
+                      ) : null}
                     </View>
                   </Pressable>
+                  {place.kind === 'favorite' ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Rename ${place.label}`}
+                      onPress={() => setEditingPlace(place)}
+                      style={styles.actionBtn}>
+                      <Pencil
+                        size={18}
+                        color={colors.primary}
+                        strokeWidth={2.25}
+                      />
+                    </Pressable>
+                  ) : null}
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={`Remove ${place.label}`}
                     onPress={() => confirmDelete(place)}
-                    style={styles.deleteBtn}>
+                    style={styles.actionBtn}>
                     <Trash2
                       size={18}
                       color={colors.primary}
@@ -240,63 +163,47 @@ export function SavedPlacesSheet({
                     />
                   </Pressable>
                 </View>
-                );
-              })}
-            </ScrollView>
-          )}
+              );
+            })}
+          </View>
+        )}
 
-          <Pressable
-            accessibilityRole="button"
-            onPress={closeSheet}
-            style={styles.closeBtn}>
-            <Text variant="muted" className="text-center font-medium">
-              Close
-            </Text>
-          </Pressable>
-        </Animated.View>
-      </View>
-    </Modal>
+        <Pressable
+          accessibilityRole="button"
+          onPress={closeListSheet}
+          style={styles.closeBtn}>
+          <Text variant="muted" className="text-center font-medium">
+            Close
+          </Text>
+        </Pressable>
+      </AppBottomSheet>
+
+      <AppBottomSheet
+        name="saved-places-edit"
+        visible={editingPlace != null}
+        onClose={closeEditSheet}
+        stackBehavior="push"
+        enableDynamicSizing
+        keyboardBehavior="interactive"
+        keyboardBlurBehavior="none">
+        {editingPlace != null ? (
+          <EditFavoriteLabelPanel
+            key={editingPlace.id}
+            initialValue={editingPlace.label}
+            onClose={closeEditSheet}
+            onSave={label => {
+              onEditLabel(editingPlace, label).then(() => closeEditSheet());
+            }}
+          />
+        ) : null}
+      </AppBottomSheet>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.32)',
-  },
-  dismissTap: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  sheet: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 20,
-    paddingBottom: 28,
-    paddingTop: 10,
-    maxHeight: '70%',
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: -4},
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 24,
-  },
-  handle: {
-    alignSelf: 'center',
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#D1D1D6',
-    marginBottom: 12,
-  },
   list: {
     marginTop: 16,
-  },
-  listContent: {
     gap: 8,
     paddingBottom: 8,
   },
@@ -327,7 +234,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexShrink: 0,
   },
-  deleteBtn: {
+  actionBtn: {
     padding: 8,
   },
   closeBtn: {

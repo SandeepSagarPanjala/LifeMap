@@ -1,18 +1,12 @@
-import {useState} from 'react';
-import {
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  StyleSheet,
-  TextInput,
-  View,
-} from 'react-native';
+import {useEffect, useState} from 'react';
+import {Pressable, StyleSheet, View} from 'react-native';
 import {Briefcase, Heart, Home} from 'lucide-react-native';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {BottomSheetTextInput} from '@gorhom/bottom-sheet';
 
 import {Text} from '@/components/ui/text';
+import {AppBottomSheet} from '@/components/ui/app-bottom-sheet';
 import {useThemeColors} from '@/hooks/use-theme-colors';
+import {MAX_SAVED_PLACE_LABEL_LENGTH} from '@/lib/saved-places';
 
 type SavePlaceCoordinate = {
   latitude: number;
@@ -54,7 +48,6 @@ export function SavePlaceSheet({
   onSaveFavorite,
 }: SavePlaceSheetProps) {
   const colors = useThemeColors();
-  const insets = useSafeAreaInsets();
   const [favoriteName, setFavoriteName] = useState('');
   const [saving, setSaving] = useState(false);
   const [showFavoriteInput, setShowFavoriteInput] = useState(false);
@@ -83,187 +76,141 @@ export function SavePlaceSheet({
     }
   };
 
+  const sheetVisible = visible && coordinate != null;
+
+  useEffect(() => {
+    if (!sheetVisible) {
+      setFavoriteName('');
+      setShowFavoriteInput(false);
+      setSaving(false);
+    }
+  }, [sheetVisible]);
+
   return (
-    <Modal
-      visible={visible && coordinate != null}
-      transparent
-      animationType="fade"
-      onRequestClose={close}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.flex}
-        keyboardVerticalOffset={insets.top}>
-        <Pressable
-          style={[
-            styles.backdrop,
-            showFavoriteInput ? styles.backdropCentered : null,
-          ]}
-          onPress={close}>
+    <AppBottomSheet
+      visible={sheetVisible}
+      onClose={close}
+      enableDynamicSizing>
+      {showFavoriteInput ? (
+        <View style={styles.favoriteForm}>
+          <Text variant="h4" className="border-0 pb-0">
+            Name this favorite
+          </Text>
+          <Text variant="muted" className="mt-1 text-sm">
+            150 m radius around this spot
+          </Text>
+          <BottomSheetTextInput
+            autoFocus
+            placeholder="Favorite name"
+            placeholderTextColor="#8E8E93"
+            value={favoriteName}
+            onChangeText={setFavoriteName}
+            style={styles.input}
+            returnKeyType="done"
+            maxLength={MAX_SAVED_PLACE_LABEL_LENGTH}
+            onSubmitEditing={() => {
+              if (favoriteName.trim().length > 0) {
+                runSave(() =>
+                  onSaveFavorite(coordinate!, favoriteName.trim()),
+                );
+              }
+            }}
+          />
           <Pressable
+            accessibilityRole="button"
+            disabled={saving || favoriteName.trim().length === 0}
             style={[
-              showFavoriteInput ? styles.centerCard : styles.sheet,
-              showFavoriteInput && {marginTop: insets.top + 24},
+              styles.saveFavoriteBtn,
+              {backgroundColor: colors.primary},
             ]}
-            onPress={event => event.stopPropagation()}>
-            {showFavoriteInput ? (
-              <View style={styles.favoriteForm}>
-                <Text variant="h4" className="border-0 pb-0">
-                  Name this favorite
-                </Text>
-                <Text variant="muted" className="mt-1 text-sm">
-                  150 m radius around this spot
-                </Text>
-                <TextInput
-                  autoFocus
-                  placeholder="Favorite name"
-                  placeholderTextColor="#8E8E93"
-                  value={favoriteName}
-                  onChangeText={setFavoriteName}
-                  style={styles.input}
-                  returnKeyType="done"
-                  onSubmitEditing={() => {
-                    if (favoriteName.trim().length > 0) {
-                      void runSave(() =>
-                        onSaveFavorite(coordinate!, favoriteName.trim()),
-                      );
-                    }
-                  }}
-                />
-                <Pressable
-                  accessibilityRole="button"
-                  disabled={saving || favoriteName.trim().length === 0}
-                  style={[
-                    styles.saveFavoriteBtn,
-                    {backgroundColor: colors.primary},
-                  ]}
-                  onPress={() =>
-                    void runSave(() =>
-                      onSaveFavorite(coordinate!, favoriteName.trim()),
-                    )
-                  }>
-                  <Text className="text-primary-foreground text-center font-medium">
-                    Save Favorite
-                  </Text>
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => setShowFavoriteInput(false)}>
-                  <Text variant="muted" className="text-center text-sm">
-                    Back
-                  </Text>
-                </Pressable>
-              </View>
-            ) : (
-              <>
-                <Text variant="h4" className="border-0 pb-0">
-                  Save this place
-                </Text>
-                <Text variant="muted" className="mt-1 text-sm">
-                  150 m radius · long-press anywhere on the map
-                </Text>
-                {isAtPlaceLimit ? (
-                  <Text variant="muted" className="mt-2 text-sm">
-                    {hasHome && hasWork
-                      ? `You have ${maxPlaces} saved places. Remove one from Places to add another.`
-                      : `You have ${maxPlaces} saved places. Remove one to add ${!hasHome ? 'Home' : 'Work'} or a Favorite.`}
-                  </Text>
-                ) : null}
-                <View style={styles.actions}>
-                  {!hasHome && canSaveHome ? (
-                    <Pressable
-                      accessibilityRole="button"
-                      disabled={saving}
-                      style={styles.actionRow}
-                      onPress={() =>
-                        void runSave(() => onSaveHome(coordinate!))
-                      }>
-                      <Home size={20} color={colors.primary} strokeWidth={2.25} />
-                      <Text className="font-medium">Mark as Home</Text>
-                    </Pressable>
-                  ) : null}
-                  {!hasWork && canSaveWork ? (
-                    <Pressable
-                      accessibilityRole="button"
-                      disabled={saving}
-                      style={styles.actionRow}
-                      onPress={() =>
-                        void runSave(() => onSaveWork(coordinate!))
-                      }>
-                      <Briefcase
-                        size={20}
-                        color={colors.primary}
-                        strokeWidth={2.25}
-                      />
-                      <Text className="font-medium">Mark as Work</Text>
-                    </Pressable>
-                  ) : null}
-                  {canSaveFavorite ? (
-                    <Pressable
-                      accessibilityRole="button"
-                      disabled={saving}
-                      style={styles.actionRow}
-                      onPress={() => setShowFavoriteInput(true)}>
-                      <Heart
-                        size={20}
-                        color={colors.primary}
-                        strokeWidth={2.25}
-                        fill={colors.primary}
-                      />
-                      <Text className="font-medium">Add Favorite</Text>
-                    </Pressable>
-                  ) : null}
-                </View>
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={close}
-                  style={styles.cancelBtn}>
-                  <Text variant="muted" className="text-center font-medium">
-                    Cancel
-                  </Text>
-                </Pressable>
-              </>
-            )}
+            onPress={() =>
+              runSave(() =>
+                onSaveFavorite(coordinate!, favoriteName.trim()),
+              )
+            }>
+            <Text className="text-primary-foreground text-center font-medium">
+              Save Favorite
+            </Text>
           </Pressable>
-        </Pressable>
-      </KeyboardAvoidingView>
-    </Modal>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => setShowFavoriteInput(false)}>
+            <Text variant="muted" className="text-center text-sm">
+              Back
+            </Text>
+          </Pressable>
+        </View>
+      ) : (
+        <>
+          <Text variant="h4" className="border-0 pb-0">
+            Save this place
+          </Text>
+          <Text variant="muted" className="mt-1 text-sm">
+            150 m radius · long-press anywhere on the map
+          </Text>
+          {isAtPlaceLimit ? (
+            <Text variant="muted" className="mt-2 text-sm">
+              {hasHome && hasWork
+                ? `You have ${maxPlaces} saved places. Remove one from Places to add another.`
+                : `You have ${maxPlaces} saved places. Remove one to add ${!hasHome ? 'Home' : 'Work'} or a Favorite.`}
+            </Text>
+          ) : null}
+          <View style={styles.actions}>
+            {!hasHome && canSaveHome ? (
+              <Pressable
+                accessibilityRole="button"
+                disabled={saving}
+                style={styles.actionRow}
+                onPress={() => runSave(() => onSaveHome(coordinate!))}>
+                <Home size={20} color={colors.primary} strokeWidth={2.25} />
+                <Text className="font-medium">Mark as Home</Text>
+              </Pressable>
+            ) : null}
+            {!hasWork && canSaveWork ? (
+              <Pressable
+                accessibilityRole="button"
+                disabled={saving}
+                style={styles.actionRow}
+                onPress={() => runSave(() => onSaveWork(coordinate!))}>
+                <Briefcase
+                  size={20}
+                  color={colors.primary}
+                  strokeWidth={2.25}
+                />
+                <Text className="font-medium">Mark as Work</Text>
+              </Pressable>
+            ) : null}
+            {canSaveFavorite ? (
+              <Pressable
+                accessibilityRole="button"
+                disabled={saving}
+                style={styles.actionRow}
+                onPress={() => setShowFavoriteInput(true)}>
+                <Heart
+                  size={20}
+                  color={colors.primary}
+                  strokeWidth={2.25}
+                  fill={colors.primary}
+                />
+                <Text className="font-medium">Add Favorite</Text>
+              </Pressable>
+            ) : null}
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            onPress={close}
+            style={styles.cancelBtn}>
+            <Text variant="muted" className="text-center font-medium">
+              Cancel
+            </Text>
+          </Pressable>
+        </>
+      )}
+    </AppBottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  backdrop: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  backdropCentered: {
-    justifyContent: 'flex-start',
-  },
-  sheet: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 32,
-    marginTop: 'auto',
-  },
-  centerCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    marginHorizontal: 20,
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 6,
-  },
   actions: {
     marginTop: 20,
     gap: 8,

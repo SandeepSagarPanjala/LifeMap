@@ -53,6 +53,7 @@ const savedPlaces: SavedPlaceRow[] = [
     lat: 33.25,
     lng: -97.15,
     radiusMeters: 150,
+    addressLine: null,
     createdAt: new Date('2026-06-01T00:00:00.000Z'),
   },
 ];

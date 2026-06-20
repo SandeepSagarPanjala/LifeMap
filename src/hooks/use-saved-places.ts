@@ -1,4 +1,5 @@
 import {useCallback, useEffect, useMemo, useState} from 'react';
+import {subscribeSavedPlaces} from '@/lib/saved-places-events';
 
 import {
   listSavedPlaces,
@@ -26,6 +27,10 @@ export function useSavedPlaces(): {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(() => subscribeSavedPlaces(() => {
+    void refresh();
+  }), [refresh]);
 
   const hasHome = useMemo(
     () => places.some(place => place.kind === 'home'),

@@ -47,6 +47,7 @@ describe('prepareTodayHistoryTimeline', () => {
         lat: home.lat,
         lng: home.lng,
         radiusMeters: 100,
+        addressLine: null,
         createdAt: new Date('2026-01-01'),
       },
     ];
@@ -108,6 +109,7 @@ describe('prepareTodayHistoryTimeline', () => {
         lat: home.lat,
         lng: home.lng,
         radiusMeters: 100,
+        addressLine: null,
         createdAt: new Date('2026-01-01'),
       },
     ];

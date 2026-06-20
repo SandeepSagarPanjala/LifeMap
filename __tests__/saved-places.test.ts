@@ -7,6 +7,8 @@ import {
   matchSavedPlaceForStay,
   matchSavedPlaceForTripEndpoint,
   MAX_SAVED_PLACES,
+  MAX_SAVED_PLACE_LABEL_LENGTH,
+  normalizeSavedPlaceLabel,
 } from '../src/lib/saved-places';
 import {shouldShowSavedPlaceCircles} from '../src/lib/saved-places-map';
 import type {DetectedTrip} from '../src/lib/trip-detection';
@@ -25,6 +27,7 @@ function place(
     lat,
     lng,
     radiusMeters,
+    addressLine: null,
     createdAt: new Date(),
   };
 }
@@ -243,6 +246,28 @@ describe('saved places limits', () => {
     expect(canAddSavedPlace(makePlaces(MAX_SAVED_PLACES - 1), 'home')).toBe(
       true,
     );
+  });
+});
+
+describe('saved places label validation', () => {
+  it('trims whitespace from labels', () => {
+    expect(normalizeSavedPlaceLabel('  Library  ')).toBe('Library');
+  });
+
+  it('rejects empty labels', () => {
+    expect(() => normalizeSavedPlaceLabel('   ')).toThrow('Place name is required');
+  });
+
+  it('rejects labels over the max length', () => {
+    const long = 'a'.repeat(MAX_SAVED_PLACE_LABEL_LENGTH + 1);
+    expect(() => normalizeSavedPlaceLabel(long)).toThrow(
+      `${MAX_SAVED_PLACE_LABEL_LENGTH} characters or fewer`,
+    );
+  });
+
+  it('accepts labels at the max length', () => {
+    const max = 'a'.repeat(MAX_SAVED_PLACE_LABEL_LENGTH);
+    expect(normalizeSavedPlaceLabel(max)).toBe(max);
   });
 });
 

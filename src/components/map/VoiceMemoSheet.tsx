@@ -1,10 +1,9 @@
-import {useCallback, useEffect, useLayoutEffect, useRef, useState} from 'react';
+import {useCallback, useEffect, useRef, useState} from 'react';
 import {
   ActivityIndicator,
   Alert,
   Animated,
   Easing,
-  Modal,
   Pressable,
   StyleSheet,
   View,
@@ -13,6 +12,7 @@ import {AudioLines, Mic, Pause, Play, Square} from 'lucide-react-native';
 
 import {CAPTURE_BUTTON_THEMES} from '@/components/map/map-capture-button-theme';
 import {Text} from '@/components/ui/text';
+import {AppBottomSheet} from '@/components/ui/app-bottom-sheet';
 import {useThemeColors} from '@/hooks/use-theme-colors';
 import {
   formatVoiceDurationCap,
@@ -25,8 +25,6 @@ import {
   getVoiceRecordingErrorMessage,
 } from '@/lib/moments/voice-recorder';
 
-const SHEET_OFFSCREEN = 420;
-
 type VoiceMemoPhase = 'idle' | 'recording' | 'preview' | 'saving';
 
 export type VoiceMemoSaveTarget = 'moment' | 'diary';
@@ -37,6 +35,7 @@ type VoiceMemoSheetProps = {
   onSaved: () => Promise<void>;
   saveTarget?: VoiceMemoSaveTarget;
   onDiaryAttach?: (attachment: {uri: string; durationMs: number}) => void;
+  onWillClose?: () => void;
 };
 
 export function VoiceMemoSheet({
@@ -45,29 +44,19 @@ export function VoiceMemoSheet({
   onSaved,
   saveTarget = 'moment',
   onDiaryAttach,
+  onWillClose,
 }: VoiceMemoSheetProps) {
   const colors = useThemeColors();
   const voiceTheme = CAPTURE_BUTTON_THEMES.voice;
 
-  const [mounted, setMounted] = useState(visible);
   const [phase, setPhase] = useState<VoiceMemoPhase>('idle');
   const [durationMs, setDurationMs] = useState(0);
   const [previewPath, setPreviewPath] = useState<string | null>(null);
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
 
-  const backdropOpacity = useRef(new Animated.Value(0)).current;
-  const sheetTranslateY = useRef(new Animated.Value(SHEET_OFFSCREEN)).current;
-  const closingRef = useRef(false);
   const recorderRef = useRef(createVoiceRecorderSession());
   const stopRecordingRef = useRef<() => Promise<void>>(async () => {});
   const pulseAnim = useRef(new Animated.Value(1)).current;
-
-  useLayoutEffect(() => {
-    if (visible) {
-      closingRef.current = false;
-      setMounted(true);
-    }
-  }, [visible]);
 
   const resetDraft = useCallback(async () => {
     await recorderRef.current.stopPreview();
@@ -78,80 +67,18 @@ export function VoiceMemoSheet({
     setIsPlayingPreview(false);
   }, [previewPath]);
 
-  const animateIn = useCallback(() => {
-    backdropOpacity.setValue(0);
-    sheetTranslateY.setValue(SHEET_OFFSCREEN);
-    Animated.parallel([
-      Animated.timing(backdropOpacity, {
-        toValue: 1,
-        duration: 220,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(sheetTranslateY, {
-        toValue: 0,
-        duration: 320,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [backdropOpacity, sheetTranslateY]);
-
-  const animateOut = useCallback(
-    (onDone: () => void) => {
-      Animated.parallel([
-        Animated.timing(backdropOpacity, {
-          toValue: 0,
-          duration: 180,
-          easing: Easing.in(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(sheetTranslateY, {
-          toValue: SHEET_OFFSCREEN,
-          duration: 240,
-          easing: Easing.in(Easing.cubic),
-          useNativeDriver: true,
-        }),
-      ]).start(({finished}) => {
-        if (finished) {
-          onDone();
-        }
-      });
-    },
-    [backdropOpacity, sheetTranslateY],
-  );
-
   const closeSheet = useCallback(() => {
-    if (closingRef.current || phase === 'saving') {
+    if (phase === 'saving') {
       return;
     }
-    closingRef.current = true;
-    void resetDraft().finally(() => {
-      animateOut(() => {
-        closingRef.current = false;
-        setMounted(false);
-        onClose();
-      });
-    });
-  }, [animateOut, onClose, phase, resetDraft]);
+    void resetDraft().finally(onClose);
+  }, [onClose, phase, resetDraft]);
 
   useEffect(() => {
-    if (!visible && mounted && !closingRef.current) {
-      closingRef.current = true;
-      void resetDraft().finally(() => {
-        animateOut(() => {
-          closingRef.current = false;
-          setMounted(false);
-        });
-      });
+    if (!visible) {
+      void resetDraft();
     }
-  }, [animateOut, mounted, resetDraft, visible]);
-
-  useEffect(() => {
-    if (mounted && visible) {
-      animateIn();
-    }
-  }, [animateIn, mounted, visible]);
+  }, [resetDraft, visible]);
 
   useEffect(() => {
     const session = createVoiceRecorderSession({
@@ -273,29 +200,19 @@ export function VoiceMemoSheet({
       if (saveTarget === 'diary') {
         onDiaryAttach?.({uri: previewPath, durationMs});
         setPreviewPath(null);
-        closingRef.current = true;
-        animateOut(() => {
-          closingRef.current = false;
-          setMounted(false);
-          setPhase('idle');
-          setDurationMs(0);
-          setIsPlayingPreview(false);
-          onClose();
-        });
+        setPhase('idle');
+        setDurationMs(0);
+        setIsPlayingPreview(false);
+        onClose();
         return;
       }
       await saveVoiceMoment(previewPath, durationMs);
       setPreviewPath(null);
       await onSaved();
-      closingRef.current = true;
-      animateOut(() => {
-        closingRef.current = false;
-        setMounted(false);
-        setPhase('idle');
-        setDurationMs(0);
-        setIsPlayingPreview(false);
-        onClose();
-      });
+      setPhase('idle');
+      setDurationMs(0);
+      setIsPlayingPreview(false);
+      onClose();
     } catch (error) {
       setPhase('preview');
       Alert.alert(
@@ -305,190 +222,142 @@ export function VoiceMemoSheet({
     }
   };
 
-  if (!mounted) {
-    return null;
-  }
-
   const durationLabel = formatVoiceDurationMs(durationMs);
   const capLabel = formatVoiceDurationCap();
   const isDiaryAttach = saveTarget === 'diary';
 
+  const handleAnimate = useCallback(
+    (_fromIndex: number, toIndex: number) => {
+      if (toIndex === -1) {
+        onWillClose?.();
+      }
+    },
+    [onWillClose],
+  );
+
   return (
-    <Modal
-      visible={mounted}
-      transparent
-      animationType="none"
-      statusBarTranslucent
-      onRequestClose={closeSheet}>
-      <View style={styles.root}>
-        <Animated.View
-          pointerEvents="none"
-          style={[styles.backdrop, {opacity: backdropOpacity}]}
-        />
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={isDiaryAttach ? 'Discard voice memo' : 'Close voice memo'}
-          style={styles.dismissTap}
-          onPress={closeSheet}
-        />
+    <AppBottomSheet
+      visible={visible}
+      onClose={closeSheet}
+      onAnimate={handleAnimate}
+      enableDynamicSizing>
+      <Text variant="h4" className="border-0 pb-0">
+        Voice memo
+      </Text>
+      <Text variant="muted" className="mt-1 text-sm">
+        {phase === 'recording'
+          ? `Recording… max ${capLabel}`
+          : phase === 'preview'
+            ? saveTarget === 'diary'
+              ? 'Preview your memo, then add it to this diary entry.'
+              : 'Preview your memo, then save or discard.'
+            : `Record up to ${capLabel} and save to your day.`}
+      </Text>
 
-        <Animated.View
-          style={[styles.sheet, {transform: [{translateY: sheetTranslateY}]}]}>
-          <View style={styles.handle} />
-
-          <Text variant="h4" className="border-0 pb-0">
-            Voice memo
-          </Text>
-          <Text variant="muted" className="mt-1 text-sm">
-            {phase === 'recording'
-              ? `Recording… max ${capLabel}`
-              : phase === 'preview'
-                ? saveTarget === 'diary'
-                  ? 'Preview your memo, then add it to this diary entry.'
-                  : 'Preview your memo, then save or discard.'
-                : `Record up to ${capLabel} and save to your day.`}
-          </Text>
-
-          <View style={styles.timerRow}>
-            <Text className="text-3xl font-semibold tabular-nums">{durationLabel}</Text>
-            {phase === 'recording' ? (
-              <View style={styles.recordingBadge}>
-                <Animated.View
-                  style={[
-                    styles.recordingDot,
-                    {transform: [{scale: pulseAnim}]},
-                  ]}
-                />
-                <Text className="text-sm font-medium">Recording</Text>
-              </View>
-            ) : null}
-            {isVoiceDurationAtCap(durationMs) && phase !== 'idle' ? (
-              <Text variant="muted" className="text-xs">
-                Max length reached
-              </Text>
-            ) : null}
+      <View style={styles.timerRow}>
+        <Text className="text-3xl font-semibold tabular-nums">{durationLabel}</Text>
+        {phase === 'recording' ? (
+          <View style={styles.recordingBadge}>
+            <Animated.View
+              style={[styles.recordingDot, {transform: [{scale: pulseAnim}]}]}
+            />
+            <Text className="text-sm font-medium">Recording</Text>
           </View>
+        ) : null}
+        {isVoiceDurationAtCap(durationMs) && phase !== 'idle' ? (
+          <Text variant="muted" className="text-xs">
+            Max length reached
+          </Text>
+        ) : null}
+      </View>
 
-          <View style={styles.controls}>
-            {phase === 'idle' ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Start recording"
-                onPress={() => void handleStartRecording()}
-                style={[
-                  styles.primaryCircle,
-                  {backgroundColor: voiceTheme.badgeBg},
-                ]}>
-                <Mic size={28} color={voiceTheme.icon} strokeWidth={2.25} />
-              </Pressable>
-            ) : null}
+      <View style={styles.controls}>
+        {phase === 'idle' ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Start recording"
+            onPress={() => void handleStartRecording()}
+            style={[styles.primaryCircle, {backgroundColor: voiceTheme.badgeBg}]}>
+            <Mic size={28} color={voiceTheme.icon} strokeWidth={2.25} />
+          </Pressable>
+        ) : null}
 
-            {phase === 'recording' ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Stop recording"
-                onPress={() => void handleStopRecording()}
-                style={[
-                  styles.primaryCircle,
-                  {backgroundColor: voiceTheme.badgeBg},
-                ]}>
-                <Square size={24} color={voiceTheme.icon} strokeWidth={2.25} fill={voiceTheme.icon} />
-              </Pressable>
-            ) : null}
+        {phase === 'recording' ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Stop recording"
+            onPress={() => void handleStopRecording()}
+            style={[styles.primaryCircle, {backgroundColor: voiceTheme.badgeBg}]}>
+            <Square
+              size={24}
+              color={voiceTheme.icon}
+              strokeWidth={2.25}
+              fill={voiceTheme.icon}
+            />
+          </Pressable>
+        ) : null}
 
-            {phase === 'preview' ? (
-              <View style={styles.previewRow}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={isPlayingPreview ? 'Pause preview' : 'Play preview'}
-                  onPress={() => void handleTogglePreview()}
-                  style={[
-                    styles.secondaryCircle,
-                    {backgroundColor: voiceTheme.badgeBg},
-                  ]}>
-                  {isPlayingPreview ? (
-                    <Pause size={22} color={voiceTheme.icon} strokeWidth={2.25} />
-                  ) : (
-                    <Play size={22} color={voiceTheme.icon} strokeWidth={2.25} />
-                  )}
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Save voice memo"
-                  onPress={() => void handleSave()}
-                  style={[styles.saveButton, {backgroundColor: colors.primary}]}>
-                  <AudioLines size={18} color={colors.primaryForeground} strokeWidth={2.25} />
-                  <Text className="text-primary-foreground font-medium">
-                    {saveTarget === 'diary' ? 'Add to diary' : 'Save moment'}
-                  </Text>
-                </Pressable>
-              </View>
-            ) : null}
-
-            {phase === 'saving' ? (
-              <View style={styles.savingRow}>
-                <ActivityIndicator color={colors.primary} />
-                <Text variant="muted">Saving voice memo…</Text>
-              </View>
-            ) : null}
-          </View>
-
-          {phase === 'preview' && !isDiaryAttach ? (
-            <View style={styles.footerActions}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Discard recording"
-                onPress={handleDiscard}
-                style={styles.discardButton}>
-                <Text className="text-sm font-medium text-red-500">Discard</Text>
-              </Pressable>
-              <Pressable accessibilityRole="button" onPress={closeSheet}>
-                <Text variant="muted" className="text-sm">
-                  Cancel
-                </Text>
-              </Pressable>
-            </View>
-          ) : phase !== 'preview' && !isDiaryAttach ? (
-            <Pressable accessibilityRole="button" onPress={closeSheet} style={styles.cancelOnly}>
-              <Text variant="muted" className="text-sm">
-                Cancel
+        {phase === 'preview' ? (
+          <View style={styles.previewRow}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={isPlayingPreview ? 'Pause preview' : 'Play preview'}
+              onPress={() => void handleTogglePreview()}
+              style={[styles.secondaryCircle, {backgroundColor: voiceTheme.badgeBg}]}>
+              {isPlayingPreview ? (
+                <Pause size={22} color={voiceTheme.icon} strokeWidth={2.25} />
+              ) : (
+                <Play size={22} color={voiceTheme.icon} strokeWidth={2.25} />
+              )}
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Save voice memo"
+              onPress={() => void handleSave()}
+              style={[styles.saveButton, {backgroundColor: colors.primary}]}>
+              <AudioLines size={18} color={colors.primaryForeground} strokeWidth={2.25} />
+              <Text className="text-primary-foreground font-medium">
+                {saveTarget === 'diary' ? 'Add to diary' : 'Save moment'}
               </Text>
             </Pressable>
-          ) : null}
-        </Animated.View>
+          </View>
+        ) : null}
+
+        {phase === 'saving' ? (
+          <View style={styles.savingRow}>
+            <ActivityIndicator color={colors.primary} />
+            <Text variant="muted">Saving voice memo…</Text>
+          </View>
+        ) : null}
       </View>
-    </Modal>
+
+      {phase === 'preview' && !isDiaryAttach ? (
+        <View style={styles.footerActions}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Discard recording"
+            onPress={handleDiscard}
+            style={styles.discardButton}>
+            <Text className="text-sm font-medium text-red-500">Discard</Text>
+          </Pressable>
+          <Pressable accessibilityRole="button" onPress={closeSheet}>
+            <Text variant="muted" className="text-sm">
+              Cancel
+            </Text>
+          </Pressable>
+        </View>
+      ) : phase !== 'preview' && !isDiaryAttach ? (
+        <Pressable accessibilityRole="button" onPress={closeSheet} style={styles.cancelOnly}>
+          <Text variant="muted" className="text-sm">
+            Cancel
+          </Text>
+        </Pressable>
+      ) : null}
+    </AppBottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-  },
-  dismissTap: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  sheet: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 28,
-  },
-  handle: {
-    alignSelf: 'center',
-    width: 40,
-    height: 4,
-    borderRadius: 999,
-    backgroundColor: '#D1D5DB',
-    marginBottom: 16,
-  },
   timerRow: {
     alignItems: 'center',
     gap: 8,

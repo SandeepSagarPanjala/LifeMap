@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
+import {useCallback, useEffect, useMemo, useState} from 'react';
 import {
   addMonths,
   eachDayOfInterval,
@@ -15,17 +15,10 @@ import {
   subMonths,
 } from 'date-fns';
 import {ChevronLeft, ChevronRight} from 'lucide-react-native';
-import {
-  Animated,
-  Easing,
-  Modal,
-  Pressable,
-  StyleSheet,
-  View,
-  type LayoutChangeEvent,
-} from 'react-native';
+import {Pressable, StyleSheet, View} from 'react-native';
 
 import {Text} from '@/components/ui/text';
+import {AppBottomSheet} from '@/components/ui/app-bottom-sheet';
 import {
   getTodayDateKey,
   parseDateKey,
@@ -35,7 +28,6 @@ import {HISTORY_COLORS} from '@/lib/history-timeline';
 import {useAppStore} from '@/stores/app-store';
 
 const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-const DEFAULT_SHEET_HEIGHT = 480;
 
 type HistoryDatePickerSheetProps = {
   visible: boolean;
@@ -67,30 +59,9 @@ export function HistoryDatePickerSheet({
   );
   const todayMonth = useMemo(() => startOfMonth(today), [today]);
 
-  const [mounted, setMounted] = useState(visible);
-  const backdropOpacity = useRef(new Animated.Value(0)).current;
-  const sheetTranslateY = useRef(
-    new Animated.Value(DEFAULT_SHEET_HEIGHT),
-  ).current;
-  const sheetHeightRef = useRef(DEFAULT_SHEET_HEIGHT);
-  const closingRef = useRef(false);
-  const animationRef = useRef<Animated.CompositeAnimation | null>(null);
-
   const [visibleMonth, setVisibleMonth] = useState(() =>
     startOfMonth(selectedDay),
   );
-
-  const offscreenOffset = useCallback(
-    () => sheetHeightRef.current + 32,
-    [],
-  );
-
-  const stopAnimations = useCallback(() => {
-    animationRef.current?.stop();
-    animationRef.current = null;
-    backdropOpacity.stopAnimation();
-    sheetTranslateY.stopAnimation();
-  }, [backdropOpacity, sheetTranslateY]);
 
   const syncVisibleMonth = useCallback(() => {
     const month = startOfMonth(parseDateKey(selectedDateKey));
@@ -103,111 +74,11 @@ export function HistoryDatePickerSheet({
     );
   }, [earliestMonth, selectedDateKey, todayMonth]);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (visible) {
-      closingRef.current = false;
-      setMounted(true);
       syncVisibleMonth();
     }
-  }, [visible, syncVisibleMonth]);
-
-  const animateIn = useCallback(() => {
-    stopAnimations();
-    const offset = offscreenOffset();
-    backdropOpacity.setValue(0);
-    sheetTranslateY.setValue(offset);
-    animationRef.current = Animated.parallel([
-      Animated.timing(backdropOpacity, {
-        toValue: 1,
-        duration: 240,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(sheetTranslateY, {
-        toValue: 0,
-        duration: 340,
-        easing: Easing.bezier(0.22, 1, 0.36, 1),
-        useNativeDriver: true,
-      }),
-    ]);
-    animationRef.current.start(() => {
-      animationRef.current = null;
-    });
-  }, [backdropOpacity, offscreenOffset, sheetTranslateY, stopAnimations]);
-
-  const animateOut = useCallback(
-    (onDone?: () => void) => {
-      stopAnimations();
-      const offset = offscreenOffset();
-      animationRef.current = Animated.parallel([
-        Animated.timing(backdropOpacity, {
-          toValue: 0,
-          duration: 220,
-          easing: Easing.in(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(sheetTranslateY, {
-          toValue: offset,
-          duration: 280,
-          easing: Easing.bezier(0.4, 0, 0.2, 1),
-          useNativeDriver: true,
-        }),
-      ]);
-      animationRef.current.start(() => {
-        animationRef.current = null;
-        onDone?.();
-      });
-    },
-    [backdropOpacity, offscreenOffset, sheetTranslateY, stopAnimations],
-  );
-
-  const beginClose = useCallback(
-    (afterClose?: () => void) => {
-      if (closingRef.current) {
-        return;
-      }
-      closingRef.current = true;
-      animateOut(() => {
-        setMounted(false);
-        closingRef.current = false;
-        onClose();
-        afterClose?.();
-      });
-    },
-    [animateOut, onClose],
-  );
-
-  const dismiss = useCallback(() => {
-    beginClose();
-  }, [beginClose]);
-
-  useEffect(() => {
-    if (!visible && mounted && !closingRef.current) {
-      beginClose();
-    }
-  }, [beginClose, mounted, visible]);
-
-  useEffect(() => {
-    if (mounted && visible) {
-      animateIn();
-    }
-  }, [animateIn, mounted, visible]);
-
-  useEffect(() => {
-    return () => {
-      stopAnimations();
-    };
-  }, [stopAnimations]);
-
-  const handleSheetLayout = useCallback(
-    (event: LayoutChangeEvent) => {
-      const height = event.nativeEvent.layout.height;
-      if (height > 0) {
-        sheetHeightRef.current = height;
-      }
-    },
-    [],
-  );
+  }, [syncVisibleMonth, visible]);
 
   const monthLabel = format(visibleMonth, 'MMMM yyyy');
   const canGoPrevMonth = visibleMonth > earliestMonth;
@@ -227,182 +98,115 @@ export function HistoryDatePickerSheet({
       return;
     }
     onSelectDate(toDateKey(day));
-    beginClose();
+    onClose();
   };
 
   const goToToday = () => {
     onSelectDate(todayKey);
-    beginClose();
+    onClose();
   };
 
-  if (!mounted) {
-    return null;
-  }
-
   return (
-    <Modal
-      visible={mounted}
-      transparent
-      animationType="none"
-      statusBarTranslucent
-      onRequestClose={dismiss}>
-      <View style={styles.root}>
-        <Animated.View
-          pointerEvents="none"
-          style={[styles.backdrop, {opacity: backdropOpacity}]}
-        />
+    <AppBottomSheet visible={visible} onClose={onClose} enableDynamicSizing>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Jump to today"
+        onPress={goToToday}
+        style={styles.todayRow}>
+        <Text style={styles.todayLabel}>Today</Text>
+        <Text style={styles.todayHint}>{format(today, 'EEEE, MMM d')}</Text>
+      </Pressable>
+
+      <View style={styles.monthNav}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Close date picker"
-          style={styles.dismissTap}
-          onPress={dismiss}
-        />
-
-        <Animated.View
-          onLayout={handleSheetLayout}
+          accessibilityLabel="Previous month"
+          disabled={!canGoPrevMonth}
+          onPress={() =>
+            canGoPrevMonth && setVisibleMonth(month => subMonths(month, 1))
+          }
           style={[
-            styles.sheet,
-            {transform: [{translateY: sheetTranslateY}]},
+            styles.monthNavBtn,
+            !canGoPrevMonth && styles.monthNavBtnDisabled,
           ]}>
-          <View style={styles.handle} />
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Jump to today"
-            onPress={goToToday}
-            style={styles.todayRow}>
-            <Text style={styles.todayLabel}>Today</Text>
-            <Text style={styles.todayHint}>
-              {format(today, 'EEEE, MMM d')}
-            </Text>
-          </Pressable>
-
-          <View style={styles.monthNav}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Previous month"
-              disabled={!canGoPrevMonth}
-              onPress={() =>
-                canGoPrevMonth &&
-                setVisibleMonth(month => subMonths(month, 1))
-              }
-              style={[
-                styles.monthNavBtn,
-                !canGoPrevMonth && styles.monthNavBtnDisabled,
-              ]}>
-              <ChevronLeft
-                size={22}
-                color={HISTORY_COLORS.playhead}
-                opacity={canGoPrevMonth ? 1 : 0.35}
-              />
-            </Pressable>
-            <Text style={styles.monthTitle}>{monthLabel}</Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Next month"
-              disabled={!canGoNextMonth}
-              onPress={() =>
-                canGoNextMonth &&
-                setVisibleMonth(month => addMonths(month, 1))
-              }
-              style={[
-                styles.monthNavBtn,
-                !canGoNextMonth && styles.monthNavBtnDisabled,
-              ]}>
-              <ChevronRight
-                size={22}
-                color={HISTORY_COLORS.playhead}
-                opacity={canGoNextMonth ? 1 : 0.35}
-              />
-            </Pressable>
-          </View>
-
-          <View style={styles.weekdayRow}>
-            {WEEKDAY_LABELS.map((label, index) => (
-              <Text key={`${label}-${index}`} style={styles.weekdayLabel}>
-                {label}
-              </Text>
-            ))}
-          </View>
-
-          <View style={styles.grid}>
-            {calendarDays.map(day => {
-              const dateKey = toDateKey(day);
-              const inMonth = isSameMonth(day, visibleMonth);
-              const dayStart = startOfDay(day);
-              const isFuture = isAfter(dayStart, today);
-              const isBeforeEarliest = isBefore(dayStart, earliestDay);
-              const isDisabled = isFuture || isBeforeEarliest;
-              const isSelected = isSameDay(day, selectedDay);
-              const isToday = dateKey === todayKey;
-
-              return (
-                <Pressable
-                  key={dateKey}
-                  accessibilityRole="button"
-                  accessibilityLabel={format(day, 'MMMM d, yyyy')}
-                  disabled={isDisabled}
-                  onPress={() => handleSelect(day)}
-                  style={styles.dayCell}>
-                  <View
-                    style={[
-                      styles.dayInner,
-                      isSelected && styles.dayInnerSelected,
-                      isToday && !isSelected && styles.dayInnerToday,
-                    ]}>
-                    <Text
-                      style={[
-                        styles.dayText,
-                        !inMonth && styles.dayTextOutside,
-                        isDisabled && styles.dayTextDisabled,
-                        isSelected && styles.dayTextSelected,
-                      ]}>
-                      {format(day, 'd')}
-                    </Text>
-                  </View>
-                </Pressable>
-              );
-            })}
-          </View>
-        </Animated.View>
+          <ChevronLeft
+            size={22}
+            color={HISTORY_COLORS.playhead}
+            opacity={canGoPrevMonth ? 1 : 0.35}
+          />
+        </Pressable>
+        <Text style={styles.monthTitle}>{monthLabel}</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Next month"
+          disabled={!canGoNextMonth}
+          onPress={() =>
+            canGoNextMonth && setVisibleMonth(month => addMonths(month, 1))
+          }
+          style={[
+            styles.monthNavBtn,
+            !canGoNextMonth && styles.monthNavBtnDisabled,
+          ]}>
+          <ChevronRight
+            size={22}
+            color={HISTORY_COLORS.playhead}
+            opacity={canGoNextMonth ? 1 : 0.35}
+          />
+        </Pressable>
       </View>
-    </Modal>
+
+      <View style={styles.weekdayRow}>
+        {WEEKDAY_LABELS.map((label, index) => (
+          <Text key={`${label}-${index}`} style={styles.weekdayLabel}>
+            {label}
+          </Text>
+        ))}
+      </View>
+
+      <View style={styles.grid}>
+        {calendarDays.map(day => {
+          const dateKey = toDateKey(day);
+          const inMonth = isSameMonth(day, visibleMonth);
+          const dayStart = startOfDay(day);
+          const isFuture = isAfter(dayStart, today);
+          const isBeforeEarliest = isBefore(dayStart, earliestDay);
+          const isDisabled = isFuture || isBeforeEarliest;
+          const isSelected = isSameDay(day, selectedDay);
+          const isToday = dateKey === todayKey;
+
+          return (
+            <Pressable
+              key={dateKey}
+              accessibilityRole="button"
+              accessibilityLabel={format(day, 'MMMM d, yyyy')}
+              disabled={isDisabled}
+              onPress={() => handleSelect(day)}
+              style={styles.dayCell}>
+              <View
+                style={[
+                  styles.dayInner,
+                  isSelected && styles.dayInnerSelected,
+                  isToday && !isSelected && styles.dayInnerToday,
+                ]}>
+                <Text
+                  style={[
+                    styles.dayText,
+                    !inMonth && styles.dayTextOutside,
+                    isDisabled && styles.dayTextDisabled,
+                    isSelected && styles.dayTextSelected,
+                  ]}>
+                  {format(day, 'd')}
+                </Text>
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
+    </AppBottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.32)',
-  },
-  dismissTap: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  sheet: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 20,
-    paddingBottom: 28,
-    paddingTop: 10,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: -4},
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 24,
-  },
-  handle: {
-    alignSelf: 'center',
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#D1D1D6',
-    marginBottom: 12,
-  },
   todayRow: {
     flexDirection: 'row',
     alignItems: 'center',

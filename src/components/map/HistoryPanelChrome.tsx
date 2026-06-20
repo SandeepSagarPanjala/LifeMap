@@ -1,73 +1,64 @@
 import {ChevronLeft, ChevronRight, X} from 'lucide-react-native';
-import {StyleSheet, Text, View, type StyleProp, type ViewStyle} from 'react-native';
+import {StyleSheet, Text, View} from 'react-native';
 
 import {MapCircleButton} from '@/components/map/MapCircleButton';
 import {useThemeColors} from '@/hooks/use-theme-colors';
 import {
-  MAP_SETTINGS_SIZE,
-  MAP_SETTINGS_TOP_GAP,
-  MAP_STACK_BUTTON_SIZE,
   MAP_DATE_NAV_ROW_GAP,
+  MAP_SETTINGS_SIZE,
+  MAP_STACK_BUTTON_SIZE,
 } from '@/screens/map/map-screen-constants';
 
-type MapDateLabelProps = {
+const MAP_CLOSE_ICON_COLOR = '#E0352B';
+
+type HistoryPanelChromeProps = {
+  viewingToday: boolean;
   label: string;
-  topInset: number;
-  showNavigation?: boolean;
-  /** When set, docks the navigation cluster above the history panel. */
-  anchorBottom?: number;
   canGoPrev?: boolean;
   canGoNext?: boolean;
   onPrev?: () => void;
   onNext?: () => void;
-  onClose?: () => void;
+  onClose: () => void;
 };
 
-const MAP_CLOSE_ICON_COLOR = '#E0352B';
-
-export function MapDateLabel({
+export function HistoryPanelChrome({
+  viewingToday,
   label,
-  topInset,
-  showNavigation = false,
-  anchorBottom,
   canGoPrev = false,
   canGoNext = false,
   onPrev,
   onNext,
   onClose,
-}: MapDateLabelProps) {
+}: HistoryPanelChromeProps) {
   const colors = useThemeColors();
-  const top = topInset + MAP_SETTINGS_TOP_GAP;
 
-  if (!showNavigation) {
+  if (viewingToday) {
     return (
       <View
-        pointerEvents="none"
-        accessibilityRole="text"
-        accessibilityLabel={`Map showing ${label}`}
-        style={[styles.wrap, {top, height: MAP_SETTINGS_SIZE}]}>
-        <View style={styles.pill}>
-          <Text style={styles.label} numberOfLines={1}>
-            {label}
-          </Text>
-        </View>
+        pointerEvents="box-none"
+        accessibilityRole="toolbar"
+        accessibilityLabel="Close history"
+        style={styles.wrap}>
+        <MapCircleButton
+          accessibilityLabel="Close history"
+          variant="softRed"
+          onPress={onClose}>
+          <X size={20} color={MAP_CLOSE_ICON_COLOR} strokeWidth={2.5} />
+        </MapCircleButton>
       </View>
     );
   }
-
-  const positionStyle: StyleProp<ViewStyle> =
-    anchorBottom != null ? {bottom: anchorBottom} : {top};
 
   return (
     <View
       pointerEvents="box-none"
       accessibilityRole="toolbar"
       accessibilityLabel={`Map showing ${label}`}
-      style={[styles.navWrap, positionStyle]}>
+      style={styles.wrap}>
       <MapCircleButton
         accessibilityLabel="Return to today"
         variant="softRed"
-        onPress={() => onClose?.()}>
+        onPress={onClose}>
         <X size={20} color={MAP_CLOSE_ICON_COLOR} strokeWidth={2.5} />
       </MapCircleButton>
 
@@ -108,18 +99,7 @@ export function MapDateLabel({
 
 const styles = StyleSheet.create({
   wrap: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  navWrap: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    zIndex: 2,
   },
   dateRow: {
     flexDirection: 'row',
@@ -151,3 +131,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+
+export function historyPanelChromeHeight(viewingToday: boolean): number {
+  return viewingToday
+    ? MAP_SETTINGS_SIZE
+    : MAP_SETTINGS_SIZE + MAP_DATE_NAV_ROW_GAP + MAP_STACK_BUTTON_SIZE;
+}

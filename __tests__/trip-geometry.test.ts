@@ -49,6 +49,7 @@ describe('resolveVisitAnchor', () => {
           lat: 33.214,
           lng: -97.132,
           radiusMeters: 150,
+          addressLine: null,
           createdAt: new Date(),
         },
       ],

@@ -3,46 +3,48 @@ import {Pressable, StyleSheet, View} from 'react-native';
 import {BottomSheetTextInput} from '@gorhom/bottom-sheet';
 
 import {Text} from '@/components/ui/text';
-import {AppBottomSheet} from '@/components/ui/app-bottom-sheet';
+import {MAX_SAVED_PLACE_LABEL_LENGTH} from '@/lib/saved-places';
 
-type VisitPlaceCustomLabelSheetProps = {
-  visible: boolean;
+type EditFavoriteLabelPanelProps = {
   initialValue?: string;
   onClose: () => void;
   onSave: (label: string) => void;
 };
 
-export function VisitPlaceCustomLabelSheet({
-  visible,
+export function EditFavoriteLabelPanel({
   initialValue = '',
   onClose,
   onSave,
-}: VisitPlaceCustomLabelSheetProps) {
+}: EditFavoriteLabelPanelProps) {
   const [value, setValue] = useState(initialValue);
 
   useEffect(() => {
-    if (visible) {
-      setValue(initialValue);
-    }
-  }, [initialValue, visible]);
+    setValue(initialValue);
+  }, [initialValue]);
+
+  const trimmed = value.trim();
+  const canSave =
+    trimmed.length > 0 &&
+    trimmed.length <= MAX_SAVED_PLACE_LABEL_LENGTH &&
+    trimmed !== initialValue.trim();
 
   return (
-    <AppBottomSheet visible={visible} onClose={onClose} enableDynamicSizing>
-      <Text className="text-lg font-semibold">Custom place name</Text>
+    <View>
+      <Text className="text-lg font-semibold">Rename favorite</Text>
       <Text variant="muted" className="mt-1 text-sm">
-        Enter a label if none of the nearby options fit.
+        Map pins and visit labels use this name.
       </Text>
       <BottomSheetTextInput
         autoFocus
         value={value}
         onChangeText={setValue}
-        placeholder="e.g. Client office"
+        placeholder="Favorite name"
         placeholderTextColor="#8E8E93"
         style={styles.input}
         returnKeyType="done"
+        maxLength={MAX_SAVED_PLACE_LABEL_LENGTH}
         onSubmitEditing={() => {
-          const trimmed = value.trim();
-          if (trimmed) {
+          if (canSave) {
             onSave(trimmed);
           }
         }}
@@ -50,25 +52,25 @@ export function VisitPlaceCustomLabelSheet({
       <View style={styles.actions}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Cancel custom label"
+          accessibilityLabel="Cancel rename"
           onPress={onClose}
           style={[styles.button, styles.cancelButton]}>
           <Text className="font-medium">Cancel</Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Save custom label"
-          disabled={!value.trim()}
-          onPress={() => onSave(value.trim())}
+          accessibilityLabel="Save favorite name"
+          disabled={!canSave}
+          onPress={() => onSave(trimmed)}
           style={[
             styles.button,
             styles.saveButton,
-            !value.trim() && styles.saveButtonDisabled,
+            !canSave && styles.saveButtonDisabled,
           ]}>
           <Text className="font-semibold text-white">Save</Text>
         </Pressable>
       </View>
-    </AppBottomSheet>
+    </View>
   );
 }
 
@@ -87,7 +89,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     marginTop: 16,
-    marginBottom: 4,
   },
   button: {
     flex: 1,

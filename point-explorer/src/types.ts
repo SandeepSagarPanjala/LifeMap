@@ -52,6 +52,7 @@ export type SavedPlaceRow = {
   lat: number;
   lng: number;
   radiusMeters: number;
+  addressLine?: string | null;
   createdAt?: string;
 };
 

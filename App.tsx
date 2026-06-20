@@ -5,6 +5,7 @@ import {StyleSheet, View} from 'react-native';
 import {PortalHost} from '@rn-primitives/portal';
 import {StatusBar, useColorScheme} from 'react-native';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
+import {BottomSheetModalProvider} from '@gorhom/bottom-sheet';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 
 import {AppScreenTransition, type AppScreenKey} from '@/components/navigation/AppScreenTransition';
@@ -50,12 +51,14 @@ function App() {
 
   return (
     <AppErrorBoundary>
-      <GestureHandlerRootView className="flex-1">
+      <GestureHandlerRootView style={styles.root}>
         <AppBootstrap
           enableLocationTracking={enableLocationTracking}
           enableHistoryPreload={enableHistoryPreload}>
         <ThemeProvider>
           <SafeAreaProvider>
+            <BottomSheetModalProvider>
+            <View style={styles.root}>
             <StatusBar
               barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'}
               backgroundColor="transparent"
@@ -81,6 +84,8 @@ function App() {
               ) : null}
             </View>
             <PortalHost />
+            </View>
+            </BottomSheetModalProvider>
           </SafeAreaProvider>
         </ThemeProvider>
         </AppBootstrap>
@@ -90,6 +95,9 @@ function App() {
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
   screenHost: {
     flex: 1,
     overflow: 'hidden',

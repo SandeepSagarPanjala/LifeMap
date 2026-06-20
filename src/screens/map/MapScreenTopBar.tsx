@@ -3,6 +3,7 @@ import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {Settings} from 'lucide-react-native';
 import {Pressable, StyleSheet, View} from 'react-native';
 
+import {MapDateLabel} from '@/components/map/MapDateLabel';
 import {useThemeColors} from '@/hooks/use-theme-colors';
 import type {RootStackParamList} from '@/navigation/types';
 
@@ -10,7 +11,6 @@ import {
   MAP_SETTINGS_SIZE,
   MAP_SETTINGS_TOP_GAP,
 } from './map-screen-constants';
-import {MapDateLabel} from '@/components/map/MapDateLabel';
 import type {MapScreenController} from './use-map-screen-controller';
 
 type MapScreenTopBarProps = {
@@ -24,38 +24,27 @@ export function MapScreenTopBar({controller}: MapScreenTopBarProps) {
     insets,
     mapDateLabel,
     viewingToday,
-    historyPanelOpen,
+    historyPanelChromeVisible,
     dateNavAnchorBottom,
     canGoPrevDay,
     canGoNextDay,
     goToPrevDay,
     goToNextDay,
     goToToday,
-    closeHistoryPanel,
   } = controller;
   const settingsTop = insets.top + MAP_SETTINGS_TOP_GAP;
-  const showHistoryClose = historyPanelOpen && viewingToday;
-  const showDateNavigation = !viewingToday;
+  const showRestingDateNav = !viewingToday && !historyPanelChromeVisible;
 
   return (
     <View pointerEvents="box-none" style={styles.bar}>
-      {viewingToday ? (
+      {viewingToday && !historyPanelChromeVisible ? (
         <MapDateLabel
           label={mapDateLabel}
           topInset={insets.top}
           showNavigation={false}
         />
       ) : null}
-      {showHistoryClose ? (
-        <MapDateLabel
-          label={mapDateLabel}
-          topInset={insets.top}
-          showCloseOnly
-          anchorBottom={dateNavAnchorBottom}
-          onClose={closeHistoryPanel}
-        />
-      ) : null}
-      {showDateNavigation ? (
+      {showRestingDateNav ? (
         <MapDateLabel
           label={mapDateLabel}
           topInset={insets.top}

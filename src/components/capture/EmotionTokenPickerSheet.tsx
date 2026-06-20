@@ -1,19 +1,11 @@
-import {useCallback, useEffect, useLayoutEffect, useRef, useState} from 'react';
-import {
-  Animated,
-  Easing,
-  FlatList,
-  Modal,
-  Platform,
-  Pressable,
-  StyleSheet,
-  View,
-  useWindowDimensions,
-} from 'react-native';
+import {useCallback, useEffect, useState} from 'react';
+import {Platform, Pressable, StyleSheet, View, useWindowDimensions} from 'react-native';
+import {BottomSheetFlatList, BottomSheetView} from '@gorhom/bottom-sheet';
 import {ChevronLeft} from 'lucide-react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 import {Text} from '@/components/ui/text';
+import {AppBottomSheet} from '@/components/ui/app-bottom-sheet';
 import {useThemeColors} from '@/hooks/use-theme-colors';
 import {
   EMOTION_CONTEXT_TOKENS,
@@ -27,9 +19,6 @@ import {
   type EmotionTokenId,
 } from '@/lib/moments/emotion-tokens';
 
-const SHEET_HEIGHT_RATIO_EMOTION = 0.56;
-const SHEET_HEIGHT_RATIO_CONTEXT = 0.58;
-const SHEET_OFFSCREEN = 480;
 const GRID_COLUMNS = 4;
 const GRID_GAP = 12;
 
@@ -41,6 +30,7 @@ type EmotionTokenPickerSheetProps = {
   selectedContextId: EmotionContextTokenId | null;
   onSelect: (selection: EmotionSelection) => void;
   onClose: () => void;
+  onWillClose?: () => void;
 };
 
 type StickerShape = 'circle' | 'roundedSquare';
@@ -119,115 +109,37 @@ export function EmotionTokenPickerSheet({
   selectedContextId,
   onSelect,
   onClose,
+  onWillClose,
 }: EmotionTokenPickerSheetProps) {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
-  const {width: windowWidth, height: windowHeight} = useWindowDimensions();
-
-  const [mounted, setMounted] = useState(visible);
-  const [step, setStep] = useState<PickerStep>('emotion');
-  const sheetHeight = Math.round(
-    windowHeight *
-      (step === 'context' ? SHEET_HEIGHT_RATIO_CONTEXT : SHEET_HEIGHT_RATIO_EMOTION),
-  );
+  const {width: windowWidth} = useWindowDimensions();
   const cellWidth =
     (windowWidth - 40 - GRID_GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS;
 
+  const [step, setStep] = useState<PickerStep>('emotion');
   const [pendingEmotionId, setPendingEmotionId] = useState<EmotionTokenId | null>(
     selectedEmotionId,
   );
   const [pendingContextId, setPendingContextId] = useState<EmotionContextTokenId | null>(
     selectedContextId,
   );
-  const backdropOpacity = useRef(new Animated.Value(0)).current;
-  const sheetTranslateY = useRef(new Animated.Value(SHEET_OFFSCREEN)).current;
-  const closingRef = useRef(false);
 
   const pendingEmotion =
     pendingEmotionId != null ? getEmotionToken(pendingEmotionId) : null;
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (visible) {
-      closingRef.current = false;
-      setMounted(true);
       setStep('emotion');
       setPendingEmotionId(selectedEmotionId);
       setPendingContextId(selectedContextId);
     }
   }, [selectedContextId, selectedEmotionId, visible]);
 
-  const animateIn = useCallback(() => {
-    backdropOpacity.setValue(0);
-    sheetTranslateY.setValue(SHEET_OFFSCREEN);
-    Animated.parallel([
-      Animated.timing(backdropOpacity, {
-        toValue: 1,
-        duration: 220,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(sheetTranslateY, {
-        toValue: 0,
-        duration: 320,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [backdropOpacity, sheetTranslateY]);
-
-  const animateOut = useCallback(
-    (onDone: () => void) => {
-      Animated.parallel([
-        Animated.timing(backdropOpacity, {
-          toValue: 0,
-          duration: 180,
-          easing: Easing.in(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(sheetTranslateY, {
-          toValue: SHEET_OFFSCREEN,
-          duration: 240,
-          easing: Easing.in(Easing.cubic),
-          useNativeDriver: true,
-        }),
-      ]).start(({finished}) => {
-        if (finished) {
-          onDone();
-        }
-      });
-    },
-    [backdropOpacity, sheetTranslateY],
-  );
-
-  const closeSheet = useCallback(() => {
-    if (closingRef.current) {
-      return;
-    }
-    closingRef.current = true;
-    animateOut(() => {
-      closingRef.current = false;
-      setMounted(false);
-      setStep('emotion');
-      onClose();
-    });
-  }, [animateOut, onClose]);
-
-  useEffect(() => {
-    if (!visible && mounted && !closingRef.current) {
-      closingRef.current = true;
-      animateOut(() => {
-        closingRef.current = false;
-        setMounted(false);
-        setStep('emotion');
-      });
-    }
-  }, [animateOut, mounted, visible]);
-
-  useEffect(() => {
-    if (mounted && visible) {
-      animateIn();
-    }
-  }, [animateIn, mounted, visible]);
+  const handleClose = () => {
+    setStep('emotion');
+    onClose();
+  };
 
   const handleEmotionSelect = (emotionId: EmotionTokenId) => {
     setPendingEmotionId(emotionId);
@@ -241,158 +153,121 @@ export function EmotionTokenPickerSheet({
     const emotion = getEmotionToken(pendingEmotionId);
     const context = EMOTION_CONTEXT_TOKENS.find(token => token.id === contextId)!;
     onSelect({emotion, context});
-    closeSheet();
+    handleClose();
   };
 
-  if (!mounted) {
-    return null;
-  }
+  const snapPoints = ['58%'] as const;
+
+  const handleAnimate = useCallback(
+    (_fromIndex: number, toIndex: number) => {
+      if (toIndex === -1) {
+        onWillClose?.();
+      }
+    },
+    [onWillClose],
+  );
 
   return (
-    <Modal
-      visible={mounted}
-      transparent
-      animationType="none"
-      statusBarTranslucent
-      onRequestClose={step === 'context' ? () => setStep('emotion') : closeSheet}>
-      <View style={styles.root}>
-        <Animated.View
-          pointerEvents="none"
-          style={[styles.backdrop, {opacity: backdropOpacity}]}
-        />
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Close emotion picker"
-          style={styles.dismissTap}
-          onPress={closeSheet}
-        />
-
-        <Animated.View
-          style={[
-            styles.sheet,
-            {
-              height: sheetHeight,
-              transform: [{translateY: sheetTranslateY}],
-              paddingBottom: insets.bottom,
-            },
-          ]}>
-          <View style={styles.handle} />
-
-          {step === 'emotion' ? (
-            <View style={styles.stepBody}>
-              <View style={styles.stepHeader}>
-                <Text variant="h4" className="border-0 pb-0">
-                  How are you feeling?
-                </Text>
-              </View>
-
-              <FlatList
-                data={EMOTION_TOKENS}
-                keyExtractor={item => item.id}
-                numColumns={GRID_COLUMNS}
-                columnWrapperStyle={styles.gridRow}
-                contentContainerStyle={styles.gridContent}
-                showsVerticalScrollIndicator={false}
-                style={styles.grid}
-                renderItem={({item}) => (
-                  <View style={{width: cellWidth}}>
-                    <EmotionTokenCell
-                      token={item}
-                      selected={pendingEmotionId === item.id}
-                      primaryColor={colors.primary}
-                      onPress={() => handleEmotionSelect(item.id)}
-                    />
-                  </View>
-                )}
-              />
+    <AppBottomSheet
+      visible={visible}
+      onClose={handleClose}
+      onAnimate={handleAnimate}
+      dismissKeyboardOnClose={false}
+      rawChildren
+      snapPoints={[...snapPoints]}>
+      <BottomSheetView
+        style={[styles.sheetBody, {paddingBottom: Math.max(insets.bottom, 16)}]}>
+        {step === 'emotion' ? (
+          <View style={styles.stepBody}>
+            <View style={styles.stepHeader}>
+              <Text variant="h4" className="border-0 pb-0">
+                How are you feeling?
+              </Text>
             </View>
-          ) : pendingEmotion ? (
-            <View style={styles.stepBody}>
-              <View style={styles.stepHeader}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Back to emotions"
-                  onPress={() => setStep('emotion')}
-                  style={styles.backRow}>
-                  <ChevronLeft size={20} color="#1C1C1E" strokeWidth={2.25} />
-                  <Text style={styles.backLabel}>Back</Text>
-                </Pressable>
 
-                <View style={styles.contextHero}>
-                  <View
-                    style={[
-                      styles.contextHeroSticker,
-                      {backgroundColor: pendingEmotion.tint},
-                    ]}>
-                    <Text style={styles.contextHeroEmoji}>{pendingEmotion.sticker}</Text>
-                  </View>
-                  <Text style={styles.contextHeroLabel}>{pendingEmotion.label}</Text>
+            <BottomSheetFlatList
+              data={EMOTION_TOKENS}
+              keyExtractor={item => item.id}
+              numColumns={GRID_COLUMNS}
+              columnWrapperStyle={styles.gridRow}
+              contentContainerStyle={styles.gridContent}
+              showsVerticalScrollIndicator={false}
+              style={styles.grid}
+              renderItem={({item}) => (
+                <View style={{width: cellWidth}}>
+                  <EmotionTokenCell
+                    token={item}
+                    selected={pendingEmotionId === item.id}
+                    primaryColor={colors.primary}
+                    onPress={() => handleEmotionSelect(item.id)}
+                  />
                 </View>
+              )}
+            />
+          </View>
+        ) : pendingEmotion ? (
+          <View style={styles.stepBody}>
+            <View style={styles.stepHeader}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Back to emotions"
+                onPress={() => setStep('emotion')}
+                style={styles.backRow}>
+                <ChevronLeft size={20} color="#1C1C1E" strokeWidth={2.25} />
+                <Text style={styles.backLabel}>Back</Text>
+              </Pressable>
 
-                <Text variant="h4" className="border-0 pb-0 text-center">
-                  {emotionContextPrompt(pendingEmotion.label)}
-                </Text>
+              <View style={styles.contextHero}>
+                <View
+                  style={[
+                    styles.contextHeroSticker,
+                    {backgroundColor: pendingEmotion.tint},
+                  ]}>
+                  <Text style={styles.contextHeroEmoji}>{pendingEmotion.sticker}</Text>
+                </View>
+                <Text style={styles.contextHeroLabel}>{pendingEmotion.label}</Text>
               </View>
 
-              <FlatList
-                data={EMOTION_CONTEXT_TOKENS}
-                keyExtractor={item => item.id}
-                numColumns={GRID_COLUMNS}
-                columnWrapperStyle={styles.gridRow}
-                contentContainerStyle={styles.gridContent}
-                showsVerticalScrollIndicator={false}
-                style={styles.contextGrid}
-                renderItem={({item}) => (
-                  <View style={{width: cellWidth}}>
-                    <TokenPickerCell
-                      label={item.label}
-                      sticker={item.sticker}
-                      tint={item.tint}
-                      selected={pendingContextId === item.id}
-                      primaryColor={colors.primary}
-                      stickerShape="roundedSquare"
-                      onPress={() => handleContextSelect(item.id)}
-                    />
-                  </View>
-                )}
-              />
+              <Text variant="h4" className="border-0 pb-0 text-center">
+                {emotionContextPrompt(pendingEmotion.label)}
+              </Text>
             </View>
-          ) : null}
-        </Animated.View>
-      </View>
-    </Modal>
+
+            <BottomSheetFlatList
+              data={EMOTION_CONTEXT_TOKENS}
+              keyExtractor={item => item.id}
+              numColumns={GRID_COLUMNS}
+              columnWrapperStyle={styles.gridRow}
+              contentContainerStyle={styles.gridContent}
+              showsVerticalScrollIndicator={false}
+              style={styles.contextGrid}
+              renderItem={({item}) => (
+                <View style={{width: cellWidth}}>
+                  <TokenPickerCell
+                    label={item.label}
+                    sticker={item.sticker}
+                    tint={item.tint}
+                    selected={pendingContextId === item.id}
+                    primaryColor={colors.primary}
+                    stickerShape="roundedSquare"
+                    onPress={() => handleContextSelect(item.id)}
+                  />
+                </View>
+              )}
+            />
+          </View>
+        ) : null}
+      </BottomSheetView>
+    </AppBottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
+  sheetBody: {
     flex: 1,
-    justifyContent: 'flex-end',
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-  },
-  dismissTap: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  sheet: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
     paddingHorizontal: 20,
-    paddingTop: 10,
-    flexDirection: 'column',
-    overflow: 'hidden',
-  },
-  handle: {
-    alignSelf: 'center',
-    width: 40,
-    height: 4,
-    borderRadius: 999,
-    backgroundColor: '#D1D5DB',
-    marginBottom: 16,
-    flexShrink: 0,
+    paddingTop: 4,
+    minHeight: 320,
   },
   stepBody: {
     flex: 1,
