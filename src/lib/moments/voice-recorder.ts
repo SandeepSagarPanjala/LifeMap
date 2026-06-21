@@ -7,6 +7,31 @@ import {
 
 import {VOICE_MAX_DURATION_MS} from '@/lib/moments/media-compress-config';
 import {createTempVoiceRecordingPath, deleteMomentContentFile} from '@/lib/moments/moment-storage';
+import {prepareVoiceRecordingSession} from '@/lib/voice-audio-session';
+
+const START_RECORDING_MAX_ATTEMPTS = 3;
+const START_RECORDING_RETRY_DELAY_MS = 350;
+const SESSION_SETTLE_DELAY_MS = 150;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => {
+    setTimeout(resolve, ms);
+  });
+}
+
+function isRetryableRecordingStartError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  const message = error.message.toLowerCase();
+  return (
+    message.includes('prepare') ||
+    message.includes('session') ||
+    message.includes('recording setup') ||
+    message.includes('hijacked') ||
+    message.includes('failed to start recording')
+  );
+}
 
 const VOICE_AUDIO_SET: AudioSet = {
   AVSampleRateKeyIOS: 44100,
@@ -39,7 +64,7 @@ export type VoiceRecorderSession = {
 export function createVoiceRecorderSession(
   callbacks: VoiceRecorderCallbacks = {},
 ): VoiceRecorderSession {
-  const sound = createSound();
+  let sound = createSound();
   let activeRecordPath: string | null = null;
   let durationMs = 0;
   let stoppingForCap = false;
@@ -61,6 +86,21 @@ export function createVoiceRecorderSession(
     } catch {
       // Native player may already be torn down.
     }
+  };
+
+  const attachRecordListener = () => {
+    sound.setSubscriptionDuration(0.1);
+    sound.addRecordBackListener(handleRecordProgress);
+  };
+
+  const resetNativeSound = () => {
+    removeListenersSafely();
+    try {
+      sound.dispose();
+    } catch {
+      // Already disposed.
+    }
+    sound = createSound();
   };
 
   const discardRecording = async (filePath?: string | null) => {
@@ -127,9 +167,34 @@ export function createVoiceRecorderSession(
       stoppingForCap = false;
       durationMs = 0;
       activeRecordPath = await createTempVoiceRecordingPath();
-      sound.setSubscriptionDuration(0.1);
-      sound.addRecordBackListener(handleRecordProgress);
-      await sound.startRecorder(activeRecordPath, VOICE_AUDIO_SET, true);
+      attachRecordListener();
+
+      let lastError: unknown;
+      await prepareVoiceRecordingSession();
+      for (let attempt = 0; attempt < START_RECORDING_MAX_ATTEMPTS; attempt += 1) {
+        if (attempt > 0) {
+          await prepareVoiceRecordingSession();
+          try {
+            await sound.stopRecorder();
+          } catch {
+            // Not recording.
+          }
+          resetNativeSound();
+          attachRecordListener();
+          await sleep(START_RECORDING_RETRY_DELAY_MS * attempt);
+        }
+        await sleep(SESSION_SETTLE_DELAY_MS);
+        try {
+          await sound.startRecorder(activeRecordPath, VOICE_AUDIO_SET, true);
+          return;
+        } catch (error) {
+          lastError = error;
+          if (!isRetryableRecordingStartError(error)) {
+            throw error;
+          }
+        }
+      }
+      throw lastError ?? new Error('Could not start voice recording.');
     },
 
     async stopRecording() {
@@ -204,6 +269,14 @@ export function getVoiceRecordingErrorMessage(error: unknown): string {
     const message = error.message.toLowerCase();
     if (message.includes('permission') || message.includes('denied')) {
       return 'Microphone access is required to record voice memos.';
+    }
+    if (
+      message.includes('prepare') ||
+      message.includes('session') ||
+      message.includes('hijacked') ||
+      message.includes('other audio')
+    ) {
+      return 'Could not access the microphone. Tap the mic to try again — LifeMap resets audio after Bluetooth disconnects.';
     }
     return error.message;
   }

@@ -22,6 +22,8 @@
 		D4E5F6A71A68108700A75B9A /* LifeMapNativePersistLoop.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4E5F6A61A68108700A75B9A /* LifeMapNativePersistLoop.swift */; };
 		E5F6A7B81A68108700A75B9A /* AppVersionModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5F6A7B61A68108700A75B9A /* AppVersionModule.swift */; };
 		E5F6A7B91A68108700A75B9A /* AppVersionModule.m in Sources */ = {isa = PBXBuildFile; fileRef = E5F6A7B71A68108700A75B9A /* AppVersionModule.m */; };
+		F6A7B8C91A68108700A75B9A /* VoiceAudioSessionModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6A7B8C71A68108700A75B9A /* VoiceAudioSessionModule.swift */; };
+		F6A7B8CA1A68108700A75B9A /* VoiceAudioSessionModule.m in Sources */ = {isa = PBXBuildFile; fileRef = F6A7B8C81A68108700A75B9A /* VoiceAudioSessionModule.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -46,6 +48,8 @@
 		D4E5F6A61A68108700A75B9A /* LifeMapNativePersistLoop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LifeMapNativePersistLoop.swift; path = LifeMap/LifeMapNativePersistLoop.swift; sourceTree = "<group>"; };
 		E5F6A7B61A68108700A75B9A /* AppVersionModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppVersionModule.swift; path = LifeMap/AppVersionModule.swift; sourceTree = "<group>"; };
 		E5F6A7B71A68108700A75B9A /* AppVersionModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = AppVersionModule.m; path = LifeMap/AppVersionModule.m; sourceTree = "<group>"; };
+		F6A7B8C71A68108700A75B9A /* VoiceAudioSessionModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VoiceAudioSessionModule.swift; path = LifeMap/VoiceAudioSessionModule.swift; sourceTree = "<group>"; };
+		F6A7B8C81A68108700A75B9A /* VoiceAudioSessionModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = VoiceAudioSessionModule.m; path = LifeMap/VoiceAudioSessionModule.m; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
@@ -70,6 +74,8 @@
 				A1B2C3D51A68108700A75B9A /* PlaceLookupModule.m */,
 				E5F6A7B61A68108700A75B9A /* AppVersionModule.swift */,
 				E5F6A7B71A68108700A75B9A /* AppVersionModule.m */,
+				F6A7B8C71A68108700A75B9A /* VoiceAudioSessionModule.swift */,
+				F6A7B8C81A68108700A75B9A /* VoiceAudioSessionModule.m */,
 				B2C3D4E51A68108700A75B9A /* LifeMapDatabase.swift */,
 				B2C3D4E71A68108700A75B9A /* LocationWakeCoordinator.swift */,
 				B2C3D4E91A68108700A75B9A /* LocationPersistModule.swift */,
@@ -293,6 +299,8 @@
 				A1B2C3D71A68108700A75B9A /* PlaceLookupModule.m in Sources */,
 				E5F6A7B81A68108700A75B9A /* AppVersionModule.swift in Sources */,
 				E5F6A7B91A68108700A75B9A /* AppVersionModule.m in Sources */,
+				F6A7B8C91A68108700A75B9A /* VoiceAudioSessionModule.swift in Sources */,
+				F6A7B8CA1A68108700A75B9A /* VoiceAudioSessionModule.m in Sources */,
 				B2C3D4E61A68108700A75B9A /* LifeMapDatabase.swift in Sources */,
 				B2C3D4E81A68108700A75B9A /* LocationWakeCoordinator.swift in Sources */,
 				B2C3D4EA1A68108700A75B9A /* LocationPersistModule.swift in Sources */,
@@ -312,7 +320,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 23;
+				CURRENT_PROJECT_VERSION = 24;
 				DEVELOPMENT_TEAM = SRTH66N3SH;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = LifeMap/Info.plist;
@@ -345,7 +353,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 23;
+				CURRENT_PROJECT_VERSION = 24;
 				DEVELOPMENT_TEAM = SRTH66N3SH;
 				INFOPLIST_FILE = LifeMap/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;

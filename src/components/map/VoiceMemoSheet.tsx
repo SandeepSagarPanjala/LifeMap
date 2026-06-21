@@ -65,8 +65,9 @@ export function VoiceMemoSheet({
   const [noteText, setNoteText] = useState('');
   const [noteFocused, setNoteFocused] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [autoStartFailed, setAutoStartFailed] = useState(false);
 
-  const recorderRef = useRef(createVoiceRecorderSession());
+  const recorderRef = useRef<ReturnType<typeof createVoiceRecorderSession> | null>(null);
   const stopRecordingRef = useRef<() => Promise<void>>(async () => {});
   const durationMsRef = useRef(0);
   const previewPathRef = useRef<string | null>(null);
@@ -91,6 +92,25 @@ export function VoiceMemoSheet({
   }, [phase]);
 
   useEffect(() => {
+    if (phase !== 'recording') {
+      return;
+    }
+    const timer = setTimeout(() => {
+      if (phaseRef.current !== 'recording' || durationMsRef.current > 0) {
+        return;
+      }
+      setAutoStartFailed(true);
+      setPhase('idle');
+      void recorderRef.current?.discardRecording();
+      Alert.alert(
+        'Could not start recording',
+        'The microphone did not respond. Tap the mic to try again.',
+      );
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [phase]);
+
+  useEffect(() => {
     paintDurationRef.current = throttleVoiceUi((ms: number) => {
       setDurationMs(ms);
     }, 250);
@@ -103,8 +123,8 @@ export function VoiceMemoSheet({
   }, []);
 
   const resetDraft = useCallback(async () => {
-    await recorderRef.current.stopPreview();
-    await recorderRef.current.discardRecording(previewPathRef.current);
+    await recorderRef.current?.stopPreview();
+    await recorderRef.current?.discardRecording(previewPathRef.current);
     setPhase('idle');
     setDurationMs(0);
     setPreviewPath(null);
@@ -125,6 +145,7 @@ export function VoiceMemoSheet({
 
   useEffect(() => {
     if (!visible) {
+      setAutoStartFailed(false);
       void resetDraft();
     }
   }, [resetDraft, visible]);
@@ -176,6 +197,9 @@ export function VoiceMemoSheet({
   }, []);
 
   const handleStopRecording = useCallback(async () => {
+    if (!recorderRef.current) {
+      return;
+    }
     try {
       const result = await recorderRef.current.stopRecording();
       setDurationMs(result.durationMs);
@@ -218,8 +242,13 @@ export function VoiceMemoSheet({
         : durationMs
       : durationMs;
 
-  const handleStartRecording = useCallback(async () => {
+  const handleStartRecording = useCallback(async (options?: {showErrorAlert?: boolean}) => {
+    if (!recorderRef.current) {
+      return false;
+    }
+    const showErrorAlert = options?.showErrorAlert ?? true;
     try {
+      setAutoStartFailed(false);
       setPreviewPath(null);
       setIsPlayingPreview(false);
       setDurationMs(0);
@@ -228,8 +257,13 @@ export function VoiceMemoSheet({
       setPlaybackPositionMs(0);
       await recorderRef.current.startRecording();
       setPhase('recording');
+      return true;
     } catch (error) {
-      Alert.alert('Could not start recording', getVoiceRecordingErrorMessage(error));
+      setAutoStartFailed(true);
+      if (showErrorAlert) {
+        Alert.alert('Could not start recording', getVoiceRecordingErrorMessage(error));
+      }
+      return false;
     }
   }, []);
 
@@ -253,17 +287,43 @@ export function VoiceMemoSheet({
     }
 
     autoStartAttemptedRef.current = true;
-    const timer = setTimeout(() => {
-      if (phaseRef.current === 'idle') {
-        void startRecordingRef.current();
-      }
-    }, 280);
+    let cancelled = false;
 
-    return () => clearTimeout(timer);
+    void (async () => {
+      try {
+        await new Promise<void>(resolve => {
+          setTimeout(resolve, 400);
+        });
+        if (cancelled || phaseRef.current !== 'idle') {
+          return;
+        }
+
+        const started = await startRecordingRef.current({showErrorAlert: false});
+        if (started || cancelled) {
+          return;
+        }
+
+        await new Promise<void>(resolve => {
+          setTimeout(resolve, 800);
+        });
+        if (cancelled || phaseRef.current !== 'idle') {
+          return;
+        }
+        await startRecordingRef.current({showErrorAlert: true});
+      } catch {
+        if (!cancelled) {
+          setAutoStartFailed(true);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [startRecordingOnOpen, visible]);
 
   const handleTogglePreview = async () => {
-    if (!previewPath) {
+    if (!previewPath || !recorderRef.current) {
       return;
     }
     try {
@@ -296,7 +356,7 @@ export function VoiceMemoSheet({
   };
 
   const handleSave = async () => {
-    if (!previewPath || phase === 'saving') {
+    if (!previewPath || phase === 'saving' || !recorderRef.current) {
       return;
     }
     setPhase('saving');
@@ -421,15 +481,22 @@ export function VoiceMemoSheet({
       ) : null}
 
       <View style={styles.controls}>
-        {phase === 'idle' && !startRecordingOnOpen ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Start recording"
-            onPress={() => void handleStartRecording()}
-            style={[styles.primaryCircle, {backgroundColor: voiceTheme.badgeBg}]}>
-            <Mic size={28} color={voiceTheme.icon} strokeWidth={2.25} />
-          </Pressable>
-        ) : phase === 'idle' && startRecordingOnOpen ? (
+        {phase === 'idle' && (!startRecordingOnOpen || autoStartFailed) ? (
+          <View style={styles.manualStartBlock}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Start recording"
+              onPress={() => void handleStartRecording()}
+              style={[styles.primaryCircle, {backgroundColor: voiceTheme.badgeBg}]}>
+              <Mic size={28} color={voiceTheme.icon} strokeWidth={2.25} />
+            </Pressable>
+            {autoStartFailed ? (
+              <Text variant="muted" className="text-xs text-center">
+                Tap the mic to record
+              </Text>
+            ) : null}
+          </View>
+        ) : phase === 'idle' && startRecordingOnOpen && !autoStartFailed ? (
           <View style={styles.savingRow}>
             <ActivityIndicator color={colors.primary} />
             <Text variant="muted">Starting recorder…</Text>
@@ -549,6 +616,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     minHeight: 96,
     justifyContent: 'center',
+  },
+  manualStartBlock: {
+    alignItems: 'center',
+    gap: 10,
   },
   primaryCircle: {
     width: 72,

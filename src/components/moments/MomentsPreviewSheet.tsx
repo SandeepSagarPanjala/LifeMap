@@ -26,6 +26,7 @@ import {useMomentPreviewContexts} from '@/hooks/use-moment-preview-contexts';
 import type {DistanceUnit} from '@/lib/location-geo';
 import {
   formatMomentVoiceDuration,
+  momentHasVoiceAttachment,
   resolveMomentVoiceContentPath,
 } from '@/lib/moments/moment-voice';
 import {notePhotoAttachmentPaths} from '@/lib/moments/note-photo-attachments';
@@ -50,6 +51,7 @@ type MomentsPreviewSheetProps = {
   savedPlaces: readonly SavedPlaceRow[];
   distanceUnit: DistanceUnit;
   previewEntry?: DayTimelineEntry | null;
+  suspendAudio?: boolean;
   onClose: () => void;
   onDeleteMoment: (momentId: number) => Promise<void>;
 };
@@ -532,6 +534,7 @@ export function MomentsPreviewSheet({
   timelineEntries,
   savedPlaces,
   distanceUnit,
+  suspendAudio = false,
   onClose,
   onDeleteMoment,
 }: MomentsPreviewSheetProps) {
@@ -549,17 +552,72 @@ export function MomentsPreviewSheet({
   const [deletingMomentId, setDeletingMomentId] = useState<number | null>(null);
   const [noteContentInsetTop, setNoteContentInsetTop] = useState(112);
   const pagerRef = useRef<FlatList<MomentRow>>(null);
-  const playerRef = useRef(createVoiceRecorderSession());
+  const playerRef = useRef<ReturnType<typeof createVoiceRecorderSession> | null>(null);
+  const autoPlayGenerationRef = useRef(0);
+  const lastAutoPlayedKeyRef = useRef<string | null>(null);
 
   const activeMoment = moments[activeIndex] ?? null;
 
   const stopVoice = useCallback(async () => {
+    autoPlayGenerationRef.current += 1;
     try {
-      await playerRef.current.stopPreview();
+      await playerRef.current?.stopPreview();
     } catch {
       // Not playing.
     }
     setPlayingVoiceId(null);
+  }, []);
+
+  const playVoice = useCallback(async (moment: MomentRow, generation?: number) => {
+    if (!momentHasVoiceAttachment(moment)) {
+      return;
+    }
+    const voicePath = resolveMomentVoiceContentPath(moment);
+    if (!voicePath) {
+      return;
+    }
+    const existingPath = await resolveExistingMomentContentPath(voicePath);
+    if (!existingPath) {
+      return;
+    }
+    if (generation != null && generation !== autoPlayGenerationRef.current) {
+      return;
+    }
+
+    try {
+      await playerRef.current?.stopPreview();
+      if (generation != null && generation !== autoPlayGenerationRef.current) {
+        return;
+      }
+      await playerRef.current?.startPreview(existingPath);
+      if (generation != null && generation !== autoPlayGenerationRef.current) {
+        await playerRef.current?.stopPreview();
+        return;
+      }
+      setPlayingVoiceId(moment.id);
+    } catch (error) {
+      setPlayingVoiceId(null);
+      Alert.alert('Could not play voice memo', getVoiceRecordingErrorMessage(error));
+    }
+  }, []);
+
+  useEffect(() => {
+    const session = createVoiceRecorderSession({
+      onPlaybackProgress: (positionMs, totalMs) => {
+        if (totalMs > 0 && positionMs >= totalMs - 80) {
+          setPlayingVoiceId(null);
+        }
+      },
+      onPlaybackEnded: () => {
+        setPlayingVoiceId(null);
+      },
+    });
+    playerRef.current = session;
+    return () => {
+      void session.stopPreview().catch(() => undefined);
+      session.dispose();
+      playerRef.current = null;
+    };
   }, []);
 
   const closeViewer = useCallback(() => {
@@ -567,7 +625,14 @@ export function MomentsPreviewSheet({
   }, [onClose, stopVoice]);
 
   useEffect(() => {
+    if (!visible || suspendAudio) {
+      void stopVoice();
+    }
+  }, [stopVoice, suspendAudio, visible]);
+
+  useEffect(() => {
     if (visible) {
+      lastAutoPlayedKeyRef.current = null;
       const index = Math.max(
         0,
         Math.min(initialIndex, Math.max(0, moments.length - 1)),
@@ -595,12 +660,24 @@ export function MomentsPreviewSheet({
   }, [closeViewer, moments.length, visible]);
 
   useEffect(() => {
-    const player = playerRef.current;
-    return () => {
+    if (!visible || suspendAudio) {
+      lastAutoPlayedKeyRef.current = null;
+      return;
+    }
+    const moment = moments[activeIndex];
+    const autoPlayKey = moment ? `${activeIndex}:${moment.id}` : null;
+    if (!moment || !momentHasVoiceAttachment(moment)) {
+      lastAutoPlayedKeyRef.current = null;
       void stopVoice();
-      player.dispose();
-    };
-  }, [stopVoice]);
+      return;
+    }
+    if (lastAutoPlayedKeyRef.current === autoPlayKey) {
+      return;
+    }
+    lastAutoPlayedKeyRef.current = autoPlayKey;
+    const generation = ++autoPlayGenerationRef.current;
+    void playVoice(moment, generation);
+  }, [activeIndex, moments, playVoice, stopVoice, suspendAudio, visible]);
 
   const handleMomentumScrollEnd = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -609,36 +686,21 @@ export function MomentsPreviewSheet({
       if (clamped === activeIndex) {
         return;
       }
+      void stopVoice();
       setActiveIndex(clamped);
-      const nextMoment = moments[clamped];
-      if (
-        playingVoiceId != null &&
-        (nextMoment == null || nextMoment.id !== playingVoiceId)
-      ) {
-        void stopVoice();
-      }
     },
-    [activeIndex, moments, pageWidth, playingVoiceId, stopVoice],
+    [activeIndex, moments.length, pageWidth, stopVoice],
   );
+
+  const handleScrollBeginDrag = useCallback(() => {
+    void stopVoice();
+  }, [stopVoice]);
 
   const toggleVoice = useCallback(
     async (moment: MomentRow) => {
-      const voicePath = resolveMomentVoiceContentPath(moment);
-      if (!voicePath) {
-        return;
-      }
-      const existingPath = await resolveExistingMomentContentPath(voicePath);
-      if (!existingPath) {
-        Alert.alert(
-          'Voice memo unavailable',
-          'The recording file is missing. Capture this moment again.',
-        );
-        return;
-      }
-
       if (playingVoiceId === moment.id) {
         try {
-          await playerRef.current.pausePreview();
+          await playerRef.current?.pausePreview();
           setPlayingVoiceId(null);
         } catch (error) {
           Alert.alert('Could not pause voice memo', getVoiceRecordingErrorMessage(error));
@@ -646,16 +708,10 @@ export function MomentsPreviewSheet({
         return;
       }
 
-      try {
-        await playerRef.current.stopPreview();
-        await playerRef.current.startPreview(existingPath);
-        setPlayingVoiceId(moment.id);
-      } catch (error) {
-        setPlayingVoiceId(null);
-        Alert.alert('Could not play voice memo', getVoiceRecordingErrorMessage(error));
-      }
+      autoPlayGenerationRef.current += 1;
+      await playVoice(moment);
     },
-    [playingVoiceId],
+    [playVoice, playingVoiceId],
   );
 
   const confirmDeleteMoment = useCallback(
@@ -742,6 +798,7 @@ export function MomentsPreviewSheet({
           showsHorizontalScrollIndicator={false}
           keyExtractor={keyExtractor}
           renderItem={renderPage}
+          onScrollBeginDrag={handleScrollBeginDrag}
           onMomentumScrollEnd={handleMomentumScrollEnd}
           getItemLayout={(_, index) => ({
             length: pageWidth,

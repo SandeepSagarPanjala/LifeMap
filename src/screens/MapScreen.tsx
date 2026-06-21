@@ -81,6 +81,7 @@ export function MapScreen() {
         savedPlaces={controller.savedPlaces}
         distanceUnit={controller.distanceUnit}
         previewEntry={controller.momentsPreviewEntry}
+        suspendAudio={controller.voiceSheetOpen}
         onClose={controller.closeMomentsPreview}
         onDeleteMoment={controller.handleDeleteMoment}
       />
