@@ -26,6 +26,7 @@ describe('buildMomentMapPins', () => {
           contentSyncState: 'local_only',
           voiceAttachmentPath: null,
           voiceAttachmentBytes: null,
+          voiceDurationSec: null,
           photoAttachmentsJson: null,
         },
       ],

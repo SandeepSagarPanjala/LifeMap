@@ -114,7 +114,7 @@ export function MapScreenMap({controller}: MapScreenMapProps) {
               showVisitPin={false}
               anchorCoordinate={userCoordinate}
               momentCounts={currentVisitMomentCounts}
-              onPressMomentCounts={openCurrentVisitMomentsPreview}
+              onPressMomentType={openCurrentVisitMomentsPreview}
             />
           ) : null}
         </>

@@ -34,6 +34,15 @@ export function hasMomentCounts(counts: MomentCounts): boolean {
   return counts.photo > 0 || counts.video > 0 || counts.voice > 0 || counts.note > 0;
 }
 
+export type MomentCountType = keyof MomentCounts;
+
+export function firstMomentIndexOfType(
+  moments: readonly MomentRow[],
+  type: MomentRow['type'],
+): number {
+  return moments.findIndex(moment => moment.type === type);
+}
+
 export function momentCountsEqual(a: MomentCounts, b: MomentCounts): boolean {
   return (
     a.photo === b.photo &&

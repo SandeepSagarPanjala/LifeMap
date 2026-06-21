@@ -47,6 +47,7 @@ function momentPin(
       contentSyncState: 'local_only',
       voiceAttachmentPath: null,
       voiceAttachmentBytes: null,
+      voiceDurationSec: null,
       photoAttachmentsJson: null,
     },
     coordinate: {latitude: lat, longitude: lng},

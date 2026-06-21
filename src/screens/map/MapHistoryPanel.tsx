@@ -123,7 +123,7 @@ export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
               scrubOnEvent ? selectedDriveEndpointLabels.end : undefined
             }
             momentCounts={scrubOnEvent ? selectedEntryMomentCounts : undefined}
-            onPressMomentCounts={
+            onPressMomentType={
               scrubOnEvent ? openSelectedEntryMomentsPreview : undefined
             }
             scrubOnEmpty={

@@ -70,6 +70,7 @@ describe('canonicalizeStayGeometry', () => {
         contentPath: null,
         voiceAttachmentPath: null,
         voiceAttachmentBytes: null,
+        voiceDurationSec: null,
         photoAttachmentsJson: null,
         textBody: null,
         caption: null,

@@ -11,6 +11,8 @@ import {compressMomentImage} from '@/lib/moments/compress-image';
 import {IMAGE_COMPRESS_FORMAT} from '@/lib/moments/media-compress-config';
 import {
   MOMENT_IMAGE_FILE_EXTENSION,
+  deleteMomentContentFile,
+  moveFileToMomentSandbox,
   persistFileToMomentSandbox,
 } from '@/lib/moments/moment-storage';
 import {normalizeCameraPhoto} from '@/lib/moments/normalize-camera-photo';
@@ -99,6 +101,7 @@ export async function savePhotoMoment(
   sourceUri: string,
   sourceBytes: number | null,
   caption?: string | null,
+  voiceAttachment?: {uri: string; durationMs: number} | null,
 ): Promise<MomentRow> {
   try {
     await saveCaptureToPhotoLibrary(sourceUri);
@@ -121,6 +124,24 @@ export async function savePhotoMoment(
     MOMENT_IMAGE_FILE_EXTENSION,
   );
 
+  let voiceAttachmentPath: string | null = null;
+  let voiceAttachmentBytes: number | null = null;
+  let voiceDurationSec: number | null = null;
+
+  if (voiceAttachment) {
+    if (voiceAttachment.durationMs < 500) {
+      throw new Error('Voice attachment is too short to save.');
+    }
+    try {
+      const voiceFile = await moveFileToMomentSandbox(voiceAttachment.uri, 'm4a');
+      voiceAttachmentPath = voiceFile.contentPath;
+      voiceAttachmentBytes = voiceFile.contentBytes;
+      voiceDurationSec = Math.round(voiceAttachment.durationMs / 1000);
+    } finally {
+      await deleteMomentContentFile(voiceAttachment.uri);
+    }
+  }
+
   return insertMoment({
     type: 'photo',
     timestamp: new Date(),
@@ -129,6 +150,9 @@ export async function savePhotoMoment(
     sourceBytes,
     contentFormat: IMAGE_COMPRESS_FORMAT,
     caption: caption?.trim() || null,
+    voiceAttachmentPath,
+    voiceAttachmentBytes,
+    voiceDurationSec,
   });
 }
 

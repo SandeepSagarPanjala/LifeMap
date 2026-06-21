@@ -8,7 +8,7 @@ import {MomentCountsRow} from '@/components/moments/MomentCountsRow';
 import {Text} from '@/components/ui/text';
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import {HISTORY_COLORS} from '@/lib/history-timeline';
-import type {MomentCounts} from '@/lib/moments/moment-counts';
+import type {MomentCountType, MomentCounts} from '@/lib/moments/moment-counts';
 import {hasMomentCounts} from '@/lib/moments/moment-counts';
 import type {DriveEndpointLabel} from '@/lib/drive-endpoint-label';
 import {savedPlaceDisplayLabel} from '@/lib/saved-places';
@@ -35,7 +35,7 @@ type HistoryEventCardProps = {
   onEditDriveStartLabel?: () => void;
   onEditDriveEndLabel?: () => void;
   momentCounts?: MomentCounts;
-  onPressMomentCounts?: () => void;
+  onPressMomentType?: (type: MomentCountType) => void;
   /** Timeline has data but no event is selected yet. */
   scrubOnEmpty?: boolean;
   /** Selected day finished loading with no GPS rows. */
@@ -92,7 +92,7 @@ export function HistoryEventCard({
   onEditDriveStartLabel,
   onEditDriveEndLabel,
   momentCounts,
-  onPressMomentCounts,
+  onPressMomentType,
   scrubOnEmpty = false,
   emptyDayWithoutData = false,
   viewingToday = false,
@@ -145,7 +145,7 @@ export function HistoryEventCard({
     <View style={[styles.card, isGap && styles.cardGap]}>
       {showMomentCounts ? (
         <View style={styles.momentSection}>
-          <MomentCountsRow counts={momentCounts!} onPress={onPressMomentCounts} />
+          <MomentCountsRow counts={momentCounts!} onPressType={onPressMomentType} />
           <View style={styles.momentDivider} />
         </View>
       ) : null}

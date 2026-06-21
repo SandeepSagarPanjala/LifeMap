@@ -34,7 +34,7 @@ export function MapScreen() {
           <DayMomentSummaryBar
             counts={controller.dayMomentCounts}
             docked
-            onPress={controller.openDayMomentsPreview}
+            onPressType={controller.openDayMomentsPreview}
           />
         </View>
       ) : null}
@@ -76,6 +76,7 @@ export function MapScreen() {
         visible={controller.momentsPreviewOpen}
         title={controller.momentsPreviewTitle}
         moments={controller.momentsPreviewMoments}
+        initialIndex={controller.momentsPreviewInitialIndex}
         timelineEntries={controller.historyEntries}
         savedPlaces={controller.savedPlaces}
         distanceUnit={controller.distanceUnit}

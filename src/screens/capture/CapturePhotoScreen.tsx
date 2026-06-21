@@ -14,7 +14,8 @@ import {
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {Check, RefreshCw, RotateCcw, RotateCw, Square, Type, X, Zap, ZapOff} from 'lucide-react-native';
+import {Check, RefreshCw, RotateCcw, RotateCw, Square, Type, X, Zap, ZapOff, AudioLines, Pause, Play} from 'lucide-react-native';
+import {BottomSheetModalProvider} from '@gorhom/bottom-sheet';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {
   Camera,
@@ -29,6 +30,7 @@ import ViewShot from 'react-native-view-shot';
 
 import {FilteredCaptureImage} from '@/components/capture/FilteredCaptureImage';
 import {MomentVideoPlayer} from '@/components/capture/MomentVideoPlayer';
+import {VoiceMemoSheet} from '@/components/map/VoiceMemoSheet';
 import {CAPTURE_BUTTON_THEMES} from '@/components/map/map-capture-button-theme';
 import {savePhotoMoment} from '@/lib/moments/capture-photo';
 import {
@@ -36,6 +38,11 @@ import {
   saveVideoMoment,
 } from '@/lib/moments/capture-video';
 import {formatVoiceDurationMs} from '@/lib/moments/format-voice-duration';
+import {deleteMomentContentFile} from '@/lib/moments/moment-storage';
+import {
+  createVoiceRecorderSession,
+  getVoiceRecordingErrorMessage,
+} from '@/lib/moments/voice-recorder';
 import {VIDEO_MAX_DURATION_MS} from '@/lib/moments/media-compress-config';
 import {normalizeCameraPhoto} from '@/lib/moments/normalize-camera-photo';
 import {
@@ -172,6 +179,11 @@ export function CapturePhotoScreen() {
   const [flashMode, setFlashMode] = useState<CaptureFlashMode>('off');
   const [captionText, setCaptionText] = useState('');
   const [captionInputOpen, setCaptionInputOpen] = useState(false);
+  const [voiceUri, setVoiceUri] = useState<string | null>(null);
+  const [voiceDurationMs, setVoiceDurationMs] = useState(0);
+  const [voicePlaying, setVoicePlaying] = useState(false);
+  const [voiceSheetOpen, setVoiceSheetOpen] = useState(false);
+  const voicePlayerRef = useRef(createVoiceRecorderSession());
   const [capturing, setCapturing] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingMs, setRecordingMs] = useState(0);
@@ -234,22 +246,63 @@ export function CapturePhotoScreen() {
     device != null &&
     (device.hasFlash || cameraPosition === 'front');
 
+  useEffect(() => {
+    return () => {
+      void voicePlayerRef.current.dispose();
+    };
+  }, []);
+
+  const clearVoice = useCallback(async () => {
+    await voicePlayerRef.current.stopPreview();
+    setVoicePlaying(false);
+    if (voiceUri) {
+      await deleteMomentContentFile(voiceUri);
+    }
+    setVoiceUri(null);
+    setVoiceDurationMs(0);
+  }, [voiceUri]);
+
+  const toggleVoicePreview = useCallback(async () => {
+    if (!voiceUri) {
+      return;
+    }
+    try {
+      if (voicePlaying) {
+        await voicePlayerRef.current.pausePreview();
+        setVoicePlaying(false);
+        return;
+      }
+      await voicePlayerRef.current.startPreview(voiceUri);
+      setVoicePlaying(true);
+    } catch (error) {
+      Alert.alert('Could not play recording', getVoiceRecordingErrorMessage(error));
+    }
+  }, [voicePlaying, voiceUri]);
+
   const handleClose = useCallback(() => {
+    void clearVoice();
     navigation.goBack();
-  }, [navigation]);
+  }, [clearVoice, navigation]);
 
   const handleRetake = useCallback(() => {
     resetRecordingState();
+    void clearVoice();
     setDraft(null);
     setSelectedFilter('original');
     setRotationSteps(0);
     setCaptionText('');
     setCaptionInputOpen(false);
     setPhase('camera');
-  }, [resetRecordingState]);
+  }, [clearVoice, resetRecordingState]);
 
   const handleDismissCaption = useCallback(() => {
     Keyboard.dismiss();
+    setCaptionInputOpen(false);
+  }, []);
+
+  const clearCaption = useCallback(() => {
+    Keyboard.dismiss();
+    setCaptionText('');
     setCaptionInputOpen(false);
   }, []);
 
@@ -424,7 +477,12 @@ export function CapturePhotoScreen() {
           draft.sourceUri,
           rotationSteps % 4 !== 0,
         );
-        await savePhotoMoment(filteredUri, null, captionText);
+        await savePhotoMoment(
+          filteredUri,
+          null,
+          captionText,
+          voiceUri ? {uri: voiceUri, durationMs: voiceDurationMs} : null,
+        );
       } else {
         await saveVideoMoment(draft.sourceUri, draft.durationMs, captionText, update => {
           setSaveStatus(update);
@@ -440,7 +498,7 @@ export function CapturePhotoScreen() {
       setSaving(false);
       setSaveStatus(null);
     }
-  }, [captionText, draft, navigation, rotationSteps, saving, selectedFilter]);
+  }, [captionText, draft, navigation, rotationSteps, saving, selectedFilter, voiceDurationMs, voiceUri]);
 
   if (!hasPermission) {
     return (
@@ -631,6 +689,7 @@ export function CapturePhotoScreen() {
   const stageHeight = isQuarterTurn ? windowWidth : windowHeight;
 
   return (
+    <BottomSheetModalProvider>
     <View style={styles.root}>
       {isPhotoDraft ? (
         <ViewShot
@@ -688,23 +747,66 @@ export function CapturePhotoScreen() {
             onPress={handleDismissCaption}
             style={styles.captionDismissBackdrop}
           />
-        ) : (
+        ) : !voiceSheetOpen ? (
           <View pointerEvents="box-none" style={styles.reviewSideToolsDock}>
             <View style={styles.reviewToolsDockRow}>
-              {captionText.trim().length > 0 ? (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Edit photo text"
-                  disabled={saving}
-                  onPress={() => setCaptionInputOpen(true)}
-                  style={[styles.captionPreview, saving ? styles.disabled : null]}>
-                  <Text numberOfLines={2} style={styles.captionPreviewText}>
-                    {captionText.trim()}
-                  </Text>
-                </Pressable>
-              ) : (
-                <View style={styles.captionPreviewSpacer} />
-              )}
+              <View style={styles.reviewAttachmentColumn}>
+                {isPhotoDraft && voiceUri ? (
+                  <View style={styles.voicePreviewRow}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={voicePlaying ? 'Pause voice memo' : 'Play voice memo'}
+                      onPress={() => void toggleVoicePreview()}
+                      style={[
+                        styles.voicePreviewPlay,
+                        {backgroundColor: CAPTURE_BUTTON_THEMES.voice.badgeBg},
+                      ]}>
+                      {voicePlaying ? (
+                        <Pause size={18} color={CAPTURE_BUTTON_THEMES.voice.icon} strokeWidth={2.25} />
+                      ) : (
+                        <Play size={18} color={CAPTURE_BUTTON_THEMES.voice.icon} strokeWidth={2.25} />
+                      )}
+                    </Pressable>
+                    <View style={styles.voicePreviewCopy}>
+                      <Text style={styles.voicePreviewLabel}>Voice memo</Text>
+                      <Text style={styles.voicePreviewDuration}>
+                        {formatVoiceDurationMs(voiceDurationMs)}
+                      </Text>
+                    </View>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Remove voice memo"
+                      onPress={() => void clearVoice()}
+                      style={styles.voicePreviewRemove}>
+                      <X size={16} color="#FFFFFF" strokeWidth={2.5} />
+                    </Pressable>
+                  </View>
+                ) : null}
+                {captionText.trim().length > 0 ? (
+                  <View style={styles.captionPreviewRow}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Edit photo text"
+                      disabled={saving}
+                      onPress={() => setCaptionInputOpen(true)}
+                      style={[styles.captionPreviewBody, saving ? styles.disabled : null]}>
+                      <Text numberOfLines={2} style={styles.captionPreviewText}>
+                        {captionText.trim()}
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Remove photo text"
+                      disabled={saving}
+                      onPress={clearCaption}
+                      style={styles.captionPreviewRemove}>
+                      <X size={16} color="#FFFFFF" strokeWidth={2.5} />
+                    </Pressable>
+                  </View>
+                ) : (
+                  <View style={styles.captionPreviewSpacer} />
+                )}
+              </View>
               <View style={styles.reviewSideToolsColumn}>
                 {isPhotoDraft ? (
                   <Pressable
@@ -715,6 +817,17 @@ export function CapturePhotoScreen() {
                     style={[styles.sideToolButton, saving ? styles.disabled : null]}>
                     <RotateCw size={18} color="#FFFFFF" strokeWidth={2.25} />
                     <Text style={styles.sideToolButtonLabel}>Rotate</Text>
+                  </Pressable>
+                ) : null}
+                {isPhotoDraft ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Record voice memo about this photo"
+                    disabled={saving || voiceUri != null}
+                    onPress={() => setVoiceSheetOpen(true)}
+                    style={[styles.sideToolButton, saving ? styles.disabled : null]}>
+                    <AudioLines size={18} color="#FFFFFF" strokeWidth={2.25} />
+                    <Text style={styles.sideToolButtonLabel}>Voice</Text>
                   </Pressable>
                 ) : null}
                 <Pressable
@@ -729,8 +842,9 @@ export function CapturePhotoScreen() {
               </View>
             </View>
           </View>
-        )}
+        ) : null}
 
+        {!voiceSheetOpen ? (
         <KeyboardAvoidingView
           pointerEvents="box-none"
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -804,8 +918,23 @@ export function CapturePhotoScreen() {
             ) : null}
           </View>
         </KeyboardAvoidingView>
+        ) : null}
       </View>
+
+      <VoiceMemoSheet
+        visible={voiceSheetOpen}
+        saveTarget="photo"
+        onDiaryAttach={attachment => {
+          void clearVoice().then(() => {
+            setVoiceUri(attachment.uri);
+            setVoiceDurationMs(attachment.durationMs);
+          });
+        }}
+        onClose={() => setVoiceSheetOpen(false)}
+        onSaved={async () => {}}
+      />
     </View>
+    </BottomSheetModalProvider>
   );
 }
 
@@ -861,23 +990,72 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     gap: 10,
   },
-  captionPreviewSpacer: {
+  reviewAttachmentColumn: {
     flex: 1,
+    gap: 8,
+    justifyContent: 'flex-end',
   },
-  captionPreview: {
-    flex: 1,
+  captionPreviewSpacer: {
+    minHeight: 0,
+  },
+  captionPreviewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     borderRadius: 12,
-    paddingHorizontal: 12,
+    paddingLeft: 12,
+    paddingRight: 6,
     paddingVertical: 8,
     backgroundColor: 'rgba(0,0,0,0.45)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
+  },
+  captionPreviewBody: {
+    flex: 1,
+  },
+  captionPreviewRemove: {
+    padding: 6,
   },
   captionPreviewText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '500',
     lineHeight: 18,
+  },
+  voicePreviewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+  },
+  voicePreviewPlay: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  voicePreviewCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  voicePreviewLabel: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  voicePreviewDuration: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 12,
+    fontVariant: ['tabular-nums'],
+  },
+  voicePreviewRemove: {
+    padding: 6,
   },
   reviewSideToolsColumn: {
     gap: 10,

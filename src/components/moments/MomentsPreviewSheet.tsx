@@ -24,7 +24,10 @@ import type {MomentRow} from '@/db/repositories/moments';
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import {useMomentPreviewContexts} from '@/hooks/use-moment-preview-contexts';
 import type {DistanceUnit} from '@/lib/location-geo';
-import {formatVoiceDurationMs} from '@/lib/moments/format-voice-duration';
+import {
+  formatMomentVoiceDuration,
+  resolveMomentVoiceContentPath,
+} from '@/lib/moments/moment-voice';
 import {notePhotoAttachmentPaths} from '@/lib/moments/note-photo-attachments';
 import {getEmotionContextTokenByLabel} from '@/lib/moments/emotion-context-tokens';
 import {getEmotionTokenByLabel, parseEmotionMoodLabel} from '@/lib/moments/emotion-tokens';
@@ -42,6 +45,7 @@ type MomentsPreviewSheetProps = {
   visible: boolean;
   title: string;
   moments: MomentRow[];
+  initialIndex?: number;
   timelineEntries: DayTimelineEntry[];
   savedPlaces: readonly SavedPlaceRow[];
   distanceUnit: DistanceUnit;
@@ -64,11 +68,53 @@ function momentDeleteNoun(type: MomentRow['type']): string {
 }
 
 function voiceDurationLabel(moment: MomentRow): string | null {
-  const seconds = moment.caption ? Number(moment.caption) : NaN;
-  if (!Number.isFinite(seconds) || seconds <= 0) {
-    return null;
-  }
-  return formatVoiceDurationMs(seconds * 1000);
+  return formatMomentVoiceDuration(moment);
+}
+
+function VoiceAttachmentRow({
+  label,
+  durationLabel,
+  isPlaying,
+  onToggle,
+  compact = false,
+}: {
+  label: string;
+  durationLabel: string | null;
+  isPlaying: boolean;
+  onToggle: () => void;
+  compact?: boolean;
+}) {
+  const theme = CAPTURE_BUTTON_THEMES.voice;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={isPlaying ? 'Pause voice memo' : 'Play voice memo'}
+      onPress={onToggle}
+      style={[styles.voiceAttachmentRow, compact ? styles.voiceAttachmentRowCompact : null]}>
+      <View
+        style={[
+          styles.voiceAttachmentPlay,
+          compact ? styles.voiceAttachmentPlayCompact : null,
+          {backgroundColor: theme.badgeBg},
+        ]}>
+        {isPlaying ? (
+          <Pause size={compact ? 16 : 18} color={theme.icon} strokeWidth={2.25} />
+        ) : (
+          <Play size={compact ? 16 : 18} color={theme.icon} strokeWidth={2.25} />
+        )}
+      </View>
+      <View style={styles.voiceAttachmentCopy}>
+        <Text
+          style={[styles.voiceAttachmentLabel, compact ? styles.voiceAttachmentLabelCompact : null]}
+          numberOfLines={1}>
+          {label}
+        </Text>
+        {durationLabel ? (
+          <Text style={styles.voiceAttachmentDuration}>{durationLabel}</Text>
+        ) : null}
+      </View>
+    </Pressable>
+  );
 }
 
 function MomentTypeIcon({moment, size = 18}: {moment: MomentRow; size?: number}) {
@@ -191,6 +237,11 @@ function VoiceMomentPage({
           {isPlaying ? 'Playing…' : 'Voice memo'}
         </Text>
         {duration ? <Text style={styles.voiceDuration}>{duration}</Text> : null}
+        {moment.textBody?.trim() ? (
+          <Text style={styles.voiceNote} numberOfLines={4}>
+            {moment.textBody.trim()}
+          </Text>
+        ) : null}
       </Pressable>
     </View>
   );
@@ -200,11 +251,7 @@ function noteVoiceDurationLabel(moment: MomentRow): string | null {
   if (!moment.voiceAttachmentPath) {
     return null;
   }
-  const seconds = moment.caption ? Number(moment.caption) : NaN;
-  if (!Number.isFinite(seconds) || seconds <= 0) {
-    return null;
-  }
-  return formatVoiceDurationMs(seconds * 1000);
+  return formatMomentVoiceDuration(moment);
 }
 
 const NOTE_PREVIEW_HORIZONTAL_PADDING = 24;
@@ -433,7 +480,7 @@ function MomentPagerPage({
         <MomentPreviewImage
           contentPath={moment.contentPath}
           style={styles.photoPage}
-          resizeMode="contain"
+          resizeMode="cover"
         />
       ) : null}
 
@@ -481,6 +528,7 @@ function PaginationDots({count, activeIndex}: {count: number; activeIndex: numbe
 export function MomentsPreviewSheet({
   visible,
   moments,
+  initialIndex = 0,
   timelineEntries,
   savedPlaces,
   distanceUnit,
@@ -520,10 +568,14 @@ export function MomentsPreviewSheet({
 
   useEffect(() => {
     if (visible) {
-      setActiveIndex(0);
-      pagerRef.current?.scrollToOffset({offset: 0, animated: false});
+      const index = Math.max(
+        0,
+        Math.min(initialIndex, Math.max(0, moments.length - 1)),
+      );
+      setActiveIndex(index);
+      pagerRef.current?.scrollToOffset({offset: index * pageWidth, animated: false});
     }
-  }, [visible]);
+  }, [initialIndex, moments.length, pageWidth, visible]);
 
   useEffect(() => {
     if (activeIndex >= moments.length) {
@@ -571,12 +623,7 @@ export function MomentsPreviewSheet({
 
   const toggleVoice = useCallback(
     async (moment: MomentRow) => {
-      const voicePath =
-        moment.type === 'voice'
-          ? moment.contentPath
-          : moment.type === 'note'
-            ? moment.voiceAttachmentPath
-            : null;
+      const voicePath = resolveMomentVoiceContentPath(moment);
       if (!voicePath) {
         return;
       }
@@ -669,6 +716,11 @@ export function MomentsPreviewSheet({
     [activeMoment, momentContexts],
   );
 
+  const activePhotoVoice =
+    activeMoment?.type === 'photo' && activeMoment.voiceAttachmentPath
+      ? activeMoment
+      : null;
+
   if (!visible) {
     return null;
   }
@@ -734,6 +786,17 @@ export function MomentsPreviewSheet({
         <View
           pointerEvents="box-none"
           style={[styles.bottomChrome, {paddingBottom: insets.bottom + 16}]}>
+          {activePhotoVoice ? (
+            <View style={styles.bottomVoiceDock}>
+              <VoiceAttachmentRow
+                compact
+                label="Voice memo"
+                durationLabel={formatMomentVoiceDuration(activePhotoVoice)}
+                isPlaying={playingVoiceId === activePhotoVoice.id}
+                onToggle={() => void toggleVoice(activePhotoVoice)}
+              />
+            </View>
+          ) : null}
           <View style={styles.bottomRow}>
             <View style={[styles.bottomRowSide, styles.bottomRowSideLeft]}>
               <View style={styles.bottomRowBalance} />
@@ -766,12 +829,10 @@ const styles = StyleSheet.create({
   },
   page: {
     flex: 1,
-    justifyContent: 'center',
     backgroundColor: '#000000',
   },
   photoPage: {
-    width: '100%',
-    height: '100%',
+    ...StyleSheet.absoluteFillObject,
   },
   videoPage: {
     width: '100%',
@@ -811,6 +872,11 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     paddingHorizontal: 12,
+    gap: 10,
+  },
+  bottomVoiceDock: {
+    alignSelf: 'stretch',
+    paddingHorizontal: 4,
   },
   bottomRow: {
     flexDirection: 'row',
@@ -927,6 +993,60 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.72)',
     fontSize: 14,
     fontWeight: '500',
+  },
+  voiceNote: {
+    marginTop: 12,
+    color: 'rgba(255,255,255,0.88)',
+    fontSize: 15,
+    lineHeight: 21,
+    textAlign: 'center',
+    paddingHorizontal: 24,
+  },
+  voiceAttachmentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+  },
+  voiceAttachmentRowCompact: {
+    gap: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    maxWidth: '100%',
+  },
+  voiceAttachmentPlay: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  voiceAttachmentPlayCompact: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+  },
+  voiceAttachmentCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  voiceAttachmentLabel: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  voiceAttachmentLabelCompact: {
+    fontSize: 13,
+  },
+  voiceAttachmentDuration: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 12,
+    fontVariant: ['tabular-nums'],
   },
   noteScroll: {
     flex: 1,

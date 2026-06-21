@@ -2,11 +2,15 @@ import {useCallback, useEffect, useRef, useState} from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
+  Platform,
   Pressable,
   StyleSheet,
   View,
 } from 'react-native';
 import {AudioLines, Mic, Pause, Play, Square} from 'lucide-react-native';
+import {BottomSheetTextInput} from '@gorhom/bottom-sheet';
+import type {BottomSheetModal} from '@gorhom/bottom-sheet';
 
 import {CAPTURE_BUTTON_THEMES} from '@/components/map/map-capture-button-theme';
 import {VoiceLiveMeter, VoicePlaybackMeter} from '@/components/voice/VoiceMeter';
@@ -27,7 +31,7 @@ import {
 
 type VoiceMemoPhase = 'idle' | 'recording' | 'preview' | 'saving';
 
-export type VoiceMemoSaveTarget = 'moment' | 'diary';
+export type VoiceMemoSaveTarget = 'moment' | 'diary' | 'photo';
 
 type VoiceMemoSheetProps = {
   visible: boolean;
@@ -36,6 +40,8 @@ type VoiceMemoSheetProps = {
   saveTarget?: VoiceMemoSaveTarget;
   onDiaryAttach?: (attachment: {uri: string; durationMs: number}) => void;
   onWillClose?: () => void;
+  /** When true, begin recording as soon as the sheet opens. */
+  startRecordingOnOpen?: boolean;
 };
 
 export function VoiceMemoSheet({
@@ -45,6 +51,7 @@ export function VoiceMemoSheet({
   saveTarget = 'moment',
   onDiaryAttach,
   onWillClose,
+  startRecordingOnOpen = true,
 }: VoiceMemoSheetProps) {
   const colors = useThemeColors();
   const voiceTheme = CAPTURE_BUTTON_THEMES.voice;
@@ -55,12 +62,17 @@ export function VoiceMemoSheet({
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
   const [liveLevel, setLiveLevel] = useState(0.12);
   const [playbackPositionMs, setPlaybackPositionMs] = useState(0);
+  const [noteText, setNoteText] = useState('');
+  const [noteFocused, setNoteFocused] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
 
   const recorderRef = useRef(createVoiceRecorderSession());
   const stopRecordingRef = useRef<() => Promise<void>>(async () => {});
   const durationMsRef = useRef(0);
   const previewPathRef = useRef<string | null>(null);
   const phaseRef = useRef<VoiceMemoPhase>('idle');
+  const sheetRef = useRef<BottomSheetModal>(null);
+  const restoreSheetAfterKeyboardRef = useRef(false);
 
   const paintDurationRef = useRef<(ms: number) => void>(() => {});
   const paintLiveLevelRef = useRef<(level: number) => void>(() => {});
@@ -99,6 +111,8 @@ export function VoiceMemoSheet({
     setIsPlayingPreview(false);
     setLiveLevel(0.12);
     setPlaybackPositionMs(0);
+    setNoteText('');
+    setNoteFocused(false);
     durationMsRef.current = 0;
   }, []);
 
@@ -114,6 +128,23 @@ export function VoiceMemoSheet({
       void resetDraft();
     }
   }, [resetDraft, visible]);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardVisible(false);
+      if (restoreSheetAfterKeyboardRef.current) {
+        restoreSheetAfterKeyboardRef.current = false;
+        sheetRef.current?.snapToIndex(0);
+      }
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   useEffect(() => {
     const session = createVoiceRecorderSession({
@@ -187,7 +218,7 @@ export function VoiceMemoSheet({
         : durationMs
       : durationMs;
 
-  const handleStartRecording = async () => {
+  const handleStartRecording = useCallback(async () => {
     try {
       setPreviewPath(null);
       setIsPlayingPreview(false);
@@ -200,7 +231,36 @@ export function VoiceMemoSheet({
     } catch (error) {
       Alert.alert('Could not start recording', getVoiceRecordingErrorMessage(error));
     }
-  };
+  }, []);
+
+  const startRecordingRef = useRef(handleStartRecording);
+  const autoStartAttemptedRef = useRef(false);
+
+  useEffect(() => {
+    startRecordingRef.current = handleStartRecording;
+  }, [handleStartRecording]);
+
+  useEffect(() => {
+    if (!visible) {
+      autoStartAttemptedRef.current = false;
+      return;
+    }
+    if (!startRecordingOnOpen || autoStartAttemptedRef.current) {
+      return;
+    }
+    if (phaseRef.current !== 'idle') {
+      return;
+    }
+
+    autoStartAttemptedRef.current = true;
+    const timer = setTimeout(() => {
+      if (phaseRef.current === 'idle') {
+        void startRecordingRef.current();
+      }
+    }, 280);
+
+    return () => clearTimeout(timer);
+  }, [startRecordingOnOpen, visible]);
 
   const handleTogglePreview = async () => {
     if (!previewPath) {
@@ -242,7 +302,7 @@ export function VoiceMemoSheet({
     setPhase('saving');
     try {
       await recorderRef.current.stopPreview();
-      if (saveTarget === 'diary') {
+      if (saveTarget === 'diary' || saveTarget === 'photo') {
         onDiaryAttach?.({uri: previewPath, durationMs});
         setPreviewPath(null);
         setPhase('idle');
@@ -251,7 +311,7 @@ export function VoiceMemoSheet({
         onClose();
         return;
       }
-      await saveVoiceMoment(previewPath, durationMs);
+      await saveVoiceMoment(previewPath, durationMs, noteText);
       setPreviewPath(null);
       await onSaved();
       setPhase('idle');
@@ -269,7 +329,25 @@ export function VoiceMemoSheet({
 
   const durationLabel = formatVoiceDurationMs(timerMs);
   const capLabel = formatVoiceDurationCap();
-  const isDiaryAttach = saveTarget === 'diary';
+  const isAttachMode = saveTarget === 'diary' || saveTarget === 'photo';
+  const saveActionLabel =
+    saveTarget === 'diary'
+      ? 'Add to diary'
+      : saveTarget === 'photo'
+        ? 'Add to photo'
+        : 'Save moment';
+  const previewHint =
+    saveTarget === 'diary'
+      ? 'Preview your memo, then add it to this diary entry.'
+      : saveTarget === 'photo'
+        ? 'Preview your memo, then add it to this photo.'
+        : 'Preview your memo, then save or discard.';
+  const idleHint =
+    saveTarget === 'diary'
+      ? `Record up to ${capLabel} for this diary entry.`
+      : saveTarget === 'photo'
+        ? `Record up to ${capLabel} for this photo.`
+        : `Record up to ${capLabel} and save to your day.`;
 
   const handleAnimate = useCallback(
     (_fromIndex: number, toIndex: number) => {
@@ -280,12 +358,30 @@ export function VoiceMemoSheet({
     [onWillClose],
   );
 
+  const showNoteInput = phase === 'preview' && saveTarget === 'moment';
+  const noteEditingActive = showNoteInput && (noteFocused || keyboardVisible);
+
+  const handleBackdropPress = useCallback(() => {
+    if (!noteEditingActive) {
+      return false;
+    }
+    restoreSheetAfterKeyboardRef.current = true;
+    Keyboard.dismiss();
+    setNoteFocused(false);
+    return true;
+  }, [noteEditingActive]);
+
   return (
     <AppBottomSheet
       visible={visible}
       onClose={closeSheet}
       onAnimate={handleAnimate}
-      enableDynamicSizing>
+      enableDynamicSizing
+      keyboardBehavior="interactive"
+      keyboardBlurBehavior="none"
+      bottomSheetRef={sheetRef}
+      onBackdropPress={handleBackdropPress}
+      enablePanDownToClose={!noteEditingActive}>
       <Text variant="h4" className="border-0 pb-0">
         Voice memo
       </Text>
@@ -293,10 +389,8 @@ export function VoiceMemoSheet({
         {phase === 'recording'
           ? `Recording… max ${capLabel}`
           : phase === 'preview'
-            ? saveTarget === 'diary'
-              ? 'Preview your memo, then add it to this diary entry.'
-              : 'Preview your memo, then save or discard.'
-            : `Record up to ${capLabel} and save to your day.`}
+            ? previewHint
+            : idleHint}
       </Text>
 
       <View style={styles.timerRow}>
@@ -327,7 +421,7 @@ export function VoiceMemoSheet({
       ) : null}
 
       <View style={styles.controls}>
-        {phase === 'idle' ? (
+        {phase === 'idle' && !startRecordingOnOpen ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Start recording"
@@ -335,6 +429,11 @@ export function VoiceMemoSheet({
             style={[styles.primaryCircle, {backgroundColor: voiceTheme.badgeBg}]}>
             <Mic size={28} color={voiceTheme.icon} strokeWidth={2.25} />
           </Pressable>
+        ) : phase === 'idle' && startRecordingOnOpen ? (
+          <View style={styles.savingRow}>
+            <ActivityIndicator color={colors.primary} />
+            <Text variant="muted">Starting recorder…</Text>
+          </View>
         ) : null}
 
         {phase === 'recording' ? (
@@ -371,9 +470,7 @@ export function VoiceMemoSheet({
               onPress={() => void handleSave()}
               style={[styles.saveButton, {backgroundColor: colors.primary}]}>
               <AudioLines size={18} color={colors.primaryForeground} strokeWidth={2.25} />
-              <Text className="text-primary-foreground font-medium">
-                {saveTarget === 'diary' ? 'Add to diary' : 'Save moment'}
-              </Text>
+              <Text className="text-primary-foreground font-medium">{saveActionLabel}</Text>
             </Pressable>
           </View>
         ) : null}
@@ -386,7 +483,25 @@ export function VoiceMemoSheet({
         ) : null}
       </View>
 
-      {phase === 'preview' && !isDiaryAttach ? (
+      {showNoteInput ? (
+        <BottomSheetTextInput
+          value={noteText}
+          onChangeText={setNoteText}
+          placeholder="Add a note about this recording (optional)"
+          placeholderTextColor="#9CA3AF"
+          style={styles.noteInput}
+          multiline
+          maxLength={280}
+          editable={phase === 'preview'}
+          onFocus={() => setNoteFocused(true)}
+          onBlur={() => {
+            setNoteFocused(false);
+            sheetRef.current?.snapToIndex(0);
+          }}
+        />
+      ) : null}
+
+      {phase === 'preview' && !isAttachMode && !noteFocused ? (
         <View style={styles.footerActions}>
           <Pressable
             accessibilityRole="button"
@@ -401,7 +516,7 @@ export function VoiceMemoSheet({
             </Text>
           </Pressable>
         </View>
-      ) : phase !== 'preview' && !isDiaryAttach ? (
+      ) : phase !== 'preview' && !isAttachMode ? (
         <Pressable accessibilityRole="button" onPress={closeSheet} style={styles.cancelOnly}>
           <Text variant="muted" className="text-sm">
             Cancel
@@ -488,5 +603,19 @@ const styles = StyleSheet.create({
   cancelOnly: {
     marginTop: 8,
     alignSelf: 'center',
+  },
+  noteInput: {
+    marginTop: 16,
+    minHeight: 44,
+    maxHeight: 96,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#E5E7EB',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    lineHeight: 20,
+    color: '#111827',
+    textAlignVertical: 'top',
   },
 });

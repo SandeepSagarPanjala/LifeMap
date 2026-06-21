@@ -107,6 +107,8 @@ export async function migrationAlreadyApplied(
       return columnExists(sqlite, 'materialized_days', 'geometry_fingerprint');
     case '0015_saved_place_address':
       return columnExists(sqlite, 'saved_places', 'address_line');
+    case '0016_moment_voice_duration':
+      return columnExists(sqlite, 'moments', 'voice_duration_sec');
     default:
       return false;
   }

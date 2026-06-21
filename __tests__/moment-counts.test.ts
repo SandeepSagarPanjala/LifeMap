@@ -8,6 +8,7 @@ import {
   filterMomentsForStayEntry,
   shouldHideSavedPlaceMomentCluster,
   shouldShowDayMomentSummaryBar,
+  firstMomentIndexOfType,
 } from '../src/lib/moments/moment-counts';
 import type {MomentRow} from '../src/db/repositories/moments';
 import type {SavedPlaceRow} from '../src/db/repositories/saved-places';
@@ -22,6 +23,7 @@ function moment(partial: Partial<MomentRow> & Pick<MomentRow, 'id' | 'type' | 't
     contentPath: null,
     voiceAttachmentPath: null,
     voiceAttachmentBytes: null,
+    voiceDurationSec: null,
     photoAttachmentsJson: null,
     textBody: null,
     caption: null,
@@ -361,5 +363,19 @@ describe('moment counts', () => {
       voice: 0,
       note: 0,
     });
+  });
+});
+
+describe('firstMomentIndexOfType', () => {
+  it('returns the index of the first moment matching the type', () => {
+    const moments = [
+      moment({id: 1, type: 'photo', timestamp: new Date('2026-06-21T08:00:00Z')}),
+      moment({id: 2, type: 'voice', timestamp: new Date('2026-06-21T09:00:00Z')}),
+      moment({id: 3, type: 'note', timestamp: new Date('2026-06-21T10:00:00Z')}),
+    ];
+
+    expect(firstMomentIndexOfType(moments, 'note')).toBe(2);
+    expect(firstMomentIndexOfType(moments, 'photo')).toBe(0);
+    expect(firstMomentIndexOfType(moments, 'video')).toBe(-1);
   });
 });

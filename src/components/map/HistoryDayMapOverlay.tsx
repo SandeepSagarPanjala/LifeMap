@@ -7,7 +7,7 @@ import {TripRouteOverlay} from '@/components/map/TripRouteOverlay';
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import type {DriveEndpointLabel} from '@/lib/drive-endpoint-label';
 import type {HistoryMapPlan} from '@/lib/history-map-plan';
-import type {MomentCounts} from '@/lib/moments/moment-counts';
+import type {MomentCountType, MomentCounts} from '@/lib/moments/moment-counts';
 import {matchSavedPlaceForStay} from '@/lib/saved-places';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
 
@@ -20,7 +20,7 @@ type HistoryDayMapOverlayProps = {
   selectedDriveStartLabel?: DriveEndpointLabel;
   selectedDriveEndLabel?: DriveEndpointLabel;
   selectedEntryMomentCounts?: MomentCounts;
-  onPressSelectedEntryMoments?: () => void;
+  onPressSelectedEntryMoments?: (type: MomentCountType) => void;
   tripConfig: TripDetectionConfig;
   playbackProgress: number | null;
 };
@@ -158,7 +158,7 @@ export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
             !selectedSavedPlace && selectedNearbyPlacePinned
           }
           momentCounts={selectedEntryMomentCounts}
-          onPressMomentCounts={onPressSelectedEntryMoments}
+          onPressMomentType={onPressSelectedEntryMoments}
         />
       ) : null}
     </>

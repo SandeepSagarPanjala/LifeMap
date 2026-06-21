@@ -19,6 +19,7 @@ export type MomentRow = {
   contentPath: string | null;
   voiceAttachmentPath: string | null;
   voiceAttachmentBytes: number | null;
+  voiceDurationSec: number | null;
   photoAttachmentsJson: string | null;
   textBody: string | null;
   caption: string | null;
@@ -46,6 +47,7 @@ export type NewMoment = {
   contentPath?: string | null;
   voiceAttachmentPath?: string | null;
   voiceAttachmentBytes?: number | null;
+  voiceDurationSec?: number | null;
   photoAttachmentsJson?: string | null;
   contentBytes?: number | null;
   sourceBytes?: number | null;
@@ -64,6 +66,7 @@ function mapRow(row: typeof moments.$inferSelect): MomentRow {
     contentPath: row.contentPath ?? null,
     voiceAttachmentPath: row.voiceAttachmentPath ?? null,
     voiceAttachmentBytes: row.voiceAttachmentBytes ?? null,
+    voiceDurationSec: row.voiceDurationSec ?? null,
     photoAttachmentsJson: row.photoAttachmentsJson ?? null,
     textBody: row.textBody ?? null,
     caption: row.caption ?? null,
@@ -100,6 +103,7 @@ export async function insertMoment(input: NewMoment): Promise<MomentRow> {
       contentPath: input.contentPath ?? null,
       voiceAttachmentPath: input.voiceAttachmentPath ?? null,
       voiceAttachmentBytes: input.voiceAttachmentBytes ?? null,
+      voiceDurationSec: input.voiceDurationSec ?? null,
       photoAttachmentsJson: input.photoAttachmentsJson ?? null,
       contentBytes: input.contentBytes ?? null,
       sourceBytes: input.sourceBytes ?? null,

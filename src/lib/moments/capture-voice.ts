@@ -11,6 +11,7 @@ export function isVoiceRecordingTooShort(durationMs: number): boolean {
 export async function saveVoiceMoment(
   tempFilePath: string,
   durationMs: number,
+  textBody?: string | null,
 ): Promise<MomentRow> {
   if (isVoiceRecordingTooShort(durationMs)) {
     throw new Error('Recording is too short to save.');
@@ -25,5 +26,6 @@ export async function saveVoiceMoment(
     contentBytes: sandboxFile.contentBytes,
     contentFormat: VOICE_CONTENT_FORMAT,
     caption: String(Math.round(durationMs / 1000)),
+    textBody: textBody?.trim() || null,
   });
 }

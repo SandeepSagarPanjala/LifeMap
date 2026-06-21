@@ -6,7 +6,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { SavedPlaceIcon } from '@/components/map/SavedPlaceIcon';
 import { MomentCountsRow } from '@/components/moments/MomentCountsRow';
 import type { SavedPlaceRow } from '@/db/repositories/saved-places';
-import type { MomentCounts } from '@/lib/moments/moment-counts';
+import type { MomentCountType, MomentCounts } from '@/lib/moments/moment-counts';
 import { hasMomentCounts } from '@/lib/moments/moment-counts';
 import {
   formatStayVisitLabel,
@@ -36,7 +36,7 @@ type StayDurationCalloutProps = {
   showVisitPin?: boolean;
   /** Anchor the label (e.g. live GPS while the blue puck is shown). */
   anchorCoordinate?: { latitude: number; longitude: number } | null;
-  onPressMomentCounts?: () => void;
+  onPressMomentType?: (type: MomentCountType) => void;
 };
 
 export function StayDurationCallout({
@@ -47,7 +47,7 @@ export function StayDurationCallout({
   momentCounts,
   showVisitPin = true,
   anchorCoordinate = null,
-  onPressMomentCounts,
+  onPressMomentType,
 }: StayDurationCalloutProps) {
   const [now, setNow] = useState(() => new Date());
   const ongoing = isVisitOngoing(trip.endAt, now, {
@@ -98,17 +98,11 @@ export function StayDurationCallout({
         anchor={bubbleAnchor}
         centerOffset={bubbleCenterOffset}
         zIndex={12}
-        tracksViewChanges={false}
-        onPress={
-          showMomentCounts && onPressMomentCounts
-            ? onPressMomentCounts
-            : undefined
-        }
-      >
+        tracksViewChanges={false}>
         <View style={styles.bubble} collapsable={false}>
           {showMomentCounts ? (
             <>
-              <MomentCountsRow counts={counts!} onPress={onPressMomentCounts} />
+              <MomentCountsRow counts={counts!} onPressType={onPressMomentType} />
               <View style={styles.divider} />
             </>
           ) : null}

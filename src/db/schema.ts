@@ -20,6 +20,7 @@ export const moments = sqliteTable('moments', {
   contentPath: text('content_path'),
   voiceAttachmentPath: text('voice_attachment_path'),
   voiceAttachmentBytes: integer('voice_attachment_bytes'),
+  voiceDurationSec: integer('voice_duration_sec'),
   photoAttachmentsJson: text('photo_attachments_json'),
   textBody: text('text_body'),
   caption: text('caption'),

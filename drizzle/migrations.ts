@@ -180,6 +180,8 @@ const m0014 = `ALTER TABLE \`materialized_days\` ADD COLUMN \`geometry_fingerpri
 
 const m0015 = `ALTER TABLE \`saved_places\` ADD COLUMN \`address_line\` text;`;
 
+const m0016 = `ALTER TABLE \`moments\` ADD COLUMN \`voice_duration_sec\` integer;`;
+
 export default {
   journal,
   migrations: {
@@ -199,5 +201,6 @@ export default {
     m0013,
     m0014,
     m0015,
+    m0016,
   },
 };

@@ -5,7 +5,7 @@ import {
   CAPTURE_BUTTON_THEMES,
   CAPTURE_ICON_SIZE,
 } from '@/components/map/map-capture-button-theme';
-import type {MomentCounts} from '@/lib/moments/moment-counts';
+import type {MomentCountType, MomentCounts} from '@/lib/moments/moment-counts';
 import {hasMomentCounts} from '@/lib/moments/moment-counts';
 
 type MomentCountsRowProps = {
@@ -13,6 +13,7 @@ type MomentCountsRowProps = {
   iconSize?: number;
   compact?: boolean;
   onPress?: () => void;
+  onPressType?: (type: MomentCountType) => void;
 };
 
 type MomentCountChipProps = {
@@ -21,6 +22,8 @@ type MomentCountChipProps = {
   theme: (typeof CAPTURE_BUTTON_THEMES)['camera'];
   iconSize: number;
   compact: boolean;
+  onPress?: () => void;
+  accessibilityLabel: string;
 };
 
 function MomentCountChip({
@@ -29,14 +32,31 @@ function MomentCountChip({
   theme,
   iconSize,
   compact,
+  onPress,
+  accessibilityLabel,
 }: MomentCountChipProps) {
-  return (
+  const chip = (
     <View style={[styles.chip, compact ? styles.chipCompact : null]}>
       <View style={[styles.iconOrb, {backgroundColor: theme.badgeBg}]}>
         <Icon size={iconSize} color={theme.icon} strokeWidth={2.25} />
       </View>
       <Text style={[styles.count, compact ? styles.countCompact : null]}>{count}</Text>
     </View>
+  );
+
+  if (!onPress) {
+    return chip;
+  }
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      hitSlop={6}
+      onPress={onPress}
+      style={({pressed}) => [pressed ? styles.pressed : null]}>
+      {chip}
+    </Pressable>
   );
 }
 
@@ -45,6 +65,7 @@ export function MomentCountsRow({
   iconSize = CAPTURE_ICON_SIZE - 2,
   compact = false,
   onPress,
+  onPressType,
 }: MomentCountsRowProps) {
   if (!hasMomentCounts(counts)) {
     return null;
@@ -59,6 +80,8 @@ export function MomentCountsRow({
           theme={CAPTURE_BUTTON_THEMES.camera}
           iconSize={iconSize}
           compact={compact}
+          onPress={onPressType ? () => onPressType('photo') : undefined}
+          accessibilityLabel="Preview photo moments"
         />
       ) : null}
       {counts.video > 0 ? (
@@ -68,6 +91,8 @@ export function MomentCountsRow({
           theme={CAPTURE_BUTTON_THEMES.camera}
           iconSize={iconSize}
           compact={compact}
+          onPress={onPressType ? () => onPressType('video') : undefined}
+          accessibilityLabel="Preview video moments"
         />
       ) : null}
       {counts.voice > 0 ? (
@@ -77,6 +102,8 @@ export function MomentCountsRow({
           theme={CAPTURE_BUTTON_THEMES.voice}
           iconSize={iconSize}
           compact={compact}
+          onPress={onPressType ? () => onPressType('voice') : undefined}
+          accessibilityLabel="Preview voice moments"
         />
       ) : null}
       {counts.note > 0 ? (
@@ -86,10 +113,16 @@ export function MomentCountsRow({
           theme={CAPTURE_BUTTON_THEMES.note}
           iconSize={iconSize}
           compact={compact}
+          onPress={onPressType ? () => onPressType('note') : undefined}
+          accessibilityLabel="Preview diary moments"
         />
       ) : null}
     </View>
   );
+
+  if (onPressType) {
+    return row;
+  }
 
   if (!onPress) {
     return row;

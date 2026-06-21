@@ -12,7 +12,7 @@ import type MapView from 'react-native-maps';
 import {PROVIDER_DEFAULT, PROVIDER_GOOGLE, type Region} from 'react-native-maps';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
-import {deleteMoment} from '@/db/repositories/moments';
+import {deleteMoment, type MomentType} from '@/db/repositories/moments';
 import {
   addFavoritePlace,
   deleteSavedPlace,
@@ -43,6 +43,8 @@ import {
   shouldHideSavedPlaceMomentCluster,
   shouldShowDayMomentSummaryBar,
   hasMomentCounts,
+  firstMomentIndexOfType,
+  type MomentCountType,
   type MomentCounts,
 } from '@/lib/moments/moment-counts';
 import {
@@ -192,13 +194,19 @@ export function useMapScreenController() {
   const [savedPlacesSheetOpen, setSavedPlacesSheetOpen] = useState(false);
   const [voiceSheetOpen, setVoiceSheetOpen] = useState(false);
   const [momentsPreviewScope, setMomentsPreviewScope] = useState<
-    | {kind: 'day'}
+    | {kind: 'day'; initialType?: MomentType}
     | {
         kind: 'entry';
         entry: DayTimelineEntry;
         aggregation?: 'place' | 'visit';
+        initialType?: MomentType;
       }
-    | {kind: 'moment-ids'; momentIds: number[]; title: string}
+    | {
+        kind: 'moment-ids';
+        momentIds: number[];
+        title: string;
+        initialType?: MomentType;
+      }
     | null
   >(null);
   const [clusterMomentsOnMap, setClusterMomentsOnMap] = useState(false);
@@ -1363,29 +1371,46 @@ export function useMapScreenController() {
     await refreshDayMoments();
   }, [refreshDayMoments]);
 
-  const openDayMomentsPreview = useCallback(() => {
-    setMomentsPreviewScope({kind: 'day'});
+  const momentsPreviewInitialIndex = useMemo(() => {
+    const initialType = momentsPreviewScope?.initialType;
+    if (initialType == null || momentsPreviewMoments.length === 0) {
+      return 0;
+    }
+    const index = firstMomentIndexOfType(momentsPreviewMoments, initialType);
+    return index >= 0 ? index : 0;
+  }, [momentsPreviewMoments, momentsPreviewScope?.initialType]);
+
+  const openDayMomentsPreview = useCallback((initialType?: MomentCountType) => {
+    setMomentsPreviewScope({kind: 'day', initialType});
   }, []);
 
-  const openCurrentVisitMomentsPreview = useCallback(() => {
-    if (currentOpenVisit) {
-      setMomentsPreviewScope({
-        kind: 'entry',
-        entry: currentOpenVisit,
-        aggregation: 'place',
-      });
-    }
-  }, [currentOpenVisit]);
+  const openCurrentVisitMomentsPreview = useCallback(
+    (initialType?: MomentCountType) => {
+      if (currentOpenVisit) {
+        setMomentsPreviewScope({
+          kind: 'entry',
+          entry: currentOpenVisit,
+          aggregation: 'place',
+          initialType,
+        });
+      }
+    },
+    [currentOpenVisit],
+  );
 
-  const openSelectedEntryMomentsPreview = useCallback(() => {
-    if (selectedEntry) {
-      setMomentsPreviewScope({
-        kind: 'entry',
-        entry: selectedEntry,
-        aggregation: 'visit',
-      });
-    }
-  }, [selectedEntry]);
+  const openSelectedEntryMomentsPreview = useCallback(
+    (initialType?: MomentCountType) => {
+      if (selectedEntry) {
+        setMomentsPreviewScope({
+          kind: 'entry',
+          entry: selectedEntry,
+          aggregation: 'visit',
+          initialType,
+        });
+      }
+    },
+    [selectedEntry],
+  );
 
   const openMomentMapPinPreview = useCallback((pin: MomentMapPin) => {
     setMomentsPreviewScope({
@@ -1432,6 +1457,7 @@ export function useMapScreenController() {
     momentsPreviewOpen,
     momentsPreviewTitle,
     momentsPreviewMoments,
+    momentsPreviewInitialIndex,
     momentsPreviewEntry,
     openDayMomentsPreview,
     openCurrentVisitMomentsPreview,
