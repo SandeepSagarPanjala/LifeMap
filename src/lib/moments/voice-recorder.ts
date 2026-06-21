@@ -21,6 +21,9 @@ const VOICE_AUDIO_SET: AudioSet = {
 export type VoiceRecorderCallbacks = {
   onDurationMs?: (durationMs: number) => void;
   onMaxDurationReached?: () => void;
+  onMetering?: (meteringDb: number) => void;
+  onPlaybackProgress?: (positionMs: number, durationMs: number) => void;
+  onPlaybackEnded?: () => void;
 };
 
 export type VoiceRecorderSession = {
@@ -100,10 +103,22 @@ export function createVoiceRecorderSession(
   const handleRecordProgress = (event: RecordBackType) => {
     durationMs = event.currentPosition;
     callbacks.onDurationMs?.(durationMs);
+    if (event.currentMetering != null) {
+      callbacks.onMetering?.(event.currentMetering);
+    }
     if (!stoppingForCap && durationMs >= VOICE_MAX_DURATION_MS) {
       stoppingForCap = true;
       callbacks.onMaxDurationReached?.();
     }
+  };
+
+  const handlePlaybackProgress = (event: {currentPosition: number; duration: number}) => {
+    callbacks.onPlaybackProgress?.(event.currentPosition, event.duration);
+  };
+
+  const handlePlaybackEnded = (event: {duration: number; currentPosition: number}) => {
+    callbacks.onPlaybackProgress?.(event.currentPosition, event.duration);
+    callbacks.onPlaybackEnded?.();
   };
 
   return {
@@ -112,8 +127,9 @@ export function createVoiceRecorderSession(
       stoppingForCap = false;
       durationMs = 0;
       activeRecordPath = await createTempVoiceRecordingPath();
+      sound.setSubscriptionDuration(0.1);
       sound.addRecordBackListener(handleRecordProgress);
-      await sound.startRecorder(activeRecordPath, VOICE_AUDIO_SET, false);
+      await sound.startRecorder(activeRecordPath, VOICE_AUDIO_SET, true);
     },
 
     async stopRecording() {
@@ -130,6 +146,10 @@ export function createVoiceRecorderSession(
 
     async startPreview(filePath: string) {
       await sound.stopPlayer();
+      removeListenersSafely();
+      sound.setSubscriptionDuration(0.1);
+      sound.addPlayBackListener(handlePlaybackProgress);
+      sound.addPlaybackEndListener(handlePlaybackEnded);
       await sound.startPlayer(filePath);
     },
 

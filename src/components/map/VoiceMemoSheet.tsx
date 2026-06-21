@@ -2,8 +2,6 @@ import {useCallback, useEffect, useRef, useState} from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Animated,
-  Easing,
   Pressable,
   StyleSheet,
   View,
@@ -11,6 +9,7 @@ import {
 import {AudioLines, Mic, Pause, Play, Square} from 'lucide-react-native';
 
 import {CAPTURE_BUTTON_THEMES} from '@/components/map/map-capture-button-theme';
+import {VoiceLiveMeter, VoicePlaybackMeter} from '@/components/voice/VoiceMeter';
 import {Text} from '@/components/ui/text';
 import {AppBottomSheet} from '@/components/ui/app-bottom-sheet';
 import {useThemeColors} from '@/hooks/use-theme-colors';
@@ -20,6 +19,7 @@ import {
   isVoiceDurationAtCap,
 } from '@/lib/moments/format-voice-duration';
 import {saveVoiceMoment} from '@/lib/moments/capture-voice';
+import {normalizeVoiceMetering, throttleVoiceUi} from '@/lib/moments/voice-waveform';
 import {
   createVoiceRecorderSession,
   getVoiceRecordingErrorMessage,
@@ -53,26 +53,61 @@ export function VoiceMemoSheet({
   const [durationMs, setDurationMs] = useState(0);
   const [previewPath, setPreviewPath] = useState<string | null>(null);
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
+  const [liveLevel, setLiveLevel] = useState(0.12);
+  const [playbackPositionMs, setPlaybackPositionMs] = useState(0);
 
   const recorderRef = useRef(createVoiceRecorderSession());
   const stopRecordingRef = useRef<() => Promise<void>>(async () => {});
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const durationMsRef = useRef(0);
+  const previewPathRef = useRef<string | null>(null);
+  const phaseRef = useRef<VoiceMemoPhase>('idle');
+
+  const paintDurationRef = useRef<(ms: number) => void>(() => {});
+  const paintLiveLevelRef = useRef<(level: number) => void>(() => {});
+  const paintPlaybackRef = useRef<(ms: number) => void>(() => {});
+
+  useEffect(() => {
+    durationMsRef.current = durationMs;
+  }, [durationMs]);
+
+  useEffect(() => {
+    previewPathRef.current = previewPath;
+  }, [previewPath]);
+
+  useEffect(() => {
+    phaseRef.current = phase;
+  }, [phase]);
+
+  useEffect(() => {
+    paintDurationRef.current = throttleVoiceUi((ms: number) => {
+      setDurationMs(ms);
+    }, 250);
+    paintLiveLevelRef.current = throttleVoiceUi((level: number) => {
+      setLiveLevel(level);
+    }, 120);
+    paintPlaybackRef.current = throttleVoiceUi((ms: number) => {
+      setPlaybackPositionMs(ms);
+    }, 150);
+  }, []);
 
   const resetDraft = useCallback(async () => {
     await recorderRef.current.stopPreview();
-    await recorderRef.current.discardRecording(previewPath);
+    await recorderRef.current.discardRecording(previewPathRef.current);
     setPhase('idle');
     setDurationMs(0);
     setPreviewPath(null);
     setIsPlayingPreview(false);
-  }, [previewPath]);
+    setLiveLevel(0.12);
+    setPlaybackPositionMs(0);
+    durationMsRef.current = 0;
+  }, []);
 
   const closeSheet = useCallback(() => {
-    if (phase === 'saving') {
+    if (phaseRef.current === 'saving') {
       return;
     }
     void resetDraft().finally(onClose);
-  }, [onClose, phase, resetDraft]);
+  }, [onClose, resetDraft]);
 
   useEffect(() => {
     if (!visible) {
@@ -82,9 +117,25 @@ export function VoiceMemoSheet({
 
   useEffect(() => {
     const session = createVoiceRecorderSession({
-      onDurationMs: setDurationMs,
+      onDurationMs: ms => {
+        durationMsRef.current = ms;
+        paintDurationRef.current(ms);
+      },
       onMaxDurationReached: () => {
         void stopRecordingRef.current();
+      },
+      onMetering: meteringDb => {
+        paintLiveLevelRef.current(normalizeVoiceMetering(meteringDb));
+      },
+      onPlaybackProgress: (positionMs, totalMs) => {
+        paintPlaybackRef.current(positionMs);
+        if (totalMs > 0 && positionMs >= totalMs - 80) {
+          setIsPlayingPreview(false);
+        }
+      },
+      onPlaybackEnded: () => {
+        setIsPlayingPreview(false);
+        setPlaybackPositionMs(durationMsRef.current);
       },
     });
     recorderRef.current = session;
@@ -96,17 +147,20 @@ export function VoiceMemoSheet({
   const handleStopRecording = useCallback(async () => {
     try {
       const result = await recorderRef.current.stopRecording();
+      setDurationMs(result.durationMs);
+      durationMsRef.current = result.durationMs;
       if (result.durationMs < 500) {
         await recorderRef.current.discardRecording(result.filePath);
         setPhase('idle');
         setDurationMs(0);
+        durationMsRef.current = 0;
         Alert.alert('Recording too short', 'Hold the mic for at least half a second.');
         return;
       }
       setPreviewPath(result.filePath);
-      setDurationMs(result.durationMs);
       setPhase('preview');
       setIsPlayingPreview(false);
+      setPlaybackPositionMs(0);
     } catch (error) {
       Alert.alert('Could not stop recording', getVoiceRecordingErrorMessage(error));
       setPhase('idle');
@@ -115,44 +169,32 @@ export function VoiceMemoSheet({
 
   useEffect(() => {
     stopRecordingRef.current = async () => {
-      if (phase !== 'recording') {
+      if (phaseRef.current !== 'recording') {
         return;
       }
       await handleStopRecording();
     };
-  }, [handleStopRecording, phase]);
+  }, [handleStopRecording]);
 
-  useEffect(() => {
-    if (phase !== 'recording') {
-      pulseAnim.setValue(1);
-      return;
-    }
-
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.12,
-          duration: 700,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 700,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [phase, pulseAnim]);
+  const playbackProgress =
+    phase === 'preview' && durationMs > 0
+      ? Math.min(1, playbackPositionMs / durationMs)
+      : 0;
+  const timerMs =
+    phase === 'preview'
+      ? isPlayingPreview || playbackPositionMs > 0
+        ? playbackPositionMs
+        : durationMs
+      : durationMs;
 
   const handleStartRecording = async () => {
     try {
       setPreviewPath(null);
       setIsPlayingPreview(false);
       setDurationMs(0);
+      durationMsRef.current = 0;
+      setLiveLevel(0.12);
+      setPlaybackPositionMs(0);
       await recorderRef.current.startRecording();
       setPhase('recording');
     } catch (error) {
@@ -169,6 +211,9 @@ export function VoiceMemoSheet({
         await recorderRef.current.pausePreview();
         setIsPlayingPreview(false);
         return;
+      }
+      if (playbackPositionMs >= durationMs - 80) {
+        setPlaybackPositionMs(0);
       }
       await recorderRef.current.startPreview(previewPath);
       setIsPlayingPreview(true);
@@ -222,7 +267,7 @@ export function VoiceMemoSheet({
     }
   };
 
-  const durationLabel = formatVoiceDurationMs(durationMs);
+  const durationLabel = formatVoiceDurationMs(timerMs);
   const capLabel = formatVoiceDurationCap();
   const isDiaryAttach = saveTarget === 'diary';
 
@@ -258,9 +303,7 @@ export function VoiceMemoSheet({
         <Text className="text-3xl font-semibold tabular-nums">{durationLabel}</Text>
         {phase === 'recording' ? (
           <View style={styles.recordingBadge}>
-            <Animated.View
-              style={[styles.recordingDot, {transform: [{scale: pulseAnim}]}]}
-            />
+            <View style={styles.recordingDot} />
             <Text className="text-sm font-medium">Recording</Text>
           </View>
         ) : null}
@@ -270,6 +313,18 @@ export function VoiceMemoSheet({
           </Text>
         ) : null}
       </View>
+
+      {phase === 'recording' ? (
+        <VoiceLiveMeter level={liveLevel} accentColor="#FF9500" />
+      ) : null}
+
+      {phase === 'preview' ? (
+        <VoicePlaybackMeter
+          progress={playbackProgress}
+          isPlaying={isPlayingPreview}
+          accentColor="#FF9500"
+        />
+      ) : null}
 
       <View style={styles.controls}>
         {phase === 'idle' ? (
@@ -362,7 +417,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     marginTop: 24,
-    marginBottom: 20,
+    marginBottom: 12,
   },
   recordingBadge: {
     flexDirection: 'row',

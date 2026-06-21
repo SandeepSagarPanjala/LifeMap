@@ -6,6 +6,7 @@ import {MapHistoryButton} from '@/components/map/MapHistoryButton';
 import {MapLocateButton} from '@/components/map/MapLocateButton';
 import {MapNoteButton} from '@/components/map/MapNoteButton';
 import {MapPlacesButton} from '@/components/map/MapPlacesButton';
+import {MapVoiceButton} from '@/components/map/MapVoiceButton';
 
 import type {MapScreenController} from './use-map-screen-controller';
 
@@ -23,12 +24,14 @@ export function MapScreenFloatingControls({
     calendarButtonBottom,
     historyButtonBottom,
     cameraButtonBottom,
+    voiceButtonBottom,
     noteButtonBottom,
     goToCurrentLocation,
     openSavedPlacesSheet,
     openHistoryDatePicker,
     handleToggleHistoryPanel,
     handleCaptureCamera,
+    openVoiceSheet,
     handleCaptureNote,
     historyBadgeCount,
     trackingGapWarning,
@@ -53,6 +56,7 @@ export function MapScreenFloatingControls({
       <MapPlacesButton bottom={placesButtonBottom} onPress={openSavedPlacesSheet} />
 
       <MapCameraButton bottom={cameraButtonBottom} onPress={handleCaptureCamera} />
+      <MapVoiceButton bottom={voiceButtonBottom} onPress={openVoiceSheet} />
       <MapNoteButton bottom={noteButtonBottom} onPress={handleCaptureNote} />
 
       {emptySelectedDayMessage && !historyPanelOpen ? (

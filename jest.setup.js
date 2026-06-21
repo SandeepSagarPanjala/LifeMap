@@ -273,6 +273,7 @@ jest.mock('react-native-nitro-sound', () => {
     removePlayBackListener: jest.fn(),
     addPlaybackEndListener: jest.fn(),
     removePlaybackEndListener: jest.fn(),
+    setSubscriptionDuration: jest.fn(),
     dispose: jest.fn(),
   };
 

@@ -4,6 +4,7 @@ import {DayMomentSummaryBar} from '@/components/map/DayMomentSummaryBar';
 import {HistoryDatePickerSheet} from '@/components/map/HistoryDatePickerSheet';
 import {SavedPlacesSheet} from '@/components/map/SavedPlacesSheet';
 import {SavePlaceSheet} from '@/components/map/SavePlaceSheet';
+import {VoiceMemoSheet} from '@/components/map/VoiceMemoSheet';
 import {MomentsPreviewSheet} from '@/components/moments/MomentsPreviewSheet';
 
 import {MapHistoryPanel} from './map/MapHistoryPanel';
@@ -65,6 +66,11 @@ export function MapScreen() {
         onSelectPlace={controller.handleSelectSavedPlace}
         onEditLabel={controller.handleEditFavoriteLabel}
         onDelete={controller.handleDeleteSavedPlace}
+      />
+      <VoiceMemoSheet
+        visible={controller.voiceSheetOpen}
+        onClose={controller.closeVoiceSheet}
+        onSaved={controller.handleVoiceMomentSaved}
       />
       <MomentsPreviewSheet
         visible={controller.momentsPreviewOpen}

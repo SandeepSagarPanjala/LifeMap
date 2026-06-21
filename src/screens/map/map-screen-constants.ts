@@ -32,7 +32,7 @@ export const MAP_DATE_NAV_ROW_GAP = 10;
 export const MAP_DATE_NAV_CLUSTER_HEIGHT =
   MAP_SETTINGS_SIZE + MAP_DATE_NAV_ROW_GAP + MAP_STACK_BUTTON_SIZE;
 export const MAP_LEFT_STACK_COUNT = 4;
-export const MAP_RIGHT_STACK_COUNT = 2;
+export const MAP_RIGHT_STACK_COUNT = 3;
 
 /** Docked day-moment summary bar at the bottom of the map (non-history mode). */
 export const DAY_MOMENT_SUMMARY_BOTTOM_GAP = 8;
