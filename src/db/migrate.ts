@@ -109,6 +109,8 @@ export async function migrationAlreadyApplied(
       return columnExists(sqlite, 'saved_places', 'address_line');
     case '0016_moment_voice_duration':
       return columnExists(sqlite, 'moments', 'voice_duration_sec');
+    case '0017_activities':
+      return tableExists(sqlite, 'activities');
     default:
       return false;
   }

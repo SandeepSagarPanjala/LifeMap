@@ -12,7 +12,7 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native';
-import {AudioLines, Camera, NotebookPen, Pause, Play, Trash2, Video, X} from 'lucide-react-native';
+import {Activity, AudioLines, Camera, NotebookPen, Pause, Play, Trash2, Video, X} from 'lucide-react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 import {MomentVideoPlayer} from '@/components/capture/MomentVideoPlayer';
@@ -64,6 +64,8 @@ function momentDeleteNoun(type: MomentRow['type']): string {
       return 'voice memo';
     case 'note':
       return 'note';
+    case 'activity':
+      return 'activity';
     default:
       return 'moment';
   }
@@ -125,17 +127,21 @@ function MomentTypeIcon({moment, size = 18}: {moment: MomentRow; size?: number})
       ? CAPTURE_BUTTON_THEMES.voice
       : moment.type === 'note'
         ? CAPTURE_BUTTON_THEMES.note
-        : moment.type === 'video'
-          ? CAPTURE_BUTTON_THEMES.camera
-          : CAPTURE_BUTTON_THEMES.camera;
+        : moment.type === 'activity'
+          ? CAPTURE_BUTTON_THEMES.activity
+          : moment.type === 'video'
+            ? CAPTURE_BUTTON_THEMES.camera
+            : CAPTURE_BUTTON_THEMES.camera;
   const Icon =
     moment.type === 'voice'
       ? AudioLines
       : moment.type === 'note'
         ? NotebookPen
-        : moment.type === 'video'
-          ? Video
-          : Camera;
+        : moment.type === 'activity'
+          ? Activity
+          : moment.type === 'video'
+            ? Video
+            : Camera;
 
   return (
     <View style={[styles.typeOrb, {backgroundColor: theme.badgeBg}]}>
@@ -245,6 +251,21 @@ function VoiceMomentPage({
           </Text>
         ) : null}
       </Pressable>
+    </View>
+  );
+}
+
+function ActivityMomentPage({moment}: {moment: MomentRow}) {
+  const theme = CAPTURE_BUTTON_THEMES.activity;
+  const emoji = moment.activityEmoji?.trim() || '✨';
+  const label = moment.activityLabel?.trim() || 'Activity';
+
+  return (
+    <View style={styles.activityPage}>
+      <View style={[styles.activitySticker, {backgroundColor: theme.badgeBg}]}>
+        <Text style={styles.activityEmoji}>{emoji}</Text>
+      </View>
+      <Text style={styles.activityLabel}>{label}</Text>
     </View>
   );
 }
@@ -506,6 +527,8 @@ function MomentPagerPage({
           contentInsetTop={noteContentInsetTop}
         />
       ) : null}
+
+      {moment.type === 'activity' ? <ActivityMomentPage moment={moment} /> : null}
     </View>
   );
 }
@@ -1029,6 +1052,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
+  },
+  activityPage: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    gap: 14,
+  },
+  activitySticker: {
+    width: 120,
+    height: 120,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activityEmoji: {
+    fontSize: 56,
+    lineHeight: 62,
+    textAlign: 'center',
+  },
+  activityLabel: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: '700',
+    textAlign: 'center',
   },
   voicePlayButton: {
     alignItems: 'center',

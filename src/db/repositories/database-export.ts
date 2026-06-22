@@ -320,6 +320,9 @@ export async function fetchDatabaseExportTables(
       contentFormat: row.contentFormat,
       shareVisibility: row.shareVisibility,
       contentSyncState: row.contentSyncState,
+      activityId: row.activityId,
+      activityEmoji: row.activityEmoji,
+      activityLabel: row.activityLabel,
     })),
     settings: settingRows.map(row => ({
       id: row.id,

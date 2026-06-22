@@ -15,12 +15,14 @@ const MOMENT_TYPE_LABELS: Record<MomentType, string> = {
   voice: 'Voice',
   note: 'Note',
   video: 'Video',
+  activity: 'Activity',
 };
 
 export const MOMENT_STORAGE_TYPE_ORDER: MomentType[] = [
   'photo',
   'voice',
   'note',
+  'activity',
   'video',
 ];
 

@@ -49,6 +49,9 @@ function momentPin(
       voiceAttachmentBytes: null,
       voiceDurationSec: null,
       photoAttachmentsJson: null,
+      activityId: null,
+      activityEmoji: null,
+      activityLabel: null,
     },
     coordinate: {latitude: lat, longitude: lng},
   };

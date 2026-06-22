@@ -48,9 +48,9 @@
 		D4E5F6A61A68108700A75B9A /* LifeMapNativePersistLoop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LifeMapNativePersistLoop.swift; path = LifeMap/LifeMapNativePersistLoop.swift; sourceTree = "<group>"; };
 		E5F6A7B61A68108700A75B9A /* AppVersionModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppVersionModule.swift; path = LifeMap/AppVersionModule.swift; sourceTree = "<group>"; };
 		E5F6A7B71A68108700A75B9A /* AppVersionModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = AppVersionModule.m; path = LifeMap/AppVersionModule.m; sourceTree = "<group>"; };
+		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F6A7B8C71A68108700A75B9A /* VoiceAudioSessionModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VoiceAudioSessionModule.swift; path = LifeMap/VoiceAudioSessionModule.swift; sourceTree = "<group>"; };
 		F6A7B8C81A68108700A75B9A /* VoiceAudioSessionModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = VoiceAudioSessionModule.m; path = LifeMap/VoiceAudioSessionModule.m; sourceTree = "<group>"; };
-		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */

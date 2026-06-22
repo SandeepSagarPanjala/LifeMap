@@ -44,6 +44,7 @@ import {
   shouldShowDayMomentSummaryBar,
   hasMomentCounts,
   firstMomentIndexOfType,
+  emptyMomentCounts,
   type MomentCountType,
   type MomentCounts,
 } from '@/lib/moments/moment-counts';
@@ -193,6 +194,7 @@ export function useMapScreenController() {
   } | null>(null);
   const [savedPlacesSheetOpen, setSavedPlacesSheetOpen] = useState(false);
   const [voiceSheetOpen, setVoiceSheetOpen] = useState(false);
+  const [activitySheetOpen, setActivitySheetOpen] = useState(false);
   const [momentsPreviewScope, setMomentsPreviewScope] = useState<
     | {kind: 'day'; initialType?: MomentType}
     | {
@@ -452,7 +454,7 @@ export function useMapScreenController() {
   );
   const currentVisitMomentCounts = useMemo((): MomentCounts => {
     if (!currentOpenVisit) {
-      return {photo: 0, video: 0, voice: 0, note: 0};
+      return emptyMomentCounts();
     }
     return countMomentsForStayEntry(dayMoments, currentOpenVisit, {
       savedPlace: currentOpenVisitSavedPlace,
@@ -522,6 +524,7 @@ export function useMapScreenController() {
   const cameraButtonBottom = mapStackButtonBottom(stackBaseBottom, 0);
   const voiceButtonBottom = mapStackButtonBottom(stackBaseBottom, 1);
   const noteButtonBottom = mapStackButtonBottom(stackBaseBottom, 2);
+  const activityButtonBottom = mapStackButtonBottom(stackBaseBottom, 3);
   const dayMomentSummaryBottom = insets.bottom + DAY_MOMENT_SUMMARY_BOTTOM_GAP;
 
   const dateNavAnchorBottom = useMemo(
@@ -1367,7 +1370,19 @@ export function useMapScreenController() {
     setVoiceSheetOpen(false);
   }, []);
 
+  const openActivitySheet = useCallback(() => {
+    setActivitySheetOpen(true);
+  }, []);
+
+  const closeActivitySheet = useCallback(() => {
+    setActivitySheetOpen(false);
+  }, []);
+
   const handleVoiceMomentSaved = useCallback(async () => {
+    await refreshDayMoments();
+  }, [refreshDayMoments]);
+
+  const handleActivityMomentSaved = useCallback(async () => {
     await refreshDayMoments();
   }, [refreshDayMoments]);
 
@@ -1448,10 +1463,15 @@ export function useMapScreenController() {
     cameraButtonBottom,
     voiceButtonBottom,
     noteButtonBottom,
+    activityButtonBottom,
     voiceSheetOpen,
     openVoiceSheet,
     closeVoiceSheet,
     handleVoiceMomentSaved,
+    activitySheetOpen,
+    openActivitySheet,
+    closeActivitySheet,
+    handleActivityMomentSaved,
     handleCaptureCamera,
     handleCaptureNote,
     momentsPreviewOpen,

@@ -1,4 +1,4 @@
-import {AudioLines, Camera, NotebookPen, Video} from 'lucide-react-native';
+import {Activity, AudioLines, Camera, NotebookPen, Video} from 'lucide-react-native';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 
 import {
@@ -8,13 +8,56 @@ import {
 import type {MomentCountType, MomentCounts} from '@/lib/moments/moment-counts';
 import {hasMomentCounts} from '@/lib/moments/moment-counts';
 
+type MomentCountsRowLayout = 'inline' | 'stacked';
+
 type MomentCountsRowProps = {
   counts: MomentCounts;
   iconSize?: number;
   compact?: boolean;
+  layout?: MomentCountsRowLayout;
   onPress?: () => void;
   onPressType?: (type: MomentCountType) => void;
 };
+
+type ChipDefinition = {
+  type: MomentCountType;
+  icon: typeof Camera;
+  theme: (typeof CAPTURE_BUTTON_THEMES)['camera'];
+  accessibilityLabel: string;
+};
+
+const CHIP_DEFINITIONS: ChipDefinition[] = [
+  {
+    type: 'photo',
+    icon: Camera,
+    theme: CAPTURE_BUTTON_THEMES.camera,
+    accessibilityLabel: 'Preview photo moments',
+  },
+  {
+    type: 'video',
+    icon: Video,
+    theme: CAPTURE_BUTTON_THEMES.camera,
+    accessibilityLabel: 'Preview video moments',
+  },
+  {
+    type: 'voice',
+    icon: AudioLines,
+    theme: CAPTURE_BUTTON_THEMES.voice,
+    accessibilityLabel: 'Preview voice moments',
+  },
+  {
+    type: 'note',
+    icon: NotebookPen,
+    theme: CAPTURE_BUTTON_THEMES.note,
+    accessibilityLabel: 'Preview diary moments',
+  },
+  {
+    type: 'activity',
+    icon: Activity,
+    theme: CAPTURE_BUTTON_THEMES.activity,
+    accessibilityLabel: 'Preview activity moments',
+  },
+];
 
 type MomentCountChipProps = {
   count: number;
@@ -22,6 +65,7 @@ type MomentCountChipProps = {
   theme: (typeof CAPTURE_BUTTON_THEMES)['camera'];
   iconSize: number;
   compact: boolean;
+  layout: MomentCountsRowLayout;
   onPress?: () => void;
   accessibilityLabel: string;
 };
@@ -32,10 +76,19 @@ function MomentCountChip({
   theme,
   iconSize,
   compact,
+  layout,
   onPress,
   accessibilityLabel,
 }: MomentCountChipProps) {
-  const chip = (
+  const stacked = layout === 'stacked';
+  const chip = stacked ? (
+    <View style={styles.chipStacked}>
+      <View style={[styles.iconOrb, styles.iconOrbStacked, {backgroundColor: theme.badgeBg}]}>
+        <Icon size={iconSize - 2} color={theme.icon} strokeWidth={2.25} />
+      </View>
+      <Text style={styles.countStacked}>{count}</Text>
+    </View>
+  ) : (
     <View style={[styles.chip, compact ? styles.chipCompact : null]}>
       <View style={[styles.iconOrb, {backgroundColor: theme.badgeBg}]}>
         <Icon size={iconSize} color={theme.icon} strokeWidth={2.25} />
@@ -64,6 +117,7 @@ export function MomentCountsRow({
   counts,
   iconSize = CAPTURE_ICON_SIZE - 2,
   compact = false,
+  layout = 'inline',
   onPress,
   onPressType,
 }: MomentCountsRowProps) {
@@ -72,51 +126,27 @@ export function MomentCountsRow({
   }
 
   const row = (
-    <View style={styles.row}>
-      {counts.photo > 0 ? (
-        <MomentCountChip
-          count={counts.photo}
-          icon={Camera}
-          theme={CAPTURE_BUTTON_THEMES.camera}
-          iconSize={iconSize}
-          compact={compact}
-          onPress={onPressType ? () => onPressType('photo') : undefined}
-          accessibilityLabel="Preview photo moments"
-        />
-      ) : null}
-      {counts.video > 0 ? (
-        <MomentCountChip
-          count={counts.video}
-          icon={Video}
-          theme={CAPTURE_BUTTON_THEMES.camera}
-          iconSize={iconSize}
-          compact={compact}
-          onPress={onPressType ? () => onPressType('video') : undefined}
-          accessibilityLabel="Preview video moments"
-        />
-      ) : null}
-      {counts.voice > 0 ? (
-        <MomentCountChip
-          count={counts.voice}
-          icon={AudioLines}
-          theme={CAPTURE_BUTTON_THEMES.voice}
-          iconSize={iconSize}
-          compact={compact}
-          onPress={onPressType ? () => onPressType('voice') : undefined}
-          accessibilityLabel="Preview voice moments"
-        />
-      ) : null}
-      {counts.note > 0 ? (
-        <MomentCountChip
-          count={counts.note}
-          icon={NotebookPen}
-          theme={CAPTURE_BUTTON_THEMES.note}
-          iconSize={iconSize}
-          compact={compact}
-          onPress={onPressType ? () => onPressType('note') : undefined}
-          accessibilityLabel="Preview diary moments"
-        />
-      ) : null}
+    <View style={[styles.row, layout === 'stacked' ? styles.rowStacked : null]}>
+      {CHIP_DEFINITIONS.map(definition => {
+        const count = counts[definition.type];
+        if (count <= 0) {
+          return null;
+        }
+
+        return (
+          <MomentCountChip
+            key={definition.type}
+            count={count}
+            icon={definition.icon}
+            theme={definition.theme}
+            iconSize={iconSize}
+            compact={compact}
+            layout={layout}
+            onPress={onPressType ? () => onPressType(definition.type) : undefined}
+            accessibilityLabel={definition.accessibilityLabel}
+          />
+        );
+      })}
     </View>
   );
 
@@ -146,6 +176,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 14,
   },
+  rowStacked: {
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    gap: 10,
+    rowGap: 8,
+  },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -154,12 +190,22 @@ const styles = StyleSheet.create({
   chipCompact: {
     gap: 4,
   },
+  chipStacked: {
+    alignItems: 'center',
+    gap: 3,
+    minWidth: 30,
+  },
   iconOrb: {
     width: 28,
     height: 28,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  iconOrbStacked: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
   },
   count: {
     fontSize: 15,
@@ -169,6 +215,12 @@ const styles = StyleSheet.create({
   },
   countCompact: {
     fontSize: 13,
+  },
+  countStacked: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#1C1C1E',
+    textAlign: 'center',
   },
   pressed: {
     opacity: 0.72,

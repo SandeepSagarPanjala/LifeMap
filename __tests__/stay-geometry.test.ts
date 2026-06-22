@@ -84,6 +84,9 @@ describe('canonicalizeStayGeometry', () => {
         contentFormat: null,
         shareVisibility: 'private',
         contentSyncState: 'local_only',
+        activityId: null,
+        activityEmoji: null,
+        activityLabel: null,
       },
     ];
 

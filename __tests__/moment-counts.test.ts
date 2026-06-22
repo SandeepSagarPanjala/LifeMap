@@ -37,6 +37,9 @@ function moment(partial: Partial<MomentRow> & Pick<MomentRow, 'id' | 'type' | 't
     contentFormat: null,
     shareVisibility: 'private',
     contentSyncState: 'local_only',
+    activityId: null,
+    activityEmoji: null,
+    activityLabel: null,
     ...partial,
   };
 }
@@ -73,7 +76,7 @@ describe('moment counts', () => {
         moment({id: 3, type: 'note', timestamp: new Date('2026-06-08T15:00:00.000Z')}),
         moment({id: 4, type: 'photo', timestamp: new Date('2026-06-08T15:30:00.000Z')}),
       ]),
-    ).toEqual({photo: 2, video: 0, voice: 1, note: 1});
+    ).toEqual({photo: 2, video: 0, voice: 1, note: 1, activity: 0});
   });
 
   it('counts moments inside a visit entry', () => {
@@ -85,7 +88,7 @@ describe('moment counts', () => {
       stay,
       now,
     );
-    expect(counts).toEqual({photo: 1, video: 0, voice: 0, note: 0});
+    expect(counts).toEqual({photo: 1, video: 0, voice: 0, note: 0, activity: 0});
   });
 
   it('builds travel markers at interpolated GPS points', () => {
@@ -136,22 +139,22 @@ describe('moment counts', () => {
   });
 
   it('hides the day summary bar when every moment is on the open visit callout', () => {
-    const dayCounts = {photo: 1, video: 0, voice: 1, note: 0};
+    const dayCounts = {photo: 1, video: 0, voice: 1, note: 0, activity: 0};
     expect(shouldShowDayMomentSummaryBar(dayCounts, stay, dayCounts)).toBe(
       false,
     );
   });
 
   it('keeps the day summary bar when moments exist outside the open visit', () => {
-    const dayCounts = {photo: 2, video: 0, voice: 1, note: 0};
-    const visitCounts = {photo: 1, video: 0, voice: 0, note: 0};
+    const dayCounts = {photo: 2, video: 0, voice: 1, note: 0, activity: 0};
+    const visitCounts = {photo: 1, video: 0, voice: 0, note: 0, activity: 0};
     expect(shouldShowDayMomentSummaryBar(dayCounts, stay, visitCounts)).toBe(
       true,
     );
   });
 
   it('hides the saved-place cluster when the stay callout already shows moments', () => {
-    const counts = {photo: 3, video: 0, voice: 1, note: 1};
+    const counts = {photo: 3, video: 0, voice: 1, note: 1, activity: 0};
     expect(shouldHideSavedPlaceMomentCluster(7, 7, counts)).toBe(true);
     expect(shouldHideSavedPlaceMomentCluster(7, 8, counts)).toBe(false);
     expect(shouldHideSavedPlaceMomentCluster(7, 7, emptyMomentCounts())).toBe(
@@ -251,12 +254,14 @@ describe('moment counts', () => {
       video: 0,
       voice: 0,
       note: 0,
+      activity: 0,
     });
     expect(countMomentsForStayEntry(moments, eveningStay, stayOptions)).toEqual({
       photo: 1,
       video: 0,
       voice: 1,
       note: 1,
+      activity: 0,
     });
     expect(
       filterMomentsForStayEntry(moments, eveningStay, stayOptions).map(
@@ -356,12 +361,14 @@ describe('moment counts', () => {
       video: 0,
       voice: 1,
       note: 1,
+      activity: 0,
     });
     expect(countMomentsForStayEntry(moments, eveningStay, visitOptions)).toEqual({
       photo: 1,
       video: 0,
       voice: 0,
       note: 0,
+      activity: 0,
     });
   });
 });

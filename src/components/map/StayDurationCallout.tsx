@@ -102,7 +102,11 @@ export function StayDurationCallout({
         <View style={styles.bubble} collapsable={false}>
           {showMomentCounts ? (
             <>
-              <MomentCountsRow counts={counts!} onPressType={onPressMomentType} />
+              <MomentCountsRow
+                counts={counts!}
+                onPressType={onPressMomentType}
+                layout="stacked"
+              />
               <View style={styles.divider} />
             </>
           ) : null}

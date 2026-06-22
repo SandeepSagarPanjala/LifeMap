@@ -1,6 +1,6 @@
 import {AudioLines, Camera, NotebookPen} from 'lucide-react-native';
 import {Marker} from 'react-native-maps';
-import {StyleSheet, View} from 'react-native';
+import {StyleSheet, Text, View} from 'react-native';
 
 import type {MomentRow} from '@/db/repositories/moments';
 import type {LocationPointRow} from '@/db/repositories/location-days';
@@ -30,6 +30,9 @@ function momentCaptureVariant(
   }
   if (type === 'note') {
     return 'note';
+  }
+  if (type === 'activity') {
+    return 'activity';
   }
   return 'camera';
 }
@@ -86,6 +89,8 @@ export function MomentMapOverlay({pins, onPressPin}: MomentMapOverlayProps) {
               ? NotebookPen
               : Camera;
         const tappable = onPressPin != null;
+        const activityEmoji =
+          moment.type === 'activity' ? moment.activityEmoji?.trim() : null;
 
         return (
           <Marker
@@ -96,7 +101,11 @@ export function MomentMapOverlay({pins, onPressPin}: MomentMapOverlayProps) {
             tracksViewChanges={false}
             onPress={tappable ? () => onPressPin(pin) : undefined}>
             <View style={[styles.badge, {backgroundColor: theme.badgeBg}]}>
-              <Icon size={CAPTURE_ICON_SIZE} color={theme.icon} strokeWidth={2.25} />
+              {activityEmoji ? (
+                <Text style={styles.activityEmoji}>{activityEmoji}</Text>
+              ) : (
+                <Icon size={CAPTURE_ICON_SIZE} color={theme.icon} strokeWidth={2.25} />
+              )}
             </View>
           </Marker>
         );
@@ -117,5 +126,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.14,
     shadowRadius: 4,
     elevation: 4,
+  },
+  activityEmoji: {
+    fontSize: 18,
+    lineHeight: 20,
+    textAlign: 'center',
   },
 });

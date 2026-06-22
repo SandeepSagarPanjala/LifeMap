@@ -1,4 +1,4 @@
-export type CaptureButtonVariant = 'camera' | 'voice' | 'note';
+export type CaptureButtonVariant = 'camera' | 'voice' | 'note' | 'activity';
 
 /** Tone-on-tone orb colors — same pattern as saved place icons. */
 export type CaptureButtonTheme = {
@@ -19,6 +19,10 @@ export const CAPTURE_BUTTON_THEMES: Record<CaptureButtonVariant, CaptureButtonTh
     note: {
       badgeBg: '#FFF8EE',
       icon: '#FF9500',
+    },
+    activity: {
+      badgeBg: '#EAF7F1',
+      icon: '#34C759',
     },
   };
 

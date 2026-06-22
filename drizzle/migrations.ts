@@ -182,6 +182,21 @@ const m0015 = `ALTER TABLE \`saved_places\` ADD COLUMN \`address_line\` text;`;
 
 const m0016 = `ALTER TABLE \`moments\` ADD COLUMN \`voice_duration_sec\` integer;`;
 
+const m0017 = `CREATE TABLE \`activities\` (
+	\`id\` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	\`emoji\` text NOT NULL,
+	\`label\` text NOT NULL,
+	\`sort_order\` integer DEFAULT 0 NOT NULL,
+	\`created_at\` integer NOT NULL,
+	\`archived_at\` integer
+);
+--> statement-breakpoint
+ALTER TABLE \`moments\` ADD COLUMN \`activity_id\` integer;
+--> statement-breakpoint
+ALTER TABLE \`moments\` ADD COLUMN \`activity_emoji\` text;
+--> statement-breakpoint
+ALTER TABLE \`moments\` ADD COLUMN \`activity_label\` text;`;
+
 export default {
   journal,
   migrations: {
@@ -202,5 +217,6 @@ export default {
     m0014,
     m0015,
     m0016,
+    m0017,
   },
 };

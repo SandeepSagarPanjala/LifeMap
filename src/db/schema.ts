@@ -11,9 +11,20 @@ export const locationPoints = sqliteTable('location_points', {
   source: text('source').notNull().default('gps'),
 });
 
+export const activities = sqliteTable('activities', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  emoji: text('emoji').notNull(),
+  label: text('label').notNull(),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: integer('created_at', {mode: 'timestamp'}).notNull(),
+  archivedAt: integer('archived_at', {mode: 'timestamp'}),
+});
+
 export const moments = sqliteTable('moments', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  type: text('type', { enum: ['photo', 'note', 'video', 'voice'] }).notNull(),
+  type: text('type', {
+    enum: ['photo', 'note', 'video', 'voice', 'activity'],
+  }).notNull(),
   timestamp: integer('timestamp', { mode: 'timestamp' }).notNull(),
   lat: real('lat'),
   lng: real('lng'),
@@ -39,6 +50,9 @@ export const moments = sqliteTable('moments', {
   contentSyncState: text('content_sync_state')
     .notNull()
     .default('local_only'),
+  activityId: integer('activity_id').references(() => activities.id),
+  activityEmoji: text('activity_emoji'),
+  activityLabel: text('activity_label'),
 });
 
 export const settings = sqliteTable('settings', {

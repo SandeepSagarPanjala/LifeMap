@@ -28,6 +28,9 @@ describe('buildMomentMapPins', () => {
           voiceAttachmentBytes: null,
           voiceDurationSec: null,
           photoAttachmentsJson: null,
+          activityId: null,
+          activityEmoji: null,
+          activityLabel: null,
         },
       ],
       [

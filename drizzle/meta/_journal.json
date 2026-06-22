@@ -120,6 +120,13 @@
       "when": 1788908000000,
       "tag": "0016_moment_voice_duration",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1788909000000,
+      "tag": "0017_activities",
+      "breakpoints": true
     }
   ]
 }

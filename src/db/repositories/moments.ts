@@ -7,7 +7,7 @@ import {getDayRange} from '@/lib/day-utils';
 import {getDatabase} from '../client';
 import {moments} from '../schema';
 
-export type MomentType = 'photo' | 'note' | 'video' | 'voice';
+export type MomentType = 'photo' | 'note' | 'video' | 'voice' | 'activity';
 
 export type MomentRow = {
   id: number;
@@ -33,6 +33,9 @@ export type MomentRow = {
   contentFormat: string | null;
   shareVisibility: string;
   contentSyncState: string;
+  activityId: number | null;
+  activityEmoji: string | null;
+  activityLabel: string | null;
 };
 
 export type NewMoment = {
@@ -53,6 +56,9 @@ export type NewMoment = {
   sourceBytes?: number | null;
   contentFormat?: string | null;
   placeLabel?: string | null;
+  activityId?: number | null;
+  activityEmoji?: string | null;
+  activityLabel?: string | null;
 };
 
 function mapRow(row: typeof moments.$inferSelect): MomentRow {
@@ -80,6 +86,9 @@ function mapRow(row: typeof moments.$inferSelect): MomentRow {
     contentFormat: row.contentFormat ?? null,
     shareVisibility: row.shareVisibility,
     contentSyncState: row.contentSyncState,
+    activityId: row.activityId ?? null,
+    activityEmoji: row.activityEmoji ?? null,
+    activityLabel: row.activityLabel ?? null,
   };
 }
 
@@ -108,6 +117,9 @@ export async function insertMoment(input: NewMoment): Promise<MomentRow> {
       contentBytes: input.contentBytes ?? null,
       sourceBytes: input.sourceBytes ?? null,
       contentFormat: input.contentFormat ?? null,
+      activityId: input.activityId ?? null,
+      activityEmoji: input.activityEmoji ?? null,
+      activityLabel: input.activityLabel ?? null,
     })
     .returning();
 

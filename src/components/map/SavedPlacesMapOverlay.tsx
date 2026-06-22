@@ -69,7 +69,7 @@ export function SavedPlacesMapOverlay({
                   cluster.onPress ? () => cluster.onPress!() : undefined
                 }>
                 <View style={styles.clusterBubble}>
-                  <MomentCountsRow counts={cluster.counts} compact />
+                  <MomentCountsRow counts={cluster.counts} compact layout="stacked" />
                 </View>
               </Marker>
             ) : null}
