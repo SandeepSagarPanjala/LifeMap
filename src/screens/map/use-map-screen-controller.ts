@@ -6,7 +6,7 @@ import {
   useState,
 } from 'react';
 import {Animated, Alert, AppState, Platform, useColorScheme} from 'react-native';
-import {useNavigation} from '@react-navigation/native';
+import {useNavigation, useRoute, type RouteProp} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type MapView from 'react-native-maps';
 import {PROVIDER_DEFAULT, PROVIDER_GOOGLE, type Region} from 'react-native-maps';
@@ -112,6 +112,8 @@ import {
 } from '@/lib/place-lookup-types';
 import {buildMapAttributionInsets} from '@/lib/map-attribution-insets';
 import type {RootStackParamList} from '@/navigation/types';
+import {refreshWidgetSnapshot, refreshWidgetSnapshotIfStale} from '@/lib/widget/sync-widget-snapshot';
+import {registerWidgetSheetHandlers} from '@/lib/widget/widget-deep-link';
 
 import {
   DAY_MOMENT_SUMMARY_ABOVE_BAR_GAP,
@@ -134,6 +136,7 @@ import {
 
 export function useMapScreenController() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route = useRoute<RouteProp<RootStackParamList, 'Map'>>();
   const tripDetectionConfig = useTripDetectionConfig();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
@@ -1385,6 +1388,26 @@ export function useMapScreenController() {
   const handleActivityMomentSaved = useCallback(async () => {
     await refreshDayMoments();
   }, [refreshDayMoments]);
+
+  useEffect(() => {
+    registerWidgetSheetHandlers({
+      closeSheets: () => {
+        closeVoiceSheet();
+        closeActivitySheet();
+      },
+      openVoice: openVoiceSheet,
+      openActivity: openActivitySheet,
+      refresh: () => {
+        void refreshWidgetSnapshot().catch(() => undefined);
+      },
+    });
+
+    return () => registerWidgetSheetHandlers(null);
+  }, [closeActivitySheet, closeVoiceSheet, openActivitySheet, openVoiceSheet]);
+
+  useEffect(() => {
+    void refreshWidgetSnapshotIfStale().catch(() => undefined);
+  }, []);
 
   const momentsPreviewInitialIndex = useMemo(() => {
     const initialType = momentsPreviewScope?.initialType;

@@ -1,7 +1,12 @@
-import {NavigationContainer, DefaultTheme, DarkTheme} from '@react-navigation/native';
+import {
+  NavigationContainer,
+  DefaultTheme,
+  DarkTheme,
+  useNavigationContainerRef,
+} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {useColorScheme} from 'react-native';
-import {useMemo} from 'react';
+import {useCallback, useEffect, useMemo} from 'react';
 
 import type {RootStackParamList} from '@/navigation/types';
 import {CaptureNoteScreen} from '@/screens/capture/CaptureNoteScreen';
@@ -9,12 +14,22 @@ import {CapturePhotoScreen} from '@/screens/capture/CapturePhotoScreen';
 import {MapScreen} from '@/screens/MapScreen';
 import {SettingsScreen} from '@/screens/SettingsScreen';
 import {useThemeColors} from '@/hooks/use-theme-colors';
+import {setWidgetNavigationRef} from '@/lib/widget/widget-deep-link';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export function RootNavigator() {
+  const navigationRef = useNavigationContainerRef<RootStackParamList>();
   const colorScheme = useColorScheme();
   const colors = useThemeColors();
+
+  const handleNavigationReady = useCallback(() => {
+    setWidgetNavigationRef(navigationRef);
+  }, [navigationRef]);
+
+  useEffect(() => {
+    return () => setWidgetNavigationRef(null);
+  }, []);
 
   const navigationTheme = useMemo(
     () => ({
@@ -32,7 +47,10 @@ export function RootNavigator() {
   );
 
   return (
-    <NavigationContainer theme={navigationTheme}>
+    <NavigationContainer
+      ref={navigationRef}
+      onReady={handleNavigationReady}
+      theme={navigationTheme}>
       <Stack.Navigator>
         <Stack.Screen name="Map" component={MapScreen} options={{headerShown: false}} />
         <Stack.Screen

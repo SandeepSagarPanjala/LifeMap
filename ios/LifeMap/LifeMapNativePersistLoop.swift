@@ -12,6 +12,8 @@ import Foundation
   private let tickIntervalSec: TimeInterval = 15
   /// If no row lands for this long, native code must wake GPS without waiting for JS.
   private let staleRecoveryMs: Int64 = 90_000
+  private let widgetSyncIntervalMs: Int64 = 60_000
+  private var lastWidgetSyncMs: Int64 = 0
 
   private override init() {
     super.init()
@@ -84,5 +86,19 @@ import Foundation
     } else if imported > 0 {
       NSLog("[LifeMap] native persist loop imported %d (%@)", imported, reason)
     }
+
+    let refreshRequested = WidgetRefreshRequestStore.consumeIfRequested()
+    if imported > 0 || refreshRequested {
+      syncWidgetSnapshot(force: refreshRequested)
+    }
+  }
+
+  private func syncWidgetSnapshot(force: Bool) {
+    let nowMs = Int64(Date().timeIntervalSince1970 * 1000)
+    if !force && nowMs - lastWidgetSyncMs < widgetSyncIntervalMs {
+      return
+    }
+    lastWidgetSyncMs = nowMs
+    WidgetSnapshotSync.refreshAndReload()
   }
 }

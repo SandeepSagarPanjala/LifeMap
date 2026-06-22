@@ -24,7 +24,49 @@
 		E5F6A7B91A68108700A75B9A /* AppVersionModule.m in Sources */ = {isa = PBXBuildFile; fileRef = E5F6A7B71A68108700A75B9A /* AppVersionModule.m */; };
 		F6A7B8C91A68108700A75B9A /* VoiceAudioSessionModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6A7B8C71A68108700A75B9A /* VoiceAudioSessionModule.swift */; };
 		F6A7B8CA1A68108700A75B9A /* VoiceAudioSessionModule.m in Sources */ = {isa = PBXBuildFile; fileRef = F6A7B8C81A68108700A75B9A /* VoiceAudioSessionModule.m */; };
+		WGT0EMB1A68108700A75B9A /* LifeMapWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = WGT0FR06A68108700A75B9A /* LifeMapWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		WGT0MOD1A68108700A75B9A /* WidgetSnapshotModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = WGT0FR01A68108700A75B9A /* WidgetSnapshotModule.swift */; };
+		WGT0MOD2A68108700A75B9A /* WidgetSnapshotModule.m in Sources */ = {isa = PBXBuildFile; fileRef = WGT0FR02A68108700A75B9A /* WidgetSnapshotModule.m */; };
+		WGT0SHR1A68108700A75B9A /* WidgetSnapshotStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = WGT0FR03A68108700A75B9A /* WidgetSnapshotStore.swift */; };
+		WGT0SHR2A68108700A75B9A /* WidgetSnapshotStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = WGT0FR03A68108700A75B9A /* WidgetSnapshotStore.swift */; };
+		WGT0BLD1A68108700A75B9A /* WidgetSnapshotBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = WGT0FR09A68108700A75B9A /* WidgetSnapshotBuilder.swift */; };
+		WGT0BLD2A68108700A75B9A /* WidgetSnapshotBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = WGT0FR09A68108700A75B9A /* WidgetSnapshotBuilder.swift */; };
+		WGT0INT1A68108700A75B9A /* RefreshWidgetIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = WGT0FR10A68108700A75B9A /* RefreshWidgetIntent.swift */; };
+		WGT0INT2A68108700A75B9A /* RefreshWidgetIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = WGT0FR10A68108700A75B9A /* RefreshWidgetIntent.swift */; };
+		WGT0PND1A68108700A75B9A /* WidgetPendingActionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = WGT0FR12A68108700A75B9A /* WidgetPendingActionStore.swift */; };
+		WGT0PND2A68108700A75B9A /* WidgetPendingActionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = WGT0FR12A68108700A75B9A /* WidgetPendingActionStore.swift */; };
+		WGT0CAP1A68108700A75B9A /* WidgetCaptureIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = WGT0FR13A68108700A75B9A /* WidgetCaptureIntents.swift */; };
+		WGT0CAP2A68108700A75B9A /* WidgetCaptureIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = WGT0FR13A68108700A75B9A /* WidgetCaptureIntents.swift */; };
+		WGT0REQ1A68108700A75B9A /* WidgetRefreshRequestStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = WGT0FR14A68108700A75B9A /* WidgetRefreshRequestStore.swift */; };
+		WGT0REQ2A68108700A75B9A /* WidgetRefreshRequestStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = WGT0FR14A68108700A75B9A /* WidgetRefreshRequestStore.swift */; };
+		WGT0SYN1A68108700A75B9A /* WidgetSnapshotSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = WGT0FR15A68108700A75B9A /* WidgetSnapshotSync.swift */; };
+		WGT0SHT1A68108700A75B9A /* LifeMapAppShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = WGT0FR11A68108700A75B9A /* LifeMapAppShortcuts.swift */; };
+		WGT0WGT1A68108700A75B9A /* LifeMapWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = WGT0FR04A68108700A75B9A /* LifeMapWidget.swift */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		WGT0PX01A68108700A75B9A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 83CBB9F71A601CBA00E9B192 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = WGT0TG01A68108700A75B9A;
+			remoteInfo = LifeMapWidgetExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		WGT0CP01A68108700A75B9A /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				WGT0EMB1A68108700A75B9A /* LifeMapWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		13B07F961A680F5B00A75B9A /* LifeMap.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LifeMap.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -51,6 +93,21 @@
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F6A7B8C71A68108700A75B9A /* VoiceAudioSessionModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VoiceAudioSessionModule.swift; path = LifeMap/VoiceAudioSessionModule.swift; sourceTree = "<group>"; };
 		F6A7B8C81A68108700A75B9A /* VoiceAudioSessionModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = VoiceAudioSessionModule.m; path = LifeMap/VoiceAudioSessionModule.m; sourceTree = "<group>"; };
+		WGT0FR01A68108700A75B9A /* WidgetSnapshotModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WidgetSnapshotModule.swift; path = LifeMap/WidgetSnapshotModule.swift; sourceTree = "<group>"; };
+		WGT0FR02A68108700A75B9A /* WidgetSnapshotModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = WidgetSnapshotModule.m; path = LifeMap/WidgetSnapshotModule.m; sourceTree = "<group>"; };
+		WGT0FR03A68108700A75B9A /* WidgetSnapshotStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WidgetSnapshotStore.swift; path = Shared/WidgetSnapshotStore.swift; sourceTree = "<group>"; };
+		WGT0FR04A68108700A75B9A /* LifeMapWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LifeMapWidget.swift; path = LifeMapWidget/LifeMapWidget.swift; sourceTree = "<group>"; };
+		WGT0FR05A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = Info.plist; path = LifeMapWidget/Info.plist; sourceTree = "<group>"; };
+		WGT0FR06A68108700A75B9A /* LifeMapWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LifeMapWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		WGT0FR07A68108700A75B9A /* LifeMapWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = LifeMapWidget.entitlements; path = LifeMapWidget/LifeMapWidget.entitlements; sourceTree = "<group>"; };
+		WGT0FR08A68108700A75B9A /* LifeMap.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = LifeMap.entitlements; path = LifeMap/LifeMap.entitlements; sourceTree = "<group>"; };
+		WGT0FR09A68108700A75B9A /* WidgetSnapshotBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WidgetSnapshotBuilder.swift; path = Shared/WidgetSnapshotBuilder.swift; sourceTree = "<group>"; };
+		WGT0FR10A68108700A75B9A /* RefreshWidgetIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RefreshWidgetIntent.swift; path = Shared/RefreshWidgetIntent.swift; sourceTree = "<group>"; };
+		WGT0FR11A68108700A75B9A /* LifeMapAppShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LifeMapAppShortcuts.swift; path = LifeMap/LifeMapAppShortcuts.swift; sourceTree = "<group>"; };
+		WGT0FR12A68108700A75B9A /* WidgetPendingActionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WidgetPendingActionStore.swift; path = Shared/WidgetPendingActionStore.swift; sourceTree = "<group>"; };
+		WGT0FR13A68108700A75B9A /* WidgetCaptureIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WidgetCaptureIntents.swift; path = Shared/WidgetCaptureIntents.swift; sourceTree = "<group>"; };
+		WGT0FR14A68108700A75B9A /* WidgetRefreshRequestStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WidgetRefreshRequestStore.swift; path = Shared/WidgetRefreshRequestStore.swift; sourceTree = "<group>"; };
+		WGT0FR15A68108700A75B9A /* WidgetSnapshotSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WidgetSnapshotSync.swift; path = Shared/WidgetSnapshotSync.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -59,6 +116,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				0C80B921A6F3F58F76C31292 /* libPods-LifeMap.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		WGT0PH02A68108700A75B9A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -76,6 +140,10 @@
 				E5F6A7B71A68108700A75B9A /* AppVersionModule.m */,
 				F6A7B8C71A68108700A75B9A /* VoiceAudioSessionModule.swift */,
 				F6A7B8C81A68108700A75B9A /* VoiceAudioSessionModule.m */,
+				WGT0FR01A68108700A75B9A /* WidgetSnapshotModule.swift */,
+				WGT0FR02A68108700A75B9A /* WidgetSnapshotModule.m */,
+				WGT0FR11A68108700A75B9A /* LifeMapAppShortcuts.swift */,
+				WGT0FR08A68108700A75B9A /* LifeMap.entitlements */,
 				B2C3D4E51A68108700A75B9A /* LifeMapDatabase.swift */,
 				B2C3D4E71A68108700A75B9A /* LocationWakeCoordinator.swift */,
 				B2C3D4E91A68108700A75B9A /* LocationPersistModule.swift */,
@@ -109,6 +177,8 @@
 			isa = PBXGroup;
 			children = (
 				13B07FAE1A68108700A75B9A /* LifeMap */,
+				WGT0GR01A68108700A75B9A /* Shared */,
+				WGT0GR02A68108700A75B9A /* LifeMapWidget */,
 				C1A2B3C61A680F5B00A75B9A /* Config */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
@@ -124,6 +194,7 @@
 			isa = PBXGroup;
 			children = (
 				13B07F961A680F5B00A75B9A /* LifeMap.app */,
+				WGT0FR06A68108700A75B9A /* LifeMapWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -146,6 +217,30 @@
 			name = Config;
 			sourceTree = "<group>";
 		};
+		WGT0GR01A68108700A75B9A /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				WGT0FR03A68108700A75B9A /* WidgetSnapshotStore.swift */,
+				WGT0FR09A68108700A75B9A /* WidgetSnapshotBuilder.swift */,
+				WGT0FR10A68108700A75B9A /* RefreshWidgetIntent.swift */,
+				WGT0FR12A68108700A75B9A /* WidgetPendingActionStore.swift */,
+				WGT0FR13A68108700A75B9A /* WidgetCaptureIntents.swift */,
+				WGT0FR14A68108700A75B9A /* WidgetRefreshRequestStore.swift */,
+				WGT0FR15A68108700A75B9A /* WidgetSnapshotSync.swift */,
+			);
+			name = Shared;
+			sourceTree = "<group>";
+		};
+		WGT0GR02A68108700A75B9A /* LifeMapWidget */ = {
+			isa = PBXGroup;
+			children = (
+				WGT0FR04A68108700A75B9A /* LifeMapWidget.swift */,
+				WGT0FR05A68108700A75B9A /* Info.plist */,
+				WGT0FR07A68108700A75B9A /* LifeMapWidget.entitlements */,
+			);
+			name = LifeMapWidget;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -157,6 +252,7 @@
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
+				WGT0CP01A68108700A75B9A /* Embed Foundation Extensions */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				00EEFC60759A1932668264C0 /* [CP] Embed Pods Frameworks */,
 				E235C05ADACE081382539298 /* [CP] Copy Pods Resources */,
@@ -164,11 +260,29 @@
 			buildRules = (
 			);
 			dependencies = (
+				WGT0DP01A68108700A75B9A /* PBXTargetDependency */,
 			);
 			name = LifeMap;
 			productName = LifeMap;
 			productReference = 13B07F961A680F5B00A75B9A /* LifeMap.app */;
 			productType = "com.apple.product-type.application";
+		};
+		WGT0TG01A68108700A75B9A /* LifeMapWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = WGT0CL01A68108700A75B9A /* Build configuration list for PBXNativeTarget "LifeMapWidgetExtension" */;
+			buildPhases = (
+				WGT0PH01A68108700A75B9A /* Sources */,
+				WGT0PH02A68108700A75B9A /* Frameworks */,
+				WGT0PH03A68108700A75B9A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = LifeMapWidgetExtension;
+			productName = LifeMapWidgetExtension;
+			productReference = WGT0FR06A68108700A75B9A /* LifeMapWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -180,6 +294,9 @@
 				TargetAttributes = {
 					13B07F861A680F5B00A75B9A = {
 						LastSwiftMigration = 1120;
+					};
+					WGT0TG01A68108700A75B9A = {
+						CreatedOnToolsVersion = 16.0;
 					};
 				};
 			};
@@ -197,6 +314,7 @@
 			projectRoot = "";
 			targets = (
 				13B07F861A680F5B00A75B9A /* LifeMap */,
+				WGT0TG01A68108700A75B9A /* LifeMapWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -209,6 +327,13 @@
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3942CC750AC601641664379E /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		WGT0PH03A68108700A75B9A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -307,10 +432,42 @@
 				B2C3D4EC1A68108700A75B9A /* LocationPersistModule.m in Sources */,
 				C3D4E5F61A68108700A75B9A /* LifeMapTransistorSafe.m in Sources */,
 				D4E5F6A71A68108700A75B9A /* LifeMapNativePersistLoop.swift in Sources */,
+				WGT0MOD1A68108700A75B9A /* WidgetSnapshotModule.swift in Sources */,
+				WGT0MOD2A68108700A75B9A /* WidgetSnapshotModule.m in Sources */,
+				WGT0SHR1A68108700A75B9A /* WidgetSnapshotStore.swift in Sources */,
+				WGT0BLD1A68108700A75B9A /* WidgetSnapshotBuilder.swift in Sources */,
+				WGT0INT1A68108700A75B9A /* RefreshWidgetIntent.swift in Sources */,
+				WGT0PND1A68108700A75B9A /* WidgetPendingActionStore.swift in Sources */,
+				WGT0CAP1A68108700A75B9A /* WidgetCaptureIntents.swift in Sources */,
+				WGT0REQ1A68108700A75B9A /* WidgetRefreshRequestStore.swift in Sources */,
+				WGT0SYN1A68108700A75B9A /* WidgetSnapshotSync.swift in Sources */,
+				WGT0SHT1A68108700A75B9A /* LifeMapAppShortcuts.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		WGT0PH01A68108700A75B9A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				WGT0WGT1A68108700A75B9A /* LifeMapWidget.swift in Sources */,
+				WGT0SHR2A68108700A75B9A /* WidgetSnapshotStore.swift in Sources */,
+				WGT0BLD2A68108700A75B9A /* WidgetSnapshotBuilder.swift in Sources */,
+				WGT0INT2A68108700A75B9A /* RefreshWidgetIntent.swift in Sources */,
+				WGT0PND2A68108700A75B9A /* WidgetPendingActionStore.swift in Sources */,
+				WGT0CAP2A68108700A75B9A /* WidgetCaptureIntents.swift in Sources */,
+				WGT0REQ2A68108700A75B9A /* WidgetRefreshRequestStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		WGT0DP01A68108700A75B9A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = WGT0TG01A68108700A75B9A /* LifeMapWidgetExtension */;
+			targetProxy = WGT0PX01A68108700A75B9A /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
@@ -319,6 +476,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = LifeMap/LifeMap.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 24;
 				DEVELOPMENT_TEAM = SRTH66N3SH;
@@ -352,6 +510,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = LifeMap/LifeMap.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 24;
 				DEVELOPMENT_TEAM = SRTH66N3SH;
@@ -533,6 +692,58 @@
 			};
 			name = Release;
 		};
+		WGT0BC01A68108700A75B9A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = LifeMapWidget/LifeMapWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 24;
+				DEVELOPMENT_TEAM = SRTH66N3SH;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = LifeMapWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sunrio.lifemap.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		WGT0BC02A68108700A75B9A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = LifeMapWidget/LifeMapWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 24;
+				DEVELOPMENT_TEAM = SRTH66N3SH;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = LifeMapWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sunrio.lifemap.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -550,6 +761,15 @@
 			buildConfigurations = (
 				83CBBA201A601CBA00E9B192 /* Debug */,
 				83CBBA211A601CBA00E9B192 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		WGT0CL01A68108700A75B9A /* Build configuration list for PBXNativeTarget "LifeMapWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				WGT0BC01A68108700A75B9A /* Debug */,
+				WGT0BC02A68108700A75B9A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

@@ -43,6 +43,29 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     scheduleBackgroundWakeTask()
   }
 
+  func application(
+    _ app: UIApplication,
+    open url: URL,
+    options: [UIApplication.OpenURLOptionsKey: Any] = [:]
+  ) -> Bool {
+    if let action = WidgetPendingActionStore.action(from: url) {
+      try? WidgetPendingActionStore.write(action: action)
+    }
+    return RCTLinkingManager.application(app, open: url, options: options)
+  }
+
+  func application(
+    _ application: UIApplication,
+    continue userActivity: NSUserActivity,
+    restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void
+  ) -> Bool {
+    RCTLinkingManager.application(
+      application,
+      continue: userActivity,
+      restorationHandler: restorationHandler
+    )
+  }
+
   private func registerBackgroundWakeTask() {
     BGTaskScheduler.shared.register(
       forTaskWithIdentifier: "com.sunrio.lifemap.location-wake",

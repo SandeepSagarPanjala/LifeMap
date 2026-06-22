@@ -1,7 +1,7 @@
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 
 export type RootStackParamList = {
-  Map: undefined;
+  Map: {widgetAction?: string} | undefined;
   Settings: undefined;
   CaptureNote: undefined;
   CapturePhoto: undefined;

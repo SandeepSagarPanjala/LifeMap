@@ -1,6 +1,6 @@
 import './global.css';
 
-import {useCallback, useMemo, useState} from 'react';
+import {useCallback, useEffect, useMemo, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
 import {PortalHost} from '@rn-primitives/portal';
 import {StatusBar, useColorScheme} from 'react-native';
@@ -16,6 +16,7 @@ import {ThemeProvider} from '@/components/theme/theme-provider';
 import {AppBootstrap} from '@/components/AppBootstrap';
 import {AppErrorBoundary} from '@/components/error-boundary';
 import {useAppStore} from '@/stores/app-store';
+import {startWidgetDeepLinkListening} from '@/lib/widget/widget-deep-link';
 
 function App() {
   const [isSplashVisible, setSplashVisible] = useState(true);
@@ -48,6 +49,8 @@ function App() {
 
   const enableLocationTracking = activeScreen === 'main';
   const enableHistoryPreload = activeScreen === 'main';
+
+  useEffect(() => startWidgetDeepLinkListening(), []);
 
   return (
     <AppErrorBoundary>

@@ -9,8 +9,8 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 if xcrun xctrace list devices 2>/dev/null | grep -q "$DEVICE_UDID"; then
-  exec react-native run-ios --udid "$DEVICE_UDID" "$@"
+  exec react-native run-ios --udid "$DEVICE_UDID" --extra-params "-allowProvisioningUpdates" "$@"
 fi
 
 echo "Device UDID $DEVICE_UDID not found. Trying name: $DEVICE_NAME"
-exec react-native run-ios --device "$DEVICE_NAME" "$@"
+exec react-native run-ios --device "$DEVICE_NAME" --extra-params "-allowProvisioningUpdates" "$@"

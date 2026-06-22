@@ -544,13 +544,7 @@ export function CapturePhotoScreen() {
             {paddingTop: insets.top + 8, paddingBottom: insets.bottom + 12},
           ]}>
           <View style={styles.cameraTopRow}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Close camera"
-              onPress={handleClose}
-              style={styles.iconButton}>
-              <X size={22} color="#FFFFFF" strokeWidth={2.25} />
-            </Pressable>
+            <View style={styles.cameraTopSpacer} />
             {isRecording ? (
               <View style={styles.recordingTimerPill}>
                 <View style={styles.recordingDot} />
@@ -661,16 +655,25 @@ export function CapturePhotoScreen() {
                   )}
                 </Pressable>
               )}
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Flip camera"
-                disabled={capturing || isRecording}
-                onPress={() =>
-                  setCameraPosition(current => (current === 'back' ? 'front' : 'back'))
-                }
-                style={styles.iconButton}>
-                <RefreshCw size={22} color="#FFFFFF" strokeWidth={2.25} />
-              </Pressable>
+              <View style={styles.cameraRightControls}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Close camera"
+                  onPress={handleClose}
+                  style={styles.iconButton}>
+                  <X size={22} color="#FFFFFF" strokeWidth={2.25} />
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Flip camera"
+                  disabled={capturing || isRecording}
+                  onPress={() =>
+                    setCameraPosition(current => (current === 'back' ? 'front' : 'back'))
+                  }
+                  style={styles.iconButton}>
+                  <RefreshCw size={22} color="#FFFFFF" strokeWidth={2.25} />
+                </Pressable>
+              </View>
             </View>
           </View>
         </View>
@@ -1194,6 +1197,10 @@ const styles = StyleSheet.create({
   cameraSideSlot: {
     width: 44,
     height: 44,
+  },
+  cameraRightControls: {
+    alignItems: 'center',
+    gap: 12,
   },
   iconButton: {
     width: 44,

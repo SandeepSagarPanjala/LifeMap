@@ -60,6 +60,17 @@
 		<string>com.transistorsoft.fetch</string>
 		<string>com.sunrio.lifemap.location-wake</string>
 	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.sunrio.lifemap</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>lifemap</string>
+			</array>
+		</dict>
+	</array>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

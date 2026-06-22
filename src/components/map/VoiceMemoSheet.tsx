@@ -136,12 +136,29 @@ export function VoiceMemoSheet({
     durationMsRef.current = 0;
   }, []);
 
+  const promptDiscardOnClose = useCallback(() => {
+    Alert.alert('Discard voice memo?', 'This recording will be deleted.', [
+      {text: 'Keep editing', style: 'cancel'},
+      {
+        text: 'Discard',
+        style: 'destructive',
+        onPress: () => {
+          void resetDraft().finally(onClose);
+        },
+      },
+    ]);
+  }, [onClose, resetDraft]);
+
   const closeSheet = useCallback(() => {
     if (phaseRef.current === 'saving') {
       return;
     }
+    if (phaseRef.current === 'preview' && previewPathRef.current) {
+      promptDiscardOnClose();
+      return;
+    }
     void resetDraft().finally(onClose);
-  }, [onClose, resetDraft]);
+  }, [onClose, promptDiscardOnClose, resetDraft]);
 
   useEffect(() => {
     if (!visible) {
@@ -342,19 +359,6 @@ export function VoiceMemoSheet({
     }
   };
 
-  const handleDiscard = () => {
-    Alert.alert('Discard voice memo?', 'This recording will be deleted.', [
-      {text: 'Keep editing', style: 'cancel'},
-      {
-        text: 'Discard',
-        style: 'destructive',
-        onPress: () => {
-          void resetDraft();
-        },
-      },
-    ]);
-  };
-
   const handleSave = async () => {
     if (!previewPath || phase === 'saving' || !recorderRef.current) {
       return;
@@ -401,7 +405,7 @@ export function VoiceMemoSheet({
       ? 'Preview your memo, then add it to this diary entry.'
       : saveTarget === 'photo'
         ? 'Preview your memo, then add it to this photo.'
-        : 'Preview your memo, then save or discard.';
+        : 'Preview your memo, then save it.';
   const idleHint =
     saveTarget === 'diary'
       ? `Record up to ${capLabel} for this diary entry.`
@@ -422,14 +426,18 @@ export function VoiceMemoSheet({
   const noteEditingActive = showNoteInput && (noteFocused || keyboardVisible);
 
   const handleBackdropPress = useCallback(() => {
-    if (!noteEditingActive) {
-      return false;
+    if (noteEditingActive) {
+      restoreSheetAfterKeyboardRef.current = true;
+      Keyboard.dismiss();
+      setNoteFocused(false);
+      return true;
     }
-    restoreSheetAfterKeyboardRef.current = true;
-    Keyboard.dismiss();
-    setNoteFocused(false);
-    return true;
-  }, [noteEditingActive]);
+    if (phaseRef.current === 'preview' && previewPathRef.current) {
+      promptDiscardOnClose();
+      return true;
+    }
+    return false;
+  }, [noteEditingActive, promptDiscardOnClose]);
 
   return (
     <AppBottomSheet
@@ -441,7 +449,7 @@ export function VoiceMemoSheet({
       keyboardBlurBehavior="none"
       bottomSheetRef={sheetRef}
       onBackdropPress={handleBackdropPress}
-      enablePanDownToClose={!noteEditingActive}>
+      enablePanDownToClose={!noteEditingActive && phase !== 'preview'}>
       <Text variant="h4" className="border-0 pb-0">
         Voice memo
       </Text>
@@ -567,29 +575,6 @@ export function VoiceMemoSheet({
           }}
         />
       ) : null}
-
-      {phase === 'preview' && !isAttachMode && !noteFocused ? (
-        <View style={styles.footerActions}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Discard recording"
-            onPress={handleDiscard}
-            style={styles.discardButton}>
-            <Text className="text-sm font-medium text-red-500">Discard</Text>
-          </Pressable>
-          <Pressable accessibilityRole="button" onPress={closeSheet}>
-            <Text variant="muted" className="text-sm">
-              Cancel
-            </Text>
-          </Pressable>
-        </View>
-      ) : phase !== 'preview' && !isAttachMode ? (
-        <Pressable accessibilityRole="button" onPress={closeSheet} style={styles.cancelOnly}>
-          <Text variant="muted" className="text-sm">
-            Cancel
-          </Text>
-        </Pressable>
-      ) : null}
     </AppBottomSheet>
   );
 }
@@ -659,21 +644,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-  },
-  footerActions: {
-    marginTop: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  discardButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  cancelOnly: {
-    marginTop: 8,
-    alignSelf: 'center',
   },
   noteInput: {
     marginTop: 16,
