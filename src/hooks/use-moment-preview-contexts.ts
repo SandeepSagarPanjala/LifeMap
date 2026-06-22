@@ -17,6 +17,8 @@ import {
 } from '@/lib/drive-endpoint-label';
 import {loadVisitPlaceDisplayForStay} from '@/lib/visit-place-label';
 
+const EMPTY_LOOKUP_LABELS: Record<string, string> = {};
+
 async function enrichVisitPlaceLabel(
   stay: DetectedTrip,
   savedPlaces: readonly SavedPlaceRow[],
@@ -29,6 +31,39 @@ async function enrichVisitPlaceLabel(
   const display = await loadVisitPlaceDisplayForStay(stay, savedPlaces);
   const label = driveEndpointLabelFromVisitDisplay(display);
   return label.text;
+}
+
+function buildStaysNeedingLookup(
+  syncContexts: Map<number, MomentPreviewContext>,
+  entries: DayTimelineEntry[],
+): Map<string, DetectedTrip> {
+  const stays = new Map<string, DetectedTrip>();
+  for (const context of syncContexts.values()) {
+    if (context.placeLabel != null || context.entryKind !== 'stay') {
+      continue;
+    }
+    const stay = findStayForMomentPreviewContext(entries, context);
+    if (stay) {
+      stays.set(context.entryId, stay);
+    }
+  }
+  return stays;
+}
+
+function staysNeedingLookupKey(
+  syncContexts: Map<number, MomentPreviewContext>,
+  entries: DayTimelineEntry[],
+): string {
+  const ids: string[] = [];
+  for (const context of syncContexts.values()) {
+    if (context.placeLabel != null || context.entryKind !== 'stay') {
+      continue;
+    }
+    if (findStayForMomentPreviewContext(entries, context)) {
+      ids.push(context.entryId);
+    }
+  }
+  return ids.sort().join(',');
 }
 
 export function useMomentPreviewContexts(
@@ -53,30 +88,26 @@ export function useMomentPreviewContexts(
     return map;
   }, [distanceUnit, entries, moments, savedPlaces]);
 
-  const [lookupLabelsByEntryId, setLookupLabelsByEntryId] = useState<
-    Record<string, string>
-  >({});
+  const [lookupLabelsByEntryId, setLookupLabelsByEntryId] = useState(
+    EMPTY_LOOKUP_LABELS,
+  );
 
-  const staysNeedingLookup = useMemo(() => {
-    const stays = new Map<string, DetectedTrip>();
-    for (const context of syncContexts.values()) {
-      if (context.placeLabel != null || context.entryKind !== 'stay') {
-        continue;
-      }
-      const stay = findStayForMomentPreviewContext(entries, context);
-      if (stay) {
-        stays.set(context.entryId, stay);
-      }
-    }
-    return stays;
-  }, [entries, syncContexts]);
+  const lookupEntryIdsKey = useMemo(
+    () => staysNeedingLookupKey(syncContexts, entries),
+    [entries, syncContexts],
+  );
 
   useEffect(() => {
-    if (staysNeedingLookup.size === 0) {
-      setLookupLabelsByEntryId({});
+    if (lookupEntryIdsKey.length === 0) {
+      setLookupLabelsByEntryId(previous =>
+        previous === EMPTY_LOOKUP_LABELS || Object.keys(previous).length === 0
+          ? previous
+          : EMPTY_LOOKUP_LABELS,
+      );
       return;
     }
 
+    const staysNeedingLookup = buildStaysNeedingLookup(syncContexts, entries);
     let cancelled = false;
 
     void (async () => {
@@ -97,9 +128,12 @@ export function useMomentPreviewContexts(
     return () => {
       cancelled = true;
     };
-  }, [savedPlaces, staysNeedingLookup]);
+  }, [entries, lookupEntryIdsKey, savedPlaces, syncContexts]);
 
   return useMemo(() => {
+    if (lookupLabelsByEntryId === EMPTY_LOOKUP_LABELS) {
+      return syncContexts;
+    }
     if (Object.keys(lookupLabelsByEntryId).length === 0) {
       return syncContexts;
     }

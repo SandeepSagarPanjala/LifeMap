@@ -18,7 +18,7 @@ export const WIDGET_DEEP_LINK_PREFIX = 'lifemap://';
 export const WIDGET_CAPTURE_LINKS = {
   note: `${WIDGET_DEEP_LINK_PREFIX}capture/note`,
   photo: `${WIDGET_DEEP_LINK_PREFIX}capture/photo`,
-  voice: `${WIDGET_DEEP_LINK_PREFIX}map?widgetAction=voice`,
-  activity: `${WIDGET_DEEP_LINK_PREFIX}map?widgetAction=activity`,
+  voice: `${WIDGET_DEEP_LINK_PREFIX}capture/voice`,
+  activity: `${WIDGET_DEEP_LINK_PREFIX}capture/activity`,
   refresh: `${WIDGET_DEEP_LINK_PREFIX}map?widgetAction=refresh`,
 } as const;

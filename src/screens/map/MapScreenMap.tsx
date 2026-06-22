@@ -1,3 +1,4 @@
+import {memo} from 'react';
 import {StyleSheet} from 'react-native';
 import MapView from 'react-native-maps';
 
@@ -8,13 +9,16 @@ import {SavedPlacesMapOverlay} from '@/components/map/SavedPlacesMapOverlay';
 import {StayDurationCallout} from '@/components/map/StayDurationCallout';
 
 import {MAP_FALLBACK_REGION} from './map-screen-constants';
+import {areMapScreenMapPropsEqual} from './map-screen-map-props';
 import type {MapScreenController} from './use-map-screen-controller';
 
 type MapScreenMapProps = {
   controller: MapScreenController;
 };
 
-export function MapScreenMap({controller}: MapScreenMapProps) {
+export const MapScreenMap = memo(function MapScreenMap({
+  controller,
+}: MapScreenMapProps) {
   const {
     mapRef,
     provider,
@@ -148,4 +152,6 @@ export function MapScreenMap({controller}: MapScreenMapProps) {
       ) : null}
     </MapView>
   );
-}
+}, (previous, next) =>
+  areMapScreenMapPropsEqual(previous.controller, next.controller),
+);

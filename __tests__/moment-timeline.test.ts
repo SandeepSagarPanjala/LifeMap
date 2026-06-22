@@ -73,33 +73,54 @@ describe('moment timeline', () => {
   });
 
   it('interpolates map coordinates from the GPS trail at moment time', () => {
+    const points = [
+      {
+        id: 1,
+        timestamp: new Date('2026-06-08T12:00:00.000Z'),
+        lat: 33,
+        lng: -97,
+        accuracy: null,
+        altitude: null,
+        speed: null,
+        source: 'gps',
+      },
+      {
+        id: 2,
+        timestamp: new Date('2026-06-08T13:00:00.000Z'),
+        lat: 34,
+        lng: -96,
+        accuracy: null,
+        altitude: null,
+        speed: null,
+        source: 'gps',
+      },
+    ];
     const coordinate = resolveMomentCoordinate(
       new Date('2026-06-08T12:30:00.000Z'),
-      [
-        {
-          id: 1,
-          timestamp: new Date('2026-06-08T12:00:00.000Z'),
-          lat: 33,
-          lng: -97,
-          accuracy: null,
-          altitude: null,
-          speed: null,
-          source: 'gps',
-        },
-        {
-          id: 2,
-          timestamp: new Date('2026-06-08T13:00:00.000Z'),
-          lat: 34,
-          lng: -96,
-          accuracy: null,
-          altitude: null,
-          speed: null,
-          source: 'gps',
-        },
-      ],
+      points,
       null,
     );
 
     expect(coordinate).toEqual({lat: 33.5, lng: -96.5});
+  });
+
+  it('reuses sorted GPS trail cache across coordinate lookups', () => {
+    const points = Array.from({length: 500}, (_, index) => ({
+      id: index + 1,
+      timestamp: new Date(Date.UTC(2026, 5, 8, 0, 0, index)),
+      lat: 33 + index * 0.001,
+      lng: -97 + index * 0.001,
+      accuracy: null,
+      altitude: null,
+      speed: null,
+      source: 'gps' as const,
+    }));
+
+    const target = new Date(Date.UTC(2026, 5, 8, 0, 4, 10));
+    const first = resolveMomentCoordinate(target, points, null);
+    const second = resolveMomentCoordinate(target, points, null);
+
+    expect(first).toEqual(second);
+    expect(first).not.toBeNull();
   });
 });

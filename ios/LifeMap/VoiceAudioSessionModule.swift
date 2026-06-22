@@ -22,11 +22,9 @@ class VoiceAudioSessionModule: NSObject {
   ) {
     let maxAttempts = 3
     let session = AVAudioSession.sharedInstance()
-    let delay = attempt == 0 ? 0.0 : 0.2 + Double(attempt) * 0.15
+    let delay = 0.25 + Double(attempt) * 0.2
 
-    if attempt > 0 {
-      try? session.setActive(false, options: [.notifyOthersOnDeactivation])
-    }
+    try? session.setActive(false, options: [.notifyOthersOnDeactivation])
 
     DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
       do {

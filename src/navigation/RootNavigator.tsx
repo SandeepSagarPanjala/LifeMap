@@ -9,14 +9,26 @@ import {useColorScheme} from 'react-native';
 import {useCallback, useEffect, useMemo} from 'react';
 
 import type {RootStackParamList} from '@/navigation/types';
+import {CaptureActivityScreen} from '@/screens/capture/CaptureActivityScreen';
 import {CaptureNoteScreen} from '@/screens/capture/CaptureNoteScreen';
 import {CapturePhotoScreen} from '@/screens/capture/CapturePhotoScreen';
+import {CaptureVoiceScreen} from '@/screens/capture/CaptureVoiceScreen';
 import {MapScreen} from '@/screens/MapScreen';
+import {MomentPreviewScreen} from '@/screens/moments/MomentPreviewScreen';
+import {SavedPlacesScreen} from '@/screens/map/SavedPlacesScreen';
 import {SettingsScreen} from '@/screens/SettingsScreen';
 import {useThemeColors} from '@/hooks/use-theme-colors';
 import {setWidgetNavigationRef} from '@/lib/widget/widget-deep-link';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+const sheetCaptureScreenOptions = {
+  headerShown: false,
+  presentation: 'transparentModal' as const,
+  animation: 'none' as const,
+  contentStyle: {backgroundColor: 'transparent'},
+  gestureEnabled: false,
+};
 
 export function RootNavigator() {
   const navigationRef = useNavigationContainerRef<RootStackParamList>();
@@ -78,6 +90,30 @@ export function RootNavigator() {
             headerShown: false,
             presentation: 'fullScreenModal',
             animation: 'slide_from_bottom',
+          }}
+        />
+        <Stack.Screen
+          name="CaptureVoice"
+          component={CaptureVoiceScreen}
+          options={sheetCaptureScreenOptions}
+        />
+        <Stack.Screen
+          name="CaptureActivity"
+          component={CaptureActivityScreen}
+          options={sheetCaptureScreenOptions}
+        />
+        <Stack.Screen
+          name="SavedPlaces"
+          component={SavedPlacesScreen}
+          options={sheetCaptureScreenOptions}
+        />
+        <Stack.Screen
+          name="MomentPreview"
+          component={MomentPreviewScreen}
+          options={{
+            headerShown: false,
+            presentation: 'fullScreenModal',
+            animation: 'none',
           }}
         />
       </Stack.Navigator>

@@ -47,6 +47,7 @@ import {
   travelCentroidFromRoute,
 } from '@/lib/trip-geometry';
 import { notifyMaterializationUpdated } from '@/lib/trip-materialization-events';
+import { backfillMomentsForDateKey } from '@/lib/moments/backfill-moment-locations';
 import { resolveVisitAnchor } from '@/lib/visit-anchor';
 import { canonicalizeStayGeometry } from '@/lib/stay-geometry';
 import {
@@ -895,7 +896,9 @@ export async function rebuildPastDayTrips(
     throw new Error('Trip rebuild is only available for past days.');
   }
 
-  return materializePastDayFromGps(dateKey, detectionConfig);
+  const tripsSaved = await materializePastDayFromGps(dateKey, detectionConfig);
+  await backfillMomentsForDateKey(dateKey, detectionConfig);
+  return tripsSaved;
 }
 
 /** Wipe today's cached trips and re-seal the current prefix from GPS. */
@@ -920,13 +923,16 @@ export async function rebuildTodayTrips(
       return 0;
     }
     await purgeMaterializedDayCache(dateKey, dayPointCount);
+    await backfillMomentsForDateKey(dateKey, detectionConfig);
     return 0;
   }
 
-  return persistClosedTripsIncremental(dateKey, detectionConfig, sealable, {
+  const tripsSaved = await persistClosedTripsIncremental(dateKey, detectionConfig, sealable, {
     fullReplace: true,
     pointCount: dayPointCount,
   });
+  await backfillMomentsForDateKey(dateKey, detectionConfig);
+  return tripsSaved;
 }
 
 /** Foreground rebuild for all past days that have GPS data. */

@@ -2,10 +2,12 @@ import {useCallback, useEffect, useState} from 'react';
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
   Keyboard,
   Platform,
   Pressable,
   StyleSheet,
+  TextInput,
   View,
   useWindowDimensions,
 } from 'react-native';
@@ -34,7 +36,7 @@ const GRID_COLUMNS = 4;
 const GRID_GAP = 12;
 const ACTIVITY_TINT = '#F0FDF4';
 const EMOJI_PLACEHOLDER = '🏋️';
-const LOG_SHEET_SNAP_RATIO = 0.58;
+const LOG_SHEET_SNAP_RATIO = 0.5;
 const LOG_SHEET_HANDLE_HEIGHT = 24;
 const LOG_FOOTER_HEIGHT = 44;
 
@@ -91,6 +93,10 @@ type ActivityLogSheetProps = {
   visible: boolean;
   onClose: () => void;
   onLogged: () => void | Promise<void>;
+  onWillClose?: () => void;
+  snapPoints?: (string | number)[];
+  instantPresent?: boolean;
+  embedded?: boolean;
 };
 
 function ActivityPickerCell({
@@ -128,6 +134,7 @@ function ActivityForm({
   onChangeLabel,
   onSubmit,
   onBack,
+  embedded = false,
 }: {
   title: string;
   emoji: string;
@@ -138,8 +145,10 @@ function ActivityForm({
   onChangeLabel: (value: string) => void;
   onSubmit: () => void;
   onBack?: () => void;
+  embedded?: boolean;
 }) {
   const canSave = emoji.trim().length > 0 && label.trim().length > 0 && !saving;
+  const LabelInput = embedded ? TextInput : BottomSheetTextInput;
 
   return (
     <View style={styles.formBody}>
@@ -165,7 +174,7 @@ function ActivityForm({
       <View style={styles.formFields}>
         <ActivityEmojiPicker emoji={emoji} onChangeEmoji={onChangeEmoji} />
         <Text style={styles.fieldLabel}>Label</Text>
-        <BottomSheetTextInput
+        <LabelInput
           value={label}
           onChangeText={onChangeLabel}
           placeholder="Gym"
@@ -196,7 +205,15 @@ function ActivityForm({
   );
 }
 
-export function ActivityLogSheet({visible, onClose, onLogged}: ActivityLogSheetProps) {
+export function ActivityLogSheet({
+  visible,
+  onClose,
+  onLogged,
+  onWillClose,
+  snapPoints: logSnapPointsProp,
+  instantPresent = false,
+  embedded = false,
+}: ActivityLogSheetProps) {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const {width: windowWidth, height: windowHeight} = useWindowDimensions();
@@ -339,60 +356,59 @@ export function ActivityLogSheet({visible, onClose, onLogged}: ActivityLogSheetP
   };
 
   const isFormMode = mode === 'create-first' || mode === 'create' || mode === 'edit';
+  const logSnapPoints = logSnapPointsProp ?? (['50%'] as const);
   const snapPoints =
-    mode === 'manage' ? (['72%'] as const) : isFormMode ? undefined : (['58%'] as const);
+    mode === 'manage' ? (['72%'] as const) : isFormMode ? undefined : logSnapPoints;
 
-  return (
-    <AppBottomSheet
-      visible={visible}
-      onClose={handleClose}
-      dismissKeyboardOnClose
-      keyboardAware={isFormMode}
-      enableDynamicSizing={isFormMode}
-      rawChildren
-      snapPoints={snapPoints ? [...snapPoints] : undefined}>
-      <BottomSheetView
-        style={[
-          styles.sheetBody,
-          isFormMode ? styles.sheetBodyCompact : null,
-          {
-            paddingBottom: isFormMode
-              ? Math.max(insets.bottom, 20) + 8
-              : Math.max(insets.bottom, 16),
-          },
-        ]}>
-        {loading && mode === 'log' ? (
-          <View style={styles.loadingBody}>
-            <ActivityIndicator color={colors.primary} />
-          </View>
-        ) : null}
+  const ActivityList = embedded ? FlatList : BottomSheetFlatList;
+  const PanelContainer = embedded ? View : BottomSheetView;
+  const logBodyStyle = embedded ? styles.stepBodyEmbedded : [styles.stepBody, {height: logStepHeight}];
 
-        {!loading && mode === 'log' ? (
-          <View style={[styles.stepBody, {height: logStepHeight}]}>
+  const panelContent = (
+    <PanelContainer
+      style={[
+        embedded ? styles.sheetBodyEmbedded : styles.sheetBody,
+        isFormMode ? styles.sheetBodyCompact : null,
+        embedded
+          ? null
+          : {
+              paddingBottom: isFormMode
+                ? Math.max(insets.bottom, 20) + 8
+                : Math.max(insets.bottom, 16),
+            },
+      ]}>
+      {mode === 'log' ? (
+        <View style={logBodyStyle}>
             <View style={styles.stepHeader}>
               <Text variant="h4" className="border-0 pb-0">
                 What did you do?
               </Text>
             </View>
-            <BottomSheetFlatList
-              data={activities}
-              keyExtractor={item => String(item.id)}
-              numColumns={GRID_COLUMNS}
-              columnWrapperStyle={styles.gridRow}
-              contentContainerStyle={styles.gridContent}
-              showsVerticalScrollIndicator={false}
-              style={styles.grid}
-              renderItem={({item}) => (
-                <View style={{width: cellWidth}}>
-                  <ActivityPickerCell
-                    activity={item}
-                    onPress={() => {
-                      void handleLogActivity(item);
-                    }}
-                  />
-                </View>
-              )}
-            />
+            {loading ? (
+              <View style={styles.loadingBody}>
+                <ActivityIndicator color={colors.primary} />
+              </View>
+            ) : (
+              <ActivityList
+                data={activities}
+                keyExtractor={item => String(item.id)}
+                numColumns={GRID_COLUMNS}
+                columnWrapperStyle={styles.gridRow}
+                contentContainerStyle={styles.gridContent}
+                showsVerticalScrollIndicator={false}
+                style={styles.grid}
+                renderItem={({item}) => (
+                  <View style={{width: cellWidth}}>
+                    <ActivityPickerCell
+                      activity={item}
+                      onPress={() => {
+                        void handleLogActivity(item);
+                      }}
+                    />
+                  </View>
+                )}
+              />
+            )}
             <View style={styles.stepFooterPinned}>
               <Pressable
                 accessibilityRole="button"
@@ -409,6 +425,7 @@ export function ActivityLogSheet({visible, onClose, onLogged}: ActivityLogSheetP
 
         {mode === 'create-first' ? (
           <ActivityForm
+            embedded={embedded}
             title="Add your first activity"
             emoji={emoji}
             label={label}
@@ -424,6 +441,7 @@ export function ActivityLogSheet({visible, onClose, onLogged}: ActivityLogSheetP
 
         {mode === 'create' ? (
           <ActivityForm
+            embedded={embedded}
             title="New activity"
             emoji={emoji}
             label={label}
@@ -440,6 +458,7 @@ export function ActivityLogSheet({visible, onClose, onLogged}: ActivityLogSheetP
 
         {mode === 'edit' && editingActivity ? (
           <ActivityForm
+            embedded={embedded}
             title="Edit activity"
             emoji={emoji}
             label={label}
@@ -473,7 +492,7 @@ export function ActivityLogSheet({visible, onClose, onLogged}: ActivityLogSheetP
               </Text>
             </View>
 
-            <BottomSheetFlatList
+            <ActivityList
               data={activities}
               keyExtractor={item => String(item.id)}
               contentContainerStyle={styles.manageListContent}
@@ -554,12 +573,43 @@ export function ActivityLogSheet({visible, onClose, onLogged}: ActivityLogSheetP
             />
           </View>
         ) : null}
-      </BottomSheetView>
+    </PanelContainer>
+  );
+
+  if (embedded) {
+    if (!visible) {
+      return null;
+    }
+    return panelContent;
+  }
+
+  return (
+    <AppBottomSheet
+      visible={visible}
+      onClose={handleClose}
+      onClosing={onWillClose}
+      releaseTouchesWhileClosing={onWillClose != null}
+      instantPresent={instantPresent}
+      dismissKeyboardOnClose
+      keyboardAware={isFormMode}
+      enableDynamicSizing={isFormMode}
+      rawChildren
+      snapPoints={snapPoints ? [...snapPoints] : undefined}>
+      {panelContent}
     </AppBottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
+  sheetBodyEmbedded: {
+    flex: 1,
+    paddingTop: 0,
+    minHeight: 0,
+  },
+  stepBodyEmbedded: {
+    flex: 1,
+    minHeight: 0,
+  },
   sheetBody: {
     flex: 1,
     paddingHorizontal: 20,

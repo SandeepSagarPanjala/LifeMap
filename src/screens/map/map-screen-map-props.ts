@@ -1,0 +1,76 @@
+import type {MapUserCoordinate} from '@/lib/user-coordinate-throttle';
+
+import type {MapScreenController} from './use-map-screen-controller';
+
+function coordinatesEqual(
+  previous: MapUserCoordinate | null,
+  next: MapUserCoordinate | null,
+): boolean {
+  if (previous === next) {
+    return true;
+  }
+  if (previous == null || next == null) {
+    return previous === next;
+  }
+  return (
+    previous.latitude === next.latitude &&
+    previous.longitude === next.longitude
+  );
+}
+
+function playbackEqual(
+  previous: MapScreenController['playback'],
+  next: MapScreenController['playback'],
+): boolean {
+  return (
+    previous.isPlaying === next.isPlaying &&
+    previous.progress === next.progress &&
+    previous.start === next.start &&
+    previous.stop === next.stop
+  );
+}
+
+/** Fields read by MapScreenMap — preview open/close must not invalidate these. */
+export function areMapScreenMapPropsEqual(
+  previous: MapScreenController,
+  next: MapScreenController,
+): boolean {
+  return (
+    previous.mapRef === next.mapRef &&
+    previous.provider === next.provider &&
+    previous.mapPadding === next.mapPadding &&
+    previous.mapAttributionInsets === next.mapAttributionInsets &&
+    previous.colorScheme === next.colorScheme &&
+    previous.showUserLocation === next.showUserLocation &&
+    previous.onRegionChangeComplete === next.onRegionChangeComplete &&
+    previous.handleUserLocation === next.handleUserLocation &&
+    previous.showDayJourney === next.showDayJourney &&
+    previous.dayMomentMapPins === next.dayMomentMapPins &&
+    previous.historyMomentMapPins === next.historyMomentMapPins &&
+    previous.openMomentMapPinPreview === next.openMomentMapPinPreview &&
+    previous.historyData === next.historyData &&
+    previous.dayStays === next.dayStays &&
+    previous.dayTravels === next.dayTravels &&
+    previous.tripDetectionConfig === next.tripDetectionConfig &&
+    previous.currentOpenVisit === next.currentOpenVisit &&
+    previous.currentOpenVisitSavedPlace === next.currentOpenVisitSavedPlace &&
+    previous.currentOpenVisitPlaceDisplay ===
+      next.currentOpenVisitPlaceDisplay &&
+    previous.currentVisitMomentCounts === next.currentVisitMomentCounts &&
+    previous.openCurrentVisitMomentsPreview ===
+      next.openCurrentVisitMomentsPreview &&
+    coordinatesEqual(previous.userCoordinate, next.userCoordinate) &&
+    previous.handleMapLongPress === next.handleMapLongPress &&
+    previous.showHistoryMap === next.showHistoryMap &&
+    previous.historyMapPlan === next.historyMapPlan &&
+    previous.selectedSavedPlace === next.selectedSavedPlace &&
+    previous.selectedVisitPlaceDisplay === next.selectedVisitPlaceDisplay &&
+    previous.selectedDriveEndpointLabels === next.selectedDriveEndpointLabels &&
+    previous.selectedEntryMomentCounts === next.selectedEntryMomentCounts &&
+    previous.openSelectedEntryMomentsPreview ===
+      next.openSelectedEntryMomentsPreview &&
+    playbackEqual(previous.playback, next.playback) &&
+    previous.savedPlaces === next.savedPlaces &&
+    previous.savedPlaceMomentClusters === next.savedPlaceMomentClusters
+  );
+}

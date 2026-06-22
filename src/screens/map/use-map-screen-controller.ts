@@ -12,12 +12,10 @@ import type MapView from 'react-native-maps';
 import {PROVIDER_DEFAULT, PROVIDER_GOOGLE, type Region} from 'react-native-maps';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
-import {deleteMoment, type MomentType} from '@/db/repositories/moments';
+import type {MomentRow, MomentType} from '@/db/repositories/moments';
 import {
   addFavoritePlace,
-  deleteSavedPlace,
   type SavedPlaceRow,
-  updateFavoritePlaceLabel,
   upsertHomePlace,
   upsertWorkPlace,
 } from '@/db/repositories/saved-places';
@@ -48,9 +46,7 @@ import {
   type MomentCountType,
   type MomentCounts,
 } from '@/lib/moments/moment-counts';
-import {
-  formatMomentsPreviewSheetTitle,
-} from '@/lib/moments/moment-preview-context';
+import {queueMomentPreview} from '@/lib/moments/moment-preview-navigation';
 import {
   partitionMomentMapPins,
   shouldClusterMomentsOnMap,
@@ -195,25 +191,6 @@ export function useMapScreenController() {
     latitude: number;
     longitude: number;
   } | null>(null);
-  const [savedPlacesSheetOpen, setSavedPlacesSheetOpen] = useState(false);
-  const [voiceSheetOpen, setVoiceSheetOpen] = useState(false);
-  const [activitySheetOpen, setActivitySheetOpen] = useState(false);
-  const [momentsPreviewScope, setMomentsPreviewScope] = useState<
-    | {kind: 'day'; initialType?: MomentType}
-    | {
-        kind: 'entry';
-        entry: DayTimelineEntry;
-        aggregation?: 'place' | 'visit';
-        initialType?: MomentType;
-      }
-    | {
-        kind: 'moment-ids';
-        momentIds: number[];
-        title: string;
-        initialType?: MomentType;
-      }
-    | null
-  >(null);
   const [clusterMomentsOnMap, setClusterMomentsOnMap] = useState(false);
 
   const {places: savedPlaces, hasHome, hasWork, refresh: refreshSavedPlaces} =
@@ -472,6 +449,47 @@ export function useMapScreenController() {
     dayMoments,
     historyData.points,
     historyEntries,
+    tripDetectionConfig.dwellRadiusMeters,
+  ]);
+  const currentVisitPreviewMoments = useMemo((): MomentRow[] => {
+    if (!currentOpenVisit) {
+      return [];
+    }
+    return filterMomentsForStayEntry(dayMoments, currentOpenVisit, {
+      savedPlace: currentOpenVisitSavedPlace,
+      dwellRadiusMeters: tripDetectionConfig.dwellRadiusMeters,
+      points: historyData.points,
+      entries: historyEntries,
+      aggregation: 'place',
+    });
+  }, [
+    currentOpenVisit,
+    currentOpenVisitSavedPlace,
+    dayMoments,
+    historyData.points,
+    historyEntries,
+    tripDetectionConfig.dwellRadiusMeters,
+  ]);
+  const selectedEntryPreviewMoments = useMemo((): MomentRow[] => {
+    if (!selectedEntry) {
+      return [];
+    }
+    return filterMomentsForStayEntry(dayMoments, selectedEntry, {
+      savedPlace:
+        selectedEntry.kind === 'stay'
+          ? matchSavedPlaceForStay(selectedEntry, savedPlaces)
+          : null,
+      dwellRadiusMeters: tripDetectionConfig.dwellRadiusMeters,
+      points: historyData.points,
+      entries: historyEntries,
+      aggregation: 'visit',
+    });
+  }, [
+    dayMoments,
+    historyData.points,
+    historyEntries,
+    savedPlaces,
+    selectedEntry,
     tripDetectionConfig.dwellRadiusMeters,
   ]);
   const showDayMomentSummary = useMemo(
@@ -785,6 +803,30 @@ export function useMapScreenController() {
     [historyMomentMapPinsRaw, savedPlaces, clusterMomentsOnMap],
   );
 
+  const openMomentPreview = useCallback(
+    (payload: {
+      moments: MomentRow[];
+      initialType?: MomentType;
+      previewEntry?: DayTimelineEntry | null;
+    }) => {
+      if (payload.moments.length === 0) {
+        return;
+      }
+      const initialIndex =
+        payload.initialType != null
+          ? Math.max(0, firstMomentIndexOfType(payload.moments, payload.initialType))
+          : 0;
+      queueMomentPreview({
+        moments: payload.moments,
+        initialIndex,
+        previewEntry: payload.previewEntry ?? null,
+        dateKey: selectedDateKey,
+      });
+      navigation.navigate('MomentPreview');
+    },
+    [navigation, selectedDateKey],
+  );
+
   const savedPlaceMomentClusters = useMemo((): SavedPlaceMomentClusterOnMap[] => {
     const raw = showDayJourney
       ? dayMomentMapPinsRaw
@@ -811,23 +853,26 @@ export function useMapScreenController() {
             calloutMomentCounts,
           ),
       )
-      .map(cluster => ({
-        placeId: cluster.place.id,
-        counts: cluster.counts,
-        onPress: () => {
-          setMomentsPreviewScope({
-            kind: 'moment-ids',
-            momentIds: cluster.momentIds,
-            title: `${savedPlaceDisplayLabel(cluster.place)} moments`,
-          });
-        },
-      }));
+      .map(cluster => {
+        const momentIds = new Set(cluster.momentIds);
+        return {
+          placeId: cluster.place.id,
+          counts: cluster.counts,
+          onPress: () => {
+            openMomentPreview({
+              moments: dayMoments.filter(moment => momentIds.has(moment.id)),
+            });
+          },
+        };
+      });
   }, [
     clusterMomentsOnMap,
     currentOpenVisitSavedPlace?.id,
     currentVisitMomentCounts,
     dayMomentMapPinsRaw,
+    dayMoments,
     historyMomentMapPinsRaw,
+    openMomentPreview,
     savedPlaces,
     selectedEntryMomentCounts,
     selectedSavedPlace?.id,
@@ -835,62 +880,47 @@ export function useMapScreenController() {
     showHistoryMap,
   ]);
 
-  const momentsPreviewOpen = momentsPreviewScope != null;
-  const momentsPreviewMoments = useMemo(() => {
-    if (!momentsPreviewScope) {
-      return [];
-    }
-    if (momentsPreviewScope.kind === 'day') {
-      return dayMoments;
-    }
-    if (momentsPreviewScope.kind === 'moment-ids') {
-      const ids = new Set(momentsPreviewScope.momentIds);
-      return dayMoments.filter(moment => ids.has(moment.id));
-    }
-    const entry = momentsPreviewScope.entry;
-    const aggregation = momentsPreviewScope.aggregation ?? 'visit';
-    const savedPlace =
-      entry.kind === 'stay'
-        ? matchSavedPlaceForStay(entry, savedPlaces)
-        : null;
-    return filterMomentsForStayEntry(dayMoments, entry, {
-      savedPlace,
-      dwellRadiusMeters: tripDetectionConfig.dwellRadiusMeters,
-      points: historyData.points,
-      entries: historyEntries,
-      aggregation,
-    });
-  }, [
-    historyData.points,
-    historyEntries,
-    momentsPreviewScope,
-    dayMoments,
-    savedPlaces,
-    tripDetectionConfig.dwellRadiusMeters,
-  ]);
-  const momentsPreviewEntry = useMemo(() => {
-    if (momentsPreviewScope?.kind === 'entry') {
-      return momentsPreviewScope.entry;
-    }
-    return null;
-  }, [momentsPreviewScope]);
-  const momentsPreviewTitle = useMemo(() => {
-    return formatMomentsPreviewSheetTitle(
-      momentsPreviewScope,
-      momentsPreviewMoments,
-      historyEntries,
-      savedPlaces,
-      formatHistoryDayNavLabel(selectedDateKey),
-      distanceUnit,
-    );
-  }, [
-    distanceUnit,
-    historyEntries,
-    momentsPreviewMoments,
-    momentsPreviewScope,
-    savedPlaces,
-    selectedDateKey,
-  ]);
+  const openDayMomentsPreview = useCallback(
+    (initialType?: MomentCountType) => {
+      openMomentPreview({moments: dayMoments, initialType});
+    },
+    [dayMoments, openMomentPreview],
+  );
+
+  const openCurrentVisitMomentsPreview = useCallback(
+    (initialType?: MomentCountType) => {
+      if (!currentOpenVisit) {
+        return;
+      }
+      openMomentPreview({
+        moments: currentVisitPreviewMoments,
+        initialType,
+        previewEntry: currentOpenVisit,
+      });
+    },
+    [currentOpenVisit, currentVisitPreviewMoments, openMomentPreview],
+  );
+
+  const openSelectedEntryMomentsPreview = useCallback(
+    (initialType?: MomentCountType) => {
+      if (!selectedEntry) {
+        return;
+      }
+      openMomentPreview({
+        moments: selectedEntryPreviewMoments,
+        initialType,
+        previewEntry: selectedEntry,
+      });
+    },
+    [openMomentPreview, selectedEntry, selectedEntryPreviewMoments],
+  );
+
+  const openMomentMapPinPreview = useCallback(
+    (pin: MomentMapPin) => {
+      openMomentPreview({moments: [pin.moment]});
+    },
+    [openMomentPreview],
+  );
 
   const showUserLocation =
     !historyPanelOpen && !playback.isPlaying && viewingToday;
@@ -1142,36 +1172,17 @@ export function useMapScreenController() {
     [refreshSavedPlaces, showSavedPlaceLimitAlert],
   );
 
-  const openSavedPlacesSheet = useCallback(() => {
-    setSavedPlacesSheetOpen(true);
-  }, []);
+  const openSavedPlaces = useCallback(() => {
+    navigation.navigate('SavedPlaces');
+  }, [navigation]);
 
-  const closeSavedPlacesSheet = useCallback(() => {
-    setSavedPlacesSheetOpen(false);
-  }, []);
+  const openCaptureVoice = useCallback(() => {
+    navigation.navigate('CaptureVoice');
+  }, [navigation]);
 
-  const handleDeleteSavedPlace = useCallback(
-    async (place: SavedPlaceRow) => {
-      await deleteSavedPlace(place.id);
-      await refreshSavedPlaces();
-    },
-    [refreshSavedPlaces],
-  );
-
-  const handleEditFavoriteLabel = useCallback(
-    async (place: SavedPlaceRow, label: string) => {
-      try {
-        await updateFavoritePlaceLabel(place.id, label);
-        await refreshSavedPlaces();
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : 'Could not rename place';
-        Alert.alert('Rename failed', message);
-        throw error;
-      }
-    },
-    [refreshSavedPlaces],
-  );
+  const openCaptureActivity = useCallback(() => {
+    navigation.navigate('CaptureActivity');
+  }, [navigation]);
 
   const handleSelectSavedPlace = useCallback((place: SavedPlaceRow) => {
     if (!mapRef.current) {
@@ -1186,6 +1197,23 @@ export function useMapScreenController() {
     mapRegionRef.current = region;
     needsDefaultCenterRef.current = false;
   }, []);
+
+  useEffect(() => {
+    const focusPlaceId = route.params?.focusPlaceId;
+    if (focusPlaceId == null) {
+      return;
+    }
+    const place = savedPlaces.find(entry => entry.id === focusPlaceId);
+    if (place != null) {
+      handleSelectSavedPlace(place);
+    }
+    navigation.setParams({focusPlaceId: undefined});
+  }, [
+    handleSelectSavedPlace,
+    navigation,
+    route.params?.focusPlaceId,
+    savedPlaces,
+  ]);
 
   const handleZoomVisit = useCallback(() => {
     if (!mapRef.current || !selectedPlayable || selectedPlayable.kind !== 'stay') {
@@ -1365,110 +1393,19 @@ export function useMapScreenController() {
     navigation.navigate('CaptureNote');
   }, [navigation]);
 
-  const openVoiceSheet = useCallback(() => {
-    setVoiceSheetOpen(true);
-  }, []);
-
-  const closeVoiceSheet = useCallback(() => {
-    setVoiceSheetOpen(false);
-  }, []);
-
-  const openActivitySheet = useCallback(() => {
-    setActivitySheetOpen(true);
-  }, []);
-
-  const closeActivitySheet = useCallback(() => {
-    setActivitySheetOpen(false);
-  }, []);
-
-  const handleVoiceMomentSaved = useCallback(async () => {
-    await refreshDayMoments();
-  }, [refreshDayMoments]);
-
-  const handleActivityMomentSaved = useCallback(async () => {
-    await refreshDayMoments();
-  }, [refreshDayMoments]);
-
   useEffect(() => {
     registerWidgetSheetHandlers({
-      closeSheets: () => {
-        closeVoiceSheet();
-        closeActivitySheet();
-      },
-      openVoice: openVoiceSheet,
-      openActivity: openActivitySheet,
       refresh: () => {
         void refreshWidgetSnapshot().catch(() => undefined);
       },
     });
 
     return () => registerWidgetSheetHandlers(null);
-  }, [closeActivitySheet, closeVoiceSheet, openActivitySheet, openVoiceSheet]);
+  }, []);
 
   useEffect(() => {
     void refreshWidgetSnapshotIfStale().catch(() => undefined);
   }, []);
-
-  const momentsPreviewInitialIndex = useMemo(() => {
-    const initialType = momentsPreviewScope?.initialType;
-    if (initialType == null || momentsPreviewMoments.length === 0) {
-      return 0;
-    }
-    const index = firstMomentIndexOfType(momentsPreviewMoments, initialType);
-    return index >= 0 ? index : 0;
-  }, [momentsPreviewMoments, momentsPreviewScope?.initialType]);
-
-  const openDayMomentsPreview = useCallback((initialType?: MomentCountType) => {
-    setMomentsPreviewScope({kind: 'day', initialType});
-  }, []);
-
-  const openCurrentVisitMomentsPreview = useCallback(
-    (initialType?: MomentCountType) => {
-      if (currentOpenVisit) {
-        setMomentsPreviewScope({
-          kind: 'entry',
-          entry: currentOpenVisit,
-          aggregation: 'place',
-          initialType,
-        });
-      }
-    },
-    [currentOpenVisit],
-  );
-
-  const openSelectedEntryMomentsPreview = useCallback(
-    (initialType?: MomentCountType) => {
-      if (selectedEntry) {
-        setMomentsPreviewScope({
-          kind: 'entry',
-          entry: selectedEntry,
-          aggregation: 'visit',
-          initialType,
-        });
-      }
-    },
-    [selectedEntry],
-  );
-
-  const openMomentMapPinPreview = useCallback((pin: MomentMapPin) => {
-    setMomentsPreviewScope({
-      kind: 'moment-ids',
-      momentIds: [pin.moment.id],
-      title: 'Moment',
-    });
-  }, []);
-
-  const closeMomentsPreview = useCallback(() => {
-    setMomentsPreviewScope(null);
-  }, []);
-
-  const handleDeleteMoment = useCallback(
-    async (momentId: number) => {
-      await deleteMoment(momentId);
-      await refreshDayMoments();
-    },
-    [refreshDayMoments],
-  );
 
   return {
     tripDetectionConfig,
@@ -1487,27 +1424,14 @@ export function useMapScreenController() {
     voiceButtonBottom,
     noteButtonBottom,
     activityButtonBottom,
-    voiceSheetOpen,
-    openVoiceSheet,
-    closeVoiceSheet,
-    handleVoiceMomentSaved,
-    activitySheetOpen,
-    openActivitySheet,
-    closeActivitySheet,
-    handleActivityMomentSaved,
+    openCaptureVoice,
+    openCaptureActivity,
     handleCaptureCamera,
     handleCaptureNote,
-    momentsPreviewOpen,
-    momentsPreviewTitle,
-    momentsPreviewMoments,
-    momentsPreviewInitialIndex,
-    momentsPreviewEntry,
     openDayMomentsPreview,
     openCurrentVisitMomentsPreview,
     openSelectedEntryMomentsPreview,
     openMomentMapPinPreview,
-    closeMomentsPreview,
-    handleDeleteMoment,
     historyData,
     historyLoading,
     historyBlockingLoader,
@@ -1579,7 +1503,6 @@ export function useMapScreenController() {
     maxSavedPlaces: MAX_SAVED_PLACES,
     savedPlaceMomentClusters,
     savePlaceCoordinate,
-    savedPlacesSheetOpen,
     userCoordinate,
     playback,
     onRegionChangeComplete,
@@ -1589,11 +1512,7 @@ export function useMapScreenController() {
     handleSaveHomePlace,
     handleSaveWorkPlace,
     handleSaveFavoritePlace,
-    openSavedPlacesSheet,
-    closeSavedPlacesSheet,
-    handleDeleteSavedPlace,
-    handleEditFavoriteLabel,
-    handleSelectSavedPlace,
+    openSavedPlaces,
     goToCurrentLocation,
     openHistoryDatePicker,
     closeHistoryDatePicker,

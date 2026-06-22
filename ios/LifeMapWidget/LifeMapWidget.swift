@@ -135,9 +135,9 @@ struct LifeMapWidgetView: View {
     HStack(spacing: 0) {
       captureActionSegment(symbol: "note.text", action: .note, url: "lifemap://capture/note")
       barDivider
-      captureActionSegment(symbol: "waveform", action: .voice, url: "lifemap://map?widgetAction=voice")
+      captureActionSegment(symbol: "waveform", action: .voice, url: "lifemap://capture/voice")
       barDivider
-      captureActionSegment(symbol: "figure.walk", action: .activity, url: "lifemap://map?widgetAction=activity")
+      captureActionSegment(symbol: "figure.walk", action: .activity, url: "lifemap://capture/activity")
       barDivider
       captureActionSegment(symbol: "camera.fill", action: .photo, url: "lifemap://capture/photo")
     }

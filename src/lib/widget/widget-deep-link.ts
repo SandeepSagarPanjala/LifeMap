@@ -8,9 +8,6 @@ import {consumePendingWidgetAction} from './native-widget-snapshot';
 export type WidgetAction = 'note' | 'photo' | 'voice' | 'activity' | 'refresh';
 
 export type WidgetSheetHandlers = {
-  closeSheets: () => void;
-  openVoice: () => void;
-  openActivity: () => void;
   refresh: () => void;
 };
 
@@ -21,6 +18,15 @@ const WIDGET_ACTIONS = new Set<WidgetAction>([
   'activity',
   'refresh',
 ]);
+
+const CAPTURE_SCREEN_BY_ACTION: Partial<
+  Record<WidgetAction, keyof RootStackParamList>
+> = {
+  note: 'CaptureNote',
+  photo: 'CapturePhoto',
+  voice: 'CaptureVoice',
+  activity: 'CaptureActivity',
+};
 
 let navigationRef: NavigationContainerRef<RootStackParamList> | null = null;
 let sheetHandlers: WidgetSheetHandlers | null = null;
@@ -49,11 +55,23 @@ export function parseWidgetDeepLink(url: string): WidgetAction | null {
     if (host === 'capture' && path === '/photo') {
       return 'photo';
     }
+    if (host === 'capture' && path === '/voice') {
+      return 'voice';
+    }
+    if (host === 'capture' && path === '/activity') {
+      return 'activity';
+    }
     if (path === '/capture/note') {
       return 'note';
     }
     if (path === '/capture/photo') {
       return 'photo';
+    }
+    if (path === '/capture/voice') {
+      return 'voice';
+    }
+    if (path === '/capture/activity') {
+      return 'activity';
     }
     if (host === 'map' || path === '/map') {
       const action = parsed.searchParams.get('widgetAction');
@@ -106,7 +124,7 @@ function shouldSkipDuplicate(action: WidgetAction): boolean {
 }
 
 function applyWidgetAction(action: WidgetAction): void {
-  if (navigationRef?.isReady() !== true || sheetHandlers == null) {
+  if (navigationRef?.isReady() !== true) {
     pendingAction = action;
     return;
   }
@@ -115,38 +133,27 @@ function applyWidgetAction(action: WidgetAction): void {
     return;
   }
 
-  sheetHandlers.closeSheets();
-
-  const state = navigationRef.getRootState();
-  const top = state.routes[state.index];
-  const targetScreen =
-    action === 'note' ? 'CaptureNote' : action === 'photo' ? 'CapturePhoto' : null;
-
-  if (targetScreen != null && top?.name === targetScreen) {
+  const targetScreen = CAPTURE_SCREEN_BY_ACTION[action];
+  if (targetScreen != null) {
+    const state = navigationRef.getRootState();
+    const top = state.routes[state.index];
+    if (top?.name === targetScreen) {
+      return;
+    }
+    if (state.index > 0) {
+      navigationRef.dispatch(StackActions.popToTop());
+    }
+    navigationRef.navigate(targetScreen);
     return;
   }
 
-  if (state.index > 0) {
-    navigationRef.dispatch(StackActions.popToTop());
+  if (action === 'refresh') {
+    if (sheetHandlers == null) {
+      pendingAction = action;
+      return;
+    }
+    sheetHandlers.refresh();
   }
-
-  if (action === 'note') {
-    navigationRef.navigate('CaptureNote');
-    return;
-  }
-  if (action === 'photo') {
-    navigationRef.navigate('CapturePhoto');
-    return;
-  }
-  if (action === 'voice') {
-    sheetHandlers.openVoice();
-    return;
-  }
-  if (action === 'activity') {
-    sheetHandlers.openActivity();
-    return;
-  }
-  sheetHandlers.refresh();
 }
 
 async function readNativePendingAction(): Promise<WidgetAction | null> {

@@ -51,6 +51,9 @@ import {
   type PhotoFilterId,
 } from '@/lib/moments/photo-filters';
 import type {RootStackParamList} from '@/navigation/types';
+import {prepareVoiceRecordingSession} from '@/lib/voice-audio-session';
+
+const CAMERA_AUDIO_RELEASE_MS = 400;
 
 const FILTER_THUMB_SIZE = 52;
 const SELECTED_BORDER_COLOR = CAPTURE_BUTTON_THEMES.camera.icon;
@@ -194,7 +197,7 @@ export function CapturePhotoScreen() {
   } | null>(null);
 
   const photoOutput = usePhotoOutput();
-  const videoOutput = useVideoOutput({enableAudio: true});
+  const videoOutput = useVideoOutput({enableAudio: captureMode === 'video'});
   const exportShotRef = useRef<ElementRef<typeof ViewShot>>(null);
   const recorderRef = useRef<Recorder | null>(null);
   const recordingStartedAtRef = useRef(0);
@@ -245,6 +248,30 @@ export function CapturePhotoScreen() {
     captureMode === 'photo' &&
     device != null &&
     (device.hasFlash || cameraPosition === 'front');
+
+  useEffect(() => {
+    if (phase !== 'review') {
+      return;
+    }
+    const timer = setTimeout(() => {
+      void prepareVoiceRecordingSession();
+    }, CAMERA_AUDIO_RELEASE_MS);
+    return () => clearTimeout(timer);
+  }, [phase]);
+
+  const handleOpenVoiceSheet = useCallback(() => {
+    void (async () => {
+      try {
+        await prepareVoiceRecordingSession();
+        await new Promise<void>(resolve => {
+          setTimeout(resolve, CAMERA_AUDIO_RELEASE_MS);
+        });
+      } catch {
+        // VoiceMemoSheet retries when the user taps the mic.
+      }
+      setVoiceSheetOpen(true);
+    })();
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -532,7 +559,7 @@ export function CapturePhotoScreen() {
           style={StyleSheet.absoluteFill}
           device={device}
           isActive={phase === 'camera'}
-          outputs={[photoOutput, videoOutput]}
+          outputs={captureMode === 'video' ? [photoOutput, videoOutput] : [photoOutput]}
           mirrorMode="off"
           enableNativeZoomGesture
         />
@@ -750,7 +777,7 @@ export function CapturePhotoScreen() {
             onPress={handleDismissCaption}
             style={styles.captionDismissBackdrop}
           />
-        ) : !voiceSheetOpen ? (
+        ) : (
           <View pointerEvents="box-none" style={styles.reviewSideToolsDock}>
             <View style={styles.reviewToolsDockRow}>
               <View style={styles.reviewAttachmentColumn}>
@@ -826,8 +853,8 @@ export function CapturePhotoScreen() {
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel="Record voice memo about this photo"
-                    disabled={saving || voiceUri != null}
-                    onPress={() => setVoiceSheetOpen(true)}
+                    disabled={saving || voiceUri != null || voiceSheetOpen}
+                    onPress={handleOpenVoiceSheet}
                     style={[styles.sideToolButton, saving ? styles.disabled : null]}>
                     <AudioLines size={18} color="#FFFFFF" strokeWidth={2.25} />
                     <Text style={styles.sideToolButtonLabel}>Voice</Text>
@@ -845,9 +872,8 @@ export function CapturePhotoScreen() {
               </View>
             </View>
           </View>
-        ) : null}
+        )}
 
-        {!voiceSheetOpen ? (
         <KeyboardAvoidingView
           pointerEvents="box-none"
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -921,12 +947,12 @@ export function CapturePhotoScreen() {
             ) : null}
           </View>
         </KeyboardAvoidingView>
-        ) : null}
       </View>
 
       <VoiceMemoSheet
         visible={voiceSheetOpen}
         saveTarget="photo"
+        startRecordingOnOpen={false}
         onDiaryAttach={attachment => {
           void clearVoice().then(() => {
             setVoiceUri(attachment.uri);

@@ -6,6 +6,7 @@ import {
   Platform,
   Pressable,
   StyleSheet,
+  TextInput,
   View,
 } from 'react-native';
 import {AudioLines, Mic, Pause, Play, Square} from 'lucide-react-native';
@@ -42,6 +43,10 @@ type VoiceMemoSheetProps = {
   onWillClose?: () => void;
   /** When true, begin recording as soon as the sheet opens. */
   startRecordingOnOpen?: boolean;
+  snapPoints?: (string | number)[];
+  instantPresent?: boolean;
+  /** Render inside SheetFlowScreen panel — skips gorhom (instant open). */
+  embedded?: boolean;
 };
 
 export function VoiceMemoSheet({
@@ -52,6 +57,9 @@ export function VoiceMemoSheet({
   onDiaryAttach,
   onWillClose,
   startRecordingOnOpen = true,
+  snapPoints,
+  instantPresent = false,
+  embedded = false,
 }: VoiceMemoSheetProps) {
   const colors = useThemeColors();
   const voiceTheme = CAPTURE_BUTTON_THEMES.voice;
@@ -143,7 +151,8 @@ export function VoiceMemoSheet({
         text: 'Discard',
         style: 'destructive',
         onPress: () => {
-          void resetDraft().finally(onClose);
+          onClose();
+          void resetDraft();
         },
       },
     ]);
@@ -157,7 +166,8 @@ export function VoiceMemoSheet({
       promptDiscardOnClose();
       return;
     }
-    void resetDraft().finally(onClose);
+    onClose();
+    void resetDraft();
   }, [onClose, promptDiscardOnClose, resetDraft]);
 
   useEffect(() => {
@@ -294,49 +304,18 @@ export function VoiceMemoSheet({
   useEffect(() => {
     if (!visible) {
       autoStartAttemptedRef.current = false;
-      return;
     }
-    if (!startRecordingOnOpen || autoStartAttemptedRef.current) {
+  }, [visible]);
+
+  const tryAutoStartRecording = useCallback(() => {
+    if (!visible || !startRecordingOnOpen || autoStartAttemptedRef.current) {
       return;
     }
     if (phaseRef.current !== 'idle') {
       return;
     }
-
     autoStartAttemptedRef.current = true;
-    let cancelled = false;
-
-    void (async () => {
-      try {
-        await new Promise<void>(resolve => {
-          setTimeout(resolve, 400);
-        });
-        if (cancelled || phaseRef.current !== 'idle') {
-          return;
-        }
-
-        const started = await startRecordingRef.current({showErrorAlert: false});
-        if (started || cancelled) {
-          return;
-        }
-
-        await new Promise<void>(resolve => {
-          setTimeout(resolve, 800);
-        });
-        if (cancelled || phaseRef.current !== 'idle') {
-          return;
-        }
-        await startRecordingRef.current({showErrorAlert: true});
-      } catch {
-        if (!cancelled) {
-          setAutoStartFailed(true);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
+    void startRecordingRef.current();
   }, [startRecordingOnOpen, visible]);
 
   const handleTogglePreview = async () => {
@@ -415,12 +394,22 @@ export function VoiceMemoSheet({
 
   const handleAnimate = useCallback(
     (_fromIndex: number, toIndex: number) => {
-      if (toIndex === -1) {
-        onWillClose?.();
+      if (toIndex >= 0) {
+        tryAutoStartRecording();
       }
     },
-    [onWillClose],
+    [tryAutoStartRecording],
   );
+
+  const useFixedSnapPoints = snapPoints != null && snapPoints.length > 0;
+
+  useEffect(() => {
+    if (visible && (instantPresent || embedded)) {
+      tryAutoStartRecording();
+    }
+  }, [embedded, instantPresent, tryAutoStartRecording, visible]);
+
+  const NoteInput = embedded ? TextInput : BottomSheetTextInput;
 
   const showNoteInput = phase === 'preview' && saveTarget === 'moment';
   const noteEditingActive = showNoteInput && (noteFocused || keyboardVisible);
@@ -439,17 +428,8 @@ export function VoiceMemoSheet({
     return false;
   }, [noteEditingActive, promptDiscardOnClose]);
 
-  return (
-    <AppBottomSheet
-      visible={visible}
-      onClose={closeSheet}
-      onAnimate={handleAnimate}
-      enableDynamicSizing
-      keyboardBehavior="interactive"
-      keyboardBlurBehavior="none"
-      bottomSheetRef={sheetRef}
-      onBackdropPress={handleBackdropPress}
-      enablePanDownToClose={!noteEditingActive && phase !== 'preview'}>
+  const sheetBody = (
+    <>
       <Text variant="h4" className="border-0 pb-0">
         Voice memo
       </Text>
@@ -559,7 +539,7 @@ export function VoiceMemoSheet({
       </View>
 
       {showNoteInput ? (
-        <BottomSheetTextInput
+        <NoteInput
           value={noteText}
           onChangeText={setNoteText}
           placeholder="Add a note about this recording (optional)"
@@ -571,15 +551,46 @@ export function VoiceMemoSheet({
           onFocus={() => setNoteFocused(true)}
           onBlur={() => {
             setNoteFocused(false);
-            sheetRef.current?.snapToIndex(0);
+            if (!embedded) {
+              sheetRef.current?.snapToIndex(0);
+            }
           }}
         />
       ) : null}
+    </>
+  );
+
+  if (embedded) {
+    if (!visible) {
+      return null;
+    }
+    return <View style={styles.embeddedRoot}>{sheetBody}</View>;
+  }
+
+  return (
+    <AppBottomSheet
+      visible={visible}
+      onClose={closeSheet}
+      onAnimate={handleAnimate}
+      onClosing={onWillClose}
+      releaseTouchesWhileClosing={onWillClose != null}
+      instantPresent={instantPresent}
+      enableDynamicSizing={!useFixedSnapPoints}
+      snapPoints={useFixedSnapPoints ? snapPoints : undefined}
+      keyboardBehavior="interactive"
+      keyboardBlurBehavior="none"
+      bottomSheetRef={sheetRef}
+      onBackdropPress={handleBackdropPress}
+      enablePanDownToClose={!noteEditingActive && phase !== 'preview'}>
+      {sheetBody}
     </AppBottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
+  embeddedRoot: {
+    flex: 1,
+  },
   timerRow: {
     alignItems: 'center',
     gap: 8,

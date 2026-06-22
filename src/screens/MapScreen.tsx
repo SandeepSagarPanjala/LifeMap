@@ -2,11 +2,7 @@ import {View} from 'react-native';
 
 import {DayMomentSummaryBar} from '@/components/map/DayMomentSummaryBar';
 import {HistoryDatePickerSheet} from '@/components/map/HistoryDatePickerSheet';
-import {SavedPlacesSheet} from '@/components/map/SavedPlacesSheet';
 import {SavePlaceSheet} from '@/components/map/SavePlaceSheet';
-import {ActivityLogSheet} from '@/components/map/ActivityLogSheet';
-import {VoiceMemoSheet} from '@/components/map/VoiceMemoSheet';
-import {MomentsPreviewSheet} from '@/components/moments/MomentsPreviewSheet';
 
 import {MapHistoryPanel} from './map/MapHistoryPanel';
 import {MapScreenFloatingControls} from './map/MapScreenFloatingControls';
@@ -59,37 +55,6 @@ export function MapScreen() {
         onSaveHome={controller.handleSaveHomePlace}
         onSaveWork={controller.handleSaveWorkPlace}
         onSaveFavorite={controller.handleSaveFavoritePlace}
-      />
-      <SavedPlacesSheet
-        visible={controller.savedPlacesSheetOpen}
-        places={controller.savedPlaces}
-        onClose={controller.closeSavedPlacesSheet}
-        onSelectPlace={controller.handleSelectSavedPlace}
-        onEditLabel={controller.handleEditFavoriteLabel}
-        onDelete={controller.handleDeleteSavedPlace}
-      />
-      <VoiceMemoSheet
-        visible={controller.voiceSheetOpen}
-        onClose={controller.closeVoiceSheet}
-        onSaved={controller.handleVoiceMomentSaved}
-      />
-      <ActivityLogSheet
-        visible={controller.activitySheetOpen}
-        onClose={controller.closeActivitySheet}
-        onLogged={controller.handleActivityMomentSaved}
-      />
-      <MomentsPreviewSheet
-        visible={controller.momentsPreviewOpen}
-        title={controller.momentsPreviewTitle}
-        moments={controller.momentsPreviewMoments}
-        initialIndex={controller.momentsPreviewInitialIndex}
-        timelineEntries={controller.historyEntries}
-        savedPlaces={controller.savedPlaces}
-        distanceUnit={controller.distanceUnit}
-        previewEntry={controller.momentsPreviewEntry}
-        suspendAudio={controller.voiceSheetOpen}
-        onClose={controller.closeMomentsPreview}
-        onDeleteMoment={controller.handleDeleteMoment}
       />
       <MapHistoryPanel controller={controller} />
       <MapScreenTopBar controller={controller} />

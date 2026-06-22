@@ -125,7 +125,43 @@ export async function insertMoment(input: NewMoment): Promise<MomentRow> {
 
   const row = mapRow(rows[0]!);
   notifyMomentChange(row.timestamp);
+  void import('@/lib/moments/backfill-moment-locations').then(
+    ({scheduleMomentLocationBackfillAfterInsert}) => {
+      scheduleMomentLocationBackfillAfterInsert(row);
+    },
+  );
   return row;
+}
+
+export async function updateMomentLocation(
+  id: number,
+  patch: {
+    lat: number;
+    lng: number;
+    placeLabel?: string | null;
+    linkedPointId?: number | null;
+  },
+): Promise<void> {
+  const existing = await getMomentById(id);
+  if (!existing) {
+    return;
+  }
+
+  const db = await getDatabase();
+  await db
+    .update(moments)
+    .set({
+      lat: patch.lat,
+      lng: patch.lng,
+      placeLabel:
+        patch.placeLabel !== undefined ? patch.placeLabel : existing.placeLabel,
+      linkedPointId:
+        patch.linkedPointId !== undefined
+          ? patch.linkedPointId
+          : existing.linkedPointId,
+    })
+    .where(eq(moments.id, id));
+  notifyMomentChange(existing.timestamp);
 }
 
 export async function getMomentById(id: number): Promise<MomentRow | null> {

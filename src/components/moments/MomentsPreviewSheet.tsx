@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {useCallback, useEffect, useRef, useState} from 'react';
 import {
   Alert,
   Dimensions,
@@ -22,8 +22,7 @@ import {MomentPreviewImage} from '@/components/moments/MomentPreviewImage';
 import {Text} from '@/components/ui/text';
 import type {MomentRow} from '@/db/repositories/moments';
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
-import {useMomentPreviewContexts} from '@/hooks/use-moment-preview-contexts';
-import type {DistanceUnit} from '@/lib/location-geo';
+import type {MomentPreviewContext} from '@/lib/moments/moment-preview-context';
 import {
   formatMomentVoiceDuration,
   momentHasVoiceAttachment,
@@ -33,27 +32,24 @@ import {notePhotoAttachmentPaths} from '@/lib/moments/note-photo-attachments';
 import {getEmotionContextTokenByLabel} from '@/lib/moments/emotion-context-tokens';
 import {getEmotionTokenByLabel, parseEmotionMoodLabel} from '@/lib/moments/emotion-tokens';
 import {momentVideoUri, resolveExistingMomentContentPath} from '@/lib/moments/moment-media-uri';
-import type {MomentPreviewContext} from '@/lib/moments/moment-preview-context';
 import {
   createVoiceRecorderSession,
   getVoiceRecordingErrorMessage,
 } from '@/lib/moments/voice-recorder';
-import {matchSavedPlaceForStay} from '@/lib/saved-places';
-import type {DayTimelineEntry} from '@/lib/trip-detection';
 import {formatTripClockTime} from '@/lib/trip-format';
 
-type MomentsPreviewSheetProps = {
-  visible: boolean;
-  title: string;
+export type MomentPreviewViewerProps = {
   moments: MomentRow[];
   initialIndex?: number;
-  timelineEntries: DayTimelineEntry[];
-  savedPlaces: readonly SavedPlaceRow[];
-  distanceUnit: DistanceUnit;
-  previewEntry?: DayTimelineEntry | null;
+  previewEntryContext?: MomentPreviewContext | null;
+  previewSavedPlace?: SavedPlaceRow | null;
   suspendAudio?: boolean;
   onClose: () => void;
   onDeleteMoment: (momentId: number) => Promise<void>;
+};
+
+type MomentsPreviewSheetProps = MomentPreviewViewerProps & {
+  visible: boolean;
 };
 
 function momentDeleteNoun(type: MomentRow['type']): string {
@@ -152,25 +148,16 @@ function MomentTypeIcon({moment, size = 18}: {moment: MomentRow; size?: number})
 
 function MomentInfoHeader({
   moment,
-  context,
-  savedPlaces,
-  timelineEntries,
+  previewEntryContext,
+  previewSavedPlace,
 }: {
   moment: MomentRow;
-  context?: MomentPreviewContext;
-  savedPlaces: readonly SavedPlaceRow[];
-  timelineEntries: DayTimelineEntry[];
+  previewEntryContext?: MomentPreviewContext | null;
+  previewSavedPlace?: SavedPlaceRow | null;
 }) {
-  const stayEntry =
-    context?.entryKind === 'stay'
-      ? timelineEntries.find(
-          entry => entry.id === context.entryId && entry.kind === 'stay',
-        )
-      : null;
-  const savedPlace =
-    stayEntry?.kind === 'stay'
-      ? matchSavedPlaceForStay(stayEntry, savedPlaces)
-      : null;
+  const storedPlaceLabel = moment.placeLabel?.trim() || null;
+  const contextPlaceLabel = previewEntryContext?.placeLabel?.trim() || null;
+  const placeLabel = storedPlaceLabel ?? contextPlaceLabel;
 
   return (
     <View style={styles.infoHeader}>
@@ -179,27 +166,31 @@ function MomentInfoHeader({
         <Text style={styles.infoTime}>{formatTripClockTime(moment.timestamp)}</Text>
       </View>
 
-      {context ? (
+      {previewEntryContext ? (
         <View style={styles.infoContext}>
           <View style={styles.infoPlaceLine}>
-            <Text style={styles.infoKind}>{context.kindLabel}</Text>
-            {savedPlace ? (
+            <Text style={styles.infoKind}>{previewEntryContext.kindLabel}</Text>
+            {previewSavedPlace ? (
               <View style={styles.infoPlaceRow}>
-                <SavedPlaceIcon kind={savedPlace.kind} size={14} />
+                <SavedPlaceIcon kind={previewSavedPlace.kind} size={14} />
                 <Text style={styles.infoPlace} numberOfLines={1}>
-                  {context.placeLabel}
+                  {placeLabel}
                 </Text>
               </View>
-            ) : context.placeLabel ? (
+            ) : placeLabel ? (
               <Text style={styles.infoPlace} numberOfLines={1}>
-                {context.placeLabel}
+                {placeLabel}
               </Text>
             ) : null}
           </View>
           <Text style={styles.infoStats}>
-            {context.timeLabel} · {context.statsLabel}
+            {previewEntryContext.timeLabel} · {previewEntryContext.statsLabel}
           </Text>
         </View>
+      ) : placeLabel ? (
+        <Text style={styles.infoPlace} numberOfLines={1}>
+          {placeLabel}
+        </Text>
       ) : null}
       {moment.type === 'photo' && moment.caption?.trim() ? (
         <Text style={styles.infoCaption} numberOfLines={3}>
@@ -550,25 +541,17 @@ function PaginationDots({count, activeIndex}: {count: number; activeIndex: numbe
   );
 }
 
-export function MomentsPreviewSheet({
-  visible,
+export function MomentPreviewViewer({
   moments,
   initialIndex = 0,
-  timelineEntries,
-  savedPlaces,
-  distanceUnit,
+  previewEntryContext = null,
+  previewSavedPlace = null,
   suspendAudio = false,
   onClose,
   onDeleteMoment,
-}: MomentsPreviewSheetProps) {
+}: MomentPreviewViewerProps) {
   const insets = useSafeAreaInsets();
   const pageWidth = Dimensions.get('window').width;
-  const momentContexts = useMomentPreviewContexts(
-    moments,
-    timelineEntries,
-    savedPlaces,
-    distanceUnit,
-  );
 
   const [activeIndex, setActiveIndex] = useState(0);
   const [playingVoiceId, setPlayingVoiceId] = useState<number | null>(null);
@@ -648,22 +631,20 @@ export function MomentsPreviewSheet({
   }, [onClose, stopVoice]);
 
   useEffect(() => {
-    if (!visible || suspendAudio) {
+    if (suspendAudio) {
       void stopVoice();
     }
-  }, [stopVoice, suspendAudio, visible]);
+  }, [stopVoice, suspendAudio]);
 
   useEffect(() => {
-    if (visible) {
-      lastAutoPlayedKeyRef.current = null;
-      const index = Math.max(
-        0,
-        Math.min(initialIndex, Math.max(0, moments.length - 1)),
-      );
-      setActiveIndex(index);
-      pagerRef.current?.scrollToOffset({offset: index * pageWidth, animated: false});
-    }
-  }, [initialIndex, moments.length, pageWidth, visible]);
+    lastAutoPlayedKeyRef.current = null;
+    const index = Math.max(
+      0,
+      Math.min(initialIndex, Math.max(0, moments.length - 1)),
+    );
+    setActiveIndex(index);
+    pagerRef.current?.scrollToOffset({offset: index * pageWidth, animated: false});
+  }, [initialIndex, moments.length, pageWidth]);
 
   useEffect(() => {
     if (activeIndex >= moments.length) {
@@ -677,13 +658,13 @@ export function MomentsPreviewSheet({
   }, [activeIndex, moments.length, pageWidth]);
 
   useEffect(() => {
-    if (visible && moments.length === 0) {
+    if (moments.length === 0) {
       closeViewer();
     }
-  }, [closeViewer, moments.length, visible]);
+  }, [closeViewer, moments.length]);
 
   useEffect(() => {
-    if (!visible || suspendAudio) {
+    if (suspendAudio) {
       lastAutoPlayedKeyRef.current = null;
       return;
     }
@@ -700,7 +681,7 @@ export function MomentsPreviewSheet({
     lastAutoPlayedKeyRef.current = autoPlayKey;
     const generation = ++autoPlayGenerationRef.current;
     void playVoice(moment, generation);
-  }, [activeIndex, moments, playVoice, stopVoice, suspendAudio, visible]);
+  }, [activeIndex, moments, playVoice, stopVoice, suspendAudio]);
 
   const handleMomentumScrollEnd = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -789,28 +770,13 @@ export function MomentsPreviewSheet({
 
   const keyExtractor = useCallback((item: MomentRow) => String(item.id), []);
 
-  const headerContext = useMemo(
-    () =>
-      activeMoment != null ? momentContexts.get(activeMoment.id) : undefined,
-    [activeMoment, momentContexts],
-  );
-
   const activePhotoVoice =
     activeMoment?.type === 'photo' && activeMoment.voiceAttachmentPath
       ? activeMoment
       : null;
 
-  if (!visible) {
-    return null;
-  }
-
   return (
-    <Modal
-      visible={visible}
-      animationType="fade"
-      presentationStyle="fullScreen"
-      onRequestClose={closeViewer}>
-      <View style={styles.root}>
+    <View style={styles.root}>
         <FlatList
           ref={pagerRef}
           style={styles.pager}
@@ -840,9 +806,8 @@ export function MomentsPreviewSheet({
             {activeMoment ? (
               <MomentInfoHeader
                 moment={activeMoment}
-                context={headerContext}
-                savedPlaces={savedPlaces}
-                timelineEntries={timelineEntries}
+                previewEntryContext={previewEntryContext}
+                previewSavedPlace={previewSavedPlace}
               />
             ) : null}
 
@@ -895,6 +860,24 @@ export function MomentsPreviewSheet({
           </View>
         </View>
       </View>
+  );
+}
+
+export function MomentsPreviewSheet({
+  visible,
+  ...viewerProps
+}: MomentsPreviewSheetProps) {
+  if (!visible) {
+    return null;
+  }
+
+  return (
+    <Modal
+      visible
+      animationType="none"
+      presentationStyle="fullScreen"
+      onRequestClose={viewerProps.onClose}>
+      <MomentPreviewViewer {...viewerProps} />
     </Modal>
   );
 }

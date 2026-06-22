@@ -58,7 +58,13 @@ type AppBottomSheetProps = {
   /** Return true to keep the sheet open (e.g. dismiss keyboard first). */
   onBackdropPress?: () => boolean;
   enablePanDownToClose?: boolean;
+  /** Present without waiting an extra animation frame — use on dedicated sheet screens. */
+  instantPresent?: boolean;
   bottomSheetRef?: React.RefObject<BottomSheetModalType | null>;
+  /** Fired when the sheet begins closing — use to pass touches through to the screen below. */
+  onClosing?: () => void;
+  /** Stop intercepting touches while the close animation runs (sheet capture screens). */
+  releaseTouchesWhileClosing?: boolean;
 };
 
 export function AppBottomSheet({
@@ -79,14 +85,19 @@ export function AppBottomSheet({
   onAnimate,
   onBackdropPress,
   enablePanDownToClose = true,
+  instantPresent = false,
   bottomSheetRef,
+  onClosing,
+  releaseTouchesWhileClosing = false,
 }: AppBottomSheetProps) {
   const ref = useRef<BottomSheetModalType>(null);
   const internalScrollRef = useRef<ComponentRef<typeof BottomSheetScrollView>>(null);
   const insets = useSafeAreaInsets();
   const isOpenRef = useRef(false);
   const suppressDismissRef = useRef(false);
+  const didNotifyCloseRef = useRef(false);
   const [keyboardInset, setKeyboardInset] = useState(0);
+  const [isClosing, setIsClosing] = useState(false);
 
   const snapPointsKey = snapPointsProp?.join('|') ?? '';
   const snapPoints = useMemo(() => {
@@ -99,11 +110,20 @@ export function AppBottomSheet({
   useEffect(() => {
     if (visible) {
       suppressDismissRef.current = true;
-      const frame = requestAnimationFrame(() => {
+      const present = () => {
         ref.current?.present();
         isOpenRef.current = true;
+        didNotifyCloseRef.current = false;
+        setIsClosing(false);
         suppressDismissRef.current = false;
-      });
+      };
+      if (instantPresent) {
+        present();
+        return () => {
+          suppressDismissRef.current = false;
+        };
+      }
+      const frame = requestAnimationFrame(present);
       return () => {
         cancelAnimationFrame(frame);
         suppressDismissRef.current = false;
@@ -143,22 +163,36 @@ export function AppBottomSheet({
     };
   }, [keyboardAware]);
 
-  const handleDismiss = useCallback(() => {
-    if (suppressDismissRef.current) {
+  const notifyClosed = useCallback(() => {
+    if (suppressDismissRef.current || didNotifyCloseRef.current) {
       return;
     }
+    didNotifyCloseRef.current = true;
     isOpenRef.current = false;
     onClose();
   }, [onClose]);
 
+  const handleDismiss = useCallback(() => {
+    if (suppressDismissRef.current) {
+      return;
+    }
+    notifyClosed();
+  }, [notifyClosed]);
+
   const handleAnimate = useCallback(
     (fromIndex: number, toIndex: number) => {
-      if (toIndex === -1 && dismissKeyboardOnClose) {
-        Keyboard.dismiss();
+      if (toIndex === -1) {
+        if (dismissKeyboardOnClose) {
+          Keyboard.dismiss();
+        }
+        if (releaseTouchesWhileClosing) {
+          setIsClosing(true);
+        }
+        onClosing?.();
       }
       onAnimate?.(fromIndex, toIndex);
     },
-    [dismissKeyboardOnClose, onAnimate],
+    [dismissKeyboardOnClose, onAnimate, onClosing, releaseTouchesWhileClosing],
   );
 
   const handleBackdropPress = useCallback(() => {
@@ -209,6 +243,14 @@ export function AppBottomSheet({
     [bottomSheetRef],
   );
 
+  const modalContainerStyle = useMemo(
+    () => [
+      styles.modalContainer,
+      isClosing ? styles.modalContainerPassthrough : null,
+    ],
+    [isClosing],
+  );
+
   return (
     <BottomSheetModal
       name={name}
@@ -224,7 +266,7 @@ export function AppBottomSheet({
       keyboardBlurBehavior={keyboardBlurBehavior}
       android_keyboardInputMode="adjustResize"
       stackBehavior={stackBehavior}
-      containerStyle={styles.modalContainer}
+      containerStyle={modalContainerStyle}
       handleIndicatorStyle={styles.handle}
       backgroundStyle={styles.background}>
       {rawChildren ? (
@@ -251,6 +293,9 @@ const styles = StyleSheet.create({
   modalContainer: {
     zIndex: 1000,
     elevation: 1000,
+  },
+  modalContainerPassthrough: {
+    pointerEvents: 'none',
   },
   fill: {
     flex: 1,

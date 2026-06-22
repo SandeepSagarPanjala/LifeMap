@@ -29,12 +29,12 @@ export function MapScreenFloatingControls({
     noteButtonBottom,
     activityButtonBottom,
     goToCurrentLocation,
-    openSavedPlacesSheet,
+    openSavedPlaces,
     openHistoryDatePicker,
     handleToggleHistoryPanel,
     handleCaptureCamera,
-    openVoiceSheet,
-    openActivitySheet,
+    openCaptureVoice,
+    openCaptureActivity,
     handleCaptureNote,
     historyBadgeCount,
     trackingGapWarning,
@@ -56,12 +56,12 @@ export function MapScreenFloatingControls({
         highlighted={!viewingToday}
         onPress={openHistoryDatePicker}
       />
-      <MapPlacesButton bottom={placesButtonBottom} onPress={openSavedPlacesSheet} />
+      <MapPlacesButton bottom={placesButtonBottom} onPress={openSavedPlaces} />
 
       <MapCameraButton bottom={cameraButtonBottom} onPress={handleCaptureCamera} />
-      <MapVoiceButton bottom={voiceButtonBottom} onPress={openVoiceSheet} />
+      <MapVoiceButton bottom={voiceButtonBottom} onPress={openCaptureVoice} />
       <MapNoteButton bottom={noteButtonBottom} onPress={handleCaptureNote} />
-      <MapActivityButton bottom={activityButtonBottom} onPress={openActivitySheet} />
+      <MapActivityButton bottom={activityButtonBottom} onPress={openCaptureActivity} />
 
       {emptySelectedDayMessage && !historyPanelOpen ? (
         <View

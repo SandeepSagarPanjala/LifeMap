@@ -4,6 +4,7 @@ import {
   Pressable,
   StyleSheet,
   View,
+  ActivityIndicator,
   type ImageResizeMode,
   type ImageStyle,
   type StyleProp,
@@ -83,7 +84,11 @@ export function MomentPreviewImage({
   }
 
   if (!uri) {
-    return <View style={[styles.placeholder, style]} />;
+    return (
+      <View style={[styles.placeholder, style]}>
+        <ActivityIndicator color="#8E8E93" />
+      </View>
+    );
   }
 
   const image = (

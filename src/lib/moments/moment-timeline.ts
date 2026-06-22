@@ -14,6 +14,26 @@ export type MomentTimelineAttachment = {
   entry: DayTimelineEntry | null;
 };
 
+const sortedPointsByTrail = new WeakMap<
+  readonly LocationPointRow[],
+  ReadonlyArray<LocationPointRow>
+>();
+
+/** Sort once per GPS trail reference — resolveMomentCoordinate reuses this cache. */
+export function getSortedLocationPointsByTime(
+  points: readonly LocationPointRow[],
+): ReadonlyArray<LocationPointRow> {
+  const cached = sortedPointsByTrail.get(points);
+  if (cached) {
+    return cached;
+  }
+  const sorted = [...points].sort(
+    (a, b) => a.timestamp.getTime() - b.timestamp.getTime(),
+  );
+  sortedPointsByTrail.set(points, sorted);
+  return sorted;
+}
+
 export function effectiveTimelineEntryEnd(
   entry: DayTimelineEntry,
   now: Date,
@@ -64,6 +84,75 @@ export function attachMomentsToTimeline(
     }));
 }
 
+function findSegmentStartIndex(
+  sorted: ReadonlyArray<LocationPointRow>,
+  timestampMs: number,
+): number {
+  const lastIndex = sorted.length - 1;
+  const firstMs = sorted[0]!.timestamp.getTime();
+  const lastMs = sorted[lastIndex]!.timestamp.getTime();
+
+  if (timestampMs <= firstMs) {
+    return 0;
+  }
+  if (timestampMs >= lastMs) {
+    return Math.max(0, lastIndex - 1);
+  }
+
+  let lo = 0;
+  let hi = lastIndex - 1;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (sorted[mid]!.timestamp.getTime() <= timestampMs) {
+      lo = mid;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  return lo;
+}
+
+function resolveFromSortedPoints(
+  momentTimestamp: Date,
+  sorted: ReadonlyArray<LocationPointRow>,
+  containingEntry: DayTimelineEntry | null,
+): {lat: number; lng: number} | null {
+  const timestampMs = momentTimestamp.getTime();
+  const first = sorted[0]!;
+  const last = sorted[sorted.length - 1]!;
+
+  if (timestampMs <= first.timestamp.getTime()) {
+    return {lat: first.lat, lng: first.lng};
+  }
+  if (timestampMs >= last.timestamp.getTime()) {
+    return {lat: last.lat, lng: last.lng};
+  }
+
+  const index = findSegmentStartIndex(sorted, timestampMs);
+  const start = sorted[index]!;
+  const end = sorted[index + 1]!;
+  const startMs = start.timestamp.getTime();
+  const endMs = end.timestamp.getTime();
+
+  if (timestampMs < startMs || timestampMs > endMs) {
+    if (containingEntry?.kind === 'stay') {
+      const centroid = stayTripCentroid(containingEntry);
+      return {lat: centroid.latitude, lng: centroid.longitude};
+    }
+    return null;
+  }
+
+  if (endMs === startMs) {
+    return {lat: start.lat, lng: start.lng};
+  }
+
+  const progress = (timestampMs - startMs) / (endMs - startMs);
+  return {
+    lat: start.lat + (end.lat - start.lat) * progress,
+    lng: start.lng + (end.lng - start.lng) * progress,
+  };
+}
+
 export function resolveMomentCoordinate(
   momentTimestamp: Date,
   points: LocationPointRow[],
@@ -77,46 +166,6 @@ export function resolveMomentCoordinate(
     return null;
   }
 
-  const timestampMs = momentTimestamp.getTime();
-  const sorted = [...points].sort(
-    (a, b) => a.timestamp.getTime() - b.timestamp.getTime(),
-  );
-
-  const first = sorted[0]!;
-  const last = sorted[sorted.length - 1]!;
-
-  if (timestampMs <= first.timestamp.getTime()) {
-    return {lat: first.lat, lng: first.lng};
-  }
-  if (timestampMs >= last.timestamp.getTime()) {
-    return {lat: last.lat, lng: last.lng};
-  }
-
-  for (let index = 0; index < sorted.length - 1; index += 1) {
-    const start = sorted[index]!;
-    const end = sorted[index + 1]!;
-    const startMs = start.timestamp.getTime();
-    const endMs = end.timestamp.getTime();
-
-    if (timestampMs < startMs || timestampMs > endMs) {
-      continue;
-    }
-
-    if (endMs === startMs) {
-      return {lat: start.lat, lng: start.lng};
-    }
-
-    const progress = (timestampMs - startMs) / (endMs - startMs);
-    return {
-      lat: start.lat + (end.lat - start.lat) * progress,
-      lng: start.lng + (end.lng - start.lng) * progress,
-    };
-  }
-
-  if (containingEntry?.kind === 'stay') {
-    const centroid = stayTripCentroid(containingEntry);
-    return {lat: centroid.latitude, lng: centroid.longitude};
-  }
-
-  return null;
+  const sorted = getSortedLocationPointsByTime(points);
+  return resolveFromSortedPoints(momentTimestamp, sorted, containingEntry);
 }

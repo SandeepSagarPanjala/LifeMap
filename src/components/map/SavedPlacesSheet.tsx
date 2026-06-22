@@ -1,5 +1,5 @@
 import {useCallback, useEffect, useMemo, useState} from 'react';
-import {Alert, Pressable, StyleSheet, View} from 'react-native';
+import {Alert, Pressable, ScrollView, StyleSheet, View} from 'react-native';
 import {Trash2, Pencil} from 'lucide-react-native';
 
 import {EditFavoriteLabelPanel} from '@/components/map/EditFavoriteLabelSheet';
@@ -18,6 +18,10 @@ type SavedPlacesSheetProps = {
   onSelectPlace: (place: SavedPlaceRow) => void;
   onEditLabel: (place: SavedPlaceRow, label: string) => Promise<void>;
   onDelete: (place: SavedPlaceRow) => Promise<void>;
+  onWillClose?: () => void;
+  snapPoints?: (string | number)[];
+  instantPresent?: boolean;
+  embedded?: boolean;
 };
 
 function sortPlaces(places: SavedPlaceRow[]): SavedPlaceRow[] {
@@ -42,11 +46,18 @@ export function SavedPlacesSheet({
   onSelectPlace,
   onEditLabel,
   onDelete,
+  onWillClose,
+  snapPoints: snapPointsProp,
+  instantPresent = false,
+  embedded = false,
 }: SavedPlacesSheetProps) {
   const colors = useThemeColors();
   const sorted = useMemo(() => sortPlaces(places), [places]);
   const [editingPlace, setEditingPlace] = useState<SavedPlaceRow | null>(null);
-  const listSnapPoints = useMemo(() => ['58%'] as const, []);
+  const listSnapPoints = useMemo(
+    () => snapPointsProp ?? (['50%'] as const),
+    [snapPointsProp],
+  );
 
   useEffect(() => {
     if (!visible) {
@@ -80,102 +91,131 @@ export function SavedPlacesSheet({
     );
   };
 
+  const listContent = (
+    <>
+      <Text variant="h4" className="border-0 pb-0">
+        Saved places
+      </Text>
+      <Text variant="muted" className="mt-1 text-sm">
+        Long-press the map to add Home, Work, or a Favorite.
+      </Text>
+
+      {sorted.length === 0 ? (
+        <Text variant="muted" className="mt-6 text-sm">
+          No saved places yet.
+        </Text>
+      ) : (
+        <View style={styles.list}>
+          {sorted.map(place => {
+            const accent = SAVED_PLACE_MAP_STYLE[place.kind];
+            return (
+              <View key={place.id} style={styles.row}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Show ${savedPlaceDisplayLabel(place)} on map`}
+                  onPress={() => {
+                    onSelectPlace(place);
+                    closeListSheet();
+                  }}
+                  style={styles.rowTap}>
+                  <View
+                    style={[
+                      styles.iconOrb,
+                      {backgroundColor: accent.badgeBg},
+                    ]}>
+                    <SavedPlaceIcon
+                      kind={place.kind}
+                      size={18}
+                      color={accent.icon}
+                    />
+                  </View>
+                  <View style={styles.rowText}>
+                    <Text className="font-medium">
+                      {savedPlaceDisplayLabel(place)}
+                    </Text>
+                    {place.addressLine != null ? (
+                      <Text
+                        variant="muted"
+                        className="text-xs"
+                        numberOfLines={2}>
+                        {place.addressLine}
+                      </Text>
+                    ) : null}
+                  </View>
+                </Pressable>
+                {place.kind === 'favorite' ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Rename ${place.label}`}
+                    onPress={() => setEditingPlace(place)}
+                    style={styles.actionBtn}>
+                    <Pencil
+                      size={18}
+                      color={colors.primary}
+                      strokeWidth={2.25}
+                    />
+                  </Pressable>
+                ) : null}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove ${place.label}`}
+                  onPress={() => confirmDelete(place)}
+                  style={styles.actionBtn}>
+                  <Trash2
+                    size={18}
+                    color={colors.primary}
+                    strokeWidth={2.25}
+                  />
+                </Pressable>
+              </View>
+            );
+          })}
+        </View>
+      )}
+    </>
+  );
+
+  if (embedded) {
+    if (!visible) {
+      return null;
+    }
+    if (editingPlace != null) {
+      return (
+        <View style={styles.embeddedRoot}>
+          <EditFavoriteLabelPanel
+            key={editingPlace.id}
+            initialValue={editingPlace.label}
+            onClose={closeEditSheet}
+            onSave={label => {
+              onEditLabel(editingPlace, label).then(() => closeEditSheet());
+            }}
+          />
+        </View>
+      );
+    }
+    return (
+      <ScrollView
+        style={styles.embeddedRoot}
+        contentContainerStyle={styles.embeddedScroll}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled">
+        {listContent}
+      </ScrollView>
+    );
+  }
+
   return (
     <>
       <AppBottomSheet
         name="saved-places-list"
         visible={visible}
         onClose={closeListSheet}
+        onClosing={onWillClose}
+        releaseTouchesWhileClosing={onWillClose != null}
+        instantPresent={instantPresent}
         snapPoints={[...listSnapPoints]}
         scrollable>
-        <Text variant="h4" className="border-0 pb-0">
-          Saved places
-        </Text>
-        <Text variant="muted" className="mt-1 text-sm">
-          Long-press the map to add Home, Work, or a Favorite.
-        </Text>
-
-        {sorted.length === 0 ? (
-          <Text variant="muted" className="mt-6 text-sm">
-            No saved places yet.
-          </Text>
-        ) : (
-          <View style={styles.list}>
-            {sorted.map(place => {
-              const accent = SAVED_PLACE_MAP_STYLE[place.kind];
-              return (
-                <View key={place.id} style={styles.row}>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Show ${savedPlaceDisplayLabel(place)} on map`}
-                    onPress={() => {
-                      onSelectPlace(place);
-                      closeListSheet();
-                    }}
-                    style={styles.rowTap}>
-                    <View
-                      style={[
-                        styles.iconOrb,
-                        {backgroundColor: accent.badgeBg},
-                      ]}>
-                      <SavedPlaceIcon
-                        kind={place.kind}
-                        size={18}
-                        color={accent.icon}
-                      />
-                    </View>
-                    <View style={styles.rowText}>
-                      <Text className="font-medium">
-                        {savedPlaceDisplayLabel(place)}
-                      </Text>
-                      {place.addressLine != null ? (
-                        <Text
-                          variant="muted"
-                          className="text-xs"
-                          numberOfLines={2}>
-                          {place.addressLine}
-                        </Text>
-                      ) : null}
-                    </View>
-                  </Pressable>
-                  {place.kind === 'favorite' ? (
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={`Rename ${place.label}`}
-                      onPress={() => setEditingPlace(place)}
-                      style={styles.actionBtn}>
-                      <Pencil
-                        size={18}
-                        color={colors.primary}
-                        strokeWidth={2.25}
-                      />
-                    </Pressable>
-                  ) : null}
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Remove ${place.label}`}
-                    onPress={() => confirmDelete(place)}
-                    style={styles.actionBtn}>
-                    <Trash2
-                      size={18}
-                      color={colors.primary}
-                      strokeWidth={2.25}
-                    />
-                  </Pressable>
-                </View>
-              );
-            })}
-          </View>
-        )}
-
-        <Pressable
-          accessibilityRole="button"
-          onPress={closeListSheet}
-          style={styles.closeBtn}>
-          <Text variant="muted" className="text-center font-medium">
-            Close
-          </Text>
-        </Pressable>
+        {listContent}
       </AppBottomSheet>
 
       <AppBottomSheet
@@ -202,6 +242,12 @@ export function SavedPlacesSheet({
 }
 
 const styles = StyleSheet.create({
+  embeddedRoot: {
+    flex: 1,
+  },
+  embeddedScroll: {
+    paddingBottom: 8,
+  },
   list: {
     marginTop: 16,
     gap: 8,
@@ -236,9 +282,5 @@ const styles = StyleSheet.create({
   },
   actionBtn: {
     padding: 8,
-  },
-  closeBtn: {
-    marginTop: 16,
-    paddingVertical: 8,
   },
 });
