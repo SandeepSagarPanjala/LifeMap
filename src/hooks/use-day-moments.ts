@@ -14,6 +14,7 @@ export function useDayMoments(dateKey: string) {
   }, [dateKey]);
 
   useEffect(() => {
+    setDayMoments([]);
     void refresh();
   }, [refresh]);
 

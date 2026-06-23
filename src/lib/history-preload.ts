@@ -5,7 +5,7 @@ import {
 } from '@/lib/history-data-cache';
 import {getDayHistoryFingerprint} from '@/lib/history-fingerprint';
 import {ensureHistoryCalendarBounds} from '@/lib/history-calendar-bounds';
-import {loadHistoryForDayCoalesced} from '@/lib/history-day-load';
+import {syncTodayTrips} from '@/lib/today-sync';
 import {getCurrentTripDetectionConfig} from '@/lib/trip-detection-config';
 
 import {ensureDatabaseReady} from '@/location/bootstrap';
@@ -23,6 +23,8 @@ export async function preloadTodayHistory(): Promise<void> {
   }
 
   const fingerprint = await getDayHistoryFingerprint(todayKey);
-  const result = await loadHistoryForDayCoalesced(todayKey, detectionConfig);
+  const result = await syncTodayTrips(detectionConfig, undefined, {
+    displayOnly: false,
+  });
   historyDataCache.write(cacheKey, result, fingerprint);
 }

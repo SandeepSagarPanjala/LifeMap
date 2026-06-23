@@ -6,11 +6,13 @@ import { StyleSheet, Text, View } from 'react-native';
 import { SavedPlaceIcon } from '@/components/map/SavedPlaceIcon';
 import { MomentCountsRow } from '@/components/moments/MomentCountsRow';
 import type { SavedPlaceRow } from '@/db/repositories/saved-places';
-import type { MomentCountType, MomentCounts } from '@/lib/moments/moment-counts';
+import type {
+  MomentCountType,
+  MomentCounts,
+} from '@/lib/moments/moment-counts';
 import { hasMomentCounts } from '@/lib/moments/moment-counts';
 import {
   formatStayVisitLabel,
-  formatVisitDateLine,
   isVisitOngoing,
 } from '@/lib/trip-format';
 import type { DetectedTrip } from '@/lib/trip-detection';
@@ -20,11 +22,12 @@ import { HISTORY_COLORS } from '@/lib/history-timeline';
 
 const DOT_SIZE = 18;
 const DOT_RING_SIZE = 28;
-const MARKER_ANCHOR = { x: 0.5, y: 0.5 } as const;
+const DOT_ANCHOR = { x: 0.5, y: 0.5 } as const;
+const BUBBLE_ANCHOR = { x: 0.5, y: 0.5 } as const;
 const LIVE_PUCK_ANCHOR = { x: 0.5, y: 1 } as const;
 /** Lift label above the system user-location puck (bottom-anchored). */
 const LIVE_PUCK_CENTER_OFFSET = { x: 0, y: -100 } as const;
-const BUBBLE_OFFSET_Y = -(DOT_RING_SIZE / 2 + 60);
+const VISIT_BUBBLE_DOT_GAP = 4;
 
 type StayDurationCalloutProps = {
   trip: DetectedTrip;
@@ -50,6 +53,7 @@ export function StayDurationCallout({
   onPressMomentType,
 }: StayDurationCalloutProps) {
   const [now, setNow] = useState(() => new Date());
+  const [bubbleHeight, setBubbleHeight] = useState(0);
   const ongoing = isVisitOngoing(trip.endAt, now, {
     openThroughNow: trip.openThroughNow,
   });
@@ -58,10 +62,17 @@ export function StayDurationCallout({
   const counts = momentCounts;
   const showMomentCounts = counts != null && hasMomentCounts(counts);
   const livePuckLabel = !showVisitPin;
-  const bubbleAnchor = livePuckLabel ? LIVE_PUCK_ANCHOR : MARKER_ANCHOR;
-  const bubbleCenterOffset = livePuckLabel
-    ? LIVE_PUCK_CENTER_OFFSET
-    : { x: 0, y: BUBBLE_OFFSET_Y };
+  const visitBubbleCenterOffset =
+    bubbleHeight > 0
+      ? {
+          x: 0,
+          y: -(
+            DOT_RING_SIZE / 2 +
+            VISIT_BUBBLE_DOT_GAP +
+            bubbleHeight / 2
+          ),
+        }
+      : { x: 0, y: -100 };
 
   useEffect(() => {
     if (!ongoing) {
@@ -77,12 +88,75 @@ export function StayDurationCallout({
     now,
   });
 
+  const bubble = (
+    <View
+      style={styles.bubble}
+      collapsable={false}
+      onLayout={event => {
+        const nextHeight = event.nativeEvent.layout.height;
+        if (nextHeight > 0 && nextHeight !== bubbleHeight) {
+          setBubbleHeight(nextHeight);
+        }
+      }}
+    >
+      {showMomentCounts ? (
+        <>
+          <MomentCountsRow
+            counts={counts!}
+            onPressType={onPressMomentType}
+            layout="stacked"
+          />
+          <View style={styles.divider} />
+        </>
+      ) : null}
+
+      <View style={styles.body}>
+        {savedPlace ? (
+          <View style={styles.placeRow}>
+            <SavedPlaceIcon kind={savedPlace.kind} size={16} />
+            <Text style={styles.placeLabel} numberOfLines={1}>
+              {savedPlaceDisplayLabel(savedPlace)}
+            </Text>
+          </View>
+        ) : nearbyPlaceLabel ? (
+          <View style={styles.placeRow}>
+            {nearbyPlacePinned ? (
+              <MapPin
+                size={12}
+                color="#8E8E93"
+                fill="#C7C7CC"
+                strokeWidth={2}
+              />
+            ) : (
+              <Armchair
+                size={14}
+                color={HISTORY_COLORS.stay}
+                strokeWidth={2.25}
+              />
+            )}
+            <Text style={styles.placeLabel} numberOfLines={1}>
+              {nearbyPlaceLabel}
+            </Text>
+          </View>
+        ) : null}
+
+        <Text style={styles.timeLine} numberOfLines={2}>
+          {visit.title}
+        </Text>
+        <Text style={styles.durationLine}>{visit.subtitle}</Text>
+        {visit.statusLine ? (
+          <Text style={styles.statusLine}>{visit.statusLine}</Text>
+        ) : null}
+      </View>
+    </View>
+  );
+
   return (
     <>
       {showVisitPin ? (
         <Marker
           coordinate={visitCoordinate}
-          anchor={MARKER_ANCHOR}
+          anchor={DOT_ANCHOR}
           zIndex={13}
           tracksViewChanges={false}
         >
@@ -95,64 +169,14 @@ export function StayDurationCallout({
 
       <Marker
         coordinate={coordinate}
-        anchor={bubbleAnchor}
-        centerOffset={bubbleCenterOffset}
+        anchor={livePuckLabel ? LIVE_PUCK_ANCHOR : BUBBLE_ANCHOR}
+        centerOffset={
+          livePuckLabel ? LIVE_PUCK_CENTER_OFFSET : visitBubbleCenterOffset
+        }
         zIndex={12}
-        tracksViewChanges={false}>
-        <View style={styles.bubble} collapsable={false}>
-          {showMomentCounts ? (
-            <>
-              <MomentCountsRow
-                counts={counts!}
-                onPressType={onPressMomentType}
-                layout="stacked"
-              />
-              <View style={styles.divider} />
-            </>
-          ) : null}
-
-          <View style={styles.body}>
-            {savedPlace ? (
-              <View style={styles.placeRow}>
-                <SavedPlaceIcon kind={savedPlace.kind} size={16} />
-                <Text style={styles.placeLabel} numberOfLines={1}>
-                  {savedPlaceDisplayLabel(savedPlace)}
-                </Text>
-              </View>
-            ) : nearbyPlaceLabel ? (
-              <View style={styles.placeRow}>
-                {nearbyPlacePinned ? (
-                  <MapPin
-                    size={12}
-                    color="#8E8E93"
-                    fill="#C7C7CC"
-                    strokeWidth={2}
-                  />
-                ) : (
-                  <Armchair
-                    size={14}
-                    color={HISTORY_COLORS.stay}
-                    strokeWidth={2.25}
-                  />
-                )}
-                <Text style={styles.placeLabel} numberOfLines={1}>
-                  {nearbyPlaceLabel}
-                </Text>
-              </View>
-            ) : null}
-
-            <Text style={styles.dateLine}>
-              {formatVisitDateLine(trip.startAt, now)}
-            </Text>
-            <Text style={styles.timeLine} numberOfLines={2}>
-              {visit.title}
-            </Text>
-            <Text style={styles.durationLine}>{visit.subtitle}</Text>
-            {visit.statusLine ? (
-              <Text style={styles.statusLine}>{visit.statusLine}</Text>
-            ) : null}
-          </View>
-        </View>
+        tracksViewChanges={!livePuckLabel && bubbleHeight === 0}
+      >
+        {bubble}
       </Marker>
     </>
   );
@@ -216,11 +240,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#1C1C1E',
-  },
-  dateLine: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#636366',
   },
   timeLine: {
     fontSize: 14,

@@ -20,7 +20,6 @@ import {
   upsertWorkPlace,
 } from '@/db/repositories/saved-places';
 import {historyPanelChromeHeight} from '@/components/map/HistoryPanelChrome';
-import {useAfterInteractions} from '@/hooks/use-after-interactions';
 import {useHistoryForDay} from '@/hooks/use-history-data';
 import {useLatestLocationSave} from '@/hooks/use-latest-location-save';
 import {usePlaceLookupScheduler} from '@/hooks/use-place-lookup-scheduler';
@@ -112,6 +111,7 @@ import {buildMapAttributionInsets} from '@/lib/map-attribution-insets';
 import type {RootStackParamList} from '@/navigation/types';
 import {refreshWidgetSnapshot, refreshWidgetSnapshotIfStale} from '@/lib/widget/sync-widget-snapshot';
 import {registerWidgetSheetHandlers} from '@/lib/widget/widget-deep-link';
+import {preloadTodayHistory} from '@/lib/history-preload';
 
 import {
   MAP_FALLBACK_REGION,
@@ -196,10 +196,7 @@ export function useMapScreenController() {
   const {dayMoments, refreshDayMoments} = useDayMoments(selectedDateKey);
   const viewingToday = selectedDateKey === todayKey;
   const {data: historyData, loading: historyLoading} =
-    useHistoryForDay(selectedDateKey, {
-      active: historyPanelOpen || !viewingToday,
-      preferStored: historyPanelOpen,
-    });
+    useHistoryForDay(selectedDateKey, {active: true});
   const latestLocationSaveAt = useLatestLocationSave();
   const earliestDateKey = useAppStore(state => state.historyEarliestDateKey);
   const canGoPrevDay =
@@ -210,6 +207,13 @@ export function useMapScreenController() {
     [selectedDateKey, todayKey],
   );
   const historyEntries = historyData.entries;
+
+  useEffect(() => {
+    if (viewingToday) {
+      return;
+    }
+    void preloadTodayHistory();
+  }, [viewingToday, todayKey]);
 
   useEffect(() => {
     setPlaceLabelEditStay(null);
@@ -232,12 +236,13 @@ export function useMapScreenController() {
   const lastUserCoordinateRefreshMsRef = useRef(0);
   const historyPanelY = useRef(new Animated.Value(400)).current;
   const historyPanelOpenRef = useRef(false);
+  const pendingGoToTodayRef = useRef(false);
 
   const playback = useTripPlayback();
-  const historyPanelReady = useAfterInteractions(historyPanelOpen);
 
   const historyDayLoaded =
-    historyData.dateKey === selectedDateKey && !historyLoading;
+    historyData.dateKey === selectedDateKey &&
+    (!historyLoading || (viewingToday && historyHasGpsData));
   const historyHasGpsData =
     historyData.entries.length > 0 || historyData.points.length > 0;
   const historyReadyForDay = historyDayLoaded && historyHasGpsData;
@@ -326,9 +331,7 @@ export function useMapScreenController() {
   );
 
   const showHistoryPanelContent =
-    historyPanelChromeVisible &&
-    historyDayLoaded &&
-    (historyPanelOpen ? historyPanelReady : true);
+    historyPanelChromeVisible && historyDayLoaded;
 
   const currentOpenVisit = useMemo(
     () =>
@@ -425,7 +428,8 @@ export function useMapScreenController() {
     historyEventCardHasMoments,
   ]);
 
-  const showDayJourney = !historyPanelOpen && !playback.isPlaying;
+  const showDayJourney =
+    !historyPanelOpen && !playback.isPlaying && historyDayLoaded;
   const currentVisitMomentCounts = useMemo((): MomentCounts => {
     if (!currentOpenVisit) {
       return emptyMomentCounts();
@@ -500,6 +504,8 @@ export function useMapScreenController() {
       24,
     [resolvedHistoryPanelContentHeight, viewingToday],
   );
+  const historyPanelSlideDistanceRef = useRef(historyPanelSlideDistance);
+  historyPanelSlideDistanceRef.current = historyPanelSlideDistance;
 
   const historyPanelBottom =
     insets.bottom +
@@ -511,7 +517,10 @@ export function useMapScreenController() {
     : insets.bottom + MAP_LOCATE_BUTTON_BOTTOM_GAP;
 
   const locateButtonBottom = mapStackButtonBottom(stackBaseBottom, 0);
-  const historyButtonBottom = mapStackButtonBottom(stackBaseBottom, 1);
+  const historyButtonBottom = mapStackButtonBottom(
+    stackBaseBottom,
+    viewingToday ? 1 : 0,
+  );
   const placesButtonBottom = mapStackButtonBottom(stackBaseBottom, 2);
 
   const cameraButtonBottom = mapStackButtonBottom(stackBaseBottom, 0);
@@ -731,7 +740,7 @@ export function useMapScreenController() {
     selectedHistoryIndex >= 0 &&
     historyMapPlan.selected != null;
   const dayMomentMapPinsRaw = useMemo((): MomentMapPin[] => {
-    if (!showDayJourney) {
+    if (!showDayJourney || currentOpenVisit != null) {
       return [];
     }
     return buildMomentMapPins(
@@ -739,7 +748,13 @@ export function useMapScreenController() {
       historyData.points,
       historyEntries,
     );
-  }, [showDayJourney, dayMoments, historyData.points, historyEntries]);
+  }, [
+    currentOpenVisit,
+    showDayJourney,
+    dayMoments,
+    historyData.points,
+    historyEntries,
+  ]);
 
   const historyMomentMapPinsRaw = useMemo((): MomentMapPin[] => {
     if (!showHistoryMap || !selectedEntry) {
@@ -1019,10 +1034,29 @@ export function useMapScreenController() {
     [playback],
   );
 
-  const goToToday = useCallback(() => {
+  const goToTodayOnPanelClosedRef = useRef(() => {});
+  goToTodayOnPanelClosedRef.current = () => {
     handleHistoryDateKeyChange(todayKey);
-    setHistoryPanelOpen(false);
-  }, [handleHistoryDateKeyChange, todayKey]);
+  };
+
+  const goToToday = useCallback(() => {
+    if (historyPanelOpen || historyPanelChromeVisible) {
+      // Defer the date change until the panel close animation finishes so
+      // historyPanelSlideDistance and chrome layout stay stable mid-animation.
+      pendingGoToTodayRef.current = true;
+      void preloadTodayHistory();
+      setHistoryPanelOpen(false);
+      playback.stop();
+      return;
+    }
+    handleHistoryDateKeyChange(todayKey);
+  }, [
+    handleHistoryDateKeyChange,
+    historyPanelChromeVisible,
+    historyPanelOpen,
+    playback,
+    todayKey,
+  ]);
 
   const closeHistoryPanel = useCallback(() => {
     setHistoryPanelOpen(false);
@@ -1058,14 +1092,15 @@ export function useMapScreenController() {
     setHistoryPanelOpen(open => {
       const next = !open;
       if (next) {
+        setHistoryPanelChromeVisible(true);
+        historyPanelY.setValue(historyPanelSlideDistanceRef.current);
         setSelectedHistoryIndex(firstPlayableTimelineIndex(historyEntries));
       } else {
         playback.stop();
-        setSelectedDateKey(todayKey);
       }
       return next;
     });
-  }, [historyEntries, playback, todayKey]);
+  }, [historyEntries, historyPanelY, playback]);
 
   const handlePlayHistory = useCallback(() => {
     if (!selectedPlayable || selectedPlayable.kind !== 'travel') {
@@ -1211,13 +1246,15 @@ export function useMapScreenController() {
     const opening = historyPanelOpen && !historyPanelOpenRef.current;
     historyPanelOpenRef.current = historyPanelOpen;
 
+    const slideDistance = historyPanelSlideDistanceRef.current;
+
     if (opening) {
       setHistoryPanelChromeVisible(true);
-      historyPanelY.setValue(historyPanelSlideDistance);
+      historyPanelY.setValue(slideDistance);
     }
 
     const animation = Animated.spring(historyPanelY, {
-      toValue: historyPanelOpen ? 0 : historyPanelSlideDistance,
+      toValue: historyPanelOpen ? 0 : slideDistance,
       damping: 22,
       stiffness: 340,
       mass: 0.7,
@@ -1228,13 +1265,17 @@ export function useMapScreenController() {
       if (finished && !historyPanelOpen) {
         setHistoryPanelChromeVisible(false);
         setSelectedHistoryIndex(-1);
+        if (pendingGoToTodayRef.current) {
+          pendingGoToTodayRef.current = false;
+          goToTodayOnPanelClosedRef.current();
+        }
       }
     });
 
     return () => {
       animation.stop();
     };
-  }, [historyPanelOpen, historyPanelSlideDistance, historyPanelY]);
+  }, [historyPanelOpen, historyPanelY]);
 
   useEffect(() => {
     if (!historyPanelOpen && viewingToday) {

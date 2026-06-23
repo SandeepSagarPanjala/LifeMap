@@ -18,7 +18,9 @@ export function MapScreenFloatingControls({
   controller,
 }: MapScreenFloatingControlsProps) {
   const {
+    viewingToday,
     historyPanelOpen,
+    historyPanelChromeVisible,
     locateButtonBottom,
     placesButtonBottom,
     historyButtonBottom,
@@ -38,29 +40,49 @@ export function MapScreenFloatingControls({
     emptySelectedDayMessage,
   } = controller;
 
+  const historyPanelActive = historyPanelOpen || historyPanelChromeVisible;
+  const showTodayControls = viewingToday && !historyPanelActive;
+  const showHistoryButton = !historyPanelActive;
+  const messageAnchorBottom = viewingToday
+    ? placesButtonBottom + 64
+    : historyButtonBottom + 64;
+
   return (
     <View pointerEvents="box-none" style={styles.overlay}>
-      <MapLocateButton bottom={locateButtonBottom} onPress={goToCurrentLocation} />
-      <MapHistoryButton
-        bottom={historyButtonBottom}
-        active={historyPanelOpen}
-        eventCount={historyBadgeCount}
-        onPress={handleToggleHistoryPanel}
-      />
-      <MapPlacesButton bottom={placesButtonBottom} onPress={openSavedPlaces} />
+      {showTodayControls ? (
+        <MapLocateButton bottom={locateButtonBottom} onPress={goToCurrentLocation} />
+      ) : null}
+      {showHistoryButton ? (
+        <MapHistoryButton
+          bottom={historyButtonBottom}
+          active={historyPanelOpen}
+          eventCount={historyBadgeCount}
+          onPress={handleToggleHistoryPanel}
+        />
+      ) : null}
+      {showTodayControls ? (
+        <MapPlacesButton bottom={placesButtonBottom} onPress={openSavedPlaces} />
+      ) : null}
 
-      <MapCameraButton bottom={cameraButtonBottom} onPress={handleCaptureCamera} />
-      <MapVoiceButton bottom={voiceButtonBottom} onPress={openCaptureVoice} />
-      <MapNoteButton bottom={noteButtonBottom} onPress={handleCaptureNote} />
-      <MapActivityButton bottom={activityButtonBottom} onPress={openCaptureActivity} />
+      {showTodayControls ? (
+        <>
+          <MapCameraButton bottom={cameraButtonBottom} onPress={handleCaptureCamera} />
+          <MapVoiceButton bottom={voiceButtonBottom} onPress={openCaptureVoice} />
+          <MapNoteButton bottom={noteButtonBottom} onPress={handleCaptureNote} />
+          <MapActivityButton
+            bottom={activityButtonBottom}
+            onPress={openCaptureActivity}
+          />
+        </>
+      ) : null}
 
-      {emptySelectedDayMessage && !historyPanelOpen ? (
+      {emptySelectedDayMessage && !historyPanelActive ? (
         <View
           style={{
             position: 'absolute',
             left: 16,
             right: 16,
-            bottom: placesButtonBottom + 64,
+            bottom: messageAnchorBottom,
             backgroundColor: '#111827',
             borderRadius: 12,
             paddingHorizontal: 12,
@@ -72,13 +94,16 @@ export function MapScreenFloatingControls({
         </View>
       ) : null}
 
-      {trackingGapWarning && !historyPanelOpen && !emptySelectedDayMessage ? (
+      {trackingGapWarning &&
+      showTodayControls &&
+      !historyPanelActive &&
+      !emptySelectedDayMessage ? (
         <View
           style={{
             position: 'absolute',
             left: 16,
             right: 16,
-            bottom: placesButtonBottom + 64,
+            bottom: messageAnchorBottom,
             backgroundColor: '#111827',
             borderRadius: 12,
             paddingHorizontal: 12,

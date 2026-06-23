@@ -1,4 +1,4 @@
-import {and, asc, gte, lte, sql} from 'drizzle-orm';
+import {and, asc, gt, gte, lte, sql} from 'drizzle-orm';
 
 import {getDayRange, shiftDateKey, toDateKey} from '@/lib/day-utils';
 
@@ -25,6 +25,28 @@ export async function getLocationPointsInRange(
       and(
         gte(locationPoints.timestamp, rangeStart),
         lte(locationPoints.timestamp, rangeEnd),
+      ),
+    )
+    .orderBy(asc(locationPoints.timestamp));
+}
+
+/** GPS rows strictly after `after` within a calendar day. */
+export async function getLocationPointsAfterInDay(
+  dateKey: string,
+  after: Date,
+): Promise<LocationPointRow[]> {
+  const {start, end} = getDayRange(dateKey);
+  const afterMs = after.getTime();
+  const db = await getDatabase();
+
+  return db
+    .select()
+    .from(locationPoints)
+    .where(
+      and(
+        gte(locationPoints.timestamp, start),
+        lte(locationPoints.timestamp, end),
+        gt(locationPoints.timestamp, after),
       ),
     )
     .orderBy(asc(locationPoints.timestamp));

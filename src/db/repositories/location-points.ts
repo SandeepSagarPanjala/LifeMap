@@ -3,6 +3,7 @@ import {and, desc, eq, gte, like, or, sql} from 'drizzle-orm';
 import {getDatabase, getSqlite} from '../client';
 import {locationPoints} from '../schema';
 import {locationPointTimestampToStorageValue} from '@/lib/location-point-storage';
+import {scheduleTodayRefreshAfterGps} from '@/lib/today-refresh-scheduler';
 
 export type NewLocationPoint = {
   timestamp: Date;
@@ -46,6 +47,7 @@ function notifyInsert(point: {
   lng: number;
   source: string;
 }): void {
+  scheduleTodayRefreshAfterGps();
   for (const listener of insertListeners) {
     listener(point);
   }

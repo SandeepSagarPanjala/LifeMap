@@ -19,8 +19,19 @@ export function refreshTodayOnForeground(): void {
   }
 }
 
-/** GPS saves do not trigger map/history rebuilds. */
-export function scheduleTodayRefreshAfterGps(): void {}
+let gpsRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+const GPS_REFRESH_DEBOUNCE_MS = 8_000;
+
+/** Debounced today sync after new GPS rows are saved. */
+export function scheduleTodayRefreshAfterGps(): void {
+  if (gpsRefreshTimer != null) {
+    clearTimeout(gpsRefreshTimer);
+  }
+  gpsRefreshTimer = setTimeout(() => {
+    gpsRefreshTimer = null;
+    refreshTodayOnForeground();
+  }, GPS_REFRESH_DEBOUNCE_MS);
+}
 
 /** @deprecated Use refreshTodayOnForeground */
 export function scheduleTodayImmediateMapRefresh(): void {
@@ -31,4 +42,8 @@ export function scheduleTodayImmediateMapRefresh(): void {
 export function resetTodayRefreshSchedulerForTests(): void {
   todayRefreshRevision = 0;
   todayHistoryRefreshListeners.clear();
+  if (gpsRefreshTimer != null) {
+    clearTimeout(gpsRefreshTimer);
+    gpsRefreshTimer = null;
+  }
 }

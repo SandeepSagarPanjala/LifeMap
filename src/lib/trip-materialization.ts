@@ -56,14 +56,10 @@ import {
 } from '@/lib/trip-geometry-settings';
 import { canonicalizeTravelGeometry } from '@/lib/travel-geometry';
 import {
-  mergeSealedAndLiveTimeline,
   sealedThroughMs,
 } from '@/lib/today-sealed-history';
 import { getSealableTodayEntries } from '@/lib/today-seal-policy';
-import {
-  buildTodayDisplayHistory,
-  historyDataFromEntries,
-} from '@/lib/today-live-history';
+import { syncTodayTrips } from '@/lib/today-sync';
 import {
   isPlayableTimelineEntry,
   stayTripCentroid,
@@ -439,55 +435,13 @@ export async function persistTodaySealableSegments(
   });
 }
 
-/** Today: sealed closed trips from DB + live display timeline for the map. */
+/** Today: trips-first sync with incremental extend / tail merge. */
 export async function loadTodayHistoryMerged(
   detectionConfig: TripDetectionConfig,
   referenceNow: Date = new Date(),
   onPartial?: (data: HistoryData) => void,
 ): Promise<HistoryData> {
-  const dateKey = getTodayDateKey();
-  const { start: dayStart } = getDayRange(dateKey);
-  const liveHistory = await buildTodayDisplayHistory(
-    dateKey,
-    detectionConfig,
-    referenceNow,
-  );
-
-  const [tripRows, pointsByTripId] = await Promise.all([
-    listTripsForDay(dateKey),
-    listTripPointsForDay(dateKey),
-  ]);
-  const hasSealed =
-    tripRows.length > 0 && dayHasStoredTripGeometry(tripRows, pointsByTripId);
-
-  if (!hasSealed) {
-    onPartial?.(liveHistory);
-    return liveHistory;
-  }
-
-  const sealedEndMs = sealedThroughMs(tripRows)!;
-  const sealedData = await loadHistoryFromStoredTrips(
-    dateKey,
-    tripRows,
-    referenceNow,
-    detectionConfig,
-    { markLastStayOpen: false },
-  );
-  onPartial?.(sealedData);
-
-  const mergedEntries = mergeSealedAndLiveTimeline(
-    sealedData.entries,
-    liveHistory.entries,
-    sealedEndMs,
-  );
-
-  return historyDataFromEntries(
-    dateKey,
-    dayStart,
-    referenceNow,
-    mergedEntries,
-    liveHistory.dayPointCount,
-  );
+  return syncTodayTrips(detectionConfig, referenceNow, {onPartial});
 }
 
 export type LoadHistoryOptions = {
@@ -497,35 +451,6 @@ export type LoadHistoryOptions = {
   onPartial?: (data: HistoryData) => void;
 };
 
-async function loadTodayFromStoredTripsIfAvailable(
-  dateKey: string,
-  detectionConfig: TripDetectionConfig,
-  referenceNow: Date = new Date(),
-): Promise<HistoryData | null> {
-  const [tripRows, pointsByTripId] = await Promise.all([
-    listTripsForDay(dateKey),
-    listTripPointsForDay(dateKey),
-  ]);
-  if (
-    tripRows.length === 0 ||
-    !dayHasStoredTripGeometry(tripRows, pointsByTripId)
-  ) {
-    return null;
-  }
-
-  const stored = await loadHistoryFromStoredTrips(
-    dateKey,
-    tripRows,
-    referenceNow,
-    detectionConfig,
-    {markLastStayOpen: true},
-  );
-  if (todayStoredHistoryNeedsLiveTail(stored.entries)) {
-    return null;
-  }
-  return stored;
-}
-
 export async function loadHistoryForSelectedDay(
   dateKey: string,
   detectionConfig: TripDetectionConfig,
@@ -534,22 +459,12 @@ export async function loadHistoryForSelectedDay(
   const isToday = dateKey === getTodayDateKey();
   const referenceNow = new Date();
 
-  if (!options?.force && isToday) {
-    const stored = await loadTodayFromStoredTripsIfAvailable(
-      dateKey,
-      detectionConfig,
-      referenceNow,
-    );
-    if (stored != null) {
-      return stored;
-    }
-    if (options?.preferStored) {
-      return loadTodayHistoryMerged(
-        detectionConfig,
-        referenceNow,
-        options.onPartial,
-      );
-    }
+  if (isToday) {
+    return syncTodayTrips(detectionConfig, referenceNow, {
+      force: options?.force,
+      displayOnly: !options?.force,
+      onPartial: options?.onPartial,
+    });
   }
 
   if (!options?.force && !isToday) {
@@ -591,20 +506,12 @@ export async function loadHistoryForSelectedDay(
     }
   }
 
-  if (!isToday) {
-    await materializePastDayFromGps(dateKey, detectionConfig);
-    return loadHistoryFromStoredTrips(
-      dateKey,
-      undefined,
-      undefined,
-      detectionConfig,
-    );
-  }
-
-  return loadTodayHistoryMerged(
+  await materializePastDayFromGps(dateKey, detectionConfig);
+  return loadHistoryFromStoredTrips(
+    dateKey,
+    undefined,
+    undefined,
     detectionConfig,
-    referenceNow,
-    options?.onPartial,
   );
 }
 

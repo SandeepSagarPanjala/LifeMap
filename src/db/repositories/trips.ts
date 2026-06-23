@@ -175,6 +175,18 @@ export async function upsertTrip(input: InsertTripInput): Promise<TripRow> {
   return mapRow(row);
 }
 
+export async function updateTripEndTime(
+  tripId: number,
+  endAt: Date,
+  durationMs: number,
+): Promise<void> {
+  const db = await getDatabase();
+  await db
+    .update(trips)
+    .set({endAt, durationMs})
+    .where(eq(trips.id, tripId));
+}
+
 export async function setTripPlaceLookupCacheId(
   tripId: number,
   placeLookupCacheId: number,

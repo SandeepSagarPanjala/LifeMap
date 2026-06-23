@@ -11,7 +11,7 @@ type DayJourneyOverlayProps = {
   stays: DetectedTrip[];
   tripConfig: TripDetectionConfig;
   savedPlaces?: readonly SavedPlaceRow[];
-  /** Fallback when trip detection has not produced drives yet. */
+  /** Raw GPS fallback only before trip detection has produced any stays or drives. */
   fallbackPoints?: LocationPointRow[];
 };
 
@@ -38,9 +38,9 @@ export function DayJourneyOverlay({
               tripConfig={tripConfig}
             />
           ))
-        : (
+        : stays.length === 0 && fallbackPoints.length > 0 ? (
           <RoutePathOverlay points={fallbackPoints} tripConfig={tripConfig} />
-        )}
+        ) : null}
     </>
   );
 }

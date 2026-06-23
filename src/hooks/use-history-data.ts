@@ -14,7 +14,7 @@ import {
 import {useTripDetectionConfig} from '@/hooks/use-trip-detection-config';
 import {getDayRange, getTodayDateKey} from '@/lib/day-utils';
 import {subscribeTodayHistoryRefresh} from '@/lib/today-refresh-scheduler';
-import type {TripDetectionConfig} from '@/lib/trip-settings';
+import {scheduleSyncTodayTrips} from '@/lib/today-sync';
 
 export type {HistoryData} from '@/lib/history-data-types';
 
@@ -53,6 +53,20 @@ async function syncHistoryForDay(
   options?: CoalescedLoadOptions & {loadGeneration?: number},
 ): Promise<HistoryData> {
   const cacheKey = historyCacheKey(dateKey, detectionConfig);
+  const isToday = dateKey === getTodayDateKey();
+  const peeked = historyDataCache.peek(cacheKey);
+
+  if (
+    !options?.force &&
+    isToday &&
+    peeked != null &&
+    peeked.dateKey === dateKey &&
+    peeked.entries.length > 0
+  ) {
+    scheduleSyncTodayTrips(detectionConfig);
+    return peeked;
+  }
+
   const fingerprint = await getDayHistoryFingerprint(dateKey);
   const cached = historyDataCache.read(cacheKey, dateKey);
   const cachedFingerprint = historyDataCache.getFingerprint(dateKey);
@@ -109,7 +123,15 @@ export function useHistoryForDay(
     ) => {
       const generation = beginHistoryDayLoad();
       loadGenerationRef.current = generation;
-      if (syncOptions?.showLoading !== false) {
+      const cached = historyDataCache.peek(
+        historyCacheKey(targetDateKey, detectionConfig),
+      );
+      const hasTodaySnapshot =
+        targetDateKey === getTodayDateKey() &&
+        cached != null &&
+        cached.dateKey === targetDateKey &&
+        cached.entries.length > 0;
+      if (syncOptions?.showLoading !== false && !hasTodaySnapshot) {
         setLoading(true);
       }
       setError(null);
@@ -173,41 +195,37 @@ export function useHistoryForDay(
   }, [dateKey, runSync, viewingToday]);
 
   useEffect(() => {
-    if (!viewingToday) {
-      return;
-    }
-    void runSync(dateKey, {
-      preferStored: true,
-      showLoading: false,
-    }).catch(() => undefined);
-  }, [dateKey, runSync, viewingToday]);
-
-  useEffect(() => {
     const cacheKey = historyCacheKey(dateKey, detectionConfig);
     const cached = historyDataCache.peek(cacheKey);
 
     if (!active) {
-      if (cached != null) {
-        setData(cached);
-      }
+      setData(cached ?? emptyForDateKey(dateKey));
       setLoading(false);
       return;
     }
 
-    if (cached != null && !viewingToday) {
+    if (cached != null && cached.dateKey === dateKey) {
       setData(cached);
       setLoading(false);
-      return;
+      if (!viewingToday) {
+        return;
+      }
+    } else {
+      setLoading(true);
     }
 
-    setLoading(cached == null || cached.dateKey !== dateKey);
+    const debounceMs =
+      cached != null && cached.dateKey === dateKey && viewingToday
+        ? 0
+        : HISTORY_DAY_LOAD_DEBOUNCE_MS;
+
     const timer = setTimeout(() => {
       void runSync(dateKey, {
-        showLoading: cached == null,
+        showLoading: cached == null || cached.dateKey !== dateKey,
         force: false,
         preferStored,
       }).catch(() => undefined);
-    }, HISTORY_DAY_LOAD_DEBOUNCE_MS);
+    }, debounceMs);
 
     return () => clearTimeout(timer);
   }, [

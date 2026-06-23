@@ -49,6 +49,47 @@ export async function buildTodayDisplayHistory(
   );
 }
 
+/** Trip detection on GPS since the seal boundary — not the full day. */
+export async function buildTodayTailDisplayHistory(
+  dateKey: string,
+  tailStart: Date,
+  detectionConfig: TripDetectionConfig,
+  referenceNow: Date = new Date(),
+): Promise<HistoryData & {dayPointCount: number}> {
+  const {start: dayStart, end: dayEnd} = getDayRange(dateKey);
+  const [savedPlaces, {windowPoints, dayPointCount}] = await Promise.all([
+    listSavedPlaces(),
+    loadExplorerGpsWindow(dateKey),
+  ]);
+
+  const tailStartMs = tailStart.getTime();
+  const dayPoints = filterPointsInRange(windowPoints, dayStart, dayEnd).filter(
+    point => point.timestamp.getTime() >= tailStartMs,
+  );
+  const lookbackPoints = windowPoints.filter(
+    point => point.timestamp.getTime() < dayStart.getTime(),
+  );
+
+  const entries = prepareDayHistoryTimeline(
+    dateKey,
+    dayPoints,
+    lookbackPoints,
+    detectionConfig,
+    referenceNow,
+    [],
+    {savedPlaces},
+    true,
+  );
+
+  return historyDataFromEntries(
+    dateKey,
+    dayStart,
+    referenceNow,
+    entries,
+    dayPointCount,
+  );
+}
+
 export function historyDataFromEntries(
   dateKey: string,
   dayStart: Date,
