@@ -1,6 +1,5 @@
 import {StyleSheet, Text, View} from 'react-native';
 
-import {MapCalendarButton} from '@/components/map/MapCalendarButton';
 import {MapCameraButton} from '@/components/map/MapCameraButton';
 import {MapHistoryButton} from '@/components/map/MapHistoryButton';
 import {MapLocateButton} from '@/components/map/MapLocateButton';
@@ -22,7 +21,6 @@ export function MapScreenFloatingControls({
     historyPanelOpen,
     locateButtonBottom,
     placesButtonBottom,
-    calendarButtonBottom,
     historyButtonBottom,
     cameraButtonBottom,
     voiceButtonBottom,
@@ -30,7 +28,6 @@ export function MapScreenFloatingControls({
     activityButtonBottom,
     goToCurrentLocation,
     openSavedPlaces,
-    openHistoryDatePicker,
     handleToggleHistoryPanel,
     handleCaptureCamera,
     openCaptureVoice,
@@ -39,7 +36,6 @@ export function MapScreenFloatingControls({
     historyBadgeCount,
     trackingGapWarning,
     emptySelectedDayMessage,
-    viewingToday,
   } = controller;
 
   return (
@@ -50,11 +46,6 @@ export function MapScreenFloatingControls({
         active={historyPanelOpen}
         eventCount={historyBadgeCount}
         onPress={handleToggleHistoryPanel}
-      />
-      <MapCalendarButton
-        bottom={calendarButtonBottom}
-        highlighted={!viewingToday}
-        onPress={openHistoryDatePicker}
       />
       <MapPlacesButton bottom={placesButtonBottom} onPress={openSavedPlaces} />
 

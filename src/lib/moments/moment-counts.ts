@@ -50,35 +50,6 @@ export function firstMomentIndexOfType(
   return moments.findIndex(moment => moment.type === type);
 }
 
-export function momentCountsEqual(a: MomentCounts, b: MomentCounts): boolean {
-  return (
-    a.photo === b.photo &&
-    a.video === b.video &&
-    a.voice === b.voice &&
-    a.note === b.note &&
-    a.activity === b.activity
-  );
-}
-
-/** Hide the docked day bar when the open-visit callout already shows every moment today. */
-export function shouldShowDayMomentSummaryBar(
-  dayCounts: MomentCounts,
-  currentOpenVisit: DayTimelineEntry | null,
-  visitCounts: MomentCounts,
-): boolean {
-  if (!hasMomentCounts(dayCounts)) {
-    return false;
-  }
-  if (
-    currentOpenVisit?.kind === 'stay' &&
-    hasMomentCounts(visitCounts) &&
-    momentCountsEqual(dayCounts, visitCounts)
-  ) {
-    return false;
-  }
-  return true;
-}
-
 /** Hide the saved-place cluster pill when a stay callout already shows those moments. */
 export function shouldHideSavedPlaceMomentCluster(
   placeId: number,

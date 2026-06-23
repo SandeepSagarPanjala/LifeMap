@@ -7,6 +7,7 @@ export type RootStackParamList = {
   CapturePhoto: undefined;
   CaptureVoice: undefined;
   CaptureActivity: undefined;
+  HistoryDatePicker: undefined;
   SavedPlaces: undefined;
   MomentPreview: undefined;
 };

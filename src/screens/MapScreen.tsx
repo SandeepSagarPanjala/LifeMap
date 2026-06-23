@@ -1,7 +1,5 @@
 import {View} from 'react-native';
 
-import {DayMomentSummaryBar} from '@/components/map/DayMomentSummaryBar';
-import {HistoryDatePickerSheet} from '@/components/map/HistoryDatePickerSheet';
 import {SavePlaceSheet} from '@/components/map/SavePlaceSheet';
 
 import {MapHistoryPanel} from './map/MapHistoryPanel';
@@ -19,28 +17,6 @@ export function MapScreen() {
       <MapScreenMap controller={controller} />
       <MapDayLoadingOverlay visible={controller.historyBlockingLoader} />
       <MapScreenFloatingControls controller={controller} />
-      {controller.showDayMomentSummary ? (
-        <View
-          pointerEvents="box-none"
-          style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            bottom: controller.dayMomentSummaryBottom,
-          }}>
-          <DayMomentSummaryBar
-            counts={controller.dayMomentCounts}
-            docked
-            onPressType={controller.openDayMomentsPreview}
-          />
-        </View>
-      ) : null}
-      <HistoryDatePickerSheet
-        visible={controller.historyDatePickerOpen}
-        selectedDateKey={controller.selectedDateKey}
-        onSelectDate={controller.handleSelectMapDate}
-        onClose={controller.closeHistoryDatePicker}
-      />
       <SavePlaceSheet
         visible={controller.savePlaceCoordinate != null}
         coordinate={controller.savePlaceCoordinate}

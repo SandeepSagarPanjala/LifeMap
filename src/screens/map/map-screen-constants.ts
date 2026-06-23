@@ -31,13 +31,8 @@ export const MAP_STACK_BUTTON_GAP = 8;
 export const MAP_DATE_NAV_ROW_GAP = 10;
 export const MAP_DATE_NAV_CLUSTER_HEIGHT =
   MAP_SETTINGS_SIZE + MAP_DATE_NAV_ROW_GAP + MAP_STACK_BUTTON_SIZE;
-export const MAP_LEFT_STACK_COUNT = 4;
+export const MAP_LEFT_STACK_COUNT = 3;
 export const MAP_RIGHT_STACK_COUNT = 4;
-
-/** Docked day-moment summary bar at the bottom of the map (non-history mode). */
-export const DAY_MOMENT_SUMMARY_BOTTOM_GAP = 8;
-export const DAY_MOMENT_SUMMARY_BAR_HEIGHT = 50;
-export const DAY_MOMENT_SUMMARY_ABOVE_BAR_GAP = 12;
 
 /** Index 0 = bottom-most button in a vertical stack. */
 export function mapStackButtonBottom(baseBottom: number, indexFromBottom: number): number {
@@ -72,7 +67,6 @@ export function mapHistoryPanelContentHeight(
 export function mapDateNavAnchorBottom(params: {
   insetBottom: number;
   historyPanelOpen: boolean;
-  showDayMomentSummary: boolean;
   historyAddressCardVisible?: boolean;
   historyEventCardHasMoments?: boolean;
   /** Measured or estimated full history panel content height. */
@@ -81,7 +75,6 @@ export function mapDateNavAnchorBottom(params: {
   const {
     insetBottom,
     historyPanelOpen,
-    showDayMomentSummary,
     historyAddressCardVisible = false,
     historyEventCardHasMoments = false,
     historyPanelContentHeight,
@@ -95,14 +88,6 @@ export function mapDateNavAnchorBottom(params: {
       );
     return (
       insetBottom + panelTopFromBottom + MAP_HISTORY_DATE_NAV_ABOVE_PANEL_GAP
-    );
-  }
-  if (showDayMomentSummary) {
-    return (
-      insetBottom +
-      DAY_MOMENT_SUMMARY_BOTTOM_GAP +
-      DAY_MOMENT_SUMMARY_BAR_HEIGHT +
-      MAP_HISTORY_DATE_NAV_GAP
     );
   }
   return insetBottom + MAP_LOCATE_BUTTON_BOTTOM_GAP + MAP_HISTORY_DATE_NAV_GAP;

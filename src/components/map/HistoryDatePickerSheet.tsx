@@ -34,6 +34,8 @@ type HistoryDatePickerSheetProps = {
   selectedDateKey: string;
   onSelectDate: (dateKey: string) => void;
   onClose: () => void;
+  instantPresent?: boolean;
+  onWillClose?: () => void;
 };
 
 export function HistoryDatePickerSheet({
@@ -41,6 +43,8 @@ export function HistoryDatePickerSheet({
   selectedDateKey,
   onSelectDate,
   onClose,
+  instantPresent = false,
+  onWillClose,
 }: HistoryDatePickerSheetProps) {
   const todayKey = getTodayDateKey();
   const today = useMemo(() => startOfDay(new Date()), []);
@@ -107,7 +111,13 @@ export function HistoryDatePickerSheet({
   };
 
   return (
-    <AppBottomSheet visible={visible} onClose={onClose} enableDynamicSizing>
+    <AppBottomSheet
+      visible={visible}
+      onClose={onClose}
+      enableDynamicSizing
+      instantPresent={instantPresent}
+      onClosing={onWillClose}
+      releaseTouchesWhileClosing={instantPresent}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Jump to today"

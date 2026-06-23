@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
   },
   pill: {
     minHeight: MAP_STACK_BUTTON_SIZE,
-    maxWidth: '48%',
+    flexShrink: 0,
     backgroundColor: '#FFFFFF',
     borderRadius: MAP_STACK_BUTTON_SIZE / 2,
     paddingHorizontal: 16,

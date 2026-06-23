@@ -1,5 +1,5 @@
 import {ChevronLeft, ChevronRight, X} from 'lucide-react-native';
-import {StyleSheet, Text, View, type StyleProp, type ViewStyle} from 'react-native';
+import {Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle} from 'react-native';
 
 import {MapCircleButton} from '@/components/map/MapCircleButton';
 import {useThemeColors} from '@/hooks/use-theme-colors';
@@ -21,6 +21,7 @@ type MapDateLabelProps = {
   onPrev?: () => void;
   onNext?: () => void;
   onClose?: () => void;
+  onPressLabel?: () => void;
 };
 
 const MAP_CLOSE_ICON_COLOR = '#E0352B';
@@ -35,22 +36,36 @@ export function MapDateLabel({
   onPrev,
   onNext,
   onClose,
+  onPressLabel,
 }: MapDateLabelProps) {
   const colors = useThemeColors();
   const top = topInset + MAP_SETTINGS_TOP_GAP;
 
   if (!showNavigation) {
+    const pill = (
+      <View style={styles.pill}>
+        <Text style={styles.label} numberOfLines={1}>
+          {label}
+        </Text>
+      </View>
+    );
+
     return (
       <View
-        pointerEvents="none"
+        pointerEvents="box-none"
         accessibilityRole="text"
         accessibilityLabel={`Map showing ${label}`}
         style={[styles.wrap, {top, height: MAP_SETTINGS_SIZE}]}>
-        <View style={styles.pill}>
-          <Text style={styles.label} numberOfLines={1}>
-            {label}
-          </Text>
-        </View>
+        {onPressLabel ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Choose date"
+            onPress={onPressLabel}>
+            {pill}
+          </Pressable>
+        ) : (
+          pill
+        )}
       </View>
     );
   }
@@ -84,11 +99,16 @@ export function MapDateLabel({
           />
         </MapCircleButton>
 
-        <View style={styles.pill}>
-          <Text style={styles.label} numberOfLines={1}>
-            {label}
-          </Text>
-        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Choose date"
+          onPress={onPressLabel}>
+          <View style={styles.pill}>
+            <Text style={styles.label} numberOfLines={1}>
+              {label}
+            </Text>
+          </View>
+        </Pressable>
 
         <MapCircleButton
           accessibilityLabel="Next day"
@@ -129,7 +149,7 @@ const styles = StyleSheet.create({
   },
   pill: {
     minHeight: MAP_STACK_BUTTON_SIZE,
-    maxWidth: '48%',
+    flexShrink: 0,
     backgroundColor: '#FFFFFF',
     borderRadius: MAP_STACK_BUTTON_SIZE / 2,
     paddingHorizontal: 16,

@@ -7,7 +7,6 @@ import {
   filterMomentsForEntry,
   filterMomentsForStayEntry,
   shouldHideSavedPlaceMomentCluster,
-  shouldShowDayMomentSummaryBar,
   firstMomentIndexOfType,
 } from '../src/lib/moments/moment-counts';
 import type {MomentRow} from '../src/db/repositories/moments';
@@ -136,21 +135,6 @@ describe('moment counts', () => {
     expect(filterMomentsForEntry(moments, stay, now).map(item => item.id)).toEqual([
       1, 3,
     ]);
-  });
-
-  it('hides the day summary bar when every moment is on the open visit callout', () => {
-    const dayCounts = {photo: 1, video: 0, voice: 1, note: 0, activity: 0};
-    expect(shouldShowDayMomentSummaryBar(dayCounts, stay, dayCounts)).toBe(
-      false,
-    );
-  });
-
-  it('keeps the day summary bar when moments exist outside the open visit', () => {
-    const dayCounts = {photo: 2, video: 0, voice: 1, note: 0, activity: 0};
-    const visitCounts = {photo: 1, video: 0, voice: 0, note: 0, activity: 0};
-    expect(shouldShowDayMomentSummaryBar(dayCounts, stay, visitCounts)).toBe(
-      true,
-    );
   });
 
   it('hides the saved-place cluster when the stay callout already shows moments', () => {

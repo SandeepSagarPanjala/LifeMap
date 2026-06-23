@@ -6,7 +6,7 @@ import {
   useState,
 } from 'react';
 import {Animated, Alert, AppState, Platform, useColorScheme} from 'react-native';
-import {useNavigation, useRoute, type RouteProp} from '@react-navigation/native';
+import {useNavigation, useRoute, useFocusEffect, type RouteProp} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type MapView from 'react-native-maps';
 import {PROVIDER_DEFAULT, PROVIDER_GOOGLE, type Region} from 'react-native-maps';
@@ -33,13 +33,11 @@ import {
 } from '@/components/map/MomentMapOverlay';
 import type {SavedPlaceMomentClusterOnMap} from '@/components/map/SavedPlacesMapOverlay';
 import {
-  countMoments,
   countMomentsForEntry,
   countMomentsForStayEntry,
   filterMomentsForEntry,
   filterMomentsForStayEntry,
   shouldHideSavedPlaceMomentCluster,
-  shouldShowDayMomentSummaryBar,
   hasMomentCounts,
   firstMomentIndexOfType,
   emptyMomentCounts,
@@ -71,6 +69,10 @@ import {
   shiftDateKey,
 } from '@/lib/day-utils';
 import {clampDateKeyToHistoryBounds} from '@/lib/history-calendar-bounds';
+import {
+  consumeHistoryDatePickerResult,
+  queueHistoryDatePickerOpen,
+} from '@/lib/history-date-picker-navigation';
 import {useAppStore} from '@/stores/app-store';
 import {regionForCoordinates, toMapCoordinates} from '@/lib/location-geo';
 import {
@@ -112,9 +114,6 @@ import {refreshWidgetSnapshot, refreshWidgetSnapshotIfStale} from '@/lib/widget/
 import {registerWidgetSheetHandlers} from '@/lib/widget/widget-deep-link';
 
 import {
-  DAY_MOMENT_SUMMARY_ABOVE_BAR_GAP,
-  DAY_MOMENT_SUMMARY_BAR_HEIGHT,
-  DAY_MOMENT_SUMMARY_BOTTOM_GAP,
   MAP_FALLBACK_REGION,
   MAP_HISTORY_DATE_NAV_ABOVE_PANEL_GAP,
   MAP_HISTORY_FLOATING_CONTROLS_GAP,
@@ -172,7 +171,6 @@ export function useMapScreenController() {
     });
     return () => subscription.remove();
   }, [selectedDateKey, syncSelectedDateKeyForTodayRoll]);
-  const [historyDatePickerOpen, setHistoryDatePickerOpen] = useState(false);
   const [historyPanelOpen, setHistoryPanelOpen] = useState(false);
   const [historyPanelChromeVisible, setHistoryPanelChromeVisible] =
     useState(false);
@@ -428,10 +426,6 @@ export function useMapScreenController() {
   ]);
 
   const showDayJourney = !historyPanelOpen && !playback.isPlaying;
-  const dayMomentCounts = useMemo(
-    () => countMoments(dayMoments),
-    [dayMoments],
-  );
   const currentVisitMomentCounts = useMemo((): MomentCounts => {
     if (!currentOpenVisit) {
       return emptyMomentCounts();
@@ -492,32 +486,11 @@ export function useMapScreenController() {
     selectedEntry,
     tripDetectionConfig.dwellRadiusMeters,
   ]);
-  const showDayMomentSummary = useMemo(
-    () =>
-      showDayJourney &&
-      shouldShowDayMomentSummaryBar(
-        dayMomentCounts,
-        currentOpenVisit,
-        currentVisitMomentCounts,
-      ),
-    [
-      showDayJourney,
-      dayMomentCounts,
-      currentOpenVisit,
-      currentVisitMomentCounts,
-    ],
-  );
 
   const provider =
     Platform.OS === 'android' && preferredMapApp === 'google'
       ? PROVIDER_GOOGLE
       : PROVIDER_DEFAULT;
-
-  const daySummaryBarReserve = showDayMomentSummary
-    ? DAY_MOMENT_SUMMARY_BOTTOM_GAP +
-      DAY_MOMENT_SUMMARY_BAR_HEIGHT +
-      DAY_MOMENT_SUMMARY_ABOVE_BAR_GAP
-    : 0;
 
   const historyPanelSlideDistance = useMemo(
     () =>
@@ -535,32 +508,28 @@ export function useMapScreenController() {
     resolvedHistoryPanelContentHeight;
   const stackBaseBottom = historyPanelChromeVisible
     ? historyPanelBottom + MAP_HISTORY_FLOATING_CONTROLS_GAP
-    : insets.bottom + MAP_LOCATE_BUTTON_BOTTOM_GAP + daySummaryBarReserve;
+    : insets.bottom + MAP_LOCATE_BUTTON_BOTTOM_GAP;
 
   const locateButtonBottom = mapStackButtonBottom(stackBaseBottom, 0);
   const historyButtonBottom = mapStackButtonBottom(stackBaseBottom, 1);
-  const calendarButtonBottom = mapStackButtonBottom(stackBaseBottom, 2);
-  const placesButtonBottom = mapStackButtonBottom(stackBaseBottom, 3);
+  const placesButtonBottom = mapStackButtonBottom(stackBaseBottom, 2);
 
   const cameraButtonBottom = mapStackButtonBottom(stackBaseBottom, 0);
   const voiceButtonBottom = mapStackButtonBottom(stackBaseBottom, 1);
   const noteButtonBottom = mapStackButtonBottom(stackBaseBottom, 2);
   const activityButtonBottom = mapStackButtonBottom(stackBaseBottom, 3);
-  const dayMomentSummaryBottom = insets.bottom + DAY_MOMENT_SUMMARY_BOTTOM_GAP;
 
   const dateNavAnchorBottom = useMemo(
     () =>
       mapDateNavAnchorBottom({
         insetBottom: insets.bottom,
         historyPanelOpen: false,
-        showDayMomentSummary,
         historyAddressCardVisible: showPlaceLabelCard,
         historyEventCardHasMoments,
         historyPanelContentHeight: resolvedHistoryPanelContentHeight,
       }),
     [
       insets.bottom,
-      showDayMomentSummary,
       showPlaceLabelCard,
       historyEventCardHasMoments,
       resolvedHistoryPanelContentHeight,
@@ -807,15 +776,27 @@ export function useMapScreenController() {
     (payload: {
       moments: MomentRow[];
       initialType?: MomentType;
+      initialMomentId?: number;
+      initialIndex?: number;
       previewEntry?: DayTimelineEntry | null;
     }) => {
       if (payload.moments.length === 0) {
         return;
       }
-      const initialIndex =
-        payload.initialType != null
-          ? Math.max(0, firstMomentIndexOfType(payload.moments, payload.initialType))
-          : 0;
+      let initialIndex = payload.initialIndex ?? 0;
+      if (payload.initialMomentId != null) {
+        const momentIndex = payload.moments.findIndex(
+          moment => moment.id === payload.initialMomentId,
+        );
+        if (momentIndex >= 0) {
+          initialIndex = momentIndex;
+        }
+      } else if (payload.initialType != null) {
+        initialIndex = Math.max(
+          0,
+          firstMomentIndexOfType(payload.moments, payload.initialType),
+        );
+      }
       queueMomentPreview({
         moments: payload.moments,
         initialIndex,
@@ -854,13 +835,14 @@ export function useMapScreenController() {
           ),
       )
       .map(cluster => {
-        const momentIds = new Set(cluster.momentIds);
+        const initialMomentId = cluster.momentIds[0];
         return {
           placeId: cluster.place.id,
           counts: cluster.counts,
           onPress: () => {
             openMomentPreview({
-              moments: dayMoments.filter(moment => momentIds.has(moment.id)),
+              moments: dayMoments,
+              initialMomentId,
             });
           },
         };
@@ -879,13 +861,6 @@ export function useMapScreenController() {
     showDayJourney,
     showHistoryMap,
   ]);
-
-  const openDayMomentsPreview = useCallback(
-    (initialType?: MomentCountType) => {
-      openMomentPreview({moments: dayMoments, initialType});
-    },
-    [dayMoments, openMomentPreview],
-  );
 
   const openCurrentVisitMomentsPreview = useCallback(
     (initialType?: MomentCountType) => {
@@ -917,9 +892,12 @@ export function useMapScreenController() {
 
   const openMomentMapPinPreview = useCallback(
     (pin: MomentMapPin) => {
-      openMomentPreview({moments: [pin.moment]});
+      openMomentPreview({
+        moments: dayMoments,
+        initialMomentId: pin.moment.id,
+      });
     },
-    [openMomentPreview],
+    [dayMoments, openMomentPreview],
   );
 
   const showUserLocation =
@@ -1019,12 +997,9 @@ export function useMapScreenController() {
   );
 
   const openHistoryDatePicker = useCallback(() => {
-    setHistoryDatePickerOpen(true);
-  }, []);
-
-  const closeHistoryDatePicker = useCallback(() => {
-    setHistoryDatePickerOpen(false);
-  }, []);
+    queueHistoryDatePickerOpen({selectedDateKey});
+    navigation.navigate('HistoryDatePicker');
+  }, [navigation, selectedDateKey]);
 
   const handleSelectMapDate = useCallback(
     (dateKey: string) => {
@@ -1407,6 +1382,15 @@ export function useMapScreenController() {
     void refreshWidgetSnapshotIfStale().catch(() => undefined);
   }, []);
 
+  useFocusEffect(
+    useCallback(() => {
+      const dateKey = consumeHistoryDatePickerResult();
+      if (dateKey != null) {
+        handleSelectMapDate(dateKey);
+      }
+    }, [handleSelectMapDate]),
+  );
+
   return {
     tripDetectionConfig,
     insets,
@@ -1418,7 +1402,6 @@ export function useMapScreenController() {
     mapAttributionInsets,
     locateButtonBottom,
     placesButtonBottom,
-    calendarButtonBottom,
     historyButtonBottom,
     cameraButtonBottom,
     voiceButtonBottom,
@@ -1428,7 +1411,6 @@ export function useMapScreenController() {
     openCaptureActivity,
     handleCaptureCamera,
     handleCaptureNote,
-    openDayMomentsPreview,
     openCurrentVisitMomentsPreview,
     openSelectedEntryMomentsPreview,
     openMomentMapPinPreview,
@@ -1456,7 +1438,6 @@ export function useMapScreenController() {
     historyPanelY,
     historyPanelSlideDistance,
     handleHistoryPanelContentLayout,
-    historyDatePickerOpen,
     selectedDateKey,
     mapDateLabel,
     selectedHistoryIndex,
@@ -1466,9 +1447,6 @@ export function useMapScreenController() {
     showHistoryPanelContent,
     showHistoryMap,
     showDayJourney,
-    showDayMomentSummary,
-    dayMomentSummaryBottom,
-    dayMomentCounts,
     currentVisitMomentCounts,
     dayMomentMapPins,
     historyMomentMapPins,
@@ -1515,7 +1493,6 @@ export function useMapScreenController() {
     openSavedPlaces,
     goToCurrentLocation,
     openHistoryDatePicker,
-    closeHistoryDatePicker,
     handleSelectMapDate,
     handleHistoryDateKeyChange,
     handleToggleHistoryPanel,

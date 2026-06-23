@@ -31,6 +31,7 @@ export function MapScreenTopBar({controller}: MapScreenTopBarProps) {
     goToPrevDay,
     goToNextDay,
     goToToday,
+    openHistoryDatePicker,
   } = controller;
   const settingsTop = insets.top + MAP_SETTINGS_TOP_GAP;
   const showRestingDateNav = !viewingToday && !historyPanelChromeVisible;
@@ -42,6 +43,7 @@ export function MapScreenTopBar({controller}: MapScreenTopBarProps) {
           label={mapDateLabel}
           topInset={insets.top}
           showNavigation={false}
+          onPressLabel={openHistoryDatePicker}
         />
       ) : null}
       {showRestingDateNav ? (
@@ -55,6 +57,7 @@ export function MapScreenTopBar({controller}: MapScreenTopBarProps) {
           onPrev={goToPrevDay}
           onNext={goToNextDay}
           onClose={goToToday}
+          onPressLabel={openHistoryDatePicker}
         />
       ) : null}
       <Pressable

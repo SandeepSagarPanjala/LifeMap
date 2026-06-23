@@ -14,6 +14,7 @@ import {CaptureNoteScreen} from '@/screens/capture/CaptureNoteScreen';
 import {CapturePhotoScreen} from '@/screens/capture/CapturePhotoScreen';
 import {CaptureVoiceScreen} from '@/screens/capture/CaptureVoiceScreen';
 import {MapScreen} from '@/screens/MapScreen';
+import {HistoryDatePickerScreen} from '@/screens/map/HistoryDatePickerScreen';
 import {MomentPreviewScreen} from '@/screens/moments/MomentPreviewScreen';
 import {SavedPlacesScreen} from '@/screens/map/SavedPlacesScreen';
 import {SettingsScreen} from '@/screens/SettingsScreen';
@@ -100,6 +101,11 @@ export function RootNavigator() {
         <Stack.Screen
           name="CaptureActivity"
           component={CaptureActivityScreen}
+          options={sheetCaptureScreenOptions}
+        />
+        <Stack.Screen
+          name="HistoryDatePicker"
+          component={HistoryDatePickerScreen}
           options={sheetCaptureScreenOptions}
         />
         <Stack.Screen
