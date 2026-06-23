@@ -66,12 +66,27 @@ private struct LocationPointRow {
   let timestampMs: Int64
 }
 
+private let timestampMsThreshold: Int64 = 1_000_000_000_000
+
+/// JS/drizzle rows store unix seconds; native GPS inserts use milliseconds.
+private func timestampStorageToMs(_ stored: Int64) -> Int64 {
+  stored < timestampMsThreshold ? stored * 1000 : stored
+}
+
+private func timestampMsToStorage(_ ms: Int64) -> Int64 {
+  ms / 1000
+}
+
 private struct StayRow {
-  let startAtMs: Int64
-  let endAtMs: Int64
+  let startAtStored: Int64
+  let endAtStored: Int64
   let centroidLat: Double
   let centroidLng: Double
   let savedPlaceLabel: String?
+
+  var startAtMs: Int64 {
+    timestampStorageToMs(startAtStored)
+  }
 }
 
 enum WidgetSnapshotBuilder {
@@ -99,7 +114,7 @@ enum WidgetSnapshotBuilder {
     let savedPlaces = fetchSavedPlaces(db: db)
     let latestStay = fetchLatestStay(db: db, dateKey: dateKey)
     let hasTravelAfterLatestStay = latestStay.map {
-      hasTravelAfterStay(db: db, dateKey: dateKey, stayStartMs: $0.startAtMs)
+      hasTravelAfterStay(db: db, dateKey: dateKey, stayStartStored: $0.startAtStored)
     } ?? false
 
     if let point = lastPoint {
@@ -173,7 +188,7 @@ enum WidgetSnapshotBuilder {
     return LocationPointRow(
       lat: sqlite3_column_double(statement, 0),
       lng: sqlite3_column_double(statement, 1),
-      timestampMs: sqlite3_column_int64(statement, 2)
+      timestampMs: timestampStorageToMs(sqlite3_column_int64(statement, 2))
     )
   }
 
@@ -223,8 +238,8 @@ enum WidgetSnapshotBuilder {
       ? String(cString: sqlite3_column_text(statement, 4))
       : nil
     return StayRow(
-      startAtMs: sqlite3_column_int64(statement, 0),
-      endAtMs: sqlite3_column_int64(statement, 1),
+      startAtStored: sqlite3_column_int64(statement, 0),
+      endAtStored: sqlite3_column_int64(statement, 1),
       centroidLat: sqlite3_column_double(statement, 2),
       centroidLng: sqlite3_column_double(statement, 3),
       savedPlaceLabel: savedLabel
@@ -256,7 +271,7 @@ enum WidgetSnapshotBuilder {
   private static func hasTravelAfterStay(
     db: OpaquePointer,
     dateKey: String,
-    stayStartMs: Int64
+    stayStartStored: Int64
   ) -> Bool {
     let sql = """
       SELECT COUNT(*)
@@ -271,7 +286,7 @@ enum WidgetSnapshotBuilder {
     dateKey.withCString { pointer in
       sqlite3_bind_text(statement, 1, pointer, -1, unsafeBitCast(-1, to: sqlite3_destructor_type.self))
     }
-    sqlite3_bind_int64(statement, 2, stayStartMs)
+    sqlite3_bind_int64(statement, 2, stayStartStored)
     guard sqlite3_step(statement) == SQLITE_ROW else { return false }
     return sqlite3_column_int(statement, 0) > 0
   }
@@ -332,13 +347,13 @@ enum WidgetSnapshotBuilder {
       return nil
     }
     defer { sqlite3_finalize(statement) }
-    sqlite3_bind_int64(statement, 1, dayStartMs)
+    sqlite3_bind_int64(statement, 1, timestampMsToStorage(dayStartMs))
 
     while sqlite3_step(statement) == SQLITE_ROW {
       let point = LocationPointRow(
         lat: sqlite3_column_double(statement, 0),
         lng: sqlite3_column_double(statement, 1),
-        timestampMs: sqlite3_column_int64(statement, 2)
+        timestampMs: timestampStorageToMs(sqlite3_column_int64(statement, 2))
       )
       if isNear(point, lat: place.lat, lng: place.lng, radiusM: place.radiusMeters) {
         return point.timestampMs

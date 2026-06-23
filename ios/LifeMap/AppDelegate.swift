@@ -37,6 +37,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
   func applicationDidBecomeActive(_ application: UIApplication) {
     scheduleBackgroundWakeTask()
+    if WidgetRefreshRequestStore.consumeIfRequested() {
+      WidgetSnapshotSync.refreshAndReload()
+    }
+    LifeMapNativePersistLoop.shared.tickNow()
   }
 
   func applicationDidEnterBackground(_ application: UIApplication) {
