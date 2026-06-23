@@ -17,6 +17,8 @@ import {MapScreen} from '@/screens/MapScreen';
 import {HistoryDatePickerScreen} from '@/screens/map/HistoryDatePickerScreen';
 import {MomentPreviewScreen} from '@/screens/moments/MomentPreviewScreen';
 import {SavedPlacesScreen} from '@/screens/map/SavedPlacesScreen';
+import {RestoreBackupScreen} from '@/screens/backup/RestoreBackupScreen';
+import {RestoreBackupGate} from '@/components/backup/RestoreBackupGate';
 import {SettingsScreen} from '@/screens/SettingsScreen';
 import {useThemeColors} from '@/hooks/use-theme-colors';
 import {setWidgetNavigationRef} from '@/lib/widget/widget-deep-link';
@@ -66,6 +68,15 @@ export function RootNavigator() {
       theme={navigationTheme}>
       <Stack.Navigator>
         <Stack.Screen name="Map" component={MapScreen} options={{headerShown: false}} />
+        <Stack.Screen
+          name="RestoreBackup"
+          component={RestoreBackupScreen}
+          options={{
+            headerShown: false,
+            presentation: 'card',
+            gestureEnabled: false,
+          }}
+        />
         <Stack.Screen
           name="Settings"
           component={SettingsScreen}
@@ -123,6 +134,7 @@ export function RootNavigator() {
           }}
         />
       </Stack.Navigator>
+      <RestoreBackupGate />
     </NavigationContainer>
   );
 }

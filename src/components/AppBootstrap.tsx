@@ -11,6 +11,8 @@ import {ensureHistoryCalendarBounds} from '@/lib/history-calendar-bounds';
 import {preloadTodayHistory} from '@/lib/history-preload';
 import {sealYesterdayIfNeeded} from '@/lib/trip-materialization';
 import {warmCanonicalTravelGeometrySetting} from '@/lib/trip-geometry-settings';
+import {captureInstallCloudBackupSnapshot} from '@/lib/backup/backup-install-state';
+import {maybeRunScheduledBackup} from '@/lib/backup/backup-service';
 import {useAppStore} from '@/stores/app-store';
 
 type AppBootstrapProps = {
@@ -34,6 +36,8 @@ export function AppBootstrap({
     void ensureDatabaseReady().then(async () => {
       await warmCanonicalTravelGeometrySetting();
       await sealYesterdayIfNeeded();
+      await captureInstallCloudBackupSnapshot();
+      void maybeRunScheduledBackup().catch(() => undefined);
     });
   }, []);
 
@@ -77,6 +81,7 @@ export function AppBootstrap({
           void warmCanonicalTravelGeometrySetting().then(() =>
             sealYesterdayIfNeeded(),
           );
+          void maybeRunScheduledBackup().catch(() => undefined);
           void service.refreshPersistPipeline().catch(() => undefined);
         } else if (nextState === 'background') {
           void service.drainNativeQueue().catch(() => undefined);

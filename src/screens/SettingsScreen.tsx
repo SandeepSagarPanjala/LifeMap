@@ -3,6 +3,7 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 
 import {AppVersionFooter} from '@/components/settings/app-version-footer';
 import {AccentThemePicker} from '@/components/settings/accent-theme-picker';
+import {BackupSettings} from '@/components/settings/backup-settings';
 import {DevSettings} from '@/components/settings/dev-settings';
 import {ExportSettings} from '@/components/settings/export-settings';
 import {TripRebuildSettings} from '@/components/settings/trip-rebuild-settings';
@@ -28,8 +29,9 @@ export function SettingsScreen() {
           <TripRebuildSettings />
         </SettingsSection>
 
-        <SettingsSection title="Information" subtitle="Storage on this device.">
+        <SettingsSection title="Information" subtitle="Storage and cloud backup.">
           <StorageSettings />
+          <BackupSettings />
         </SettingsSection>
 
         <SettingsSection

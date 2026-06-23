@@ -1,8 +1,11 @@
 import {Pressable, View} from 'react-native';
-import {BookOpen, type LucideIcon} from 'lucide-react-native';
+import {useNavigation} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {BookOpen, CloudDownload, type LucideIcon} from 'lucide-react-native';
 
 import {Icon} from '@/components/ui/icon';
 import {Text} from '@/components/ui/text';
+import type {RootStackParamList} from '@/navigation/types';
 import {useThemeColors} from '@/hooks/use-theme-colors';
 import {useAppStore} from '@/stores/app-store';
 
@@ -49,6 +52,9 @@ function DevToggle({
 }
 
 export function DevSettings() {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const colors = useThemeColors();
   const devShowOnboarding = useAppStore(state => state.devShowOnboarding);
   const setDevShowOnboarding = useAppStore(state => state.setDevShowOnboarding);
 
@@ -65,6 +71,23 @@ export function DevSettings() {
         enabled={devShowOnboarding}
         onToggle={() => setDevShowOnboarding(!devShowOnboarding)}
       />
+      <Pressable
+        accessibilityRole="button"
+        onPress={() =>
+          navigation.navigate('RestoreBackup', {source: 'install', preview: true})
+        }
+        className="bg-card border-border rounded-2xl border p-4">
+        <View className="flex-row items-center gap-3">
+          <Icon as={CloudDownload} size={20} color={colors.primary} />
+          <View className="flex-1">
+            <Text className="font-medium">Preview restore screen</Text>
+            <Text variant="muted" className="mt-1">
+              Temporary dev shortcut to design the iCloud restore flow. Remove
+              before release.
+            </Text>
+          </View>
+        </View>
+      </Pressable>
     </View>
   );
 }
