@@ -21,8 +21,6 @@ export const MAP_HISTORY_EVENT_CARD_MOMENTS_EXTRA_HEIGHT = 44;
 export const MAP_HISTORY_ADDRESS_CARD_HEIGHT = 128;
 export const MAP_HISTORY_ADDRESS_CARD_GAP = 8;
 export const MAP_HISTORY_FLOATING_CONTROLS_GAP = 8;
-/** Gap between history panel top and past-day date navigation cluster. */
-export const MAP_HISTORY_DATE_NAV_GAP = 8;
 /** Gap between date navigation and the panel content below it. */
 export const MAP_HISTORY_DATE_NAV_ABOVE_PANEL_GAP = 8;
 export const MAP_STACK_BUTTON_SIZE = 44;
@@ -90,5 +88,5 @@ export function mapDateNavAnchorBottom(params: {
       insetBottom + panelTopFromBottom + MAP_HISTORY_DATE_NAV_ABOVE_PANEL_GAP
     );
   }
-  return insetBottom + MAP_LOCATE_BUTTON_BOTTOM_GAP + MAP_HISTORY_DATE_NAV_GAP;
+  return insetBottom + MAP_LOCATE_BUTTON_BOTTOM_GAP;
 }

@@ -123,7 +123,6 @@ import {
   MAP_SETTINGS_TOP_GAP,
   MAP_STACK_BUTTON_GAP,
   MAP_STACK_BUTTON_SIZE,
-  mapDateNavAnchorBottom,
   mapHistoryPanelContentHeight,
   mapStackButtonBottom,
   mapStackTotalHeight,
@@ -500,16 +499,16 @@ export function useMapScreenController() {
     () =>
       resolvedHistoryPanelContentHeight +
       MAP_HISTORY_DATE_NAV_ABOVE_PANEL_GAP +
-      historyPanelChromeHeight(viewingToday) +
+      historyPanelChromeHeight() +
       24,
-    [resolvedHistoryPanelContentHeight, viewingToday],
+    [resolvedHistoryPanelContentHeight],
   );
   const historyPanelSlideDistanceRef = useRef(historyPanelSlideDistance);
   historyPanelSlideDistanceRef.current = historyPanelSlideDistance;
 
   const historyPanelBottom =
     insets.bottom +
-    historyPanelChromeHeight(viewingToday) +
+    historyPanelChromeHeight() +
     MAP_HISTORY_DATE_NAV_ABOVE_PANEL_GAP +
     resolvedHistoryPanelContentHeight;
   const stackBaseBottom = historyPanelChromeVisible
@@ -528,22 +527,7 @@ export function useMapScreenController() {
   const noteButtonBottom = mapStackButtonBottom(stackBaseBottom, 2);
   const activityButtonBottom = mapStackButtonBottom(stackBaseBottom, 3);
 
-  const dateNavAnchorBottom = useMemo(
-    () =>
-      mapDateNavAnchorBottom({
-        insetBottom: insets.bottom,
-        historyPanelOpen: false,
-        historyAddressCardVisible: showPlaceLabelCard,
-        historyEventCardHasMoments,
-        historyPanelContentHeight: resolvedHistoryPanelContentHeight,
-      }),
-    [
-      insets.bottom,
-      showPlaceLabelCard,
-      historyEventCardHasMoments,
-      resolvedHistoryPanelContentHeight,
-    ],
-  );
+  const dateNavAnchorBottom = stackBaseBottom;
 
   const leftStackHeight = mapStackTotalHeight(
     MAP_LEFT_STACK_COUNT,

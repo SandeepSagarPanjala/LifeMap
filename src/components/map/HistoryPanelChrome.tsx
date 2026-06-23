@@ -1,8 +1,8 @@
 import {ChevronLeft, ChevronRight, X} from 'lucide-react-native';
-import {StyleSheet, Text, View} from 'react-native';
+import {Pressable, StyleSheet, Text, View} from 'react-native';
 
 import {MapCircleButton} from '@/components/map/MapCircleButton';
-import {useThemeColors} from '@/hooks/use-theme-colors';
+import {CAPTURE_BUTTON_THEMES} from '@/components/map/map-capture-button-theme';
 import {
   MAP_DATE_NAV_ROW_GAP,
   MAP_SETTINGS_SIZE,
@@ -10,6 +10,7 @@ import {
 } from '@/screens/map/map-screen-constants';
 
 const MAP_CLOSE_ICON_COLOR = '#E0352B';
+const HISTORY_NAV_ICON_COLOR = CAPTURE_BUTTON_THEMES.camera.icon;
 
 type HistoryPanelChromeProps = {
   viewingToday: boolean;
@@ -19,6 +20,7 @@ type HistoryPanelChromeProps = {
   onPrev?: () => void;
   onNext?: () => void;
   onClose: () => void;
+  onPressLabel?: () => void;
 };
 
 export function HistoryPanelChrome({
@@ -29,34 +31,18 @@ export function HistoryPanelChrome({
   onPrev,
   onNext,
   onClose,
+  onPressLabel,
 }: HistoryPanelChromeProps) {
-  const colors = useThemeColors();
-
-  if (viewingToday) {
-    return (
-      <View
-        pointerEvents="box-none"
-        accessibilityRole="toolbar"
-        accessibilityLabel="Close history"
-        style={styles.wrap}>
-        <MapCircleButton
-          accessibilityLabel="Close history"
-          variant="softRed"
-          onPress={onClose}>
-          <X size={20} color={MAP_CLOSE_ICON_COLOR} strokeWidth={2.5} />
-        </MapCircleButton>
-      </View>
-    );
-  }
-
   return (
     <View
       pointerEvents="box-none"
       accessibilityRole="toolbar"
-      accessibilityLabel={`Map showing ${label}`}
+      accessibilityLabel={
+        viewingToday ? 'History controls' : `Map showing ${label}`
+      }
       style={styles.wrap}>
       <MapCircleButton
-        accessibilityLabel="Return to today"
+        accessibilityLabel={viewingToday ? 'Close history' : 'Return to today'}
         variant="softRed"
         onPress={onClose}>
         <X size={20} color={MAP_CLOSE_ICON_COLOR} strokeWidth={2.5} />
@@ -66,28 +52,35 @@ export function HistoryPanelChrome({
         <MapCircleButton
           accessibilityLabel="Previous day"
           disabled={!canGoPrev}
+          variant="capture"
           onPress={() => onPrev?.()}>
           <ChevronLeft
             size={22}
-            color={colors.primary}
+            color={HISTORY_NAV_ICON_COLOR}
             strokeWidth={2.5}
             opacity={canGoPrev ? 1 : 0.35}
           />
         </MapCircleButton>
 
-        <View style={styles.pill}>
-          <Text style={styles.label} numberOfLines={1}>
-            {label}
-          </Text>
-        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Choose date"
+          onPress={onPressLabel}>
+          <View style={styles.pill}>
+            <Text style={styles.label} numberOfLines={1}>
+              {label}
+            </Text>
+          </View>
+        </Pressable>
 
         <MapCircleButton
           accessibilityLabel="Next day"
           disabled={!canGoNext}
+          variant="capture"
           onPress={() => onNext?.()}>
           <ChevronRight
             size={22}
-            color={colors.primary}
+            color={HISTORY_NAV_ICON_COLOR}
             strokeWidth={2.5}
             opacity={canGoNext ? 1 : 0.35}
           />
@@ -108,12 +101,11 @@ const styles = StyleSheet.create({
     marginTop: MAP_DATE_NAV_ROW_GAP,
   },
   pill: {
-    minHeight: MAP_STACK_BUTTON_SIZE,
+    height: MAP_STACK_BUTTON_SIZE,
     flexShrink: 0,
     backgroundColor: '#FFFFFF',
     borderRadius: MAP_STACK_BUTTON_SIZE / 2,
     paddingHorizontal: 16,
-    paddingVertical: 10,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: StyleSheet.hairlineWidth,
@@ -132,8 +124,6 @@ const styles = StyleSheet.create({
   },
 });
 
-export function historyPanelChromeHeight(viewingToday: boolean): number {
-  return viewingToday
-    ? MAP_SETTINGS_SIZE
-    : MAP_SETTINGS_SIZE + MAP_DATE_NAV_ROW_GAP + MAP_STACK_BUTTON_SIZE;
+export function historyPanelChromeHeight(): number {
+  return MAP_SETTINGS_SIZE + MAP_DATE_NAV_ROW_GAP + MAP_STACK_BUTTON_SIZE;
 }

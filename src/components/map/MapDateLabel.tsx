@@ -16,6 +16,8 @@ type MapDateLabelProps = {
   showNavigation?: boolean;
   /** When set, docks the navigation cluster above the history panel. */
   anchorBottom?: number;
+  /** Past-day resting map — red X returns to today. Hidden on today. */
+  showCloseButton?: boolean;
   canGoPrev?: boolean;
   canGoNext?: boolean;
   onPrev?: () => void;
@@ -31,6 +33,7 @@ export function MapDateLabel({
   topInset,
   showNavigation = false,
   anchorBottom,
+  showCloseButton = true,
   canGoPrev = false,
   canGoNext = false,
   onPrev,
@@ -79,14 +82,21 @@ export function MapDateLabel({
       accessibilityRole="toolbar"
       accessibilityLabel={`Map showing ${label}`}
       style={[styles.navWrap, positionStyle]}>
-      <MapCircleButton
-        accessibilityLabel="Return to today"
-        variant="softRed"
-        onPress={() => onClose?.()}>
-        <X size={20} color={MAP_CLOSE_ICON_COLOR} strokeWidth={2.5} />
-      </MapCircleButton>
+      {showCloseButton ? (
+        <MapCircleButton
+          accessibilityLabel="Return to today"
+          variant="softRed"
+          onPress={() => onClose?.()}>
+          <X size={20} color={MAP_CLOSE_ICON_COLOR} strokeWidth={2.5} />
+        </MapCircleButton>
+      ) : null}
 
-      <View style={styles.dateRow} pointerEvents="box-none">
+      <View
+        style={[
+          styles.dateRow,
+          !showCloseButton && styles.dateRowWithoutClose,
+        ]}
+        pointerEvents="box-none">
         <MapCircleButton
           accessibilityLabel="Previous day"
           disabled={!canGoPrev}
@@ -147,13 +157,15 @@ const styles = StyleSheet.create({
     gap: 12,
     marginTop: MAP_DATE_NAV_ROW_GAP,
   },
+  dateRowWithoutClose: {
+    marginTop: 0,
+  },
   pill: {
-    minHeight: MAP_STACK_BUTTON_SIZE,
+    height: MAP_STACK_BUTTON_SIZE,
     flexShrink: 0,
     backgroundColor: '#FFFFFF',
     borderRadius: MAP_STACK_BUTTON_SIZE / 2,
     paddingHorizontal: 16,
-    paddingVertical: 10,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: StyleSheet.hairlineWidth,

@@ -9,6 +9,7 @@ import {
 import {ChevronLeft, ChevronRight} from 'lucide-react-native';
 
 import type {DayTimelineEntry} from '@/lib/trip-detection';
+import {CAPTURE_BUTTON_THEMES} from '@/components/map/map-capture-button-theme';
 import {
   findNextPlayableTimelineIndex,
   findPrevPlayableTimelineIndex,
@@ -31,6 +32,7 @@ const TICK_BAND_HEIGHT = 12;
 const FALLBACK_BAR_WIDTH = 260;
 /** Selected segment rises slightly above the track. */
 const SELECTED_SEGMENT_LIFT = 4;
+const HISTORY_EVENT_NAV_THEME = CAPTURE_BUTTON_THEMES.camera;
 
 type HistoryTimelineBarProps = {
   dateKey: string;
@@ -120,7 +122,7 @@ export function HistoryTimelineBar({
           <View style={styles.eventNavCircle}>
             <ChevronLeft
               size={EVENT_NAV_ICON_SIZE}
-              color={HISTORY_COLORS.playhead}
+              color={HISTORY_EVENT_NAV_THEME.icon}
               strokeWidth={2.5}
             />
           </View>
@@ -223,7 +225,7 @@ export function HistoryTimelineBar({
           <View style={styles.eventNavCircle}>
             <ChevronRight
               size={EVENT_NAV_ICON_SIZE}
-              color={HISTORY_COLORS.playhead}
+              color={HISTORY_EVENT_NAV_THEME.icon}
               strokeWidth={2.5}
             />
           </View>
@@ -252,16 +254,14 @@ const styles = StyleSheet.create({
     width: EVENT_NAV_CIRCLE_SIZE,
     height: EVENT_NAV_CIRCLE_SIZE,
     borderRadius: EVENT_NAV_CIRCLE_SIZE / 2,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: HISTORY_EVENT_NAV_THEME.badgeBg,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: HISTORY_COLORS.trackEdge,
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 1},
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.08,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 2,
   },
   eventNavBtnDisabled: {
     opacity: 0.35,

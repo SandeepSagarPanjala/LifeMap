@@ -8,16 +8,19 @@ import {
 } from 'react-native';
 
 import {MAP_STACK_BUTTON_SIZE} from '@/screens/map/map-screen-constants';
+import {CAPTURE_BUTTON_THEMES} from '@/components/map/map-capture-button-theme';
 
 const MAP_SOFT_RED_CLOSE_BG = '#FFE8E6';
 const MAP_SOFT_RED_CLOSE_PRESSED = '#FFD4CF';
+const CAPTURE_THEME = CAPTURE_BUTTON_THEMES.camera;
+const CAPTURE_PRESSED_BG = '#E3EEFC';
 
 type MapCircleButtonProps = {
   accessibilityLabel: string;
   onPress: () => void;
   disabled?: boolean;
   size?: number;
-  variant?: 'white' | 'softRed';
+  variant?: 'white' | 'softRed' | 'capture';
   style?: StyleProp<ViewStyle>;
   children: ReactNode;
 };
@@ -32,6 +35,7 @@ export function MapCircleButton({
   children,
 }: MapCircleButtonProps) {
   const isSoftRed = variant === 'softRed';
+  const isCapture = variant === 'capture';
 
   return (
     <Pressable
@@ -44,6 +48,7 @@ export function MapCircleButton({
         <View
           style={[
             styles.circle,
+            isCapture && styles.captureCircle,
             {
               width: size,
               height: size,
@@ -52,10 +57,18 @@ export function MapCircleButton({
                 ? pressed
                   ? MAP_SOFT_RED_CLOSE_PRESSED
                   : MAP_SOFT_RED_CLOSE_BG
-                : pressed
-                  ? '#F2F2F7'
-                  : '#FFFFFF',
-              borderColor: isSoftRed ? '#FFCCC7' : '#E5E5EA',
+                : isCapture
+                  ? pressed
+                    ? CAPTURE_PRESSED_BG
+                    : CAPTURE_THEME.badgeBg
+                  : pressed
+                    ? '#F2F2F7'
+                    : '#FFFFFF',
+              borderColor: isSoftRed
+                ? '#FFCCC7'
+                : isCapture
+                  ? CAPTURE_THEME.badgeBg
+                  : '#E5E5EA',
               opacity: disabled ? 0.5 : 1,
             },
             style,
@@ -77,5 +90,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 6,
     elevation: 4,
+  },
+  captureCircle: {
+    borderWidth: 0,
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
 });
