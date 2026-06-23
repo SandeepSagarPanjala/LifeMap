@@ -145,7 +145,11 @@ export function HistoryEventCard({
     <View style={[styles.card, isGap && styles.cardGap]}>
       {showMomentCounts ? (
         <View style={styles.momentSection}>
-          <MomentCountsRow counts={momentCounts!} onPressType={onPressMomentType} />
+          <MomentCountsRow
+            counts={momentCounts!}
+            onPressType={onPressMomentType}
+            layout="stacked"
+          />
           <View style={styles.momentDivider} />
         </View>
       ) : null}

@@ -41,6 +41,16 @@ export function hasMomentCounts(counts: MomentCounts): boolean {
   );
 }
 
+export function countMomentTypes(counts: MomentCounts): number {
+  let total = 0;
+  if (counts.photo > 0) total += 1;
+  if (counts.video > 0) total += 1;
+  if (counts.voice > 0) total += 1;
+  if (counts.note > 0) total += 1;
+  if (counts.activity > 0) total += 1;
+  return total;
+}
+
 export type MomentCountType = keyof MomentCounts;
 
 export function firstMomentIndexOfType(

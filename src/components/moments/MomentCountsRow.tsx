@@ -14,6 +14,8 @@ type MomentCountsRowProps = {
   counts: MomentCounts;
   iconSize?: number;
   compact?: boolean;
+  /** Tighter stacked chips for small map cluster bubbles. */
+  dense?: boolean;
   layout?: MomentCountsRowLayout;
   onPress?: () => void;
   onPressType?: (type: MomentCountType) => void;
@@ -65,6 +67,7 @@ type MomentCountChipProps = {
   theme: (typeof CAPTURE_BUTTON_THEMES)['camera'];
   iconSize: number;
   compact: boolean;
+  dense: boolean;
   layout: MomentCountsRowLayout;
   onPress?: () => void;
   accessibilityLabel: string;
@@ -76,17 +79,30 @@ function MomentCountChip({
   theme,
   iconSize,
   compact,
+  dense,
   layout,
   onPress,
   accessibilityLabel,
 }: MomentCountChipProps) {
   const stacked = layout === 'stacked';
   const chip = stacked ? (
-    <View style={styles.chipStacked}>
-      <View style={[styles.iconOrb, styles.iconOrbStacked, {backgroundColor: theme.badgeBg}]}>
-        <Icon size={iconSize - 2} color={theme.icon} strokeWidth={2.25} />
+    <View style={[styles.chipStacked, dense ? styles.chipStackedDense : null]}>
+      <View
+        style={[
+          styles.iconOrb,
+          styles.iconOrbStacked,
+          dense ? styles.iconOrbStackedDense : null,
+          {backgroundColor: theme.badgeBg},
+        ]}>
+        <Icon
+          size={dense ? iconSize - 4 : iconSize - 2}
+          color={theme.icon}
+          strokeWidth={2.25}
+        />
       </View>
-      <Text style={styles.countStacked}>{count}</Text>
+      <Text style={[styles.countStacked, dense ? styles.countStackedDense : null]}>
+        {count}
+      </Text>
     </View>
   ) : (
     <View style={[styles.chip, compact ? styles.chipCompact : null]}>
@@ -117,7 +133,8 @@ export function MomentCountsRow({
   counts,
   iconSize = CAPTURE_ICON_SIZE - 2,
   compact = false,
-  layout = 'inline',
+  dense = false,
+  layout = 'stacked',
   onPress,
   onPressType,
 }: MomentCountsRowProps) {
@@ -126,7 +143,13 @@ export function MomentCountsRow({
   }
 
   const row = (
-    <View style={[styles.row, layout === 'stacked' ? styles.rowStacked : null]}>
+    <View
+      style={[
+        styles.row,
+        layout === 'stacked'
+          ? [styles.rowStacked, dense ? styles.rowStackedDense : null]
+          : null,
+      ]}>
       {CHIP_DEFINITIONS.map(definition => {
         const count = counts[definition.type];
         if (count <= 0) {
@@ -141,6 +164,7 @@ export function MomentCountsRow({
             theme={definition.theme}
             iconSize={iconSize}
             compact={compact}
+            dense={dense}
             layout={layout}
             onPress={onPressType ? () => onPressType(definition.type) : undefined}
             accessibilityLabel={definition.accessibilityLabel}
@@ -178,9 +202,11 @@ const styles = StyleSheet.create({
   },
   rowStacked: {
     justifyContent: 'center',
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
     gap: 10,
-    rowGap: 8,
+  },
+  rowStackedDense: {
+    gap: 6,
   },
   chip: {
     flexDirection: 'row',
@@ -195,6 +221,9 @@ const styles = StyleSheet.create({
     gap: 3,
     minWidth: 30,
   },
+  chipStackedDense: {
+    gap: 2,
+  },
   iconOrb: {
     width: 28,
     height: 28,
@@ -206,6 +235,11 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
+  },
+  iconOrbStackedDense: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
   },
   count: {
     fontSize: 15,
@@ -221,6 +255,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1C1C1E',
     textAlign: 'center',
+  },
+  countStackedDense: {
+    fontSize: 10,
   },
   pressed: {
     opacity: 0.72,
