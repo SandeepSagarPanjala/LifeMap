@@ -4,8 +4,15 @@ import WidgetKit
 
 @main
 struct LifeMapWidgetBundle: WidgetBundle {
+  @WidgetBundleBuilder
   var body: some Widget {
     LifeMapTodayWidget()
+    if #available(iOS 18.0, *) {
+      DiaryMomentControl()
+      VoiceMomentControl()
+      ActivityMomentControl()
+      PhotoMomentControl()
+    }
   }
 }
 

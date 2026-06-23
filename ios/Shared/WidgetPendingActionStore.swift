@@ -45,6 +45,10 @@ enum WidgetPendingActionStore {
         return .note
       case "/photo":
         return .photo
+      case "/voice":
+        return .voice
+      case "/activity":
+        return .activity
       default:
         return nil
       }
