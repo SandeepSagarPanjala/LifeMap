@@ -1,4 +1,5 @@
 import {
+  getCurrentOpenActivity,
   getCurrentOpenVisit,
   getHistoryLookaheadEnd,
   prepareDayHistoryTimeline,
@@ -96,6 +97,28 @@ describe('prepareTodayHistoryTimeline', () => {
         new Date('2026-06-04T04:59:59.999Z').getTime(),
       );
     }
+  });
+
+  it('getCurrentOpenActivity returns open drive without GPS gate', () => {
+    const driveStart = new Date('2026-06-04T07:00:00.000Z');
+    const entries = [
+      {
+        id: 'drive-1',
+        kind: 'travel' as const,
+        points: [row('2026-06-04T07:00:00.000Z', 1)],
+        startAt: driveStart,
+        endAt: now,
+        durationMs: now.getTime() - driveStart.getTime(),
+        distanceKm: 5,
+        openThroughNow: true,
+      },
+    ];
+    const activity = getCurrentOpenActivity(entries, {
+      userCoordinate: {latitude: 33.3, longitude: -97.2},
+      config,
+    });
+    expect(activity?.kind).toBe('travel');
+    expect(activity?.openThroughNow).toBe(true);
   });
 
   it('getCurrentOpenVisit returns open stay when user is still on site', () => {

@@ -94,6 +94,36 @@ export type StayVisitLabel = {
   statusLine?: string;
 };
 
+export type DriveVisitLabel = {
+  title: string;
+  subtitle: string;
+  statusLine?: string;
+};
+
+export function formatDriveVisitLabel(
+  startAt: Date,
+  endAt: Date,
+  durationMs: number,
+  options?: {openThroughNow?: boolean; now?: Date},
+): DriveVisitLabel {
+  const now = options?.now ?? new Date();
+  const ongoing = isVisitOngoing(endAt, now, {
+    openThroughNow: options?.openThroughNow,
+  });
+  const effectiveDurationMs = ongoing
+    ? Math.max(0, now.getTime() - startAt.getTime())
+    : durationMs;
+  return {
+    title: formatVisitTimeRange(
+      startAt,
+      endAt,
+      ongoing ? {now} : undefined,
+    ),
+    subtitle: formatTripDuration(effectiveDurationMs),
+    statusLine: ongoing ? 'Driving' : undefined,
+  };
+}
+
 export function formatStayVisitLabel(
   startAt: Date,
   endAt: Date,

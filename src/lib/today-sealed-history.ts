@@ -85,11 +85,11 @@ function firstPlayable(
 export function trimSealedAtBoundary(
   sealed: readonly DayTimelineEntry[],
   liveTail: readonly DayTimelineEntry[],
-): DayTimelineEntry[] {
+): {trimmed: DayTimelineEntry[]; continuedFrom: DetectedTrip | null} {
   const firstTail = firstPlayable(liveTail);
   const lastSealed = lastPlayable(sealed);
   if (firstTail == null || lastSealed == null) {
-    return [...sealed];
+    return {trimmed: [...sealed], continuedFrom: null};
   }
 
   const gapMs = firstTail.startAt.getTime() - lastSealed.endAt.getTime();
@@ -97,7 +97,7 @@ export function trimSealedAtBoundary(
     lastSealed.kind !== firstTail.kind ||
     gapMs > BOUNDARY_CONTIGUOUS_MS
   ) {
-    return [...sealed];
+    return {trimmed: [...sealed], continuedFrom: null};
   }
 
   const trimmed: DayTimelineEntry[] = [];
@@ -116,7 +116,30 @@ export function trimSealedAtBoundary(
     }
     trimmed.unshift(entry);
   }
-  return trimmed;
+  return {trimmed, continuedFrom: lastSealed};
+}
+
+/** Keep the original start when tail detection continues a sealed segment. */
+export function stitchContinuedSegmentStartAt(
+  sealed: DetectedTrip,
+  tail: DetectedTrip,
+): DetectedTrip {
+  if (sealed.kind !== tail.kind) {
+    return tail;
+  }
+  const startAt =
+    sealed.startAt.getTime() < tail.startAt.getTime()
+      ? sealed.startAt
+      : tail.startAt;
+  const endAt =
+    tail.endAt.getTime() > sealed.endAt.getTime() ? tail.endAt : sealed.endAt;
+  return {
+    ...tail,
+    startAt,
+    endAt,
+    durationMs: differenceInMilliseconds(endAt, startAt),
+    openThroughNow: tail.openThroughNow ?? sealed.openThroughNow,
+  };
 }
 
 function makeGap(startAt: Date, endAt: Date, index: number): DayTimelineEntry {
@@ -137,7 +160,10 @@ export function mergeSealedAndLiveTimeline(
   sealedThrough: number,
 ): DayTimelineEntry[] {
   const tail = filterLiveTailEntries(live, sealedThrough);
-  const trimmedSealed = trimSealedAtBoundary(sealed, tail);
+  const {trimmed: trimmedSealed, continuedFrom} = trimSealedAtBoundary(
+    sealed,
+    tail,
+  );
   if (tail.length === 0) {
     return [...trimmedSealed];
   }
@@ -159,6 +185,24 @@ export function mergeSealedAndLiveTimeline(
   if (tail[0]?.kind === 'gap' && merged[merged.length - 1]?.kind === 'gap') {
     tailStartIndex = 1;
   }
-  merged.push(...tail.slice(tailStartIndex));
+  let tailSlice = tail.slice(tailStartIndex);
+  if (continuedFrom != null) {
+    const stitched: DayTimelineEntry[] = [];
+    let stitchedFirst = false;
+    for (const entry of tailSlice) {
+      if (
+        !stitchedFirst &&
+        isPlayableTimelineEntry(entry) &&
+        continuedFrom.kind === entry.kind
+      ) {
+        stitched.push(stitchContinuedSegmentStartAt(continuedFrom, entry));
+        stitchedFirst = true;
+        continue;
+      }
+      stitched.push(entry);
+    }
+    tailSlice = stitched;
+  }
+  merged.push(...tailSlice);
   return merged;
 }

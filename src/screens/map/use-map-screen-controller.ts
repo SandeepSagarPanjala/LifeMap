@@ -90,7 +90,7 @@ import {
   SavedPlaceLimitError,
   savedPlaceDisplayLabel,
 } from '@/lib/saved-places';
-import {getCurrentOpenVisit} from '@/lib/today-history';
+import {getCurrentOpenActivity} from '@/lib/today-history';
 import {
   isPlayableTimelineEntry,
   firstPlayableTimelineIndex,
@@ -239,13 +239,14 @@ export function useMapScreenController() {
 
   const playback = useTripPlayback();
 
-  const historyDayLoaded =
-    historyData.dateKey === selectedDateKey &&
-    (!historyLoading || (viewingToday && historyHasGpsData));
   const historyHasGpsData =
     historyData.entries.length > 0 || historyData.points.length > 0;
+  const historyDayLoaded =
+    historyData.dateKey === selectedDateKey &&
+    (!historyLoading || viewingToday || historyHasGpsData);
   const historyReadyForDay = historyDayLoaded && historyHasGpsData;
-  const historyBlockingLoader = historyLoading && !historyDayLoaded;
+  const historyBlockingLoader =
+    historyLoading && !historyDayLoaded && !viewingToday;
 
   const historyBadgeCount = useMemo(
     () => countHistoryTimelineEvents(historyEntries),
@@ -332,10 +333,10 @@ export function useMapScreenController() {
   const showHistoryPanelContent =
     historyPanelChromeVisible && historyDayLoaded;
 
-  const currentOpenVisit = useMemo(
+  const currentOpenActivity = useMemo(
     () =>
       viewingToday && !historyPanelOpen
-        ? getCurrentOpenVisit(historyEntries, {
+        ? getCurrentOpenActivity(historyEntries, {
             userCoordinate,
             config: tripDetectionConfig,
           })
@@ -349,12 +350,41 @@ export function useMapScreenController() {
     ],
   );
 
+  const currentOpenVisit = useMemo(
+    () => (currentOpenActivity?.kind === 'stay' ? currentOpenActivity : null),
+    [currentOpenActivity],
+  );
+
+  const currentOpenDrive = useMemo(
+    () => (currentOpenActivity?.kind === 'travel' ? currentOpenActivity : null),
+    [currentOpenActivity],
+  );
+
   const currentOpenVisitSavedPlace = useMemo(
     () =>
       currentOpenVisit != null
         ? matchSavedPlaceForStay(currentOpenVisit, savedPlaces)
         : null,
     [currentOpenVisit, savedPlaces],
+  );
+
+  const currentOpenDriveAdjacentStays = useMemo(() => {
+    if (currentOpenDrive == null) {
+      return {previousStay: null, nextStay: null};
+    }
+    const index = historyEntries.findIndex(
+      entry => entry.id === currentOpenDrive.id,
+    );
+    if (index < 0) {
+      return {previousStay: null, nextStay: null};
+    }
+    return adjacentStaysForTravelIndex(historyEntries, index);
+  }, [currentOpenDrive, historyEntries]);
+
+  const currentOpenDriveEndpointLabels = useDriveEndpointLabels(
+    currentOpenDriveAdjacentStays.previousStay,
+    currentOpenDriveAdjacentStays.nextStay,
+    savedPlaces,
   );
 
   const selectedSavedPlace = useMemo(
@@ -1478,7 +1508,9 @@ export function useMapScreenController() {
     selectedEntryMomentCounts,
     showUserLocation,
     currentOpenVisit,
+    currentOpenDrive,
     currentOpenVisitSavedPlace,
+    currentOpenDriveEndpointLabels,
     selectedSavedPlace,
     selectedDriveEndpointLabels,
     selectedVisitPlaceDisplay,

@@ -53,7 +53,10 @@ export function areMapScreenMapPropsEqual(
     previous.dayTravels === next.dayTravels &&
     previous.tripDetectionConfig === next.tripDetectionConfig &&
     previous.currentOpenVisit === next.currentOpenVisit &&
+    previous.currentOpenDrive === next.currentOpenDrive &&
     previous.currentOpenVisitSavedPlace === next.currentOpenVisitSavedPlace &&
+    previous.currentOpenDriveEndpointLabels ===
+      next.currentOpenDriveEndpointLabels &&
     previous.currentOpenVisitPlaceDisplay ===
       next.currentOpenVisitPlaceDisplay &&
     previous.currentVisitMomentCounts === next.currentVisitMomentCounts &&

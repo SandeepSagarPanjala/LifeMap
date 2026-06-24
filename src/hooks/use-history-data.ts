@@ -14,7 +14,7 @@ import {
 import {useTripDetectionConfig} from '@/hooks/use-trip-detection-config';
 import {getDayRange, getTodayDateKey} from '@/lib/day-utils';
 import {subscribeTodayHistoryRefresh} from '@/lib/today-refresh-scheduler';
-import {scheduleSyncTodayTrips} from '@/lib/today-sync';
+import {scheduleTodayRepair} from '@/lib/today-sync';
 
 export type {HistoryData} from '@/lib/history-data-types';
 
@@ -63,7 +63,7 @@ async function syncHistoryForDay(
     peeked.dateKey === dateKey &&
     peeked.entries.length > 0
   ) {
-    scheduleSyncTodayTrips(detectionConfig);
+    scheduleTodayRepair(detectionConfig);
     return peeked;
   }
 
@@ -131,7 +131,8 @@ export function useHistoryForDay(
         cached != null &&
         cached.dateKey === targetDateKey &&
         cached.entries.length > 0;
-      if (syncOptions?.showLoading !== false && !hasTodaySnapshot) {
+      const isToday = targetDateKey === getTodayDateKey();
+      if (syncOptions?.showLoading !== false && !hasTodaySnapshot && !isToday) {
         setLoading(true);
       }
       setError(null);
@@ -211,7 +212,7 @@ export function useHistoryForDay(
         return;
       }
     } else {
-      setLoading(true);
+      setLoading(viewingToday ? false : true);
     }
 
     const debounceMs =

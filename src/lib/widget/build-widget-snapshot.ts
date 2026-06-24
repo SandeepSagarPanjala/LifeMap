@@ -2,8 +2,8 @@ import {listSavedPlaces} from '@/db/repositories/saved-places';
 import {toDateKey} from '@/lib/day-utils';
 import {formatMapDateLabel} from '@/lib/history-timeline';
 import {loadHistoryForDayCoalesced} from '@/lib/history-day-load';
-import {getCurrentOpenVisit} from '@/lib/today-history';
-import {formatHereForDuration, isVisitOngoing} from '@/lib/trip-format';
+import {getCurrentOpenActivity} from '@/lib/today-history';
+import {formatHereForDuration, formatTripDuration, isVisitOngoing} from '@/lib/trip-format';
 import {getCurrentTripDetectionConfig} from '@/lib/trip-detection-config';
 import {loadVisitPlaceDisplayForStay} from '@/lib/visit-place-label';
 import {matchSavedPlaceForStay, savedPlaceDisplayLabel} from '@/lib/saved-places';
@@ -47,14 +47,14 @@ export async function buildWidgetSnapshot(now: Date = new Date()): Promise<Widge
       ? {latitude: lastPoint.lat, longitude: lastPoint.lng}
       : null;
 
-  const openVisit = getCurrentOpenVisit(history.entries, {
+  const openActivity = getCurrentOpenActivity(history.entries, {
     userCoordinate,
     config: detectionConfig,
   });
 
   const dateLabel = formatMapDateLabel(todayKey, todayKey, now);
 
-  if (openVisit == null) {
+  if (openActivity == null) {
     return {
       updatedAt: now.toISOString(),
       placeLabel: 'On the move',
@@ -64,6 +64,20 @@ export async function buildWidgetSnapshot(now: Date = new Date()): Promise<Widge
       isOngoing: false,
     };
   }
+
+  if (openActivity.kind === 'travel') {
+    const durationMs = Math.max(0, now.getTime() - openActivity.startAt.getTime());
+    return {
+      updatedAt: now.toISOString(),
+      placeLabel: 'Driving',
+      placeKind: 'none',
+      durationLabel: formatTripDuration(durationMs),
+      dateLabel,
+      isOngoing: true,
+    };
+  }
+
+  const openVisit = openActivity;
 
   const savedPlace = matchSavedPlaceForStay(openVisit, savedPlaces);
   const visitDisplay = savedPlace

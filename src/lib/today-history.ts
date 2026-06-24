@@ -43,6 +43,15 @@ function lastStayIndex(entries: DayTimelineEntry[]): number {
   return -1;
 }
 
+function lastPlayableIndex(entries: readonly DayTimelineEntry[]): number {
+  for (let index = entries.length - 1; index >= 0; index -= 1) {
+    if (entries[index]!.kind === 'stay' || entries[index]!.kind === 'travel') {
+      return index;
+    }
+  }
+  return -1;
+}
+
 /** True when no playable segment follows — drives after a stay keep it closed. */
 function isTrailingPlayableEntry(
   index: number,
@@ -75,6 +84,13 @@ function adjustStay(
   updates: Partial<Pick<DetectedTrip, 'startAt' | 'endAt' | 'durationMs' | 'openThroughNow'>>,
 ): DetectedTrip {
   return {...stay, ...updates};
+}
+
+function adjustTravel(
+  travel: DetectedTrip,
+  updates: Partial<Pick<DetectedTrip, 'startAt' | 'endAt' | 'durationMs' | 'openThroughNow'>>,
+): DetectedTrip {
+  return {...travel, ...updates};
 }
 
 function clipTimelineEntryToDay(
@@ -341,21 +357,34 @@ export function prepareDayHistoryTimeline(
   );
   const firstStayIdx = filtered.findIndex(e => e.kind === 'stay');
   const lastStayIdx = lastStayIndex(filtered);
+  const lastPlayableIdx = lastPlayableIndex(filtered);
   const driveCrossesMidnight = hasTravelCrossingDayStart(raw, dayStart);
 
   return filtered.map((entry, index) => {
     if (entry.kind === 'travel') {
-      if (!forDisplay) {
-        return entry;
+      let travel = entry;
+      if (forDisplay) {
+        travel = attachCrossDayTravelDisplay(
+          travel,
+          raw,
+          config,
+          dayStart,
+          rangeEnd,
+          savedPlaces,
+        );
       }
-      return attachCrossDayTravelDisplay(
-        entry,
-        raw,
-        config,
-        dayStart,
-        rangeEnd,
-        savedPlaces,
-      );
+      const isOpenTravel =
+        isToday &&
+        index === lastPlayableIdx &&
+        isTrailingPlayableEntry(index, filtered);
+      if (isOpenTravel) {
+        travel = adjustTravel(travel, {
+          endAt: rangeEnd,
+          durationMs: differenceInMilliseconds(rangeEnd, travel.startAt),
+          openThroughNow: true,
+        });
+      }
+      return travel;
     }
 
     if (entry.kind !== 'stay') {
@@ -445,8 +474,8 @@ export function getTodayHistoryLookbackStart(dayStart: Date): Date {
   return getHistoryLookbackStart(dayStart);
 }
 
-/** Open visit on today's map — last stay still in progress. */
-export function getCurrentOpenVisit(
+/** Last open stay or drive on today's map. */
+export function getCurrentOpenActivity(
   entries: DayTimelineEntry[],
   options?: {
     userCoordinate?: {latitude: number; longitude: number} | null;
@@ -458,8 +487,15 @@ export function getCurrentOpenVisit(
   }
 
   const last = entries[entries.length - 1];
-  if (last.kind !== 'stay' || !last.openThroughNow) {
+  if (
+    (last.kind !== 'stay' && last.kind !== 'travel') ||
+    !last.openThroughNow
+  ) {
     return null;
+  }
+
+  if (last.kind === 'travel') {
+    return last;
   }
 
   const {userCoordinate, config} = options ?? {};
@@ -476,4 +512,16 @@ export function getCurrentOpenVisit(
   }
 
   return last;
+}
+
+/** Open visit on today's map — last stay still in progress. */
+export function getCurrentOpenVisit(
+  entries: DayTimelineEntry[],
+  options?: {
+    userCoordinate?: {latitude: number; longitude: number} | null;
+    config?: TripDetectionConfig;
+  },
+): DetectedTrip | null {
+  const activity = getCurrentOpenActivity(entries, options);
+  return activity?.kind === 'stay' ? activity : null;
 }

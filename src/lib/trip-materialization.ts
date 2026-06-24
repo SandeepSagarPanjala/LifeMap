@@ -59,7 +59,7 @@ import {
   sealedThroughMs,
 } from '@/lib/today-sealed-history';
 import { getSealableTodayEntries } from '@/lib/today-seal-policy';
-import { syncTodayTrips } from '@/lib/today-sync';
+import {syncTodayDisplay, syncTodayTrips} from '@/lib/today-sync';
 import {
   isPlayableTimelineEntry,
   stayTripCentroid,
@@ -460,9 +460,8 @@ export async function loadHistoryForSelectedDay(
   const referenceNow = new Date();
 
   if (isToday) {
-    return syncTodayTrips(detectionConfig, referenceNow, {
-      force: options?.force,
-      displayOnly: !options?.force,
+    return syncTodayDisplay(detectionConfig, referenceNow, {
+      skipRepair: options?.preferStored,
       onPartial: options?.onPartial,
     });
   }

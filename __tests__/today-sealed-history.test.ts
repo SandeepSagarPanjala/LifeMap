@@ -118,10 +118,14 @@ describe('mergeSealedAndLiveTimeline', () => {
     const live = [stay('home', 1_000, 12_000, true)];
     const tail = filterLiveTailEntries(live, 5_000);
     const trimmed = trimSealedAtBoundary(sealed, tail);
-    expect(trimmed).toHaveLength(0);
+    expect(trimmed.trimmed).toHaveLength(0);
+    expect(trimmed.continuedFrom?.id).toBe('home');
     const merged = mergeSealedAndLiveTimeline(sealed, live, 5_000);
     expect(merged).toHaveLength(1);
     expect(merged[0]?.kind).toBe('stay');
+    if (merged[0]?.kind === 'stay') {
+      expect(merged[0].startAt.getTime()).toBe(1_000);
+    }
   });
 
   it('keeps a return drive that starts before the sealed boundary', () => {

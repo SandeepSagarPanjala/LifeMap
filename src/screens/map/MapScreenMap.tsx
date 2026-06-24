@@ -2,6 +2,7 @@ import {memo} from 'react';
 import {StyleSheet} from 'react-native';
 import MapView from 'react-native-maps';
 
+import {DriveActivityCallout} from '@/components/map/DriveActivityCallout';
 import {DayJourneyOverlay} from '@/components/map/DayJourneyOverlay';
 import {HistoryDayMapOverlay} from '@/components/map/HistoryDayMapOverlay';
 import {MomentMapOverlay} from '@/components/map/MomentMapOverlay';
@@ -37,7 +38,9 @@ export const MapScreenMap = memo(function MapScreenMap({
     dayTravels,
     tripDetectionConfig,
     currentOpenVisit,
+    currentOpenDrive,
     currentOpenVisitSavedPlace,
+    currentOpenDriveEndpointLabels,
     currentOpenVisitPlaceDisplay,
     currentVisitMomentCounts,
     openCurrentVisitMomentsPreview,
@@ -85,7 +88,9 @@ export const MapScreenMap = memo(function MapScreenMap({
               selectedDriveEndpointLabels.end.savedPlace?.id ??
               selectedDriveEndpointLabels.start.savedPlace?.id ??
               null)
-            : (currentOpenVisitSavedPlace?.id ?? null)
+            : (currentOpenVisitSavedPlace?.id ??
+              currentOpenDriveEndpointLabels.start.savedPlace?.id ??
+              null)
         }
       />
       {showDayJourney ? (
@@ -119,6 +124,13 @@ export const MapScreenMap = memo(function MapScreenMap({
               anchorCoordinate={userCoordinate}
               momentCounts={currentVisitMomentCounts}
               onPressMomentType={openCurrentVisitMomentsPreview}
+            />
+          ) : currentOpenDrive ? (
+            <DriveActivityCallout
+              trip={currentOpenDrive}
+              startLabel={currentOpenDriveEndpointLabels.start}
+              endLabel={currentOpenDriveEndpointLabels.end}
+              anchorCoordinate={userCoordinate}
             />
           ) : null}
         </>

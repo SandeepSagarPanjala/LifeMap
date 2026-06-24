@@ -15,7 +15,6 @@ import {
 } from '@/db/repositories/trips';
 import {getDayRange, getTodayDateKey} from '@/lib/day-utils';
 import type {HistoryData} from '@/lib/history-data-types';
-import {getDayHistoryFingerprint} from '@/lib/history-fingerprint';
 import {getSealableTodayEntries} from '@/lib/today-seal-policy';
 import {
   buildTodayDisplayHistory,
@@ -78,8 +77,10 @@ async function sealNeedsPersist(
 
 export type SyncTodayTripsOptions = {
   force?: boolean;
-  /** When true (default), return stored trips immediately and refresh in background. */
+  /** @deprecated Display path always runs tail merge; repair is scheduled separately. */
   displayOnly?: boolean;
+  /** Skip silent full-day DB repair (e.g. foreground tail refresh). */
+  skipRepair?: boolean;
   onPartial?: (data: HistoryData) => void;
 };
 
@@ -384,19 +385,18 @@ async function refreshTodayTripsIncremental(
 }
 
 /**
- * Today sync: show trips immediately, then incrementally extend or tail-merge.
- * Tier 0 — read trips. Tier 1 — extend open stay. Tier 1.5 — tail detect. Tier 2 — full day.
+ * Today display sync: DB map instantly, tail merge for live card/map, optional repair.
  */
-export async function syncTodayTrips(
+export async function syncTodayDisplay(
   detectionConfig: TripDetectionConfig,
   referenceNow: Date = new Date(),
   options: SyncTodayTripsOptions = {},
 ): Promise<HistoryData> {
-  const displayOnly = options.displayOnly !== false && !options.force;
   const dateKey = getTodayDateKey();
   const tripRows = await listTripsForDay(dateKey);
   const hasStoredTrips = tripRows.length > 0;
 
+  let result: HistoryData;
   if (hasStoredTrips) {
     const stored = await loadTodayFromTrips(
       dateKey,
@@ -406,72 +406,88 @@ export async function syncTodayTrips(
     );
     options.onPartial?.(stored);
 
-    if (displayOnly) {
-      scheduleSyncTodayTrips(detectionConfig);
-      return stored;
-    }
-
-    return refreshTodayTripsIncremental(
+    result = await refreshTodayTripsIncremental(
       dateKey,
       tripRows,
       detectionConfig,
       referenceNow,
       options.onPartial,
     );
+  } else {
+    result = await materializeTodayFull(
+      dateKey,
+      detectionConfig,
+      referenceNow,
+      options.onPartial,
+    );
   }
 
-  return materializeTodayFull(
-    dateKey,
-    detectionConfig,
-    referenceNow,
-    options.onPartial,
-  );
+  if (!options.skipRepair && hasStoredTrips) {
+    scheduleTodayRepair(detectionConfig);
+  }
+
+  return result;
 }
 
-let backgroundSyncPromise: Promise<void> | null = null;
+/** Full-day detect → replace today's trips in DB without refreshing the map. */
+export async function repairTodayInDb(
+  detectionConfig: TripDetectionConfig,
+  referenceNow: Date = new Date(),
+): Promise<number> {
+  const {rebuildTodayTrips} = await import('@/lib/trip-materialization');
+  return rebuildTodayTrips(detectionConfig, referenceNow);
+}
 
-/** Background today sync — refreshes cache and notifies map/history listeners. */
-export function scheduleSyncTodayTrips(
+let repairPromise: Promise<void> | null = null;
+let lastRepairScheduledMs = 0;
+const REPAIR_DEBOUNCE_MS = 30 * 60 * 1000;
+
+/** Schedule silent full-day repair for the next app open. */
+export function scheduleTodayRepair(
   detectionConfig: TripDetectionConfig,
 ): void {
-  if (backgroundSyncPromise != null) {
+  const nowMs = Date.now();
+  if (nowMs - lastRepairScheduledMs < REPAIR_DEBOUNCE_MS) {
+    return;
+  }
+  lastRepairScheduledMs = nowMs;
+
+  if (repairPromise != null) {
     return;
   }
 
-  backgroundSyncPromise = (async () => {
+  repairPromise = (async () => {
     try {
-      const dateKey = getTodayDateKey();
-      const tripRows = await listTripsForDay(dateKey);
-      if (tripRows.length === 0) {
-        return;
-      }
-
-      const {historyCacheKey, historyDataCache} = await import(
-        '@/lib/history-data-cache'
-      );
-      const cacheKey = historyCacheKey(dateKey, detectionConfig);
-      const referenceNow = new Date();
-      const result = await refreshTodayTripsIncremental(
-        dateKey,
-        tripRows,
-        detectionConfig,
-        referenceNow,
-      );
-      const fingerprint = await getDayHistoryFingerprint(dateKey);
-      historyDataCache.write(cacheKey, result, fingerprint);
-      const {refreshTodayOnForeground} = await import(
-        '@/lib/today-refresh-scheduler'
-      );
-      refreshTodayOnForeground();
+      await repairTodayInDb(detectionConfig);
     } catch {
-      // Best-effort background sync.
+      // Best-effort repair.
     } finally {
-      backgroundSyncPromise = null;
+      repairPromise = null;
     }
   })();
 }
 
+/**
+ * Today sync: show trips immediately, then incrementally extend or tail-merge.
+ * Tier 0 — read trips. Tier 1 — extend open stay. Tier 1.5 — tail detect. Tier 2 — full day.
+ */
+export async function syncTodayTrips(
+  detectionConfig: TripDetectionConfig,
+  referenceNow: Date = new Date(),
+  options: SyncTodayTripsOptions = {},
+): Promise<HistoryData> {
+  return syncTodayDisplay(detectionConfig, referenceNow, options);
+}
+
+/** @deprecated Use scheduleTodayRepair — kept for cache warm paths. */
+export function scheduleSyncTodayTrips(
+  detectionConfig: TripDetectionConfig,
+): void {
+  scheduleTodayRepair(detectionConfig);
+}
+
 /** @internal */
 export function resetTodaySyncStateForTests(): void {
-  backgroundSyncPromise = null;
+  repairPromise = null;
+  lastRepairScheduledMs = 0;
 }
