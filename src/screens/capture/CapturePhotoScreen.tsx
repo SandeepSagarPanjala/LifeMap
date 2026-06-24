@@ -54,6 +54,21 @@ import type {RootStackParamList} from '@/navigation/types';
 import {prepareVoiceRecordingSession} from '@/lib/voice-audio-session';
 
 const CAMERA_AUDIO_RELEASE_MS = 400;
+const CAMERA_CAPTURE_RETRY_MS = 350;
+const CAMERA_CAPTURE_MAX_ATTEMPTS = 3;
+
+function isPhotoOutputNotReadyError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    error.message.includes('PhotoOutput is not yet connected to the CameraSession')
+  );
+}
+
+function waitMs(ms: number): Promise<void> {
+  return new Promise(resolve => {
+    setTimeout(resolve, ms);
+  });
+}
 
 const FILTER_THUMB_SIZE = 52;
 const SELECTED_BORDER_COLOR = CAPTURE_BUTTON_THEMES.camera.icon;
@@ -188,6 +203,7 @@ export function CapturePhotoScreen() {
   const [voiceSheetOpen, setVoiceSheetOpen] = useState(false);
   const voicePlayerRef = useRef(createVoiceRecorderSession());
   const [capturing, setCapturing] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingMs, setRecordingMs] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -203,6 +219,10 @@ export function CapturePhotoScreen() {
   const recordingStartedAtRef = useRef(0);
   const recordingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const device = useCameraDevice(cameraPosition);
+
+  useEffect(() => {
+    setCameraReady(false);
+  }, [cameraPosition, captureMode, device, phase]);
 
   useEffect(() => {
     if (!hasPermission) {
@@ -458,18 +478,36 @@ export function CapturePhotoScreen() {
   }, [isRecording, resetRecordingState]);
 
   const handleCapture = useCallback(async () => {
-    if (capturing) {
+    if (capturing || !cameraReady) {
       return;
     }
     setCapturing(true);
     try {
-      const photoFile = await photoOutput.capturePhotoToFile(
-        {
-          flashMode,
-          enableShutterSound: true,
-        },
-        {},
-      );
+      let photoFile: Awaited<ReturnType<typeof photoOutput.capturePhotoToFile>> | null =
+        null;
+      for (let attempt = 0; attempt < CAMERA_CAPTURE_MAX_ATTEMPTS; attempt += 1) {
+        try {
+          photoFile = await photoOutput.capturePhotoToFile(
+            {
+              flashMode,
+              enableShutterSound: true,
+            },
+            {},
+          );
+          break;
+        } catch (error) {
+          const canRetry =
+            attempt < CAMERA_CAPTURE_MAX_ATTEMPTS - 1 &&
+            isPhotoOutputNotReadyError(error);
+          if (!canRetry) {
+            throw error;
+          }
+          await waitMs(CAMERA_CAPTURE_RETRY_MS);
+        }
+      }
+      if (photoFile == null) {
+        throw new Error('Camera is still starting. Try again in a moment.');
+      }
       const normalized = await normalizeCameraPhoto(toFileUri(photoFile.filePath));
       setSelectedFilter('original');
       setDraft({
@@ -487,7 +525,7 @@ export function CapturePhotoScreen() {
     } finally {
       setCapturing(false);
     }
-  }, [capturing, flashMode, photoOutput]);
+  }, [cameraReady, capturing, flashMode, photoOutput]);
 
   const handleSave = useCallback(async () => {
     if (saving || draft == null) {
@@ -562,6 +600,9 @@ export function CapturePhotoScreen() {
           outputs={captureMode === 'video' ? [photoOutput, videoOutput] : [photoOutput]}
           mirrorMode="off"
           enableNativeZoomGesture
+          onStarted={() => setCameraReady(true)}
+          onPreviewStopped={() => setCameraReady(false)}
+          onInterruptionStarted={() => setCameraReady(false)}
         />
 
         <View
@@ -651,10 +692,15 @@ export function CapturePhotoScreen() {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Take photo"
-                  disabled={capturing}
+                  disabled={capturing || !cameraReady}
                   onPress={() => void handleCapture()}
-                  style={[styles.shutterButton, capturing ? styles.disabled : null]}>
-                  {capturing ? <ActivityIndicator color="#000000" /> : null}
+                  style={[
+                    styles.shutterButton,
+                    capturing || !cameraReady ? styles.disabled : null,
+                  ]}>
+                  {capturing || !cameraReady ? (
+                    <ActivityIndicator color="#000000" />
+                  ) : null}
                 </Pressable>
               ) : (
                 <Pressable

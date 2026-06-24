@@ -9,6 +9,7 @@ import {useColorScheme} from 'react-native';
 import {useCallback, useEffect, useMemo} from 'react';
 
 import type {RootStackParamList} from '@/navigation/types';
+import {BenchmarkScreen} from '@/screens/benchmark/BenchmarkScreen';
 import {CaptureActivityScreen} from '@/screens/capture/CaptureActivityScreen';
 import {CaptureNoteScreen} from '@/screens/capture/CaptureNoteScreen';
 import {CapturePhotoScreen} from '@/screens/capture/CapturePhotoScreen';
@@ -123,6 +124,15 @@ export function RootNavigator() {
           name="SavedPlaces"
           component={SavedPlacesScreen}
           options={sheetCaptureScreenOptions}
+        />
+        <Stack.Screen
+          name="Benchmark"
+          component={BenchmarkScreen}
+          options={{
+            title: 'Benchmark',
+            headerBackTitle: 'Settings',
+            presentation: 'card',
+          }}
         />
         <Stack.Screen
           name="MomentPreview"

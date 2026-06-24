@@ -189,6 +189,10 @@ export function App() {
   const [tripPoints, setTripPoints] = useState<ParsedPoint[] | null>(null);
   const [tripStops, setTripStops] = useState<Stop[] | null>(null);
   const [powerResult, setPowerResult] = useState<PowerRunResult | null>(null);
+  const [tripsCutoffAt, setTripsCutoffAt] = useState<Date | null>(null);
+  const [tripsCutoffPointId, setTripsCutoffPointId] = useState<number | null>(
+    null,
+  );
   const [moments, setMoments] = useState<MomentRow[]>([]);
   const [canonicalizeStayGeometry, setCanonicalizeStayGeometry] =
     useState(true);
@@ -240,10 +244,16 @@ export function App() {
     return sortPointsByTime(base);
   }, [plottedPoints, selectedStopId, stops]);
 
-  const selectedPoint = useMemo(
-    () => plottedPoints?.find(p => p.id === selectedId) ?? null,
-    [plottedPoints, selectedId],
-  );
+  const selectedPoint = useMemo(() => {
+    if (selectedId == null) {
+      return null;
+    }
+    return (
+      allPoints.find(point => point.id === selectedId) ??
+      plottedPoints?.find(point => point.id === selectedId) ??
+      null
+    );
+  }, [allPoints, plottedPoints, selectedId]);
 
   const selectedSegment = useMemo(
     () => segments?.find(segment => segment.id === selectedSegmentId) ?? null,
@@ -360,6 +370,8 @@ export function App() {
     setTripPoints(null);
     setTripStops(null);
     setPowerResult(null);
+    setTripsCutoffAt(null);
+    setTripsCutoffPointId(null);
   }, []);
 
   const buildDayTrips = useCallback(() => {
@@ -378,7 +390,10 @@ export function App() {
   }, [dateKey, allPoints, savedPlaces]);
 
   const applyTripResult = useCallback(
-    (result: ReturnType<typeof detectTripsForDay>) => {
+    (
+      result: ReturnType<typeof detectTripsForDay>,
+      options?: {keepSelectedId?: boolean},
+    ) => {
       setTripPoints(result.points);
       setTripStops(result.stops);
       setSegments(result.segments);
@@ -398,7 +413,9 @@ export function App() {
       );
       setStops(result.stops);
       setSelectedStopId(null);
-      setSelectedId(null);
+      if (!options?.keepSelectedId) {
+        setSelectedId(null);
+      }
       setPointNavMode(false);
       setPowerResult(null);
     },
@@ -538,6 +555,8 @@ export function App() {
   );
 
   const handleDetectTrips = useCallback(() => {
+    setTripsCutoffAt(null);
+    setTripsCutoffPointId(null);
     if (storedTripExport != null && dateKey !== 'all') {
       applyTripResult(buildTripResultForDay(storedTripExport, dateKey));
       return;
@@ -547,6 +566,36 @@ export function App() {
       applyTripResult(result);
     }
   }, [applyTripResult, buildDayTrips, dateKey, storedTripExport]);
+
+  const handleDetectTripsUpToPoint = useCallback(() => {
+    if (selectedPoint == null || dateKey === 'all' || isPlotUpload) {
+      return;
+    }
+    const tripSources = new Set<string>(TRIP_PLOT_SOURCES);
+    setSelectedSources(tripSources);
+    const tripSourcePoints = filterPointsBySources(allPoints, tripSources);
+    const cutoffMs = selectedPoint.at.getTime();
+    const pointsUpTo = tripSourcePoints.filter(
+      point => point.at.getTime() <= cutoffMs,
+    );
+    const result = detectTripsForDay(
+      dateKey,
+      pointsUpTo,
+      undefined,
+      savedPlaces,
+    );
+    setTripsCutoffAt(selectedPoint.at);
+    setTripsCutoffPointId(selectedPoint.id);
+    setMode('trips');
+    applyTripResult(result, {keepSelectedId: true});
+  }, [
+    allPoints,
+    applyTripResult,
+    dateKey,
+    isPlotUpload,
+    savedPlaces,
+    selectedPoint,
+  ]);
 
   const handlePowerTest = useCallback(() => {
     const tripSources = new Set<string>(TRIP_PLOT_SOURCES);
@@ -1245,7 +1294,9 @@ export function App() {
                     ? 'Pick a date above, then identify trips.'
                     : isPlotUpload
                       ? `${segments?.length ?? 0} segments · ${formatDateLabel(dateKey)}`
-                      : `${filteredPoints.length.toLocaleString()} points · ${formatDateLabel(dateKey)}`}
+                      : tripsCutoffAt != null
+                        ? `${segments?.length ?? 0} segments · GPS through ${formatTimestamp(tripsCutoffAt.toISOString()).replace(/, \d{4}/, '')}${tripsCutoffPointId != null ? ` · point #${tripsCutoffPointId}` : ''}`
+                        : `${filteredPoints.length.toLocaleString()} points · ${formatDateLabel(dateKey)}`}
                 </p>
                 {!isPlotUpload ? (
                   <div className="canonicalize-toggles">
@@ -1634,6 +1685,14 @@ export function App() {
                   <dt>Source</dt>
                   <dd>{selectedPoint.source || '—'}</dd>
                 </dl>
+                {!isPlotUpload && dateKey !== 'all' ? (
+                  <button
+                    type="button"
+                    className="stops-btn detail-trips-btn"
+                    onClick={handleDetectTripsUpToPoint}>
+                    Trips up to this point
+                  </button>
+                ) : null}
               </section>
             ) : (
               <p className="muted">

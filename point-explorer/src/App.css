@@ -208,6 +208,10 @@ body {
   background: #ff3b30;
 }
 
+.detail-trips-btn {
+  margin-top: 12px;
+}
+
 .stops-panel {
   display: flex;
   flex-direction: column;

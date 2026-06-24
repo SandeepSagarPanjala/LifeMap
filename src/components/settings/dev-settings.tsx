@@ -1,7 +1,7 @@
 import {Pressable, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {BookOpen, CloudDownload, type LucideIcon} from 'lucide-react-native';
+import {BookOpen, CloudDownload, FlaskConical, type LucideIcon} from 'lucide-react-native';
 
 import {Icon} from '@/components/ui/icon';
 import {Text} from '@/components/ui/text';
@@ -71,6 +71,21 @@ export function DevSettings() {
         enabled={devShowOnboarding}
         onToggle={() => setDevShowOnboarding(!devShowOnboarding)}
       />
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => navigation.navigate('Benchmark')}
+        className="bg-card border-border rounded-2xl border p-4">
+        <View className="flex-row items-center gap-3">
+          <Icon as={FlaskConical} size={20} color={colors.primary} />
+          <View className="flex-1">
+            <Text className="font-medium">Benchmark</Text>
+            <Text variant="muted" className="mt-1">
+              Run Stops, Trips, and Power detection on device GPS — same batch
+              algorithm as Points Explorer.
+            </Text>
+          </View>
+        </View>
+      </Pressable>
       <Pressable
         accessibilityRole="button"
         onPress={() =>

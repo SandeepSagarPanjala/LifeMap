@@ -117,7 +117,7 @@ function haversineM(
   return 2 * EARTH_RADIUS_M * Math.asin(Math.sqrt(h));
 }
 
-function pathLengthM(points: ParsedPoint[]): number {
+export function pathLengthM(points: ParsedPoint[]): number {
   let total = 0;
   for (let i = 0; i < points.length - 1; i += 1) {
     total += haversineM(points[i]!, points[i + 1]!);

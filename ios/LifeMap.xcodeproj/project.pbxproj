@@ -18,10 +18,10 @@
 		B2C3D4E81A68108700A75B9A /* LocationWakeCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E71A68108700A75B9A /* LocationWakeCoordinator.swift */; };
 		B2C3D4EA1A68108700A75B9A /* LocationPersistModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E91A68108700A75B9A /* LocationPersistModule.swift */; };
 		B2C3D4EC1A68108700A75B9A /* LocationPersistModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4EB1A68108700A75B9A /* LocationPersistModule.m */; };
-		C3D4E5F61A68108700A75B9A /* LifeMapTransistorSafe.m in Sources */ = {isa = PBXBuildFile; fileRef = C3D4E5F51A68108700A75B9A /* LifeMapTransistorSafe.m */; };
-		D4E5F6A71A68108700A75B9A /* LifeMapNativePersistLoop.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4E5F6A61A68108700A75B9A /* LifeMapNativePersistLoop.swift */; };
 		BKP0MOD1A68108700A75B9A /* BackupCloudModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = BKP0FR01A68108700A75B9A /* BackupCloudModule.swift */; };
 		BKP0MOD2A68108700A75B9A /* BackupCloudModule.m in Sources */ = {isa = PBXBuildFile; fileRef = BKP0FR02A68108700A75B9A /* BackupCloudModule.m */; };
+		C3D4E5F61A68108700A75B9A /* LifeMapTransistorSafe.m in Sources */ = {isa = PBXBuildFile; fileRef = C3D4E5F51A68108700A75B9A /* LifeMapTransistorSafe.m */; };
+		D4E5F6A71A68108700A75B9A /* LifeMapNativePersistLoop.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4E5F6A61A68108700A75B9A /* LifeMapNativePersistLoop.swift */; };
 		E5F6A7B81A68108700A75B9A /* AppVersionModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5F6A7B61A68108700A75B9A /* AppVersionModule.swift */; };
 		E5F6A7B91A68108700A75B9A /* AppVersionModule.m in Sources */ = {isa = PBXBuildFile; fileRef = E5F6A7B71A68108700A75B9A /* AppVersionModule.m */; };
 		F6A7B8C91A68108700A75B9A /* VoiceAudioSessionModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6A7B8C71A68108700A75B9A /* VoiceAudioSessionModule.swift */; };
@@ -30,6 +30,7 @@
 		WGT0BLD2A68108700A75B9A /* WidgetSnapshotBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = WGT0FR09A68108700A75B9A /* WidgetSnapshotBuilder.swift */; };
 		WGT0CAP1A68108700A75B9A /* WidgetCaptureIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = WGT0FR13A68108700A75B9A /* WidgetCaptureIntents.swift */; };
 		WGT0CAP2A68108700A75B9A /* WidgetCaptureIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = WGT0FR13A68108700A75B9A /* WidgetCaptureIntents.swift */; };
+		WGT0CTL1A68108700A75B9A /* LifeMapMomentControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = WGT0FR16A68108700A75B9A /* LifeMapMomentControls.swift */; };
 		WGT0EMB1A68108700A75B9A /* LifeMapWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = WGT0FR06A68108700A75B9A /* LifeMapWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		WGT0INT1A68108700A75B9A /* RefreshWidgetIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = WGT0FR10A68108700A75B9A /* RefreshWidgetIntent.swift */; };
 		WGT0INT2A68108700A75B9A /* RefreshWidgetIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = WGT0FR10A68108700A75B9A /* RefreshWidgetIntent.swift */; };
@@ -44,7 +45,6 @@
 		WGT0SHT1A68108700A75B9A /* LifeMapAppShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = WGT0FR11A68108700A75B9A /* LifeMapAppShortcuts.swift */; };
 		WGT0SYN1A68108700A75B9A /* WidgetSnapshotSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = WGT0FR15A68108700A75B9A /* WidgetSnapshotSync.swift */; };
 		WGT0WGT1A68108700A75B9A /* LifeMapWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = WGT0FR04A68108700A75B9A /* LifeMapWidget.swift */; };
-		WGT0CTL1A68108700A75B9A /* LifeMapMomentControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = WGT0FR16A68108700A75B9A /* LifeMapMomentControls.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -87,12 +87,12 @@
 		B2C3D4E71A68108700A75B9A /* LocationWakeCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocationWakeCoordinator.swift; path = LifeMap/LocationWakeCoordinator.swift; sourceTree = "<group>"; };
 		B2C3D4E91A68108700A75B9A /* LocationPersistModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocationPersistModule.swift; path = LifeMap/LocationPersistModule.swift; sourceTree = "<group>"; };
 		B2C3D4EB1A68108700A75B9A /* LocationPersistModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = LocationPersistModule.m; path = LifeMap/LocationPersistModule.m; sourceTree = "<group>"; };
+		BKP0FR01A68108700A75B9A /* BackupCloudModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BackupCloudModule.swift; path = LifeMap/BackupCloudModule.swift; sourceTree = "<group>"; };
+		BKP0FR02A68108700A75B9A /* BackupCloudModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = BackupCloudModule.m; path = LifeMap/BackupCloudModule.m; sourceTree = "<group>"; };
 		C1A2B3C41A680F5B00A75B9A /* LifeMap.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = LifeMap.debug.xcconfig; path = Config/LifeMap.debug.xcconfig; sourceTree = "<group>"; };
 		C1A2B3C51A680F5B00A75B9A /* LifeMap.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = LifeMap.release.xcconfig; path = Config/LifeMap.release.xcconfig; sourceTree = "<group>"; };
 		C3D4E5F51A68108700A75B9A /* LifeMapTransistorSafe.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = LifeMapTransistorSafe.m; path = LifeMap/LifeMapTransistorSafe.m; sourceTree = "<group>"; };
 		D4E5F6A61A68108700A75B9A /* LifeMapNativePersistLoop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LifeMapNativePersistLoop.swift; path = LifeMap/LifeMapNativePersistLoop.swift; sourceTree = "<group>"; };
-		BKP0FR01A68108700A75B9A /* BackupCloudModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BackupCloudModule.swift; path = LifeMap/BackupCloudModule.swift; sourceTree = "<group>"; };
-		BKP0FR02A68108700A75B9A /* BackupCloudModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = BackupCloudModule.m; path = LifeMap/BackupCloudModule.m; sourceTree = "<group>"; };
 		E5F6A7B61A68108700A75B9A /* AppVersionModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppVersionModule.swift; path = LifeMap/AppVersionModule.swift; sourceTree = "<group>"; };
 		E5F6A7B71A68108700A75B9A /* AppVersionModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = AppVersionModule.m; path = LifeMap/AppVersionModule.m; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
@@ -490,7 +490,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = LifeMap/LifeMap.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 26;
+				CURRENT_PROJECT_VERSION = 27;
 				DEVELOPMENT_TEAM = SRTH66N3SH;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = LifeMap/Info.plist;
@@ -524,7 +524,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = LifeMap/LifeMap.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 26;
+				CURRENT_PROJECT_VERSION = 27;
 				DEVELOPMENT_TEAM = SRTH66N3SH;
 				INFOPLIST_FILE = LifeMap/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
@@ -710,7 +710,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = LifeMapWidget/LifeMapWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 26;
+				CURRENT_PROJECT_VERSION = 27;
 				DEVELOPMENT_TEAM = SRTH66N3SH;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = LifeMapWidget/Info.plist;
@@ -736,7 +736,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = LifeMapWidget/LifeMapWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 26;
+				CURRENT_PROJECT_VERSION = 27;
 				DEVELOPMENT_TEAM = SRTH66N3SH;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = LifeMapWidget/Info.plist;

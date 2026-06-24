@@ -16,7 +16,15 @@ import type {TripDetectionConfig} from '@/lib/trip-settings';
 /** GPS rows for prev + day + next — same window as point-explorer `detectTripsForDay`. */
 export async function loadExplorerGpsWindow(
   dateKey: string,
-): Promise<{windowPoints: LocationPointRow[]; dayPointCount: number}> {
+): Promise<{
+  windowPoints: LocationPointRow[];
+  prevPointCount: number;
+  dayPointCount: number;
+  nextPointCount: number;
+  prevPoints: LocationPointRow[];
+  dayPoints: LocationPointRow[];
+  nextPoints: LocationPointRow[];
+}> {
   const prevKey = shiftDateKey(dateKey, -1);
   const nextKey = shiftDateKey(dateKey, 1);
   const [prevPoints, dayPoints, nextPoints] = await Promise.all([
@@ -30,7 +38,12 @@ export async function loadExplorerGpsWindow(
       ...dayPoints,
       ...nextPoints,
     ]),
+    prevPointCount: prevPoints.length,
     dayPointCount: dayPoints.length,
+    nextPointCount: nextPoints.length,
+    prevPoints,
+    dayPoints,
+    nextPoints,
   };
 }
 
