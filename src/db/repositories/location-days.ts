@@ -36,7 +36,6 @@ export async function getLocationPointsAfterInDay(
   after: Date,
 ): Promise<LocationPointRow[]> {
   const {start, end} = getDayRange(dateKey);
-  const afterMs = after.getTime();
   const db = await getDatabase();
 
   return db

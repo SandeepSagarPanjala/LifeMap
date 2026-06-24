@@ -59,7 +59,6 @@ import {useTripPlayback} from '@/hooks/use-trip-playback';
 import {buildHistoryMapPlan} from '@/lib/history-map-plan';
 import {
   countHistoryTimelineEvents,
-  formatHistoryDayNavLabel,
   formatMapDateLabel,
 } from '@/lib/history-timeline';
 import {
@@ -88,7 +87,6 @@ import {
   matchSavedPlaceForStay,
   MAX_SAVED_PLACES,
   SavedPlaceLimitError,
-  savedPlaceDisplayLabel,
 } from '@/lib/saved-places';
 import {getCurrentOpenActivity} from '@/lib/today-history';
 import {
@@ -192,7 +190,7 @@ export function useMapScreenController() {
 
   const {places: savedPlaces, hasHome, hasWork, refresh: refreshSavedPlaces} =
     useSavedPlaces();
-  const {dayMoments, refreshDayMoments} = useDayMoments(selectedDateKey);
+  const {dayMoments} = useDayMoments(selectedDateKey);
   const viewingToday = selectedDateKey === todayKey;
   const {data: historyData, loading: historyLoading} =
     useHistoryForDay(selectedDateKey, {active: true});

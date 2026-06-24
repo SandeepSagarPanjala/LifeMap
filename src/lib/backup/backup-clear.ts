@@ -69,7 +69,6 @@ export async function hasLocalUserData(): Promise<boolean> {
 }
 
 export async function ensureMomentDirectories(): Promise<void> {
-  const fs = ReactNativeBlobUtil.fs;
   await ensureDirectory(`${getDocumentDirectory()}/moments`);
   await ensureDirectory(MOMENTS_TMP_DIRECTORY);
 }

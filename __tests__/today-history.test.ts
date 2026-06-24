@@ -227,7 +227,6 @@ describe('prepareTodayHistoryTimeline', () => {
       source: point.source as LocationPointRow['source'],
     }));
     const dayStart = new Date('2026-06-19T05:00:00.000Z');
-    const dayEnd = new Date('2026-06-20T04:59:59.999Z');
     const referenceNow = new Date('2026-06-20T00:50:00.000Z'); // 7:50 PM CDT, mid-drive
     const dayPoints = allPoints.filter(
       p => p.timestamp >= dayStart && p.timestamp <= referenceNow,

@@ -372,7 +372,6 @@ export function VoiceMemoSheet({
 
   const durationLabel = formatVoiceDurationMs(timerMs);
   const capLabel = formatVoiceDurationCap();
-  const isAttachMode = saveTarget === 'diary' || saveTarget === 'photo';
   const saveActionLabel =
     saveTarget === 'diary'
       ? 'Add to diary'

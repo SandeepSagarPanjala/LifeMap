@@ -18,7 +18,6 @@ jest.mock('@/db/repositories/moments', () => ({
   getMomentById: jest.fn(),
 }));
 
-const mockedCreateActivity = createActivity as jest.MockedFunction<typeof createActivity>;
 const mockedInsertMoment = jest.requireMock('@/db/repositories/moments')
   .insertMoment as jest.Mock;
 

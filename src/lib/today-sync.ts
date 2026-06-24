@@ -6,7 +6,6 @@ import {
   type LocationPointRow,
 } from '@/db/repositories/location-days';
 import {getMaterializedDay, upsertMaterializedDay} from '@/db/repositories/materialized-days';
-import {listSavedPlaces} from '@/db/repositories/saved-places';
 import {
   listTripsForDay,
   updateTripEndTime,
@@ -77,8 +76,6 @@ async function sealNeedsPersist(
 
 export type SyncTodayTripsOptions = {
   force?: boolean;
-  /** @deprecated Display path always runs tail merge; repair is scheduled separately. */
-  displayOnly?: boolean;
   /** Skip silent full-day DB repair (e.g. foreground tail refresh). */
   skipRepair?: boolean;
   onPartial?: (data: HistoryData) => void;

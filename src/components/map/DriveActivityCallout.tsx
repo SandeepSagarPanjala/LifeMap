@@ -14,7 +14,6 @@ import {HISTORY_COLORS} from '@/lib/history-timeline';
 
 const LIVE_PUCK_ANCHOR = {x: 0.5, y: 1} as const;
 const LIVE_PUCK_CENTER_OFFSET = {x: 0, y: -100} as const;
-const BUBBLE_ANCHOR = {x: 0.5, y: 0.5} as const;
 const BUBBLE_DOT_GAP = 4;
 
 type DriveActivityCalloutProps = {

@@ -25,7 +25,6 @@ import {
 } from './backup-conflicts';
 import {
   applyTripLabelOverrides,
-  buildOverrideMaps,
   rebuildTripsAfterRestore,
 } from './backup-import';
 import {
