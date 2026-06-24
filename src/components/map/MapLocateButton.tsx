@@ -1,23 +1,30 @@
-import {Crosshair} from 'lucide-react-native';
-import {Pressable, StyleSheet} from 'react-native';
+import {Pressable, StyleSheet, View} from 'react-native';
 
-import {useThemeColors} from '@/hooks/use-theme-colors';
+/** Same blue as the system map user-location puck and drive accents. */
+const MAP_USER_LOCATION_BLUE = '#007AFF';
 
 type MapLocateButtonProps = {
   bottom: number;
   onPress: () => void;
 };
 
-export function MapLocateButton({bottom, onPress}: MapLocateButtonProps) {
-  const colors = useThemeColors();
+/** Mini map puck — matches `showsUserLocation` dot (blue fill, white ring). */
+function MapUserLocationIcon() {
+  return (
+    <View style={styles.puckRing}>
+      <View style={styles.puckCore} />
+    </View>
+  );
+}
 
+export function MapLocateButton({bottom, onPress}: MapLocateButtonProps) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel="Go to current location"
       onPress={onPress}
       style={[styles.button, {bottom}]}>
-      <Crosshair size={22} color={colors.primary} strokeWidth={2.25} />
+      <MapUserLocationIcon />
     </Pressable>
   );
 }
@@ -37,5 +44,24 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 6,
     elevation: 4,
+  },
+  puckRing: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.22,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  puckCore: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: MAP_USER_LOCATION_BLUE,
   },
 });
