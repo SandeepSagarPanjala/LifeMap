@@ -117,6 +117,28 @@ export function canExtendOpenStayWithNewPoints(
   );
 }
 
+/** Clock-only stay extend — only when the latest GPS still matches the open visit. */
+export async function canClockExtendOpenStayAtLastGps(
+  dateKey: string,
+  lastStay: TripRow,
+  config: TripDetectionConfig,
+): Promise<boolean> {
+  if (lastStay.kind !== 'stay') {
+    return false;
+  }
+  const dayPoints = await getLocationPointsForDay(dateKey);
+  const lastPoint = dayPoints.at(-1);
+  if (lastPoint == null) {
+    return true;
+  }
+  const anchor = {lat: lastStay.centroidLat, lng: lastStay.centroidLng};
+  return arePointsSamePlace(
+    {lat: lastPoint.lat, lng: lastPoint.lng},
+    anchor,
+    config,
+  );
+}
+
 async function loadTodayFromTrips(
   dateKey: string,
   tripRows: TripRow[],
@@ -334,31 +356,52 @@ async function refreshTodayTripsIncremental(
     new Date(sealedMs),
   );
 
-  if (newPoints.length === 0) {
-    return loadTodayFromTrips(
+  if (newPoints.length > 0) {
+    const extended = await tryExtendOpenStay(
       dateKey,
       tripRows,
+      newPoints,
       detectionConfig,
       referenceNow,
     );
-  }
-
-  const extended = await tryExtendOpenStay(
-    dateKey,
-    tripRows,
-    newPoints,
-    detectionConfig,
-    referenceNow,
-  );
-  if (extended) {
-    const refreshed = await loadTodayFromTrips(
-      dateKey,
-      await listTripsForDay(dateKey),
-      detectionConfig,
-      referenceNow,
-    );
-    onPartial?.(refreshed);
-    return refreshed;
+    if (extended) {
+      const refreshed = await loadTodayFromTrips(
+        dateKey,
+        await listTripsForDay(dateKey),
+        detectionConfig,
+        referenceNow,
+      );
+      onPartial?.(refreshed);
+      return refreshed;
+    }
+  } else {
+    const lastStay = lastPlayableStay(tripRows);
+    if (
+      lastStay != null &&
+      (await canClockExtendOpenStayAtLastGps(
+        dateKey,
+        lastStay,
+        detectionConfig,
+      ))
+    ) {
+      const extended = await tryExtendOpenStay(
+        dateKey,
+        tripRows,
+        [],
+        detectionConfig,
+        referenceNow,
+      );
+      if (extended) {
+        const refreshed = await loadTodayFromTrips(
+          dateKey,
+          await listTripsForDay(dateKey),
+          detectionConfig,
+          referenceNow,
+        );
+        onPartial?.(refreshed);
+        return refreshed;
+      }
+    }
   }
 
   const tailMerged = await tryTailMergeToday(

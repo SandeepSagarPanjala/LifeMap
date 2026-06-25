@@ -63,6 +63,8 @@ export function DriveActivityCallout({
 
   const showStart = hasDriveEndpointLabel(startLabel);
   const showEnd = endLabel != null && hasDriveEndpointLabel(endLabel);
+  const showOpenEndPlaceholder =
+    trip.openThroughNow === true && showStart && !showEnd;
 
   return (
     <Marker
@@ -99,6 +101,11 @@ export function DriveActivityCallout({
                 numberOfLines={1}
               />
             </>
+          ) : showOpenEndPlaceholder ? (
+            <>
+              <Text style={styles.routeArrow}>→</Text>
+              <Text style={styles.routePlaceholder}>---</Text>
+            </>
           ) : null}
           <Text style={styles.timeLine} numberOfLines={2}>
             {drive.title}
@@ -133,6 +140,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#1C1C1E',
+  },
+  routePlaceholder: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#8E8E93',
   },
   routeArrow: {
     fontSize: 13,
