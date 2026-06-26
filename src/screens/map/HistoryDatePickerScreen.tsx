@@ -7,12 +7,12 @@ import {
 } from '@/lib/history-date-picker-navigation';
 import {getTodayDateKey} from '@/lib/day-utils';
 import {SheetCaptureScreen} from '@/screens/sheets/SheetCaptureScreen';
-import {useSheetCaptureClose} from '@/screens/sheets/use-sheet-capture-close';
+import {useSheetCaptureDismiss} from '@/screens/sheets/use-sheet-capture-dismiss';
 
 export function HistoryDatePickerScreen() {
-  const [touchPassthrough, setTouchPassthrough] = useState(false);
+  const {touchPassthrough, handleWillClose, handleClose} =
+    useSheetCaptureDismiss();
   const [payload] = useState(() => consumeHistoryDatePickerOpen());
-  const handleClose = useSheetCaptureClose();
   const selectedDateKey = payload?.selectedDateKey ?? getTodayDateKey();
 
   const handleSelectDate = (dateKey: string) => {
@@ -28,7 +28,7 @@ export function HistoryDatePickerScreen() {
         selectedDateKey={selectedDateKey}
         onSelectDate={handleSelectDate}
         onClose={handleClose}
-        onWillClose={() => setTouchPassthrough(true)}
+        onWillClose={handleWillClose}
       />
     </SheetCaptureScreen>
   );

@@ -15,18 +15,16 @@ const nativeModule = NativeModules.BackupCloudModule as
   | BackupCloudNativeModule
   | undefined;
 
-const ANDROID_BACKUP_DIR = 'LifeMapBackups/current';
+const ANDROID_BACKUP_ROOT = 'LifeMapBackups';
 
-function getAndroidBackupDirectory(): string {
-  return `${ReactNativeBlobUtil.fs.dirs.DocumentDir}/${ANDROID_BACKUP_DIR}`;
+function getAndroidBackupDirectory(slot: 'current' | 'previous'): string {
+  return `${ReactNativeBlobUtil.fs.dirs.DocumentDir}/${ANDROID_BACKUP_ROOT}/${slot}`;
 }
 
-async function androidIsCloudAvailable(): Promise<boolean> {
-  return true;
-}
-
-async function androidGetCloudBackupMetadata(): Promise<CloudBackupMetadata | null> {
-  const manifestPath = `${getAndroidBackupDirectory()}/manifest.json`;
+async function readAndroidManifest(
+  slot: 'current' | 'previous',
+): Promise<CloudBackupMetadata | null> {
+  const manifestPath = `${getAndroidBackupDirectory(slot)}/manifest.json`;
   if (!(await ReactNativeBlobUtil.fs.exists(manifestPath))) {
     return null;
   }
@@ -47,21 +45,77 @@ async function androidGetCloudBackupMetadata(): Promise<CloudBackupMetadata | nu
   };
 }
 
+function pickBestMetadata(
+  current: CloudBackupMetadata | null,
+  previous: CloudBackupMetadata | null,
+): CloudBackupMetadata | null {
+  if (current == null) {
+    return previous;
+  }
+  if (previous == null) {
+    return current;
+  }
+  const currentTime = new Date(current.exportedAt).getTime();
+  const previousTime = new Date(previous.exportedAt).getTime();
+  if (
+    Number.isFinite(currentTime) &&
+    Number.isFinite(previousTime) &&
+    currentTime !== previousTime
+  ) {
+    return currentTime >= previousTime ? current : previous;
+  }
+  return current.totalBytes >= previous.totalBytes ? current : previous;
+}
+
+async function pickAndroidBackupSlot(): Promise<'current' | 'previous' | null> {
+  const [current, previous] = await Promise.all([
+    readAndroidManifest('current'),
+    readAndroidManifest('previous'),
+  ]);
+  const best = pickBestMetadata(current, previous);
+  if (best == null) {
+    return null;
+  }
+  return best === current ? 'current' : 'previous';
+}
+
+async function androidIsCloudAvailable(): Promise<boolean> {
+  return true;
+}
+
+async function androidGetCloudBackupMetadata(): Promise<CloudBackupMetadata | null> {
+  const [current, previous] = await Promise.all([
+    readAndroidManifest('current'),
+    readAndroidManifest('previous'),
+  ]);
+  return pickBestMetadata(current, previous);
+}
+
 async function androidUploadBackupDirectory(
   localDirectoryPath: string,
 ): Promise<void> {
-  const destination = getAndroidBackupDirectory();
-  await removeDirectoryRecursive(destination);
-  await ReactNativeBlobUtil.fs.cp(localDirectoryPath, destination);
+  const current = getAndroidBackupDirectory('current');
+  const previous = getAndroidBackupDirectory('previous');
+  if (await ReactNativeBlobUtil.fs.exists(current)) {
+    if (await ReactNativeBlobUtil.fs.exists(previous)) {
+      await removeDirectoryRecursive(previous);
+    }
+    await ReactNativeBlobUtil.fs.mv(current, previous);
+  }
+  if (await ReactNativeBlobUtil.fs.exists(current)) {
+    await removeDirectoryRecursive(current);
+  }
+  await ReactNativeBlobUtil.fs.cp(localDirectoryPath, current);
 }
 
 async function androidDownloadBackupDirectory(
   localDirectoryPath: string,
 ): Promise<void> {
-  const source = getAndroidBackupDirectory();
-  if (!(await ReactNativeBlobUtil.fs.exists(source))) {
+  const slot = await pickAndroidBackupSlot();
+  if (slot == null) {
     throw new Error('No backup found on this device.');
   }
+  const source = getAndroidBackupDirectory(slot);
   await removeDirectoryRecursive(localDirectoryPath);
   await ReactNativeBlobUtil.fs.cp(source, localDirectoryPath);
 }

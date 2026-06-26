@@ -4,6 +4,12 @@ import {areMapScreenMapPropsEqual} from '@/screens/map/map-screen-map-props';
 describe('areMapScreenMapPropsEqual', () => {
   const mapSlice = {
     mapRef: {current: null},
+    mapInitialRegion: {
+      latitude: 33.2,
+      longitude: -97.1,
+      latitudeDelta: 0.01,
+      longitudeDelta: 0.01,
+    },
     provider: 'default',
     mapPadding: {top: 0, right: 0, bottom: 0, left: 0},
     mapAttributionInsets: {

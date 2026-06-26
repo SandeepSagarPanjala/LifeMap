@@ -11,6 +11,12 @@ export type InstallCloudBackupSnapshot = CloudBackupMetadata & {
   detectedAt: string;
 };
 
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => {
+    setTimeout(resolve, ms);
+  });
+}
+
 export async function captureInstallCloudBackupSnapshot(): Promise<InstallCloudBackupSnapshot | null> {
   const existing = await AsyncStorage.getItem(INSTALL_SNAPSHOT_KEY);
   if (existing) {
@@ -28,6 +34,26 @@ export async function captureInstallCloudBackupSnapshot(): Promise<InstallCloudB
   };
   await AsyncStorage.setItem(INSTALL_SNAPSHOT_KEY, JSON.stringify(snapshot));
   return snapshot;
+}
+
+/** iCloud can be slow right after install — retry before giving up on restore offer. */
+export async function captureInstallCloudBackupSnapshotWithRetry(): Promise<InstallCloudBackupSnapshot | null> {
+  const existing = await getInstallCloudBackupSnapshot();
+  if (existing != null) {
+    return existing;
+  }
+
+  const retryDelaysMs = [0, 2_000, 5_000, 10_000];
+  for (const delayMs of retryDelaysMs) {
+    if (delayMs > 0) {
+      await sleep(delayMs);
+    }
+    const snapshot = await captureInstallCloudBackupSnapshot();
+    if (snapshot != null) {
+      return snapshot;
+    }
+  }
+  return null;
 }
 
 export async function getInstallCloudBackupSnapshot(): Promise<InstallCloudBackupSnapshot | null> {
@@ -64,11 +90,25 @@ export async function loadRestoreOfferMetadata(): Promise<InstallCloudBackupSnap
     return snapshot;
   }
 
-  return cloudTime >= snapshotTime ? cloudMetadata : snapshot;
+  if (cloudTime !== snapshotTime) {
+    return cloudTime >= snapshotTime ? cloudMetadata : snapshot;
+  }
+  return cloudMetadata.totalBytes >= snapshot.totalBytes
+    ? cloudMetadata
+    : snapshot;
+}
+
+export async function hasRecoverableCloudBackup(): Promise<boolean> {
+  const snapshot = await getInstallCloudBackupSnapshot();
+  if (snapshot?.exportedAt) {
+    return true;
+  }
+  const metadata = await getCloudBackupMetadata();
+  return metadata?.exportedAt != null;
 }
 
 export async function hasInstallCloudBackup(): Promise<boolean> {
-  return (await getInstallCloudBackupSnapshot()) != null;
+  return hasRecoverableCloudBackup();
 }
 
 export async function isRestoreCompleted(): Promise<boolean> {
@@ -98,7 +138,7 @@ export async function shouldAutoNavigateToRestore(): Promise<boolean> {
   if (await hasLocalUserData()) {
     return false;
   }
-  return hasInstallCloudBackup();
+  return hasRecoverableCloudBackup();
 }
 
 export async function dismissInstallRestoreOffer(): Promise<void> {
@@ -109,12 +149,12 @@ export async function wasInstallRestoreDismissed(): Promise<boolean> {
   return (await AsyncStorage.getItem('lifemap-backup-restore-prompt')) === 'dismissed';
 }
 
-/** Settings: offer restore only when this install found iCloud data and local DB is still empty. */
+/** Settings: offer restore when cloud data exists and local DB is still empty. */
 export async function shouldShowSettingsRestore(): Promise<boolean> {
   if (await isRestoreCompleted()) {
     return false;
   }
-  if (!(await hasInstallCloudBackup())) {
+  if (!(await hasRecoverableCloudBackup())) {
     return false;
   }
   const {hasLocalUserData} = await import('./backup-clear');

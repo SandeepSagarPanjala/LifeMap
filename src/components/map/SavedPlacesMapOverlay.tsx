@@ -1,4 +1,4 @@
-import {useEffect, useState} from 'react';
+import {useMarkerTracksViewChanges} from '@/hooks/use-marker-tracks-view-changes';
 import {Marker} from 'react-native-maps';
 import {Fragment} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
@@ -58,7 +58,6 @@ function SavedPlaceMomentClusterMarker({
   counts,
   onPress,
 }: SavedPlaceMomentClusterMarkerProps) {
-  const [tracksViewChanges, setTracksViewChanges] = useState(true);
   const layoutSignature = [
     countMomentTypes(counts),
     counts.photo,
@@ -67,10 +66,8 @@ function SavedPlaceMomentClusterMarker({
     counts.note,
     counts.activity,
   ].join('-');
-
-  useEffect(() => {
-    setTracksViewChanges(true);
-  }, [layoutSignature]);
+  const {tracksViewChanges, onLayout} =
+    useMarkerTracksViewChanges(layoutSignature);
 
   return (
     <Marker
@@ -80,9 +77,7 @@ function SavedPlaceMomentClusterMarker({
       zIndex={9}
       tracksViewChanges={tracksViewChanges}
       onPress={onPress}>
-      <View
-        collapsable={false}
-        onLayout={() => setTracksViewChanges(false)}>
+      <View collapsable={false} onLayout={onLayout}>
         <View style={styles.clusterBubble}>
           <MomentCountsRow counts={counts} layout="stacked" dense />
         </View>

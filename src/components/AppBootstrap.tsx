@@ -11,7 +11,7 @@ import {ensureHistoryCalendarBounds} from '@/lib/history-calendar-bounds';
 import {preloadTodayHistory} from '@/lib/history-preload';
 import {sealYesterdayIfNeeded} from '@/lib/trip-materialization';
 import {warmCanonicalTravelGeometrySetting} from '@/lib/trip-geometry-settings';
-import {captureInstallCloudBackupSnapshot} from '@/lib/backup/backup-install-state';
+import {captureInstallCloudBackupSnapshotWithRetry} from '@/lib/backup/backup-install-state';
 import {maybeRunScheduledBackup} from '@/lib/backup/backup-service';
 import {useAppStore} from '@/stores/app-store';
 
@@ -36,7 +36,7 @@ export function AppBootstrap({
     void ensureDatabaseReady().then(async () => {
       await warmCanonicalTravelGeometrySetting();
       await sealYesterdayIfNeeded();
-      await captureInstallCloudBackupSnapshot();
+      await captureInstallCloudBackupSnapshotWithRetry();
       void maybeRunScheduledBackup().catch(() => undefined);
     });
   }, []);

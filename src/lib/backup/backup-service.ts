@@ -6,6 +6,7 @@ import {getAppVersionLabel} from '@/lib/app-version';
 import {
   prepareBackupBundle,
   writeBackupBundleToDirectory,
+  estimateLocalBackupBytes,
 } from './backup-export';
 import {hasLocalUserData} from './backup-clear';
 import {
@@ -81,6 +82,27 @@ async function computeDirectoryBytes(directoryPath: string): Promise<number> {
 
   await walk('');
   return total;
+}
+
+export type BackupSizeWarning = {
+  cloudBytes: number;
+  localEstimateBytes: number;
+};
+
+/** True when iCloud backup is meaningfully larger than what we'd upload now. */
+export async function getBackupSizeWarning(): Promise<BackupSizeWarning | null> {
+  const [cloudBackup, localEstimateBytes] = await Promise.all([
+    getCloudBackupMetadata(),
+    estimateLocalBackupBytes(),
+  ]);
+  const cloudBytes = cloudBackup?.totalBytes ?? 0;
+  if (cloudBytes <= 0) {
+    return null;
+  }
+  if (cloudBytes <= localEstimateBytes * 1.05) {
+    return null;
+  }
+  return {cloudBytes, localEstimateBytes};
 }
 
 export async function runBackupNow(

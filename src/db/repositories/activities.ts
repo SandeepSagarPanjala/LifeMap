@@ -82,32 +82,18 @@ export async function archiveActivity(id: number): Promise<void> {
     .where(eq(activities.id, id));
 }
 
-export async function moveActivitySortOrder(
-  id: number,
-  direction: 'up' | 'down',
-): Promise<void> {
-  const active = await listActiveActivities();
-  const index = active.findIndex(activity => activity.id === id);
-  if (index < 0) {
+export async function reorderActivities(orderedIds: number[]): Promise<void> {
+  if (orderedIds.length === 0) {
     return;
   }
-  const swapIndex = direction === 'up' ? index - 1 : index + 1;
-  if (swapIndex < 0 || swapIndex >= active.length) {
-    return;
-  }
-
-  const current = active[index]!;
-  const swap = active[swapIndex]!;
   const db = await getDatabase();
   await db.transaction(async tx => {
-    await tx
-      .update(activities)
-      .set({sortOrder: swap.sortOrder})
-      .where(eq(activities.id, current.id));
-    await tx
-      .update(activities)
-      .set({sortOrder: current.sortOrder})
-      .where(eq(activities.id, swap.id));
+    for (let index = 0; index < orderedIds.length; index++) {
+      await tx
+        .update(activities)
+        .set({sortOrder: index})
+        .where(eq(activities.id, orderedIds[index]!));
+    }
   });
 }
 

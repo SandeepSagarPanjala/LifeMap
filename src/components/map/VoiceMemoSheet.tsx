@@ -16,7 +16,9 @@ import type {BottomSheetModal} from '@gorhom/bottom-sheet';
 import {CAPTURE_BUTTON_THEMES} from '@/components/map/map-capture-button-theme';
 import {VoiceLiveMeter, VoicePlaybackMeter} from '@/components/voice/VoiceMeter';
 import {Text} from '@/components/ui/text';
+import {BOTTOM_SHEET_SURFACE} from '@/components/ui/bottom-sheet-chrome';
 import {AppBottomSheet} from '@/components/ui/app-bottom-sheet';
+import type {VoiceMemoPreviewDraft} from '@/components/map/VoiceMemoPreviewSheet';
 import {useThemeColors} from '@/hooks/use-theme-colors';
 import {
   formatVoiceDurationCap,
@@ -29,6 +31,8 @@ import {
   createVoiceRecorderSession,
   getVoiceRecordingErrorMessage,
 } from '@/lib/moments/voice-recorder';
+import {prepareVoiceRecordingSession} from '@/lib/voice-audio-session';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 type VoiceMemoPhase = 'idle' | 'recording' | 'preview' | 'saving';
 
@@ -47,6 +51,10 @@ type VoiceMemoSheetProps = {
   instantPresent?: boolean;
   /** Render inside SheetFlowScreen panel — skips gorhom (instant open). */
   embedded?: boolean;
+  /** Map capture: preview + note opens in a gorhom overlay via parent. */
+  onBeginPreview?: (draft: VoiceMemoPreviewDraft) => void;
+  /** Increment after preview discard — resets to manual mic (no auto-record). */
+  restartNonce?: number;
 };
 
 export function VoiceMemoSheet({
@@ -60,9 +68,13 @@ export function VoiceMemoSheet({
   snapPoints,
   instantPresent = false,
   embedded = false,
+  onBeginPreview,
+  restartNonce = 0,
 }: VoiceMemoSheetProps) {
   const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
   const voiceTheme = CAPTURE_BUTTON_THEMES.voice;
+  const useExternalPreview = embedded && onBeginPreview != null;
 
   const [phase, setPhase] = useState<VoiceMemoPhase>('idle');
   const [durationMs, setDurationMs] = useState(0);
@@ -74,6 +86,7 @@ export function VoiceMemoSheet({
   const [noteFocused, setNoteFocused] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [autoStartFailed, setAutoStartFailed] = useState(false);
+  const [manualStartOnly, setManualStartOnly] = useState(false);
 
   const recorderRef = useRef<ReturnType<typeof createVoiceRecorderSession> | null>(null);
   const stopRecordingRef = useRef<() => Promise<void>>(async () => {});
@@ -162,13 +175,17 @@ export function VoiceMemoSheet({
     if (phaseRef.current === 'saving') {
       return;
     }
-    if (phaseRef.current === 'preview' && previewPathRef.current) {
+    if (
+      !useExternalPreview &&
+      phaseRef.current === 'preview' &&
+      previewPathRef.current
+    ) {
       promptDiscardOnClose();
       return;
     }
     onClose();
     void resetDraft();
-  }, [onClose, promptDiscardOnClose, resetDraft]);
+  }, [onClose, promptDiscardOnClose, resetDraft, useExternalPreview]);
 
   useEffect(() => {
     if (!visible) {
@@ -239,6 +256,18 @@ export function VoiceMemoSheet({
         Alert.alert('Recording too short', 'Hold the mic for at least half a second.');
         return;
       }
+      if (useExternalPreview) {
+        onBeginPreview?.({
+          path: result.filePath,
+          durationMs: result.durationMs,
+        });
+        setPhase('idle');
+        setDurationMs(0);
+        durationMsRef.current = 0;
+        setIsPlayingPreview(false);
+        setPlaybackPositionMs(0);
+        return;
+      }
       setPreviewPath(result.filePath);
       setPhase('preview');
       setIsPlayingPreview(false);
@@ -247,7 +276,7 @@ export function VoiceMemoSheet({
       Alert.alert('Could not stop recording', getVoiceRecordingErrorMessage(error));
       setPhase('idle');
     }
-  }, []);
+  }, [onBeginPreview, useExternalPreview]);
 
   useEffect(() => {
     stopRecordingRef.current = async () => {
@@ -276,6 +305,7 @@ export function VoiceMemoSheet({
     const showErrorAlert = options?.showErrorAlert ?? true;
     try {
       setAutoStartFailed(false);
+      setManualStartOnly(false);
       setPreviewPath(null);
       setIsPlayingPreview(false);
       setDurationMs(0);
@@ -304,7 +334,10 @@ export function VoiceMemoSheet({
   useEffect(() => {
     if (!visible) {
       autoStartAttemptedRef.current = false;
+      setManualStartOnly(false);
+      return;
     }
+    void prepareVoiceRecordingSession().catch(() => undefined);
   }, [visible]);
 
   const tryAutoStartRecording = useCallback(() => {
@@ -408,9 +441,25 @@ export function VoiceMemoSheet({
     }
   }, [embedded, instantPresent, tryAutoStartRecording, visible]);
 
+  useEffect(() => {
+    if (!visible || restartNonce === 0) {
+      return;
+    }
+    autoStartAttemptedRef.current = true;
+    setAutoStartFailed(false);
+    setManualStartOnly(true);
+    setPhase('idle');
+    setDurationMs(0);
+    durationMsRef.current = 0;
+    setIsPlayingPreview(false);
+    setPlaybackPositionMs(0);
+    setLiveLevel(0.12);
+  }, [restartNonce, visible]);
+
   const NoteInput = embedded ? TextInput : BottomSheetTextInput;
 
-  const showNoteInput = phase === 'preview' && saveTarget === 'moment';
+  const showNoteInput =
+    phase === 'preview' && saveTarget === 'moment' && !useExternalPreview;
   const noteEditingActive = showNoteInput && (noteFocused || keyboardVisible);
 
   const handleBackdropPress = useCallback(() => {
@@ -459,7 +508,7 @@ export function VoiceMemoSheet({
         <VoiceLiveMeter level={liveLevel} accentColor="#FF9500" />
       ) : null}
 
-      {phase === 'preview' ? (
+      {phase === 'preview' && !useExternalPreview ? (
         <VoicePlaybackMeter
           progress={playbackProgress}
           isPlaying={isPlayingPreview}
@@ -468,7 +517,8 @@ export function VoiceMemoSheet({
       ) : null}
 
       <View style={styles.controls}>
-        {phase === 'idle' && (!startRecordingOnOpen || autoStartFailed) ? (
+        {phase === 'idle' &&
+        (manualStartOnly || !startRecordingOnOpen || autoStartFailed) ? (
           <View style={styles.manualStartBlock}>
             <Pressable
               accessibilityRole="button"
@@ -483,7 +533,7 @@ export function VoiceMemoSheet({
               </Text>
             ) : null}
           </View>
-        ) : phase === 'idle' && startRecordingOnOpen && !autoStartFailed ? (
+        ) : phase === 'idle' && startRecordingOnOpen && !autoStartFailed && !manualStartOnly ? (
           <View style={styles.savingRow}>
             <ActivityIndicator color={colors.primary} />
             <Text variant="muted">Starting recorder…</Text>
@@ -505,7 +555,7 @@ export function VoiceMemoSheet({
           </Pressable>
         ) : null}
 
-        {phase === 'preview' ? (
+        {phase === 'preview' && !useExternalPreview ? (
           <View style={styles.previewRow}>
             <Pressable
               accessibilityRole="button"
@@ -563,7 +613,17 @@ export function VoiceMemoSheet({
     if (!visible) {
       return null;
     }
-    return <View style={styles.embeddedRoot}>{sheetBody}</View>;
+    return (
+      <View
+        style={[
+          styles.embeddedRoot,
+          {
+            paddingBottom: Math.max(insets.bottom, 16),
+          },
+        ]}>
+        {sheetBody}
+      </View>
+    );
   }
 
   return (
@@ -572,7 +632,7 @@ export function VoiceMemoSheet({
       onClose={closeSheet}
       onAnimate={handleAnimate}
       onClosing={onWillClose}
-      releaseTouchesWhileClosing={onWillClose != null}
+      closeOnAnimateOut={onWillClose != null}
       instantPresent={instantPresent}
       enableDynamicSizing={!useFixedSnapPoints}
       snapPoints={useFixedSnapPoints ? snapPoints : undefined}
@@ -589,12 +649,15 @@ export function VoiceMemoSheet({
 const styles = StyleSheet.create({
   embeddedRoot: {
     flex: 1,
+    paddingHorizontal: BOTTOM_SHEET_SURFACE.contentPaddingHorizontal,
+    paddingTop: BOTTOM_SHEET_SURFACE.contentPaddingTop,
+    minHeight: 0,
   },
   timerRow: {
     alignItems: 'center',
     gap: 8,
-    marginTop: 24,
-    marginBottom: 12,
+    marginTop: 16,
+    marginBottom: 8,
   },
   recordingBadge: {
     flexDirection: 'row',
@@ -609,7 +672,7 @@ const styles = StyleSheet.create({
   },
   controls: {
     alignItems: 'center',
-    minHeight: 96,
+    minHeight: 88,
     justifyContent: 'center',
   },
   manualStartBlock: {

@@ -9,9 +9,9 @@ import {VOICE_MAX_DURATION_MS} from '@/lib/moments/media-compress-config';
 import {createTempVoiceRecordingPath, deleteMomentContentFile} from '@/lib/moments/moment-storage';
 import {prepareVoiceRecordingSession} from '@/lib/voice-audio-session';
 
-const START_RECORDING_MAX_ATTEMPTS = 3;
-const START_RECORDING_RETRY_DELAY_MS = 350;
-const SESSION_SETTLE_DELAY_MS = 150;
+const START_RECORDING_MAX_ATTEMPTS = 4;
+const START_RECORDING_RETRY_DELAY_MS = 400;
+const SESSION_SETTLE_DELAY_MS = 300;
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => {

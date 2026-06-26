@@ -25,6 +25,7 @@ import type {RootStackParamList} from '@/navigation/types';
 import {shouldShowSettingsRestore} from '@/lib/backup/backup-install-state';
 import {
   getBackupStatus,
+  getBackupSizeWarning,
   runBackupNow,
   type BackupStatus,
 } from '@/lib/backup/backup-service';
@@ -72,7 +73,7 @@ export function BackupSettings() {
     void refreshStatus();
   }, [refreshStatus]);
 
-  const handleBackupNow = useCallback(async () => {
+  const performBackupNow = useCallback(async () => {
     setBackingUp(true);
     setProgress({phase: 'exporting', message: 'Starting backup…'});
     try {
@@ -92,6 +93,33 @@ export function BackupSettings() {
       setProgress(null);
     }
   }, [refreshStatus, status?.cloudProviderLabel]);
+
+  const handleBackupNow = useCallback(async () => {
+    const warning = await getBackupSizeWarning();
+    if (warning == null) {
+      await performBackupNow();
+      return;
+    }
+
+    const provider = status?.cloudProviderLabel ?? 'cloud';
+    Alert.alert(
+      'Larger backup already saved',
+      `Your ${provider} backup (${formatStorageBytes(warning.cloudBytes)}) is larger than your current data (${formatStorageBytes(warning.localEstimateBytes)}). Restoring may recover more memories.`,
+      [
+        {
+          text: 'Restore first',
+          onPress: () => navigation.navigate('RestoreBackup', {source: 'settings'}),
+        },
+        {
+          text: 'Back up anyway',
+          onPress: () => {
+            void performBackupNow();
+          },
+        },
+        {text: 'Ignore', style: 'cancel'},
+      ],
+    );
+  }, [navigation, performBackupNow, status?.cloudProviderLabel]);
 
   const chooseSchedule = () => {
     Alert.alert('Auto backup', 'Choose how often LifeMap backs up on Wi-Fi.', [
@@ -192,8 +220,8 @@ export function BackupSettings() {
         ) : null}
 
         <Text variant="muted" className="mt-3 text-xs leading-4">
-          Connect to Wi-Fi for large backups. LifeMap keeps only your latest
-          cloud backup. End-to-end encrypted backup is coming later.
+          Connect to Wi-Fi for large backups. LifeMap keeps your latest and
+          previous cloud backup. End-to-end encrypted backup is coming later.
         </Text>
       </View>
 

@@ -5,6 +5,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { SavedPlaceIcon } from '@/components/map/SavedPlaceIcon';
 import { MomentCountsRow } from '@/components/moments/MomentCountsRow';
+import { useMarkerTracksViewChanges } from '@/hooks/use-marker-tracks-view-changes';
 import type { SavedPlaceRow } from '@/db/repositories/saved-places';
 import type {
   MomentCountType,
@@ -87,12 +88,17 @@ export function StayDurationCallout({
     openThroughNow: trip.openThroughNow,
     now,
   });
+  const {tracksViewChanges, onLayout: onMarkerLayout} =
+    useMarkerTracksViewChanges(
+      `${bubbleHeight}:${visit.title}:${visit.subtitle}:${livePuckLabel}`,
+    );
 
   const bubble = (
     <View
       style={styles.bubble}
       collapsable={false}
       onLayout={event => {
+        onMarkerLayout();
         const nextHeight = event.nativeEvent.layout.height;
         if (nextHeight > 0 && nextHeight !== bubbleHeight) {
           setBubbleHeight(nextHeight);
@@ -174,7 +180,9 @@ export function StayDurationCallout({
           livePuckLabel ? LIVE_PUCK_CENTER_OFFSET : visitBubbleCenterOffset
         }
         zIndex={12}
-        tracksViewChanges={!livePuckLabel && bubbleHeight === 0}
+        tracksViewChanges={
+          !livePuckLabel && bubbleHeight === 0 && tracksViewChanges
+        }
       >
         {bubble}
       </Marker>

@@ -1,6 +1,23 @@
+import type {Region} from 'react-native-maps';
+
 import type {MapUserCoordinate} from '@/lib/user-coordinate-throttle';
 
 import type {MapScreenController} from './use-map-screen-controller';
+
+function regionsEqual(previous: Region | null, next: Region | null): boolean {
+  if (previous === next) {
+    return true;
+  }
+  if (previous == null || next == null) {
+    return previous === next;
+  }
+  return (
+    previous.latitude === next.latitude &&
+    previous.longitude === next.longitude &&
+    previous.latitudeDelta === next.latitudeDelta &&
+    previous.longitudeDelta === next.longitudeDelta
+  );
+}
 
 function coordinatesEqual(
   previous: MapUserCoordinate | null,
@@ -37,6 +54,7 @@ export function areMapScreenMapPropsEqual(
 ): boolean {
   return (
     previous.mapRef === next.mapRef &&
+    regionsEqual(previous.mapInitialRegion, next.mapInitialRegion) &&
     previous.provider === next.provider &&
     previous.mapPadding === next.mapPadding &&
     previous.mapAttributionInsets === next.mapAttributionInsets &&

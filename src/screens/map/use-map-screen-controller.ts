@@ -110,6 +110,11 @@ import type {RootStackParamList} from '@/navigation/types';
 import {refreshWidgetSnapshot, refreshWidgetSnapshotIfStale} from '@/lib/widget/sync-widget-snapshot';
 import {registerWidgetSheetHandlers} from '@/lib/widget/widget-deep-link';
 import {preloadTodayHistory} from '@/lib/history-preload';
+import {
+  coordinateFromRegion,
+  isWorldFallbackRegion,
+  resolveMapBootstrapRegion,
+} from '@/lib/map-bootstrap-region';
 
 import {
   MAP_FALLBACK_REGION,
@@ -154,20 +159,6 @@ export function useMapScreenController() {
     syncSelectedDateKeyForTodayRoll(todayKey);
   }, [syncSelectedDateKeyForTodayRoll, todayKey]);
 
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', nextState => {
-      if (nextState !== 'active') {
-        return;
-      }
-      syncSelectedDateKeyForTodayRoll(getTodayDateKey());
-      if (selectedDateKey === getTodayDateKey()) {
-        void         import('@/lib/today-refresh-scheduler').then(module => {
-          module.refreshTodayOnForeground();
-        });
-      }
-    });
-    return () => subscription.remove();
-  }, [selectedDateKey, syncSelectedDateKeyForTodayRoll]);
   const [historyPanelOpen, setHistoryPanelOpen] = useState(false);
   const [historyPanelChromeVisible, setHistoryPanelChromeVisible] =
     useState(false);
@@ -182,6 +173,7 @@ export function useMapScreenController() {
   const [userCoordinate, setUserCoordinate] = useState<MapUserCoordinate | null>(
     null,
   );
+  const [mapInitialRegion, setMapInitialRegion] = useState<Region | null>(null);
   const [savePlaceCoordinate, setSavePlaceCoordinate] = useState<{
     latitude: number;
     longitude: number;
@@ -234,6 +226,55 @@ export function useMapScreenController() {
   const historyPanelY = useRef(new Animated.Value(400)).current;
   const historyPanelOpenRef = useRef(false);
   const pendingGoToTodayRef = useRef(false);
+  const bootstrapCoordinateRef = useRef<MapUserCoordinate | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void resolveMapBootstrapRegion().then(region => {
+      if (cancelled) {
+        return;
+      }
+      setMapInitialRegion(region);
+      mapRegionRef.current = region;
+      if (!isWorldFallbackRegion(region)) {
+        bootstrapCoordinateRef.current = coordinateFromRegion(region);
+        needsDefaultCenterRef.current = true;
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextState => {
+      if (nextState !== 'active') {
+        return;
+      }
+      syncSelectedDateKeyForTodayRoll(getTodayDateKey());
+      if (selectedDateKey === getTodayDateKey()) {
+        void import('@/lib/today-refresh-scheduler').then(module => {
+          module.refreshTodayOnForeground();
+        });
+        if (!historyPanelOpenRef.current) {
+          needsDefaultCenterRef.current = true;
+          const coordinate =
+            userCoordinateRef.current ?? bootstrapCoordinateRef.current;
+          if (coordinate != null && mapRef.current != null) {
+            const region = regionAroundCoordinate(
+              coordinate,
+              MAP_USER_ZOOM_DELTA,
+              MAP_USER_ZOOM_DELTA,
+            );
+            mapRef.current.animateToRegion(region, 400);
+            mapRegionRef.current = region;
+            needsDefaultCenterRef.current = false;
+          }
+        }
+      }
+    });
+    return () => subscription.remove();
+  }, [selectedDateKey, syncSelectedDateKeyForTodayRoll]);
 
   const playback = useTripPlayback();
 
@@ -1317,12 +1358,22 @@ export function useMapScreenController() {
     }
 
     if (viewingToday) {
-      if (!userCoordinate || !needsDefaultCenterRef.current) {
+      if (!needsDefaultCenterRef.current) {
+        return;
+      }
+      const lastHistoryPoint = historyData.points.at(-1);
+      const coordinate =
+        userCoordinate ??
+        bootstrapCoordinateRef.current ??
+        (lastHistoryPoint != null
+          ? {latitude: lastHistoryPoint.lat, longitude: lastHistoryPoint.lng}
+          : null);
+      if (coordinate == null) {
         return;
       }
       needsDefaultCenterRef.current = false;
       const region = regionAroundCoordinate(
-        userCoordinate,
+        coordinate,
         MAP_USER_ZOOM_DELTA,
         MAP_USER_ZOOM_DELTA,
       );
@@ -1450,6 +1501,7 @@ export function useMapScreenController() {
     colorScheme,
     distanceUnit,
     mapRef,
+    mapInitialRegion,
     provider,
     mapPadding,
     mapAttributionInsets,

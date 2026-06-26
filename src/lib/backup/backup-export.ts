@@ -1,4 +1,4 @@
-import {asc} from 'drizzle-orm';
+import {asc, sql} from 'drizzle-orm';
 import ReactNativeBlobUtil from 'react-native-blob-util';
 
 import {getDatabase} from '@/db/client';
@@ -26,6 +26,38 @@ import {
 } from './backup-types';
 import {ensureDirectory} from './backup-fs';
 import {iso} from './backup-serialize';
+
+export async function estimateLocalBackupBytes(): Promise<number> {
+  const mediaFiles = await collectMomentMediaFiles();
+  const mediaBytes = mediaFiles.reduce((sum, file) => sum + file.bytes, 0);
+  const db = await getDatabase();
+  const [
+    locationPointRows,
+    momentRows,
+    tripRows,
+    savedPlaceRows,
+    activityRows,
+  ] = await Promise.all([
+    db.select({count: sql<number>`count(*)`}).from(locationPoints),
+    db.select({count: sql<number>`count(*)`}).from(moments),
+    db.select({count: sql<number>`count(*)`}).from(trips),
+    db.select({count: sql<number>`count(*)`}).from(savedPlaces),
+    db.select({count: sql<number>`count(*)`}).from(activities),
+  ]);
+  const locationCount = Number(locationPointRows[0]?.count ?? 0);
+  const momentCount = Number(momentRows[0]?.count ?? 0);
+  const tripCount = Number(tripRows[0]?.count ?? 0);
+  const savedPlaceCount = Number(savedPlaceRows[0]?.count ?? 0);
+  const activityCount = Number(activityRows[0]?.count ?? 0);
+  const dbEstimate =
+    locationCount * 96 +
+    momentCount * 280 +
+    tripCount * 220 +
+    savedPlaceCount * 180 +
+    activityCount * 120 +
+    48_000;
+  return mediaBytes + dbEstimate;
+}
 
 export type BackupBundleTables = Record<BackupTableName, unknown[]>;
 

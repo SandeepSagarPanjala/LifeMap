@@ -1,10 +1,11 @@
 import type {Region} from 'react-native-maps';
 
+/** Neutral world view — never a specific user's city (avoids showing Denton to everyone). */
 export const MAP_FALLBACK_REGION: Region = {
-  latitude: 33.2148,
-  longitude: -97.1331,
-  latitudeDelta: 0.12,
-  longitudeDelta: 0.12,
+  latitude: 20,
+  longitude: 0,
+  latitudeDelta: 120,
+  longitudeDelta: 120,
 };
 
 export const MAP_SETTINGS_TOP_GAP = 8;

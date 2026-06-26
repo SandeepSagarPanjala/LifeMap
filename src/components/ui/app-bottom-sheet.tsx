@@ -63,8 +63,14 @@ type AppBottomSheetProps = {
   bottomSheetRef?: React.RefObject<BottomSheetModalType | null>;
   /** Fired when the sheet begins closing — use to pass touches through to the screen below. */
   onClosing?: () => void;
+  /** Pop the host screen when the sheet starts closing (fullScreenModal capture routes). */
+  closeOnAnimateOut?: boolean;
   /** Stop intercepting touches while the close animation runs (sheet capture screens). */
   releaseTouchesWhileClosing?: boolean;
+  /** Override default bottom content padding (defaults to safe area). */
+  footerPadding?: number;
+  /** When false, backdrop taps won't blur the keyboard (e.g. show discard alert first). */
+  enableBlurKeyboardOnGesture?: boolean;
 };
 
 export function AppBottomSheet({
@@ -88,7 +94,10 @@ export function AppBottomSheet({
   instantPresent = false,
   bottomSheetRef,
   onClosing,
+  closeOnAnimateOut = false,
   releaseTouchesWhileClosing = false,
+  footerPadding,
+  enableBlurKeyboardOnGesture = true,
 }: AppBottomSheetProps) {
   const ref = useRef<BottomSheetModalType>(null);
   const internalScrollRef = useRef<ComponentRef<typeof BottomSheetScrollView>>(null);
@@ -176,8 +185,19 @@ export function AppBottomSheet({
     if (suppressDismissRef.current) {
       return;
     }
+    setIsClosing(false);
     notifyClosed();
   }, [notifyClosed]);
+
+  useEffect(() => {
+    if (!isClosing) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      notifyClosed();
+    }, 900);
+    return () => clearTimeout(timer);
+  }, [isClosing, notifyClosed]);
 
   const handleAnimate = useCallback(
     (fromIndex: number, toIndex: number) => {
@@ -187,12 +207,25 @@ export function AppBottomSheet({
         }
         if (releaseTouchesWhileClosing) {
           setIsClosing(true);
+          onClosing?.();
+          notifyClosed();
+        } else {
+          onClosing?.();
+          if (closeOnAnimateOut) {
+            notifyClosed();
+          }
         }
-        onClosing?.();
       }
       onAnimate?.(fromIndex, toIndex);
     },
-    [dismissKeyboardOnClose, onAnimate, onClosing, releaseTouchesWhileClosing],
+    [
+      dismissKeyboardOnClose,
+      closeOnAnimateOut,
+      notifyClosed,
+      onAnimate,
+      onClosing,
+      releaseTouchesWhileClosing,
+    ],
   );
 
   const handleBackdropPress = useCallback(() => {
@@ -204,6 +237,10 @@ export function AppBottomSheet({
 
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => {
+      if (releaseTouchesWhileClosing && isClosing) {
+        return null;
+      }
+
       const sharedProps = {
         ...props,
         disappearsOnIndex: -1 as const,
@@ -219,16 +256,17 @@ export function AppBottomSheet({
 
       return <BottomSheetBackdrop {...sharedProps} pressBehavior="close" />;
     },
-    [handleBackdropPress, onBackdropPress],
+    [handleBackdropPress, isClosing, onBackdropPress, releaseTouchesWhileClosing],
   );
 
   const contentStyle = useMemo(
     () => ({
       paddingHorizontal: 20,
       paddingTop: 4,
-      paddingBottom: Math.max(insets.bottom, 16) + (keyboardAware ? keyboardInset : 0),
+      paddingBottom:
+        footerPadding ?? Math.max(insets.bottom, 16) + (keyboardAware ? keyboardInset : 0),
     }),
-    [insets.bottom, keyboardAware, keyboardInset],
+    [footerPadding, insets.bottom, keyboardAware, keyboardInset],
   );
 
   const mergedScrollRef = scrollRef ?? internalScrollRef;
@@ -261,7 +299,7 @@ export function AppBottomSheet({
       onAnimate={handleAnimate}
       backdropComponent={renderBackdrop}
       enablePanDownToClose={enablePanDownToClose}
-      enableBlurKeyboardOnGesture
+      enableBlurKeyboardOnGesture={enableBlurKeyboardOnGesture}
       keyboardBehavior={keyboardBehavior}
       keyboardBlurBehavior={keyboardBlurBehavior}
       android_keyboardInputMode="adjustResize"

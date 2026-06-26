@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useState} from 'react';
+import {useCallback, useEffect, useRef, useState, type ComponentRef, type RefObject} from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -7,12 +7,15 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  TextInput,
   View,
   useWindowDimensions,
 } from 'react-native';
-import {BottomSheetFlatList, BottomSheetTextInput, BottomSheetView} from '@gorhom/bottom-sheet';
-import {ChevronDown, ChevronLeft, ChevronUp, Pencil, Plus, Trash2} from 'lucide-react-native';
+import {BottomSheetTextInput} from '@gorhom/bottom-sheet';
+import DraggableFlatList, {
+  ScaleDecorator,
+  type RenderItemParams,
+} from 'react-native-draggable-flatlist';
+import {ChevronLeft, GripVertical, Pencil, Trash2} from 'lucide-react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {
   SystemEmojiPicker,
@@ -20,14 +23,12 @@ import {
 } from 'react-native-system-emoji-picker';
 
 import {Text} from '@/components/ui/text';
-import {AppBottomSheet} from '@/components/ui/app-bottom-sheet';
+import {BOTTOM_SHEET_SURFACE} from '@/components/ui/bottom-sheet-chrome';
 import {useThemeColors} from '@/hooks/use-theme-colors';
 import {
   archiveActivity,
-  createActivity,
   listActiveActivities,
-  moveActivitySortOrder,
-  updateActivity,
+  reorderActivities,
   type ActivityRow,
 } from '@/db/repositories/activities';
 import {saveActivityMoment} from '@/lib/moments/capture-activity';
@@ -40,6 +41,8 @@ const LOG_SHEET_SNAP_RATIO = 0.5;
 const LOG_SHEET_HANDLE_HEIGHT = 24;
 const LOG_FOOTER_HEIGHT = 44;
 
+type SheetMode = 'log' | 'manage';
+
 function ActivityEmojiPicker({
   emoji,
   onChangeEmoji,
@@ -51,7 +54,7 @@ function ActivityEmojiPicker({
 
   useEffect(() => {
     return () => emojiKeyboard.dismiss();
-  }, []);
+  }, [emojiKeyboard]);
 
   const openPicker = () => {
     Keyboard.dismiss();
@@ -87,16 +90,97 @@ function ActivityEmojiPicker({
   );
 }
 
-type SheetMode = 'log' | 'create-first' | 'manage' | 'create' | 'edit';
+function ActivityManageList({
+  activities,
+  onReorder,
+  onBeginCreate,
+  onBeginEdit,
+  onArchive,
+}: {
+  activities: ActivityRow[];
+  onReorder: (data: ActivityRow[]) => void;
+  onBeginCreate: () => void;
+  onBeginEdit: (activity: ActivityRow) => void;
+  onArchive: (activity: ActivityRow) => void;
+}) {
+  const renderItem = useCallback(
+    ({item, drag, isActive}: RenderItemParams<ActivityRow>) => (
+      <ScaleDecorator activeScale={1.02}>
+        <View
+          style={[
+            styles.manageRow,
+            isActive ? styles.manageRowDragging : null,
+          ]}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Reorder ${item.label}`}
+            onPressIn={drag}
+            style={styles.dragHandle}>
+            <GripVertical size={18} color="#8E8E93" strokeWidth={2.25} />
+          </Pressable>
+          <View style={styles.manageRowMain}>
+            <View style={[styles.manageEmojiOrb, {backgroundColor: ACTIVITY_TINT}]}>
+              <Text style={styles.manageEmoji}>{item.emoji}</Text>
+            </View>
+            <Text style={styles.manageLabel} numberOfLines={1}>
+              {item.label}
+            </Text>
+          </View>
+          <View style={styles.manageActions}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Edit ${item.label}`}
+              onPress={() => onBeginEdit(item)}
+              style={styles.iconAction}>
+              <Pencil size={16} color="#3A3A3C" strokeWidth={2.25} />
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Remove ${item.label}`}
+              onPress={() => onArchive(item)}
+              style={styles.iconAction}>
+              <Trash2 size={16} color="#FF3B30" strokeWidth={2.25} />
+            </Pressable>
+          </View>
+        </View>
+      </ScaleDecorator>
+    ),
+    [onArchive, onBeginEdit],
+  );
+
+  const footer = (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Add activity"
+      onPress={onBeginCreate}
+      style={styles.addActivityButton}>
+      <Text style={styles.addActivityButtonLabel}>Add activity</Text>
+    </Pressable>
+  );
+
+  return (
+    <DraggableFlatList
+      data={activities}
+      keyExtractor={item => String(item.id)}
+      activationDistance={12}
+      onDragEnd={({data}) => onReorder(data)}
+      renderItem={renderItem}
+      containerStyle={styles.manageList}
+      contentContainerStyle={styles.manageListContent}
+      showsVerticalScrollIndicator={false}
+      ListFooterComponent={footer}
+    />
+  );
+}
 
 type ActivityLogSheetProps = {
   visible: boolean;
   onClose: () => void;
   onLogged: () => void | Promise<void>;
-  onWillClose?: () => void;
-  snapPoints?: (string | number)[];
-  instantPresent?: boolean;
-  embedded?: boolean;
+  onBeginCreateFirst: () => void;
+  onBeginCreate: () => void;
+  onBeginEdit: (activity: ActivityRow) => void;
+  reloadNonce?: number;
 };
 
 function ActivityPickerCell({
@@ -124,7 +208,7 @@ function ActivityPickerCell({
   );
 }
 
-function ActivityForm({
+export function ActivityForm({
   title,
   emoji,
   label,
@@ -134,7 +218,8 @@ function ActivityForm({
   onChangeLabel,
   onSubmit,
   onBack,
-  embedded = false,
+  compactFooter = false,
+  labelInputRef,
 }: {
   title: string;
   emoji: string;
@@ -145,13 +230,13 @@ function ActivityForm({
   onChangeLabel: (value: string) => void;
   onSubmit: () => void;
   onBack?: () => void;
-  embedded?: boolean;
+  compactFooter?: boolean;
+  labelInputRef?: RefObject<ComponentRef<typeof BottomSheetTextInput> | null>;
 }) {
   const canSave = emoji.trim().length > 0 && label.trim().length > 0 && !saving;
-  const LabelInput = embedded ? TextInput : BottomSheetTextInput;
 
   return (
-    <View style={styles.formBody}>
+    <View style={[styles.formBody, compactFooter ? styles.formBodyCompact : null]}>
       <View style={styles.formHeader}>
         {onBack ? (
           <Pressable
@@ -174,7 +259,8 @@ function ActivityForm({
       <View style={styles.formFields}>
         <ActivityEmojiPicker emoji={emoji} onChangeEmoji={onChangeEmoji} />
         <Text style={styles.fieldLabel}>Label</Text>
-        <LabelInput
+        <BottomSheetTextInput
+          ref={labelInputRef}
           value={label}
           onChangeText={onChangeLabel}
           placeholder="Gym"
@@ -194,7 +280,11 @@ function ActivityForm({
         accessibilityLabel={submitLabel}
         disabled={!canSave}
         onPress={onSubmit}
-        style={[styles.primaryButton, !canSave ? styles.primaryButtonDisabled : null]}>
+        style={[
+          styles.primaryButton,
+          compactFooter ? styles.primaryButtonCompact : null,
+          !canSave ? styles.primaryButtonDisabled : null,
+        ]}>
         {saving ? (
           <ActivityIndicator color="#FFFFFF" />
         ) : (
@@ -209,10 +299,10 @@ export function ActivityLogSheet({
   visible,
   onClose,
   onLogged,
-  onWillClose,
-  snapPoints: logSnapPointsProp,
-  instantPresent = false,
-  embedded = false,
+  onBeginCreateFirst,
+  onBeginCreate,
+  onBeginEdit,
+  reloadNonce = 0,
 }: ActivityLogSheetProps) {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
@@ -228,11 +318,7 @@ export function ActivityLogSheet({
   const [mode, setMode] = useState<SheetMode>('log');
   const [activities, setActivities] = useState<ActivityRow[]>([]);
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [loggingId, setLoggingId] = useState<number | null>(null);
-  const [emoji, setEmoji] = useState('');
-  const [label, setLabel] = useState('');
-  const [editingActivity, setEditingActivity] = useState<ActivityRow | null>(null);
 
   const loadActivities = useCallback(async () => {
     setLoading(true);
@@ -245,18 +331,37 @@ export function ActivityLogSheet({
     }
   }, []);
 
+  const onBeginCreateFirstRef = useRef(onBeginCreateFirst);
+  onBeginCreateFirstRef.current = onBeginCreateFirst;
+
   useEffect(() => {
     if (!visible) {
       return;
     }
+    let cancelled = false;
     void (async () => {
       const rows = await loadActivities();
-      setMode(rows.length === 0 ? 'create-first' : 'log');
-      setEmoji('');
-      setLabel('');
-      setEditingActivity(null);
+      if (cancelled) {
+        return;
+      }
+      if (rows.length === 0) {
+        onBeginCreateFirstRef.current();
+        setMode('manage');
+      } else {
+        setMode('log');
+      }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [loadActivities, visible]);
+
+  useEffect(() => {
+    if (reloadNonce === 0) {
+      return;
+    }
+    void loadActivities();
+  }, [loadActivities, reloadNonce]);
 
   const handleClose = () => {
     setMode('log');
@@ -282,54 +387,18 @@ export function ActivityLogSheet({
     }
   };
 
-  const handleCreateActivity = async (logAfterCreate: boolean) => {
-    if (saving) {
-      return;
-    }
-    setSaving(true);
-    try {
-      const created = await createActivity({emoji, label});
-      const rows = await loadActivities();
-      if (logAfterCreate) {
-        await saveActivityMoment(created);
-        await onLogged();
-        handleClose();
-        return;
+  const handleReorderActivities = useCallback(
+    async (data: ActivityRow[]) => {
+      setActivities(data);
+      try {
+        await reorderActivities(data.map(row => row.id));
+      } catch {
+        await loadActivities();
+        Alert.alert('Could not reorder', 'Please try again.');
       }
-      setMode(rows.length === 0 ? 'create-first' : 'log');
-      setEmoji('');
-      setLabel('');
-    } catch (error) {
-      Alert.alert(
-        'Could not save activity',
-        error instanceof Error ? error.message : 'Please try again.',
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleUpdateActivity = async () => {
-    if (!editingActivity || saving) {
-      return;
-    }
-    setSaving(true);
-    try {
-      await updateActivity(editingActivity.id, {emoji, label});
-      await loadActivities();
-      setMode('manage');
-      setEditingActivity(null);
-      setEmoji('');
-      setLabel('');
-    } catch (error) {
-      Alert.alert(
-        'Could not update activity',
-        error instanceof Error ? error.message : 'Please try again.',
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
+    },
+    [loadActivities],
+  );
 
   const confirmArchive = (activity: ActivityRow) => {
     Alert.alert(
@@ -345,7 +414,8 @@ export function ActivityLogSheet({
               await archiveActivity(activity.id);
               const rows = await loadActivities();
               if (rows.length === 0) {
-                setMode('create-first');
+                onBeginCreateFirst();
+                setMode('manage');
               }
               setActivities(rows);
             })();
@@ -355,266 +425,108 @@ export function ActivityLogSheet({
     );
   };
 
-  const isFormMode = mode === 'create-first' || mode === 'create' || mode === 'edit';
-  const logSnapPoints = logSnapPointsProp ?? (['50%'] as const);
-  const snapPoints =
-    mode === 'manage' ? (['72%'] as const) : isFormMode ? undefined : logSnapPoints;
-
-  const ActivityList = embedded ? FlatList : BottomSheetFlatList;
-  const PanelContainer = embedded ? View : BottomSheetView;
-  const logBodyStyle = embedded ? styles.stepBodyEmbedded : [styles.stepBody, {height: logStepHeight}];
-
-  const panelContent = (
-    <PanelContainer
-      style={[
-        embedded ? styles.sheetBodyEmbedded : styles.sheetBody,
-        isFormMode ? styles.sheetBodyCompact : null,
-        embedded
-          ? null
-          : {
-              paddingBottom: isFormMode
-                ? Math.max(insets.bottom, 20) + 8
-                : Math.max(insets.bottom, 16),
-            },
-      ]}>
-      {mode === 'log' ? (
-        <View style={logBodyStyle}>
-            <View style={styles.stepHeader}>
-              <Text variant="h4" className="border-0 pb-0">
-                What did you do?
-              </Text>
-            </View>
-            {loading ? (
-              <View style={styles.loadingBody}>
-                <ActivityIndicator color={colors.primary} />
-              </View>
-            ) : (
-              <ActivityList
-                data={activities}
-                keyExtractor={item => String(item.id)}
-                numColumns={GRID_COLUMNS}
-                columnWrapperStyle={styles.gridRow}
-                contentContainerStyle={styles.gridContent}
-                showsVerticalScrollIndicator={false}
-                style={styles.grid}
-                renderItem={({item}) => (
-                  <View style={{width: cellWidth}}>
-                    <ActivityPickerCell
-                      activity={item}
-                      onPress={() => {
-                        void handleLogActivity(item);
-                      }}
-                    />
-                  </View>
-                )}
-              />
-            )}
-            <View style={styles.stepFooterPinned}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Manage activities"
-                onPress={() => setMode('manage')}
-                style={styles.footerLink}>
-                <Text style={[styles.footerLinkLabel, {color: colors.primary}]}>
-                  Manage activities
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-        ) : null}
-
-        {mode === 'create-first' ? (
-          <ActivityForm
-            embedded={embedded}
-            title="Add your first activity"
-            emoji={emoji}
-            label={label}
-            saving={saving}
-            submitLabel="Save & log"
-            onChangeEmoji={setEmoji}
-            onChangeLabel={setLabel}
-            onSubmit={() => {
-              void handleCreateActivity(true);
-            }}
-          />
-        ) : null}
-
-        {mode === 'create' ? (
-          <ActivityForm
-            embedded={embedded}
-            title="New activity"
-            emoji={emoji}
-            label={label}
-            saving={saving}
-            submitLabel="Save"
-            onChangeEmoji={setEmoji}
-            onChangeLabel={setLabel}
-            onBack={() => setMode('manage')}
-            onSubmit={() => {
-              void handleCreateActivity(false);
-            }}
-          />
-        ) : null}
-
-        {mode === 'edit' && editingActivity ? (
-          <ActivityForm
-            embedded={embedded}
-            title="Edit activity"
-            emoji={emoji}
-            label={label}
-            saving={saving}
-            submitLabel="Save"
-            onChangeEmoji={setEmoji}
-            onChangeLabel={setLabel}
-            onBack={() => {
-              setMode('manage');
-              setEditingActivity(null);
-            }}
-            onSubmit={() => {
-              void handleUpdateActivity();
-            }}
-          />
-        ) : null}
-
-        {mode === 'manage' ? (
-          <View style={styles.manageBody}>
-            <View style={styles.manageHeader}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Back to activity picker"
-                onPress={() => setMode(activities.length === 0 ? 'create-first' : 'log')}
-                style={styles.backRow}>
-                <ChevronLeft size={20} color="#1C1C1E" strokeWidth={2.25} />
-                <Text style={styles.backLabel}>Back</Text>
-              </Pressable>
-              <Text variant="h4" className="border-0 pb-0">
-                Your activities
-              </Text>
-            </View>
-
-            <ActivityList
-              data={activities}
-              keyExtractor={item => String(item.id)}
-              contentContainerStyle={styles.manageListContent}
-              showsVerticalScrollIndicator={false}
-              style={styles.manageList}
-              ListFooterComponent={
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Add activity"
-                  onPress={() => {
-                    setEmoji('');
-                    setLabel('');
-                    setMode('create');
-                  }}
-                  style={styles.addRow}>
-                  <Plus size={18} color={colors.primary} strokeWidth={2.25} />
-                  <Text style={[styles.addRowLabel, {color: colors.primary}]}>
-                    Add activity
-                  </Text>
-                </Pressable>
-              }
-              renderItem={({item, index}) => (
-                <View style={styles.manageRow}>
-                  <View style={styles.manageRowMain}>
-                    <View style={[styles.manageEmojiOrb, {backgroundColor: ACTIVITY_TINT}]}>
-                      <Text style={styles.manageEmoji}>{item.emoji}</Text>
-                    </View>
-                    <Text style={styles.manageLabel} numberOfLines={1}>
-                      {item.label}
-                    </Text>
-                  </View>
-                  <View style={styles.manageActions}>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={`Move ${item.label} up`}
-                      disabled={index === 0}
-                      onPress={() => {
-                        void moveActivitySortOrder(item.id, 'up').then(loadActivities);
-                      }}
-                      style={[styles.iconAction, index === 0 ? styles.iconActionDisabled : null]}>
-                      <ChevronUp size={18} color="#3A3A3C" strokeWidth={2.25} />
-                    </Pressable>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={`Move ${item.label} down`}
-                      disabled={index === activities.length - 1}
-                      onPress={() => {
-                        void moveActivitySortOrder(item.id, 'down').then(loadActivities);
-                      }}
-                      style={[
-                        styles.iconAction,
-                        index === activities.length - 1 ? styles.iconActionDisabled : null,
-                      ]}>
-                      <ChevronDown size={18} color="#3A3A3C" strokeWidth={2.25} />
-                    </Pressable>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={`Edit ${item.label}`}
-                      onPress={() => {
-                        setEditingActivity(item);
-                        setEmoji(item.emoji);
-                        setLabel(item.label);
-                        setMode('edit');
-                      }}
-                      style={styles.iconAction}>
-                      <Pencil size={16} color="#3A3A3C" strokeWidth={2.25} />
-                    </Pressable>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={`Remove ${item.label}`}
-                      onPress={() => confirmArchive(item)}
-                      style={styles.iconAction}>
-                      <Trash2 size={16} color="#FF3B30" strokeWidth={2.25} />
-                    </Pressable>
-                  </View>
-                </View>
-              )}
-            />
-          </View>
-        ) : null}
-    </PanelContainer>
-  );
-
-  if (embedded) {
-    if (!visible) {
-      return null;
-    }
-    return panelContent;
+  if (!visible) {
+    return null;
   }
 
   return (
-    <AppBottomSheet
-      visible={visible}
-      onClose={handleClose}
-      onClosing={onWillClose}
-      releaseTouchesWhileClosing={onWillClose != null}
-      instantPresent={instantPresent}
-      dismissKeyboardOnClose
-      keyboardAware={isFormMode}
-      enableDynamicSizing={isFormMode}
-      rawChildren
-      snapPoints={snapPoints ? [...snapPoints] : undefined}>
-      {panelContent}
-    </AppBottomSheet>
+    <View
+      style={[
+        styles.sheetBodyEmbedded,
+        {
+          paddingBottom:
+            mode === 'log' ? 0 : Math.max(insets.bottom, 16),
+        },
+      ]}>
+      {mode === 'log' ? (
+        <View style={[styles.stepBody, {height: logStepHeight}]}>
+          <View style={styles.stepHeader}>
+            <Text variant="h4" className="border-0 pb-0">
+              What did you do?
+            </Text>
+          </View>
+          {loading ? (
+            <View style={styles.loadingBody}>
+              <ActivityIndicator color={colors.primary} />
+            </View>
+          ) : (
+            <FlatList
+              data={activities}
+              keyExtractor={item => String(item.id)}
+              numColumns={GRID_COLUMNS}
+              columnWrapperStyle={styles.gridRow}
+              contentContainerStyle={styles.gridContent}
+              showsVerticalScrollIndicator={false}
+              style={styles.grid}
+              renderItem={({item}) => (
+                <View style={{width: cellWidth}}>
+                  <ActivityPickerCell
+                    activity={item}
+                    onPress={() => {
+                      void handleLogActivity(item);
+                    }}
+                  />
+                </View>
+              )}
+            />
+          )}
+          <View style={styles.stepFooterPinned}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Manage activities"
+              onPress={() => setMode('manage')}
+              style={styles.footerLink}>
+              <Text style={[styles.footerLinkLabel, {color: colors.primary}]}>
+                Manage activities
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
+
+      {mode === 'manage' ? (
+        <View style={styles.manageBody}>
+          <View style={styles.manageHeader}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Back to activity picker"
+              onPress={() => {
+                if (activities.length === 0) {
+                  handleClose();
+                  return;
+                }
+                setMode('log');
+              }}
+              style={styles.backRow}>
+              <ChevronLeft size={20} color="#1C1C1E" strokeWidth={2.25} />
+              <Text style={styles.backLabel}>Back</Text>
+            </Pressable>
+            <Text variant="h4" className="border-0 pb-0">
+              Your activities
+            </Text>
+          </View>
+
+          <ActivityManageList
+            activities={activities}
+            onReorder={data => {
+              void handleReorderActivities(data);
+            }}
+            onBeginCreate={onBeginCreate}
+            onBeginEdit={onBeginEdit}
+            onArchive={confirmArchive}
+          />
+        </View>
+      ) : null}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   sheetBodyEmbedded: {
     flex: 1,
-    paddingTop: 0,
+    paddingHorizontal: BOTTOM_SHEET_SURFACE.contentPaddingHorizontal,
+    paddingTop: BOTTOM_SHEET_SURFACE.contentPaddingTop,
     minHeight: 0,
-  },
-  stepBodyEmbedded: {
-    flex: 1,
-    minHeight: 0,
-  },
-  sheetBody: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 4,
-    minHeight: 320,
   },
   loadingBody: {
     flex: 1,
@@ -692,9 +604,8 @@ const styles = StyleSheet.create({
   formBody: {
     paddingBottom: 8,
   },
-  sheetBodyCompact: {
-    flexGrow: 0,
-    minHeight: 0,
+  formBodyCompact: {
+    paddingBottom: 0,
   },
   emojiPickerWrap: {
     alignItems: 'center',
@@ -750,6 +661,10 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     backgroundColor: '#007AFF',
   },
+  primaryButtonCompact: {
+    marginTop: 16,
+    marginBottom: 8,
+  },
   primaryButtonDisabled: {
     opacity: 0.45,
   },
@@ -788,10 +703,26 @@ const styles = StyleSheet.create({
   manageRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    width: '100%',
     paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#E5E5EA',
+    backgroundColor: '#FFFFFF',
+  },
+  manageRowDragging: {
+    borderBottomColor: 'transparent',
+    shadowColor: '#000000',
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: {width: 0, height: 2},
+    elevation: 4,
+  },
+  dragHandle: {
+    width: 28,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 2,
   },
   manageRowMain: {
     flexDirection: 'row',
@@ -828,18 +759,19 @@ const styles = StyleSheet.create({
     height: 32,
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: 8,
   },
-  iconActionDisabled: {
-    opacity: 0.35,
-  },
-  addRow: {
-    flexDirection: 'row',
+  addActivityButton: {
+    marginTop: 16,
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'center',
+    borderRadius: 12,
     paddingVertical: 14,
+    backgroundColor: '#007AFF',
   },
-  addRowLabel: {
-    fontSize: 15,
-    fontWeight: '600',
+  addActivityButtonLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

@@ -1,11 +1,10 @@
-import {useCallback, useEffect, useMemo, useState} from 'react';
+import {useMemo} from 'react';
 import {Alert, Pressable, ScrollView, StyleSheet, View} from 'react-native';
 import {Trash2, Pencil} from 'lucide-react-native';
 
-import {EditFavoriteLabelPanel} from '@/components/map/EditFavoriteLabelSheet';
 import {SavedPlaceIcon} from '@/components/map/SavedPlaceIcon';
 import {Text} from '@/components/ui/text';
-import {AppBottomSheet} from '@/components/ui/app-bottom-sheet';
+import {BOTTOM_SHEET_SURFACE} from '@/components/ui/bottom-sheet-chrome';
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import {savedPlaceDisplayLabel} from '@/lib/saved-places';
 import {SAVED_PLACE_MAP_STYLE} from '@/lib/saved-places-map';
@@ -16,12 +15,8 @@ type SavedPlacesSheetProps = {
   places: SavedPlaceRow[];
   onClose: () => void;
   onSelectPlace: (place: SavedPlaceRow) => void;
-  onEditLabel: (place: SavedPlaceRow, label: string) => Promise<void>;
+  onBeginEdit: (place: SavedPlaceRow) => void;
   onDelete: (place: SavedPlaceRow) => Promise<void>;
-  onWillClose?: () => void;
-  snapPoints?: (string | number)[];
-  instantPresent?: boolean;
-  embedded?: boolean;
 };
 
 function sortPlaces(places: SavedPlaceRow[]): SavedPlaceRow[] {
@@ -44,35 +39,11 @@ export function SavedPlacesSheet({
   places,
   onClose,
   onSelectPlace,
-  onEditLabel,
+  onBeginEdit,
   onDelete,
-  onWillClose,
-  snapPoints: snapPointsProp,
-  instantPresent = false,
-  embedded = false,
 }: SavedPlacesSheetProps) {
   const colors = useThemeColors();
   const sorted = useMemo(() => sortPlaces(places), [places]);
-  const [editingPlace, setEditingPlace] = useState<SavedPlaceRow | null>(null);
-  const listSnapPoints = useMemo(
-    () => snapPointsProp ?? (['50%'] as const),
-    [snapPointsProp],
-  );
-
-  useEffect(() => {
-    if (!visible) {
-      setEditingPlace(null);
-    }
-  }, [visible]);
-
-  const closeListSheet = useCallback(() => {
-    setEditingPlace(null);
-    onClose();
-  }, [onClose]);
-
-  const closeEditSheet = useCallback(() => {
-    setEditingPlace(null);
-  }, []);
 
   const confirmDelete = (place: SavedPlaceRow) => {
     Alert.alert(
@@ -84,15 +55,23 @@ export function SavedPlacesSheet({
           text: 'Remove',
           style: 'destructive',
           onPress: () => {
-            onDelete(place);
+            void onDelete(place);
           },
         },
       ],
     );
   };
 
-  const listContent = (
-    <>
+  if (!visible) {
+    return null;
+  }
+
+  return (
+    <ScrollView
+      style={styles.root}
+      contentContainerStyle={styles.scroll}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled">
       <Text variant="h4" className="border-0 pb-0">
         Saved places
       </Text>
@@ -115,7 +94,7 @@ export function SavedPlacesSheet({
                   accessibilityLabel={`Show ${savedPlaceDisplayLabel(place)} on map`}
                   onPress={() => {
                     onSelectPlace(place);
-                    closeListSheet();
+                    onClose();
                   }}
                   style={styles.rowTap}>
                   <View
@@ -147,7 +126,7 @@ export function SavedPlacesSheet({
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={`Rename ${place.label}`}
-                    onPress={() => setEditingPlace(place)}
+                    onPress={() => onBeginEdit(place)}
                     style={styles.actionBtn}>
                     <Pencil
                       size={18}
@@ -172,80 +151,17 @@ export function SavedPlacesSheet({
           })}
         </View>
       )}
-    </>
-  );
-
-  if (embedded) {
-    if (!visible) {
-      return null;
-    }
-    if (editingPlace != null) {
-      return (
-        <View style={styles.embeddedRoot}>
-          <EditFavoriteLabelPanel
-            key={editingPlace.id}
-            initialValue={editingPlace.label}
-            onClose={closeEditSheet}
-            onSave={label => {
-              onEditLabel(editingPlace, label).then(() => closeEditSheet());
-            }}
-          />
-        </View>
-      );
-    }
-    return (
-      <ScrollView
-        style={styles.embeddedRoot}
-        contentContainerStyle={styles.embeddedScroll}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled">
-        {listContent}
-      </ScrollView>
-    );
-  }
-
-  return (
-    <>
-      <AppBottomSheet
-        name="saved-places-list"
-        visible={visible}
-        onClose={closeListSheet}
-        onClosing={onWillClose}
-        releaseTouchesWhileClosing={onWillClose != null}
-        instantPresent={instantPresent}
-        snapPoints={[...listSnapPoints]}
-        scrollable>
-        {listContent}
-      </AppBottomSheet>
-
-      <AppBottomSheet
-        name="saved-places-edit"
-        visible={editingPlace != null}
-        onClose={closeEditSheet}
-        stackBehavior="push"
-        enableDynamicSizing
-        keyboardBehavior="interactive"
-        keyboardBlurBehavior="none">
-        {editingPlace != null ? (
-          <EditFavoriteLabelPanel
-            key={editingPlace.id}
-            initialValue={editingPlace.label}
-            onClose={closeEditSheet}
-            onSave={label => {
-              onEditLabel(editingPlace, label).then(() => closeEditSheet());
-            }}
-          />
-        ) : null}
-      </AppBottomSheet>
-    </>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  embeddedRoot: {
+  root: {
     flex: 1,
+    paddingHorizontal: BOTTOM_SHEET_SURFACE.contentPaddingHorizontal,
+    paddingTop: BOTTOM_SHEET_SURFACE.contentPaddingTop,
   },
-  embeddedScroll: {
+  scroll: {
     paddingBottom: 8,
   },
   list: {
@@ -282,5 +198,6 @@ const styles = StyleSheet.create({
   },
   actionBtn: {
     padding: 8,
+    borderRadius: 8,
   },
 });

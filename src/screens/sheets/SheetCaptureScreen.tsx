@@ -4,8 +4,7 @@ import {BottomSheetModalProvider} from '@gorhom/bottom-sheet';
 
 /**
  * Transparent stack screen + local gorhom provider.
- * Map shows through; dimming comes from the sheet backdrop only.
- * (Local provider is required — do not portal sheets to the App root provider.)
+ * Used by HistoryDatePicker only.
  */
 export function SheetCaptureScreen({
   children,

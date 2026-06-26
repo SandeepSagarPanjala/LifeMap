@@ -1,5 +1,5 @@
 import {useEffect, useState} from 'react';
-import {Pressable, StyleSheet, View} from 'react-native';
+import {Pressable, StyleSheet, TextInput, View} from 'react-native';
 import {BottomSheetTextInput} from '@gorhom/bottom-sheet';
 
 import {Text} from '@/components/ui/text';

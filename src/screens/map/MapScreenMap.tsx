@@ -1,5 +1,5 @@
 import {memo} from 'react';
-import {StyleSheet} from 'react-native';
+import {StyleSheet, View} from 'react-native';
 import MapView from 'react-native-maps';
 
 import {DriveActivityCallout} from '@/components/map/DriveActivityCallout';
@@ -9,7 +9,6 @@ import {MomentMapOverlay} from '@/components/map/MomentMapOverlay';
 import {SavedPlacesMapOverlay} from '@/components/map/SavedPlacesMapOverlay';
 import {StayDurationCallout} from '@/components/map/StayDurationCallout';
 
-import {MAP_FALLBACK_REGION} from './map-screen-constants';
 import {areMapScreenMapPropsEqual} from './map-screen-map-props';
 import type {MapScreenController} from './use-map-screen-controller';
 
@@ -22,6 +21,7 @@ export const MapScreenMap = memo(function MapScreenMap({
 }: MapScreenMapProps) {
   const {
     mapRef,
+    mapInitialRegion,
     provider,
     mapPadding,
     mapAttributionInsets,
@@ -58,12 +58,16 @@ export const MapScreenMap = memo(function MapScreenMap({
     savedPlaceMomentClusters,
   } = controller;
 
+  if (mapInitialRegion == null) {
+    return <View style={StyleSheet.absoluteFill} className="bg-background" />;
+  }
+
   return (
     <MapView
       ref={mapRef}
       style={StyleSheet.absoluteFill}
       provider={provider}
-      initialRegion={MAP_FALLBACK_REGION}
+      initialRegion={mapInitialRegion}
       mapPadding={mapPadding}
       legalLabelInsets={mapAttributionInsets.legalLabelInsets}
       appleLogoInsets={mapAttributionInsets.appleLogoInsets}

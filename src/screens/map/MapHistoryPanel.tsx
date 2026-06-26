@@ -18,6 +18,7 @@ type MapHistoryPanelProps = {
 export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
   const {
     historyPanelChromeVisible,
+    historyPanelOpen,
     insets,
     historyPanelY,
     showHistoryPanelContent,
@@ -71,7 +72,7 @@ export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
 
   return (
     <Animated.View
-      pointerEvents="box-none"
+      pointerEvents={historyPanelOpen ? 'box-none' : 'none'}
       style={[
         styles.host,
         {

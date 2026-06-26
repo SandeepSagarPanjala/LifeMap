@@ -23,6 +23,9 @@ import {RestoreBackupGate} from '@/components/backup/RestoreBackupGate';
 import {SettingsScreen} from '@/screens/SettingsScreen';
 import {useThemeColors} from '@/hooks/use-theme-colors';
 import {setWidgetNavigationRef} from '@/lib/widget/widget-deep-link';
+import {activityCaptureScreenOptions} from '@/navigation/activity-capture-screen-options';
+import {nativeHalfSheetCaptureScreenOptions} from '@/navigation/native-half-sheet-capture-options';
+import {voiceCaptureScreenOptions} from '@/navigation/voice-capture-screen-options';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -108,12 +111,12 @@ export function RootNavigator() {
         <Stack.Screen
           name="CaptureVoice"
           component={CaptureVoiceScreen}
-          options={sheetCaptureScreenOptions}
+          options={voiceCaptureScreenOptions}
         />
         <Stack.Screen
           name="CaptureActivity"
           component={CaptureActivityScreen}
-          options={sheetCaptureScreenOptions}
+          options={activityCaptureScreenOptions}
         />
         <Stack.Screen
           name="HistoryDatePicker"
@@ -123,7 +126,7 @@ export function RootNavigator() {
         <Stack.Screen
           name="SavedPlaces"
           component={SavedPlacesScreen}
-          options={sheetCaptureScreenOptions}
+          options={nativeHalfSheetCaptureScreenOptions}
         />
         <Stack.Screen
           name="Benchmark"

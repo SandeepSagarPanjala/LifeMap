@@ -3,6 +3,7 @@ import {Marker} from 'react-native-maps';
 import {StyleSheet, Text, View} from 'react-native';
 
 import {DriveEndpointPlaceRow} from '@/components/map/DriveEndpointPlaceRow';
+import {useMarkerTracksViewChanges} from '@/hooks/use-marker-tracks-view-changes';
 import type {DriveEndpointLabel} from '@/lib/drive-endpoint-label';
 import {hasDriveEndpointLabel} from '@/lib/drive-endpoint-label';
 import {
@@ -48,6 +49,14 @@ export function DriveActivityCallout({
           y: -(BUBBLE_DOT_GAP + bubbleHeight / 2),
         }
       : LIVE_PUCK_CENTER_OFFSET;
+  const showStart = hasDriveEndpointLabel(startLabel);
+  const showEnd = endLabel != null && hasDriveEndpointLabel(endLabel);
+  const showOpenEndPlaceholder =
+    trip.openThroughNow === true && showStart && !showEnd;
+  const {tracksViewChanges, onLayout: onMarkerLayout} =
+    useMarkerTracksViewChanges(
+      `${bubbleHeight}:${drive.title}:${drive.subtitle}:${showOpenEndPlaceholder}`,
+    );
 
   useEffect(() => {
     if (!ongoing) {
@@ -61,22 +70,18 @@ export function DriveActivityCallout({
     return null;
   }
 
-  const showStart = hasDriveEndpointLabel(startLabel);
-  const showEnd = endLabel != null && hasDriveEndpointLabel(endLabel);
-  const showOpenEndPlaceholder =
-    trip.openThroughNow === true && showStart && !showEnd;
-
   return (
     <Marker
       coordinate={coordinate}
       anchor={LIVE_PUCK_ANCHOR}
       centerOffset={bubbleCenterOffset}
       zIndex={12}
-      tracksViewChanges={bubbleHeight === 0}>
+      tracksViewChanges={bubbleHeight === 0 && tracksViewChanges}>
       <View
         style={styles.bubble}
         collapsable={false}
         onLayout={event => {
+          onMarkerLayout();
           const nextHeight = event.nativeEvent.layout.height;
           if (nextHeight > 0 && nextHeight !== bubbleHeight) {
             setBubbleHeight(nextHeight);
