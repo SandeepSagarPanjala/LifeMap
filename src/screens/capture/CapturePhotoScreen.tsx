@@ -218,11 +218,38 @@ export function CapturePhotoScreen() {
   const recorderRef = useRef<Recorder | null>(null);
   const recordingStartedAtRef = useRef(0);
   const recordingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const cameraReadyFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const device = useCameraDevice(cameraPosition);
+
+  const markCameraReady = useCallback(() => {
+    if (cameraReadyFallbackRef.current != null) {
+      clearTimeout(cameraReadyFallbackRef.current);
+      cameraReadyFallbackRef.current = null;
+    }
+    setCameraReady(true);
+  }, []);
+
+  const markCameraNotReady = useCallback(() => {
+    setCameraReady(false);
+  }, []);
 
   useEffect(() => {
     setCameraReady(false);
-  }, [cameraPosition, captureMode, device, phase]);
+    setCapturing(false);
+    if (cameraReadyFallbackRef.current != null) {
+      clearTimeout(cameraReadyFallbackRef.current);
+    }
+    cameraReadyFallbackRef.current = setTimeout(() => {
+      setCameraReady(true);
+      cameraReadyFallbackRef.current = null;
+    }, 2500);
+    return () => {
+      if (cameraReadyFallbackRef.current != null) {
+        clearTimeout(cameraReadyFallbackRef.current);
+        cameraReadyFallbackRef.current = null;
+      }
+    };
+  }, [cameraPosition, captureMode, phase]);
 
   useEffect(() => {
     if (!hasPermission) {
@@ -478,7 +505,7 @@ export function CapturePhotoScreen() {
   }, [isRecording, resetRecordingState]);
 
   const handleCapture = useCallback(async () => {
-    if (capturing || !cameraReady) {
+    if (capturing) {
       return;
     }
     setCapturing(true);
@@ -525,7 +552,7 @@ export function CapturePhotoScreen() {
     } finally {
       setCapturing(false);
     }
-  }, [cameraReady, capturing, flashMode, photoOutput]);
+  }, [capturing, flashMode, photoOutput]);
 
   const handleSave = useCallback(async () => {
     if (saving || draft == null) {
@@ -594,15 +621,18 @@ export function CapturePhotoScreen() {
     return (
       <View style={styles.root}>
         <Camera
+          key={`${cameraPosition}-${captureMode}`}
           style={StyleSheet.absoluteFill}
           device={device}
           isActive={phase === 'camera'}
           outputs={captureMode === 'video' ? [photoOutput, videoOutput] : [photoOutput]}
           mirrorMode="off"
           enableNativeZoomGesture
-          onStarted={() => setCameraReady(true)}
-          onPreviewStopped={() => setCameraReady(false)}
-          onInterruptionStarted={() => setCameraReady(false)}
+          onPreviewStarted={markCameraReady}
+          onStarted={markCameraReady}
+          onPreviewStopped={markCameraNotReady}
+          onInterruptionStarted={markCameraNotReady}
+          onInterruptionEnded={markCameraReady}
         />
 
         <View
@@ -692,13 +722,13 @@ export function CapturePhotoScreen() {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Take photo"
-                  disabled={capturing || !cameraReady}
+                  disabled={capturing}
                   onPress={() => void handleCapture()}
                   style={[
                     styles.shutterButton,
-                    capturing || !cameraReady ? styles.disabled : null,
+                    capturing || !cameraReady ? styles.shutterButtonPending : null,
                   ]}>
-                  {capturing || !cameraReady ? (
+                  {capturing ? (
                     <ActivityIndicator color="#000000" />
                   ) : null}
                 </Pressable>
@@ -740,9 +770,12 @@ export function CapturePhotoScreen() {
                   accessibilityRole="button"
                   accessibilityLabel="Flip camera"
                   disabled={capturing || isRecording}
-                  onPress={() =>
-                    setCameraPosition(current => (current === 'back' ? 'front' : 'back'))
-                  }
+                  onPress={() => {
+                    setCapturing(false);
+                    setCameraPosition(current =>
+                      current === 'back' ? 'front' : 'back',
+                    );
+                  }}
                   style={styles.iconButton}>
                   <RefreshCw size={22} color="#FFFFFF" strokeWidth={2.25} />
                 </Pressable>
@@ -1299,6 +1332,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
+  },
+  shutterButtonPending: {
+    opacity: 0.72,
   },
   shutterButtonRecording: {
     borderColor: '#FF3B30',
