@@ -24,6 +24,7 @@ import {useHistoryForDay} from '@/hooks/use-history-data';
 import {useLatestLocationSave} from '@/hooks/use-latest-location-save';
 import {usePlaceLookupScheduler} from '@/hooks/use-place-lookup-scheduler';
 import {useSavedPlaces} from '@/hooks/use-saved-places';
+import {useStaySavedPlace} from '@/hooks/use-stay-saved-place';
 import {useDriveEndpointLabels} from '@/hooks/use-drive-endpoint-labels';
 import {useDayMoments} from '@/hooks/use-day-moments';
 import {
@@ -399,12 +400,9 @@ export function useMapScreenController() {
     [currentOpenActivity],
   );
 
-  const currentOpenVisitSavedPlace = useMemo(
-    () =>
-      currentOpenVisit != null
-        ? matchSavedPlaceForStay(currentOpenVisit, savedPlaces)
-        : null,
-    [currentOpenVisit, savedPlaces],
+  const currentOpenVisitSavedPlace = useStaySavedPlace(
+    currentOpenVisit,
+    savedPlaces,
   );
 
   const currentOpenDriveAdjacentStays = useMemo(() => {
@@ -426,12 +424,9 @@ export function useMapScreenController() {
     savedPlaces,
   );
 
-  const selectedSavedPlace = useMemo(
-    () =>
-      selectedPlayable?.kind === 'stay'
-        ? matchSavedPlaceForStay(selectedPlayable, savedPlaces)
-        : null,
-    [selectedPlayable, savedPlaces],
+  const selectedSavedPlace = useStaySavedPlace(
+    selectedPlayable?.kind === 'stay' ? selectedPlayable : null,
+    savedPlaces,
   );
 
   const selectedTravelAdjacentStays = useMemo(() => {

@@ -23,8 +23,9 @@ import {
   type BackupManifest,
   type BackupTableName,
   type TripLabelOverride,
+  type BackupProgress,
 } from './backup-types';
-import {ensureDirectory} from './backup-fs';
+import {ensureDirectory, yieldToUi} from './backup-fs';
 import {iso} from './backup-serialize';
 
 export async function estimateLocalBackupBytes(): Promise<number> {
@@ -113,6 +114,7 @@ function serializeSavedPlaces(
     lng: row.lng,
     radiusMeters: row.radiusMeters,
     addressLine: row.addressLine,
+    active: row.active,
     createdAt: iso(row.createdAt),
   }));
 }
@@ -385,14 +387,34 @@ export async function writeBackupBundleToDirectory(
   }
 }
 
+const TABLE_READ_LABELS: Record<BackupTableName, string> = {
+  activities: 'activities',
+  location_points: 'location history',
+  saved_places: 'saved places',
+  place_lookup_cache: 'place lookups',
+  moments: 'memories',
+  settings: 'settings',
+  trips: 'visits and drives',
+};
+
 export async function readBackupBundleFromDirectory(
   directoryPath: string,
+  onProgress?: (progress: BackupProgress) => void,
 ): Promise<{
   manifest: BackupManifest;
   tables: BackupBundleTables;
   tripOverrides: TripLabelOverride[];
 }> {
   const fs = ReactNativeBlobUtil.fs;
+
+  onProgress?.({
+    phase: 'downloading',
+    message: 'Reading manifest…',
+    completed: 0,
+    total: 100,
+  });
+  await yieldToUi();
+
   const manifestRaw = await fs.readFile(`${directoryPath}/manifest.json`, 'utf8');
   const manifest = JSON.parse(manifestRaw) as BackupManifest;
   if (manifest.format !== 'lifemap-backup') {
@@ -402,14 +424,40 @@ export async function readBackupBundleFromDirectory(
     throw new Error('This backup requires a newer version of LifeMap.');
   }
 
+  const tableWeights = BACKUP_TABLE_NAMES.map(
+    name => Math.max(manifest.tableCounts[name] ?? 0, 1),
+  );
+  const totalWeight =
+    1 + tableWeights.reduce((sum, weight) => sum + weight, 0) + 1;
+  let completedWeight = 1;
+
+  const reportReadProgress = (message: string) => {
+    onProgress?.({
+      phase: 'downloading',
+      message,
+      completed: completedWeight,
+      total: totalWeight,
+    });
+  };
+
+  reportReadProgress('Reading manifest…');
+
   const tables = {} as BackupBundleTables;
-  for (const tableName of BACKUP_TABLE_NAMES) {
+  for (let index = 0; index < BACKUP_TABLE_NAMES.length; index += 1) {
+    const tableName = BACKUP_TABLE_NAMES[index]!;
+    reportReadProgress(`Reading ${TABLE_READ_LABELS[tableName]}…`);
+    await yieldToUi();
     const raw = await fs.readFile(`${directoryPath}/db/${tableName}.json`, 'utf8');
     tables[tableName] = JSON.parse(raw) as unknown[];
+    completedWeight += tableWeights[index]!;
+    reportReadProgress(`Reading ${TABLE_READ_LABELS[tableName]}…`);
+    await yieldToUi();
   }
 
   let tripOverrides: TripLabelOverride[] = [];
   const overridesPath = `${directoryPath}/db/trip_overrides.json`;
+  reportReadProgress('Reading trip labels…');
+  await yieldToUi();
   if (await fs.exists(overridesPath)) {
     tripOverrides = JSON.parse(
       await fs.readFile(overridesPath, 'utf8'),
@@ -417,6 +465,8 @@ export async function readBackupBundleFromDirectory(
   } else {
     tripOverrides = extractTripLabelOverrides(tables.trips);
   }
+  completedWeight += 1;
+  reportReadProgress('Backup read complete');
 
   return {manifest, tables, tripOverrides};
 }

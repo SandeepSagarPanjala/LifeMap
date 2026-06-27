@@ -1,6 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import {getCloudBackupMetadata} from './native-backup-cloud';
+import {
+  getCloudBackupMetadata,
+  getCloudBackupMetadataForOperation,
+  withTimeout,
+} from './native-backup-cloud';
 import type {CloudBackupMetadata} from './backup-types';
 
 const INSTALL_SNAPSHOT_KEY = 'lifemap-install-cloud-backup-snapshot';
@@ -23,7 +27,7 @@ export async function captureInstallCloudBackupSnapshot(): Promise<InstallCloudB
     return JSON.parse(existing) as InstallCloudBackupSnapshot;
   }
 
-  const metadata = await getCloudBackupMetadata();
+  const metadata = await getCloudBackupMetadataForOperation();
   if (!metadata?.exportedAt) {
     return null;
   }
@@ -64,38 +68,12 @@ export async function getInstallCloudBackupSnapshot(): Promise<InstallCloudBacku
   return JSON.parse(raw) as InstallCloudBackupSnapshot;
 }
 
-/** Fast metadata for the restore offer UI — does not download the full backup. */
 export async function loadRestoreOfferMetadata(): Promise<InstallCloudBackupSnapshot | CloudBackupMetadata | null> {
-  const [snapshot, cloudMetadata] = await Promise.all([
-    getInstallCloudBackupSnapshot(),
-    getCloudBackupMetadata(),
-  ]);
-
-  if (!snapshot?.exportedAt && !cloudMetadata?.exportedAt) {
-    return null;
-  }
-  if (!snapshot?.exportedAt) {
-    return cloudMetadata;
-  }
-  if (!cloudMetadata?.exportedAt) {
+  const snapshot = await getInstallCloudBackupSnapshot();
+  if (snapshot?.exportedAt) {
     return snapshot;
   }
-
-  const snapshotTime = new Date(snapshot.exportedAt).getTime();
-  const cloudTime = new Date(cloudMetadata.exportedAt).getTime();
-  if (!Number.isFinite(snapshotTime)) {
-    return cloudMetadata;
-  }
-  if (!Number.isFinite(cloudTime)) {
-    return snapshot;
-  }
-
-  if (cloudTime !== snapshotTime) {
-    return cloudTime >= snapshotTime ? cloudMetadata : snapshot;
-  }
-  return cloudMetadata.totalBytes >= snapshot.totalBytes
-    ? cloudMetadata
-    : snapshot;
+  return getCloudBackupMetadataForOperation();
 }
 
 export async function hasRecoverableCloudBackup(): Promise<boolean> {
@@ -103,7 +81,7 @@ export async function hasRecoverableCloudBackup(): Promise<boolean> {
   if (snapshot?.exportedAt) {
     return true;
   }
-  const metadata = await getCloudBackupMetadata();
+  const metadata = await withTimeout(getCloudBackupMetadata(), 8_000, null);
   return metadata?.exportedAt != null;
 }
 
@@ -124,6 +102,7 @@ export async function markInstallRestorePresented(): Promise<void> {
   await AsyncStorage.setItem(INSTALL_RESTORE_PRESENTED_KEY, 'true');
 }
 
+/** Fresh install: cloud backup exists, local DB still empty, restore not handled yet. */
 export async function shouldAutoNavigateToRestore(): Promise<boolean> {
   if (await isRestoreCompleted()) {
     return false;
@@ -149,14 +128,19 @@ export async function wasInstallRestoreDismissed(): Promise<boolean> {
   return (await AsyncStorage.getItem('lifemap-backup-restore-prompt')) === 'dismissed';
 }
 
-/** Settings: offer restore when cloud data exists and local DB is still empty. */
+/** Settings: show restore while a cloud backup exists and restore has not completed. */
 export async function shouldShowSettingsRestore(): Promise<boolean> {
   if (await isRestoreCompleted()) {
     return false;
   }
-  if (!(await hasRecoverableCloudBackup())) {
-    return false;
+  return hasRecoverableCloudBackup();
+}
+
+export async function cloudBackupExistsForLaunchInit(): Promise<boolean> {
+  const snapshot = await getInstallCloudBackupSnapshot();
+  if (snapshot?.exportedAt) {
+    return true;
   }
-  const {hasLocalUserData} = await import('./backup-clear');
-  return !(await hasLocalUserData());
+  const metadata = await withTimeout(getCloudBackupMetadataForOperation(), 12_000, null);
+  return metadata?.exportedAt != null;
 }

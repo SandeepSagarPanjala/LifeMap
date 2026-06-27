@@ -1,8 +1,9 @@
-import {desc, eq} from 'drizzle-orm';
+import {and, desc, eq} from 'drizzle-orm';
 
 import {getDatabase} from '../client';
 import {savedPlaces} from '../schema';
 import {lookupSavedPlaceAddress} from '@/lib/saved-place-address';
+import {notifySavedPlacesUpdated} from '@/lib/saved-places-events';
 import {
   canAddSavedPlace,
   normalizeSavedPlaceLabel,
@@ -19,6 +20,7 @@ export type SavedPlaceRow = {
   lng: number;
   radiusMeters: number;
   addressLine: string | null;
+  active: boolean;
   createdAt: Date;
 };
 
@@ -33,14 +35,46 @@ function mapRow(row: typeof savedPlaces.$inferSelect): SavedPlaceRow {
     lng: row.lng,
     radiusMeters: row.radiusMeters,
     addressLine: row.addressLine ?? null,
+    active: row.active !== 0,
     createdAt: row.createdAt,
   };
 }
 
 export async function listSavedPlaces(): Promise<SavedPlaceRow[]> {
   const db = await getDatabase();
-  const rows = await db.select().from(savedPlaces);
+  const rows = await db
+    .select()
+    .from(savedPlaces)
+    .where(eq(savedPlaces.active, 1));
   return rows.map(mapRow);
+}
+
+export async function getSavedPlaceById(
+  id: number,
+): Promise<SavedPlaceRow | null> {
+  const db = await getDatabase();
+  const rows = await db
+    .select()
+    .from(savedPlaces)
+    .where(eq(savedPlaces.id, id))
+    .limit(1);
+  const row = rows[0];
+  return row ? mapRow(row) : null;
+}
+
+async function deactivateSavedPlace(id: number): Promise<void> {
+  const db = await getDatabase();
+  await db.update(savedPlaces).set({active: 0}).where(eq(savedPlaces.id, id));
+}
+
+async function deactivateSavedPlacesByKind(
+  kind: SavedPlaceKind,
+): Promise<void> {
+  const db = await getDatabase();
+  await db
+    .update(savedPlaces)
+    .set({active: 0})
+    .where(and(eq(savedPlaces.kind, kind), eq(savedPlaces.active, 1)));
 }
 
 export async function upsertHomePlace(
@@ -54,7 +88,7 @@ export async function upsertHomePlace(
     throw new SavedPlaceLimitError();
   }
   const addressLine = await lookupSavedPlaceAddress(lat, lng);
-  await db.delete(savedPlaces).where(eq(savedPlaces.kind, 'home'));
+  await deactivateSavedPlacesByKind('home');
   await db.insert(savedPlaces).values({
     kind: 'home',
     label: 'Home',
@@ -62,13 +96,15 @@ export async function upsertHomePlace(
     lng,
     radiusMeters,
     addressLine,
+    active: 1,
     createdAt: new Date(),
   });
   const rows = await db
     .select()
     .from(savedPlaces)
-    .where(eq(savedPlaces.kind, 'home'))
+    .where(and(eq(savedPlaces.kind, 'home'), eq(savedPlaces.active, 1)))
     .limit(1);
+  notifySavedPlacesUpdated();
   return mapRow(rows[0]!);
 }
 
@@ -83,7 +119,7 @@ export async function upsertWorkPlace(
     throw new SavedPlaceLimitError();
   }
   const addressLine = await lookupSavedPlaceAddress(lat, lng);
-  await db.delete(savedPlaces).where(eq(savedPlaces.kind, 'work'));
+  await deactivateSavedPlacesByKind('work');
   await db.insert(savedPlaces).values({
     kind: 'work',
     label: 'Work',
@@ -91,13 +127,15 @@ export async function upsertWorkPlace(
     lng,
     radiusMeters,
     addressLine,
+    active: 1,
     createdAt: new Date(),
   });
   const rows = await db
     .select()
     .from(savedPlaces)
-    .where(eq(savedPlaces.kind, 'work'))
+    .where(and(eq(savedPlaces.kind, 'work'), eq(savedPlaces.active, 1)))
     .limit(1);
+  notifySavedPlacesUpdated();
   return mapRow(rows[0]!);
 }
 
@@ -121,14 +159,16 @@ export async function addFavoritePlace(
     lng,
     radiusMeters,
     addressLine,
+    active: 1,
     createdAt: new Date(),
   });
   const rows = await db
     .select()
     .from(savedPlaces)
-    .where(eq(savedPlaces.kind, 'favorite'))
+    .where(and(eq(savedPlaces.kind, 'favorite'), eq(savedPlaces.active, 1)))
     .orderBy(desc(savedPlaces.id))
     .limit(1);
+  notifySavedPlacesUpdated();
   return mapRow(rows[0]!);
 }
 
@@ -147,13 +187,14 @@ export async function updateSavedPlaceAddressLine(
     .where(eq(savedPlaces.id, id))
     .limit(1);
   const existing = rows[0];
-  if (existing == null) {
+  if (existing == null || existing.active === 0) {
     throw new Error('Saved place not found');
   }
   await db
     .update(savedPlaces)
     .set({addressLine: trimmed})
     .where(eq(savedPlaces.id, id));
+  notifySavedPlacesUpdated();
   return mapRow({...existing, addressLine: trimmed});
 }
 
@@ -169,7 +210,7 @@ export async function updateFavoritePlaceLabel(
     .where(eq(savedPlaces.id, id))
     .limit(1);
   const existing = rows[0];
-  if (existing == null) {
+  if (existing == null || existing.active === 0) {
     throw new Error('Saved place not found');
   }
   if (existing.kind !== 'favorite') {
@@ -179,10 +220,20 @@ export async function updateFavoritePlaceLabel(
     .update(savedPlaces)
     .set({label: trimmed})
     .where(eq(savedPlaces.id, id));
+  notifySavedPlacesUpdated();
   return mapRow({...existing, label: trimmed});
 }
 
 export async function deleteSavedPlace(id: number): Promise<void> {
   const db = await getDatabase();
-  await db.delete(savedPlaces).where(eq(savedPlaces.id, id));
+  const rows = await db
+    .select()
+    .from(savedPlaces)
+    .where(eq(savedPlaces.id, id))
+    .limit(1);
+  if (rows[0] == null || rows[0].active === 0) {
+    return;
+  }
+  await deactivateSavedPlace(id);
+  notifySavedPlacesUpdated();
 }

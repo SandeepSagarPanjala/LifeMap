@@ -4,7 +4,7 @@ export type RootStackParamList = {
   Map: {widgetAction?: string; focusPlaceId?: number} | undefined;
   Settings: undefined;
   RestoreBackup:
-    | {source?: 'install' | 'settings'; preview?: boolean}
+    | {source?: 'install' | 'settings' | 'drive'; preview?: boolean}
     | undefined;
   CaptureNote: undefined;
   CapturePhoto: undefined;

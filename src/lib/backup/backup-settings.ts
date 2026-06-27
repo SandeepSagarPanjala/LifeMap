@@ -3,6 +3,7 @@ import {getSetting, setSetting} from '@/db/repositories/settings';
 export const SETTINGS_KEY_BACKUP_AUTO_SCHEDULE = 'backup_auto_schedule';
 export const SETTINGS_KEY_BACKUP_LAST_AT = 'backup_last_at';
 export const SETTINGS_KEY_BACKUP_LAST_BYTES = 'backup_last_bytes';
+export const SETTINGS_KEY_BACKUP_PREFS_INITIALIZED = 'backup_prefs_initialized';
 
 export type BackupAutoSchedule = 'off' | 'daily' | 'weekly';
 
@@ -73,4 +74,20 @@ export function isBackupDue(
     return elapsedMs >= dayMs;
   }
   return elapsedMs >= 7 * dayMs;
+}
+
+/** First launch on a device with no cloud backup: keep auto backup off until user opts in. */
+export async function initializeBackupPreferencesOnLaunch(
+  cloudBackupExists: boolean,
+): Promise<void> {
+  const existing = await getSetting(SETTINGS_KEY_BACKUP_PREFS_INITIALIZED);
+  if (existing === 'true') {
+    return;
+  }
+
+  if (!cloudBackupExists) {
+    await setBackupAutoSchedule('off');
+  }
+
+  await setSetting(SETTINGS_KEY_BACKUP_PREFS_INITIALIZED, 'true');
 }

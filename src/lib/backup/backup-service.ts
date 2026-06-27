@@ -11,12 +11,16 @@ import {
 import {hasLocalUserData} from './backup-clear';
 import {
   getBackupStagingDirectory,
-  getCloudBackupMetadata,
+  getCloudBackupMetadataForOperation,
   getCloudProviderLabel,
   isCloudBackupAvailable,
   uploadBackupDirectory,
 } from './native-backup-cloud';
-import {prepareEmptyDirectory, removeDirectoryRecursive} from './backup-fs';
+import {
+  computeDirectoryBytes,
+  prepareEmptyDirectory,
+  removeDirectoryRecursive,
+} from './backup-fs';
 import {
   getBackupAutoSchedule,
   isBackupDue,
@@ -35,53 +39,22 @@ export type BackupStatus = {
 };
 
 export async function getBackupStatus(): Promise<BackupStatus> {
-  const [cloudAvailable, cloudBackup, lastBackupAt, autoSchedule] =
+  const [cloudAvailable, lastBackupAt, autoSchedule, lastBackupBytes] =
     await Promise.all([
       isCloudBackupAvailable(),
-      getCloudBackupMetadata(),
       getBackupLastAt(),
       getBackupAutoSchedule(),
+      import('./backup-settings').then(m => m.getBackupLastBytes()),
     ]);
-
-  const {getBackupLastBytes} = await import('./backup-settings');
-  const lastBackupBytes = await getBackupLastBytes();
 
   return {
     cloudAvailable,
     cloudProviderLabel: getCloudProviderLabel(),
-    cloudBackup,
+    cloudBackup: null,
     lastBackupAt,
     lastBackupBytes,
     autoSchedule,
   };
-}
-
-async function computeDirectoryBytes(directoryPath: string): Promise<number> {
-  const fs = ReactNativeBlobUtil.fs;
-  if (!(await fs.exists(directoryPath))) {
-    return 0;
-  }
-
-  let total = 0;
-  async function walk(relativePath: string): Promise<void> {
-    const absolutePath = relativePath
-      ? `${directoryPath}/${relativePath}`
-      : directoryPath;
-    const entries = await fs.ls(absolutePath);
-    for (const entry of entries) {
-      const childRelative = relativePath ? `${relativePath}/${entry}` : entry;
-      const childPath = `${directoryPath}/${childRelative}`;
-      const stat = await fs.stat(childPath);
-      if (stat.type === 'directory') {
-        await walk(childRelative);
-      } else {
-        total += Number(stat.size ?? 0);
-      }
-    }
-  }
-
-  await walk('');
-  return total;
 }
 
 export type BackupSizeWarning = {
@@ -89,20 +62,55 @@ export type BackupSizeWarning = {
   localEstimateBytes: number;
 };
 
-/** True when iCloud backup is meaningfully larger than what we'd upload now. */
+export async function getExistingCloudBackup(): Promise<CloudBackupMetadata | null> {
+  const metadata = await getCloudBackupMetadataForOperation();
+  if (!metadata?.exportedAt) {
+    return null;
+  }
+  return metadata;
+}
+
+/** @deprecated Use shouldPromptBeforeCloudBackupReplace — kept for tests. */
 export async function getBackupSizeWarning(): Promise<BackupSizeWarning | null> {
-  const [cloudBackup, localEstimateBytes] = await Promise.all([
-    getCloudBackupMetadata(),
+  const prompt = await shouldPromptBeforeCloudBackupReplace();
+  if (prompt == null) {
+    return null;
+  }
+  return {
+    cloudBytes: prompt.cloudBackup.totalBytes,
+    localEstimateBytes: prompt.localEstimateBytes,
+  };
+}
+
+/**
+ * Prompt before replacing iCloud backup when the cloud copy is meaningfully
+ * larger than what this phone would upload now.
+ */
+export async function shouldPromptBeforeCloudBackupReplace(): Promise<{
+  cloudBackup: CloudBackupMetadata;
+  localEstimateBytes: number;
+} | null> {
+  const [cloudBackup, localEstimateBytes, lastBackupBytes] = await Promise.all([
+    getExistingCloudBackup(),
     estimateLocalBackupBytes(),
+    import('./backup-settings').then(m => m.getBackupLastBytes()),
   ]);
-  const cloudBytes = cloudBackup?.totalBytes ?? 0;
+
+  if (!cloudBackup?.exportedAt) {
+    return null;
+  }
+
+  const cloudBytes = cloudBackup.totalBytes;
   if (cloudBytes <= 0) {
     return null;
   }
-  if (cloudBytes <= localEstimateBytes * 1.05) {
+
+  const localBaselineBytes = Math.max(localEstimateBytes, lastBackupBytes);
+  if (cloudBytes <= localBaselineBytes * 1.05) {
     return null;
   }
-  return {cloudBytes, localEstimateBytes};
+
+  return {cloudBackup, localEstimateBytes: localBaselineBytes};
 }
 
 export async function runBackupNow(

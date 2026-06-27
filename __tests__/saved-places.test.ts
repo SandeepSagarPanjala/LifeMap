@@ -28,6 +28,7 @@ function place(
     lng,
     radiusMeters,
     addressLine: null,
+    active: true,
     createdAt: new Date(),
   };
 }

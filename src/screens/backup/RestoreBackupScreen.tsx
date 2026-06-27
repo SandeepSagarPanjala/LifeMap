@@ -25,12 +25,22 @@ import {
   type InstallCloudBackupSnapshot,
 } from '@/lib/backup/backup-install-state';
 import {
+  clearPendingDriveRestore,
+  getPendingDriveRestoreOffer,
+} from '@/lib/backup/backup-drive';
+import {
   executeMergeRestore,
   prepareMergeRestore,
+  prepareMergeRestoreFromDirectory,
   type MergeRestorePlan,
 } from '@/lib/backup/backup-merge';
+import {
+  getCloudProviderLabel,
+  getCloudRestoreButtonLabel,
+} from '@/lib/backup/native-backup-cloud';
 import type {BackupProgress} from '@/lib/backup/backup-types';
 import {formatStorageBytes} from '@/lib/format-storage';
+import {useThemeColors} from '@/hooks/use-theme-colors';
 import {clearHistoryDataCache} from '@/lib/history-data-cache';
 
 type ScreenPhase = 'loading' | 'offer' | 'conflicts' | 'restoring' | 'error';
@@ -45,6 +55,7 @@ export function RestoreBackupScreen({
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const source = route.params?.source ?? 'install';
+  const isDriveRestore = source === 'drive';
   const isDevPreview = __DEV__ && route.params?.preview === true;
   const lottieSize = Math.min(width * 0.72, height * 0.32, 300);
 
@@ -69,6 +80,16 @@ export function RestoreBackupScreen({
         return;
       }
 
+      if (isDriveRestore) {
+        const offer = getPendingDriveRestoreOffer();
+        if (!offer?.metadata.exportedAt) {
+          throw new Error('No Drive backup selected.');
+        }
+        setMetadata(offer.metadata);
+        setPhase('offer');
+        return;
+      }
+
       const offerMetadata = await loadRestoreOfferMetadata();
       if (!offerMetadata?.exportedAt) {
         throw new Error('No iCloud backup found.');
@@ -81,7 +102,7 @@ export function RestoreBackupScreen({
       );
       setPhase('error');
     }
-  }, [isDevPreview]);
+  }, [isDevPreview, isDriveRestore]);
 
   useEffect(() => {
     void markInstallRestorePresented();
@@ -91,12 +112,20 @@ export function RestoreBackupScreen({
   const backupLabel = useMemo(() => {
     const exportedAt = metadata?.exportedAt ?? plan?.manifestExportedAt;
     if (!exportedAt) {
-      return 'your iCloud backup';
+      return isDriveRestore ? 'your Drive backup' : `your ${getCloudProviderLabel()} backup`;
     }
     return format(new Date(exportedAt), "MMM d, yyyy 'at' h:mm a");
-  }, [metadata?.exportedAt, plan?.manifestExportedAt]);
+  }, [isDriveRestore, metadata?.exportedAt, plan?.manifestExportedAt]);
 
   const backupSize = metadata?.totalBytes ?? 0;
+  const conflictBackupLabel = isDriveRestore ? 'Drive backup' : getCloudProviderLabel();
+
+  const handleCancel = useCallback(() => {
+    if (isDriveRestore) {
+      clearPendingDriveRestore();
+    }
+    navigation.goBack();
+  }, [isDriveRestore, navigation]);
 
   const handleStartFresh = useCallback(async () => {
     await dismissInstallRestoreOffer();
@@ -107,11 +136,27 @@ export function RestoreBackupScreen({
     setPhase('loading');
     setErrorMessage(null);
     try {
-      const mergePlan = await prepareMergeRestore(setProgress);
+      let mergePlan: MergeRestorePlan;
+      if (isDriveRestore) {
+        const offer = getPendingDriveRestoreOffer();
+        if (!offer?.stagingPath) {
+          throw new Error('No Drive backup selected.');
+        }
+        setProgress({phase: 'downloading', message: 'Reading backup…', completed: 0, total: 100});
+        mergePlan = await prepareMergeRestoreFromDirectory(
+          offer.stagingPath,
+          setProgress,
+        );
+      } else {
+        mergePlan = await prepareMergeRestore(setProgress);
+      }
       setPlan(mergePlan);
       setChoices(
         Object.fromEntries(
-          mergePlan.conflicts.map(conflict => [conflict.id, 'local']),
+          mergePlan.conflicts.map(conflict => [
+            conflict.id,
+            isDriveRestore ? 'backup' : 'local',
+          ]),
         ),
       );
       return mergePlan;
@@ -124,7 +169,7 @@ export function RestoreBackupScreen({
     } finally {
       setProgress(null);
     }
-  }, []);
+  }, [isDriveRestore]);
 
   const runRestore = useCallback(async () => {
     if (isDevPreview) {
@@ -145,7 +190,6 @@ export function RestoreBackupScreen({
     }
 
     setPhase('restoring');
-    setProgress({phase: 'importing', message: 'Merging your data…'});
     try {
       await executeMergeRestore({
         plan: activePlan,
@@ -154,6 +198,9 @@ export function RestoreBackupScreen({
       });
       clearHistoryDataCache();
       await markRestoreCompleted();
+      if (isDriveRestore) {
+        clearPendingDriveRestore();
+      }
       navigation.goBack();
     } catch (error) {
       setErrorMessage(
@@ -163,7 +210,7 @@ export function RestoreBackupScreen({
     } finally {
       setProgress(null);
     }
-  }, [choices, downloadPlan, isDevPreview, navigation, plan]);
+  }, [choices, downloadPlan, isDevPreview, isDriveRestore, navigation, plan]);
 
   const setChoice = (conflictId: string, choice: RestoreConflictChoice) => {
     setChoices(current => ({...current, [conflictId]: choice}));
@@ -178,21 +225,23 @@ export function RestoreBackupScreen({
           ? phase === 'loading'
             ? 'Finding your backup'
             : 'Restoring LifeMap'
-          : source === 'install'
-            ? isDevPreview
-              ? 'Restore preview'
-              : 'Welcome back'
-            : 'Restore from iCloud';
+          : source === 'drive'
+            ? 'Import from Drive'
+            : source === 'install'
+              ? isDevPreview
+                ? 'Restore preview'
+                : 'Welcome back'
+              : getCloudRestoreButtonLabel();
 
   const subtitle =
     phase === 'conflicts'
-      ? `LifeMap found cloud backup from ${backupLabel} and new data on this device. Choose what to keep for overlaps.`
+      ? `LifeMap found a backup from ${backupLabel} and new data on this device. Choose what to keep for overlaps.`
       : phase === 'error'
         ? (errorMessage ?? 'Something went wrong.')
         : phase === 'loading' || phase === 'restoring'
           ? (progress?.message ?? 'Working…')
           : isDevPreview
-            ? 'Design preview only. Open Settings → Restore from iCloud to see your real backup size and date.'
+            ? 'Design preview only. Open Settings → Restore to see your real backup size and date.'
             : `We found your LifeMap backup from ${backupLabel}${
                 backupSize > 0 ? ` (${formatStorageBytes(backupSize)})` : ''
               }. Your map, visits, and memories can be brought back to this phone.`;
@@ -212,10 +261,12 @@ export function RestoreBackupScreen({
                 Start fresh
               </Text>
             </Pressable>
-          ) : source === 'settings' && phase !== 'loading' && phase !== 'restoring' ? (
+          ) : (source === 'settings' || source === 'drive') &&
+            phase !== 'loading' &&
+            phase !== 'restoring' ? (
             <Pressable
               accessibilityRole="button"
-              onPress={() => navigation.goBack()}
+              onPress={() => handleCancel()}
               hitSlop={12}>
               <Text className="text-muted-foreground text-sm font-medium">
                 Cancel
@@ -248,9 +299,7 @@ export function RestoreBackupScreen({
           </View>
 
           {phase === 'loading' || phase === 'restoring' ? (
-            <View className="mt-8 items-center">
-              <ActivityIndicator size="large" />
-            </View>
+            <RestoreProgressView progress={progress} />
           ) : null}
 
           {phase === 'conflicts' && plan ? (
@@ -264,6 +313,7 @@ export function RestoreBackupScreen({
                     conflict={conflict}
                     choice={choices[conflict.id] ?? 'local'}
                     onChoose={setChoice}
+                    backupSourceLabel={conflictBackupLabel}
                   />
                 ))}
               </View>
@@ -275,7 +325,7 @@ export function RestoreBackupScreen({
           {phase === 'offer' || phase === 'conflicts' ? (
             <Button className="w-full" onPress={() => void runRestore()}>
               <Text>
-                {phase === 'conflicts' ? 'Merge and restore' : 'Restore my LifeMap'}
+                {phase === 'conflicts' ? 'Merge and restore' : 'Restore my Life'}
               </Text>
             </Button>
           ) : null}
@@ -301,27 +351,56 @@ export function RestoreBackupScreen({
   );
 }
 
+function RestoreProgressView({progress}: {progress: BackupProgress | null}) {
+  const colors = useThemeColors();
+  const percent =
+    progress?.total != null &&
+    progress.total > 0 &&
+    progress.completed != null
+      ? Math.min(100, Math.round((progress.completed / progress.total) * 100))
+      : 0;
+
+  return (
+    <View className="mt-8 w-full">
+      <View className="bg-muted h-2.5 w-full overflow-hidden rounded-full">
+        <View
+          className="bg-primary h-full rounded-full"
+          style={{width: `${Math.max(percent, progress ? 4 : 0)}%`}}
+        />
+      </View>
+      <Text className="mt-3 text-center text-base font-semibold">
+        {percent}%
+      </Text>
+      {progress == null ? (
+        <ActivityIndicator className="mt-3" color={colors.primary} />
+      ) : null}
+    </View>
+  );
+}
+
 function ConflictCard({
   conflict,
   choice,
   onChoose,
+  backupSourceLabel = 'Backup',
 }: {
   conflict: RestoreConflict;
   choice: RestoreConflictChoice;
   onChoose: (id: string, choice: RestoreConflictChoice) => void;
+  backupSourceLabel?: string;
 }) {
   return (
     <View className="bg-card/80 border-border rounded-2xl border p-4">
       <Text className="font-medium">{conflict.title}</Text>
       <Text variant="muted" className="text-muted-foreground mt-2 text-xs leading-4">
-        iCloud: {conflict.backupDetail}
+        {backupSourceLabel}: {conflict.backupDetail}
       </Text>
       <Text variant="muted" className="text-muted-foreground mt-1 text-xs leading-4">
         This device: {conflict.localDetail}
       </Text>
       <View className="mt-3 flex-row gap-2">
         <ChoiceButton
-          label="Keep iCloud"
+          label={`Keep ${backupSourceLabel.toLowerCase()}`}
           selected={choice === 'backup'}
           onPress={() => onChoose(conflict.id, 'backup')}
         />

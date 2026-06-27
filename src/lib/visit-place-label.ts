@@ -3,6 +3,7 @@ import {
   getPlaceLookupById,
 } from '@/db/repositories/place-lookup-cache';
 import {getTripByEventKey, getTripById} from '@/db/repositories/trips';
+import {getSavedPlaceById} from '@/db/repositories/saved-places';
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import {
   resolveVisitPlaceDisplay,
@@ -40,6 +41,13 @@ export async function loadVisitPlaceDisplayForStay(
   const savedPlace = matchSavedPlaceForStay(stay, savedPlaces);
   if (savedPlace) {
     return savedPlaceVisitDisplay(savedPlace);
+  }
+
+  if (stay.savedPlaceId != null) {
+    const linkedPlace = await getSavedPlaceById(stay.savedPlaceId);
+    if (linkedPlace) {
+      return savedPlaceVisitDisplay(linkedPlace);
+    }
   }
 
   let materializedTripId = stay.materializedTripId ?? null;

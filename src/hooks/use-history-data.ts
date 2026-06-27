@@ -2,6 +2,7 @@ import {useCallback, useEffect, useRef, useState} from 'react';
 
 import type {HistoryData} from '@/lib/history-data-types';
 import {
+  clearHistoryDataCache,
   historyCacheKey,
   historyDataCache,
 } from '@/lib/history-data-cache';
@@ -12,7 +13,9 @@ import {
   isCurrentHistoryDayLoad,
 } from '@/lib/history-day-load';
 import {useTripDetectionConfig} from '@/hooks/use-trip-detection-config';
+import type {TripDetectionConfig} from '@/lib/trip-settings';
 import {getDayRange, getTodayDateKey} from '@/lib/day-utils';
+import {subscribeSavedPlaces} from '@/lib/saved-places-events';
 import {subscribeTodayHistoryRefresh} from '@/lib/today-refresh-scheduler';
 import {scheduleTodayRepair} from '@/lib/today-sync';
 
@@ -194,6 +197,16 @@ export function useHistoryForDay(
       }).catch(() => undefined);
     });
   }, [dateKey, runSync, viewingToday]);
+
+  useEffect(() => {
+    return subscribeSavedPlaces(() => {
+      clearHistoryDataCache();
+      void runSync(dateKey, {
+        force: true,
+        showLoading: false,
+      }).catch(() => undefined);
+    });
+  }, [dateKey, runSync]);
 
   useEffect(() => {
     const cacheKey = historyCacheKey(dateKey, detectionConfig);

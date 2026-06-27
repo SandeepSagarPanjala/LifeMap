@@ -148,6 +148,8 @@ describe('tripLabelForPersist', () => {
     ).toEqual({
       placeLookupCacheId: 12,
       selectedCandidateIndex: 2,
+      savedPlaceLabel: null,
+      savedPlaceId: null,
     });
   });
 
@@ -162,6 +164,8 @@ describe('tripLabelForPersist', () => {
     ).toEqual({
       placeLookupCacheId: 9,
       selectedCandidateIndex: 1,
+      savedPlaceLabel: null,
+      savedPlaceId: null,
     });
   });
 });

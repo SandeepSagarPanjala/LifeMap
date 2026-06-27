@@ -15,6 +15,7 @@ const home: SavedPlaceRow = {
   lng: -97.153,
   radiusMeters: 150,
   addressLine: null,
+  active: true,
   createdAt: new Date(),
 };
 

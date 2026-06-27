@@ -197,6 +197,8 @@ ALTER TABLE \`moments\` ADD COLUMN \`activity_emoji\` text;
 --> statement-breakpoint
 ALTER TABLE \`moments\` ADD COLUMN \`activity_label\` text;`;
 
+const m0018 = `ALTER TABLE \`saved_places\` ADD COLUMN \`active\` integer DEFAULT 1 NOT NULL;`;
+
 export default {
   journal,
   migrations: {
@@ -218,5 +220,6 @@ export default {
     m0015,
     m0016,
     m0017,
+    m0018,
   },
 };

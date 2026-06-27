@@ -19,6 +19,7 @@ import {
   detectRestoreConflicts,
   locationPointKey,
   momentKey,
+  resolveRestoreConflictChoice,
   settingKey,
   type RestoreConflict,
   type RestoreConflictChoice,
@@ -36,13 +37,13 @@ import {
   parseRequiredString,
 } from './backup-serialize';
 import type {BackupProgress, TripLabelOverride} from './backup-types';
-import {copyBackupMediaToSandbox} from './backup-clear';
+import {copyBackupMediaToSandbox, hasLocalUserData} from './backup-clear';
 import {
   downloadBackupDirectory,
   getBackupStagingDirectory,
   getCloudProviderLabel,
 } from './native-backup-cloud';
-import {prepareEmptyDirectory, removeDirectoryRecursive} from './backup-fs';
+import {prepareEmptyDirectory, removeDirectoryRecursive, yieldToUi} from './backup-fs';
 
 type IdMap = Map<number, number>;
 
@@ -84,6 +85,48 @@ async function loadLocalRowsForConflictDetection() {
   };
 }
 
+export async function prepareMergeRestoreFromDirectory(
+  stagingPath: string,
+  onProgress?: (progress: BackupProgress) => void,
+): Promise<MergeRestorePlan> {
+  const {manifest, tables, tripOverrides} = await readBackupBundleFromDirectory(
+    stagingPath,
+    onProgress,
+  );
+
+  onProgress?.({
+    phase: 'downloading',
+    message: 'Checking for overlaps…',
+    completed: 99,
+    total: 100,
+  });
+  await yieldToUi();
+
+  let conflicts: RestoreConflict[] = [];
+  if (await hasLocalUserData()) {
+    const local = await loadLocalRowsForConflictDetection();
+    conflicts = detectRestoreConflicts({
+      backupTables: tables,
+      ...local,
+    });
+  }
+
+  onProgress?.({
+    phase: 'downloading',
+    message: 'Backup ready',
+    completed: 100,
+    total: 100,
+  });
+
+  return {
+    tables,
+    tripOverrides,
+    conflicts,
+    stagingPath,
+    manifestExportedAt: manifest.exportedAt,
+  };
+}
+
 export async function prepareMergeRestore(
   onProgress?: (progress: BackupProgress) => void,
 ): Promise<MergeRestorePlan> {
@@ -96,22 +139,7 @@ export async function prepareMergeRestore(
   });
   await downloadBackupDirectory(stagingPath);
 
-  const {manifest, tables, tripOverrides} =
-    await readBackupBundleFromDirectory(stagingPath);
-
-  const local = await loadLocalRowsForConflictDetection();
-  const conflicts = detectRestoreConflicts({
-    backupTables: tables,
-    ...local,
-  });
-
-  return {
-    tables,
-    tripOverrides,
-    conflicts,
-    stagingPath,
-    manifestExportedAt: manifest.exportedAt,
-  };
+  return prepareMergeRestoreFromDirectory(stagingPath, onProgress);
 }
 
 function activityNaturalKey(emoji: string, label: string): string {
@@ -179,6 +207,7 @@ async function mergeActivities(
 async function mergeLocationPoints(
   rows: unknown[],
   resolutions: Map<string, RestoreConflictChoice>,
+  onRowProgress?: (completed: number, total: number) => void,
 ): Promise<IdMap> {
   const db = await getDatabase();
   const existingRows = await db.select().from(locationPoints);
@@ -189,8 +218,14 @@ async function mergeLocationPoints(
     ]),
   );
   const map: IdMap = new Map();
+  const total = rows.length;
 
-  for (const row of rows) {
+  for (let index = 0; index < rows.length; index += 1) {
+    const row = rows[index];
+    if (index % 1000 === 0) {
+      onRowProgress?.(index, total);
+      await yieldToUi();
+    }
     if (typeof row !== 'object' || row == null) {
       continue;
     }
@@ -204,7 +239,11 @@ async function mergeLocationPoints(
     const local = localByKey.get(key);
 
     if (local) {
-      const choice = resolutions.get(conflictId) ?? 'local';
+      const choice = resolveRestoreConflictChoice(
+        resolutions,
+        conflictId,
+        'location_point:bulk',
+      );
       if (choice === 'local') {
         map.set(oldId, local.id);
         continue;
@@ -239,10 +278,13 @@ async function mergeLocationPoints(
     });
   }
 
+  onRowProgress?.(total, total);
   return map;
 }
 
-async function mergeSavedPlaces(rows: unknown[]): Promise<IdMap> {
+async function mergeSavedPlaces(
+  rows: unknown[],
+): Promise<IdMap> {
   const db = await getDatabase();
   const existing = await db.select().from(savedPlaces);
   const byKey = new Map(
@@ -284,6 +326,12 @@ async function mergeSavedPlaces(rows: unknown[]): Promise<IdMap> {
           'saved_places.radiusMeters',
         ),
         addressLine: parseOptionalString(record.addressLine),
+        active:
+          typeof record.active === 'number'
+            ? record.active
+            : record.active === false
+              ? 0
+              : 1,
         createdAt: parseRequiredIsoDate(record.createdAt, 'saved_places.createdAt'),
       })
       .returning({id: savedPlaces.id});
@@ -399,7 +447,11 @@ async function mergeMoments(
     const local = localByKey.get(key);
 
     if (local) {
-      const choice = resolutions.get(conflictId) ?? 'local';
+      const choice = resolveRestoreConflictChoice(
+        resolutions,
+        conflictId,
+        'moment:bulk',
+      );
       if (choice === 'local') {
         continue;
       }
@@ -490,27 +542,81 @@ export async function executeMergeRestore(input: {
     input.conflictChoices ?? {},
   );
 
-  input.onProgress?.({phase: 'importing', message: 'Merging your data…'});
+  const tables = input.plan.tables;
+  const mergeSteps = [
+    {label: 'activities', weight: Math.max(tables.activities.length, 1)},
+    {label: 'location history', weight: Math.max(tables.location_points.length, 1)},
+    {label: 'saved places', weight: Math.max(tables.saved_places.length, 1)},
+    {label: 'place lookups', weight: Math.max(tables.place_lookup_cache.length, 1)},
+    {label: 'memories', weight: Math.max(tables.moments.length, 1)},
+    {label: 'settings', weight: Math.max(tables.settings.length, 1)},
+  ];
+  const mergeTotal = mergeSteps.reduce((sum, step) => sum + step.weight, 0);
+  let mergeBase = 0;
 
-  const activityMap = await mergeActivities(input.plan.tables.activities);
+  const reportMerge = (
+    label: string,
+    stepCompleted?: number,
+    stepTotal?: number,
+  ) => {
+    const completed =
+      stepCompleted != null && stepTotal != null && stepTotal > 0
+        ? mergeBase + stepCompleted
+        : mergeBase;
+    input.onProgress?.({
+      phase: 'importing',
+      message: `Merging ${label}…`,
+      completed,
+      total: mergeTotal,
+    });
+  };
+
+  reportMerge('activities');
+  await yieldToUi();
+  const activityMap = await mergeActivities(tables.activities);
+  mergeBase += mergeSteps[0]!.weight;
+
+  reportMerge('location history', 0, tables.location_points.length);
+  await yieldToUi();
   const locationPointMap = await mergeLocationPoints(
-    input.plan.tables.location_points,
+    tables.location_points,
     resolutions,
+    (completed, total) => reportMerge('location history', completed, total),
   );
-  const savedPlaceMap = await mergeSavedPlaces(input.plan.tables.saved_places);
-  const placeLookupMap = await mergePlaceLookupCache(
-    input.plan.tables.place_lookup_cache,
-  );
+  mergeBase += mergeSteps[1]!.weight;
+
+  reportMerge('saved places');
+  await yieldToUi();
+  const savedPlaceMap = await mergeSavedPlaces(tables.saved_places);
+  mergeBase += mergeSteps[2]!.weight;
+
+  reportMerge('place lookups');
+  await yieldToUi();
+  const placeLookupMap = await mergePlaceLookupCache(tables.place_lookup_cache);
+  mergeBase += mergeSteps[3]!.weight;
+
+  reportMerge('memories');
+  await yieldToUi();
   await mergeMoments(
-    input.plan.tables.moments,
+    tables.moments,
     locationPointMap,
     activityMap,
     resolutions,
   );
-  await mergeSettings(input.plan.tables.settings, resolutions);
+  mergeBase += mergeSteps[4]!.weight;
 
-  onProgress?.({phase: 'copying_media', message: 'Copying memories…'});
-  await copyBackupMediaToSandbox(input.plan.stagingPath);
+  reportMerge('settings');
+  await yieldToUi();
+  await mergeSettings(tables.settings, resolutions);
+  mergeBase += mergeSteps[5]!.weight;
+
+  input.onProgress?.({
+    phase: 'copying_media',
+    message: 'Copying memories…',
+    completed: 0,
+    total: 100,
+  });
+  await copyBackupMediaToSandbox(input.plan.stagingPath, input.onProgress);
 
   const overrideMaps = {
     savedPlaceMap,

@@ -1627,6 +1627,28 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
+  - react-native-document-picker (12.0.1):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
   - react-native-image-picker (8.2.1):
     - hermes-engine
     - RCTRequired
@@ -2570,9 +2592,33 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
+  - RNZipArchive (8.0.1):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - SSZipArchive (~> 2.5.5)
+    - Yoga
   - Sentry (9.15.0):
     - Sentry/Core (= 9.15.0)
   - Sentry/Core (9.15.0)
+  - SSZipArchive (2.5.5)
   - TSBackgroundFetch (4.1.1)
   - TSLocationManager (4.1.7):
     - TSBackgroundFetch (~> 4.1.0)
@@ -2653,6 +2699,7 @@ DEPENDENCIES:
   - "react-native-cameraroll (from `../node_modules/@react-native-camera-roll/camera-roll`)"
   - react-native-color-matrix-image-filters (from `../node_modules/react-native-color-matrix-image-filters`)
   - react-native-compressor (from `../node_modules/react-native-compressor`)
+  - "react-native-document-picker (from `../node_modules/@react-native-documents/picker`)"
   - react-native-image-picker (from `../node_modules/react-native-image-picker`)
   - react-native-maps (from `../node_modules/react-native-maps`)
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
@@ -2701,6 +2748,7 @@ DEPENDENCIES:
   - "RNSentry (from `../node_modules/@sentry/react-native`)"
   - RNSVG (from `../node_modules/react-native-svg`)
   - RNWorklets (from `../node_modules/react-native-worklets`)
+  - RNZipArchive (from `../node_modules/react-native-zip-archive`)
   - VisionCamera (from `../node_modules/react-native-vision-camera`)
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
@@ -2708,6 +2756,7 @@ SPEC REPOS:
   trunk:
     - lottie-ios
     - Sentry
+    - SSZipArchive
     - TSBackgroundFetch
     - TSLocationManager
 
@@ -2809,6 +2858,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-color-matrix-image-filters"
   react-native-compressor:
     :path: "../node_modules/react-native-compressor"
+  react-native-document-picker:
+    :path: "../node_modules/@react-native-documents/picker"
   react-native-image-picker:
     :path: "../node_modules/react-native-image-picker"
   react-native-maps:
@@ -2905,6 +2956,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-svg"
   RNWorklets:
     :path: "../node_modules/react-native-worklets"
+  RNZipArchive:
+    :path: "../node_modules/react-native-zip-archive"
   VisionCamera:
     :path: "../node_modules/react-native-vision-camera"
   Yoga:
@@ -2960,6 +3013,7 @@ SPEC CHECKSUMS:
   react-native-cameraroll: 4dbbfd1044dac3fb8a00ccdc0b25c15163d006fc
   react-native-color-matrix-image-filters: dd3c130a01195f0082f8c67a28c7ac05e50fba65
   react-native-compressor: ec959b4ff0105ed06b59721427d49387710b41d4
+  react-native-document-picker: 190dc5bde361dfe8d658c12696cae9910bf95681
   react-native-image-picker: 7793e84ad7b802351cf687c18bb42ad30150b29b
   react-native-maps: c545a4c303ce633d2dce0c178c1ad84dd286d3b0
   react-native-safe-area-context: d18d2c3404ad84fd9fee211a89228b509bb78f5e
@@ -3008,12 +3062,14 @@ SPEC CHECKSUMS:
   RNSentry: 104225856a07f7b2764f80ddff15ef4a4819c31d
   RNSVG: 7f2453d6a1cb84b5fbc9144f6e6333c196ef784b
   RNWorklets: 4dba1eb7cbfc3e8db49e5cce18a1a471fd2ed696
+  RNZipArchive: 647ead787c9854c3cfd2ed818bb295da9542f8d0
   Sentry: d5b72948d692d369ded835e2e77baadcd3c492dd
+  SSZipArchive: c69881e8ac5521f0e622291387add5f60f30f3c4
   TSBackgroundFetch: 18918b6449a1e3f01eb0f5b44d6d79ce6160a5a5
   TSLocationManager: 0c1b8ed109ae05ea4247def2992b3e4e3f49f839
   VisionCamera: c49d44d170b1cfa2039c86a1f76c9c1b0ffb7ca2
   Yoga: c0b3f2c7e8d3e327e450223a2414ca3fa296b9a2
 
-PODFILE CHECKSUM: d4e0fbcc1763fd02759f50b05f602f54d6130ab9
+PODFILE CHECKSUM: b8d4bf871337b82f7ba5922fcabb64cc87e93120
 
 COCOAPODS: 1.15.2

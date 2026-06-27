@@ -10,7 +10,10 @@ import {
   updateTripCustomLabel,
   updateTripLabelSelection,
 } from '@/db/repositories/trips';
-import type {SavedPlaceRow} from '@/db/repositories/saved-places';
+import {
+  getSavedPlaceById,
+  type SavedPlaceRow,
+} from '@/db/repositories/saved-places';
 import {
   resolveVisitPlaceDisplay,
   savedPlaceVisitDisplay,
@@ -118,6 +121,14 @@ export function useVisitPlaceDisplay(
           setDisplay(savedPlaceVisitDisplay(savedPlace));
         }
         return;
+      }
+
+      if (stay.savedPlaceId != null) {
+        const linkedPlace = await getSavedPlaceById(stay.savedPlaceId);
+        if (!cancelled && linkedPlace) {
+          setDisplay(savedPlaceVisitDisplay(linkedPlace));
+          return;
+        }
       }
 
       let materializedTripId = stay.materializedTripId ?? null;

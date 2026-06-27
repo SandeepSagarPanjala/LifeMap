@@ -5,36 +5,75 @@ import React
 class BackupCloudModule: NSObject {
   private let containerIdentifier = "iCloud.com.sunrio.lifemap"
   private let backupsRootRelativePath = "Documents/Backups"
-  private let currentBackupName = "current"
-  private let previousBackupName = "previous"
+  /// Single cloud backup folder (replaces legacy current/previous rotation).
+  private let backupName = "backup"
+  private let legacyCurrentBackupName = "current"
+  private let legacyPreviousBackupName = "previous"
   private let manifestFileName = "manifest.json"
 
   @objc static func requiresMainQueueSetup() -> Bool {
     false
   }
 
+  private func hasUbiquityIdentity() -> Bool {
+    FileManager.default.ubiquityIdentityToken != nil
+  }
+
+  private func resolveContainerURL() -> URL? {
+    if let url = FileManager.default.url(
+      forUbiquityContainerIdentifier: containerIdentifier
+    ) {
+      return url
+    }
+    return FileManager.default.url(forUbiquityContainerIdentifier: nil)
+  }
+
+  private func resolveContainerURLQuick() -> URL? {
+    resolveContainerURLWithRetry(maxAttempts: 2, delaySeconds: 0.5)
+  }
+
+  private func resolveContainerURLWithRetry(
+    maxAttempts: Int = 10,
+    delaySeconds: TimeInterval = 1.5
+  ) -> URL? {
+    for attempt in 0..<maxAttempts {
+      if attempt > 0 {
+        Thread.sleep(forTimeInterval: delaySeconds)
+      }
+      if let url = resolveContainerURL() {
+        return url
+      }
+    }
+    return nil
+  }
+
   private func backupsRootURL() throws -> URL {
-    guard
-      let containerURL = FileManager.default.url(
-        forUbiquityContainerIdentifier: containerIdentifier
+    if let containerURL = resolveContainerURLWithRetry() {
+      let rootURL = containerURL
+        .appendingPathComponent(backupsRootRelativePath, isDirectory: true)
+      try FileManager.default.createDirectory(
+        at: rootURL,
+        withIntermediateDirectories: true
       )
-    else {
+      return rootURL
+    }
+
+    if !hasUbiquityIdentity() {
       throw backupError(
         code: 1,
-        message: "iCloud is not available. Sign in to iCloud to use backup."
+        message:
+          "Sign in to iCloud on this device to use backup. In Settings → Apple Account → iCloud, make sure LifeMap is allowed to use iCloud."
       )
     }
 
-    let rootURL = containerURL
-      .appendingPathComponent(backupsRootRelativePath, isDirectory: true)
-    try FileManager.default.createDirectory(
-      at: rootURL,
-      withIntermediateDirectories: true
+    throw backupError(
+      code: 4,
+      message:
+        "LifeMap could not open its iCloud backup folder. Stay on Wi‑Fi and try again in a minute."
     )
-    return rootURL
   }
 
-  private func backupDirectoryURL(name: String) throws -> URL {
+  private func namedBackupDirectoryURL(name: String) throws -> URL {
     try backupsRootURL().appendingPathComponent(name, isDirectory: true)
   }
 
@@ -98,12 +137,12 @@ class BackupCloudModule: NSObject {
     }
   }
 
-  private func readManifest(at backupURL: URL) throws -> [String: Any]? {
+  private func readManifest(at backupURL: URL, downloadTimeout: TimeInterval = 120) throws -> [String: Any]? {
     let manifestURL = backupURL.appendingPathComponent(manifestFileName)
     guard FileManager.default.fileExists(atPath: manifestURL.path) else {
       return nil
     }
-    try ensureDownloaded(url: manifestURL)
+    try ensureDownloaded(url: manifestURL, timeout: downloadTimeout)
     let data = try Data(contentsOf: manifestURL)
     return try JSONSerialization.jsonObject(with: data) as? [String: Any]
   }
@@ -136,12 +175,12 @@ class BackupCloudModule: NSObject {
     return 0
   }
 
-  private func bestBackupURL() throws -> URL? {
-    let currentURL = try backupDirectoryURL(name: currentBackupName)
-    let previousURL = try backupDirectoryURL(name: previousBackupName)
-    let currentManifest = try readManifest(at: currentURL)
-    let previousManifest = try readManifest(at: previousURL)
-
+  private func pickBestLegacyBackupURL(
+    currentURL: URL,
+    previousURL: URL,
+    currentManifest: [String: Any]?,
+    previousManifest: [String: Any]?
+  ) -> URL? {
     switch (currentManifest, previousManifest) {
     case (nil, nil):
       return nil
@@ -161,13 +200,41 @@ class BackupCloudModule: NSObject {
     }
   }
 
-  @objc func isCloudAvailable(
-    _ resolve: RCTPromiseResolveBlock,
-    rejecter reject: RCTPromiseRejectBlock
-  ) {
-    resolve(
-      FileManager.default.url(forUbiquityContainerIdentifier: containerIdentifier) != nil
+  /// Resolves the active backup folder — prefers single `backup`, falls back to legacy slots.
+  private func resolveBackupURL() throws -> URL? {
+    let singleURL = try namedBackupDirectoryURL(name: backupName)
+    if let manifest = try readManifest(at: singleURL, downloadTimeout: 30) {
+      return singleURL
+    }
+
+    let currentURL = try namedBackupDirectoryURL(name: legacyCurrentBackupName)
+    let previousURL = try namedBackupDirectoryURL(name: legacyPreviousBackupName)
+    let currentManifest = try readManifest(at: currentURL, downloadTimeout: 30)
+    let previousManifest = try readManifest(at: previousURL, downloadTimeout: 30)
+    return pickBestLegacyBackupURL(
+      currentURL: currentURL,
+      previousURL: previousURL,
+      currentManifest: currentManifest,
+      previousManifest: previousManifest
     )
+  }
+
+  private func removeLegacyBackupDirectories() throws {
+    for name in [legacyCurrentBackupName, legacyPreviousBackupName] {
+      let url = try namedBackupDirectoryURL(name: name)
+      if FileManager.default.fileExists(atPath: url.path) {
+        try FileManager.default.removeItem(at: url)
+      }
+    }
+  }
+
+  @objc func isCloudAvailable(
+    _ resolve: @escaping RCTPromiseResolveBlock,
+    rejecter reject: @escaping RCTPromiseRejectBlock
+  ) {
+    DispatchQueue.global(qos: .utility).async {
+      resolve(self.resolveContainerURLQuick() != nil)
+    }
   }
 
   @objc func getCloudBackupMetadata(
@@ -176,11 +243,11 @@ class BackupCloudModule: NSObject {
   ) {
     DispatchQueue.global(qos: .utility).async {
       do {
-        guard let backupURL = try self.bestBackupURL() else {
+        guard let backupURL = try self.resolveBackupURL() else {
           resolve(NSNull())
           return
         }
-        guard let json = try self.readManifest(at: backupURL) else {
+        guard let json = try self.readManifest(at: backupURL, downloadTimeout: 30) else {
           resolve(NSNull())
           return
         }
@@ -199,20 +266,13 @@ class BackupCloudModule: NSObject {
     DispatchQueue.global(qos: .utility).async {
       do {
         let sourceURL = URL(fileURLWithPath: localPath, isDirectory: true)
-        let currentURL = try self.backupDirectoryURL(name: self.currentBackupName)
-        let previousURL = try self.backupDirectoryURL(name: self.previousBackupName)
+        let backupURL = try self.namedBackupDirectoryURL(name: self.backupName)
 
-        if FileManager.default.fileExists(atPath: currentURL.path) {
-          if FileManager.default.fileExists(atPath: previousURL.path) {
-            try FileManager.default.removeItem(at: previousURL)
-          }
-          try FileManager.default.moveItem(at: currentURL, to: previousURL)
+        if FileManager.default.fileExists(atPath: backupURL.path) {
+          try FileManager.default.removeItem(at: backupURL)
         }
-
-        if FileManager.default.fileExists(atPath: currentURL.path) {
-          try FileManager.default.removeItem(at: currentURL)
-        }
-        try FileManager.default.copyItem(at: sourceURL, to: currentURL)
+        try FileManager.default.copyItem(at: sourceURL, to: backupURL)
+        try self.removeLegacyBackupDirectories()
         resolve(nil)
       } catch {
         reject("backup_upload_error", error.localizedDescription, error)
@@ -227,7 +287,7 @@ class BackupCloudModule: NSObject {
   ) {
     DispatchQueue.global(qos: .utility).async {
       do {
-        guard let backupURL = try self.bestBackupURL() else {
+        guard let backupURL = try self.resolveBackupURL() else {
           throw self.backupError(code: 2, message: "No iCloud backup found.")
         }
         try self.downloadDirectoryIfNeeded(url: backupURL)

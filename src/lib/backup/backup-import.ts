@@ -11,6 +11,7 @@ import {
   getTripByEventKey,
   updateTripCustomLabel,
   updateTripLabelSelection,
+  updateTripSavedPlaceAssociation,
 } from '@/db/repositories/trips';
 import {
   getDefaultTripDetectionConfig,
@@ -126,6 +127,12 @@ async function importSavedPlaces(rows: unknown[]): Promise<IdMap> {
           'saved_places.radiusMeters',
         ),
         addressLine: parseOptionalString(record.addressLine),
+        active:
+          typeof record.active === 'number'
+            ? record.active
+            : record.active === false
+              ? 0
+              : 1,
         createdAt: parseRequiredIsoDate(record.createdAt, 'saved_places.createdAt'),
       })
       .returning({id: savedPlaces.id});
@@ -263,7 +270,7 @@ export async function importBackupTables(
 
 export async function applyTripLabelOverrides(
   overrides: TripLabelOverride[],
-  maps: {
+  maps?: {
     savedPlaceMap: IdMap;
     placeLookupMap: IdMap;
   },
@@ -275,10 +282,14 @@ export async function applyTripLabelOverrides(
       continue;
     }
 
-    const placeLookupCacheId = remapId(
-      override.placeLookupCacheId,
-      maps.placeLookupMap,
-    );
+    const placeLookupCacheId =
+      maps != null
+        ? remapId(override.placeLookupCacheId, maps.placeLookupMap)
+        : override.placeLookupCacheId;
+    const savedPlaceId =
+      maps != null
+        ? remapId(override.savedPlaceId, maps.savedPlaceMap)
+        : override.savedPlaceId;
 
     if (
       override.savedPlaceLabel != null &&
@@ -289,6 +300,13 @@ export async function applyTripLabelOverrides(
         override.savedPlaceLabel,
         placeLookupCacheId,
       );
+      if (savedPlaceId != null) {
+        await updateTripSavedPlaceAssociation(
+          trip.id,
+          savedPlaceId,
+          override.savedPlaceLabel,
+        );
+      }
       applied += 1;
       continue;
     }
@@ -299,6 +317,15 @@ export async function applyTripLabelOverrides(
         override.selectedCandidateIndex,
         placeLookupCacheId,
       );
+      if (savedPlaceId != null) {
+        await updateTripSavedPlaceAssociation(trip.id, savedPlaceId);
+      }
+      applied += 1;
+      continue;
+    }
+
+    if (savedPlaceId != null) {
+      await updateTripSavedPlaceAssociation(trip.id, savedPlaceId);
       applied += 1;
     }
   }

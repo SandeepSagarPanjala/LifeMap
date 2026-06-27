@@ -59,6 +59,12 @@ export async function listTripsForDay(dateKey: string): Promise<TripRow[]> {
   return rows.map(mapRow);
 }
 
+export async function listAllTrips(): Promise<TripRow[]> {
+  const db = await getDatabase();
+  const rows = await db.select().from(trips).orderBy(asc(trips.startAt));
+  return rows.map(mapRow);
+}
+
 export async function getTripById(id: number): Promise<TripRow | null> {
   const db = await getDatabase();
   const rows = await db.select().from(trips).where(eq(trips.id, id)).limit(1);
@@ -234,6 +240,21 @@ export async function updateTripCustomLabel(
       ...(placeLookupCacheId != null
         ? {placeLookupCacheId}
         : {}),
+    })
+    .where(eq(trips.id, tripId));
+}
+
+export async function updateTripSavedPlaceAssociation(
+  tripId: number,
+  savedPlaceId: number | null,
+  savedPlaceLabel?: string | null,
+): Promise<void> {
+  const db = await getDatabase();
+  await db
+    .update(trips)
+    .set({
+      savedPlaceId,
+      ...(savedPlaceLabel != null ? {savedPlaceLabel} : {}),
     })
     .where(eq(trips.id, tripId));
 }

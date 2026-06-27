@@ -25,10 +25,18 @@ import type {RootStackParamList} from '@/navigation/types';
 import {shouldShowSettingsRestore} from '@/lib/backup/backup-install-state';
 import {
   getBackupStatus,
-  getBackupSizeWarning,
   runBackupNow,
+  shouldPromptBeforeCloudBackupReplace,
   type BackupStatus,
 } from '@/lib/backup/backup-service';
+import {
+  exportBackupToDrive,
+  pickAndStageDriveBackup,
+} from '@/lib/backup/backup-drive';
+import {
+  getCloudBackupButtonLabel,
+  getCloudRestoreButtonLabel,
+} from '@/lib/backup/native-backup-cloud';
 import type {BackupProgress} from '@/lib/backup/backup-types';
 import {formatStorageBytes} from '@/lib/format-storage';
 
@@ -45,6 +53,14 @@ function formatBackupTimestamp(value: Date | string | null): string {
   return format(date, "MMM d, yyyy 'at' h:mm a");
 }
 
+function formatCloudBackupLabel(exportedAt: string, totalBytes: number): string {
+  const when = format(new Date(exportedAt), "MMM d, yyyy 'at' h:mm a");
+  if (totalBytes > 0) {
+    return `${when} (${formatStorageBytes(totalBytes)})`;
+  }
+  return when;
+}
+
 export function BackupSettings() {
   const colors = useThemeColors();
   const navigation =
@@ -53,6 +69,8 @@ export function BackupSettings() {
   const [showSettingsRestore, setShowSettingsRestore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [backingUp, setBackingUp] = useState(false);
+  const [exportingToDrive, setExportingToDrive] = useState(false);
+  const [importingFromDrive, setImportingFromDrive] = useState(false);
   const [progress, setProgress] = useState<BackupProgress | null>(null);
 
   const refreshStatus = useCallback(async () => {
@@ -64,6 +82,16 @@ export function BackupSettings() {
       ]);
       setStatus(nextStatus);
       setShowSettingsRestore(nextShowRestore);
+    } catch {
+      setStatus({
+        cloudAvailable: false,
+        cloudProviderLabel: 'iCloud',
+        cloudBackup: null,
+        lastBackupAt: null,
+        lastBackupBytes: 0,
+        autoSchedule: 'off',
+      });
+      setShowSettingsRestore(false);
     } finally {
       setLoading(false);
     }
@@ -95,34 +123,88 @@ export function BackupSettings() {
   }, [refreshStatus, status?.cloudProviderLabel]);
 
   const handleBackupNow = useCallback(async () => {
-    const warning = await getBackupSizeWarning();
-    if (warning == null) {
+    const replacePrompt = await shouldPromptBeforeCloudBackupReplace();
+    if (replacePrompt == null) {
       await performBackupNow();
       return;
     }
 
-    const provider = status?.cloudProviderLabel ?? 'cloud';
+    const {cloudBackup, localEstimateBytes} = replacePrompt;
+    const provider = status?.cloudProviderLabel ?? 'iCloud';
+    const backupLabel = formatCloudBackupLabel(
+      cloudBackup.exportedAt,
+      cloudBackup.totalBytes,
+    );
+
     Alert.alert(
-      'Larger backup already saved',
-      `Your ${provider} backup (${formatStorageBytes(warning.cloudBytes)}) is larger than your current data (${formatStorageBytes(warning.localEstimateBytes)}). Restoring may recover more memories.`,
+      `${provider} backup is larger`,
+      `Your ${provider} backup (${formatStorageBytes(cloudBackup.totalBytes)}) from ${backupLabel} is larger than what this phone would save now (${formatStorageBytes(localEstimateBytes)}). Restore first, replace it anyway, or cancel.`,
       [
         {
-          text: 'Restore first',
-          onPress: () => navigation.navigate('RestoreBackup', {source: 'settings'}),
+          text: 'Restore',
+          onPress: () =>
+            navigation.navigate('RestoreBackup', {source: 'settings'}),
         },
         {
-          text: 'Back up anyway',
+          text: 'Replace backup',
+          style: 'destructive',
           onPress: () => {
             void performBackupNow();
           },
         },
-        {text: 'Ignore', style: 'cancel'},
+        {text: 'Cancel', style: 'cancel'},
       ],
     );
   }, [navigation, performBackupNow, status?.cloudProviderLabel]);
 
+  const handleExportToDrive = useCallback(async () => {
+    setExportingToDrive(true);
+    setProgress({phase: 'exporting', message: 'Starting export…'});
+    try {
+      const result = await exportBackupToDrive(next => {
+        setProgress(next);
+      });
+      Alert.alert(
+        'Backup ready',
+        `Created a ${formatStorageBytes(result.totalBytes)} backup file. Save it to Google Drive from the share sheet.`,
+      );
+    } catch (error) {
+      Alert.alert(
+        'Export failed',
+        error instanceof Error ? error.message : 'Something went wrong.',
+      );
+    } finally {
+      setExportingToDrive(false);
+      setProgress(null);
+    }
+  }, []);
+
+  const handleImportFromDrive = useCallback(async () => {
+    setImportingFromDrive(true);
+    try {
+      const staged = await pickAndStageDriveBackup(next => {
+        setProgress(next);
+      });
+      if (!staged) {
+        return;
+      }
+      navigation.navigate('RestoreBackup', {source: 'drive'});
+    } catch (error) {
+      Alert.alert(
+        'Import failed',
+        error instanceof Error ? error.message : 'Something went wrong.',
+      );
+    } finally {
+      setImportingFromDrive(false);
+      setProgress(null);
+    }
+  }, [navigation]);
+
   const chooseSchedule = () => {
-    Alert.alert('Auto backup', 'Choose how often LifeMap backs up on Wi-Fi.', [
+    Alert.alert(
+      'Auto backup',
+      'Back up automatically on Wi-Fi. Off by default until you turn it on.',
+      [
       ...SCHEDULE_OPTIONS.map(option => ({
         text: backupScheduleLabel(option),
         onPress: () => {
@@ -133,14 +215,11 @@ export function BackupSettings() {
     ]);
   };
 
-  const lastBackupAt =
-    status?.lastBackupAt ??
-    (status?.cloudBackup?.exportedAt
-      ? new Date(status.cloudBackup.exportedAt)
-      : null);
-  const lastBackupBytes =
-    status?.lastBackupBytes ?? status?.cloudBackup?.totalBytes ?? 0;
-  const busy = backingUp;
+  const lastBackupAt = status?.lastBackupAt ?? null;
+  const lastBackupBytes = status?.lastBackupBytes ?? 0;
+  const busy = backingUp || exportingToDrive || importingFromDrive;
+  const cloudBackupLabel = getCloudBackupButtonLabel();
+  const cloudRestoreLabel = getCloudRestoreButtonLabel();
 
   return (
     <>
@@ -151,25 +230,26 @@ export function BackupSettings() {
             <Text className="font-medium">Backup</Text>
             <Text variant="muted" className="mt-1 text-sm leading-5">
               {showSettingsRestore
-                ? `Back up to ${status?.cloudProviderLabel ?? 'cloud'}. This install found an older iCloud backup you can still merge.`
-                : `Back up your map, visits, and memories to ${status?.cloudProviderLabel ?? 'cloud'}.`}
+                ? `An ${status?.cloudProviderLabel ?? 'iCloud'} backup is available to restore on this phone.`
+                : `Keep one ${status?.cloudProviderLabel ?? 'iCloud'} backup of your map, visits, and memories.`}
             </Text>
           </View>
         </View>
 
         <View className="mt-4 items-center py-2">
           <Text className="text-center text-sm font-medium">
-            Last backup: {formatBackupTimestamp(lastBackupAt)}
+            Last backup on this phone: {formatBackupTimestamp(lastBackupAt)}
           </Text>
           <Text variant="muted" className="mt-1 text-center text-sm">
-            Total size: {formatStorageBytes(lastBackupBytes)}
+            Last backup size: {formatStorageBytes(lastBackupBytes)}
           </Text>
           {loading ? (
             <ActivityIndicator className="mt-3" />
           ) : null}
           {!status?.cloudAvailable && Platform.OS === 'ios' ? (
             <Text variant="muted" className="mt-3 text-center text-xs leading-4">
-              Sign in to iCloud on this device to use backup.
+              iCloud is unavailable. Sign in to iCloud and allow LifeMap to use
+              iCloud, then try again.
             </Text>
           ) : null}
         </View>
@@ -185,7 +265,23 @@ export function BackupSettings() {
             <ActivityIndicator />
           ) : (
             <Text className="text-primary text-center text-base font-medium">
-              Back up now
+              {cloudBackupLabel}
+            </Text>
+          )}
+        </Pressable>
+
+        <Pressable
+          accessibilityRole="button"
+          disabled={busy || loading}
+          onPress={() => void handleExportToDrive()}
+          className={`border-border mt-3 rounded-xl border px-4 py-3 ${
+            busy ? 'opacity-50' : ''
+          }`}>
+          {exportingToDrive ? (
+            <ActivityIndicator />
+          ) : (
+            <Text className="text-primary text-center text-base font-medium">
+              Export or Backup to Drive
             </Text>
           )}
         </Pressable>
@@ -206,6 +302,23 @@ export function BackupSettings() {
           </View>
         </Pressable>
 
+        <Pressable
+          accessibilityRole="button"
+          disabled={busy || loading}
+          onPress={() => void handleImportFromDrive()}
+          className={`border-border mt-3 flex-row items-center justify-between rounded-xl border px-4 py-3 ${
+            busy ? 'opacity-50' : ''
+          }`}>
+          <Text className="text-base">
+            {importingFromDrive && progress == null ? 'Choose a file…' : 'Import'}
+          </Text>
+          {importingFromDrive && progress != null ? (
+            <ActivityIndicator />
+          ) : importingFromDrive ? null : (
+            <Icon as={ChevronRight} size={18} color={colors.mutedForeground} />
+          )}
+        </Pressable>
+
         {showSettingsRestore ? (
           <Pressable
             accessibilityRole="button"
@@ -214,18 +327,30 @@ export function BackupSettings() {
             className={`border-border mt-3 flex-row items-center justify-between rounded-xl border px-4 py-3 ${
               busy ? 'opacity-50' : ''
             }`}>
-            <Text className="text-base">Restore from iCloud</Text>
+            <Text className="text-base">{cloudRestoreLabel}</Text>
             <Icon as={ChevronRight} size={18} color={colors.mutedForeground} />
           </Pressable>
         ) : null}
 
         <Text variant="muted" className="mt-3 text-xs leading-4">
-          Connect to Wi-Fi for large backups. LifeMap keeps your latest and
-          previous cloud backup. End-to-end encrypted backup is coming later.
+          Connect to Wi-Fi for large backups. LifeMap keeps one{' '}
+          {status?.cloudProviderLabel ?? 'iCloud'} backup. Use Drive export for a
+          portable copy you can save to Google Drive. Auto backup stays off until
+          you enable it. End-to-end encrypted backup is coming later.
         </Text>
       </View>
 
-      <BackupProgressModal visible={progress != null} progress={progress} />
+      <BackupProgressModal
+        visible={progress != null}
+        progress={progress}
+        title={
+          exportingToDrive
+            ? 'Exporting backup'
+            : importingFromDrive && progress != null
+              ? 'Importing backup'
+              : 'Backing up'
+        }
+      />
     </>
   );
 }
@@ -233,9 +358,11 @@ export function BackupSettings() {
 function BackupProgressModal({
   visible,
   progress,
+  title,
 }: {
   visible: boolean;
   progress: BackupProgress | null;
+  title: string;
 }) {
   const percent =
     progress?.total != null && progress.total > 0 && progress.completed != null
@@ -246,7 +373,7 @@ function BackupProgressModal({
     <Modal visible={visible} transparent animationType="fade">
       <View className="flex-1 items-center justify-center bg-black/40 px-8">
         <View className="bg-card w-full rounded-2xl p-5">
-          <Text className="text-center text-base font-medium">Backing up</Text>
+          <Text className="text-center text-base font-medium">{title}</Text>
           <Text variant="muted" className="mt-2 text-center text-sm leading-5">
             {progress?.message ?? 'Working…'}
           </Text>

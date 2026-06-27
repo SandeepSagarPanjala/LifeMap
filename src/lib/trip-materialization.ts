@@ -1,5 +1,7 @@
 import { differenceInMilliseconds, endOfDay, subDays } from 'date-fns';
 
+import {extractTripLabelOverrides} from '@/lib/backup/backup-export';
+import {applyTripLabelOverrides} from '@/lib/backup/backup-import';
 import {
   listDateKeysWithLocationDataBefore,
   type LocationPointRow,
@@ -26,6 +28,7 @@ import {
   getTripByEventKey,
   getTripById,
   insertTripIfAbsent,
+  listAllTrips,
   listTripsForDay,
   setTripPlaceLookupCacheId,
   upsertTrip,
@@ -155,6 +158,8 @@ export function isClosedPlayableEntry(
 export type PersistedTripLabel = {
   placeLookupCacheId: number | null;
   selectedCandidateIndex: number | null;
+  savedPlaceLabel: string | null;
+  savedPlaceId: number | null;
 };
 
 /** User label choices keyed by stable trip event id — survives day re-materialization. */
@@ -163,12 +168,21 @@ export function existingTripLabelsByEventKey(
 ): Map<string, PersistedTripLabel> {
   const map = new Map<string, PersistedTripLabel>();
   for (const row of rows) {
-    if (row.selectedCandidateIndex != null || row.placeLookupCacheId != null) {
-      map.set(row.eventKey, {
-        placeLookupCacheId: row.placeLookupCacheId,
-        selectedCandidateIndex: row.selectedCandidateIndex,
-      });
+    const savedPlaceLabel = row.savedPlaceLabel?.trim() || null;
+    const hasLabel =
+      row.selectedCandidateIndex != null ||
+      row.placeLookupCacheId != null ||
+      savedPlaceLabel != null ||
+      row.savedPlaceId != null;
+    if (!hasLabel) {
+      continue;
     }
+    map.set(row.eventKey, {
+      placeLookupCacheId: row.placeLookupCacheId,
+      selectedCandidateIndex: row.selectedCandidateIndex,
+      savedPlaceLabel,
+      savedPlaceId: row.savedPlaceId,
+    });
   }
   return map;
 }
@@ -177,6 +191,10 @@ export function tripLabelForPersist(
   eventKey: string,
   existingByEventKey: ReadonlyMap<string, PersistedTripLabel>,
   placeLookup: { id: number; selectedCandidateIndex: number | null } | null,
+  detected?: {
+    savedPlaceLabel?: string | null;
+    savedPlaceId?: number | null;
+  },
 ): PersistedTripLabel {
   const existing = existingByEventKey.get(eventKey);
   if (existing?.selectedCandidateIndex != null) {
@@ -184,12 +202,30 @@ export function tripLabelForPersist(
       placeLookupCacheId:
         existing.placeLookupCacheId ?? placeLookup?.id ?? null,
       selectedCandidateIndex: existing.selectedCandidateIndex,
+      savedPlaceLabel: existing.savedPlaceLabel,
+      savedPlaceId: existing.savedPlaceId,
+    };
+  }
+
+  if (existing?.savedPlaceLabel) {
+    return {
+      placeLookupCacheId:
+        existing.placeLookupCacheId ?? placeLookup?.id ?? null,
+      selectedCandidateIndex: existing.selectedCandidateIndex,
+      savedPlaceLabel: existing.savedPlaceLabel,
+      savedPlaceId: existing.savedPlaceId,
     };
   }
 
   return {
     placeLookupCacheId: existing?.placeLookupCacheId ?? placeLookup?.id ?? null,
-    selectedCandidateIndex: placeLookup?.selectedCandidateIndex ?? null,
+    selectedCandidateIndex:
+      existing?.selectedCandidateIndex ??
+      placeLookup?.selectedCandidateIndex ??
+      null,
+    savedPlaceLabel:
+      existing?.savedPlaceLabel ?? detected?.savedPlaceLabel ?? null,
+    savedPlaceId: existing?.savedPlaceId ?? detected?.savedPlaceId ?? null,
   };
 }
 
@@ -606,7 +642,10 @@ export async function persistClosedTripsIncremental(
     const centroid = tripCentroidForPersist(entry, savedPlaces);
     const placeLookup = await findPlaceLookupNearAnchor(centroid);
     const eventKey = tripEventKey(entry);
-    const labels = tripLabelForPersist(eventKey, existingLabels, placeLookup);
+    const labels = tripLabelForPersist(eventKey, existingLabels, placeLookup, {
+      savedPlaceLabel: entry.savedPlaceLabel ?? null,
+      savedPlaceId: entry.savedPlaceId ?? null,
+    });
     const row = await upsertTrip({
       eventKey,
       kind: entry.kind,
@@ -618,8 +657,8 @@ export async function persistClosedTripsIncremental(
       centroidLat: centroid.lat,
       centroidLng: centroid.lng,
       segmentOrder,
-      savedPlaceLabel: entry.savedPlaceLabel ?? null,
-      savedPlaceId: entry.savedPlaceId ?? null,
+      savedPlaceLabel: labels.savedPlaceLabel,
+      savedPlaceId: labels.savedPlaceId,
       inferred: entry.inferred ?? false,
       placeLookupCacheId: labels.placeLookupCacheId,
       selectedCandidateIndex: labels.selectedCandidateIndex,
@@ -846,6 +885,17 @@ export async function rebuildAllPastDayTrips(
   detectionConfig: TripDetectionConfig = getDefaultTripDetectionConfig(),
   onProgress?: (progress: RebuildPastTripsProgress) => void,
 ): Promise<RebuildPastTripsResult> {
+  const existingTrips = await listAllTrips();
+  const labelOverrides = extractTripLabelOverrides(
+    existingTrips.map(row => ({
+      eventKey: row.eventKey,
+      savedPlaceLabel: row.savedPlaceLabel,
+      selectedCandidateIndex: row.selectedCandidateIndex,
+      placeLookupCacheId: row.placeLookupCacheId,
+      savedPlaceId: row.savedPlaceId,
+    })),
+  );
+
   await resetMaterializedTripHistory();
   const dateKeys = await listPastDateKeysWithGps();
   let tripsSaved = 0;
@@ -859,6 +909,12 @@ export async function rebuildAllPastDayTrips(
     });
     tripsSaved += await rebuildPastDayTrips(dateKey, detectionConfig);
     await yieldToEventLoop();
+  }
+
+  if (labelOverrides.length > 0) {
+    await applyTripLabelOverrides(labelOverrides);
+    clearHistoryDataCache();
+    notifyMaterializationUpdated();
   }
 
   onProgress?.({

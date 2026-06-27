@@ -16,9 +16,13 @@ import {
   trips,
 } from '@/db/schema';
 import {getDocumentDirectory} from '@/lib/moments/moment-media-uri';
-import {MOMENTS_TMP_DIRECTORY} from '@/lib/moments/moment-storage';
+import {
+  ensureMomentsDirectory,
+  ensureMomentsTempDirectory,
+} from '@/lib/moments/moment-storage';
 
-import {ensureDirectory} from './backup-fs';
+import {ensureDirectory, yieldToUi} from './backup-fs';
+import type {BackupProgress} from './backup-types';
 
 export async function clearAllUserData(): Promise<void> {
   const db = await getDatabase();
@@ -69,12 +73,13 @@ export async function hasLocalUserData(): Promise<boolean> {
 }
 
 export async function ensureMomentDirectories(): Promise<void> {
-  await ensureDirectory(`${getDocumentDirectory()}/moments`);
-  await ensureDirectory(MOMENTS_TMP_DIRECTORY);
+  await ensureMomentsDirectory();
+  await ensureMomentsTempDirectory();
 }
 
 export async function copyBackupMediaToSandbox(
   backupDirectoryPath: string,
+  onProgress?: (progress: BackupProgress) => void,
 ): Promise<void> {
   const fs = ReactNativeBlobUtil.fs;
   const sourceDir = `${backupDirectoryPath}/media`;
@@ -84,8 +89,9 @@ export async function copyBackupMediaToSandbox(
 
   await ensureMomentDirectories();
   const docs = getDocumentDirectory();
+  const filesToCopy: string[] = [];
 
-  async function copyRecursive(relativeDir: string): Promise<void> {
+  async function collectFiles(relativeDir: string): Promise<void> {
     const absoluteDir =
       relativeDir.length > 0 ? `${sourceDir}/${relativeDir}` : sourceDir;
     const entries = await fs.ls(absoluteDir);
@@ -94,19 +100,42 @@ export async function copyBackupMediaToSandbox(
       const sourcePath = `${sourceDir}/${entryRelative}`;
       const stat = await fs.stat(sourcePath);
       if (stat.type === 'directory') {
-        await copyRecursive(entryRelative);
+        await collectFiles(entryRelative);
         continue;
       }
-      const destination = `${docs}/moments/${entryRelative}`;
-      const destinationDir = destination.slice(0, destination.lastIndexOf('/'));
-      if (destinationDir.length > 0) {
-        await ensureDirectory(destinationDir);
-      }
-      await fs.cp(sourcePath, destination);
+      filesToCopy.push(entryRelative);
     }
   }
 
-  await copyRecursive('');
+  await collectFiles('');
+  const totalFiles = Math.max(filesToCopy.length, 1);
+
+  for (let index = 0; index < filesToCopy.length; index += 1) {
+    const entryRelative = filesToCopy[index]!;
+    if (index % 10 === 0) {
+      onProgress?.({
+        phase: 'copying_media',
+        message: 'Copying memories…',
+        completed: index,
+        total: totalFiles,
+      });
+      await yieldToUi();
+    }
+    const sourcePath = `${sourceDir}/${entryRelative}`;
+    const destination = `${docs}/moments/${entryRelative}`;
+    const destinationDir = destination.slice(0, destination.lastIndexOf('/'));
+    if (destinationDir.length > 0) {
+      await ensureDirectory(destinationDir);
+    }
+    await fs.cp(sourcePath, destination);
+  }
+
+  onProgress?.({
+    phase: 'copying_media',
+    message: 'Memories copied',
+    completed: totalFiles,
+    total: totalFiles,
+  });
 }
 
 export async function resetSqliteAutoIncrementCounters(): Promise<void> {

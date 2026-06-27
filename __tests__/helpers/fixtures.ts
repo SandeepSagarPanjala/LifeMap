@@ -11,6 +11,7 @@ export function makeSavedPlace(
   return {
     radiusMeters: 150,
     addressLine: null,
+    active: true,
     createdAt: new Date('2026-01-01T00:00:00.000Z'),
     ...partial,
   };
@@ -111,6 +112,7 @@ export function mapExportSavedPlace(row: {
   lng: number;
   radiusMeters: number;
   addressLine?: string | null;
+  active?: number | boolean;
   createdAt: string | Date;
 }): SavedPlaceRow {
   return {
@@ -121,6 +123,8 @@ export function mapExportSavedPlace(row: {
     lng: row.lng,
     radiusMeters: row.radiusMeters,
     addressLine: row.addressLine ?? null,
+    active:
+      row.active === 0 || row.active === false ? false : true,
     createdAt:
       row.createdAt instanceof Date ? row.createdAt : new Date(row.createdAt),
   };

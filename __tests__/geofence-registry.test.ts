@@ -35,6 +35,7 @@ describe('geofence registry', () => {
       lng: -96.7,
       radiusMeters: 150,
       addressLine: null,
+      active: true,
       createdAt: new Date('2026-01-01'),
     };
     expect(savedPlaceGeofenceSpecs([place])[0]?.radiusMeters).toBe(150);

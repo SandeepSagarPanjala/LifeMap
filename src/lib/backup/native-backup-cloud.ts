@@ -16,13 +16,31 @@ const nativeModule = NativeModules.BackupCloudModule as
   | undefined;
 
 const ANDROID_BACKUP_ROOT = 'LifeMapBackups';
+const BACKUP_SLOT = 'backup';
+const LEGACY_CURRENT_SLOT = 'current';
+const LEGACY_PREVIOUS_SLOT = 'previous';
 
-function getAndroidBackupDirectory(slot: 'current' | 'previous'): string {
+function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  fallback: T,
+): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>(resolve => {
+      setTimeout(() => resolve(fallback), timeoutMs);
+    }),
+  ]);
+}
+
+export {withTimeout};
+
+function getAndroidBackupDirectory(slot: string): string {
   return `${ReactNativeBlobUtil.fs.dirs.DocumentDir}/${ANDROID_BACKUP_ROOT}/${slot}`;
 }
 
 async function readAndroidManifest(
-  slot: 'current' | 'previous',
+  slot: string,
 ): Promise<CloudBackupMetadata | null> {
   const manifestPath = `${getAndroidBackupDirectory(slot)}/manifest.json`;
   if (!(await ReactNativeBlobUtil.fs.exists(manifestPath))) {
@@ -46,37 +64,58 @@ async function readAndroidManifest(
 }
 
 function pickBestMetadata(
-  current: CloudBackupMetadata | null,
-  previous: CloudBackupMetadata | null,
+  left: CloudBackupMetadata | null,
+  right: CloudBackupMetadata | null,
 ): CloudBackupMetadata | null {
-  if (current == null) {
-    return previous;
+  if (left == null) {
+    return right;
   }
-  if (previous == null) {
-    return current;
+  if (right == null) {
+    return left;
   }
-  const currentTime = new Date(current.exportedAt).getTime();
-  const previousTime = new Date(previous.exportedAt).getTime();
+  const leftTime = new Date(left.exportedAt).getTime();
+  const rightTime = new Date(right.exportedAt).getTime();
   if (
-    Number.isFinite(currentTime) &&
-    Number.isFinite(previousTime) &&
-    currentTime !== previousTime
+    Number.isFinite(leftTime) &&
+    Number.isFinite(rightTime) &&
+    leftTime !== rightTime
   ) {
-    return currentTime >= previousTime ? current : previous;
+    return leftTime >= rightTime ? left : right;
   }
-  return current.totalBytes >= previous.totalBytes ? current : previous;
+  return left.totalBytes >= right.totalBytes ? left : right;
 }
 
-async function pickAndroidBackupSlot(): Promise<'current' | 'previous' | null> {
-  const [current, previous] = await Promise.all([
-    readAndroidManifest('current'),
-    readAndroidManifest('previous'),
+async function resolveAndroidBackupMetadata(): Promise<CloudBackupMetadata | null> {
+  const [single, current, previous] = await Promise.all([
+    readAndroidManifest(BACKUP_SLOT),
+    readAndroidManifest(LEGACY_CURRENT_SLOT),
+    readAndroidManifest(LEGACY_PREVIOUS_SLOT),
   ]);
-  const best = pickBestMetadata(current, previous);
-  if (best == null) {
-    return null;
+  return pickBestMetadata(single, pickBestMetadata(current, previous));
+}
+
+async function resolveAndroidBackupDirectory(): Promise<string | null> {
+  const slots = [BACKUP_SLOT, LEGACY_CURRENT_SLOT, LEGACY_PREVIOUS_SLOT] as const;
+  const manifests = await Promise.all(slots.map(readAndroidManifest));
+  let bestSlot: (typeof slots)[number] | null = null;
+  let bestMetadata: CloudBackupMetadata | null = null;
+  for (let index = 0; index < slots.length; index += 1) {
+    const metadata = manifests[index] ?? null;
+    if (metadata == null) {
+      continue;
+    }
+    if (bestMetadata == null) {
+      bestMetadata = metadata;
+      bestSlot = slots[index]!;
+      continue;
+    }
+    const picked = pickBestMetadata(bestMetadata, metadata);
+    if (picked === metadata) {
+      bestMetadata = metadata;
+      bestSlot = slots[index]!;
+    }
   }
-  return best === current ? 'current' : 'previous';
+  return bestSlot != null ? getAndroidBackupDirectory(bestSlot) : null;
 }
 
 async function androidIsCloudAvailable(): Promise<boolean> {
@@ -84,58 +123,82 @@ async function androidIsCloudAvailable(): Promise<boolean> {
 }
 
 async function androidGetCloudBackupMetadata(): Promise<CloudBackupMetadata | null> {
-  const [current, previous] = await Promise.all([
-    readAndroidManifest('current'),
-    readAndroidManifest('previous'),
-  ]);
-  return pickBestMetadata(current, previous);
+  return resolveAndroidBackupMetadata();
 }
 
 async function androidUploadBackupDirectory(
   localDirectoryPath: string,
 ): Promise<void> {
-  const current = getAndroidBackupDirectory('current');
-  const previous = getAndroidBackupDirectory('previous');
-  if (await ReactNativeBlobUtil.fs.exists(current)) {
-    if (await ReactNativeBlobUtil.fs.exists(previous)) {
-      await removeDirectoryRecursive(previous);
+  const destination = getAndroidBackupDirectory(BACKUP_SLOT);
+  if (await ReactNativeBlobUtil.fs.exists(destination)) {
+    await removeDirectoryRecursive(destination);
+  }
+  await ReactNativeBlobUtil.fs.cp(localDirectoryPath, destination);
+
+  for (const legacySlot of [LEGACY_CURRENT_SLOT, LEGACY_PREVIOUS_SLOT]) {
+    const legacyPath = getAndroidBackupDirectory(legacySlot);
+    if (await ReactNativeBlobUtil.fs.exists(legacyPath)) {
+      await removeDirectoryRecursive(legacyPath);
     }
-    await ReactNativeBlobUtil.fs.mv(current, previous);
   }
-  if (await ReactNativeBlobUtil.fs.exists(current)) {
-    await removeDirectoryRecursive(current);
-  }
-  await ReactNativeBlobUtil.fs.cp(localDirectoryPath, current);
 }
 
 async function androidDownloadBackupDirectory(
   localDirectoryPath: string,
 ): Promise<void> {
-  const slot = await pickAndroidBackupSlot();
-  if (slot == null) {
+  const source = await resolveAndroidBackupDirectory();
+  if (source == null) {
     throw new Error('No backup found on this device.');
   }
-  const source = getAndroidBackupDirectory(slot);
   await removeDirectoryRecursive(localDirectoryPath);
   await ReactNativeBlobUtil.fs.cp(source, localDirectoryPath);
 }
 
+/** Fast check for Settings UI — must not block on slow iCloud setup. */
 export async function isCloudBackupAvailable(): Promise<boolean> {
   if (Platform.OS === 'ios') {
     if (!nativeModule?.isCloudAvailable) {
       return false;
     }
-    return nativeModule.isCloudAvailable();
+    return withTimeout(nativeModule.isCloudAvailable(), 3_000, false);
   }
   return androidIsCloudAvailable();
 }
 
+/** Quick metadata read for Settings badges and install checks. */
 export async function getCloudBackupMetadata(): Promise<CloudBackupMetadata | null> {
   if (Platform.OS === 'ios') {
     if (!nativeModule?.getCloudBackupMetadata) {
       return null;
     }
-    return nativeModule.getCloudBackupMetadata();
+    try {
+      return await withTimeout(
+        nativeModule.getCloudBackupMetadata(),
+        8_000,
+        null,
+      );
+    } catch {
+      return null;
+    }
+  }
+  return androidGetCloudBackupMetadata();
+}
+
+/** Slower metadata read before backup/restore decisions. */
+export async function getCloudBackupMetadataForOperation(): Promise<CloudBackupMetadata | null> {
+  if (Platform.OS === 'ios') {
+    if (!nativeModule?.getCloudBackupMetadata) {
+      return null;
+    }
+    try {
+      return await withTimeout(
+        nativeModule.getCloudBackupMetadata(),
+        30_000,
+        null,
+      );
+    } catch {
+      return null;
+    }
   }
   return androidGetCloudBackupMetadata();
 }
@@ -175,5 +238,13 @@ export async function removeBackupStagingDirectory(): Promise<void> {
 }
 
 export function getCloudProviderLabel(): string {
-  return Platform.OS === 'ios' ? 'iCloud' : 'device storage';
+  return Platform.OS === 'ios' ? 'iCloud' : 'Device storage';
+}
+
+export function getCloudBackupButtonLabel(): string {
+  return Platform.OS === 'ios' ? 'Backup to iCloud' : 'Backup to device storage';
+}
+
+export function getCloudRestoreButtonLabel(): string {
+  return Platform.OS === 'ios' ? 'Restore from iCloud' : 'Restore from device storage';
 }

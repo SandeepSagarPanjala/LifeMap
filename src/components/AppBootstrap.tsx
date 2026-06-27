@@ -11,8 +11,9 @@ import {ensureHistoryCalendarBounds} from '@/lib/history-calendar-bounds';
 import {preloadTodayHistory} from '@/lib/history-preload';
 import {sealYesterdayIfNeeded} from '@/lib/trip-materialization';
 import {warmCanonicalTravelGeometrySetting} from '@/lib/trip-geometry-settings';
-import {captureInstallCloudBackupSnapshotWithRetry} from '@/lib/backup/backup-install-state';
+import {captureInstallCloudBackupSnapshotWithRetry, cloudBackupExistsForLaunchInit} from '@/lib/backup/backup-install-state';
 import {maybeRunScheduledBackup} from '@/lib/backup/backup-service';
+import {initializeBackupPreferencesOnLaunch} from '@/lib/backup/backup-settings';
 import {useAppStore} from '@/stores/app-store';
 
 type AppBootstrapProps = {
@@ -37,6 +38,8 @@ export function AppBootstrap({
       await warmCanonicalTravelGeometrySetting();
       await sealYesterdayIfNeeded();
       await captureInstallCloudBackupSnapshotWithRetry();
+      const cloudBackupExists = await cloudBackupExistsForLaunchInit();
+      await initializeBackupPreferencesOnLaunch(cloudBackupExists);
       void maybeRunScheduledBackup().catch(() => undefined);
     });
   }, []);

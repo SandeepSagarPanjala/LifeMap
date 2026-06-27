@@ -103,6 +103,47 @@ function parseBackupSettingRows(rows: unknown[]) {
     .filter((row): row is NonNullable<typeof row> => row != null);
 }
 
+function summarizeLocationConflicts(count: number): RestoreConflict | null {
+  if (count <= 0) {
+    return null;
+  }
+  if (count === 1) {
+    return {
+      id: 'location_point:bulk',
+      kind: 'location_point',
+      title: 'Overlapping GPS point',
+      backupDetail: 'Use the GPS point from backup',
+      localDetail: 'Keep the GPS point on this device',
+    };
+  }
+  return {
+    id: 'location_point:bulk',
+    kind: 'location_point',
+    title: `${count.toLocaleString()} overlapping GPS points`,
+    backupDetail: 'Use GPS points from backup where they overlap',
+    localDetail: 'Keep GPS points already on this device where they overlap',
+  };
+}
+
+function summarizeMomentConflicts(
+  sample: RestoreConflict | null,
+  count: number,
+): RestoreConflict | null {
+  if (count <= 0) {
+    return null;
+  }
+  if (count === 1 && sample != null) {
+    return sample;
+  }
+  return {
+    id: 'moment:bulk',
+    kind: 'moment',
+    title: `${count.toLocaleString()} overlapping memories`,
+    backupDetail: 'Use memories from backup where they overlap',
+    localDetail: 'Keep memories already on this device where they overlap',
+  };
+}
+
 export function detectRestoreConflicts(input: {
   backupTables: BackupBundleTables;
   localLocationPoints: Array<{
@@ -130,7 +171,13 @@ export function detectRestoreConflicts(input: {
     ]),
   );
 
+  const seenLocationKeys = new Set<string>();
+  let locationConflictCount = 0;
+
   for (const backupRow of parseBackupLocationRows(input.backupTables.location_points)) {
+    if (seenLocationKeys.has(backupRow.key)) {
+      continue;
+    }
     const local = localPoints.get(backupRow.key);
     if (!local) {
       continue;
@@ -141,13 +188,8 @@ export function detectRestoreConflicts(input: {
     if (sameSource && sameAccuracy) {
       continue;
     }
-    conflicts.push({
-      id: `location_point:${backupRow.key}`,
-      kind: 'location_point',
-      title: 'Overlapping location point',
-      backupDetail: `Backup: ${backupRow.source}`,
-      localDetail: `This device: ${local.source}`,
-    });
+    seenLocationKeys.add(backupRow.key);
+    locationConflictCount += 1;
   }
 
   const localMoments = new Map(
@@ -162,7 +204,14 @@ export function detectRestoreConflicts(input: {
     ]),
   );
 
+  const seenMomentKeys = new Set<string>();
+  let momentConflictCount = 0;
+  let sampleMomentConflict: RestoreConflict | null = null;
+
   for (const backupRow of parseBackupMomentRows(input.backupTables.moments)) {
+    if (seenMomentKeys.has(backupRow.key)) {
+      continue;
+    }
     const local = localMoments.get(backupRow.key);
     if (!local) {
       continue;
@@ -171,13 +220,17 @@ export function detectRestoreConflicts(input: {
     if (sameCaption) {
       continue;
     }
-    conflicts.push({
-      id: `moment:${backupRow.key}`,
-      kind: 'moment',
-      title: `${backupRow.type} moment overlap`,
-      backupDetail: backupRow.caption ?? backupRow.textBody ?? 'Backup memory',
-      localDetail: local.caption ?? local.textBody ?? 'Memory on this device',
-    });
+    seenMomentKeys.add(backupRow.key);
+    momentConflictCount += 1;
+    if (sampleMomentConflict == null) {
+      sampleMomentConflict = {
+        id: `moment:${backupRow.key}`,
+        kind: 'moment',
+        title: `${backupRow.type} moment overlap`,
+        backupDetail: backupRow.caption ?? backupRow.textBody ?? 'Backup memory',
+        localDetail: local.caption ?? local.textBody ?? 'Memory on this device',
+      };
+    }
   }
 
   const localSettings = new Map(
@@ -202,6 +255,19 @@ export function detectRestoreConflicts(input: {
     });
   }
 
+  const locationSummary = summarizeLocationConflicts(locationConflictCount);
+  if (locationSummary != null) {
+    conflicts.unshift(locationSummary);
+  }
+
+  const momentSummary = summarizeMomentConflicts(
+    sampleMomentConflict,
+    momentConflictCount,
+  );
+  if (momentSummary != null) {
+    conflicts.unshift(momentSummary);
+  }
+
   return conflicts;
 }
 
@@ -214,4 +280,16 @@ export function buildConflictResolutionMap(
     map.set(conflict.id, choices[conflict.id] ?? 'local');
   }
   return map;
+}
+
+export function resolveRestoreConflictChoice(
+  resolutions: Map<string, RestoreConflictChoice>,
+  conflictId: string,
+  bulkId: string,
+): RestoreConflictChoice {
+  return (
+    resolutions.get(conflictId) ??
+    resolutions.get(bulkId) ??
+    'local'
+  );
 }
