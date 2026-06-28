@@ -5,7 +5,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-ARGS=()
+TEST_FILES=()
 skip_next=0
 
 for arg in "$@"; do
@@ -18,6 +18,12 @@ for arg in "$@"; do
       skip_next=1
       continue
       ;;
+    # Jest Runner -t patterns contain regex like (\s.*)? that break Detox's shell
+    # invocation. Our e2e files are small — run the whole file instead.
+    -t|--testNamePattern)
+      skip_next=1
+      continue
+      ;;
     --)
       continue
       ;;
@@ -27,14 +33,20 @@ for arg in "$@"; do
   if [[ "$normalized" == "$ROOT/"* ]]; then
     normalized="${normalized#"$ROOT"/}"
   fi
-  ARGS+=("$normalized")
+
+  if [[ "$normalized" == e2e/*.test.js ]]; then
+    TEST_FILES+=("$normalized")
+  fi
 done
 
-# Reuse the installed app by default (fast local runs from editor Run button).
-# Set E2E_FRESH=1 for a full delete+reinstall (CI / first install).
 REUSE_FLAG=()
 if [[ "${E2E_FRESH:-}" != "1" ]]; then
   REUSE_FLAG=(--reuse)
 fi
 
-exec pnpm exec detox test --configuration ios.sim.debug "${REUSE_FLAG[@]}" "${ARGS[@]}"
+if [[ ${#TEST_FILES[@]} -eq 0 ]]; then
+  echo "e2e-run-ios: no e2e test file in args — pass e2e/*.test.js" >&2
+  exit 1
+fi
+
+exec pnpm exec detox test --configuration ios.sim.debug "${REUSE_FLAG[@]}" "${TEST_FILES[@]}"

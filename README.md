@@ -210,7 +210,7 @@ CI does not run Detox yet (simulator/emulator cost). Unit tests still run via `p
 
 **Run one file from the editor (Jest Runner extension)**
 
-Install [Jest Runner](https://marketplace.visualstudio.com/items?itemName=firsttris.vscode-jest-runner). The **Run | Debug** CodeLens in `e2e/` uses `pnpm e2e:run:ios` → Detox with **`--reuse`** (no reinstall; opens existing app). For a clean install + onboarding, run `pnpm e2e:run:ios:fresh -- e2e/your.test.js` once in the terminal.
+Install [Jest Runner](https://marketplace.visualstudio.com/items?itemName=firsttris.vscode-jest-runner). The **Run | Debug** CodeLens in `e2e/` uses `pnpm e2e:run:ios` → Detox with **`--reuse`**. Run on a `describe`/`it` runs the **whole file** (Jest Runner’s `-t` regex breaks Detox’s shell). For a clean install, run `pnpm e2e:run:ios:fresh -- e2e/your.test.js` once in the terminal.
 
 Alternative: **Terminal → Run Task → Detox iOS: run current e2e file** (with an `e2e/*.test.js` file open).
 
