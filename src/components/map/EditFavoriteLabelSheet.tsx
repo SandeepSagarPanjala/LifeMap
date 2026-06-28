@@ -1,5 +1,5 @@
-import {useEffect, useState} from 'react';
-import {Pressable, StyleSheet, TextInput, View} from 'react-native';
+import {useEffect, useState, type ComponentRef, type RefObject} from 'react';
+import {Pressable, StyleSheet, View} from 'react-native';
 import {BottomSheetTextInput} from '@gorhom/bottom-sheet';
 
 import {Text} from '@/components/ui/text';
@@ -7,12 +7,14 @@ import {MAX_SAVED_PLACE_LABEL_LENGTH} from '@/lib/saved-places';
 
 type EditFavoriteLabelPanelProps = {
   initialValue?: string;
+  inputRef?: RefObject<ComponentRef<typeof BottomSheetTextInput> | null>;
   onClose: () => void;
   onSave: (label: string) => void;
 };
 
 export function EditFavoriteLabelPanel({
   initialValue = '',
+  inputRef,
   onClose,
   onSave,
 }: EditFavoriteLabelPanelProps) {
@@ -35,7 +37,7 @@ export function EditFavoriteLabelPanel({
         Map pins and visit labels use this name.
       </Text>
       <BottomSheetTextInput
-        autoFocus
+        ref={inputRef}
         value={value}
         onChangeText={setValue}
         placeholder="Favorite name"
