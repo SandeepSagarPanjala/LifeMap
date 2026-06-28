@@ -167,17 +167,15 @@ function AddSavedPlaceByAddressPanel({
   };
 
   return (
-    <View
-      testID="AddSavedPlaceByAddressSheet"
-      accessibilityLabel="Add saved place by address">
+    <View accessibilityLabel="Add saved place by address">
       <Text className="text-lg font-semibold">Add by address</Text>
       {step === 'address' ? (
-        <View testID="SavedPlaceAddressStep">
+        <View>
           <Text variant="muted" className="mt-1 text-sm leading-5">
             Enter a street address or place name. City and state help narrow
             results; zip code is optional.
           </Text>
-          <View testID="SavedPlaceAddressInput">
+          <View>
             <BottomSheetTextInput
               autoFocus
               value={address}
@@ -208,7 +206,6 @@ function AddSavedPlaceByAddressPanel({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Look up address"
-              testID="LookupSavedPlaceAddress"
               disabled={!canLookup}
               onPress={() => void handleLookup()}
               style={[
@@ -227,7 +224,7 @@ function AddSavedPlaceByAddressPanel({
       ) : null}
 
       {step === 'results' ? (
-        <View testID="SavedPlaceGeocodeResultsStep">
+        <View>
           <Text variant="muted" className="mt-1 text-sm leading-5">
             Multiple matches found. Pick the correct one.
           </Text>
@@ -242,7 +239,6 @@ function AddSavedPlaceByAddressPanel({
               return (
                 <Pressable
                   key={`${result.lat}-${result.lng}-${index}`}
-                  testID={`AddressGeocodeResult-${index}`}
                   accessibilityRole="button"
                   accessibilityLabel={`Select ${label}`}
                   onPress={() => setSelectedResult(result)}
@@ -261,7 +257,6 @@ function AddSavedPlaceByAddressPanel({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Back to address"
-              testID="BackToSavedPlaceAddressInput"
               onPress={goBack}
               style={[styles.button, styles.cancelButton]}>
               <Text className="font-medium">Back</Text>
@@ -269,7 +264,6 @@ function AddSavedPlaceByAddressPanel({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Continue with selected address"
-              testID="ContinueWithGeocodeResult"
               disabled={selectedResult == null}
               onPress={() => setStep('save')}
               style={[
@@ -284,7 +278,7 @@ function AddSavedPlaceByAddressPanel({
       ) : null}
 
       {step === 'save' && selectedResult != null ? (
-        <View testID="SavedPlaceKindStep">
+        <View>
           <Text variant="muted" className="mt-1 text-sm leading-5">
             Save as Home, Work, or a Favorite.
           </Text>
@@ -299,7 +293,6 @@ function AddSavedPlaceByAddressPanel({
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Mark as Home"
-                  testID="SelectHomeKind"
                   disabled={saving}
                   style={[
                     styles.kindRow,
@@ -314,7 +307,6 @@ function AddSavedPlaceByAddressPanel({
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Mark as Work"
-                  testID="SelectWorkKind"
                   disabled={saving}
                   style={[
                     styles.kindRow,
@@ -333,7 +325,6 @@ function AddSavedPlaceByAddressPanel({
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Add Favorite"
-                  testID="SelectFavoriteKind"
                   disabled={saving}
                   style={[
                     styles.kindRow,
@@ -352,7 +343,7 @@ function AddSavedPlaceByAddressPanel({
             </View>
           ) : null}
           {kind === 'favorite' ? (
-            <View testID="SavedPlaceFavoriteNameInput">
+            <View>
               <BottomSheetTextInput
                 value={favoriteLabel}
                 onChangeText={setFavoriteLabel}
@@ -375,7 +366,6 @@ function AddSavedPlaceByAddressPanel({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Back"
-              testID="BackToSavedPlaceAddressInput"
               onPress={goBack}
               disabled={saving}
               style={[styles.button, styles.cancelButton]}>
@@ -384,7 +374,6 @@ function AddSavedPlaceByAddressPanel({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Save saved place by address"
-              testID="SaveSavedPlaceByAddress"
               disabled={!canSave}
               onPress={() => void handleSave()}
               style={[

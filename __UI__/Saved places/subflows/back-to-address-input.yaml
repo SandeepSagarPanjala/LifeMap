@@ -1,9 +1,0 @@
-appId: com.sunrio.lifemap
----
-# From kind/results step → address entry with empty field ready.
-- tapOn:
-    id: BackToSavedPlaceAddressInput
-- extendedWaitUntil:
-    visible:
-      id: SavedPlaceAddressInput
-    timeout: 10000

@@ -1,9 +1,0 @@
-appId: com.sunrio.lifemap
----
-# Cold start — first install or fresh simulator with onboarding / permissions / restore.
-- launchApp:
-    clearState: false
-- runFlow:
-    file: launch-first-run.yaml
-- runFlow:
-    file: assert-on-map.yaml

@@ -1,6 +1,0 @@
-appId: com.sunrio.lifemap
----
-- tapOn: 'Saved places'
-- extendedWaitUntil:
-    visible: 'Saved places'
-    timeout: 10000

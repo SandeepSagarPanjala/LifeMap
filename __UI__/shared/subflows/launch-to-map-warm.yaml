@@ -1,7 +1,0 @@
-appId: com.sunrio.lifemap
----
-# Warm start — app already onboarded; skip permission/onboarding/restore handling.
-- launchApp:
-    clearState: false
-- runFlow:
-    file: assert-on-map.yaml

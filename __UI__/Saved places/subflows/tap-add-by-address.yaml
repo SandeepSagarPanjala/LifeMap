@@ -1,8 +1,0 @@
-appId: com.sunrio.lifemap
----
-- tapOn:
-    id: AddSavedPlaceByAddress
-- extendedWaitUntil:
-    visible:
-      id: AddSavedPlaceByAddressSheet
-    timeout: 10000

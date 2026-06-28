@@ -151,11 +151,6 @@ export function SavedPlacesSheet({
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={`Remove ${place.label}`}
-                  testID={
-                    place.kind === 'favorite'
-                      ? `RemoveSavedPlace-favorite-${place.label}`
-                      : `RemoveSavedPlace-${place.kind}`
-                  }
                   onPress={() => confirmDelete(place)}
                     style={styles.actionBtn}
                   >
@@ -174,7 +169,6 @@ export function SavedPlacesSheet({
       <Pressable
         accessibilityRole="link"
         accessibilityLabel="Add saved place by address"
-        testID="AddSavedPlaceByAddress"
         disabled={!canAddByAddress}
         onPress={onAddByAddress}
         style={[

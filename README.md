@@ -161,7 +161,7 @@ Android job uploads `app-debug.apk` as a downloadable artifact. iOS job verifies
 
 **iOS TestFlight (manual):** Actions → **iOS TestFlight (manual)** — needs App Store Connect API secrets ([docs/ios-testflight.md](docs/ios-testflight.md)). Easiest path: `pnpm ios:beta` on your Mac first.
 
-Future: Maestro smoke tests, Android Play internal + Fastlane `supply`.
+Future: Detox E2E tests, Android Play internal + Fastlane `supply`.
 
 ### Sentry (optional)
 

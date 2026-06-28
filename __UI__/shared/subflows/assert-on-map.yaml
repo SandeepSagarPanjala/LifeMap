@@ -1,5 +1,0 @@
-appId: com.sunrio.lifemap
----
-# Map-only checks — avoid matching the Settings screen header title.
-- assertVisible: 'Take a photo'
-- assertNotVisible: 'User settings'
