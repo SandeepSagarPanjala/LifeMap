@@ -1,5 +1,5 @@
 {
-  "jestrunner.jestCommand": "bash scripts/e2e-run-ios.sh",
+  "jestrunner.jestCommand": "pnpm e2e:run:ios --",
   "jestrunner.changeDirectoryToWorkspaceRoot": true,
   "jestrunner.runInTerminal": true,
   "jest.enable": false,

@@ -39,6 +39,11 @@ if [[ ! -d "$app_binary" ]]; then
   echo "WARN  $app_binary not built yet — run: pnpm e2e:build:ios"
 else
   echo "ok  LifeMap.app (debug simulator build)"
+  if codesign -dv "$app_binary" 2>&1 | grep -q 'linker-signed'; then
+    echo "WARN  LifeMap.app is linker-signed (no entitlements) — Keychain/DB writes fail. Rebuild: pnpm e2e:build:ios"
+  elif [[ ! -d "$app_binary/_CodeSignature" ]]; then
+    echo "WARN  LifeMap.app missing code signature — rebuild: pnpm e2e:build:ios"
+  fi
 fi
 
 echo

@@ -39,14 +39,15 @@ for arg in "$@"; do
   fi
 done
 
-REUSE_FLAG=()
-if [[ "${E2E_FRESH:-}" != "1" ]]; then
-  REUSE_FLAG=(--reuse)
-fi
-
 if [[ ${#TEST_FILES[@]} -eq 0 ]]; then
   echo "e2e-run-ios: no e2e test file in args — pass e2e/*.test.js" >&2
   exit 1
 fi
 
-exec pnpm exec detox test --configuration ios.sim.debug "${REUSE_FLAG[@]}" "${TEST_FILES[@]}"
+detox_args=(test --configuration ios.sim.debug)
+if [[ "${E2E_FRESH:-}" != "1" ]]; then
+  detox_args+=(--reuse)
+fi
+detox_args+=("${TEST_FILES[@]}")
+
+exec pnpm exec detox "${detox_args[@]}"

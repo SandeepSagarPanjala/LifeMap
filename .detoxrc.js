@@ -13,15 +13,13 @@ module.exports = {
     'ios.debug': {
       type: 'ios.app',
       binaryPath: 'ios/build/Build/Products/Debug-iphonesimulator/LifeMap.app',
-      build:
-        'bash -c \'source scripts/ruby-env.sh && xcodebuild -workspace ios/LifeMap.xcworkspace -scheme LifeMap -configuration Debug -sdk iphonesimulator -derivedDataPath ios/build CODE_SIGNING_ALLOWED=NO\'',
+      build: 'bash scripts/e2e-build-ios.sh Debug',
     },
     'ios.release': {
       type: 'ios.app',
       binaryPath:
         'ios/build/Build/Products/Release-iphonesimulator/LifeMap.app',
-      build:
-        'bash -c \'source scripts/ruby-env.sh && xcodebuild -workspace ios/LifeMap.xcworkspace -scheme LifeMap -configuration Release -sdk iphonesimulator -derivedDataPath ios/build CODE_SIGNING_ALLOWED=NO\'',
+      build: 'bash scripts/e2e-build-ios.sh Release',
     },
     'android.debug': {
       type: 'android.apk',

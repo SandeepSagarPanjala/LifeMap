@@ -194,6 +194,8 @@ Device tests live under `e2e/`. They use accessibility labels (not Maestro-style
 
 ```bash
 # iOS — setup once, build app once, then test
+# e2e:build:ios signs the simulator app (Keychain/encrypted DB need entitlements).
+# CI compile checks stay unsigned (CODE_SIGNING_ALLOWED=NO) — see mobile-build.yml.
 pnpm e2e:setup:ios
 pnpm e2e:build:ios
 pnpm e2e:test:ios
