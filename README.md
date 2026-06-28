@@ -198,6 +198,9 @@ pnpm e2e:setup:ios
 pnpm e2e:build:ios
 pnpm e2e:test:ios
 
+# Faster iteration — skip Detox delete+reinstall at session start (app already on simulator)
+pnpm e2e:test:ios:reuse
+
 # Android — start emulator first (pnpm android:emulator), then:
 pnpm e2e:build:android
 pnpm e2e:test:android
