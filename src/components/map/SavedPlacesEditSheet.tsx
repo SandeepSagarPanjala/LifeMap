@@ -1,7 +1,7 @@
-import {useCallback, useRef} from 'react';
+import {useCallback, useEffect, useRef, type ComponentRef} from 'react';
 import {Keyboard, StyleSheet, View} from 'react-native';
 import {BottomSheetModalProvider} from '@gorhom/bottom-sheet';
-import type {BottomSheetModal} from '@gorhom/bottom-sheet';
+import type {BottomSheetModal, BottomSheetTextInput} from '@gorhom/bottom-sheet';
 
 import {EditFavoriteLabelPanel} from '@/components/map/EditFavoriteLabelSheet';
 import {AppBottomSheet} from '@/components/ui/app-bottom-sheet';
@@ -20,10 +20,37 @@ export function SavedPlacesEditSheet({
   onSave,
 }: SavedPlacesEditSheetProps) {
   const sheetRef = useRef<BottomSheetModal>(null);
+  const labelInputRef = useRef<ComponentRef<typeof BottomSheetTextInput>>(null);
+
+  // Gorhom needs the sheet presented before focus() works — same as ActivityFormSheet.
+  useEffect(() => {
+    if (place == null) {
+      return;
+    }
+    const timer = setTimeout(() => labelInputRef.current?.focus(), 400);
+    return () => clearTimeout(timer);
+  }, [place]);
 
   const dismissKeyboard = useCallback(() => {
+    labelInputRef.current?.blur();
     Keyboard.dismiss();
   }, []);
+
+  const focusLabelInput = useCallback(() => {
+    labelInputRef.current?.focus();
+  }, []);
+
+  const handleSheetAnimate = useCallback(
+    (fromIndex: number, toIndex: number) => {
+      if (toIndex >= 0 && fromIndex < 0) {
+        focusLabelInput();
+      }
+      if (toIndex === -1) {
+        dismissKeyboard();
+      }
+    },
+    [dismissKeyboard, focusLabelInput],
+  );
 
   const requestClose = useCallback(() => {
     dismissKeyboard();
@@ -57,6 +84,7 @@ export function SavedPlacesEditSheet({
           visible={place != null}
           bottomSheetRef={sheetRef}
           onClose={handleDismissed}
+          onAnimate={handleSheetAnimate}
           onClosing={dismissKeyboard}
           instantPresent
           stackBehavior="push"
@@ -69,6 +97,7 @@ export function SavedPlacesEditSheet({
             <EditFavoriteLabelPanel
               key={place.id}
               initialValue={place.label}
+              inputRef={labelInputRef}
               onClose={requestClose}
               onSave={handleSave}
             />
