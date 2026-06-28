@@ -207,7 +207,9 @@ CI does not run Detox yet (simulator/emulator cost). Unit tests still run via `p
 
 **Run one file from the editor (Jest Runner extension)**
 
-Install [Jest Runner](https://marketplace.visualstudio.com/items?itemName=firsttris.vscode-jest-runner). Workspace settings route the **Run | Debug** CodeLens in `e2e/` through Detox (`ios.sim.debug`). Plain Jest ▶️ will fail with “Cannot determine which configuration to use” — that means the extension ran `jest` instead of `detox test`.
+Install [Jest Runner](https://marketplace.visualstudio.com/items?itemName=firsttris.vscode-jest-runner). Workspace settings route the **Run | Debug** CodeLens in `e2e/` through `scripts/e2e-run-ios.sh` → `detox test --configuration ios.sim.debug`. Do not set `jestrunner.configPath` — Detox already passes `e2e/jest.config.js`; a duplicate `-c` breaks Jest with `argv.config.match is not a function`.
+
+Alternative: **Terminal → Run Task → Detox iOS: run current e2e file** (with an `e2e/*.test.js` file open).
 
 For unit tests in `__tests__/`, use the terminal: `pnpm test` (not the e2e Run button).
 
