@@ -21,9 +21,6 @@ export function SavedPlacesEditSheet({
 }: SavedPlacesEditSheetProps) {
   const sheetRef = useRef<BottomSheetModal>(null);
   const labelInputRef = useRef<ComponentRef<typeof BottomSheetTextInput>>(null);
-
-  const sheetRef = useRef<BottomSheetModal>(null);
-  const labelInputRef = useRef<ComponentRef<typeof BottomSheetTextInput>>(null);
   const focusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Gorhom needs the sheet presented before focus() works — same as ActivityFormSheet.
