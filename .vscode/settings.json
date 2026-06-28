@@ -1,0 +1,8 @@
+{
+  "jestrunner.jestCommand": "pnpm exec detox test --configuration ios.sim.debug --",
+  "jestrunner.configPath": "e2e/jest.config.js",
+  "jestrunner.changeDirectoryToWorkspaceRoot": true,
+  "jestrunner.runInTerminal": true,
+  "jest.enable": false,
+  "jest.autoRun": "off"
+}

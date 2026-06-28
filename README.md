@@ -205,6 +205,12 @@ pnpm e2e:test:android
 
 CI does not run Detox yet (simulator/emulator cost). Unit tests still run via `pnpm test`.
 
+**Run one file from the editor (Jest Runner extension)**
+
+Install [Jest Runner](https://marketplace.visualstudio.com/items?itemName=firsttris.vscode-jest-runner). Workspace settings route the **Run | Debug** CodeLens in `e2e/` through Detox (`ios.sim.debug`). Plain Jest ▶️ will fail with “Cannot determine which configuration to use” — that means the extension ran `jest` instead of `detox test`.
+
+For unit tests in `__tests__/`, use the terminal: `pnpm test` (not the e2e Run button).
+
 ### Sentry (optional)
 
 1. Create a project at [sentry.io](https://sentry.io)
