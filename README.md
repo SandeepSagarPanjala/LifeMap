@@ -169,7 +169,16 @@ Device tests live under `e2e/`. They use accessibility labels (not Maestro-style
 
 **Prerequisites**
 
-- iOS: Xcode simulator (`iPhone 17 Pro` in `.detoxrc.js`; change if needed)
+- iOS: Xcode + iOS Simulator (`iPhone 17 Pro` in `.detoxrc.js`; change if needed)
+- **`applesimutils`** (Detox uses this to control the simulator and pre-grant permissions):
+
+  ```bash
+  brew tap wix/brew
+  brew trust wix/brew
+  brew install applesimutils
+  ```
+
+  Verify: `applesimutils --version`
 - Android: AVD `LifeMap_Emulator` (`pnpm android:create-emulator` once)
 - **One-time iOS Detox setup** (builds `Detox.framework` under `~/Library/Detox/`):
 
@@ -178,6 +187,7 @@ Device tests live under `e2e/`. They use accessibility labels (not Maestro-style
   ```
 
   Run this after `pnpm install` if tests fail with `Detox.framework could not be found`, or after upgrading Xcode.
+- Check everything: `pnpm e2e:check:ios`
 - Metro is started automatically by Detox; for manual debugging run `pnpm start` in another terminal
 
 **Run locally**
