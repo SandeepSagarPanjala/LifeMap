@@ -161,7 +161,68 @@ Android job uploads `app-debug.apk` as a downloadable artifact. iOS job verifies
 
 **iOS TestFlight (manual):** Actions → **iOS TestFlight (manual)** — needs App Store Connect API secrets ([docs/ios-testflight.md](docs/ios-testflight.md)). Easiest path: `pnpm ios:beta` on your Mac first.
 
-Future: Detox E2E tests, Android Play internal + Fastlane `supply`.
+Future: Android Play internal + Fastlane `supply`.
+
+### Detox (E2E)
+
+Device tests live under `e2e/`. They use accessibility labels (not Maestro-style test IDs).
+
+**Prerequisites**
+
+- iOS: Xcode + iOS Simulator (`iPhone 17 Pro` in `.detoxrc.js`; change if needed)
+- **`applesimutils`** (Detox uses this to control the simulator and pre-grant permissions):
+
+  ```bash
+  brew tap wix/brew
+  brew trust wix/brew
+  brew install applesimutils
+  ```
+
+  Verify: `applesimutils --version`
+- Android: AVD `LifeMap_Emulator` (`pnpm android:create-emulator` once)
+- **One-time iOS Detox setup** (builds `Detox.framework` under `~/Library/Detox/`):
+
+  ```bash
+  pnpm e2e:setup:ios
+  ```
+
+  Run this after `pnpm install` if tests fail with `Detox.framework could not be found`, or after upgrading Xcode.
+- Check everything: `pnpm e2e:check:ios`
+- Metro is started automatically by Detox; for manual debugging run `pnpm start` in another terminal
+
+**Run locally**
+
+```bash
+# iOS — setup once, build app once, then test
+# e2e:build:ios signs the simulator app (Keychain/encrypted DB need entitlements).
+# CI compile checks stay unsigned (CODE_SIGNING_ALLOWED=NO) — see mobile-build.yml.
+pnpm e2e:setup:ios
+pnpm e2e:build:ios
+pnpm e2e:test:ios
+
+# Faster iteration — skip Detox delete+reinstall at session start (app already on simulator)
+pnpm e2e:test:ios:reuse
+
+# Android — start emulator first (pnpm android:emulator), then:
+pnpm e2e:build:android
+pnpm e2e:test:android
+```
+
+CI does not run Detox yet (simulator/emulator cost). Unit tests still run via `pnpm test`.
+
+**Run one file from the editor (Jest Runner extension)**
+
+Install [Jest Runner](https://marketplace.visualstudio.com/items?itemName=firsttris.vscode-jest-runner). The **Run | Debug** CodeLens in `e2e/` uses `pnpm e2e:run:ios` → Detox with **`--reuse`**. Run on a `describe`/`it` runs the **whole file** (Jest Runner’s `-t` regex breaks Detox’s shell). For a clean install, run `pnpm e2e:run:ios:fresh -- e2e/your.test.js` once in the terminal.
+
+Alternative: **Terminal → Run Task → Detox iOS: run current e2e file** (with an `e2e/*.test.js` file open).
+
+Run from the **project root** (`LifeMap/`), not from `e2e/`:
+
+```bash
+pnpm e2e:run:ios -- e2e/saved-places.test.js
+```
+
+For unit tests in `__tests__/`, use the terminal: `pnpm test` (not the e2e Run button).
 
 ### Sentry (optional)
 

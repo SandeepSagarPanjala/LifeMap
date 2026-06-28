@@ -1,7 +1,7 @@
 module.exports = {
   preset: 'react-native',
   setupFiles: ['<rootDir>/jest.setup.js'],
-  testPathIgnorePatterns: ['/node_modules/', '/__tests__/helpers/'],
+  testPathIgnorePatterns: ['/node_modules/', '/__tests__/helpers/', '/e2e/'],
   moduleNameMapper: {
     '\\.(css)$': '<rootDir>/__mocks__/styleMock.js',
   },

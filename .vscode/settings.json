@@ -1,0 +1,7 @@
+{
+  "jestrunner.jestCommand": "pnpm e2e:run:ios --",
+  "jestrunner.changeDirectoryToWorkspaceRoot": true,
+  "jestrunner.runInTerminal": true,
+  "jest.enable": false,
+  "jest.autoRun": "off"
+}

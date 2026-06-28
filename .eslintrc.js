@@ -8,5 +8,17 @@ module.exports = {
         jest: true,
       },
     },
+    {
+      files: ['e2e/**/*.js'],
+      env: {
+        jest: true,
+      },
+      globals: {
+        device: 'readonly',
+        element: 'readonly',
+        by: 'readonly',
+        waitFor: 'readonly',
+      },
+    },
   ],
 };

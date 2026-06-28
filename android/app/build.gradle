@@ -93,6 +93,8 @@ android {
         versionCode 1
         versionName "1.0"
         manifestPlaceholders = [transistorLicense: transistorLicense]
+        testBuildType System.getProperty('testBuildType', 'debug')
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
     signingConfigs {
         debug {
@@ -112,6 +114,7 @@ android {
             signingConfig signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+            proguardFile "${rootProject.projectDir}/../node_modules/detox/android/detox/proguard-rules-app.pro"
         }
     }
 }
@@ -119,6 +122,11 @@ android {
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
+
+    androidTestImplementation('com.wix:detox:+')
+    androidTestImplementation('androidx.test:runner:1.6.2')
+    androidTestImplementation('androidx.test:rules:1.6.1')
+    androidTestImplementation('androidx.test.ext:junit:1.2.1')
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
