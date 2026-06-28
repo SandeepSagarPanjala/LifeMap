@@ -108,6 +108,7 @@ export function SavePlaceSheet({
             style={styles.input}
             returnKeyType="done"
             maxLength={MAX_SAVED_PLACE_LABEL_LENGTH}
+            accessibilityLabel="Map favorite name"
             onSubmitEditing={() => {
               if (favoriteName.trim().length > 0) {
                 runSave(() =>

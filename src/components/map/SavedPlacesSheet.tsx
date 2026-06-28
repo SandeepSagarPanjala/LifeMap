@@ -142,19 +142,23 @@ export function SavedPlacesSheet({
                       style={styles.actionBtn}
                     >
                       <Pencil
+                        accessible={false}
                         size={18}
                         color={colors.primary}
                         strokeWidth={2.25}
                       />
                     </Pressable>
                   ) : null}
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Remove ${place.label}`}
-                  onPress={() => confirmDelete(place)}
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Remove ${savedPlaceDisplayLabel(
+                      place,
+                    )}`}
+                    onPress={() => confirmDelete(place)}
                     style={styles.actionBtn}
                   >
                     <Trash2
+                      accessible={false}
                       size={18}
                       color={colors.primary}
                       strokeWidth={2.25}
@@ -237,9 +241,11 @@ const styles = StyleSheet.create({
   },
   addByAddressLink: {
     paddingTop: 12,
-    paddingBottom: 16,
-    marginBottom: 8,
+    paddingBottom: 20,
+    marginBottom: 4,
+    minHeight: 48,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   addByAddressLinkDisabled: {
     opacity: 0.45,

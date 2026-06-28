@@ -45,6 +45,7 @@ export function EditFavoriteLabelPanel({
         style={styles.input}
         returnKeyType="done"
         maxLength={MAX_SAVED_PLACE_LABEL_LENGTH}
+        accessibilityLabel="Renamed favorite name"
         onSubmitEditing={() => {
           if (canSave) {
             onSave(trimmed);

@@ -167,7 +167,7 @@ function AddSavedPlaceByAddressPanel({
   };
 
   return (
-    <View accessibilityLabel="Add saved place by address">
+    <View accessibilityLabel="Add saved place by address form">
       <Text className="text-lg font-semibold">Add by address</Text>
       {step === 'address' ? (
         <View>
@@ -353,7 +353,7 @@ function AddSavedPlaceByAddressPanel({
                 returnKeyType="done"
                 maxLength={MAX_SAVED_PLACE_LABEL_LENGTH}
                 editable={!saving}
-                accessibilityLabel="Favorite name"
+                accessibilityLabel="New favorite name"
                 onSubmitEditing={() => {
                   if (canSave) {
                     void handleSave();

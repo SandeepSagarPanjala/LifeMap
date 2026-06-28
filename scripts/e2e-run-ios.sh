@@ -34,13 +34,13 @@ for arg in "$@"; do
     normalized="${normalized#"$ROOT"/}"
   fi
 
-  if [[ "$normalized" == e2e/*.test.js ]]; then
+  if [[ "$normalized" =~ ^e2e/.+\.test\.js$ ]]; then
     TEST_FILES+=("$normalized")
   fi
 done
 
 if [[ ${#TEST_FILES[@]} -eq 0 ]]; then
-  echo "e2e-run-ios: no e2e test file in args — pass e2e/*.test.js" >&2
+  echo "e2e-run-ios: no e2e test file in args — pass e2e/**/*.test.js" >&2
   exit 1
 fi
 
