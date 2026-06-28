@@ -29,7 +29,7 @@ for arg in "$@"; do
       ;;
   esac
 
-  normalized="${arg//\\./.}"
+  normalized="$(printf '%s' "$arg" | sed -e 's#\\/#/#g' -e 's#\\\.#.#g' -e 's#^\./##')"
   if [[ "$normalized" == "$ROOT/"* ]]; then
     normalized="${normalized#"$ROOT"/}"
   fi
