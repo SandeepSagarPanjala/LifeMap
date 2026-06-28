@@ -161,7 +161,31 @@ Android job uploads `app-debug.apk` as a downloadable artifact. iOS job verifies
 
 **iOS TestFlight (manual):** Actions → **iOS TestFlight (manual)** — needs App Store Connect API secrets ([docs/ios-testflight.md](docs/ios-testflight.md)). Easiest path: `pnpm ios:beta` on your Mac first.
 
-Future: Detox E2E tests, Android Play internal + Fastlane `supply`.
+Future: Android Play internal + Fastlane `supply`.
+
+### Detox (E2E)
+
+Device tests live under `e2e/`. They use accessibility labels (not Maestro-style test IDs).
+
+**Prerequisites**
+
+- iOS: Xcode simulator (`iPhone 17 Pro` in `.detoxrc.js`; change if needed)
+- Android: AVD `LifeMap_Emulator` (`pnpm android:create-emulator` once)
+- Metro is started automatically by Detox; for manual debugging run `pnpm start` in another terminal
+
+**Run locally**
+
+```bash
+# iOS — build once, then test
+pnpm e2e:build:ios
+pnpm e2e:test:ios
+
+# Android — start emulator first (pnpm android:emulator), then:
+pnpm e2e:build:android
+pnpm e2e:test:android
+```
+
+CI does not run Detox yet (simulator/emulator cost). Unit tests still run via `pnpm test`.
 
 ### Sentry (optional)
 
