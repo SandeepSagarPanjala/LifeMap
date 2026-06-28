@@ -22,16 +22,32 @@ export function SavedPlacesEditSheet({
   const sheetRef = useRef<BottomSheetModal>(null);
   const labelInputRef = useRef<ComponentRef<typeof BottomSheetTextInput>>(null);
 
+  const sheetRef = useRef<BottomSheetModal>(null);
+  const labelInputRef = useRef<ComponentRef<typeof BottomSheetTextInput>>(null);
+  const focusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Gorhom needs the sheet presented before focus() works — same as ActivityFormSheet.
   useEffect(() => {
     if (place == null) {
       return;
     }
-    const timer = setTimeout(() => labelInputRef.current?.focus(), 400);
-    return () => clearTimeout(timer);
+    focusTimerRef.current = setTimeout(() => {
+      focusTimerRef.current = null;
+      labelInputRef.current?.focus();
+    }, 400);
+    return () => {
+      if (focusTimerRef.current != null) {
+        clearTimeout(focusTimerRef.current);
+        focusTimerRef.current = null;
+      }
+    };
   }, [place]);
 
   const dismissKeyboard = useCallback(() => {
+    if (focusTimerRef.current != null) {
+      clearTimeout(focusTimerRef.current);
+      focusTimerRef.current = null;
+    }
     labelInputRef.current?.blur();
     Keyboard.dismiss();
   }, []);
