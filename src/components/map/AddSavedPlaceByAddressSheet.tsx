@@ -1,4 +1,12 @@
-import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentRef,
+  type RefObject,
+} from 'react';
 import {
   ActivityIndicator,
   Keyboard,
@@ -37,6 +45,7 @@ type Step = 'address' | 'results' | 'save';
 
 type AddSavedPlaceByAddressPanelProps = {
   options: SavedPlaceAddByAddressOptions;
+  addressInputRef?: RefObject<ComponentRef<typeof BottomSheetTextInput> | null>;
   onClose: () => void;
   onSave: (request: AddSavedPlaceByAddressRequest) => Promise<void>;
 };
@@ -53,6 +62,7 @@ function defaultKind(options: SavedPlaceAddByAddressOptions): SavedPlaceKind {
 
 function AddSavedPlaceByAddressPanel({
   options,
+  addressInputRef,
   onClose,
   onSave,
 }: AddSavedPlaceByAddressPanelProps) {
@@ -177,7 +187,7 @@ function AddSavedPlaceByAddressPanel({
           </Text>
           <View>
             <BottomSheetTextInput
-              autoFocus
+              ref={addressInputRef}
               value={address}
               onChangeText={text => {
                 setAddress(text);
@@ -409,10 +419,50 @@ export function AddSavedPlaceByAddressSheet({
   onSave,
 }: AddSavedPlaceByAddressSheetProps) {
   const sheetRef = useRef<BottomSheetModal>(null);
+  const addressInputRef = useRef<ComponentRef<typeof BottomSheetTextInput>>(null);
+  const focusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Gorhom needs the sheet presented before focus() works — same as SavedPlacesEditSheet.
+  useEffect(() => {
+    if (!visible) {
+      return;
+    }
+    focusTimerRef.current = setTimeout(() => {
+      focusTimerRef.current = null;
+      addressInputRef.current?.focus();
+    }, 400);
+    return () => {
+      if (focusTimerRef.current != null) {
+        clearTimeout(focusTimerRef.current);
+        focusTimerRef.current = null;
+      }
+    };
+  }, [visible]);
 
   const dismissKeyboard = useCallback(() => {
+    if (focusTimerRef.current != null) {
+      clearTimeout(focusTimerRef.current);
+      focusTimerRef.current = null;
+    }
+    addressInputRef.current?.blur();
     Keyboard.dismiss();
   }, []);
+
+  const focusAddressInput = useCallback(() => {
+    addressInputRef.current?.focus();
+  }, []);
+
+  const handleSheetAnimate = useCallback(
+    (fromIndex: number, toIndex: number) => {
+      if (toIndex >= 0 && fromIndex < 0) {
+        focusAddressInput();
+      }
+      if (toIndex === -1) {
+        dismissKeyboard();
+      }
+    },
+    [dismissKeyboard, focusAddressInput],
+  );
 
   const requestClose = useCallback(() => {
     dismissKeyboard();
@@ -440,6 +490,7 @@ export function AddSavedPlaceByAddressSheet({
           visible={visible}
           bottomSheetRef={sheetRef}
           onClose={handleDismissed}
+          onAnimate={handleSheetAnimate}
           onClosing={dismissKeyboard}
           instantPresent
           stackBehavior="push"
@@ -452,6 +503,7 @@ export function AddSavedPlaceByAddressSheet({
             <AddSavedPlaceByAddressPanel
               key={`add-by-address-${options.hasHome}-${options.hasWork}`}
               options={options}
+              addressInputRef={addressInputRef}
               onClose={requestClose}
               onSave={handleSave}
             />
