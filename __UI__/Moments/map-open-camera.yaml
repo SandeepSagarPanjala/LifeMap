@@ -1,0 +1,14 @@
+appId: com.sunrio.lifemap
+---
+# P0 — open the camera from the map stack and dismiss without saving.
+- runFlow:
+    file: ../shared/subflows/launch-to-map-warm.yaml
+- tapOn: 'Take a photo'
+- runFlow:
+    file: ../shared/subflows/dismiss-system-dialogs.yaml
+- extendedWaitUntil:
+    visible: 'Close camera'
+    timeout: 30000
+- tapOn: 'Close camera'
+- runFlow:
+    file: ../shared/subflows/assert-on-map.yaml

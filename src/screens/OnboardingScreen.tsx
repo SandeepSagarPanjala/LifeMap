@@ -119,6 +119,7 @@ export function OnboardingScreen({onComplete}: OnboardingScreenProps) {
           {!isLastSlide ? (
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel="Skip onboarding"
               onPress={onComplete}
               hitSlop={12}>
               <Text className="text-muted-foreground text-sm font-medium">Skip</Text>
@@ -161,7 +162,12 @@ export function OnboardingScreen({onComplete}: OnboardingScreenProps) {
             ))}
           </View>
 
-          <Button className="w-full" onPress={handleNext}>
+          <Button
+            className="w-full"
+            accessibilityLabel={
+              isLastSlide ? 'Finish onboarding' : 'Continue onboarding'
+            }
+            onPress={handleNext}>
             <Text>{isLastSlide ? 'Get started' : 'Next'}</Text>
           </Button>
         </View>

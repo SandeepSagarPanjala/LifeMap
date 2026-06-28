@@ -1,0 +1,12 @@
+appId: com.sunrio.lifemap
+---
+# Tap outside the sheet on the dimmed backdrop (top ~22% of screen).
+# One tap should dismiss saved places after a gorhom overlay has closed.
+- tapOn:
+    point: 50%, 22%
+- tapOn:
+    text: Dismiss sheet
+    optional: true
+- extendedWaitUntil:
+    visible: 'Take a photo'
+    timeout: 10000

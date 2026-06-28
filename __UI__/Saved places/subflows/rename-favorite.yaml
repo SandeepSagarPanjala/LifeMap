@@ -1,0 +1,21 @@
+appId: com.sunrio.lifemap
+---
+# Rename ${FAVORITE_NAME} → ${FAVORITE_RENAME}.
+- runFlow:
+    file: open-sheet.yaml
+- assertVisible: 'Show ${FAVORITE_NAME} on map'
+- tapOn: 'Rename ${FAVORITE_NAME}'
+- extendedWaitUntil:
+    visible:
+      id: RenameFavoriteSheet
+    timeout: 15000
+- tapOn:
+    id: RenameFavoriteSheet
+    optional: true
+- eraseText
+- inputText: ${FAVORITE_RENAME}
+- tapOn:
+    id: SaveFavoriteName
+- extendedWaitUntil:
+    visible: 'Show ${FAVORITE_RENAME} on map'
+    timeout: 15000

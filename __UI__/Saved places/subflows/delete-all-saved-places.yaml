@@ -1,0 +1,45 @@
+appId: com.sunrio.lifemap
+---
+# Best-effort cleanup — removes Home, Work, and test favorites if present.
+- runFlow:
+    file: open-sheet.yaml
+- tapOn:
+    id: RemoveSavedPlace-home
+    optional: true
+- tapOn:
+    text: Remove
+    optional: true
+- extendedWaitUntil:
+    notVisible: 'Visits here will show times only, without this label.'
+    timeout: 5000
+    optional: true
+- tapOn:
+    id: RemoveSavedPlace-work
+    optional: true
+- tapOn:
+    text: Remove
+    optional: true
+- extendedWaitUntil:
+    notVisible: 'Visits here will show times only, without this label.'
+    timeout: 5000
+    optional: true
+- tapOn:
+    text: 'Remove ${FAVORITE_NAME}'
+    optional: true
+- tapOn:
+    text: Remove
+    optional: true
+- extendedWaitUntil:
+    notVisible: 'Visits here will show times only, without this label.'
+    timeout: 5000
+    optional: true
+- tapOn:
+    text: 'Remove ${FAVORITE_RENAME}'
+    optional: true
+- tapOn:
+    text: Remove
+    optional: true
+- extendedWaitUntil:
+    notVisible: 'Visits here will show times only, without this label.'
+    timeout: 5000
+    optional: true

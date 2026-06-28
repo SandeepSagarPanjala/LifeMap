@@ -26,6 +26,16 @@ export type NativePlaceLookupResult = {
   candidates: PlaceLookupCandidate[];
 };
 
+export type AddressGeocodeResult = {
+  lat: number;
+  lng: number;
+  addressLine: string | null;
+};
+
+export type NativeAddressGeocodeResponse = {
+  results: AddressGeocodeResult[];
+};
+
 export type VisitPlaceDisplayCandidate = {
   name: string;
   kind: PlaceLookupCandidateKind;

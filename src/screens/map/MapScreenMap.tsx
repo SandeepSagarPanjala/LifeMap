@@ -65,6 +65,8 @@ export const MapScreenMap = memo(function MapScreenMap({
   return (
     <MapView
       ref={mapRef}
+      testID="MapSurface"
+      accessibilityLabel="LifeMap map surface"
       style={StyleSheet.absoluteFill}
       provider={provider}
       initialRegion={mapInitialRegion}

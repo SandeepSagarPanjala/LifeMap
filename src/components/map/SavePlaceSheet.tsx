@@ -118,6 +118,7 @@ export function SavePlaceSheet({
           />
           <Pressable
             accessibilityRole="button"
+            accessibilityLabel="Save favorite place"
             disabled={saving || favoriteName.trim().length === 0}
             style={[
               styles.saveFavoriteBtn,
@@ -159,6 +160,7 @@ export function SavePlaceSheet({
             {!hasHome && canSaveHome ? (
               <Pressable
                 accessibilityRole="button"
+                accessibilityLabel="Mark as Home"
                 disabled={saving}
                 style={styles.actionRow}
                 onPress={() => runSave(() => onSaveHome(coordinate!))}>
@@ -169,6 +171,7 @@ export function SavePlaceSheet({
             {!hasWork && canSaveWork ? (
               <Pressable
                 accessibilityRole="button"
+                accessibilityLabel="Mark as Work"
                 disabled={saving}
                 style={styles.actionRow}
                 onPress={() => runSave(() => onSaveWork(coordinate!))}>
@@ -183,6 +186,7 @@ export function SavePlaceSheet({
             {canSaveFavorite ? (
               <Pressable
                 accessibilityRole="button"
+                accessibilityLabel="Add Favorite"
                 disabled={saving}
                 style={styles.actionRow}
                 onPress={() => setShowFavoriteInput(true)}>
@@ -198,6 +202,7 @@ export function SavePlaceSheet({
           </View>
           <Pressable
             accessibilityRole="button"
+            accessibilityLabel="Cancel save place"
             onPress={close}
             style={styles.cancelBtn}>
             <Text variant="muted" className="text-center font-medium">

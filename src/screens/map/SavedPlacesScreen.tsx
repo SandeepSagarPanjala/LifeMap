@@ -4,15 +4,25 @@ import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 
 import {SavedPlacesEditSheet} from '@/components/map/SavedPlacesEditSheet';
+import {AddSavedPlaceByAddressSheet} from '@/components/map/AddSavedPlaceByAddressSheet';
+import type {AddSavedPlaceByAddressRequest} from '@/components/map/AddSavedPlaceByAddressSheet';
 import {SavedPlacesSheet} from '@/components/map/SavedPlacesSheet';
 import {NativeHalfSheetShell} from '@/components/ui/NativeHalfSheetShell';
 import {useNativeHalfSheetClose} from '@/components/ui/native-half-sheet-context';
 import {
+  addFavoritePlace,
   deleteSavedPlace,
   type SavedPlaceRow,
   updateFavoritePlaceLabel,
+  upsertHomePlace,
+  upsertWorkPlace,
 } from '@/db/repositories/saved-places';
 import {useSavedPlaces} from '@/hooks/use-saved-places';
+import {
+  MAX_SAVED_PLACES,
+  SavedPlaceLimitError,
+  savedPlaceAddByAddressOptions,
+} from '@/lib/saved-places';
 import type {RootStackParamList} from '@/navigation/types';
 import {NATIVE_HALF_SHEET_HEIGHT_RATIO} from '@/navigation/native-half-sheet-capture-options';
 import {useSheetCaptureClose} from '@/screens/sheets/use-sheet-capture-close';
@@ -20,12 +30,15 @@ import {useSheetCaptureClose} from '@/screens/sheets/use-sheet-capture-close';
 function SavedPlacesPanel({
   onSelectPlace,
   onBeginEdit,
+  onAddByAddress,
 }: {
   onSelectPlace: (place: SavedPlaceRow) => void;
   onBeginEdit: (place: SavedPlaceRow) => void;
+  onAddByAddress: () => void;
 }) {
   const closeSheet = useNativeHalfSheetClose();
   const {places, refresh: refreshSavedPlaces} = useSavedPlaces();
+  const addOptions = savedPlaceAddByAddressOptions(places);
 
   const handleDelete = async (place: SavedPlaceRow) => {
     await deleteSavedPlace(place.id);
@@ -36,10 +49,21 @@ function SavedPlacesPanel({
     <SavedPlacesSheet
       visible
       places={places}
+      canAddByAddress={addOptions.canAddByAddress}
       onClose={closeSheet}
       onSelectPlace={onSelectPlace}
       onBeginEdit={onBeginEdit}
       onDelete={handleDelete}
+      onAddByAddress={() => {
+        if (!addOptions.canAddByAddress) {
+          Alert.alert(
+            'Saved place limit reached',
+            `You can save up to ${MAX_SAVED_PLACES} places.`,
+          );
+          return;
+        }
+        onAddByAddress();
+      }}
     />
   );
 }
@@ -51,7 +75,9 @@ export function SavedPlacesScreen() {
   const pendingFocusPlaceIdRef = useRef<number | null>(null);
   const [editingPlace, setEditingPlace] = useState<SavedPlaceRow | null>(null);
   const [editSheetOpen, setEditSheetOpen] = useState(false);
-  const {refresh: refreshSavedPlaces} = useSavedPlaces();
+  const [addressSheetOpen, setAddressSheetOpen] = useState(false);
+  const {places, refresh: refreshSavedPlaces} = useSavedPlaces();
+  const addByAddressOptions = savedPlaceAddByAddressOptions(places);
 
   const openEdit = useCallback((place: SavedPlaceRow) => {
     setEditingPlace(place);
@@ -64,7 +90,7 @@ export function SavedPlacesScreen() {
   }, []);
 
   const finishClose = useCallback(() => {
-    if (editSheetOpen) {
+    if (editSheetOpen || addressSheetOpen) {
       return;
     }
     const focusPlaceId = pendingFocusPlaceIdRef.current;
@@ -77,7 +103,7 @@ export function SavedPlacesScreen() {
         merge: true,
       });
     }
-  }, [editSheetOpen, navigation, navigationClose]);
+  }, [addressSheetOpen, editSheetOpen, navigation, navigationClose]);
 
   const handleSelectPlace = useCallback((place: SavedPlaceRow) => {
     pendingFocusPlaceIdRef.current = place.id;
@@ -98,18 +124,68 @@ export function SavedPlacesScreen() {
     [refreshSavedPlaces],
   );
 
+  const handleAddByAddress = useCallback(
+    async (request: AddSavedPlaceByAddressRequest) => {
+      const addressLine = request.addressLine;
+      try {
+        if (request.kind === 'home') {
+          await upsertHomePlace(
+            request.lat,
+            request.lng,
+            undefined,
+            addressLine,
+          );
+        } else if (request.kind === 'work') {
+          await upsertWorkPlace(
+            request.lat,
+            request.lng,
+            undefined,
+            addressLine,
+          );
+        } else {
+          const label = request.favoriteLabel?.trim();
+          if (!label) {
+            throw new Error('Favorite name is required');
+          }
+          await addFavoritePlace(
+            request.lat,
+            request.lng,
+            label,
+            undefined,
+            addressLine,
+          );
+        }
+        await refreshSavedPlaces();
+      } catch (error) {
+        if (error instanceof SavedPlaceLimitError) {
+          Alert.alert(
+            'Saved place limit reached',
+            `You can save up to ${MAX_SAVED_PLACES} places.`,
+          );
+        } else if (error instanceof Error) {
+          Alert.alert('Could not save place', error.message);
+        }
+        throw error;
+      }
+    },
+    [refreshSavedPlaces],
+  );
+
+  const overlayOpen = editSheetOpen || addressSheetOpen;
+
   return (
     <View style={styles.root}>
       <View
-        pointerEvents={editSheetOpen ? 'none' : 'auto'}
+        pointerEvents={overlayOpen ? 'none' : 'auto'}
         style={styles.shellHost}>
         <NativeHalfSheetShell
           onClose={finishClose}
-          backdropDismissEnabled={!editSheetOpen}
+          backdropDismissEnabled={!overlayOpen}
           heightRatio={NATIVE_HALF_SHEET_HEIGHT_RATIO}>
           <SavedPlacesPanel
             onSelectPlace={handleSelectPlace}
             onBeginEdit={openEdit}
+            onAddByAddress={() => setAddressSheetOpen(true)}
           />
         </NativeHalfSheetShell>
       </View>
@@ -117,6 +193,12 @@ export function SavedPlacesScreen() {
         place={editingPlace}
         onClose={handleEditDismissed}
         onSave={handleEditLabel}
+      />
+      <AddSavedPlaceByAddressSheet
+        visible={addressSheetOpen}
+        options={addByAddressOptions}
+        onClose={() => setAddressSheetOpen(false)}
+        onSave={handleAddByAddress}
       />
     </View>
   );

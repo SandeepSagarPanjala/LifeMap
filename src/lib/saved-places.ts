@@ -159,3 +159,31 @@ export function canAddSavedPlace(
   }
   return places.length < MAX_SAVED_PLACES;
 }
+
+export type SavedPlaceAddByAddressOptions = {
+  hasHome: boolean;
+  hasWork: boolean;
+  canSaveHome: boolean;
+  canSaveWork: boolean;
+  canSaveFavorite: boolean;
+  canAddByAddress: boolean;
+};
+
+export function savedPlaceAddByAddressOptions(
+  places: readonly SavedPlaceRow[],
+): SavedPlaceAddByAddressOptions {
+  const hasHome = places.some(place => place.kind === 'home');
+  const hasWork = places.some(place => place.kind === 'work');
+  const canSaveHome = !hasHome && canAddSavedPlace(places, 'home');
+  const canSaveWork = !hasWork && canAddSavedPlace(places, 'work');
+  const canSaveFavorite = canAddSavedPlace(places, 'favorite');
+
+  return {
+    hasHome,
+    hasWork,
+    canSaveHome,
+    canSaveWork,
+    canSaveFavorite,
+    canAddByAddress: canSaveHome || canSaveWork || canSaveFavorite,
+  };
+}

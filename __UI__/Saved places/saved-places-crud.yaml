@@ -1,0 +1,26 @@
+appId: com.sunrio.lifemap
+env:
+  HOME_ADDRESS: '3925 Elm St, Sacramento, CA 95838'
+  WORK_PARTIAL_ADDRESS: '1 Ferry Building'
+  WORK_FULL_ADDRESS: '1 Ferry Building, San Francisco, CA 94111'
+  FAVORITE_ADDRESS: '1 Dr Carlton B Goodlett Pl, San Francisco, CA 94102'
+  FAVORITE_NAME: Auto Test Cafe
+  FAVORITE_RENAME: Auto Test Bistro
+---
+# P1 — full saved places CRUD via Add by address (Home, Work, Favorite).
+- runFlow:
+    file: ../shared/subflows/launch-to-map-warm.yaml
+- runFlow:
+    file: subflows/delete-all-saved-places.yaml
+- runFlow:
+    file: subflows/add-home-by-address.yaml
+- runFlow:
+    file: subflows/add-work-by-address.yaml
+- runFlow:
+    file: subflows/add-favorite-by-address.yaml
+- runFlow:
+    file: subflows/rename-favorite.yaml
+- runFlow:
+    file: subflows/delete-all-saved-places.yaml
+- runFlow:
+    file: subflows/close-sheet.yaml

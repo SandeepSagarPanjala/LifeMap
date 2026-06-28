@@ -1,0 +1,13 @@
+appId: com.sunrio.lifemap
+---
+# P0 — open today's history panel and close it again.
+- runFlow:
+    file: ../shared/subflows/launch-to-map-warm.yaml
+- tapOn:
+    text: '.*history.*'
+- extendedWaitUntil:
+    visible: 'Close history'
+    timeout: 15000
+- tapOn: 'Close history'
+- runFlow:
+    file: ../shared/subflows/assert-on-map.yaml

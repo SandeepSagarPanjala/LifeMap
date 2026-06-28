@@ -1,0 +1,15 @@
+appId: com.sunrio.lifemap
+---
+# P0 — open saved places sheet and dismiss it.
+- runFlow:
+    file: ../shared/subflows/launch-to-map-warm.yaml
+- tapOn: 'Saved places'
+- extendedWaitUntil:
+    visible: 'Saved places'
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: AddSavedPlaceByAddress
+    timeout: 15000
+- runFlow:
+    file: subflows/close-sheet.yaml

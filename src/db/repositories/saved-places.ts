@@ -81,13 +81,18 @@ export async function upsertHomePlace(
   lat: number,
   lng: number,
   radiusMeters = DEFAULT_SAVED_PLACE_RADIUS_METERS,
+  addressLineOverride?: string | null,
 ): Promise<SavedPlaceRow> {
   const db = await getDatabase();
   const existing = await listSavedPlaces();
   if (!canAddSavedPlace(existing, 'home')) {
     throw new SavedPlaceLimitError();
   }
-  const addressLine = await lookupSavedPlaceAddress(lat, lng);
+  const override = addressLineOverride?.trim();
+  const addressLine =
+    override != null && override.length > 0
+      ? override
+      : await lookupSavedPlaceAddress(lat, lng);
   await deactivateSavedPlacesByKind('home');
   await db.insert(savedPlaces).values({
     kind: 'home',
@@ -112,13 +117,18 @@ export async function upsertWorkPlace(
   lat: number,
   lng: number,
   radiusMeters = DEFAULT_SAVED_PLACE_RADIUS_METERS,
+  addressLineOverride?: string | null,
 ): Promise<SavedPlaceRow> {
   const db = await getDatabase();
   const existing = await listSavedPlaces();
   if (!canAddSavedPlace(existing, 'work')) {
     throw new SavedPlaceLimitError();
   }
-  const addressLine = await lookupSavedPlaceAddress(lat, lng);
+  const override = addressLineOverride?.trim();
+  const addressLine =
+    override != null && override.length > 0
+      ? override
+      : await lookupSavedPlaceAddress(lat, lng);
   await deactivateSavedPlacesByKind('work');
   await db.insert(savedPlaces).values({
     kind: 'work',
@@ -144,6 +154,7 @@ export async function addFavoritePlace(
   lng: number,
   label: string,
   radiusMeters = DEFAULT_SAVED_PLACE_RADIUS_METERS,
+  addressLineOverride?: string | null,
 ): Promise<SavedPlaceRow> {
   const db = await getDatabase();
   const trimmed = normalizeSavedPlaceLabel(label);
@@ -151,7 +162,11 @@ export async function addFavoritePlace(
   if (!canAddSavedPlace(existing, 'favorite')) {
     throw new SavedPlaceLimitError();
   }
-  const addressLine = await lookupSavedPlaceAddress(lat, lng);
+  const override = addressLineOverride?.trim();
+  const addressLine =
+    override != null && override.length > 0
+      ? override
+      : await lookupSavedPlaceAddress(lat, lng);
   await db.insert(savedPlaces).values({
     kind: 'favorite',
     label: trimmed,

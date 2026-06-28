@@ -1,0 +1,25 @@
+appId: com.sunrio.lifemap
+---
+# First launch only — onboarding, restore offer, location/motion permission prompts.
+- runFlow:
+    file: dismiss-system-dialogs.yaml
+- tapOn:
+    text: Skip onboarding
+    optional: true
+- repeat:
+    times: 3
+    commands:
+      - tapOn:
+          text: Continue onboarding
+          optional: true
+- tapOn:
+    text: Finish onboarding
+    optional: true
+- tapOn:
+    text: Start fresh
+    optional: true
+- tapOn:
+    text: Continue without restore
+    optional: true
+- runFlow:
+    file: dismiss-system-dialogs.yaml

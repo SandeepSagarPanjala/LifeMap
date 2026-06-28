@@ -1,0 +1,9 @@
+appId: com.sunrio.lifemap
+---
+# Close the gorhom add-by-address overlay via backdrop tap (not Cancel).
+- tapOn:
+    point: 50%, 22%
+- extendedWaitUntil:
+    notVisible:
+      id: AddSavedPlaceByAddressSheet
+    timeout: 10000

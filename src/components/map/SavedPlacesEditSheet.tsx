@@ -63,7 +63,8 @@ export function SavedPlacesEditSheet({
           enableDynamicSizing
           keyboardBehavior="interactive"
           keyboardBlurBehavior="restore"
-          dismissKeyboardOnClose>
+          dismissKeyboardOnClose
+          releaseTouchesWhileClosing>
           {place != null ? (
             <EditFavoriteLabelPanel
               key={place.id}

@@ -10,6 +10,93 @@ class PlaceLookupModule: NSObject {
     false
   }
 
+  private static func formatGeocodeLine(_ placemark: CLPlacemark) -> String? {
+    var segments: [String] = []
+
+    let street = [
+      placemark.subThoroughfare,
+      placemark.thoroughfare,
+    ]
+      .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+      .filter { !$0.isEmpty }
+      .joined(separator: " ")
+    if !street.isEmpty {
+      segments.append(street)
+    }
+
+    let cityState = [
+      placemark.locality,
+      placemark.administrativeArea,
+    ]
+      .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+      .filter { !$0.isEmpty }
+      .joined(separator: ", ")
+    if !cityState.isEmpty {
+      segments.append(cityState)
+    }
+
+    if let postalCode = placemark.postalCode?.trimmingCharacters(in: .whitespacesAndNewlines),
+       !postalCode.isEmpty {
+      segments.append(postalCode)
+    }
+
+    if segments.isEmpty {
+      return formatAddress(placemark)
+    }
+    return segments.joined(separator: ", ")
+  }
+
+  @objc func geocodeAddress(
+    _ address: String,
+    resolver: @escaping RCTPromiseResolveBlock,
+    rejecter: @escaping RCTPromiseRejectBlock
+  ) {
+    let trimmed = address.trimmingCharacters(in: .whitespacesAndNewlines)
+    if trimmed.isEmpty {
+      rejecter("E_INVALID_ADDRESS", "Address is required", nil)
+      return
+    }
+
+    let geocoder = CLGeocoder()
+    geocoder.geocodeAddressString(trimmed) { placemarks, error in
+      guard let placemarks, !placemarks.isEmpty else {
+        rejecter(
+          "E_GEOCODE",
+          "Could not find that address",
+          error
+        )
+        return
+      }
+
+      var results: [[String: Any]] = []
+      var seen = Set<String>()
+      for placemark in placemarks.prefix(5) {
+        guard let location = placemark.location else { continue }
+        let key = String(format: "%.5f,%.5f", location.coordinate.latitude, location.coordinate.longitude)
+        if seen.contains(key) {
+          continue
+        }
+        seen.insert(key)
+        results.append([
+          "lat": location.coordinate.latitude,
+          "lng": location.coordinate.longitude,
+          "addressLine": Self.formatGeocodeLine(placemark) as Any,
+        ])
+      }
+
+      if results.isEmpty {
+        rejecter(
+          "E_GEOCODE",
+          "Could not find that address",
+          error
+        )
+        return
+      }
+
+      resolver(["results": results])
+    }
+  }
+
   @objc func lookupNearbyPlace(
     _ lat: Double,
     lng: Double,

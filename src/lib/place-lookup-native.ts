@@ -2,6 +2,8 @@ import {Platform} from 'react-native';
 import {NativeModules} from 'react-native';
 
 import type {
+  AddressGeocodeResult,
+  NativeAddressGeocodeResponse,
   NativePlaceLookupResult,
   PlaceLookupCandidate,
 } from '@/lib/place-lookup-types';
@@ -13,6 +15,7 @@ type PlaceLookupNativeModule = {
     lng: number,
     radiusM: number,
   ): Promise<NativePlaceLookupResult>;
+  geocodeAddress(address: string): Promise<NativeAddressGeocodeResponse>;
 };
 
 const nativeModule = NativeModules.PlaceLookupModule as
@@ -38,6 +41,41 @@ function dedupeCandidates(
   }
 
   return unique.slice(0, 8);
+}
+
+function normalizeGeocodeResults(
+  results: AddressGeocodeResult[],
+): AddressGeocodeResult[] {
+  const seen = new Set<string>();
+  const unique: AddressGeocodeResult[] = [];
+
+  for (const result of results) {
+    const key = `${result.lat.toFixed(5)},${result.lng.toFixed(5)}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    const addressLine = result.addressLine?.trim();
+    unique.push({
+      lat: result.lat,
+      lng: result.lng,
+      addressLine: addressLine ? addressLine : null,
+    });
+  }
+
+  return unique.slice(0, 5);
+}
+
+export async function fetchAddressGeocode(
+  address: string,
+): Promise<AddressGeocodeResult[]> {
+  const trimmed = address.trim();
+  if (!trimmed || !nativeModule?.geocodeAddress) {
+    return [];
+  }
+
+  const response = await nativeModule.geocodeAddress(trimmed);
+  return normalizeGeocodeResults(response.results ?? []);
 }
 
 export async function fetchNearbyPlaceLookup(

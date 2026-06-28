@@ -1,22 +1,25 @@
-import {useMemo} from 'react';
-import {Alert, Pressable, ScrollView, StyleSheet, View} from 'react-native';
-import {Trash2, Pencil} from 'lucide-react-native';
+import { useMemo } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Trash2, Pencil } from 'lucide-react-native';
 
-import {SavedPlaceIcon} from '@/components/map/SavedPlaceIcon';
-import {Text} from '@/components/ui/text';
-import {BOTTOM_SHEET_SURFACE} from '@/components/ui/bottom-sheet-chrome';
-import type {SavedPlaceRow} from '@/db/repositories/saved-places';
-import {savedPlaceDisplayLabel} from '@/lib/saved-places';
-import {SAVED_PLACE_MAP_STYLE} from '@/lib/saved-places-map';
-import {useThemeColors} from '@/hooks/use-theme-colors';
+import { SavedPlaceIcon } from '@/components/map/SavedPlaceIcon';
+import { SavedPlacesEmptyState } from '@/components/map/SavedPlacesEmptyState';
+import { Text } from '@/components/ui/text';
+import { BOTTOM_SHEET_SURFACE } from '@/components/ui/bottom-sheet-chrome';
+import type { SavedPlaceRow } from '@/db/repositories/saved-places';
+import { savedPlaceDisplayLabel } from '@/lib/saved-places';
+import { SAVED_PLACE_MAP_STYLE } from '@/lib/saved-places-map';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 
 type SavedPlacesSheetProps = {
   visible: boolean;
   places: SavedPlaceRow[];
+  canAddByAddress: boolean;
   onClose: () => void;
   onSelectPlace: (place: SavedPlaceRow) => void;
   onBeginEdit: (place: SavedPlaceRow) => void;
   onDelete: (place: SavedPlaceRow) => Promise<void>;
+  onAddByAddress: () => void;
 };
 
 function sortPlaces(places: SavedPlaceRow[]): SavedPlaceRow[] {
@@ -37,10 +40,12 @@ function sortPlaces(places: SavedPlaceRow[]): SavedPlaceRow[] {
 export function SavedPlacesSheet({
   visible,
   places,
+  canAddByAddress,
   onClose,
   onSelectPlace,
   onBeginEdit,
   onDelete,
+  onAddByAddress,
 }: SavedPlacesSheetProps) {
   const colors = useThemeColors();
   const sorted = useMemo(() => sortPlaces(places), [places]);
@@ -50,7 +55,7 @@ export function SavedPlacesSheet({
       `Remove ${savedPlaceDisplayLabel(place)}?`,
       'Visits here will show times only, without this label.',
       [
-        {text: 'Cancel', style: 'cancel'},
+        { text: 'Cancel', style: 'cancel' },
         {
           text: 'Remove',
           style: 'destructive',
@@ -67,91 +72,124 @@ export function SavedPlacesSheet({
   }
 
   return (
-    <ScrollView
-      style={styles.root}
-      contentContainerStyle={styles.scroll}
-      showsVerticalScrollIndicator={false}
-      keyboardShouldPersistTaps="handled">
-      <Text variant="h4" className="border-0 pb-0">
-        Saved places
-      </Text>
-      <Text variant="muted" className="mt-1 text-sm">
-        Long-press the map to add Home, Work, or a Favorite.
-      </Text>
-
-      {sorted.length === 0 ? (
-        <Text variant="muted" className="mt-6 text-sm">
-          No saved places yet.
+    <View style={styles.root}>
+      <ScrollView
+        style={styles.scrollArea}
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text variant="h4" className="border-0 pb-0">
+          Saved places
         </Text>
-      ) : (
-        <View style={styles.list}>
-          {sorted.map(place => {
-            const accent = SAVED_PLACE_MAP_STYLE[place.kind];
-            return (
-              <View key={place.id} style={styles.row}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Show ${savedPlaceDisplayLabel(place)} on map`}
-                  onPress={() => {
-                    onSelectPlace(place);
-                    onClose();
-                  }}
-                  style={styles.rowTap}>
-                  <View
-                    style={[
-                      styles.iconOrb,
-                      {backgroundColor: accent.badgeBg},
-                    ]}>
-                    <SavedPlaceIcon
-                      kind={place.kind}
-                      size={18}
-                      color={accent.icon}
-                    />
-                  </View>
-                  <View style={styles.rowText}>
-                    <Text className="font-medium">
-                      {savedPlaceDisplayLabel(place)}
-                    </Text>
-                    {place.addressLine != null ? (
-                      <Text
-                        variant="muted"
-                        className="text-xs"
-                        numberOfLines={2}>
-                        {place.addressLine}
-                      </Text>
-                    ) : null}
-                  </View>
-                </Pressable>
-                {place.kind === 'favorite' ? (
+        {sorted.length > 0 ? (
+          <Text variant="muted" className="mt-1 text-sm">
+            Long-press the map to add Home, Work, or a Favorite.
+          </Text>
+        ) : null}
+
+        {sorted.length === 0 ? (
+          <SavedPlacesEmptyState />
+        ) : (
+          <View style={styles.list}>
+            {sorted.map(place => {
+              const accent = SAVED_PLACE_MAP_STYLE[place.kind];
+              return (
+                <View key={place.id} style={styles.row}>
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel={`Rename ${place.label}`}
-                    onPress={() => onBeginEdit(place)}
-                    style={styles.actionBtn}>
-                    <Pencil
+                    accessibilityLabel={`Show ${savedPlaceDisplayLabel(
+                      place,
+                    )} on map`}
+                    onPress={() => {
+                      onSelectPlace(place);
+                      onClose();
+                    }}
+                    style={styles.rowTap}
+                  >
+                    <View
+                      style={[
+                        styles.iconOrb,
+                        { backgroundColor: accent.badgeBg },
+                      ]}
+                    >
+                      <SavedPlaceIcon
+                        kind={place.kind}
+                        size={18}
+                        color={accent.icon}
+                      />
+                    </View>
+                    <View style={styles.rowText}>
+                      <Text className="font-medium">
+                        {savedPlaceDisplayLabel(place)}
+                      </Text>
+                      {place.addressLine != null ? (
+                        <Text
+                          variant="muted"
+                          className="text-xs"
+                          numberOfLines={2}
+                        >
+                          {place.addressLine}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </Pressable>
+                  {place.kind === 'favorite' ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Rename ${place.label}`}
+                      onPress={() => onBeginEdit(place)}
+                      style={styles.actionBtn}
+                    >
+                      <Pencil
+                        size={18}
+                        color={colors.primary}
+                        strokeWidth={2.25}
+                      />
+                    </Pressable>
+                  ) : null}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove ${place.label}`}
+                  testID={
+                    place.kind === 'favorite'
+                      ? `RemoveSavedPlace-favorite-${place.label}`
+                      : `RemoveSavedPlace-${place.kind}`
+                  }
+                  onPress={() => confirmDelete(place)}
+                    style={styles.actionBtn}
+                  >
+                    <Trash2
                       size={18}
                       color={colors.primary}
                       strokeWidth={2.25}
                     />
                   </Pressable>
-                ) : null}
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Remove ${place.label}`}
-                  onPress={() => confirmDelete(place)}
-                  style={styles.actionBtn}>
-                  <Trash2
-                    size={18}
-                    color={colors.primary}
-                    strokeWidth={2.25}
-                  />
-                </Pressable>
-              </View>
-            );
-          })}
-        </View>
-      )}
-    </ScrollView>
+                </View>
+              );
+            })}
+          </View>
+        )}
+      </ScrollView>
+      <Pressable
+        accessibilityRole="link"
+        accessibilityLabel="Add saved place by address"
+        testID="AddSavedPlaceByAddress"
+        disabled={!canAddByAddress}
+        onPress={onAddByAddress}
+        style={[
+          styles.addByAddressLink,
+          !canAddByAddress && styles.addByAddressLinkDisabled,
+        ]}
+      >
+        <Text
+          className="text-center text-sm font-medium"
+          style={{ color: canAddByAddress ? colors.primary : '#8E8E93' }}
+        >
+          Add by address
+        </Text>
+      </Pressable>
+    </View>
   );
 }
 
@@ -160,6 +198,9 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: BOTTOM_SHEET_SURFACE.contentPaddingHorizontal,
     paddingTop: BOTTOM_SHEET_SURFACE.contentPaddingTop,
+  },
+  scrollArea: {
+    flex: 1,
   },
   scroll: {
     paddingBottom: 8,
@@ -199,5 +240,14 @@ const styles = StyleSheet.create({
   actionBtn: {
     padding: 8,
     borderRadius: 8,
+  },
+  addByAddressLink: {
+    paddingTop: 12,
+    paddingBottom: 16,
+    marginBottom: 8,
+    alignItems: 'center',
+  },
+  addByAddressLinkDisabled: {
+    opacity: 0.45,
   },
 });

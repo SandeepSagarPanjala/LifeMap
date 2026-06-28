@@ -29,7 +29,9 @@ export function EditFavoriteLabelPanel({
     trimmed !== initialValue.trim();
 
   return (
-    <View>
+    <View
+      testID="RenameFavoriteSheet"
+      accessibilityLabel="Rename favorite">
       <Text className="text-lg font-semibold">Rename favorite</Text>
       <Text variant="muted" className="mt-1 text-sm">
         Map pins and visit labels use this name.
@@ -60,6 +62,7 @@ export function EditFavoriteLabelPanel({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Save favorite name"
+          testID="SaveFavoriteName"
           disabled={!canSave}
           onPress={() => onSave(trimmed)}
           style={[

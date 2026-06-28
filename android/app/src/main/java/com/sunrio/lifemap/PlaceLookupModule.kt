@@ -16,6 +16,70 @@ class PlaceLookupModule(reactContext: ReactApplicationContext) :
   override fun getName(): String = "PlaceLookupModule"
 
   @ReactMethod
+  fun geocodeAddress(address: String, promise: Promise) {
+    val trimmed = address.trim()
+    if (trimmed.isEmpty()) {
+      promise.reject("E_INVALID_ADDRESS", "Address is required")
+      return
+    }
+
+    val context = reactApplicationContext
+    if (!Geocoder.isPresent()) {
+      promise.reject("E_GEOCODE", "Address lookup is not available on this device")
+      return
+    }
+
+    try {
+      val geocoder = Geocoder(context, Locale.getDefault())
+      @Suppress("DEPRECATION")
+      val addresses = geocoder.getFromLocationName(trimmed, 5)
+      if (addresses.isNullOrEmpty()) {
+        promise.reject("E_GEOCODE", "Could not find that address")
+        return
+      }
+
+      val results: WritableArray = Arguments.createArray()
+      val seen = mutableSetOf<String>()
+      for (match in addresses) {
+        val key = "${"%.5f".format(match.latitude)},${"%.5f".format(match.longitude)}"
+        if (!seen.add(key)) {
+          continue
+        }
+        val street = listOfNotNull(match.subThoroughfare, match.thoroughfare)
+          .filter { it.isNotBlank() }
+          .joinToString(" ")
+        val cityState = listOfNotNull(match.locality, match.adminArea)
+          .filter { it.isNotBlank() }
+          .joinToString(", ")
+        val line = listOfNotNull(
+          street.takeIf { it.isNotBlank() },
+          cityState.takeIf { it.isNotBlank() },
+          match.postalCode?.takeIf { it.isNotBlank() },
+        )
+          .joinToString(", ")
+          .ifBlank { match.featureName ?: match.getAddressLine(0) }
+
+        val entry = Arguments.createMap()
+        entry.putDouble("lat", match.latitude)
+        entry.putDouble("lng", match.longitude)
+        entry.putString("addressLine", line)
+        results.pushMap(entry)
+      }
+
+      if (results.size() == 0) {
+        promise.reject("E_GEOCODE", "Could not find that address")
+        return
+      }
+
+      val result = Arguments.createMap()
+      result.putArray("results", results)
+      promise.resolve(result)
+    } catch (error: Exception) {
+      promise.reject("E_GEOCODE", error.message, error)
+    }
+  }
+
+  @ReactMethod
   fun lookupNearbyPlace(lat: Double, lng: Double, radiusM: Double, promise: Promise) {
     val context = reactApplicationContext
     if (!Geocoder.isPresent()) {

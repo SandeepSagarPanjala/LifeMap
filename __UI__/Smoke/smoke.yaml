@@ -1,0 +1,7 @@
+appId: com.sunrio.lifemap
+---
+# P0 — app launches and the map screen is reachable.
+- runFlow:
+    file: ../shared/subflows/launch-to-map.yaml
+- runFlow:
+    file: ../shared/subflows/assert-on-map.yaml

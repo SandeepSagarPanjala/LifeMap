@@ -1,0 +1,18 @@
+appId: com.sunrio.lifemap
+---
+# Pick first geocode match when shown, then wait for kind step.
+- extendedWaitUntil:
+    visible:
+      id: SavedPlaceGeocodeResultsStep
+    timeout: 10000
+    optional: true
+- tapOn:
+    id: AddressGeocodeResult-0
+    optional: true
+- tapOn:
+    id: ContinueWithGeocodeResult
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: SavedPlaceKindStep
+    timeout: 20000

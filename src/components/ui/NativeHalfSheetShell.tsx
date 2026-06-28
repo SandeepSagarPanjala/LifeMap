@@ -88,7 +88,7 @@ export function NativeHalfSheetShell({
         <Animated.View style={[styles.backdrop, backdropStyle]}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Close"
+            accessibilityLabel="Dismiss sheet"
             onPress={requestClose}
             style={styles.backdropTap}
           />
