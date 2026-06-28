@@ -23,11 +23,9 @@ async function dismissSystemAlerts() {
   }
 }
 
-/** Fresh launch through splash, onboarding, and optional restore offer to the map. */
+/** Launch or focus the app on the map (keeps install + data; use e2e:run:ios:fresh for clean state). */
 async function launchToMap(options = {}) {
   await device.launchApp({
-    newInstance: true,
-    delete: true,
     permissions: {
       location: 'always',
       motion: 'YES',
@@ -36,6 +34,8 @@ async function launchToMap(options = {}) {
       notifications: 'YES',
       photos: 'YES',
     },
+    newInstance: false,
+    delete: false,
     ...options,
   });
 

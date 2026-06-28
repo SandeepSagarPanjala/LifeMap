@@ -30,4 +30,11 @@ for arg in "$@"; do
   ARGS+=("$normalized")
 done
 
-exec pnpm exec detox test --configuration ios.sim.debug "${ARGS[@]}"
+# Reuse the installed app by default (fast local runs from editor Run button).
+# Set E2E_FRESH=1 for a full delete+reinstall (CI / first install).
+REUSE_FLAG=()
+if [[ "${E2E_FRESH:-}" != "1" ]]; then
+  REUSE_FLAG=(--reuse)
+fi
+
+exec pnpm exec detox test --configuration ios.sim.debug "${REUSE_FLAG[@]}" "${ARGS[@]}"

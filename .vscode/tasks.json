@@ -4,7 +4,7 @@
     {
       "label": "Detox iOS: run current e2e file",
       "type": "shell",
-      "command": "pnpm exec detox test --configuration ios.sim.debug ${relativeFile}",
+      "command": "pnpm e2e:run:ios -- ${relativeFile}",
       "options": {
         "cwd": "${workspaceFolder}"
       },

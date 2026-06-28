@@ -25,6 +25,7 @@
     "e2e:test:ios": "detox test --configuration ios.sim.debug",
     "e2e:test:ios:reuse": "detox test --configuration ios.sim.debug --reuse",
     "e2e:run:ios": "bash scripts/e2e-run-ios.sh",
+    "e2e:run:ios:fresh": "E2E_FRESH=1 bash scripts/e2e-run-ios.sh",
     "e2e:test:android": "detox test --configuration android.emu.debug",
     "db:generate": "drizzle-kit generate"
   },
