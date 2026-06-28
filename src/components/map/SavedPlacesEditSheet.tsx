@@ -1,7 +1,10 @@
 import {useCallback, useEffect, useRef, type ComponentRef} from 'react';
 import {Keyboard, StyleSheet, View} from 'react-native';
-import {BottomSheetModalProvider} from '@gorhom/bottom-sheet';
-import type {BottomSheetModal, BottomSheetTextInput} from '@gorhom/bottom-sheet';
+import {
+  BottomSheetModalProvider,
+  BottomSheetTextInput,
+} from '@gorhom/bottom-sheet';
+import type {BottomSheetModal} from '@gorhom/bottom-sheet';
 
 import {EditFavoriteLabelPanel} from '@/components/map/EditFavoriteLabelSheet';
 import {AppBottomSheet} from '@/components/ui/app-bottom-sheet';
