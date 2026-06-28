@@ -211,6 +211,12 @@ Install [Jest Runner](https://marketplace.visualstudio.com/items?itemName=firstt
 
 Alternative: **Terminal → Run Task → Detox iOS: run current e2e file** (with an `e2e/*.test.js` file open).
 
+Run from the **project root** (`LifeMap/`), not from `e2e/`:
+
+```bash
+pnpm e2e:run:ios -- e2e/saved-places.test.js
+```
+
 For unit tests in `__tests__/`, use the terminal: `pnpm test` (not the e2e Run button).
 
 ### Sentry (optional)
