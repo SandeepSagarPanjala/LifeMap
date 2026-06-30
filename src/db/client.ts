@@ -5,6 +5,7 @@ import {
   runMigrations,
   ensureMaterializedDayGeometryColumn,
   ensureMomentsMoodColumns,
+  repairLocationPointsDedupeUniqueIndex,
   ensureTripPointMetadataColumns,
   ensureTripSegmentMetadataColumns,
 } from './migrate';
@@ -54,6 +55,7 @@ async function initDatabase(): Promise<{ db: Database; sqlite: DB }> {
   await ensureTripPointMetadataColumns(sqlite);
   await ensureMomentsMoodColumns(sqlite);
   await ensureMaterializedDayGeometryColumn(sqlite);
+  await repairLocationPointsDedupeUniqueIndex(sqlite);
 
   return { db, sqlite };
 }

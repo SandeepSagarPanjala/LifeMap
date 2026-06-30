@@ -40,40 +40,58 @@ export function AppBootstrap({
   const hasCompletedPrivacyOnboarding = useAppStore(
     state => state.hasCompletedPrivacyOnboarding,
   );
-  const cancelSealRef = useRef<(() => void) | undefined>(undefined);
+  const trackingBootstrapSucceededRef = useRef(false);
+  const trackingBootstrapPromiseRef = useRef<Promise<void> | null>(null);
 
-  const startTrackingBootstrap = useCallback(() => {
-    void ensureDatabaseReady()
+  const runTrackingBootstrap = useCallback((): Promise<void> => {
+    if (trackingBootstrapSucceededRef.current) {
+      return Promise.resolve();
+    }
+    if (trackingBootstrapPromiseRef.current) {
+      return trackingBootstrapPromiseRef.current;
+    }
+
+    const promise = ensureDatabaseReady()
       .then(async () => {
         await warmCanonicalTravelGeometrySetting();
         await bootstrapLocationTracking();
-
-        const sealWork = runWhenIdle(() => {
-          void (async () => {
-            await yieldToEventLoop();
-            await sealYesterdayIfNeeded();
-          })();
-        }, DEFER_SECONDARY_LAUNCH_WORK_MS);
-        cancelSealRef.current = sealWork.cancel;
+        trackingBootstrapSucceededRef.current = true;
       })
       .catch(error => {
+        trackingBootstrapPromiseRef.current = null;
         logBootstrapFailure('tracking_bootstrap', error);
+        throw error;
       });
+
+    trackingBootstrapPromiseRef.current = promise;
+    return promise;
   }, []);
 
   /**
    * Start location as soon as the DB is open — overlaps splash for returning users.
-   * Retries on foreground if a prior bootstrap attempt failed.
+   * Retries on foreground only when a prior bootstrap attempt failed.
    */
   useEffect(() => {
     if (!hasCompletedPrivacyOnboarding) {
       return;
     }
 
-    startTrackingBootstrap();
+    let cancelSeal: (() => void) | undefined;
 
-    return () => cancelSealRef.current?.();
-  }, [hasCompletedPrivacyOnboarding, startTrackingBootstrap]);
+    void runTrackingBootstrap()
+      .then(() => {
+        const sealWork = runWhenIdle(() => {
+          void (async () => {
+            await yieldToEventLoop();
+            await sealYesterdayIfNeeded();
+          })();
+        }, DEFER_SECONDARY_LAUNCH_WORK_MS);
+        cancelSeal = sealWork.cancel;
+      })
+      .catch(() => undefined);
+
+    return () => cancelSeal?.();
+  }, [hasCompletedPrivacyOnboarding, runTrackingBootstrap]);
 
   useEffect(() => {
     if (!enableHistoryPreload || !hasCompletedPrivacyOnboarding) {
@@ -111,7 +129,9 @@ export function AppBootstrap({
       if (hasCompletedPrivacyOnboarding) {
         const service = getLocationService();
         if (nextState === 'active') {
-          startTrackingBootstrap();
+          if (!trackingBootstrapSucceededRef.current) {
+            void runTrackingBootstrap();
+          }
           void warmCanonicalTravelGeometrySetting().then(() =>
             sealYesterdayIfNeeded(),
           );
@@ -122,7 +142,7 @@ export function AppBootstrap({
       }
     });
     return () => subscription.remove();
-  }, [hasCompletedPrivacyOnboarding, startTrackingBootstrap]);
+  }, [hasCompletedPrivacyOnboarding, runTrackingBootstrap]);
 
   return children;
 }
