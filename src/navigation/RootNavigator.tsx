@@ -21,10 +21,17 @@ import {SavedPlacesScreen} from '@/screens/map/SavedPlacesScreen';
 import {RestoreBackupScreen} from '@/screens/backup/RestoreBackupScreen';
 import {ScheduledBackupRunner} from '@/components/backup/ScheduledBackupRunner';
 import {SettingsScreen} from '@/screens/SettingsScreen';
+import {DeveloperSettingsScreen} from '@/screens/settings/DeveloperSettingsScreen';
+import {BackupSettingsScreen} from '@/screens/settings/BackupSettingsScreen';
+import {DistanceUnitSettingsScreen} from '@/screens/settings/DistanceUnitSettingsScreen';
+import {PreferredMapsSettingsScreen} from '@/screens/settings/PreferredMapsSettingsScreen';
+import {StorageSettingsScreen} from '@/screens/settings/StorageSettingsScreen';
+import {ThemeSettingsScreen} from '@/screens/settings/ThemeSettingsScreen';
 import {useThemeColors} from '@/hooks/use-theme-colors';
 import {setWidgetNavigationRef} from '@/lib/widget/widget-deep-link';
 import {activityCaptureScreenOptions} from '@/navigation/activity-capture-screen-options';
 import {nativeHalfSheetCaptureScreenOptions} from '@/navigation/native-half-sheet-capture-options';
+import {settingsSubScreenOptions} from '@/navigation/settings-sub-screen-options';
 import {voiceCaptureScreenOptions} from '@/navigation/voice-capture-screen-options';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -81,6 +88,36 @@ export function RootNavigator() {
             headerBackTitle: 'Map',
             presentation: 'card',
           }}
+        />
+        <Stack.Screen
+          name="ThemeSettings"
+          component={ThemeSettingsScreen}
+          options={settingsSubScreenOptions('Theme')}
+        />
+        <Stack.Screen
+          name="DistanceUnitSettings"
+          component={DistanceUnitSettingsScreen}
+          options={settingsSubScreenOptions('Distance unit')}
+        />
+        <Stack.Screen
+          name="PreferredMapsSettings"
+          component={PreferredMapsSettingsScreen}
+          options={settingsSubScreenOptions('Preferred maps app')}
+        />
+        <Stack.Screen
+          name="StorageSettings"
+          component={StorageSettingsScreen}
+          options={settingsSubScreenOptions('Storage')}
+        />
+        <Stack.Screen
+          name="BackupSettings"
+          component={BackupSettingsScreen}
+          options={settingsSubScreenOptions('Backup')}
+        />
+        <Stack.Screen
+          name="DeveloperSettings"
+          component={DeveloperSettingsScreen}
+          options={settingsSubScreenOptions('Developer tools')}
         />
         <Stack.Screen
           name="CaptureNote"

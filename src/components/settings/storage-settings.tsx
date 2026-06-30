@@ -1,9 +1,7 @@
 import {useCallback, useEffect, useState} from 'react';
 import {View} from 'react-native';
-import {HardDrive} from 'lucide-react-native';
 
 import {SettingsStatsRefreshBar} from '@/components/settings/settings-stats-refresh-bar';
-import {Icon} from '@/components/ui/icon';
 import {Text} from '@/components/ui/text';
 import type {AppStorageBreakdown} from '@/db/repositories/storage-stats';
 import {formatStorageBytes} from '@/lib/format-storage';
@@ -12,10 +10,8 @@ import {
   computeAndCacheStorageBreakdown,
   loadCachedStorageBreakdown,
 } from '@/lib/settings-stats';
-import {useThemeColors} from '@/hooks/use-theme-colors';
 
 export function StorageSettings() {
-  const colors = useThemeColors();
   const [calculating, setCalculating] = useState(false);
   const [breakdown, setBreakdown] = useState<AppStorageBreakdown | null>(null);
   const [calculatedAt, setCalculatedAt] = useState<Date | null>(null);
@@ -66,18 +62,7 @@ export function StorageSettings() {
   }, [loadCache]);
 
   return (
-    <View className="bg-card border-border rounded-2xl border p-4">
-      <View className="flex-row items-center gap-3">
-        <Icon as={HardDrive} size={20} color={colors.primary} />
-        <View className="flex-1">
-          <Text className="font-medium">Storage</Text>
-          <Text variant="muted" className="mt-1 text-sm leading-5">
-            Where space is used on this device. DB is the encrypted database
-            file; moments are photo, voice, and note files on disk.
-          </Text>
-        </View>
-      </View>
-
+    <View className="mt-4">
       <SettingsStatsRefreshBar
         calculatedAt={calculatedAt}
         calculating={calculating}

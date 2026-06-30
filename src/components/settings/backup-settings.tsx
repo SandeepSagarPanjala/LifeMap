@@ -7,7 +7,7 @@ import {
   Pressable,
   View,
 } from 'react-native';
-import {CloudUpload, ChevronRight} from 'lucide-react-native';
+import {ChevronRight} from 'lucide-react-native';
 
 import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
@@ -228,21 +228,14 @@ export function BackupSettings() {
 
   return (
     <>
-      <View className="bg-card border-border rounded-2xl border p-4">
-        <View className="flex-row items-center gap-3">
-          <Icon as={CloudUpload} size={20} color={colors.primary} />
-          <View className="flex-1">
-            <Text className="font-medium">Backup</Text>
-            <Text variant="muted" className="mt-1 text-sm leading-5">
-              {showSettingsRestore
-                ? `An ${status?.cloudProviderLabel ?? 'iCloud'} backup is available to restore on this phone.`
-                : `Keep one ${status?.cloudProviderLabel ?? 'iCloud'} backup of your map, visits, and memories.`}
-            </Text>
-          </View>
-        </View>
-
-        <View className="mt-4 items-center py-2">
-          <Text className="text-center text-sm font-medium">
+      <View className="mt-4 items-center py-2">
+        {showSettingsRestore ? (
+          <Text variant="muted" className="mb-3 text-center text-sm leading-5">
+            An {status?.cloudProviderLabel ?? 'iCloud'} backup is available to
+            restore on this phone.
+          </Text>
+        ) : null}
+        <Text className="text-center text-sm font-medium">
             Last backup on this phone: {formatBackupTimestamp(lastBackupAt)}
           </Text>
           <Text variant="muted" className="mt-1 text-center text-sm">
@@ -343,7 +336,6 @@ export function BackupSettings() {
           portable copy you can save to Google Drive. Auto backup stays off until
           you enable it. End-to-end encrypted backup is coming later.
         </Text>
-      </View>
 
       <BackupProgressModal
         visible={progress != null}
