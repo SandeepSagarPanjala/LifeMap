@@ -42,7 +42,12 @@ export function TrackingSettings() {
     if (next) {
       const status = await service.requestPermission();
       setAuthorizationStatus(status);
-      if (status === 'denied' || status === 'restricted') {
+      if (
+        status === 'denied' ||
+        status === 'restricted' ||
+        status === 'when_in_use'
+      ) {
+        await refresh();
         return;
       }
     }

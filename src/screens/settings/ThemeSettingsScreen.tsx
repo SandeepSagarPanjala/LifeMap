@@ -1,5 +1,5 @@
 import {Check} from 'lucide-react-native';
-import {Pressable, ScrollView, View} from 'react-native';
+import {Pressable, ScrollView, useColorScheme, View} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 
 import {Text} from '@/components/ui/text';
@@ -9,6 +9,7 @@ import {cn} from '@/lib/utils';
 import {useAppStore} from '@/stores/app-store';
 
 export function ThemeSettingsScreen() {
+  const colorScheme = useColorScheme();
   const colors = useThemeColors();
   const accentTheme = useAppStore(state => state.accentTheme);
   const setAccentTheme = useAppStore(state => state.setAccentTheme);
@@ -27,7 +28,9 @@ export function ThemeSettingsScreen() {
           {ACCENT_THEME_ORDER.map(themeId => {
             const theme = ACCENT_THEMES[themeId];
             const isSelected = accentTheme === themeId;
-            const preview = `hsl(${theme.light.primary})`;
+            const preview = `hsl(${
+              theme[colorScheme === 'dark' ? 'dark' : 'light'].primary
+            })`;
 
             return (
               <Pressable

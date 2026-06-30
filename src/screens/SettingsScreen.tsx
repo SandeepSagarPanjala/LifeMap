@@ -36,19 +36,44 @@ export function SettingsScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      void loadCachedStorageBreakdown().then(cached => {
-        const total = cached?.payload.items.find(item => item.category === 'total');
-        setStorageSummary(
-          total != null ? formatStorageBytes(total.bytes) : undefined,
-        );
-      });
-      void getBackupStatus()
-        .then(status => {
+      let cancelled = false;
+
+      const loadSummaries = async () => {
+        try {
+          const cached = await loadCachedStorageBreakdown();
+          if (cancelled) {
+            return;
+          }
+          const total = cached?.payload.items.find(
+            item => item.category === 'total',
+          );
+          setStorageSummary(
+            total != null ? formatStorageBytes(total.bytes) : undefined,
+          );
+        } catch {
+          if (!cancelled) {
+            setStorageSummary(undefined);
+          }
+        }
+
+        try {
+          const status = await getBackupStatus();
+          if (cancelled) {
+            return;
+          }
           setBackupSummary(backupScheduleLabel(status.autoSchedule));
-        })
-        .catch(() => {
-          setBackupSummary(undefined);
-        });
+        } catch {
+          if (!cancelled) {
+            setBackupSummary(undefined);
+          }
+        }
+      };
+
+      void loadSummaries();
+
+      return () => {
+        cancelled = true;
+      };
     }, []),
   );
 

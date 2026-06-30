@@ -8,11 +8,16 @@ import {
 } from '@/components/settings/settings-group';
 import {Text} from '@/components/ui/text';
 import {PREFERRED_MAP_APP_LABELS} from '@/navigation/settings-sub-screen-options';
-import {useAppStore} from '@/stores/app-store';
+import {useAppStore, type PreferredMapApp} from '@/stores/app-store';
+
+const IOS_MAP_APPS: PreferredMapApp[] = ['apple', 'google'];
+const ANDROID_MAP_APPS: PreferredMapApp[] = ['google'];
 
 export function PreferredMapsSettingsScreen() {
   const preferredMapApp = useAppStore(state => state.preferredMapApp);
   const setPreferredMapApp = useAppStore(state => state.setPreferredMapApp);
+  const availableApps =
+    Platform.OS === 'ios' ? IOS_MAP_APPS : ANDROID_MAP_APPS;
 
   return (
     <SafeAreaView className="bg-background flex-1" edges={['bottom']}>
@@ -25,7 +30,7 @@ export function PreferredMapsSettingsScreen() {
         </Text>
       ) : null}
       <SettingsGroup className="mx-5 mt-3">
-        {(['apple', 'google'] as const).map((app, index) => (
+        {availableApps.map((app, index) => (
           <View key={app}>
             {index > 0 ? <SettingsGroupDivider /> : null}
             <SettingsCheckRow
