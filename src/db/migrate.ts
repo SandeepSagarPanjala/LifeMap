@@ -67,14 +67,6 @@ async function columnExists(
   );
 }
 
-async function indexExists(sqlite: DB, indexName: string): Promise<boolean> {
-  const result = await sqlite.execute(
-    `SELECT name FROM sqlite_master WHERE type = 'index' AND name = ?`,
-    [indexName],
-  );
-  return (result.rows?.length ?? 0) > 0;
-}
-
 export async function migrationAlreadyApplied(
   sqlite: DB,
   migration: PreparedMigration,
@@ -121,8 +113,6 @@ export async function migrationAlreadyApplied(
       return tableExists(sqlite, 'activities');
     case '0018_saved_places_active':
       return columnExists(sqlite, 'saved_places', 'active');
-    case '0019_location_points_dedupe_unique':
-      return indexExists(sqlite, 'location_points_timestamp_lat_lng_unique');
     default:
       return false;
   }
@@ -196,28 +186,6 @@ export async function ensureMaterializedDayGeometryColumn(
       `ALTER TABLE materialized_days ADD COLUMN geometry_fingerprint text`,
     );
   }
-}
-
-/** Atomic GPS dedupe — remove duplicate rows then add a unique index. */
-export async function ensureLocationPointsDedupeUnique(sqlite: DB): Promise<void> {
-  if (!(await tableExists(sqlite, 'location_points'))) {
-    return;
-  }
-  if (await indexExists(sqlite, 'location_points_timestamp_lat_lng_unique')) {
-    return;
-  }
-  await executeMigrationStatement(
-    sqlite,
-    `DELETE FROM location_points
-     WHERE id NOT IN (
-       SELECT MIN(id) FROM location_points GROUP BY timestamp, lat, lng
-     )`,
-  );
-  await executeMigrationStatement(
-    sqlite,
-    `CREATE UNIQUE INDEX IF NOT EXISTS location_points_timestamp_lat_lng_unique
-     ON location_points (timestamp, lat, lng)`,
-  );
 }
 
 /** Repair moments columns when migration 0006 was skipped by journal drift. */

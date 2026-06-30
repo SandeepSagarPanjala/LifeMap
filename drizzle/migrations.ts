@@ -199,13 +199,6 @@ ALTER TABLE \`moments\` ADD COLUMN \`activity_label\` text;`;
 
 const m0018 = `ALTER TABLE \`saved_places\` ADD COLUMN \`active\` integer DEFAULT 1 NOT NULL;`;
 
-const m0019 = `DELETE FROM \`location_points\`
-WHERE \`id\` NOT IN (
-  SELECT MIN(\`id\`) FROM \`location_points\` GROUP BY \`timestamp\`, \`lat\`, \`lng\`
-);
---> statement-breakpoint
-CREATE UNIQUE INDEX IF NOT EXISTS \`location_points_timestamp_lat_lng_unique\` ON \`location_points\` (\`timestamp\`, \`lat\`, \`lng\`);`;
-
 export default {
   journal,
   migrations: {
@@ -228,6 +221,5 @@ export default {
     m0016,
     m0017,
     m0018,
-    m0019,
   },
 };
