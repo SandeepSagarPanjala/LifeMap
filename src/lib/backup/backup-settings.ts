@@ -76,6 +76,10 @@ export function isBackupDue(
   return elapsedMs >= 7 * dayMs;
 }
 
+export async function areBackupPrefsInitialized(): Promise<boolean> {
+  return (await getSetting(SETTINGS_KEY_BACKUP_PREFS_INITIALIZED)) === 'true';
+}
+
 /** First launch on a device with no cloud backup: keep auto backup off until user opts in. */
 export async function initializeBackupPreferencesOnLaunch(
   cloudBackupExists: boolean,

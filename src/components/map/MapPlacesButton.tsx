@@ -14,7 +14,7 @@ export function MapPlacesButton({bottom, onPress}: MapPlacesButtonProps) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="Saved places"
+      accessibilityLabel="Open saved places"
       onPress={onPress}
       style={[styles.button, {bottom}]}>
       <MapPin size={22} color={colors.primary} strokeWidth={2.25} />

@@ -47,6 +47,56 @@ class BackupCloudModule: NSObject {
     return nil
   }
 
+  private func backupsRootURLQuick() -> URL? {
+    guard let containerURL = resolveContainerURLQuick() else {
+      return nil
+    }
+    let rootURL = containerURL
+      .appendingPathComponent(backupsRootRelativePath, isDirectory: true)
+    do {
+      try FileManager.default.createDirectory(
+        at: rootURL,
+        withIntermediateDirectories: true
+      )
+      return rootURL
+    } catch {
+      return nil
+    }
+  }
+
+  private func namedBackupDirectoryURLQuick(name: String) -> URL? {
+    guard let rootURL = backupsRootURLQuick() else {
+      return nil
+    }
+    return rootURL.appendingPathComponent(name, isDirectory: true)
+  }
+
+  /// Fast metadata probe — no 15s container retry loop (used on app launch).
+  private func resolveBackupURLQuick() -> URL? {
+    if let singleURL = namedBackupDirectoryURLQuick(name: backupName),
+      let manifest = try? readManifest(at: singleURL, downloadTimeout: 3)
+    {
+      _ = manifest
+      return singleURL
+    }
+
+    guard
+      let currentURL = namedBackupDirectoryURLQuick(name: legacyCurrentBackupName),
+      let previousURL = namedBackupDirectoryURLQuick(name: legacyPreviousBackupName)
+    else {
+      return nil
+    }
+
+    let currentManifest = try? readManifest(at: currentURL, downloadTimeout: 3)
+    let previousManifest = try? readManifest(at: previousURL, downloadTimeout: 3)
+    return pickBestLegacyBackupURL(
+      currentURL: currentURL,
+      previousURL: previousURL,
+      currentManifest: currentManifest,
+      previousManifest: previousManifest
+    )
+  }
+
   private func backupsRootURL() throws -> URL {
     if let containerURL = resolveContainerURLWithRetry() {
       let rootURL = containerURL
@@ -243,11 +293,11 @@ class BackupCloudModule: NSObject {
   ) {
     DispatchQueue.global(qos: .utility).async {
       do {
-        guard let backupURL = try self.resolveBackupURL() else {
+        guard let backupURL = self.resolveBackupURLQuick() else {
           resolve(NSNull())
           return
         }
-        guard let json = try self.readManifest(at: backupURL, downloadTimeout: 30) else {
+        guard let json = try self.readManifest(at: backupURL, downloadTimeout: 3) else {
           resolve(NSNull())
           return
         }

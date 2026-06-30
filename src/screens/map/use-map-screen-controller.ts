@@ -5,7 +5,14 @@ import {
   useRef,
   useState,
 } from 'react';
-import {Animated, Alert, AppState, Platform, useColorScheme} from 'react-native';
+import {
+  Alert,
+  Animated,
+  AppState,
+  Easing,
+  Platform,
+  useColorScheme,
+} from 'react-native';
 import {useNavigation, useRoute, useFocusEffect, type RouteProp} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import type MapView from 'react-native-maps';
@@ -121,6 +128,7 @@ import {
   MAP_FALLBACK_REGION,
   MAP_HISTORY_DATE_NAV_ABOVE_PANEL_GAP,
   MAP_HISTORY_FLOATING_CONTROLS_GAP,
+  MAP_HISTORY_PANEL_CLOSE_MS,
   MAP_LEFT_STACK_COUNT,
   MAP_LOCATE_BUTTON_BOTTOM_GAP,
   MAP_SETTINGS_SIZE,
@@ -575,7 +583,7 @@ export function useMapScreenController() {
     historyPanelChromeHeight() +
     MAP_HISTORY_DATE_NAV_ABOVE_PANEL_GAP +
     resolvedHistoryPanelContentHeight;
-  const stackBaseBottom = historyPanelChromeVisible
+  const stackBaseBottom = historyPanelOpen
     ? historyPanelBottom + MAP_HISTORY_FLOATING_CONTROLS_GAP
     : insets.bottom + MAP_LOCATE_BUTTON_BOTTOM_GAP;
 
@@ -611,11 +619,11 @@ export function useMapScreenController() {
   );
 
   const mapAttributionInsets = useMemo(() => {
-    const bottomClearance = historyPanelChromeVisible
+    const bottomClearance = historyPanelOpen
       ? insets.bottom + 8
       : locateButtonBottom + MAP_STACK_BUTTON_SIZE + 6;
     return buildMapAttributionInsets(bottomClearance);
-  }, [historyPanelChromeVisible, insets.bottom, locateButtonBottom]);
+  }, [historyPanelOpen, insets.bottom, locateButtonBottom]);
 
   const scrubOnEvent = historyScrubOnEvent;
 
@@ -1301,13 +1309,20 @@ export function useMapScreenController() {
       historyPanelY.setValue(slideDistance);
     }
 
-    const animation = Animated.spring(historyPanelY, {
-      toValue: historyPanelOpen ? 0 : slideDistance,
-      damping: 22,
-      stiffness: 340,
-      mass: 0.7,
-      useNativeDriver: true,
-    });
+    const animation = historyPanelOpen
+      ? Animated.spring(historyPanelY, {
+          toValue: 0,
+          damping: 22,
+          stiffness: 340,
+          mass: 0.7,
+          useNativeDriver: true,
+        })
+      : Animated.timing(historyPanelY, {
+          toValue: slideDistance,
+          duration: MAP_HISTORY_PANEL_CLOSE_MS,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        });
 
     animation.start(({finished}) => {
       if (finished && !historyPanelOpen) {

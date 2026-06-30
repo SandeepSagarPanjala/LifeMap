@@ -3,7 +3,6 @@ import {format} from 'date-fns';
 import {
   ActivityIndicator,
   Alert,
-  Modal,
   Platform,
   Pressable,
   View,
@@ -15,9 +14,12 @@ import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 
 import {Icon} from '@/components/ui/icon';
 import {Text} from '@/components/ui/text';
+import {BackupProgressModal} from '@/components/backup/BackupProgressModal';
 import {useThemeColors} from '@/hooks/use-theme-colors';
 import {
+  areBackupPrefsInitialized,
   backupScheduleLabel,
+  initializeBackupPreferencesOnLaunch,
   setBackupAutoSchedule,
   type BackupAutoSchedule,
 } from '@/lib/backup/backup-settings';
@@ -76,6 +78,9 @@ export function BackupSettings() {
   const refreshStatus = useCallback(async () => {
     setLoading(true);
     try {
+      if (!(await areBackupPrefsInitialized())) {
+        await initializeBackupPreferencesOnLaunch(false);
+      }
       const [nextStatus, nextShowRestore] = await Promise.all([
         getBackupStatus(),
         shouldShowSettingsRestore(),
@@ -352,39 +357,5 @@ export function BackupSettings() {
         }
       />
     </>
-  );
-}
-
-function BackupProgressModal({
-  visible,
-  progress,
-  title,
-}: {
-  visible: boolean;
-  progress: BackupProgress | null;
-  title: string;
-}) {
-  const percent =
-    progress?.total != null && progress.total > 0 && progress.completed != null
-      ? Math.round((progress.completed / progress.total) * 100)
-      : null;
-
-  return (
-    <Modal visible={visible} transparent animationType="fade">
-      <View className="flex-1 items-center justify-center bg-black/40 px-8">
-        <View className="bg-card w-full rounded-2xl p-5">
-          <Text className="text-center text-base font-medium">{title}</Text>
-          <Text variant="muted" className="mt-2 text-center text-sm leading-5">
-            {progress?.message ?? 'Working…'}
-          </Text>
-          <ActivityIndicator className="mt-4" />
-          {percent != null ? (
-            <Text variant="muted" className="mt-2 text-center text-xs">
-              {percent}%
-            </Text>
-          ) : null}
-        </View>
-      </View>
-    </Modal>
   );
 }

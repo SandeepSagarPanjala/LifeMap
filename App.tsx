@@ -47,7 +47,6 @@ function App() {
     setOnboardingDismissed(true);
   }, [completePrivacyOnboarding]);
 
-  const enableLocationTracking = activeScreen === 'main';
   const enableHistoryPreload = activeScreen === 'main';
 
   useEffect(() => startWidgetDeepLinkListening(), []);
@@ -55,9 +54,7 @@ function App() {
   return (
     <AppErrorBoundary>
       <GestureHandlerRootView style={styles.root}>
-        <AppBootstrap
-          enableLocationTracking={enableLocationTracking}
-          enableHistoryPreload={enableHistoryPreload}>
+        <AppBootstrap enableHistoryPreload={enableHistoryPreload}>
         <ThemeProvider>
           <SafeAreaProvider>
             <BottomSheetModalProvider>

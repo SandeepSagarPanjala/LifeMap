@@ -1,35 +1,54 @@
-import {useState} from 'react';
+import {useCallback, useState} from 'react';
+import {StyleSheet, View} from 'react-native';
 
-import {HistoryDatePickerSheet} from '@/components/map/HistoryDatePickerSheet';
+import {HistoryDatePickerPanel} from '@/components/map/HistoryDatePickerSheet';
+import {NativeHalfSheetShell} from '@/components/ui/NativeHalfSheetShell';
+import {useNativeHalfSheetClose} from '@/components/ui/native-half-sheet-context';
 import {
   consumeHistoryDatePickerOpen,
   queueHistoryDatePickerResult,
 } from '@/lib/history-date-picker-navigation';
 import {getTodayDateKey} from '@/lib/day-utils';
-import {SheetCaptureScreen} from '@/screens/sheets/SheetCaptureScreen';
-import {useSheetCaptureDismiss} from '@/screens/sheets/use-sheet-capture-dismiss';
+import {HISTORY_DATE_PICKER_HEIGHT_RATIO} from '@/navigation/native-half-sheet-capture-options';
+import {useSheetCaptureClose} from '@/screens/sheets/use-sheet-capture-close';
+
+function HistoryDatePickerPanelHost({selectedDateKey}: {selectedDateKey: string}) {
+  const closeSheet = useNativeHalfSheetClose();
+
+  const handleSelectDate = useCallback(
+    (dateKey: string) => {
+      queueHistoryDatePickerResult(dateKey);
+    },
+    [],
+  );
+
+  return (
+    <HistoryDatePickerPanel
+      selectedDateKey={selectedDateKey}
+      onSelectDate={handleSelectDate}
+      onClose={closeSheet}
+    />
+  );
+}
 
 export function HistoryDatePickerScreen() {
-  const {touchPassthrough, handleWillClose, handleClose} =
-    useSheetCaptureDismiss();
+  const navigationClose = useSheetCaptureClose();
   const [payload] = useState(() => consumeHistoryDatePickerOpen());
   const selectedDateKey = payload?.selectedDateKey ?? getTodayDateKey();
 
-  const handleSelectDate = (dateKey: string) => {
-    queueHistoryDatePickerResult(dateKey);
-    handleClose();
-  };
-
   return (
-    <SheetCaptureScreen touchPassthrough={touchPassthrough}>
-      <HistoryDatePickerSheet
-        visible
-        instantPresent
-        selectedDateKey={selectedDateKey}
-        onSelectDate={handleSelectDate}
-        onClose={handleClose}
-        onWillClose={handleWillClose}
-      />
-    </SheetCaptureScreen>
+    <View style={styles.root}>
+      <NativeHalfSheetShell
+        onClose={navigationClose}
+        heightRatio={HISTORY_DATE_PICKER_HEIGHT_RATIO}>
+        <HistoryDatePickerPanelHost selectedDateKey={selectedDateKey} />
+      </NativeHalfSheetShell>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+});

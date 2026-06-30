@@ -15,10 +15,11 @@ import {
   subMonths,
 } from 'date-fns';
 import {ChevronLeft, ChevronRight} from 'lucide-react-native';
-import {Pressable, StyleSheet, View} from 'react-native';
+import {Pressable, ScrollView, StyleSheet, View} from 'react-native';
 
 import {Text} from '@/components/ui/text';
 import {AppBottomSheet} from '@/components/ui/app-bottom-sheet';
+import {BOTTOM_SHEET_SURFACE} from '@/components/ui/bottom-sheet-chrome';
 import {
   getTodayDateKey,
   parseDateKey,
@@ -29,23 +30,17 @@ import {useAppStore} from '@/stores/app-store';
 
 const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-type HistoryDatePickerSheetProps = {
-  visible: boolean;
+type HistoryDatePickerPanelProps = {
   selectedDateKey: string;
   onSelectDate: (dateKey: string) => void;
   onClose: () => void;
-  instantPresent?: boolean;
-  onWillClose?: () => void;
 };
 
-export function HistoryDatePickerSheet({
-  visible,
+export function HistoryDatePickerPanel({
   selectedDateKey,
   onSelectDate,
   onClose,
-  instantPresent = false,
-  onWillClose,
-}: HistoryDatePickerSheetProps) {
+}: HistoryDatePickerPanelProps) {
   const todayKey = getTodayDateKey();
   const today = useMemo(() => startOfDay(new Date()), []);
   const selectedDay = parseDateKey(selectedDateKey);
@@ -79,10 +74,8 @@ export function HistoryDatePickerSheet({
   }, [earliestMonth, selectedDateKey, todayMonth]);
 
   useEffect(() => {
-    if (visible) {
-      syncVisibleMonth();
-    }
-  }, [syncVisibleMonth, visible]);
+    syncVisibleMonth();
+  }, [syncVisibleMonth]);
 
   const monthLabel = format(visibleMonth, 'MMMM yyyy');
   const canGoPrevMonth = visibleMonth > earliestMonth;
@@ -111,112 +104,152 @@ export function HistoryDatePickerSheet({
   };
 
   return (
-    <AppBottomSheet
-      visible={visible}
-      onClose={onClose}
-      enableDynamicSizing
-      instantPresent={instantPresent}
-      onClosing={onWillClose}
-      releaseTouchesWhileClosing={instantPresent}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Jump to today"
-        onPress={goToToday}
-        style={styles.todayRow}>
-        <Text style={styles.todayLabel}>Today</Text>
-        <Text style={styles.todayHint}>{format(today, 'EEEE, MMM d')}</Text>
-      </Pressable>
-
-      <View style={styles.monthNav}>
+    <View style={styles.root}>
+      <ScrollView
+        style={styles.scrollArea}
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled">
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Previous month"
-          disabled={!canGoPrevMonth}
-          onPress={() =>
-            canGoPrevMonth && setVisibleMonth(month => subMonths(month, 1))
-          }
-          style={[
-            styles.monthNavBtn,
-            !canGoPrevMonth && styles.monthNavBtnDisabled,
-          ]}>
-          <ChevronLeft
-            size={22}
-            color={HISTORY_COLORS.playhead}
-            opacity={canGoPrevMonth ? 1 : 0.35}
-          />
+          accessibilityLabel="Jump to today"
+          onPress={goToToday}
+          style={styles.todayRow}>
+          <Text style={styles.todayLabel}>Today</Text>
+          <Text style={styles.todayHint}>{format(today, 'EEEE, MMM d')}</Text>
         </Pressable>
-        <Text style={styles.monthTitle}>{monthLabel}</Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Next month"
-          disabled={!canGoNextMonth}
-          onPress={() =>
-            canGoNextMonth && setVisibleMonth(month => addMonths(month, 1))
-          }
-          style={[
-            styles.monthNavBtn,
-            !canGoNextMonth && styles.monthNavBtnDisabled,
-          ]}>
-          <ChevronRight
-            size={22}
-            color={HISTORY_COLORS.playhead}
-            opacity={canGoNextMonth ? 1 : 0.35}
-          />
-        </Pressable>
-      </View>
 
-      <View style={styles.weekdayRow}>
-        {WEEKDAY_LABELS.map((label, index) => (
-          <Text key={`${label}-${index}`} style={styles.weekdayLabel}>
-            {label}
-          </Text>
-        ))}
-      </View>
+        <View style={styles.monthNav}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Previous month"
+            disabled={!canGoPrevMonth}
+            onPress={() =>
+              canGoPrevMonth && setVisibleMonth(month => subMonths(month, 1))
+            }
+            style={[
+              styles.monthNavBtn,
+              !canGoPrevMonth && styles.monthNavBtnDisabled,
+            ]}>
+            <ChevronLeft
+              size={22}
+              color={HISTORY_COLORS.playhead}
+              opacity={canGoPrevMonth ? 1 : 0.35}
+            />
+          </Pressable>
+          <Text style={styles.monthTitle}>{monthLabel}</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Next month"
+            disabled={!canGoNextMonth}
+            onPress={() =>
+              canGoNextMonth && setVisibleMonth(month => addMonths(month, 1))
+            }
+            style={[
+              styles.monthNavBtn,
+              !canGoNextMonth && styles.monthNavBtnDisabled,
+            ]}>
+            <ChevronRight
+              size={22}
+              color={HISTORY_COLORS.playhead}
+              opacity={canGoNextMonth ? 1 : 0.35}
+            />
+          </Pressable>
+        </View>
 
-      <View style={styles.grid}>
-        {calendarDays.map(day => {
-          const dateKey = toDateKey(day);
-          const inMonth = isSameMonth(day, visibleMonth);
-          const dayStart = startOfDay(day);
-          const isFuture = isAfter(dayStart, today);
-          const isBeforeEarliest = isBefore(dayStart, earliestDay);
-          const isDisabled = isFuture || isBeforeEarliest;
-          const isSelected = isSameDay(day, selectedDay);
-          const isToday = dateKey === todayKey;
+        <View style={styles.weekdayRow}>
+          {WEEKDAY_LABELS.map((label, index) => (
+            <Text key={`${label}-${index}`} style={styles.weekdayLabel}>
+              {label}
+            </Text>
+          ))}
+        </View>
 
-          return (
-            <Pressable
-              key={dateKey}
-              accessibilityRole="button"
-              accessibilityLabel={format(day, 'MMMM d, yyyy')}
-              disabled={isDisabled}
-              onPress={() => handleSelect(day)}
-              style={styles.dayCell}>
-              <View
-                style={[
-                  styles.dayInner,
-                  isSelected && styles.dayInnerSelected,
-                  isToday && !isSelected && styles.dayInnerToday,
-                ]}>
-                <Text
+        <View style={styles.grid}>
+          {calendarDays.map(day => {
+            const dateKey = toDateKey(day);
+            const inMonth = isSameMonth(day, visibleMonth);
+            const dayStart = startOfDay(day);
+            const isFuture = isAfter(dayStart, today);
+            const isBeforeEarliest = isBefore(dayStart, earliestDay);
+            const isDisabled = isFuture || isBeforeEarliest;
+            const isSelected = isSameDay(day, selectedDay);
+            const isToday = dateKey === todayKey;
+
+            return (
+              <Pressable
+                key={dateKey}
+                accessibilityRole="button"
+                accessibilityLabel={format(day, 'MMMM d, yyyy')}
+                disabled={isDisabled}
+                onPress={() => handleSelect(day)}
+                style={styles.dayCell}>
+                <View
                   style={[
-                    styles.dayText,
-                    !inMonth && styles.dayTextOutside,
-                    isDisabled && styles.dayTextDisabled,
-                    isSelected && styles.dayTextSelected,
+                    styles.dayInner,
+                    isSelected && styles.dayInnerSelected,
+                    isToday && !isSelected && styles.dayInnerToday,
                   ]}>
-                  {format(day, 'd')}
-                </Text>
-              </View>
-            </Pressable>
-          );
-        })}
-      </View>
+                  <Text
+                    style={[
+                      styles.dayText,
+                      !inMonth && styles.dayTextOutside,
+                      isDisabled && styles.dayTextDisabled,
+                      isSelected && styles.dayTextSelected,
+                    ]}>
+                    {format(day, 'd')}
+                  </Text>
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
+type HistoryDatePickerSheetProps = {
+  visible: boolean;
+  selectedDateKey: string;
+  onSelectDate: (dateKey: string) => void;
+  onClose: () => void;
+};
+
+/** Gorhom wrapper for inline use (settings export, benchmark). Map uses NativeHalfSheetShell. */
+export function HistoryDatePickerSheet({
+  visible,
+  selectedDateKey,
+  onSelectDate,
+  onClose,
+}: HistoryDatePickerSheetProps) {
+  if (!visible) {
+    return null;
+  }
+
+  return (
+    <AppBottomSheet visible={visible} onClose={onClose} enableDynamicSizing>
+      <HistoryDatePickerPanel
+        selectedDateKey={selectedDateKey}
+        onSelectDate={onSelectDate}
+        onClose={onClose}
+      />
     </AppBottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    paddingHorizontal: BOTTOM_SHEET_SURFACE.contentPaddingHorizontal,
+    paddingTop: BOTTOM_SHEET_SURFACE.contentPaddingTop,
+  },
+  scrollArea: {
+    flex: 1,
+  },
+  scroll: {
+    paddingBottom: 8,
+  },
   todayRow: {
     flexDirection: 'row',
     alignItems: 'center',

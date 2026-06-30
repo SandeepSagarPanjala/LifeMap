@@ -20,7 +20,6 @@ export function MapScreenFloatingControls({
   const {
     viewingToday,
     historyPanelOpen,
-    historyPanelChromeVisible,
     locateButtonBottom,
     placesButtonBottom,
     historyButtonBottom,
@@ -40,7 +39,7 @@ export function MapScreenFloatingControls({
     emptySelectedDayMessage,
   } = controller;
 
-  const historyPanelActive = historyPanelOpen || historyPanelChromeVisible;
+  const historyPanelActive = historyPanelOpen;
   const showTodayControls = viewingToday && !historyPanelActive;
   const showHistoryButton = !historyPanelActive;
   const messageAnchorBottom = viewingToday
