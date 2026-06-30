@@ -124,7 +124,19 @@ export async function persistLocationFromSdk(
   return true;
 }
 
+let drainNativeLocationQueueInFlight: Promise<number> | null = null;
+
 export async function drainNativeLocationQueue(): Promise<number> {
+  if (drainNativeLocationQueueInFlight != null) {
+    return drainNativeLocationQueueInFlight;
+  }
+  drainNativeLocationQueueInFlight = drainNativeLocationQueueImpl().finally(() => {
+    drainNativeLocationQueueInFlight = null;
+  });
+  return drainNativeLocationQueueInFlight;
+}
+
+async function drainNativeLocationQueueImpl(): Promise<number> {
   const nativeImported = await nativeDrainTransistorQueue();
   const pending = (await BackgroundGeolocation.getLocations()) as Location[];
   if (pending.length === 0) {

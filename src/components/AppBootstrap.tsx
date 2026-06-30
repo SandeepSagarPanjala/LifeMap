@@ -139,6 +139,10 @@ export function AppBootstrap({
           void (async () => {
             try {
               await service.drainNativeQueue();
+            } catch {
+              // Best-effort — persist pipeline may still have rows in SQLite.
+            }
+            try {
               await service.refreshPersistPipeline();
             } catch {
               // Best-effort — still refresh the map from whatever is in the DB.
