@@ -56,12 +56,18 @@ export async function saveVideoMoment(
     MOMENT_VIDEO_FILE_EXTENSION,
   );
 
-  return insertMoment({
-    type: 'video',
-    timestamp: new Date(),
-    contentPath: sandboxFile.contentPath,
-    contentBytes: sandboxFile.contentBytes,
-    contentFormat: VIDEO_CONTENT_FORMAT,
-    caption: caption?.trim() || null,
-  });
+  try {
+    return await insertMoment({
+      type: 'video',
+      timestamp: new Date(),
+      contentPath: sandboxFile.contentPath,
+      contentBytes: sandboxFile.contentBytes,
+      contentFormat: VIDEO_CONTENT_FORMAT,
+      caption: caption?.trim() || null,
+    });
+  } catch (error) {
+    const {deleteMomentContentFile} = await import('@/lib/moments/moment-storage');
+    await deleteMomentContentFile(sandboxFile.contentPath).catch(() => undefined);
+    throw error;
+  }
 }

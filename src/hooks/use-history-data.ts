@@ -180,7 +180,7 @@ export function useHistoryForDay(
   );
 
   const refresh = useCallback(() => {
-    void runSync(dateKey, {force: true, showLoading: true});
+    void runSync(dateKey, {force: true, showLoading: true}).catch(() => undefined);
   }, [dateKey, runSync]);
 
   const viewingToday = dateKey === getTodayDateKey();

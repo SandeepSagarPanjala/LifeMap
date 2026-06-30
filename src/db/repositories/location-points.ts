@@ -66,39 +66,31 @@ export async function insertLocationPoint(
   point: NewLocationPoint,
   options?: {dedupe?: boolean},
 ): Promise<void> {
-  const db = await getDatabase();
   const source = point.source ?? 'gps';
+  const timestampValue = locationPointTimestampToStorageValue(point.timestamp);
+  const sqlite = await getSqlite();
+  const insertSql = options?.dedupe
+    ? `INSERT OR IGNORE INTO location_points (timestamp, lat, lng, accuracy, altitude, speed, source) VALUES (?, ?, ?, ?, ?, ?, ?)`
+    : `INSERT INTO location_points (timestamp, lat, lng, accuracy, altitude, speed, source) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+  const result = await sqlite.execute(insertSql, [
+    timestampValue,
+    point.lat,
+    point.lng,
+    point.accuracy ?? null,
+    point.altitude ?? null,
+    point.speed ?? null,
+    source,
+  ]);
 
-  if (options?.dedupe) {
-    const existing = await db
-      .select({id: locationPoints.id})
-      .from(locationPoints)
-      .where(
-        and(
-          eq(locationPoints.timestamp, point.timestamp),
-          eq(locationPoints.lat, point.lat),
-          eq(locationPoints.lng, point.lng),
-        ),
-      )
-      .limit(1);
-    if (existing.length > 0) {
-      return;
-    }
+  const rowsChanged = Number(
+    (result as {rowsAffected?: number; changes?: number}).rowsAffected ??
+      (result as {changes?: number}).changes ??
+      0,
+  );
+  if (rowsChanged === 0) {
+    return;
   }
 
-  const sqlite = await getSqlite();
-  await sqlite.execute(
-    `INSERT INTO location_points (timestamp, lat, lng, accuracy, altitude, speed, source) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [
-      locationPointTimestampToStorageValue(point.timestamp),
-      point.lat,
-      point.lng,
-      point.accuracy ?? null,
-      point.altitude ?? null,
-      point.speed ?? null,
-      source,
-    ],
-  );
   notifyInsert({timestamp: point.timestamp, lat: point.lat, lng: point.lng, source});
 }
 

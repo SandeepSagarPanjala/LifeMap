@@ -1,4 +1,4 @@
-import {useEffect} from 'react';
+import {useCallback, useEffect, useRef} from 'react';
 import {AppState} from 'react-native';
 
 import {ensureDatabaseReady, bootstrapLocationTracking} from '@/location/bootstrap';
@@ -23,6 +23,16 @@ type AppBootstrapProps = {
   enableHistoryPreload?: boolean;
 };
 
+function logBootstrapFailure(scope: string, error: unknown): void {
+  if (__DEV__) {
+    console.error(`[LifeMap] ${scope} failed`, error);
+  }
+  void recordTrackingDiagnostic('bootstrap_failed', {
+    scope,
+    message: error instanceof Error ? error.message : 'unknown',
+  });
+}
+
 export function AppBootstrap({
   children,
   enableHistoryPreload = false,
@@ -30,10 +40,36 @@ export function AppBootstrap({
   const hasCompletedPrivacyOnboarding = useAppStore(
     state => state.hasCompletedPrivacyOnboarding,
   );
+  const trackingBootstrapSucceededRef = useRef(false);
+  const trackingBootstrapPromiseRef = useRef<Promise<void> | null>(null);
+
+  const runTrackingBootstrap = useCallback((): Promise<void> => {
+    if (trackingBootstrapSucceededRef.current) {
+      return Promise.resolve();
+    }
+    if (trackingBootstrapPromiseRef.current) {
+      return trackingBootstrapPromiseRef.current;
+    }
+
+    const promise = ensureDatabaseReady()
+      .then(async () => {
+        await warmCanonicalTravelGeometrySetting();
+        await bootstrapLocationTracking();
+        trackingBootstrapSucceededRef.current = true;
+      })
+      .catch(error => {
+        trackingBootstrapPromiseRef.current = null;
+        logBootstrapFailure('tracking_bootstrap', error);
+        throw error;
+      });
+
+    trackingBootstrapPromiseRef.current = promise;
+    return promise;
+  }, []);
 
   /**
    * Start location as soon as the DB is open — overlaps splash for returning users.
-   * bootstrapLocationTracking() is a singleton; safe if called again after onboarding.
+   * Retries on foreground only when a prior bootstrap attempt failed.
    */
   useEffect(() => {
     if (!hasCompletedPrivacyOnboarding) {
@@ -42,21 +78,20 @@ export function AppBootstrap({
 
     let cancelSeal: (() => void) | undefined;
 
-    void ensureDatabaseReady().then(async () => {
-      await warmCanonicalTravelGeometrySetting();
-      void bootstrapLocationTracking();
-
-      const sealWork = runWhenIdle(() => {
-        void (async () => {
-          await yieldToEventLoop();
-          await sealYesterdayIfNeeded();
-        })();
-      }, DEFER_SECONDARY_LAUNCH_WORK_MS);
-      cancelSeal = sealWork.cancel;
-    });
+    void runTrackingBootstrap()
+      .then(() => {
+        const sealWork = runWhenIdle(() => {
+          void (async () => {
+            await yieldToEventLoop();
+            await sealYesterdayIfNeeded();
+          })();
+        }, DEFER_SECONDARY_LAUNCH_WORK_MS);
+        cancelSeal = sealWork.cancel;
+      })
+      .catch(() => undefined);
 
     return () => cancelSeal?.();
-  }, [hasCompletedPrivacyOnboarding]);
+  }, [hasCompletedPrivacyOnboarding, runTrackingBootstrap]);
 
   useEffect(() => {
     if (!enableHistoryPreload || !hasCompletedPrivacyOnboarding) {
@@ -64,9 +99,11 @@ export function AppBootstrap({
     }
 
     const preload = runWhenIdle(() => {
-      void ensureHistoryCalendarBounds().then(() => {
-        void preloadTodayHistory();
-      });
+      void ensureHistoryCalendarBounds()
+        .then(() => preloadTodayHistory())
+        .catch(error => {
+          logBootstrapFailure('history_preload', error);
+        });
     }, DEFER_SECONDARY_LAUNCH_WORK_MS);
 
     return () => preload.cancel();
@@ -92,6 +129,9 @@ export function AppBootstrap({
       if (hasCompletedPrivacyOnboarding) {
         const service = getLocationService();
         if (nextState === 'active') {
+          if (!trackingBootstrapSucceededRef.current) {
+            void runTrackingBootstrap();
+          }
           void warmCanonicalTravelGeometrySetting().then(() =>
             sealYesterdayIfNeeded(),
           );
@@ -102,7 +142,7 @@ export function AppBootstrap({
       }
     });
     return () => subscription.remove();
-  }, [hasCompletedPrivacyOnboarding]);
+  }, [hasCompletedPrivacyOnboarding, runTrackingBootstrap]);
 
   return children;
 }

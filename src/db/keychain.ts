@@ -1,5 +1,7 @@
 import * as Keychain from 'react-native-keychain';
 
+import {generateSecureRandomKey} from '@/lib/secure-random';
+
 const SERVICE_NAME = 'lifemap-db-key';
 
 export async function getOrCreateDatabaseKey(): Promise<string> {
@@ -9,7 +11,7 @@ export async function getOrCreateDatabaseKey(): Promise<string> {
     return existing.password;
   }
 
-  const key = generateRandomKey();
+  const key = generateSecureRandomKey();
 
   await Keychain.setGenericPassword('lifemap', key, {
     service: SERVICE_NAME,
@@ -18,16 +20,3 @@ export async function getOrCreateDatabaseKey(): Promise<string> {
 
   return key;
 }
-
-function generateRandomKey(length = 64): string {
-  const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
-
-  for (let i = 0; i < length; i += 1) {
-    const idx = Math.floor(Math.random() * charset.length);
-    result += charset[idx]!;
-  }
-
-  return result;
-}
-

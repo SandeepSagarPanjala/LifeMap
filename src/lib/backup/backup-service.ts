@@ -119,33 +119,36 @@ export async function runBackupNow(
   onProgress?.({phase: 'exporting', message: 'Exporting your data…'});
   const bundle = await prepareBackupBundle(await getAppVersionLabel());
   const stagingPath = getBackupStagingDirectory();
-  await prepareEmptyDirectory(stagingPath);
+  try {
+    await prepareEmptyDirectory(stagingPath);
 
-  onProgress?.({phase: 'copying_media', message: 'Copying memories…'});
-  await writeBackupBundleToDirectory(bundle, stagingPath);
-  const totalBytes = await computeDirectoryBytes(stagingPath);
-  bundle.manifest.totalBytes = totalBytes;
+    onProgress?.({phase: 'copying_media', message: 'Copying memories…'});
+    await writeBackupBundleToDirectory(bundle, stagingPath);
+    const totalBytes = await computeDirectoryBytes(stagingPath);
+    bundle.manifest.totalBytes = totalBytes;
 
-  await ReactNativeBlobUtil.fs.writeFile(
-    `${stagingPath}/manifest.json`,
-    JSON.stringify(bundle.manifest, null, 2),
-    'utf8',
-  );
+    await ReactNativeBlobUtil.fs.writeFile(
+      `${stagingPath}/manifest.json`,
+      JSON.stringify(bundle.manifest, null, 2),
+      'utf8',
+    );
 
-  onProgress?.({
-    phase: 'uploading',
-    message: `Uploading to ${getCloudProviderLabel()}…`,
-  });
-  await uploadBackupDirectory(stagingPath);
-  await recordBackupCompletion(totalBytes);
-  const {hasLocalUserData} = await import('./backup-clear');
-  const {markRestoreCompleted} = await import('./backup-install-state');
-  if (await hasLocalUserData()) {
-    await markRestoreCompleted();
+    onProgress?.({
+      phase: 'uploading',
+      message: `Uploading to ${getCloudProviderLabel()}…`,
+    });
+    await uploadBackupDirectory(stagingPath);
+    await recordBackupCompletion(totalBytes);
+    const {hasLocalUserData} = await import('./backup-clear');
+    const {markRestoreCompleted} = await import('./backup-install-state');
+    if (await hasLocalUserData()) {
+      await markRestoreCompleted();
+    }
+
+    return {totalBytes};
+  } finally {
+    await removeDirectoryRecursive(stagingPath).catch(() => undefined);
   }
-  await removeDirectoryRecursive(stagingPath);
-
-  return {totalBytes};
 }
 
 export async function maybeRunScheduledBackup(

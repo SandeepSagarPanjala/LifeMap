@@ -142,18 +142,23 @@ export async function savePhotoMoment(
     }
   }
 
-  return insertMoment({
-    type: 'photo',
-    timestamp: new Date(),
-    contentPath: sandboxFile.contentPath,
-    contentBytes: sandboxFile.contentBytes,
-    sourceBytes,
-    contentFormat: IMAGE_COMPRESS_FORMAT,
-    caption: caption?.trim() || null,
-    voiceAttachmentPath,
-    voiceAttachmentBytes,
-    voiceDurationSec,
-  });
+  try {
+    return await insertMoment({
+      type: 'photo',
+      timestamp: new Date(),
+      contentPath: sandboxFile.contentPath,
+      contentBytes: sandboxFile.contentBytes,
+      sourceBytes,
+      contentFormat: IMAGE_COMPRESS_FORMAT,
+      caption: caption?.trim() || null,
+      voiceAttachmentPath,
+      voiceAttachmentBytes,
+      voiceDurationSec,
+    });
+  } catch (error) {
+    await deleteMomentContentFile(sandboxFile.contentPath).catch(() => undefined);
+    throw error;
+  }
 }
 
 /** @deprecated Use launchCameraPhotoDraft + savePhotoMoment */

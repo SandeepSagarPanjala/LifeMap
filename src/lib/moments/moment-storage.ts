@@ -93,8 +93,11 @@ async function writeSourceToSandbox(
   sourcePath: string,
   contentPath: string,
 ): Promise<void> {
-  const data = await ReactNativeBlobUtil.fs.readFile(sourcePath, 'base64');
-  await ReactNativeBlobUtil.fs.writeFile(contentPath, data, 'base64');
+  try {
+    await ReactNativeBlobUtil.fs.cp(sourcePath, contentPath);
+  } catch {
+    await ReactNativeBlobUtil.fs.mv(sourcePath, contentPath);
+  }
   await verifyPersistedFile(contentPath);
 }
 

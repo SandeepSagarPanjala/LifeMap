@@ -10,30 +10,38 @@ let locationBootstrap: Promise<LocationAuthorizationStatus | null> | null = null
 
 export function ensureDatabaseReady(): Promise<void> {
   if (!databaseReady) {
-    databaseReady = getDatabase().then(() => undefined);
+    databaseReady = getDatabase()
+      .then(() => undefined)
+      .catch(error => {
+        databaseReady = null;
+        throw error;
+      });
   }
   return databaseReady;
 }
 
+async function runLocationBootstrap(): Promise<LocationAuthorizationStatus | null> {
+  await ensureDatabaseReady();
+  const service = getLocationService();
+  await service.configure();
+  const authorization = await service.requestPermission();
+  await service.syncEnabledFromSettings();
+  await startNativeLocationTracking();
+  await syncSavedPlaceGeofences();
+  return authorization;
+}
+
 /**
  * Configure background tracking and request permissions after onboarding.
- * Safe to call multiple times — runs once.
+ * Retries after failure — the cached promise is cleared on reject.
  */
 export function bootstrapLocationTracking(): Promise<LocationAuthorizationStatus | null> {
   if (!locationBootstrap) {
-    locationBootstrap = (async () => {
-      await ensureDatabaseReady();
-      const service = getLocationService();
-      await service.configure();
-      const authorization = await service.requestPermission();
-      await service.syncEnabledFromSettings();
-      await startNativeLocationTracking();
-      await syncSavedPlaceGeofences();
-
-      return authorization;
-    })();
+    locationBootstrap = runLocationBootstrap().catch(error => {
+      locationBootstrap = null;
+      throw error;
+    });
   }
-
   return locationBootstrap;
 }
 

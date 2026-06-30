@@ -3,6 +3,7 @@
  */
 
 import 'react-native-gesture-handler';
+import 'react-native-get-random-values';
 import 'react-native-reanimated';
 import {AppRegistry} from 'react-native';
 import BackgroundGeolocation from 'react-native-background-geolocation';

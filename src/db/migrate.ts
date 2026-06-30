@@ -1,5 +1,10 @@
 import type {DB} from '@op-engineering/op-sqlite';
 
+import {
+  countLocationPointDuplicateExtraRows,
+  ensureLocationPointsDedupeUniqueIndex,
+} from './location-points-dedupe';
+import {LOCATION_POINTS_DEDUPE_UNIQUE_INDEX} from './location-points-policy';
 import migrations from '../../drizzle/migrations';
 
 const MIGRATIONS_TABLE = '__drizzle_migrations';
@@ -67,6 +72,14 @@ async function columnExists(
   );
 }
 
+async function indexExists(sqlite: DB, indexName: string): Promise<boolean> {
+  const result = await sqlite.execute(
+    `SELECT name FROM sqlite_master WHERE type = 'index' AND name = ?`,
+    [indexName],
+  );
+  return (result.rows?.length ?? 0) > 0;
+}
+
 export async function migrationAlreadyApplied(
   sqlite: DB,
   migration: PreparedMigration,
@@ -111,6 +124,10 @@ export async function migrationAlreadyApplied(
       return columnExists(sqlite, 'moments', 'voice_duration_sec');
     case '0017_activities':
       return tableExists(sqlite, 'activities');
+    case '0018_saved_places_active':
+      return columnExists(sqlite, 'saved_places', 'active');
+    case '0019_location_points_dedupe_unique':
+      return indexExists(sqlite, LOCATION_POINTS_DEDUPE_UNIQUE_INDEX);
     default:
       return false;
   }
@@ -171,7 +188,7 @@ export async function ensureTripPointMetadataColumns(sqlite: DB): Promise<void> 
   }
 }
 
-/** Repair moments columns when migration 0006 was skipped by journal drift. */
+/** Repair materialized_days geometry column when migration 0014 was skipped. */
 export async function ensureMaterializedDayGeometryColumn(
   sqlite: DB,
 ): Promise<void> {
@@ -186,6 +203,7 @@ export async function ensureMaterializedDayGeometryColumn(
   }
 }
 
+/** Repair moments columns when migration 0006 was skipped by journal drift. */
 export async function ensureMomentsMoodColumns(sqlite: DB): Promise<void> {
   if (!(await tableExists(sqlite, 'moments'))) {
     return;
@@ -274,6 +292,16 @@ async function recordMigrationIfMissing(
   await recordMigration(migration, executor);
 }
 
+export async function markMigrationAppliedByTag(
+  sqlite: DB,
+  tag: string,
+): Promise<void> {
+  const migration = prepareMigrations().find(entry => entry.tag === tag);
+  if (migration) {
+    await recordMigrationIfMissing(migration, sqlite);
+  }
+}
+
 async function bootstrapExistingMigrationJournal(
   sqlite: DB,
   prepared: PreparedMigration[],
@@ -331,10 +359,22 @@ export async function runMigrations(sqlite: DB): Promise<void> {
 
   await sqlite.transaction(async tx => {
     for (const migration of pending) {
+      if (migration.tag === '0019_location_points_dedupe_unique') {
+        if ((await countLocationPointDuplicateExtraRows(tx)) > 0) {
+          continue;
+        }
+      }
       for (const statement of migration.sql) {
         await executeMigrationStatement(tx, statement);
       }
       await recordMigrationIfMissing(migration, tx);
     }
   });
+}
+
+/** Create the GPS dedupe unique index when the table has no duplicate rows. */
+export async function repairLocationPointsDedupeUniqueIndex(
+  sqlite: DB,
+): Promise<void> {
+  await ensureLocationPointsDedupeUniqueIndex(sqlite);
 }
