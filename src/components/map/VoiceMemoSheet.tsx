@@ -266,7 +266,7 @@ export function VoiceMemoSheet({
           // Not playing.
         }
         try {
-          await session.discardRecording();
+          await session.discardRecording(previewPathRef.current);
         } catch {
           // Not recording.
         }
