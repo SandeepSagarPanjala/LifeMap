@@ -262,9 +262,6 @@ export function useMapScreenController() {
       }
       syncSelectedDateKeyForTodayRoll(getTodayDateKey());
       if (selectedDateKey === getTodayDateKey()) {
-        void import('@/lib/today-refresh-scheduler').then(module => {
-          module.refreshTodayOnForeground();
-        });
         if (!historyPanelOpenRef.current) {
           needsDefaultCenterRef.current = true;
           const coordinate =
