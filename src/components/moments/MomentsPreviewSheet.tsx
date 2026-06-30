@@ -561,6 +561,7 @@ export function MomentPreviewViewer({
   const playerRef = useRef<ReturnType<typeof createVoiceRecorderSession> | null>(null);
   const autoPlayGenerationRef = useRef(0);
   const lastAutoPlayedKeyRef = useRef<string | null>(null);
+  const aliveRef = useRef(true);
 
   const activeMoment = moments[activeIndex] ?? null;
 
@@ -571,7 +572,9 @@ export function MomentPreviewViewer({
     } catch {
       // Not playing.
     }
-    setPlayingVoiceId(null);
+    if (aliveRef.current) {
+      setPlayingVoiceId(null);
+    }
   }, []);
 
   const playVoice = useCallback(async (moment: MomentRow, generation?: number) => {
@@ -583,7 +586,7 @@ export function MomentPreviewViewer({
       return;
     }
     const existingPath = await resolveExistingMomentContentPath(voicePath);
-    if (!existingPath) {
+    if (!existingPath || !aliveRef.current) {
       return;
     }
     if (generation != null && generation !== autoPlayGenerationRef.current) {
@@ -592,42 +595,73 @@ export function MomentPreviewViewer({
 
     try {
       await playerRef.current?.stopPreview();
-      if (generation != null && generation !== autoPlayGenerationRef.current) {
+      if (
+        !aliveRef.current ||
+        (generation != null && generation !== autoPlayGenerationRef.current)
+      ) {
         return;
       }
       await playerRef.current?.startPreview(existingPath);
-      if (generation != null && generation !== autoPlayGenerationRef.current) {
+      if (
+        !aliveRef.current ||
+        (generation != null && generation !== autoPlayGenerationRef.current)
+      ) {
         await playerRef.current?.stopPreview();
         return;
       }
       setPlayingVoiceId(moment.id);
     } catch (error) {
+      if (!aliveRef.current) {
+        return;
+      }
       setPlayingVoiceId(null);
       Alert.alert('Could not play voice memo', getVoiceRecordingErrorMessage(error));
     }
   }, []);
 
   useEffect(() => {
+    aliveRef.current = true;
     const session = createVoiceRecorderSession({
       onPlaybackProgress: (positionMs, totalMs) => {
+        if (!aliveRef.current) {
+          return;
+        }
         if (totalMs > 0 && positionMs >= totalMs - 80) {
           setPlayingVoiceId(null);
         }
       },
       onPlaybackEnded: () => {
+        if (!aliveRef.current) {
+          return;
+        }
         setPlayingVoiceId(null);
       },
     });
     playerRef.current = session;
     return () => {
-      void session.stopPreview().catch(() => undefined);
-      session.dispose();
-      playerRef.current = null;
+      aliveRef.current = false;
+      autoPlayGenerationRef.current += 1;
+      void (async () => {
+        try {
+          await session.stopPreview();
+        } catch {
+          // Not playing.
+        }
+        session.dispose();
+        if (playerRef.current === session) {
+          playerRef.current = null;
+        }
+      })();
     };
   }, []);
 
   const closeViewer = useCallback(() => {
-    void stopVoice().finally(onClose);
+    void (async () => {
+      await stopVoice();
+      if (aliveRef.current) {
+        onClose();
+      }
+    })();
   }, [onClose, stopVoice]);
 
   useEffect(() => {
@@ -705,8 +739,14 @@ export function MomentPreviewViewer({
       if (playingVoiceId === moment.id) {
         try {
           await playerRef.current?.pausePreview();
+          if (!aliveRef.current) {
+            return;
+          }
           setPlayingVoiceId(null);
         } catch (error) {
+          if (!aliveRef.current) {
+            return;
+          }
           Alert.alert('Could not pause voice memo', getVoiceRecordingErrorMessage(error));
         }
         return;
