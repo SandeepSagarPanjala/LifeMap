@@ -89,6 +89,7 @@ export function VoiceMemoSheet({
   const [manualStartOnly, setManualStartOnly] = useState(false);
 
   const recorderRef = useRef<ReturnType<typeof createVoiceRecorderSession> | null>(null);
+  const aliveRef = useRef(true);
   const stopRecordingRef = useRef<() => Promise<void>>(async () => {});
   const durationMsRef = useRef(0);
   const previewPathRef = useRef<string | null>(null);
@@ -212,31 +213,63 @@ export function VoiceMemoSheet({
   }, []);
 
   useEffect(() => {
+    aliveRef.current = true;
     const session = createVoiceRecorderSession({
       onDurationMs: ms => {
+        if (!aliveRef.current) {
+          return;
+        }
         durationMsRef.current = ms;
         paintDurationRef.current(ms);
       },
       onMaxDurationReached: () => {
+        if (!aliveRef.current) {
+          return;
+        }
         void stopRecordingRef.current();
       },
       onMetering: meteringDb => {
+        if (!aliveRef.current) {
+          return;
+        }
         paintLiveLevelRef.current(normalizeVoiceMetering(meteringDb));
       },
       onPlaybackProgress: (positionMs, totalMs) => {
+        if (!aliveRef.current) {
+          return;
+        }
         paintPlaybackRef.current(positionMs);
         if (totalMs > 0 && positionMs >= totalMs - 80) {
           setIsPlayingPreview(false);
         }
       },
       onPlaybackEnded: () => {
+        if (!aliveRef.current) {
+          return;
+        }
         setIsPlayingPreview(false);
         setPlaybackPositionMs(durationMsRef.current);
       },
     });
     recorderRef.current = session;
     return () => {
-      session.dispose();
+      aliveRef.current = false;
+      void (async () => {
+        try {
+          await session.stopPreview();
+        } catch {
+          // Not playing.
+        }
+        try {
+          await session.discardRecording();
+        } catch {
+          // Not recording.
+        }
+        session.dispose();
+        if (recorderRef.current === session) {
+          recorderRef.current = null;
+        }
+      })();
     };
   }, []);
 
@@ -299,7 +332,7 @@ export function VoiceMemoSheet({
       : durationMs;
 
   const handleStartRecording = useCallback(async (options?: {showErrorAlert?: boolean}) => {
-    if (!recorderRef.current) {
+    if (!recorderRef.current || !aliveRef.current) {
       return false;
     }
     const showErrorAlert = options?.showErrorAlert ?? true;
@@ -313,9 +346,16 @@ export function VoiceMemoSheet({
       setLiveLevel(0.12);
       setPlaybackPositionMs(0);
       await recorderRef.current.startRecording();
+      if (!aliveRef.current) {
+        await recorderRef.current.discardRecording();
+        return false;
+      }
       setPhase('recording');
       return true;
     } catch (error) {
+      if (!aliveRef.current) {
+        return false;
+      }
       setAutoStartFailed(true);
       if (showErrorAlert) {
         Alert.alert('Could not start recording', getVoiceRecordingErrorMessage(error));

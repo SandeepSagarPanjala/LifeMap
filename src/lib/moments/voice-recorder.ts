@@ -141,6 +141,9 @@ export function createVoiceRecorderSession(
   };
 
   const handleRecordProgress = (event: RecordBackType) => {
+    if (disposed) {
+      return;
+    }
     durationMs = event.currentPosition;
     callbacks.onDurationMs?.(durationMs);
     if (event.currentMetering != null) {
@@ -153,17 +156,29 @@ export function createVoiceRecorderSession(
   };
 
   const handlePlaybackProgress = (event: {currentPosition: number; duration: number}) => {
+    if (disposed) {
+      return;
+    }
     callbacks.onPlaybackProgress?.(event.currentPosition, event.duration);
   };
 
   const handlePlaybackEnded = (event: {duration: number; currentPosition: number}) => {
+    if (disposed) {
+      return;
+    }
     callbacks.onPlaybackProgress?.(event.currentPosition, event.duration);
     callbacks.onPlaybackEnded?.();
   };
 
   return {
     async startRecording() {
+      if (disposed) {
+        throw new Error('Voice recorder disposed.');
+      }
       await discardRecording();
+      if (disposed) {
+        throw new Error('Voice recorder disposed.');
+      }
       stoppingForCap = false;
       durationMs = 0;
       activeRecordPath = await createTempVoiceRecordingPath();
@@ -172,6 +187,9 @@ export function createVoiceRecorderSession(
       let lastError: unknown;
       await prepareVoiceRecordingSession();
       for (let attempt = 0; attempt < START_RECORDING_MAX_ATTEMPTS; attempt += 1) {
+        if (disposed) {
+          throw new Error('Voice recorder disposed.');
+        }
         if (attempt > 0) {
           await prepareVoiceRecordingSession();
           try {
@@ -184,6 +202,9 @@ export function createVoiceRecorderSession(
           await sleep(START_RECORDING_RETRY_DELAY_MS * attempt);
         }
         await sleep(SESSION_SETTLE_DELAY_MS);
+        if (disposed) {
+          throw new Error('Voice recorder disposed.');
+        }
         try {
           await sound.startRecorder(activeRecordPath, VOICE_AUDIO_SET, true);
           return;
@@ -210,15 +231,27 @@ export function createVoiceRecorderSession(
     },
 
     async startPreview(filePath: string) {
+      if (disposed) {
+        return;
+      }
       await sound.stopPlayer();
+      if (disposed) {
+        return;
+      }
       removeListenersSafely();
       sound.setSubscriptionDuration(0.1);
       sound.addPlayBackListener(handlePlaybackProgress);
       sound.addPlaybackEndListener(handlePlaybackEnded);
+      if (disposed) {
+        return;
+      }
       await sound.startPlayer(filePath);
     },
 
     async pausePreview() {
+      if (disposed) {
+        return;
+      }
       await sound.pausePlayer();
     },
 

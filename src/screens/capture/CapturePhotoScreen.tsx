@@ -12,7 +12,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import {useNavigation} from '@react-navigation/native';
+import {useFocusEffect, useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {Check, RefreshCw, RotateCcw, RotateCw, Square, Type, X, Zap, ZapOff, AudioLines, Pause, Play} from 'lucide-react-native';
 import {BottomSheetModalProvider} from '@gorhom/bottom-sheet';
@@ -54,6 +54,7 @@ import type {RootStackParamList} from '@/navigation/types';
 import {prepareVoiceRecordingSession} from '@/lib/voice-audio-session';
 
 const CAMERA_AUDIO_RELEASE_MS = 400;
+const CAMERA_STOP_RELEASE_MS = 600;
 const CAMERA_CAPTURE_RETRY_MS = 350;
 const CAMERA_CAPTURE_MAX_ATTEMPTS = 3;
 
@@ -219,6 +220,10 @@ export function CapturePhotoScreen() {
   const recordingStartedAtRef = useRef(0);
   const recordingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const cameraReadyFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cameraCloseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cameraLeavingRef = useRef(false);
+  const allowScreenRemoveRef = useRef(false);
+  const [cameraLeaving, setCameraLeaving] = useState(false);
   const device = useCameraDevice(cameraPosition);
 
   const markCameraReady = useCallback(() => {
@@ -232,6 +237,65 @@ export function CapturePhotoScreen() {
   const markCameraNotReady = useCallback(() => {
     setCameraReady(false);
   }, []);
+
+  const clearCameraCloseTimeout = useCallback(() => {
+    if (cameraCloseTimeoutRef.current != null) {
+      clearTimeout(cameraCloseTimeoutRef.current);
+      cameraCloseTimeoutRef.current = null;
+    }
+  }, []);
+
+  const completeScreenClose = useCallback(() => {
+    clearCameraCloseTimeout();
+    allowScreenRemoveRef.current = true;
+    cameraLeavingRef.current = false;
+    setCameraLeaving(false);
+    navigation.goBack();
+  }, [clearCameraCloseTimeout, navigation]);
+
+  const beginCameraShutdownAndClose = useCallback(() => {
+    if (cameraLeavingRef.current) {
+      return;
+    }
+    cameraLeavingRef.current = true;
+    setCameraLeaving(true);
+    clearCameraCloseTimeout();
+    cameraCloseTimeoutRef.current = setTimeout(() => {
+      completeScreenClose();
+    }, CAMERA_STOP_RELEASE_MS);
+  }, [clearCameraCloseTimeout, completeScreenClose]);
+
+  const handlePreviewStopped = useCallback(() => {
+    markCameraNotReady();
+    if (cameraLeavingRef.current) {
+      completeScreenClose();
+    }
+  }, [completeScreenClose, markCameraNotReady]);
+
+  const isCameraMounted =
+    hasPermission && phase === 'camera' && device != null;
+
+  useFocusEffect(
+    useCallback(() => {
+      allowScreenRemoveRef.current = false;
+      cameraLeavingRef.current = false;
+      setCameraLeaving(false);
+      return () => {
+        clearCameraCloseTimeout();
+      };
+    }, [clearCameraCloseTimeout]),
+  );
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', event => {
+      if (allowScreenRemoveRef.current || !isCameraMounted) {
+        return;
+      }
+      event.preventDefault();
+      beginCameraShutdownAndClose();
+    });
+    return unsubscribe;
+  }, [beginCameraShutdownAndClose, isCameraMounted, navigation]);
 
   useEffect(() => {
     setCameraReady(false);
@@ -354,9 +418,27 @@ export function CapturePhotoScreen() {
   }, [voicePlaying, voiceUri]);
 
   const handleClose = useCallback(() => {
+    if (cameraLeavingRef.current) {
+      return;
+    }
     void clearVoice();
-    navigation.goBack();
-  }, [clearVoice, navigation]);
+    if (isRecording && recorderRef.current != null) {
+      void recorderRef.current.stopRecording();
+      resetRecordingState();
+    }
+    if (!isCameraMounted) {
+      navigation.goBack();
+      return;
+    }
+    beginCameraShutdownAndClose();
+  }, [
+    beginCameraShutdownAndClose,
+    clearVoice,
+    isCameraMounted,
+    isRecording,
+    navigation,
+    resetRecordingState,
+  ]);
 
   const handleRetake = useCallback(() => {
     resetRecordingState();
@@ -624,13 +706,13 @@ export function CapturePhotoScreen() {
           key={`${cameraPosition}-${captureMode}`}
           style={StyleSheet.absoluteFill}
           device={device}
-          isActive={phase === 'camera'}
+          isActive={phase === 'camera' && !cameraLeaving}
           outputs={captureMode === 'video' ? [photoOutput, videoOutput] : [photoOutput]}
           mirrorMode="off"
           enableNativeZoomGesture
           onPreviewStarted={markCameraReady}
           onStarted={markCameraReady}
-          onPreviewStopped={markCameraNotReady}
+          onPreviewStopped={handlePreviewStopped}
           onInterruptionStarted={markCameraNotReady}
           onInterruptionEnded={markCameraReady}
         />
@@ -762,8 +844,9 @@ export function CapturePhotoScreen() {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Close camera"
+                  disabled={cameraLeaving}
                   onPress={handleClose}
-                  style={styles.iconButton}>
+                  style={[styles.iconButton, cameraLeaving ? styles.disabled : null]}>
                   <X size={22} color="#FFFFFF" strokeWidth={2.25} />
                 </Pressable>
                 <Pressable
