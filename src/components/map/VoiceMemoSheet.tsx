@@ -90,6 +90,7 @@ export function VoiceMemoSheet({
 
   const recorderRef = useRef<ReturnType<typeof createVoiceRecorderSession> | null>(null);
   const aliveRef = useRef(true);
+  const visibleRef = useRef(visible);
   const stopRecordingRef = useRef<() => Promise<void>>(async () => {});
   const durationMsRef = useRef(0);
   const previewPathRef = useRef<string | null>(null);
@@ -112,6 +113,10 @@ export function VoiceMemoSheet({
   useEffect(() => {
     phaseRef.current = phase;
   }, [phase]);
+
+  useEffect(() => {
+    visibleRef.current = visible;
+  }, [visible]);
 
   useEffect(() => {
     if (phase !== 'recording') {
@@ -332,7 +337,8 @@ export function VoiceMemoSheet({
       : durationMs;
 
   const handleStartRecording = useCallback(async (options?: {showErrorAlert?: boolean}) => {
-    if (!recorderRef.current || !aliveRef.current) {
+    const session = recorderRef.current;
+    if (!session || !aliveRef.current || !visibleRef.current) {
       return false;
     }
     const showErrorAlert = options?.showErrorAlert ?? true;
@@ -345,9 +351,13 @@ export function VoiceMemoSheet({
       durationMsRef.current = 0;
       setLiveLevel(0.12);
       setPlaybackPositionMs(0);
-      await recorderRef.current.startRecording();
-      if (!aliveRef.current) {
-        await recorderRef.current.discardRecording();
+      await session.startRecording();
+      if (!aliveRef.current || !visibleRef.current) {
+        try {
+          await session.discardRecording();
+        } catch {
+          // Not recording.
+        }
         return false;
       }
       setPhase('recording');

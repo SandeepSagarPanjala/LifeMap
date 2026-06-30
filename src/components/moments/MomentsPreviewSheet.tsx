@@ -739,8 +739,14 @@ export function MomentPreviewViewer({
       if (playingVoiceId === moment.id) {
         try {
           await playerRef.current?.pausePreview();
+          if (!aliveRef.current) {
+            return;
+          }
           setPlayingVoiceId(null);
         } catch (error) {
+          if (!aliveRef.current) {
+            return;
+          }
           Alert.alert('Could not pause voice memo', getVoiceRecordingErrorMessage(error));
         }
         return;

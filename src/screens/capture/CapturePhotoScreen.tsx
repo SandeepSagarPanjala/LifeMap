@@ -247,9 +247,8 @@ export function CapturePhotoScreen() {
 
   const completeScreenClose = useCallback(() => {
     clearCameraCloseTimeout();
+    // Keep cameraLeaving true until unmount so isActive stays false during pop.
     allowScreenRemoveRef.current = true;
-    cameraLeavingRef.current = false;
-    setCameraLeaving(false);
     navigation.goBack();
   }, [clearCameraCloseTimeout, navigation]);
 
@@ -285,17 +284,6 @@ export function CapturePhotoScreen() {
       };
     }, [clearCameraCloseTimeout]),
   );
-
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('beforeRemove', event => {
-      if (allowScreenRemoveRef.current || !isCameraMounted) {
-        return;
-      }
-      event.preventDefault();
-      beginCameraShutdownAndClose();
-    });
-    return unsubscribe;
-  }, [beginCameraShutdownAndClose, isCameraMounted, navigation]);
 
   useEffect(() => {
     setCameraReady(false);
@@ -400,6 +388,32 @@ export function CapturePhotoScreen() {
     setVoiceDurationMs(0);
   }, [voiceUri]);
 
+  const runCloseCleanup = useCallback(async () => {
+    await clearVoice();
+    if (isRecording && recorderRef.current != null) {
+      try {
+        await recorderRef.current.cancelRecording();
+      } catch {
+        // Not recording.
+      }
+      resetRecordingState();
+    }
+  }, [clearVoice, isRecording, resetRecordingState]);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', event => {
+      if (allowScreenRemoveRef.current || !isCameraMounted) {
+        return;
+      }
+      event.preventDefault();
+      void (async () => {
+        await runCloseCleanup();
+        beginCameraShutdownAndClose();
+      })();
+    });
+    return unsubscribe;
+  }, [beginCameraShutdownAndClose, isCameraMounted, navigation, runCloseCleanup]);
+
   const toggleVoicePreview = useCallback(async () => {
     if (!voiceUri) {
       return;
@@ -421,23 +435,19 @@ export function CapturePhotoScreen() {
     if (cameraLeavingRef.current) {
       return;
     }
-    void clearVoice();
-    if (isRecording && recorderRef.current != null) {
-      void recorderRef.current.stopRecording();
-      resetRecordingState();
-    }
-    if (!isCameraMounted) {
-      navigation.goBack();
-      return;
-    }
-    beginCameraShutdownAndClose();
+    void (async () => {
+      await runCloseCleanup();
+      if (!isCameraMounted) {
+        navigation.goBack();
+        return;
+      }
+      beginCameraShutdownAndClose();
+    })();
   }, [
     beginCameraShutdownAndClose,
-    clearVoice,
     isCameraMounted,
-    isRecording,
     navigation,
-    resetRecordingState,
+    runCloseCleanup,
   ]);
 
   const handleRetake = useCallback(() => {
@@ -468,7 +478,7 @@ export function CapturePhotoScreen() {
 
   const handleSelectCaptureMode = useCallback(
     (mode: CaptureMode) => {
-      if (mode === captureMode) {
+      if (cameraLeavingRef.current || mode === captureMode) {
         return;
       }
       if (isRecording) {
@@ -516,7 +526,7 @@ export function CapturePhotoScreen() {
   );
 
   const handleStartVideoRecording = useCallback(async () => {
-    if (capturing || isRecording) {
+    if (cameraLeavingRef.current || capturing || isRecording) {
       return;
     }
 
@@ -569,7 +579,7 @@ export function CapturePhotoScreen() {
   ]);
 
   const handleStopVideoRecording = useCallback(async () => {
-    if (!isRecording || recorderRef.current == null) {
+    if (cameraLeavingRef.current || !isRecording || recorderRef.current == null) {
       return;
     }
     setCapturing(true);
@@ -587,7 +597,7 @@ export function CapturePhotoScreen() {
   }, [isRecording, resetRecordingState]);
 
   const handleCapture = useCallback(async () => {
-    if (capturing) {
+    if (cameraLeavingRef.current || capturing) {
       return;
     }
     setCapturing(true);
@@ -736,9 +746,12 @@ export function CapturePhotoScreen() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={flashAccessibilityLabel(flashMode)}
-                disabled={capturing}
+                disabled={capturing || cameraLeaving}
                 onPress={() => setFlashMode(current => nextFlashMode(current))}
-                style={[styles.flashButton, capturing ? styles.disabled : null]}>
+                style={[
+                  styles.flashButton,
+                  capturing || cameraLeaving ? styles.disabled : null,
+                ]}>
                 {flashMode === 'off' ? (
                   <ZapOff size={20} color="#FFFFFF" strokeWidth={2.25} />
                 ) : (
@@ -764,7 +777,7 @@ export function CapturePhotoScreen() {
                 accessibilityRole="button"
                 accessibilityState={{selected: captureMode === 'photo'}}
                 accessibilityLabel="Photo mode"
-                disabled={capturing || isRecording}
+                disabled={capturing || isRecording || cameraLeaving}
                 onPress={() => handleSelectCaptureMode('photo')}
                 style={[
                   styles.modePill,
@@ -782,7 +795,7 @@ export function CapturePhotoScreen() {
                 accessibilityRole="button"
                 accessibilityState={{selected: captureMode === 'video'}}
                 accessibilityLabel="Video mode"
-                disabled={capturing || isRecording}
+                disabled={capturing || isRecording || cameraLeaving}
                 onPress={() => handleSelectCaptureMode('video')}
                 style={[
                   styles.modePill,
@@ -804,11 +817,13 @@ export function CapturePhotoScreen() {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Take photo"
-                  disabled={capturing}
+                  disabled={capturing || cameraLeaving}
                   onPress={() => void handleCapture()}
                   style={[
                     styles.shutterButton,
-                    capturing || !cameraReady ? styles.shutterButtonPending : null,
+                    capturing || !cameraReady || cameraLeaving
+                      ? styles.shutterButtonPending
+                      : null,
                   ]}>
                   {capturing ? (
                     <ActivityIndicator color="#000000" />
@@ -818,7 +833,7 @@ export function CapturePhotoScreen() {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={isRecording ? 'Stop recording' : 'Start recording'}
-                  disabled={capturing}
+                  disabled={capturing || cameraLeaving}
                   onPress={() =>
                     void (isRecording
                       ? handleStopVideoRecording()
@@ -827,7 +842,7 @@ export function CapturePhotoScreen() {
                   style={[
                     styles.shutterButton,
                     isRecording ? styles.shutterButtonRecording : null,
-                    capturing ? styles.disabled : null,
+                    capturing || cameraLeaving ? styles.disabled : null,
                   ]}>
                   {isRecording ? (
                     <View style={styles.shutterStopIcon}>
@@ -852,14 +867,20 @@ export function CapturePhotoScreen() {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Flip camera"
-                  disabled={capturing || isRecording}
+                  disabled={capturing || isRecording || cameraLeaving}
                   onPress={() => {
+                    if (cameraLeavingRef.current) {
+                      return;
+                    }
                     setCapturing(false);
                     setCameraPosition(current =>
                       current === 'back' ? 'front' : 'back',
                     );
                   }}
-                  style={styles.iconButton}>
+                  style={[
+                    styles.iconButton,
+                    capturing || isRecording || cameraLeaving ? styles.disabled : null,
+                  ]}>
                   <RefreshCw size={22} color="#FFFFFF" strokeWidth={2.25} />
                 </Pressable>
               </View>

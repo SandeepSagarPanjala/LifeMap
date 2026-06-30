@@ -181,7 +181,12 @@ export function createVoiceRecorderSession(
       }
       stoppingForCap = false;
       durationMs = 0;
-      activeRecordPath = await createTempVoiceRecordingPath();
+      const recordPath = await createTempVoiceRecordingPath();
+      if (disposed) {
+        await deleteMomentContentFile(recordPath);
+        throw new Error('Voice recorder disposed.');
+      }
+      activeRecordPath = recordPath;
       attachRecordListener();
 
       let lastError: unknown;
