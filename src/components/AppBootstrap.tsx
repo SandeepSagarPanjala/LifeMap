@@ -1,4 +1,4 @@
-import {useEffect} from 'react';
+import {useCallback, useEffect, useRef} from 'react';
 import {AppState} from 'react-native';
 
 import {ensureDatabaseReady, bootstrapLocationTracking} from '@/location/bootstrap';
@@ -23,6 +23,16 @@ type AppBootstrapProps = {
   enableHistoryPreload?: boolean;
 };
 
+function logBootstrapFailure(scope: string, error: unknown): void {
+  if (__DEV__) {
+    console.error(`[LifeMap] ${scope} failed`, error);
+  }
+  void recordTrackingDiagnostic('bootstrap_failed', {
+    scope,
+    message: error instanceof Error ? error.message : 'unknown',
+  });
+}
+
 export function AppBootstrap({
   children,
   enableHistoryPreload = false,
@@ -30,33 +40,40 @@ export function AppBootstrap({
   const hasCompletedPrivacyOnboarding = useAppStore(
     state => state.hasCompletedPrivacyOnboarding,
   );
+  const cancelSealRef = useRef<(() => void) | undefined>(undefined);
+
+  const startTrackingBootstrap = useCallback(() => {
+    void ensureDatabaseReady()
+      .then(async () => {
+        await warmCanonicalTravelGeometrySetting();
+        await bootstrapLocationTracking();
+
+        const sealWork = runWhenIdle(() => {
+          void (async () => {
+            await yieldToEventLoop();
+            await sealYesterdayIfNeeded();
+          })();
+        }, DEFER_SECONDARY_LAUNCH_WORK_MS);
+        cancelSealRef.current = sealWork.cancel;
+      })
+      .catch(error => {
+        logBootstrapFailure('tracking_bootstrap', error);
+      });
+  }, []);
 
   /**
    * Start location as soon as the DB is open — overlaps splash for returning users.
-   * bootstrapLocationTracking() is a singleton; safe if called again after onboarding.
+   * Retries on foreground if a prior bootstrap attempt failed.
    */
   useEffect(() => {
     if (!hasCompletedPrivacyOnboarding) {
       return;
     }
 
-    let cancelSeal: (() => void) | undefined;
+    startTrackingBootstrap();
 
-    void ensureDatabaseReady().then(async () => {
-      await warmCanonicalTravelGeometrySetting();
-      void bootstrapLocationTracking();
-
-      const sealWork = runWhenIdle(() => {
-        void (async () => {
-          await yieldToEventLoop();
-          await sealYesterdayIfNeeded();
-        })();
-      }, DEFER_SECONDARY_LAUNCH_WORK_MS);
-      cancelSeal = sealWork.cancel;
-    });
-
-    return () => cancelSeal?.();
-  }, [hasCompletedPrivacyOnboarding]);
+    return () => cancelSealRef.current?.();
+  }, [hasCompletedPrivacyOnboarding, startTrackingBootstrap]);
 
   useEffect(() => {
     if (!enableHistoryPreload || !hasCompletedPrivacyOnboarding) {
@@ -64,9 +81,11 @@ export function AppBootstrap({
     }
 
     const preload = runWhenIdle(() => {
-      void ensureHistoryCalendarBounds().then(() => {
-        void preloadTodayHistory();
-      });
+      void ensureHistoryCalendarBounds()
+        .then(() => preloadTodayHistory())
+        .catch(error => {
+          logBootstrapFailure('history_preload', error);
+        });
     }, DEFER_SECONDARY_LAUNCH_WORK_MS);
 
     return () => preload.cancel();
@@ -92,6 +111,7 @@ export function AppBootstrap({
       if (hasCompletedPrivacyOnboarding) {
         const service = getLocationService();
         if (nextState === 'active') {
+          startTrackingBootstrap();
           void warmCanonicalTravelGeometrySetting().then(() =>
             sealYesterdayIfNeeded(),
           );
@@ -102,7 +122,7 @@ export function AppBootstrap({
       }
     });
     return () => subscription.remove();
-  }, [hasCompletedPrivacyOnboarding]);
+  }, [hasCompletedPrivacyOnboarding, startTrackingBootstrap]);
 
   return children;
 }

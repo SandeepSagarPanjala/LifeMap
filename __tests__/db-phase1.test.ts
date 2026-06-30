@@ -9,6 +9,7 @@ jest.mock('../src/db/migrate', () => ({
   ensureTripPointMetadataColumns: jest.fn().mockResolvedValue(undefined),
   ensureMomentsMoodColumns: jest.fn().mockResolvedValue(undefined),
   ensureMaterializedDayGeometryColumn: jest.fn().mockResolvedValue(undefined),
+  ensureLocationPointsDedupeUnique: jest.fn().mockResolvedValue(undefined),
 }));
 
 describe('database layer (Phase 1)', () => {

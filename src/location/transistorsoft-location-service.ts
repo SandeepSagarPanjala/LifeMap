@@ -171,65 +171,70 @@ export class TransistorSoftLocationService implements LocationService {
       maxReliability,
     });
 
-    this.subscriptions.push(
-      BackgroundGeolocation.onLocation(async location => {
-        if (isSampleLocation(location)) {
-          return;
-        }
-        const timestampMs = locationTimestamp(location).getTime();
-        if (
-          this.suppressOnLocationTimestampMs != null &&
-          this.suppressOnLocationTimestampMs === timestampMs
-        ) {
-          this.suppressOnLocationTimestampMs = null;
-          return;
-        }
-        try {
-          await this.maybeWakeFromSpeed(location);
-          await persistLocationFromSdk(location, 'gps', { dedupe: true });
-        } catch (error) {
-          if (__DEV__) {
-            console.warn('[LifeMap] Failed to persist location', error);
+    try {
+      await BackgroundGeolocation.ready(config);
+
+      this.subscriptions.push(
+        BackgroundGeolocation.onLocation(async location => {
+          if (isSampleLocation(location)) {
+            return;
           }
-        }
-      }),
-      BackgroundGeolocation.onMotionChange(event => {
-        void this.onMotionChange(event);
-      }),
-      BackgroundGeolocation.onHeartbeat(() => {
-        void this.onHeartbeat();
-      }),
-      BackgroundGeolocation.onProviderChange(provider => {
-        const signature = JSON.stringify({
-          enabled: provider.enabled,
-          status: provider.status,
-          gps: provider.gps,
-          network: provider.network,
-        });
-        if (signature === this.lastProviderSignature) {
-          return;
-        }
-        this.lastProviderSignature = signature;
-        void recordTrackingDiagnostic('provider_change', {
-          enabled: provider.enabled,
-          status: provider.status,
-          gps: provider.gps,
-          network: provider.network,
-        });
-      }),
-      BackgroundGeolocation.onAuthorization(event => {
-        void recordTrackingDiagnostic('authorization_event', {
-          status: event.status,
-          success: event.success,
-          error: event.error,
-        });
-      }),
-    );
+          const timestampMs = locationTimestamp(location).getTime();
+          if (
+            this.suppressOnLocationTimestampMs != null &&
+            this.suppressOnLocationTimestampMs === timestampMs
+          ) {
+            this.suppressOnLocationTimestampMs = null;
+            return;
+          }
+          try {
+            await this.maybeWakeFromSpeed(location);
+            await persistLocationFromSdk(location, 'gps', { dedupe: true });
+          } catch (error) {
+            if (__DEV__) {
+              console.warn('[LifeMap] Failed to persist location', error);
+            }
+          }
+        }),
+        BackgroundGeolocation.onMotionChange(event => {
+          void this.onMotionChange(event);
+        }),
+        BackgroundGeolocation.onHeartbeat(() => {
+          void this.onHeartbeat();
+        }),
+        BackgroundGeolocation.onProviderChange(provider => {
+          const signature = JSON.stringify({
+            enabled: provider.enabled,
+            status: provider.status,
+            gps: provider.gps,
+            network: provider.network,
+          });
+          if (signature === this.lastProviderSignature) {
+            return;
+          }
+          this.lastProviderSignature = signature;
+          void recordTrackingDiagnostic('provider_change', {
+            enabled: provider.enabled,
+            status: provider.status,
+            gps: provider.gps,
+            network: provider.network,
+          });
+        }),
+        BackgroundGeolocation.onAuthorization(event => {
+          void recordTrackingDiagnostic('authorization_event', {
+            status: event.status,
+            success: event.success,
+            error: event.error,
+          });
+        }),
+      );
 
-    await BackgroundGeolocation.ready(config);
-    await drainNativeLocationQueue();
-
-    this.configured = true;
+      await drainNativeLocationQueue();
+      this.configured = true;
+    } catch (error) {
+      this.dispose();
+      throw error;
+    }
   }
 
   async requestPermission(): Promise<LocationAuthorizationStatus> {
