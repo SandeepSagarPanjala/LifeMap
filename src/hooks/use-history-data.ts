@@ -5,6 +5,7 @@ import {
   clearHistoryDataCache,
   historyCacheKey,
   historyDataCache,
+  TODAY_LIVE_FINGERPRINT,
 } from '@/lib/history-data-cache';
 import {getDayHistoryFingerprint} from '@/lib/history-fingerprint';
 import {
@@ -17,7 +18,6 @@ import type {TripDetectionConfig} from '@/lib/trip-settings';
 import {getDayRange, getTodayDateKey} from '@/lib/day-utils';
 import {subscribeSavedPlaces} from '@/lib/saved-places-events';
 import {subscribeTodayHistoryRefresh} from '@/lib/today-refresh-scheduler';
-import {scheduleTodayRepair} from '@/lib/today-sync';
 
 export type {HistoryData} from '@/lib/history-data-types';
 
@@ -57,29 +57,20 @@ async function syncHistoryForDay(
 ): Promise<HistoryData> {
   const cacheKey = historyCacheKey(dateKey, detectionConfig);
   const isToday = dateKey === getTodayDateKey();
-  const peeked = historyDataCache.peek(cacheKey);
 
-  if (
-    !options?.force &&
-    isToday &&
-    peeked != null &&
-    peeked.dateKey === dateKey &&
-    peeked.entries.length > 0
-  ) {
-    scheduleTodayRepair(detectionConfig);
-    return peeked;
-  }
+  let writeFingerprint = TODAY_LIVE_FINGERPRINT;
+  if (!isToday) {
+    writeFingerprint = await getDayHistoryFingerprint(dateKey);
+    const cached = historyDataCache.read(cacheKey, dateKey);
+    const cachedFingerprint = historyDataCache.getFingerprint(dateKey);
+    const canUseCache =
+      !options?.force &&
+      cached != null &&
+      cachedFingerprint === writeFingerprint;
 
-  const fingerprint = await getDayHistoryFingerprint(dateKey);
-  const cached = historyDataCache.read(cacheKey, dateKey);
-  const cachedFingerprint = historyDataCache.getFingerprint(dateKey);
-  const canUseCache =
-    !options?.force &&
-    cached != null &&
-    cachedFingerprint === fingerprint;
-
-  if (canUseCache) {
-    return cached;
+    if (canUseCache) {
+      return cached;
+    }
   }
 
   const result = await loadHistoryForDay(dateKey, detectionConfig, options);
@@ -89,7 +80,7 @@ async function syncHistoryForDay(
   ) {
     return result;
   }
-  historyDataCache.write(cacheKey, result, fingerprint);
+  historyDataCache.write(cacheKey, result, writeFingerprint);
   return result;
 }
 

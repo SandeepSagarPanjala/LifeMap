@@ -2,8 +2,8 @@ import {getTodayDateKey} from '@/lib/day-utils';
 import {
   historyCacheKey,
   historyDataCache,
+  TODAY_LIVE_FINGERPRINT,
 } from '@/lib/history-data-cache';
-import {getDayHistoryFingerprint} from '@/lib/history-fingerprint';
 import {ensureHistoryCalendarBounds} from '@/lib/history-calendar-bounds';
 import {syncTodayDisplay} from '@/lib/today-sync';
 import {getCurrentTripDetectionConfig} from '@/lib/trip-detection-config';
@@ -22,9 +22,8 @@ export async function preloadTodayHistory(): Promise<void> {
     return;
   }
 
-  const fingerprint = await getDayHistoryFingerprint(todayKey);
   const result = await syncTodayDisplay(detectionConfig, undefined, {
     skipRepair: false,
   });
-  historyDataCache.write(cacheKey, result, fingerprint);
+  historyDataCache.write(cacheKey, result, TODAY_LIVE_FINGERPRINT);
 }

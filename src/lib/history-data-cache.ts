@@ -6,6 +6,9 @@ import {TRIP_DETECTION_VERSION} from '@/lib/trip-settings';
 /** Keep RAM small — today + one other day the user is browsing. */
 export const HISTORY_DATA_CACHE_MAX_ENTRIES = 2;
 
+/** Today never uses fingerprint cache validation — placeholder for RAM peek only. */
+export const TODAY_LIVE_FINGERPRINT = 'today-live';
+
 export function historyCacheKey(
   dateKey: string,
   detectionConfig: TripDetectionConfig,

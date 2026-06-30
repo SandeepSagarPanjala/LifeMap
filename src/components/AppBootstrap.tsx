@@ -10,6 +10,7 @@ import {
 import {ensureHistoryCalendarBounds} from '@/lib/history-calendar-bounds';
 import {preloadTodayHistory} from '@/lib/history-preload';
 import {sealYesterdayIfNeeded} from '@/lib/trip-materialization';
+import {refreshTodayOnForeground} from '@/lib/today-refresh-scheduler';
 import {warmCanonicalTravelGeometrySetting} from '@/lib/trip-geometry-settings';
 import {runWhenIdle, yieldToEventLoop} from '@/lib/run-when-idle';
 import {useAppStore} from '@/stores/app-store';
@@ -135,7 +136,19 @@ export function AppBootstrap({
           void warmCanonicalTravelGeometrySetting().then(() =>
             sealYesterdayIfNeeded(),
           );
-          void service.refreshPersistPipeline().catch(() => undefined);
+          void (async () => {
+            try {
+              await service.drainNativeQueue();
+            } catch {
+              // Best-effort — persist pipeline may still have rows in SQLite.
+            }
+            try {
+              await service.refreshPersistPipeline();
+            } catch {
+              // Best-effort — still refresh the map from whatever is in the DB.
+            }
+            refreshTodayOnForeground();
+          })();
         } else if (nextState === 'background') {
           void service.drainNativeQueue().catch(() => undefined);
         }
