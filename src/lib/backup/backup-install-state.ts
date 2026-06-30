@@ -27,7 +27,7 @@ export async function captureInstallCloudBackupSnapshot(): Promise<InstallCloudB
     return JSON.parse(existing) as InstallCloudBackupSnapshot;
   }
 
-  const metadata = await getCloudBackupMetadataForOperation();
+  const metadata = await getCloudBackupMetadata();
   if (!metadata?.exportedAt) {
     return null;
   }
@@ -141,6 +141,6 @@ export async function cloudBackupExistsForLaunchInit(): Promise<boolean> {
   if (snapshot?.exportedAt) {
     return true;
   }
-  const metadata = await withTimeout(getCloudBackupMetadataForOperation(), 12_000, null);
+  const metadata = await withTimeout(getCloudBackupMetadata(), 5_000, null);
   return metadata?.exportedAt != null;
 }

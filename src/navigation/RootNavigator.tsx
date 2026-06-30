@@ -19,7 +19,7 @@ import {HistoryDatePickerScreen} from '@/screens/map/HistoryDatePickerScreen';
 import {MomentPreviewScreen} from '@/screens/moments/MomentPreviewScreen';
 import {SavedPlacesScreen} from '@/screens/map/SavedPlacesScreen';
 import {RestoreBackupScreen} from '@/screens/backup/RestoreBackupScreen';
-import {RestoreBackupGate} from '@/components/backup/RestoreBackupGate';
+import {ScheduledBackupRunner} from '@/components/backup/ScheduledBackupRunner';
 import {SettingsScreen} from '@/screens/SettingsScreen';
 import {useThemeColors} from '@/hooks/use-theme-colors';
 import {setWidgetNavigationRef} from '@/lib/widget/widget-deep-link';
@@ -28,14 +28,6 @@ import {nativeHalfSheetCaptureScreenOptions} from '@/navigation/native-half-shee
 import {voiceCaptureScreenOptions} from '@/navigation/voice-capture-screen-options';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
-
-const sheetCaptureScreenOptions = {
-  headerShown: false,
-  presentation: 'transparentModal' as const,
-  animation: 'none' as const,
-  contentStyle: {backgroundColor: 'transparent'},
-  gestureEnabled: false,
-};
 
 export function RootNavigator() {
   const navigationRef = useNavigationContainerRef<RootStackParamList>();
@@ -121,7 +113,7 @@ export function RootNavigator() {
         <Stack.Screen
           name="HistoryDatePicker"
           component={HistoryDatePickerScreen}
-          options={sheetCaptureScreenOptions}
+          options={nativeHalfSheetCaptureScreenOptions}
         />
         <Stack.Screen
           name="SavedPlaces"
@@ -147,7 +139,7 @@ export function RootNavigator() {
           }}
         />
       </Stack.Navigator>
-      <RestoreBackupGate />
+      <ScheduledBackupRunner />
     </NavigationContainer>
   );
 }

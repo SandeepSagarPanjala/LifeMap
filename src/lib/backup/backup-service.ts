@@ -148,7 +148,9 @@ export async function runBackupNow(
   return {totalBytes};
 }
 
-export async function maybeRunScheduledBackup(): Promise<boolean> {
+export async function maybeRunScheduledBackup(
+  onProgress?: (progress: BackupProgress) => void,
+): Promise<boolean> {
   if (Platform.OS !== 'ios' && Platform.OS !== 'android') {
     return false;
   }
@@ -164,7 +166,8 @@ export async function maybeRunScheduledBackup(): Promise<boolean> {
     return false;
   }
 
-  await runBackupNow();
+  onProgress?.({phase: 'exporting', message: 'Starting automatic backup…'});
+  await runBackupNow(onProgress);
   return true;
 }
 

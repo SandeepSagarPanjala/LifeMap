@@ -4,7 +4,7 @@ import {BottomSheetModalProvider} from '@gorhom/bottom-sheet';
 
 /**
  * Transparent stack screen + local gorhom provider.
- * Used by HistoryDatePicker only.
+ * Reserved for gorhom-only capture flows (none on map today).
  */
 export function SheetCaptureScreen({
   children,

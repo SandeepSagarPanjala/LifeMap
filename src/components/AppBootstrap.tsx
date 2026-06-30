@@ -11,59 +11,70 @@ import {ensureHistoryCalendarBounds} from '@/lib/history-calendar-bounds';
 import {preloadTodayHistory} from '@/lib/history-preload';
 import {sealYesterdayIfNeeded} from '@/lib/trip-materialization';
 import {warmCanonicalTravelGeometrySetting} from '@/lib/trip-geometry-settings';
-import {captureInstallCloudBackupSnapshotWithRetry, cloudBackupExistsForLaunchInit} from '@/lib/backup/backup-install-state';
-import {maybeRunScheduledBackup} from '@/lib/backup/backup-service';
-import {initializeBackupPreferencesOnLaunch} from '@/lib/backup/backup-settings';
+import {runWhenIdle, yieldToEventLoop} from '@/lib/run-when-idle';
 import {useAppStore} from '@/stores/app-store';
+
+/** Defer timeline preload and yesterday seal — not location tracking. */
+const DEFER_SECONDARY_LAUNCH_WORK_MS = 2_000;
 
 type AppBootstrapProps = {
   children: React.ReactNode;
-  /** When false, only the encrypted database is initialized. */
-  enableLocationTracking?: boolean;
   /** When false, defer today's history preload until the main app is visible. */
   enableHistoryPreload?: boolean;
 };
 
 export function AppBootstrap({
   children,
-  enableLocationTracking = false,
   enableHistoryPreload = false,
 }: AppBootstrapProps) {
   const hasCompletedPrivacyOnboarding = useAppStore(
     state => state.hasCompletedPrivacyOnboarding,
   );
 
+  /**
+   * Start location as soon as the DB is open — overlaps splash for returning users.
+   * bootstrapLocationTracking() is a singleton; safe if called again after onboarding.
+   */
   useEffect(() => {
+    if (!hasCompletedPrivacyOnboarding) {
+      return;
+    }
+
+    let cancelSeal: (() => void) | undefined;
+
     void ensureDatabaseReady().then(async () => {
       await warmCanonicalTravelGeometrySetting();
-      await sealYesterdayIfNeeded();
-      await captureInstallCloudBackupSnapshotWithRetry();
-      const cloudBackupExists = await cloudBackupExistsForLaunchInit();
-      await initializeBackupPreferencesOnLaunch(cloudBackupExists);
-      void maybeRunScheduledBackup().catch(() => undefined);
+      void bootstrapLocationTracking();
+
+      const sealWork = runWhenIdle(() => {
+        void (async () => {
+          await yieldToEventLoop();
+          await sealYesterdayIfNeeded();
+        })();
+      }, DEFER_SECONDARY_LAUNCH_WORK_MS);
+      cancelSeal = sealWork.cancel;
     });
-  }, []);
+
+    return () => cancelSeal?.();
+  }, [hasCompletedPrivacyOnboarding]);
 
   useEffect(() => {
     if (!enableHistoryPreload || !hasCompletedPrivacyOnboarding) {
       return;
     }
-    void ensureHistoryCalendarBounds().then(() => {
-      void preloadTodayHistory();
-    });
+
+    const preload = runWhenIdle(() => {
+      void ensureHistoryCalendarBounds().then(() => {
+        void preloadTodayHistory();
+      });
+    }, DEFER_SECONDARY_LAUNCH_WORK_MS);
+
+    return () => preload.cancel();
   }, [enableHistoryPreload, hasCompletedPrivacyOnboarding]);
 
   useEffect(() => {
     initializeTrackingDiagnosticsEnabled();
   }, []);
-
-  useEffect(() => {
-    if (!enableLocationTracking || !hasCompletedPrivacyOnboarding) {
-      return;
-    }
-
-    void bootstrapLocationTracking();
-  }, [enableLocationTracking, hasCompletedPrivacyOnboarding]);
 
   useEffect(() => {
     let currentState = AppState.currentState;
@@ -78,13 +89,12 @@ export function AppBootstrap({
         next: nextState,
       });
 
-      if (enableLocationTracking && hasCompletedPrivacyOnboarding) {
+      if (hasCompletedPrivacyOnboarding) {
         const service = getLocationService();
         if (nextState === 'active') {
           void warmCanonicalTravelGeometrySetting().then(() =>
             sealYesterdayIfNeeded(),
           );
-          void maybeRunScheduledBackup().catch(() => undefined);
           void service.refreshPersistPipeline().catch(() => undefined);
         } else if (nextState === 'background') {
           void service.drainNativeQueue().catch(() => undefined);
@@ -92,7 +102,7 @@ export function AppBootstrap({
       }
     });
     return () => subscription.remove();
-  }, [enableLocationTracking, hasCompletedPrivacyOnboarding]);
+  }, [hasCompletedPrivacyOnboarding]);
 
   return children;
 }

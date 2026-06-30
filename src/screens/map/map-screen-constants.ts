@@ -24,6 +24,8 @@ export const MAP_HISTORY_ADDRESS_CARD_GAP = 8;
 export const MAP_HISTORY_FLOATING_CONTROLS_GAP = 8;
 /** Gap between date navigation and the panel content below it. */
 export const MAP_HISTORY_DATE_NAV_ABOVE_PANEL_GAP = 8;
+/** History panel slide-down duration when closing (open still uses spring). */
+export const MAP_HISTORY_PANEL_CLOSE_MS = 350;
 export const MAP_STACK_BUTTON_SIZE = 44;
 export const MAP_STACK_BUTTON_GAP = 8;
 /** Close button + gap + date row in MapDateLabel navigation mode. */
