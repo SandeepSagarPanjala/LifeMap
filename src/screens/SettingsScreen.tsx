@@ -1,45 +1,115 @@
+import {useCallback, useState} from 'react';
 import {ScrollView} from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import {useFocusEffect, useNavigation} from '@react-navigation/native';
+import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 
 import {AppVersionFooter} from '@/components/settings/app-version-footer';
-import {AccentThemePicker} from '@/components/settings/accent-theme-picker';
-import {BackupSettings} from '@/components/settings/backup-settings';
-import {DevSettings} from '@/components/settings/dev-settings';
-import {ExportSettings} from '@/components/settings/export-settings';
-import {TripRebuildSettings} from '@/components/settings/trip-rebuild-settings';
-import {PreferencesSettings} from '@/components/settings/preferences-settings';
-import {SettingsSection} from '@/components/settings/settings-section';
-import {StorageSettings} from '@/components/settings/storage-settings';
+import {
+  SettingsGroup,
+  SettingsGroupDivider,
+  SettingsGroupLabel,
+  SettingsLinkRow,
+} from '@/components/settings/settings-group';
 import {TrackingSettings} from '@/components/settings/tracking-settings';
+import {TripRebuildSettings} from '@/components/settings/trip-rebuild-settings';
+import {backupScheduleLabel} from '@/lib/backup/backup-settings';
+import {getBackupStatus} from '@/lib/backup/backup-service';
+import {formatStorageBytes} from '@/lib/format-storage';
+import {loadCachedStorageBreakdown} from '@/lib/settings-stats';
+import type {RootStackParamList} from '@/navigation/types';
+import {
+  DISTANCE_UNIT_LABELS,
+  PREFERRED_MAP_APP_LABELS,
+  accentThemeLabel,
+} from '@/navigation/settings-sub-screen-options';
+import {useAppStore} from '@/stores/app-store';
 
 export function SettingsScreen() {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const accentTheme = useAppStore(state => state.accentTheme);
+  const distanceUnit = useAppStore(state => state.distanceUnit);
+  const preferredMapApp = useAppStore(state => state.preferredMapApp);
+  const [storageSummary, setStorageSummary] = useState<string | undefined>();
+  const [backupSummary, setBackupSummary] = useState<string | undefined>();
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadCachedStorageBreakdown().then(cached => {
+        const total = cached?.payload.items.find(item => item.category === 'total');
+        setStorageSummary(
+          total != null ? formatStorageBytes(total.bytes) : undefined,
+        );
+      });
+      void getBackupStatus()
+        .then(status => {
+          setBackupSummary(backupScheduleLabel(status.autoSchedule));
+        })
+        .catch(() => {
+          setBackupSummary(undefined);
+        });
+    }, []),
+  );
+
   return (
     <SafeAreaView className="bg-background flex-1" edges={['bottom']}>
       <ScrollView
         className="flex-1"
-        contentContainerClassName="px-5 pb-8 pt-4"
+        contentContainerClassName="px-5 pb-8 pt-2"
         showsVerticalScrollIndicator={false}>
-        <SettingsSection
-          isFirst
-          title="User settings"
-          subtitle="Customize how LifeMap looks and records your day.">
-          <AccentThemePicker />
-          <PreferencesSettings />
-          <TrackingSettings />
-          <TripRebuildSettings />
-        </SettingsSection>
+        <SettingsGroupLabel isFirst title="Appearance" />
+        <SettingsGroup>
+          <SettingsLinkRow
+            label="Theme"
+            value={accentThemeLabel(accentTheme)}
+            onPress={() => navigation.navigate('ThemeSettings')}
+          />
+        </SettingsGroup>
 
-        <SettingsSection title="Information" subtitle="Storage and cloud backup.">
-          <StorageSettings />
-          <BackupSettings />
-        </SettingsSection>
+        <SettingsGroupLabel title="Maps & units" />
+        <SettingsGroup>
+          <SettingsLinkRow
+            label="Distance unit"
+            value={DISTANCE_UNIT_LABELS[distanceUnit]}
+            onPress={() => navigation.navigate('DistanceUnitSettings')}
+          />
+          <SettingsGroupDivider />
+          <SettingsLinkRow
+            label="Preferred maps app"
+            value={PREFERRED_MAP_APP_LABELS[preferredMapApp]}
+            onPress={() => navigation.navigate('PreferredMapsSettings')}
+          />
+        </SettingsGroup>
 
-        <SettingsSection
-          title="Developer"
-          subtitle="Export data and internal debugging tools.">
-          <ExportSettings />
-          <DevSettings />
-        </SettingsSection>
+        <SettingsGroupLabel title="Tracking" />
+        <TrackingSettings />
+
+        <SettingsGroupLabel title="Trips" />
+        <TripRebuildSettings />
+
+        <SettingsGroupLabel title="Information" />
+        <SettingsGroup>
+          <SettingsLinkRow
+            label="Storage"
+            value={storageSummary}
+            onPress={() => navigation.navigate('StorageSettings')}
+          />
+          <SettingsGroupDivider />
+          <SettingsLinkRow
+            label="Backup"
+            value={backupSummary}
+            onPress={() => navigation.navigate('BackupSettings')}
+          />
+        </SettingsGroup>
+
+        <SettingsGroupLabel title="Developer" />
+        <SettingsGroup>
+          <SettingsLinkRow
+            label="Export & developer tools"
+            onPress={() => navigation.navigate('DeveloperSettings')}
+          />
+        </SettingsGroup>
 
         <AppVersionFooter />
       </ScrollView>

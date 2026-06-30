@@ -63,7 +63,7 @@ export function DevSettings() {
   }
 
   return (
-    <View className="gap-4">
+    <View className="mt-4 gap-4">
       <DevToggle
         icon={BookOpen}
         title="Show onboarding every launch"

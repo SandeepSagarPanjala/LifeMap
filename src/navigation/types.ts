@@ -3,6 +3,12 @@ import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 export type RootStackParamList = {
   Map: {widgetAction?: string; focusPlaceId?: number} | undefined;
   Settings: undefined;
+  ThemeSettings: undefined;
+  DistanceUnitSettings: undefined;
+  PreferredMapsSettings: undefined;
+  StorageSettings: undefined;
+  BackupSettings: undefined;
+  DeveloperSettings: undefined;
   RestoreBackup:
     | {source?: 'install' | 'settings' | 'drive'; preview?: boolean}
     | undefined;

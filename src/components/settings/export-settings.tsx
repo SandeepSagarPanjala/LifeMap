@@ -291,7 +291,7 @@ export function ExportSettings() {
 
   return (
     <>
-      <View className="bg-card border-border rounded-2xl border p-4">
+      <View className="bg-card border-border mt-2 rounded-2xl border p-4">
         <View className="flex-row items-center gap-3">
           <Icon as={Database} size={20} color={colors.primary} />
           <View className="flex-1">
