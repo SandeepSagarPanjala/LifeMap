@@ -2,6 +2,7 @@ import {
   parsePlaceLookupCandidates,
   sanitizeCandidatesJson,
   sanitizePhotoAttachmentsJson,
+  serializePlaceLookupCandidates,
 } from '@/lib/db/json-blobs';
 
 describe('json-blobs', () => {
@@ -19,6 +20,24 @@ describe('json-blobs', () => {
   it('drops invalid place lookup candidate JSON', () => {
     expect(sanitizeCandidatesJson('{"bad":true}')).toBeNull();
     expect(parsePlaceLookupCandidates('[{"id":"1"}]')).toEqual([]);
+    expect(
+      parsePlaceLookupCandidates(
+        '[{"id":"poi-1","name":"Cafe","kind":"poi","distanceM":null}]',
+      ),
+    ).toEqual([]);
+  });
+
+  it('rejects non-finite distanceM values', () => {
+    expect(
+      parsePlaceLookupCandidates(
+        '[{"id":"poi-1","name":"Cafe","kind":"poi","distanceM":null}]',
+      ),
+    ).toEqual([]);
+    expect(
+      parsePlaceLookupCandidates(
+        '[{"id":"poi-1","name":"Cafe","kind":"poi","distanceM":1e309}]',
+      ),
+    ).toEqual([]);
   });
 
   it('keeps valid place lookup candidate JSON', () => {
@@ -28,5 +47,14 @@ describe('json-blobs', () => {
       {id: 'poi-1', name: 'Cafe', kind: 'poi', distanceM: 42},
     ]);
     expect(sanitizeCandidatesJson(raw)).toBe(raw);
+  });
+
+  it('serializes typed place lookup candidates on write', () => {
+    expect(
+      serializePlaceLookupCandidates([
+        {id: 'poi-1', name: 'Cafe', kind: 'poi', distanceM: 42},
+      ]),
+    ).toBe('[{"id":"poi-1","name":"Cafe","kind":"poi","distanceM":42}]');
+    expect(serializePlaceLookupCandidates([])).toBeNull();
   });
 });

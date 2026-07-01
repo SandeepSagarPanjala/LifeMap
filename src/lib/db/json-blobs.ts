@@ -32,7 +32,9 @@ export function parsePlaceLookupCandidates(
           'name' in item && typeof item.name === 'string' ? item.name.trim() : '';
         const kind = 'kind' in item ? item.kind : null;
         const distanceM =
-          'distanceM' in item && typeof item.distanceM === 'number'
+          'distanceM' in item &&
+          typeof item.distanceM === 'number' &&
+          Number.isFinite(item.distanceM)
             ? item.distanceM
             : null;
 
@@ -55,6 +57,16 @@ export function sanitizeCandidatesJson(raw: string | null | undefined): string |
 
   const candidates = parsePlaceLookupCandidates(raw);
   return candidates.length > 0 ? JSON.stringify(candidates) : null;
+}
+
+export function serializePlaceLookupCandidates(
+  candidates: PlaceLookupCandidate[],
+): string | null {
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  return sanitizeCandidatesJson(JSON.stringify(candidates));
 }
 
 export function sanitizePhotoAttachmentsJson(

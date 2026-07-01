@@ -4,7 +4,7 @@ import {getDatabase} from '../client';
 import {placeLookupCache} from '../schema';
 import {
   parsePlaceLookupCandidates,
-  sanitizeCandidatesJson,
+  serializePlaceLookupCandidates,
 } from '@/lib/db/json-blobs';
 import type {
   PlaceLookupCandidate,
@@ -71,7 +71,7 @@ export async function completePlaceLookup(
     .update(placeLookupCache)
     .set({
       addressLine: payload.addressLine,
-      candidatesJson: JSON.stringify(payload.candidates),
+      candidatesJson: serializePlaceLookupCandidates(payload.candidates),
       lookupStatus: 'complete',
       fetchedAt: new Date(),
     })
@@ -142,7 +142,7 @@ export async function mergePlaceLookupCandidates(
     .update(placeLookupCache)
     .set({
       addressLine: payload.addressLine ?? existing?.addressLine ?? null,
-      candidatesJson: JSON.stringify(mergedCandidates),
+      candidatesJson: serializePlaceLookupCandidates(mergedCandidates),
       venueRadiusMeters: payload.venueRadiusMeters,
       lookupStatus: 'complete',
       fetchedAt: new Date(),
