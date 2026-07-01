@@ -1,3 +1,5 @@
+import {Platform} from 'react-native';
+
 import {useAppStore} from '@/stores/app-store';
 
 describe('app-store', () => {
@@ -5,6 +7,8 @@ describe('app-store', () => {
     useAppStore.setState({
       hasCompletedPrivacyOnboarding: false,
       accentTheme: 'verdant',
+      historyEarliestDateKey: null,
+      devShowOnboarding: false,
     });
   });
 
@@ -24,5 +28,25 @@ describe('app-store', () => {
   it('persists accent theme selection', () => {
     useAppStore.getState().setAccentTheme('amethyst');
     expect(useAppStore.getState().accentTheme).toBe('amethyst');
+  });
+
+  it('defaults preferred map app by platform', () => {
+    const expected = Platform.OS === 'ios' ? 'apple' : 'google';
+    expect(useAppStore.getState().preferredMapApp).toBe(expected);
+  });
+
+  it('stores history earliest date key', () => {
+    useAppStore.getState().setHistoryEarliestDateKey('2024-01-15');
+    expect(useAppStore.getState().historyEarliestDateKey).toBe('2024-01-15');
+  });
+
+  it('ignores dev onboarding toggle outside __DEV__', () => {
+    const originalDev = (global as {__DEV__?: boolean}).__DEV__;
+    (global as {__DEV__?: boolean}).__DEV__ = false;
+
+    useAppStore.getState().setDevShowOnboarding(true);
+    expect(useAppStore.getState().devShowOnboarding).toBe(false);
+
+    (global as {__DEV__?: boolean}).__DEV__ = originalDev;
   });
 });
