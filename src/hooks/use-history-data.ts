@@ -56,7 +56,10 @@ function shouldRejectEmptyTodayWipe(
   if (next.entries.length > 0) {
     return false;
   }
-  return (previous?.entries.length ?? 0) > 0;
+  if (previous == null || previous.dateKey !== dateKey) {
+    return false;
+  }
+  return previous.entries.length > 0;
 }
 
 function commitHistoryData(

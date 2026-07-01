@@ -12,10 +12,10 @@ import {Text} from '@/components/ui/text';
 import {
   DRIVE_MAP_REFRESH_INTERVAL_OPTIONS,
   getDriveMapRefreshIntervalMs,
-  notifyDriveMapRefreshIntervalChanged,
   setDriveMapRefreshIntervalMs,
   type DriveMapRefreshIntervalMs,
 } from '@/lib/drive-map-refresh-settings';
+import {notifyDriveMapRefreshIntervalChanged} from '@/lib/today-refresh-scheduler';
 
 export function DriveMapRefreshSettingsScreen() {
   const [intervalMs, setIntervalMs] = useState<DriveMapRefreshIntervalMs>(
