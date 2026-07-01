@@ -9,6 +9,7 @@ import {useColorScheme} from 'react-native';
 import {useCallback, useEffect, useMemo} from 'react';
 
 import type {RootStackParamList} from '@/navigation/types';
+import {withFeatureErrorBoundary} from '@/components/error-boundary';
 import {BenchmarkScreen} from '@/screens/benchmark/BenchmarkScreen';
 import {CaptureActivityScreen} from '@/screens/capture/CaptureActivityScreen';
 import {CaptureNoteScreen} from '@/screens/capture/CaptureNoteScreen';
@@ -35,6 +36,13 @@ import {settingsSubScreenOptions} from '@/navigation/settings-sub-screen-options
 import {voiceCaptureScreenOptions} from '@/navigation/voice-capture-screen-options';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+const MapScreenWithBoundary = withFeatureErrorBoundary(MapScreen, 'map');
+const CapturePhotoScreenWithBoundary = withFeatureErrorBoundary(
+  CapturePhotoScreen,
+  'capture',
+  {dismissible: true},
+);
 
 export function RootNavigator() {
   const navigationRef = useNavigationContainerRef<RootStackParamList>();
@@ -70,7 +78,7 @@ export function RootNavigator() {
       onReady={handleNavigationReady}
       theme={navigationTheme}>
       <Stack.Navigator>
-        <Stack.Screen name="Map" component={MapScreen} options={{headerShown: false}} />
+        <Stack.Screen name="Map" component={MapScreenWithBoundary} options={{headerShown: false}} />
         <Stack.Screen
           name="RestoreBackup"
           component={RestoreBackupScreen}
@@ -130,7 +138,7 @@ export function RootNavigator() {
         />
         <Stack.Screen
           name="CapturePhoto"
-          component={CapturePhotoScreen}
+          component={CapturePhotoScreenWithBoundary}
           options={{
             headerShown: false,
             presentation: 'fullScreenModal',

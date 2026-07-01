@@ -2,6 +2,7 @@ import {and, asc, desc, eq, gte, lte, sql} from 'drizzle-orm';
 
 import {deleteMomentContentFile} from '@/lib/moments/moment-storage';
 import {parseNotePhotoAttachments} from '@/lib/moments/note-photo-attachments';
+import {sanitizePhotoAttachmentsJson} from '@/lib/db/json-blobs';
 import {getDayRange} from '@/lib/day-utils';
 
 import {getDatabase} from '../client';
@@ -73,7 +74,7 @@ function mapRow(row: typeof moments.$inferSelect): MomentRow {
     voiceAttachmentPath: row.voiceAttachmentPath ?? null,
     voiceAttachmentBytes: row.voiceAttachmentBytes ?? null,
     voiceDurationSec: row.voiceDurationSec ?? null,
-    photoAttachmentsJson: row.photoAttachmentsJson ?? null,
+    photoAttachmentsJson: sanitizePhotoAttachmentsJson(row.photoAttachmentsJson),
     textBody: row.textBody ?? null,
     caption: row.caption ?? null,
     title: row.title ?? null,
@@ -113,7 +114,9 @@ export async function insertMoment(input: NewMoment): Promise<MomentRow> {
       voiceAttachmentPath: input.voiceAttachmentPath ?? null,
       voiceAttachmentBytes: input.voiceAttachmentBytes ?? null,
       voiceDurationSec: input.voiceDurationSec ?? null,
-      photoAttachmentsJson: input.photoAttachmentsJson ?? null,
+      photoAttachmentsJson: sanitizePhotoAttachmentsJson(
+        input.photoAttachmentsJson ?? null,
+      ),
       contentBytes: input.contentBytes ?? null,
       sourceBytes: input.sourceBytes ?? null,
       contentFormat: input.contentFormat ?? null,

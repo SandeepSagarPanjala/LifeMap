@@ -49,14 +49,6 @@ jest.mock('react-native-gesture-handler', () => {
   };
 });
 
-jest.mock('@sentry/react-native', () => {
-  return {
-    init: jest.fn(),
-    captureException: jest.fn(),
-    ErrorBoundary: ({children}) => children,
-  };
-});
-
 jest.mock('lottie-react-native', () => 'LottieView');
 
 jest.mock('@shopify/flash-list', () => {

@@ -22,25 +22,25 @@ Coverage (#5) is deferred intentionally.
 
 | # | Item | Status | Notes |
 |---|------|--------|-------|
-| 6 | Dependabot | done | `.github/dependabot.yml` — npm weekly + actions monthly |
+| 6 | Dependabot | paused | `open-pull-requests-limit: 0` — re-enable later |
 
 ## Batch 4 — Resilience
 
 | # | Item | Status | Notes |
 |---|------|--------|-------|
-| 11 | Feature error boundaries (map, capture) | todo | Prevent full-app white screen |
+| 11 | Feature error boundaries (map, capture) | done | `FeatureErrorBoundary` on Map + CapturePhoto screens |
 
 ## Batch 5 — Observability
 
 | # | Item | Status | Notes |
 |---|------|--------|-------|
-| 9 | Sentry spans on slow paths | todo | migrate, trip materialize, backup import |
+| 9 | Sentry spans on slow paths | deferred | Remove Sentry SDK; re-add via `sentry wizard` later |
 
 ## Batch 6 — Data safety
 
 | # | Item | Status | Notes |
 |---|------|--------|-------|
-| 10 | Validate JSON blob columns at repo boundary | todo | `photoAttachmentsJson`, `candidatesJson` |
+| 10 | Validate JSON blob columns at repo boundary | done | `sanitizePhotoAttachmentsJson`, `sanitizeCandidatesJson` |
 
 ## Batch 7 — Migrations cleanup
 

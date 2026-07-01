@@ -47,7 +47,7 @@ yarn-error.log
 __personal__/
 .pnpm-store/
 
-# Local secrets (copy from src/config/env.local.example.ts)
+# Local secrets
 src/config/env.local.ts
 .env
 .env.local

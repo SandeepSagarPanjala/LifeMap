@@ -2,6 +2,10 @@ import {eq} from 'drizzle-orm';
 
 import {getDatabase} from '../client';
 import {placeLookupCache} from '../schema';
+import {
+  parsePlaceLookupCandidates,
+  serializePlaceLookupCandidates,
+} from '@/lib/db/json-blobs';
 import type {
   PlaceLookupCandidate,
   PlaceLookupRow,
@@ -12,18 +16,6 @@ import {
   PLACE_LOOKUP_VENUE_RADIUS_M,
 } from '@/lib/place-lookup-venue';
 
-function parseCandidates(raw: string | null): PlaceLookupCandidate[] {
-  if (!raw) {
-    return [];
-  }
-  try {
-    const parsed = JSON.parse(raw) as PlaceLookupCandidate[];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
 function mapRow(row: typeof placeLookupCache.$inferSelect): PlaceLookupRow {
   return {
     id: row.id,
@@ -31,7 +23,7 @@ function mapRow(row: typeof placeLookupCache.$inferSelect): PlaceLookupRow {
     anchorLng: row.anchorLng,
     venueRadiusMeters: row.venueRadiusMeters,
     addressLine: row.addressLine,
-    candidates: parseCandidates(row.candidatesJson),
+    candidates: parsePlaceLookupCandidates(row.candidatesJson),
     selectedCandidateIndex: row.selectedCandidateIndex,
     lookupStatus: row.lookupStatus as PlaceLookupStatus,
     fetchedAt: row.fetchedAt,
@@ -79,7 +71,7 @@ export async function completePlaceLookup(
     .update(placeLookupCache)
     .set({
       addressLine: payload.addressLine,
-      candidatesJson: JSON.stringify(payload.candidates),
+      candidatesJson: serializePlaceLookupCandidates(payload.candidates),
       lookupStatus: 'complete',
       fetchedAt: new Date(),
     })
@@ -150,7 +142,7 @@ export async function mergePlaceLookupCandidates(
     .update(placeLookupCache)
     .set({
       addressLine: payload.addressLine ?? existing?.addressLine ?? null,
-      candidatesJson: JSON.stringify(mergedCandidates),
+      candidatesJson: serializePlaceLookupCandidates(mergedCandidates),
       venueRadiusMeters: payload.venueRadiusMeters,
       lookupStatus: 'complete',
       fetchedAt: new Date(),

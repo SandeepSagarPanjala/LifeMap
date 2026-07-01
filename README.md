@@ -10,7 +10,6 @@ Personal life timeline app — remember where you were, privately.
 - **React Navigation** (custom bottom tabs)
 - **pnpm** package manager
 - **GitHub Actions** CI (lint, typecheck, test)
-- **Sentry** (optional — crash reporting when DSN configured)
 
 ## Getting started
 
@@ -224,11 +223,3 @@ pnpm e2e:run:ios -- e2e/saved-places/deep-path.test.js
 ```
 
 For unit tests in `__tests__/`, use the terminal: `pnpm test` (not the e2e Run button).
-
-### Sentry (optional)
-
-1. Create a project at [sentry.io](https://sentry.io)
-2. Copy `src/config/env.local.example.ts` → `src/config/env.local.ts`
-3. Paste your DSN into `SENTRY_DSN`
-
-Without a DSN, the app runs normally — crashes are only logged locally in dev.

@@ -345,7 +345,8 @@ export async function runMigrations(sqlite: DB): Promise<void> {
     `SELECT COUNT(*) AS count FROM "${MIGRATIONS_TABLE}"`,
   );
   const appliedCount = Number(
-    (migrationCount.rows?.[0] as {count?: number | string} | undefined)?.count ?? 0,
+    (migrationCount.rows?.[0] as {count?: number | string} | undefined)?.count ??
+      0,
   );
 
   if (appliedCount === 0 && (await tableExists(sqlite, 'location_points'))) {
