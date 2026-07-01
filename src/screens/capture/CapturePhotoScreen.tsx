@@ -225,11 +225,13 @@ export function CapturePhotoScreen() {
   const cameraReadyFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cameraCloseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cameraLeavingRef = useRef(false);
+  const cameraBackgroundPausedRef = useRef(false);
   const cameraShutdownIntentRef = useRef<CameraShutdownIntent | null>(null);
   const cameraShutdownCompletedRef = useRef(false);
   const pendingReviewDraftRef = useRef<MediaDraft | null>(null);
   const allowScreenRemoveRef = useRef(false);
   const [cameraLeaving, setCameraLeaving] = useState(false);
+  const [cameraBackgroundPaused, setCameraBackgroundPaused] = useState(false);
   const [reviewPlaybackPaused, setReviewPlaybackPaused] = useState(false);
   const device = useCameraDevice(cameraPosition);
 
@@ -288,9 +290,11 @@ export function CapturePhotoScreen() {
 
   const beginCameraShutdown = useCallback(
     (intent: CameraShutdownIntent, reviewDraft?: MediaDraft) => {
-      if (cameraLeavingRef.current) {
+      if (cameraShutdownIntentRef.current != null) {
         return;
       }
+      cameraBackgroundPausedRef.current = false;
+      setCameraBackgroundPaused(false);
       cameraLeavingRef.current = true;
       cameraShutdownCompletedRef.current = false;
       cameraShutdownIntentRef.current = intent;
@@ -333,7 +337,9 @@ export function CapturePhotoScreen() {
       cameraShutdownIntentRef.current = null;
       cameraShutdownCompletedRef.current = false;
       pendingReviewDraftRef.current = null;
+      cameraBackgroundPausedRef.current = false;
       setCameraLeaving(false);
+      setCameraBackgroundPaused(false);
       return () => {
         clearCameraCloseTimeout();
       };
@@ -342,26 +348,24 @@ export function CapturePhotoScreen() {
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextState => {
-      setReviewPlaybackPaused(nextState !== 'active');
       if (nextState === 'background' || nextState === 'inactive') {
-        if (
-          phase === 'camera' &&
-          !cameraLeavingRef.current &&
-          cameraShutdownIntentRef.current == null
-        ) {
-          cameraLeavingRef.current = true;
-          setCameraLeaving(true);
+        if (phase === 'review') {
+          setReviewPlaybackPaused(true);
+        }
+        if (phase === 'camera' && cameraShutdownIntentRef.current == null) {
+          cameraBackgroundPausedRef.current = true;
+          setCameraBackgroundPaused(true);
         }
         return;
       }
-      if (
-        nextState === 'active' &&
-        phase === 'camera' &&
-        cameraShutdownIntentRef.current == null &&
-        cameraLeavingRef.current
-      ) {
-        cameraLeavingRef.current = false;
-        setCameraLeaving(false);
+      if (nextState === 'active') {
+        if (phase === 'review') {
+          setReviewPlaybackPaused(false);
+        }
+        if (phase === 'camera' && cameraShutdownIntentRef.current == null) {
+          cameraBackgroundPausedRef.current = false;
+          setCameraBackgroundPaused(false);
+        }
       }
     });
     return () => subscription.remove();
@@ -541,6 +545,8 @@ export function CapturePhotoScreen() {
     pendingReviewDraftRef.current = null;
     clearCameraCloseTimeout();
     setCameraLeaving(false);
+    cameraBackgroundPausedRef.current = false;
+    setCameraBackgroundPaused(false);
     setDraft(null);
     setSelectedFilter('original');
     setRotationSteps(0);
@@ -758,7 +764,11 @@ export function CapturePhotoScreen() {
           setSaveStatus(update);
         });
       }
-      await voicePlayerRef.current.stopPreview();
+      try {
+        await voicePlayerRef.current.stopPreview();
+      } catch {
+        // Preview may not be active; saving already succeeded.
+      }
       setVoicePlaying(false);
       allowScreenRemoveRef.current = true;
       navigation.goBack();
@@ -805,7 +815,7 @@ export function CapturePhotoScreen() {
           key={`${cameraPosition}-${captureMode}`}
           style={StyleSheet.absoluteFill}
           device={device}
-          isActive={phase === 'camera' && !cameraLeaving}
+          isActive={phase === 'camera' && !cameraLeaving && !cameraBackgroundPaused}
           outputs={captureMode === 'video' ? [photoOutput, videoOutput] : [photoOutput]}
           mirrorMode="off"
           enableNativeZoomGesture
