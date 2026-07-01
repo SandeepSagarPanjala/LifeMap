@@ -16,6 +16,7 @@ import {Activity, AudioLines, Camera, NotebookPen, Pause, Play, Trash2, Video, X
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 import {MomentVideoPlayer} from '@/components/capture/MomentVideoPlayer';
+import {ResizeMode} from 'react-native-video';
 import {SavedPlaceIcon} from '@/components/map/SavedPlaceIcon';
 import {CAPTURE_BUTTON_THEMES} from '@/components/map/map-capture-button-theme';
 import {MomentPreviewImage} from '@/components/moments/MomentPreviewImage';
@@ -462,14 +463,13 @@ function VideoMomentPage({
   }
 
   return (
-    <View style={styles.videoPage}>
-      <MomentVideoPlayer
-        uri={momentVideoUri(moment.contentPath)}
-        style={styles.videoPlayer}
-        paused={!isActive}
-        repeat
-      />
-    </View>
+    <MomentVideoPlayer
+      uri={momentVideoUri(moment.contentPath)}
+      style={styles.photoPage}
+      resizeMode={ResizeMode.COVER}
+      paused={!isActive}
+      repeat
+    />
   );
 }
 
@@ -936,15 +936,6 @@ const styles = StyleSheet.create({
   },
   photoPage: {
     ...StyleSheet.absoluteFillObject,
-  },
-  videoPage: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-  },
-  videoPlayer: {
-    width: '100%',
-    height: '100%',
   },
   topChrome: {
     position: 'absolute',
