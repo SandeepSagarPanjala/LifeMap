@@ -27,7 +27,7 @@ import {
   useVideoOutput,
   type Recorder,
 } from 'react-native-vision-camera';
-import {ResizeMode} from 'react-native-video';
+import {ResizeMode, type VideoRef} from 'react-native-video';
 import ViewShot from 'react-native-view-shot';
 
 import {FilteredCaptureImage} from '@/components/capture/FilteredCaptureImage';
@@ -234,6 +234,8 @@ export function CapturePhotoScreen() {
   const [cameraLeaving, setCameraLeaving] = useState(false);
   const [cameraBackgroundPaused, setCameraBackgroundPaused] = useState(false);
   const [reviewPlaybackPaused, setReviewPlaybackPaused] = useState(false);
+  const [reviewVideoEnded, setReviewVideoEnded] = useState(false);
+  const reviewVideoRef = useRef<VideoRef>(null);
   const device = useCameraDevice(cameraPosition);
 
   const markCameraReady = useCallback(() => {
@@ -455,8 +457,19 @@ export function CapturePhotoScreen() {
   useEffect(() => {
     if (phase === 'review' && draft?.kind === 'video') {
       setReviewPlaybackPaused(false);
+      setReviewVideoEnded(false);
     }
-  }, [draft?.kind, phase]);
+  }, [draft?.kind, draft?.sourceUri, phase]);
+
+  const handleReplayReviewVideo = useCallback(() => {
+    reviewVideoRef.current?.seek(0);
+    setReviewVideoEnded(false);
+    setReviewPlaybackPaused(false);
+  }, []);
+
+  const handleReviewVideoEnded = useCallback(() => {
+    setReviewVideoEnded(true);
+  }, []);
 
   const handleOpenVoiceSheet = useCallback(() => {
     void (async () => {
@@ -561,6 +574,8 @@ export function CapturePhotoScreen() {
     setCameraLeaving(false);
     cameraBackgroundPausedRef.current = false;
     setCameraBackgroundPaused(false);
+    setReviewVideoEnded(false);
+    setReviewPlaybackPaused(false);
     setDraft(null);
     setSelectedFilter('original');
     setRotationSteps(0);
@@ -1044,12 +1059,25 @@ export function CapturePhotoScreen() {
       ) : (
         <View style={styles.photoStage}>
           <MomentVideoPlayer
+            ref={reviewVideoRef}
             uri={draft.sourceUri}
             style={StyleSheet.absoluteFill}
             resizeMode={ResizeMode.COVER}
-            repeat
-            paused={reviewPlaybackPaused || saving}
+            repeat={false}
+            paused={reviewPlaybackPaused || reviewVideoEnded || saving}
+            onEnd={handleReviewVideoEnded}
           />
+          {reviewVideoEnded && !saving ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Play video"
+              onPress={handleReplayReviewVideo}
+              style={styles.reviewVideoPlayOverlay}>
+              <View style={styles.reviewVideoPlayButton}>
+                <Play size={28} color="#FFFFFF" strokeWidth={2.25} />
+              </View>
+            </Pressable>
+          ) : null}
         </View>
       )}
 
@@ -1436,6 +1464,20 @@ const styles = StyleSheet.create({
   },
   photoStageInner: {
     overflow: 'hidden',
+  },
+  reviewVideoPlayOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  reviewVideoPlayButton: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.18)',
   },
   cameraTopRow: {
     flexDirection: 'row',
