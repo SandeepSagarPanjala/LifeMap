@@ -27,6 +27,18 @@ describe('formatStayVisitLabel', () => {
     expect(label.statusLine).toBe('Still here');
   });
 
+  it('keeps open-visit end time and duration on the same minute', () => {
+    const midnight = new Date('2026-07-01T05:00:00.000Z'); // 12:00 AM CDT
+    const now = new Date('2026-07-01T11:31:45.000Z'); // 6:31:45 AM CDT
+    const label = formatStayVisitLabel(midnight, now, 0, {
+      openThroughNow: true,
+      now,
+    });
+    expect(label.title).toBe('12:00 AM to 6:31 AM');
+    expect(label.subtitle).toBe('6 hr 31 min');
+    expect(label.statusLine).toBe('Still here');
+  });
+
   it('does not stretch a recently ended visit when it is closed', () => {
     const visitEnd = new Date('2026-06-04T10:34:00.000Z'); // 5:34 AM CDT
     const label = formatStayVisitLabel(start, visitEnd, 60_000, {

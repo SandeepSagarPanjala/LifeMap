@@ -6,6 +6,7 @@ export type RootStackParamList = {
   ThemeSettings: undefined;
   DistanceUnitSettings: undefined;
   PreferredMapsSettings: undefined;
+  DriveMapRefreshSettings: undefined;
   StorageSettings: undefined;
   BackupSettings: undefined;
   DeveloperSettings: undefined;

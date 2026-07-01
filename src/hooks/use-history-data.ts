@@ -17,7 +17,11 @@ import {useTripDetectionConfig} from '@/hooks/use-trip-detection-config';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
 import {getDayRange, getTodayDateKey} from '@/lib/day-utils';
 import {subscribeSavedPlaces} from '@/lib/saved-places-events';
-import {subscribeTodayHistoryRefresh} from '@/lib/today-refresh-scheduler';
+import {getCurrentOpenActivity} from '@/lib/today-history';
+import {
+  subscribeTodayHistoryRefresh,
+  updateTodayRefreshAfterSync,
+} from '@/lib/today-refresh-scheduler';
 
 export type {HistoryData} from '@/lib/history-data-types';
 
@@ -41,6 +45,50 @@ function emptyForDateKey(dateKey: string): HistoryData {
   };
 }
 
+function shouldRejectEmptyTodayWipe(
+  dateKey: string,
+  next: HistoryData,
+  previous: HistoryData | null | undefined,
+): boolean {
+  if (dateKey !== getTodayDateKey()) {
+    return false;
+  }
+  if (next.entries.length > 0) {
+    return false;
+  }
+  if (previous == null || previous.dateKey !== dateKey) {
+    return false;
+  }
+  return previous.entries.length > 0;
+}
+
+function commitHistoryData(
+  dateKey: string,
+  next: HistoryData,
+  previous: HistoryData,
+  setData: (data: HistoryData) => void,
+): HistoryData {
+  if (shouldRejectEmptyTodayWipe(dateKey, next, previous)) {
+    return previous;
+  }
+  setData(next);
+  return next;
+}
+
+function syncTodayRefreshMode(
+  dateKey: string,
+  entries: HistoryData['entries'],
+  detectionConfig: TripDetectionConfig,
+): void {
+  if (dateKey !== getTodayDateKey()) {
+    updateTodayRefreshAfterSync(null);
+    return;
+  }
+  updateTodayRefreshAfterSync(
+    getCurrentOpenActivity(entries, {config: detectionConfig}),
+  );
+}
+
 async function loadHistoryForDay(
   dateKey: string,
   detectionConfig: TripDetectionConfig,
@@ -57,6 +105,31 @@ async function syncHistoryForDay(
 ): Promise<HistoryData> {
   const cacheKey = historyCacheKey(dateKey, detectionConfig);
   const isToday = dateKey === getTodayDateKey();
+
+  if (isToday && !options?.force) {
+    const cachedToday = historyDataCache.peek(cacheKey);
+    if (
+      cachedToday != null &&
+      cachedToday.dateKey === dateKey &&
+      cachedToday.entries.length > 0
+    ) {
+      void loadHistoryForDay(dateKey, detectionConfig, options).then(result => {
+        if (
+          options?.loadGeneration != null &&
+          !isCurrentHistoryDayLoad(options.loadGeneration)
+        ) {
+          return;
+        }
+        if (shouldRejectEmptyTodayWipe(dateKey, result, cachedToday)) {
+          return;
+        }
+        historyDataCache.write(cacheKey, result, TODAY_LIVE_FINGERPRINT);
+        syncTodayRefreshMode(dateKey, result.entries, detectionConfig);
+      });
+      syncTodayRefreshMode(dateKey, cachedToday.entries, detectionConfig);
+      return cachedToday;
+    }
+  }
 
   let writeFingerprint = TODAY_LIVE_FINGERPRINT;
   if (!isToday) {
@@ -80,7 +153,18 @@ async function syncHistoryForDay(
   ) {
     return result;
   }
+  if (isToday) {
+    const cachedToday = historyDataCache.peek(cacheKey);
+    if (shouldRejectEmptyTodayWipe(dateKey, result, cachedToday)) {
+      const kept = cachedToday ?? result;
+      syncTodayRefreshMode(dateKey, kept.entries, detectionConfig);
+      return kept;
+    }
+  }
   historyDataCache.write(cacheKey, result, writeFingerprint);
+  if (isToday) {
+    syncTodayRefreshMode(dateKey, result.entries, detectionConfig);
+  }
   return result;
 }
 
@@ -100,6 +184,8 @@ export function useHistoryForDay(
   const [data, setData] = useState<HistoryData>(
     initialCached ?? emptyForDateKey(dateKey),
   );
+  const dataRef = useRef(data);
+  dataRef.current = data;
   const [loading, setLoading] = useState(
     active && (initialCached == null || initialCached.dateKey !== dateKey),
   );
@@ -126,6 +212,9 @@ export function useHistoryForDay(
         cached.dateKey === targetDateKey &&
         cached.entries.length > 0;
       const isToday = targetDateKey === getTodayDateKey();
+      if (!isToday) {
+        updateTodayRefreshAfterSync(null);
+      }
       if (syncOptions?.showLoading !== false && !hasTodaySnapshot && !isToday) {
         setLoading(true);
       }
@@ -139,7 +228,17 @@ export function useHistoryForDay(
           if (generation !== loadGenerationRef.current) {
             return;
           }
-          setData(partial);
+          const committed = commitHistoryData(
+            targetDateKey,
+            partial,
+            dataRef.current,
+            setData,
+          );
+          syncTodayRefreshMode(
+            targetDateKey,
+            committed.entries,
+            detectionConfig,
+          );
           setLoading(false);
         },
       })
@@ -147,8 +246,18 @@ export function useHistoryForDay(
           if (generation !== loadGenerationRef.current) {
             return result;
           }
-          setData(result);
-          return result;
+          const committed = commitHistoryData(
+            targetDateKey,
+            result,
+            dataRef.current,
+            setData,
+          );
+          syncTodayRefreshMode(
+            targetDateKey,
+            committed.entries,
+            detectionConfig,
+          );
+          return committed;
         })
         .catch((cause: unknown) => {
           if (generation !== loadGenerationRef.current) {

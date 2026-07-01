@@ -94,6 +94,19 @@ export type StayVisitLabel = {
   statusLine?: string;
 };
 
+/** Floor to whole minutes so clock end time and duration stay in sync on open visits. */
+function ongoingVisitDisplay(
+  startAt: Date,
+  now: Date,
+): {displayEndAt: Date; displayDurationMs: number} {
+  const elapsedMs = Math.max(0, now.getTime() - startAt.getTime());
+  const elapsedMinutes = Math.floor(elapsedMs / 60_000);
+  return {
+    displayEndAt: new Date(startAt.getTime() + elapsedMinutes * 60_000),
+    displayDurationMs: elapsedMinutes * 60_000,
+  };
+}
+
 export type DriveVisitLabel = {
   title: string;
   subtitle: string;
@@ -110,17 +123,18 @@ export function formatDriveVisitLabel(
   const ongoing = isVisitOngoing(endAt, now, {
     openThroughNow: options?.openThroughNow,
   });
-  const effectiveDurationMs = ongoing
-    ? Math.max(0, now.getTime() - startAt.getTime())
-    : durationMs;
+  if (ongoing) {
+    const {displayEndAt, displayDurationMs} = ongoingVisitDisplay(startAt, now);
+    return {
+      title: formatVisitTimeRange(startAt, displayEndAt),
+      subtitle: formatTripDuration(displayDurationMs),
+      statusLine: 'Driving',
+    };
+  }
   return {
-    title: formatVisitTimeRange(
-      startAt,
-      endAt,
-      ongoing ? {now} : undefined,
-    ),
-    subtitle: formatTripDuration(effectiveDurationMs),
-    statusLine: ongoing ? 'Driving' : undefined,
+    title: formatVisitTimeRange(startAt, endAt),
+    subtitle: formatTripDuration(durationMs),
+    statusLine: undefined,
   };
 }
 
@@ -134,17 +148,18 @@ export function formatStayVisitLabel(
   const ongoing = isVisitOngoing(endAt, now, {
     openThroughNow: options?.openThroughNow,
   });
-  const effectiveDurationMs = ongoing
-    ? Math.max(0, now.getTime() - startAt.getTime())
-    : durationMs;
+  if (ongoing) {
+    const {displayEndAt, displayDurationMs} = ongoingVisitDisplay(startAt, now);
+    return {
+      title: formatVisitTimeRange(startAt, displayEndAt),
+      subtitle: formatTripDuration(displayDurationMs),
+      statusLine: 'Still here',
+    };
+  }
   return {
-    title: formatVisitTimeRange(
-      startAt,
-      endAt,
-      ongoing ? {now} : undefined,
-    ),
-    subtitle: formatTripDuration(effectiveDurationMs),
-    statusLine: ongoing ? 'Still here' : undefined,
+    title: formatVisitTimeRange(startAt, endAt),
+    subtitle: formatTripDuration(durationMs),
+    statusLine: undefined,
   };
 }
 

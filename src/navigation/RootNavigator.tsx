@@ -25,6 +25,7 @@ import {SettingsScreen} from '@/screens/SettingsScreen';
 import {DeveloperSettingsScreen} from '@/screens/settings/DeveloperSettingsScreen';
 import {BackupSettingsScreen} from '@/screens/settings/BackupSettingsScreen';
 import {DistanceUnitSettingsScreen} from '@/screens/settings/DistanceUnitSettingsScreen';
+import {DriveMapRefreshSettingsScreen} from '@/screens/settings/DriveMapRefreshSettingsScreen';
 import {PreferredMapsSettingsScreen} from '@/screens/settings/PreferredMapsSettingsScreen';
 import {StorageSettingsScreen} from '@/screens/settings/StorageSettingsScreen';
 import {ThemeSettingsScreen} from '@/screens/settings/ThemeSettingsScreen';
@@ -111,6 +112,11 @@ export function RootNavigator() {
           name="PreferredMapsSettings"
           component={PreferredMapsSettingsScreen}
           options={settingsSubScreenOptions('Preferred maps app')}
+        />
+        <Stack.Screen
+          name="DriveMapRefreshSettings"
+          component={DriveMapRefreshSettingsScreen}
+          options={settingsSubScreenOptions('Drive map updates')}
         />
         <Stack.Screen
           name="StorageSettings"

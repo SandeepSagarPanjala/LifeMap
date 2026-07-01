@@ -497,7 +497,7 @@ export async function loadHistoryForSelectedDay(
 
   if (isToday) {
     return syncTodayDisplay(detectionConfig, referenceNow, {
-      skipRepair: options?.preferStored,
+      skipRepair: true,
       onPartial: options?.onPartial,
     });
   }
@@ -867,8 +867,7 @@ export async function rebuildTodayTrips(
     if (existing.length === 0) {
       return 0;
     }
-    await purgeMaterializedDayCache(dateKey, dayPointCount);
-    await backfillMomentsForDateKey(dateKey, detectionConfig);
+    // Open-home stays are not sealable — keep existing rows until departure.
     return 0;
   }
 

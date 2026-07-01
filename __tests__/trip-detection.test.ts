@@ -2,6 +2,7 @@ import {
   dedupeLocationPoints,
   getTravelDisplayPoints,
   isSparseTravelRoute,
+  isUserStillAtStay,
   stayTripCentroid,
   stayTripMarkerCoordinate,
   findNextPlayableTimelineIndex,
@@ -188,5 +189,48 @@ describe('playable timeline navigation', () => {
     expect(findPrevPlayableTimelineIndex(entries, 2)).toBe(0);
     expect(findPrevPlayableTimelineIndex(entries, 1)).toBe(0);
     expect(findPrevPlayableTimelineIndex(entries, 0)).toBe(-1);
+  });
+});
+
+describe('isUserStillAtStay', () => {
+  it('matches when user is near any stay point, not only the last ping', () => {
+    const stay: DetectedTrip = {
+      id: 'stay-1',
+      kind: 'stay',
+      points: [
+        {
+          id: 1,
+          timestamp: new Date('2026-06-03T08:00:00'),
+          lat: HOME.lat,
+          lng: HOME.lng,
+          accuracy: 10,
+          altitude: null,
+          speed: null,
+          source: 'gps',
+        },
+        {
+          id: 2,
+          timestamp: new Date('2026-06-03T12:00:00'),
+          lat: HOME.lat + 0.0008,
+          lng: HOME.lng + 0.0008,
+          accuracy: 10,
+          altitude: null,
+          speed: null,
+          source: 'gps',
+        },
+      ],
+      startAt: new Date('2026-06-03T08:00:00'),
+      endAt: new Date('2026-06-03T12:00:00'),
+      durationMs: 4 * 60 * 60_000,
+      distanceKm: 0,
+      openThroughNow: true,
+    };
+
+    expect(
+      isUserStillAtStay({lat: HOME.lat, lng: HOME.lng}, stay, config),
+    ).toBe(true);
+    expect(
+      isUserStillAtStay({lat: 33.3, lng: -97.2}, stay, config),
+    ).toBe(false);
   });
 });
