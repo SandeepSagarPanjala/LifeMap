@@ -1057,16 +1057,18 @@ export function CapturePhotoScreen() {
           </View>
         </ViewShot>
       ) : (
-        <View style={styles.photoStage}>
-          <MomentVideoPlayer
-            ref={reviewVideoRef}
-            uri={draft.sourceUri}
-            style={StyleSheet.absoluteFill}
-            resizeMode={ResizeMode.COVER}
-            repeat={false}
-            paused={reviewPlaybackPaused || reviewVideoEnded || saving}
-            onEnd={handleReviewVideoEnded}
-          />
+        <View style={styles.reviewVideoStage} pointerEvents="box-none">
+          <View style={styles.reviewVideoFrame}>
+            <MomentVideoPlayer
+              ref={reviewVideoRef}
+              uri={draft.sourceUri}
+              style={StyleSheet.absoluteFill}
+              resizeMode={ResizeMode.COVER}
+              repeat={false}
+              paused={reviewPlaybackPaused || reviewVideoEnded || saving}
+              onEnd={handleReviewVideoEnded}
+            />
+          </View>
           {reviewVideoEnded && !saving ? (
             <Pressable
               accessibilityRole="button"
@@ -1463,6 +1465,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#000000',
   },
   photoStageInner: {
+    overflow: 'hidden',
+  },
+  reviewVideoStage: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#000000',
+  },
+  reviewVideoFrame: {
+    ...StyleSheet.absoluteFillObject,
     overflow: 'hidden',
   },
   reviewVideoPlayOverlay: {
