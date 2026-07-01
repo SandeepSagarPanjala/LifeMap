@@ -5,6 +5,7 @@ jest.mock('@/lib/drive-map-refresh-settings', () => ({
   getDriveMapRefreshIntervalMs: jest.fn().mockResolvedValue(30_000),
 }));
 
+import {getDriveMapRefreshIntervalMs} from '@/lib/drive-map-refresh-settings';
 import {
   getTodayHistoryRefreshRevision,
   isDriveRefreshIntervalActiveForTests,
@@ -47,6 +48,7 @@ describe('today refresh scheduler', () => {
     jest.useFakeTimers();
     resetTodayRefreshSchedulerForTests();
     setTodayRefreshAppForeground(true);
+    jest.mocked(getDriveMapRefreshIntervalMs).mockResolvedValue(30_000);
   });
 
   afterEach(() => {
@@ -143,5 +145,41 @@ describe('today refresh scheduler', () => {
     await Promise.resolve();
 
     expect(isDriveRefreshIntervalActiveForTests()).toBe(false);
+  });
+
+  it('starts only one drive interval when start is requested concurrently', async () => {
+    let resolveInterval: ((ms: number) => void) | null = null;
+    jest.mocked(getDriveMapRefreshIntervalMs).mockImplementation(
+      () =>
+        new Promise<number>(resolve => {
+          resolveInterval = resolve;
+        }),
+    );
+
+    updateTodayRefreshAfterSync(openDrive());
+    updateTodayRefreshAfterSync(openDrive());
+
+    resolveInterval?.(30_000);
+    await Promise.resolve();
+
+    const listener = jest.fn();
+    subscribeTodayHistoryRefresh(listener);
+    jest.advanceTimersByTime(30_000);
+
+    expect(isDriveRefreshIntervalActiveForTests()).toBe(true);
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it('clears a pending GPS debounce when the drive interval starts', async () => {
+    const listener = jest.fn();
+    subscribeTodayHistoryRefresh(listener);
+
+    scheduleTodayRefreshAfterGps();
+    updateTodayRefreshAfterSync(openDrive());
+    await Promise.resolve();
+
+    jest.advanceTimersByTime(8_000);
+
+    expect(listener).not.toHaveBeenCalled();
   });
 });

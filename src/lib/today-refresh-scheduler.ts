@@ -30,6 +30,7 @@ let gpsRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 const GPS_REFRESH_DEBOUNCE_MS = 8_000;
 
 let driveRefreshInterval: ReturnType<typeof setInterval> | null = null;
+let driveIntervalStartRevision = 0;
 let appIsForeground = true;
 let driveIntervalMs = DEFAULT_DRIVE_MAP_REFRESH_INTERVAL_MS;
 
@@ -41,6 +42,7 @@ function clearGpsRefreshTimer(): void {
 }
 
 function stopDriveInterval(): void {
+  driveIntervalStartRevision += 1;
   if (driveRefreshInterval != null) {
     clearInterval(driveRefreshInterval);
     driveRefreshInterval = null;
@@ -51,7 +53,16 @@ async function startDriveInterval(): Promise<void> {
   if (!appIsForeground || driveRefreshInterval != null) {
     return;
   }
+  const startRevision = ++driveIntervalStartRevision;
+  clearGpsRefreshTimer();
   driveIntervalMs = await getDriveMapRefreshIntervalMs();
+  if (
+    startRevision !== driveIntervalStartRevision ||
+    !appIsForeground ||
+    driveRefreshInterval != null
+  ) {
+    return;
+  }
   driveRefreshInterval = setInterval(() => {
     refreshTodayOnForeground();
   }, driveIntervalMs);
@@ -113,8 +124,12 @@ export function scheduleTodayImmediateMapRefresh(): void {
 export function resetTodayRefreshSchedulerForTests(): void {
   todayRefreshRevision = 0;
   todayHistoryRefreshListeners.clear();
+  driveIntervalStartRevision = 0;
   clearGpsRefreshTimer();
-  stopDriveInterval();
+  if (driveRefreshInterval != null) {
+    clearInterval(driveRefreshInterval);
+    driveRefreshInterval = null;
+  }
   appIsForeground = true;
   driveIntervalMs = DEFAULT_DRIVE_MAP_REFRESH_INTERVAL_MS;
 }
