@@ -1,3 +1,6 @@
+# PAUSED — set open-pull-requests-limit back to 5 (npm) when re-enabling.
+# Dependabot still scans; it will not open new PRs while limits are 0.
+
 version: 2
 updates:
   - package-ecosystem: npm
@@ -5,7 +8,7 @@ updates:
     schedule:
       interval: weekly
       day: monday
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 0
     groups:
       react-native:
         patterns:
@@ -27,3 +30,4 @@ updates:
     directory: /
     schedule:
       interval: monthly
+    open-pull-requests-limit: 0

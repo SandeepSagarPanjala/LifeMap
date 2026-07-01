@@ -22,7 +22,7 @@ Coverage (#5) is deferred intentionally.
 
 | # | Item | Status | Notes |
 |---|------|--------|-------|
-| 6 | Dependabot | done | `.github/dependabot.yml` — npm weekly + actions monthly |
+| 6 | Dependabot | paused | `open-pull-requests-limit: 0` — re-enable later |
 
 ## Batch 4 — Resilience
 
@@ -34,7 +34,7 @@ Coverage (#5) is deferred intentionally.
 
 | # | Item | Status | Notes |
 |---|------|--------|-------|
-| 9 | Sentry spans on slow paths | done | `db.migrate`, `trip.materialize_day`, `backup.import_tables` |
+| 9 | Sentry spans on slow paths | deferred | Remove Sentry SDK; re-add via `sentry wizard` later |
 
 ## Batch 6 — Data safety
 

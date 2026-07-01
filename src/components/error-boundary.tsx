@@ -1,10 +1,15 @@
-import type {ComponentType, ReactNode} from 'react';
+import {
+  Component,
+  Fragment,
+  type ComponentType,
+  type ErrorInfo,
+  type ReactNode,
+} from 'react';
 import {View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 
 import {Button} from '@/components/ui/button';
 import {Text} from '@/components/ui/text';
-import {Sentry} from '@/lib/monitoring';
 
 type AppErrorBoundaryProps = {
   children: ReactNode;
@@ -16,6 +21,17 @@ type FeatureErrorBoundaryProps = {
   feature: FeatureId;
   children: ReactNode;
   onDismiss?: () => void;
+};
+
+type ErrorBoundaryProps = {
+  children: ReactNode;
+  fallback: (props: {resetError: () => void}) => ReactNode;
+  onError?: (error: Error, errorInfo: ErrorInfo) => void;
+};
+
+type ErrorBoundaryState = {
+  error: Error | null;
+  resetKey: number;
 };
 
 const FEATURE_COPY: Record<FeatureId, {title: string; body: string}> = {
@@ -70,6 +86,36 @@ function RootErrorFallback({resetError}: {resetError: () => void}) {
   );
 }
 
+class ReactErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  state: ErrorBoundaryState = {error: null, resetKey: 0};
+
+  static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
+    return {error};
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+    this.props.onError?.(error, errorInfo);
+    if (__DEV__) {
+      console.error('[ErrorBoundary]', error, errorInfo.componentStack);
+    }
+  }
+
+  resetError = (): void => {
+    this.setState(current => ({
+      error: null,
+      resetKey: current.resetKey + 1,
+    }));
+  };
+
+  render(): ReactNode {
+    if (this.state.error != null) {
+      return this.props.fallback({resetError: this.resetError});
+    }
+
+    return <Fragment key={this.state.resetKey}>{this.props.children}</Fragment>;
+  }
+}
+
 export function FeatureErrorBoundary({
   feature,
   children,
@@ -78,9 +124,11 @@ export function FeatureErrorBoundary({
   const copy = FEATURE_COPY[feature];
 
   return (
-    <Sentry.ErrorBoundary
-      beforeCapture={scope => {
-        scope.setTag('feature', feature);
+    <ReactErrorBoundary
+      onError={(error, errorInfo) => {
+        if (__DEV__) {
+          console.error(`[ErrorBoundary:${feature}]`, error, errorInfo.componentStack);
+        }
       }}
       fallback={({resetError}) => (
         <ErrorFallback
@@ -91,7 +139,7 @@ export function FeatureErrorBoundary({
         />
       )}>
       {children}
-    </Sentry.ErrorBoundary>
+    </ReactErrorBoundary>
   );
 }
 
@@ -118,6 +166,6 @@ export function withFeatureErrorBoundary<P extends object>(
 
 export function AppErrorBoundary({children}: AppErrorBoundaryProps) {
   return (
-    <Sentry.ErrorBoundary fallback={RootErrorFallback}>{children}</Sentry.ErrorBoundary>
+    <ReactErrorBoundary fallback={RootErrorFallback}>{children}</ReactErrorBoundary>
   );
 }

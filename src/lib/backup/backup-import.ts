@@ -7,7 +7,6 @@ import {
   savedPlaces,
   settings,
 } from '@/db/schema';
-import {withMonitoringSpan} from '@/lib/monitoring-spans';
 import {
   getTripByEventKey,
   updateTripCustomLabel,
@@ -258,20 +257,15 @@ async function importSettings(rows: unknown[]): Promise<void> {
 export async function importBackupTables(
   tables: BackupBundleTables,
 ): Promise<void> {
-  return withMonitoringSpan(
-    {name: 'backup.import_tables', op: 'backup.import'},
-    async () => {
-      const activityMap = await importActivities(tables.activities);
-      const locationPointMap = await importLocationPoints(tables.location_points);
-      const savedPlaceMap = await importSavedPlaces(tables.saved_places);
-      const placeLookupMap = await importPlaceLookupCache(tables.place_lookup_cache);
-      await importMoments(tables.moments, locationPointMap, activityMap);
-      await importSettings(tables.settings);
+  const activityMap = await importActivities(tables.activities);
+  const locationPointMap = await importLocationPoints(tables.location_points);
+  const savedPlaceMap = await importSavedPlaces(tables.saved_places);
+  const placeLookupMap = await importPlaceLookupCache(tables.place_lookup_cache);
+  await importMoments(tables.moments, locationPointMap, activityMap);
+  await importSettings(tables.settings);
 
-      void savedPlaceMap;
-      void placeLookupMap;
-    },
-  );
+  void savedPlaceMap;
+  void placeLookupMap;
 }
 
 export async function applyTripLabelOverrides(
