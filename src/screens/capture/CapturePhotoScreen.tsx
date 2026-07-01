@@ -226,7 +226,6 @@ export function CapturePhotoScreen() {
   const cameraReadyFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cameraCloseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cameraLeavingRef = useRef(false);
-  const cameraBackgroundPausedRef = useRef(false);
   const cameraShutdownIntentRef = useRef<CameraShutdownIntent | null>(null);
   const cameraShutdownCompletedRef = useRef(false);
   const pendingReviewDraftRef = useRef<MediaDraft | null>(null);
@@ -296,7 +295,6 @@ export function CapturePhotoScreen() {
       if (cameraShutdownIntentRef.current != null) {
         return;
       }
-      cameraBackgroundPausedRef.current = false;
       setCameraBackgroundPaused(false);
       cameraLeavingRef.current = true;
       cameraShutdownCompletedRef.current = false;
@@ -340,7 +338,6 @@ export function CapturePhotoScreen() {
       cameraShutdownIntentRef.current = null;
       cameraShutdownCompletedRef.current = false;
       pendingReviewDraftRef.current = null;
-      cameraBackgroundPausedRef.current = false;
       setCameraLeaving(false);
       setCameraBackgroundPaused(false);
       return () => {
@@ -356,14 +353,15 @@ export function CapturePhotoScreen() {
           setReviewPlaybackPaused(true);
         }
         if (phase === 'camera' && cameraShutdownIntentRef.current == null) {
-          cameraBackgroundPausedRef.current = true;
           setCameraBackgroundPaused(true);
         }
         return;
       }
       if (nextState === 'inactive') {
+        if (phase === 'review') {
+          setReviewPlaybackPaused(true);
+        }
         if (phase === 'camera' && cameraShutdownIntentRef.current == null) {
-          cameraBackgroundPausedRef.current = true;
           setCameraBackgroundPaused(true);
         }
         return;
@@ -373,7 +371,6 @@ export function CapturePhotoScreen() {
           setReviewPlaybackPaused(false);
         }
         if (phase === 'camera' && cameraShutdownIntentRef.current == null) {
-          cameraBackgroundPausedRef.current = false;
           setCameraBackgroundPaused(false);
         }
       }
@@ -456,7 +453,7 @@ export function CapturePhotoScreen() {
 
   useEffect(() => {
     if (phase === 'review' && draft?.kind === 'video') {
-      setReviewPlaybackPaused(false);
+      setReviewPlaybackPaused(AppState.currentState !== 'active');
       setReviewVideoEnded(false);
     }
   }, [draft?.kind, draft?.sourceUri, phase]);
@@ -572,7 +569,6 @@ export function CapturePhotoScreen() {
     pendingReviewDraftRef.current = null;
     clearCameraCloseTimeout();
     setCameraLeaving(false);
-    cameraBackgroundPausedRef.current = false;
     setCameraBackgroundPaused(false);
     setReviewVideoEnded(false);
     setReviewPlaybackPaused(false);
