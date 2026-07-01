@@ -1,8 +1,9 @@
-import {create} from 'zustand';
-import {persist, createJSONStorage} from 'zustand/middleware';
+import { Platform } from 'react-native';
+import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import {DEFAULT_ACCENT_THEME, type AccentThemeId} from '@/lib/color-themes';
+import { DEFAULT_ACCENT_THEME, type AccentThemeId } from '@/lib/color-themes';
 import {
   DEFAULT_TRIP_DWELL_MINUTES,
   DEFAULT_TRIP_DWELL_RADIUS_METERS,
@@ -12,6 +13,9 @@ import {
 
 export type DistanceUnit = 'km' | 'mi';
 export type PreferredMapApp = 'google' | 'apple';
+
+const DEFAULT_PREFERRED_MAP_APP: PreferredMapApp =
+  Platform.OS === 'ios' ? 'apple' : 'google';
 
 type AppState = {
   hasCompletedPrivacyOnboarding: boolean;
@@ -34,6 +38,20 @@ type AppState = {
   setHistoryEarliestDateKey: (dateKey: string) => void;
 };
 
+function persistedAppState(state: AppState) {
+  return {
+    hasCompletedPrivacyOnboarding: state.hasCompletedPrivacyOnboarding,
+    accentTheme: state.accentTheme,
+    slowSplashEnabled: state.slowSplashEnabled,
+    distanceUnit: state.distanceUnit,
+    preferredMapApp: state.preferredMapApp,
+    tripDwellMinutes: state.tripDwellMinutes,
+    tripDwellRadiusMeters: state.tripDwellRadiusMeters,
+    historyEarliestDateKey: state.historyEarliestDateKey,
+    ...(__DEV__ ? { devShowOnboarding: state.devShowOnboarding } : {}),
+  };
+}
+
 export const useAppStore = create<AppState>()(
   persist(
     set => ({
@@ -42,35 +60,37 @@ export const useAppStore = create<AppState>()(
       slowSplashEnabled: false,
       devShowOnboarding: false,
       distanceUnit: 'km',
-      preferredMapApp: 'apple',
+      preferredMapApp: DEFAULT_PREFERRED_MAP_APP,
       tripDwellMinutes: DEFAULT_TRIP_DWELL_MINUTES,
       tripDwellRadiusMeters: DEFAULT_TRIP_DWELL_RADIUS_METERS,
       historyEarliestDateKey: null,
-      completePrivacyOnboarding: () => set({hasCompletedPrivacyOnboarding: true}),
-      setAccentTheme: theme => set({accentTheme: theme}),
-      setSlowSplashEnabled: enabled => set({slowSplashEnabled: enabled}),
-      setDevShowOnboarding: enabled => set({devShowOnboarding: enabled}),
-      setDistanceUnit: unit => set({distanceUnit: unit}),
-      setPreferredMapApp: app => set({preferredMapApp: app}),
-      setTripDwellMinutes: tripDwellMinutes => set({tripDwellMinutes}),
+      completePrivacyOnboarding: () =>
+        set({ hasCompletedPrivacyOnboarding: true }),
+      setAccentTheme: theme => set({ accentTheme: theme }),
+      setSlowSplashEnabled: enabled => set({ slowSplashEnabled: enabled }),
+      setDevShowOnboarding: enabled => {
+        if (!__DEV__) {
+          return;
+        }
+        set({ devShowOnboarding: enabled });
+      },
+      setDistanceUnit: unit => set({ distanceUnit: unit }),
+      setPreferredMapApp: app => set({ preferredMapApp: app }),
+      setTripDwellMinutes: tripDwellMinutes => set({ tripDwellMinutes }),
       setTripDwellRadiusMeters: tripDwellRadiusMeters =>
-        set({tripDwellRadiusMeters}),
+        set({ tripDwellRadiusMeters }),
       setHistoryEarliestDateKey: historyEarliestDateKey =>
-        set({historyEarliestDateKey}),
+        set({ historyEarliestDateKey }),
     }),
     {
       name: 'lifemap-app',
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: state => ({
-        hasCompletedPrivacyOnboarding: state.hasCompletedPrivacyOnboarding,
-        accentTheme: state.accentTheme,
-        slowSplashEnabled: state.slowSplashEnabled,
-        devShowOnboarding: state.devShowOnboarding,
-        distanceUnit: state.distanceUnit,
-        preferredMapApp: state.preferredMapApp,
-        tripDwellMinutes: state.tripDwellMinutes,
-        tripDwellRadiusMeters: state.tripDwellRadiusMeters,
+      partialize: persistedAppState,
+      merge: (persisted, current) => ({
+        ...current,
+        ...(persisted as Partial<AppState>),
+        ...(!__DEV__ ? { devShowOnboarding: false } : {}),
       }),
-    }
-  )
+    },
+  ),
 );
