@@ -2,6 +2,7 @@ import {useCallback, useEffect, useRef, useState, type ElementRef} from 'react';
 import {
   ActivityIndicator,
   Alert,
+  AppState,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -122,6 +123,8 @@ type VideoDraft = {
 
 type MediaDraft = PhotoDraft | VideoDraft;
 
+type CameraShutdownIntent = 'close' | 'review';
+
 function toFileUri(path: string): string {
   return path.startsWith('file://') ? path : `file://${path}`;
 }
@@ -222,8 +225,12 @@ export function CapturePhotoScreen() {
   const cameraReadyFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cameraCloseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cameraLeavingRef = useRef(false);
+  const cameraShutdownIntentRef = useRef<CameraShutdownIntent | null>(null);
+  const cameraShutdownCompletedRef = useRef(false);
+  const pendingReviewDraftRef = useRef<MediaDraft | null>(null);
   const allowScreenRemoveRef = useRef(false);
   const [cameraLeaving, setCameraLeaving] = useState(false);
+  const [reviewPlaybackPaused, setReviewPlaybackPaused] = useState(false);
   const device = useCameraDevice(cameraPosition);
 
   const markCameraReady = useCallback(() => {
@@ -252,24 +259,69 @@ export function CapturePhotoScreen() {
     navigation.goBack();
   }, [clearCameraCloseTimeout, navigation]);
 
-  const beginCameraShutdownAndClose = useCallback(() => {
-    if (cameraLeavingRef.current) {
+  const completeCameraShutdown = useCallback(() => {
+    if (cameraShutdownCompletedRef.current) {
       return;
     }
-    cameraLeavingRef.current = true;
-    setCameraLeaving(true);
+    const intent = cameraShutdownIntentRef.current;
+    if (intent == null) {
+      return;
+    }
+    cameraShutdownCompletedRef.current = true;
     clearCameraCloseTimeout();
-    cameraCloseTimeoutRef.current = setTimeout(() => {
-      completeScreenClose();
-    }, CAMERA_STOP_RELEASE_MS);
+    cameraShutdownIntentRef.current = null;
+
+    if (intent === 'review') {
+      const pendingDraft = pendingReviewDraftRef.current;
+      pendingReviewDraftRef.current = null;
+      cameraLeavingRef.current = false;
+      setCameraLeaving(false);
+      if (pendingDraft != null) {
+        setDraft(pendingDraft);
+        setPhase('review');
+      }
+      return;
+    }
+
+    completeScreenClose();
   }, [clearCameraCloseTimeout, completeScreenClose]);
+
+  const beginCameraShutdown = useCallback(
+    (intent: CameraShutdownIntent, reviewDraft?: MediaDraft) => {
+      if (cameraLeavingRef.current) {
+        return;
+      }
+      cameraLeavingRef.current = true;
+      cameraShutdownCompletedRef.current = false;
+      cameraShutdownIntentRef.current = intent;
+      pendingReviewDraftRef.current =
+        intent === 'review' ? (reviewDraft ?? null) : null;
+      setCameraLeaving(true);
+      clearCameraCloseTimeout();
+      cameraCloseTimeoutRef.current = setTimeout(() => {
+        completeCameraShutdown();
+      }, CAMERA_STOP_RELEASE_MS);
+    },
+    [clearCameraCloseTimeout, completeCameraShutdown],
+  );
+
+  const beginCameraShutdownAndClose = useCallback(() => {
+    beginCameraShutdown('close');
+  }, [beginCameraShutdown]);
+
+  const beginCameraShutdownForReview = useCallback(
+    (reviewDraft: MediaDraft) => {
+      beginCameraShutdown('review', reviewDraft);
+    },
+    [beginCameraShutdown],
+  );
 
   const handlePreviewStopped = useCallback(() => {
     markCameraNotReady();
     if (cameraLeavingRef.current) {
-      completeScreenClose();
+      completeCameraShutdown();
     }
-  }, [completeScreenClose, markCameraNotReady]);
+  }, [completeCameraShutdown, markCameraNotReady]);
 
   const isCameraMounted =
     hasPermission && phase === 'camera' && device != null;
@@ -278,12 +330,42 @@ export function CapturePhotoScreen() {
     useCallback(() => {
       allowScreenRemoveRef.current = false;
       cameraLeavingRef.current = false;
+      cameraShutdownIntentRef.current = null;
+      cameraShutdownCompletedRef.current = false;
+      pendingReviewDraftRef.current = null;
       setCameraLeaving(false);
       return () => {
         clearCameraCloseTimeout();
       };
     }, [clearCameraCloseTimeout]),
   );
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextState => {
+      setReviewPlaybackPaused(nextState !== 'active');
+      if (nextState === 'background' || nextState === 'inactive') {
+        if (
+          phase === 'camera' &&
+          !cameraLeavingRef.current &&
+          cameraShutdownIntentRef.current == null
+        ) {
+          cameraLeavingRef.current = true;
+          setCameraLeaving(true);
+        }
+        return;
+      }
+      if (
+        nextState === 'active' &&
+        phase === 'camera' &&
+        cameraShutdownIntentRef.current == null &&
+        cameraLeavingRef.current
+      ) {
+        cameraLeavingRef.current = false;
+        setCameraLeaving(false);
+      }
+    });
+    return () => subscription.remove();
+  }, [phase]);
 
   useEffect(() => {
     setCameraReady(false);
@@ -453,13 +535,19 @@ export function CapturePhotoScreen() {
   const handleRetake = useCallback(() => {
     resetRecordingState();
     void clearVoice();
+    cameraLeavingRef.current = false;
+    cameraShutdownIntentRef.current = null;
+    cameraShutdownCompletedRef.current = false;
+    pendingReviewDraftRef.current = null;
+    clearCameraCloseTimeout();
+    setCameraLeaving(false);
     setDraft(null);
     setSelectedFilter('original');
     setRotationSteps(0);
     setCaptionText('');
     setCaptionInputOpen(false);
     setPhase('camera');
-  }, [clearVoice, resetRecordingState]);
+  }, [clearCameraCloseTimeout, clearVoice, resetRecordingState]);
 
   const handleDismissCaption = useCallback(() => {
     Keyboard.dismiss();
@@ -504,14 +592,13 @@ export function CapturePhotoScreen() {
       }
 
       setSelectedFilter('original');
-      setDraft({
+      beginCameraShutdownForReview({
         kind: 'video',
         sourceUri: toFileUri(filePath),
         durationMs,
       });
-      setPhase('review');
     },
-    [resetRecordingState],
+    [beginCameraShutdownForReview, resetRecordingState],
   );
 
   const handleVideoRecordingError = useCallback(
@@ -629,13 +716,12 @@ export function CapturePhotoScreen() {
       }
       const normalized = await normalizeCameraPhoto(toFileUri(photoFile.filePath));
       setSelectedFilter('original');
-      setDraft({
+      beginCameraShutdownForReview({
         kind: 'photo',
         sourceUri: normalized.uri,
         sourceWidth: normalized.width,
         sourceHeight: normalized.height,
       });
-      setPhase('review');
     } catch (error) {
       Alert.alert(
         'Could not take photo',
@@ -644,7 +730,7 @@ export function CapturePhotoScreen() {
     } finally {
       setCapturing(false);
     }
-  }, [capturing, flashMode, photoOutput]);
+  }, [beginCameraShutdownForReview, capturing, flashMode, photoOutput]);
 
   const handleSave = useCallback(async () => {
     if (saving || draft == null) {
@@ -672,6 +758,9 @@ export function CapturePhotoScreen() {
           setSaveStatus(update);
         });
       }
+      await voicePlayerRef.current.stopPreview();
+      setVoicePlaying(false);
+      allowScreenRemoveRef.current = true;
       navigation.goBack();
     } catch (error) {
       Alert.alert(
@@ -934,6 +1023,7 @@ export function CapturePhotoScreen() {
             uri={draft.sourceUri}
             style={StyleSheet.absoluteFill}
             repeat
+            paused={reviewPlaybackPaused || saving}
           />
         </View>
       )}
