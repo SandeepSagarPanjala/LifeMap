@@ -42,6 +42,7 @@ import {
 } from '@/lib/day-utils';
 import type { HistoryData } from '@/lib/history-data-types';
 import { clearHistoryDataCache } from '@/lib/history-data-cache';
+import { withMonitoringSpan } from '@/lib/monitoring-spans';
 import { yieldToEventLoop } from '@/lib/run-when-idle';
 import { buildExplorerDayTimelineFromGps } from '@/lib/explorer-day-trips';
 import { buildTimelineFromStoredTrips } from '@/lib/timeline-from-trips';
@@ -492,61 +493,70 @@ export async function loadHistoryForSelectedDay(
   detectionConfig: TripDetectionConfig,
   options?: LoadHistoryOptions,
 ): Promise<HistoryData> {
-  const isToday = dateKey === getTodayDateKey();
-  const referenceNow = new Date();
+  return withMonitoringSpan(
+    {
+      name: 'trip.materialize_day',
+      op: 'trip.materialization',
+      attributes: {dateKey},
+    },
+    async () => {
+      const isToday = dateKey === getTodayDateKey();
+      const referenceNow = new Date();
 
-  if (isToday) {
-    return syncTodayDisplay(detectionConfig, referenceNow, {
-      skipRepair: options?.preferStored,
-      onPartial: options?.onPartial,
-    });
-  }
-
-  if (!options?.force && !isToday) {
-    let [tripRows, materializedDay] = await Promise.all([
-      listTripsForDay(dateKey),
-      getMaterializedDay(dateKey),
-    ]);
-
-    if (
-      materializedDay != null &&
-      materializedDay.detectionVersion < TRIP_DETECTION_VERSION &&
-      tripRows.length > 0
-    ) {
-      await purgeMaterializedDayCache(dateKey, materializedDay.pointCount);
-      tripRows = [];
-      materializedDay = null;
-    }
-
-    if (tripRows.length > 0) {
-      const canLoadFromStore = await pastDayCanLoadFromStore(dateKey, tripRows);
-      if (canLoadFromStore) {
-        return loadHistoryFromStoredTrips(
-          dateKey,
-          tripRows,
-          undefined,
-          detectionConfig,
-        );
+      if (isToday) {
+        return syncTodayDisplay(detectionConfig, referenceNow, {
+          skipRepair: options?.preferStored,
+          onPartial: options?.onPartial,
+        });
       }
-    }
-  }
 
-  if (options?.force) {
-    const materializedDay = await getMaterializedDay(dateKey);
-    if (
-      materializedDay != null &&
-      materializedDay.detectionVersion < TRIP_DETECTION_VERSION
-    ) {
-      await purgeMaterializedDayCache(dateKey, materializedDay.pointCount);
-    }
-  }
+      if (!options?.force && !isToday) {
+        let [tripRows, materializedDay] = await Promise.all([
+          listTripsForDay(dateKey),
+          getMaterializedDay(dateKey),
+        ]);
 
-  await materializePastDayFromGps(dateKey, detectionConfig);
-  return loadHistoryFromStoredTrips(
-    dateKey,
-    undefined,
-    undefined,
-    detectionConfig,
+        if (
+          materializedDay != null &&
+          materializedDay.detectionVersion < TRIP_DETECTION_VERSION &&
+          tripRows.length > 0
+        ) {
+          await purgeMaterializedDayCache(dateKey, materializedDay.pointCount);
+          tripRows = [];
+          materializedDay = null;
+        }
+
+        if (tripRows.length > 0) {
+          const canLoadFromStore = await pastDayCanLoadFromStore(dateKey, tripRows);
+          if (canLoadFromStore) {
+            return loadHistoryFromStoredTrips(
+              dateKey,
+              tripRows,
+              undefined,
+              detectionConfig,
+            );
+          }
+        }
+      }
+
+      if (options?.force) {
+        const materializedDay = await getMaterializedDay(dateKey);
+        if (
+          materializedDay != null &&
+          materializedDay.detectionVersion < TRIP_DETECTION_VERSION
+        ) {
+          await purgeMaterializedDayCache(dateKey, materializedDay.pointCount);
+        }
+      }
+
+      await materializePastDayFromGps(dateKey, detectionConfig);
+      return loadHistoryFromStoredTrips(
+        dateKey,
+        undefined,
+        undefined,
+        detectionConfig,
+      );
+    },
   );
 }
 

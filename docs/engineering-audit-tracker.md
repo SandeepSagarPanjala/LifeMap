@@ -28,19 +28,19 @@ Coverage (#5) is deferred intentionally.
 
 | # | Item | Status | Notes |
 |---|------|--------|-------|
-| 11 | Feature error boundaries (map, capture) | todo | Prevent full-app white screen |
+| 11 | Feature error boundaries (map, capture) | done | `FeatureErrorBoundary` on Map + CapturePhoto screens |
 
 ## Batch 5 — Observability
 
 | # | Item | Status | Notes |
 |---|------|--------|-------|
-| 9 | Sentry spans on slow paths | todo | migrate, trip materialize, backup import |
+| 9 | Sentry spans on slow paths | done | `db.migrate`, `trip.materialize_day`, `backup.import_tables` |
 
 ## Batch 6 — Data safety
 
 | # | Item | Status | Notes |
 |---|------|--------|-------|
-| 10 | Validate JSON blob columns at repo boundary | todo | `photoAttachmentsJson`, `candidatesJson` |
+| 10 | Validate JSON blob columns at repo boundary | done | `sanitizePhotoAttachmentsJson`, `sanitizeCandidatesJson` |
 
 ## Batch 7 — Migrations cleanup
 

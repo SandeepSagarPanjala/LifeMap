@@ -1,5 +1,6 @@
 import type {DB} from '@op-engineering/op-sqlite';
 
+import {withMonitoringSpan} from '@/lib/monitoring-spans';
 import {
   countLocationPointDuplicateExtraRows,
   ensureLocationPointsDedupeUniqueIndex,
@@ -338,37 +339,40 @@ async function executeMigrationStatement(
  * Run bundled migrations directly against op-sqlite instead.
  */
 export async function runMigrations(sqlite: DB): Promise<void> {
-  const prepared = prepareMigrations();
-  await ensureMigrationsTable(sqlite);
+  return withMonitoringSpan({name: 'db.migrate', op: 'db.migration'}, async () => {
+    const prepared = prepareMigrations();
+    await ensureMigrationsTable(sqlite);
 
-  const migrationCount = await sqlite.execute(
-    `SELECT COUNT(*) AS count FROM "${MIGRATIONS_TABLE}"`,
-  );
-  const appliedCount = Number(
-    (migrationCount.rows?.[0] as {count?: number | string} | undefined)?.count ?? 0,
-  );
+    const migrationCount = await sqlite.execute(
+      `SELECT COUNT(*) AS count FROM "${MIGRATIONS_TABLE}"`,
+    );
+    const appliedCount = Number(
+      (migrationCount.rows?.[0] as {count?: number | string} | undefined)?.count ??
+        0,
+    );
 
-  if (appliedCount === 0 && (await tableExists(sqlite, 'location_points'))) {
-    await bootstrapExistingMigrationJournal(sqlite, prepared);
-  }
-
-  const pending = await collectPendingMigrations(sqlite, prepared);
-  if (pending.length === 0) {
-    return;
-  }
-
-  await sqlite.transaction(async tx => {
-    for (const migration of pending) {
-      if (migration.tag === '0019_location_points_dedupe_unique') {
-        if ((await countLocationPointDuplicateExtraRows(tx)) > 0) {
-          continue;
-        }
-      }
-      for (const statement of migration.sql) {
-        await executeMigrationStatement(tx, statement);
-      }
-      await recordMigrationIfMissing(migration, tx);
+    if (appliedCount === 0 && (await tableExists(sqlite, 'location_points'))) {
+      await bootstrapExistingMigrationJournal(sqlite, prepared);
     }
+
+    const pending = await collectPendingMigrations(sqlite, prepared);
+    if (pending.length === 0) {
+      return;
+    }
+
+    await sqlite.transaction(async tx => {
+      for (const migration of pending) {
+        if (migration.tag === '0019_location_points_dedupe_unique') {
+          if ((await countLocationPointDuplicateExtraRows(tx)) > 0) {
+            continue;
+          }
+        }
+        for (const statement of migration.sql) {
+          await executeMigrationStatement(tx, statement);
+        }
+        await recordMigrationIfMissing(migration, tx);
+      }
+    });
   });
 }
 
