@@ -55,6 +55,7 @@ export const MapScreenMap = memo(function MapScreenMap({
     openSelectedEntryMomentsPreview,
     playback,
     savedPlaces,
+    showSavedPlaceMarkersOnMap,
     savedPlaceMomentClusters,
   } = controller;
 
@@ -84,8 +85,10 @@ export const MapScreenMap = memo(function MapScreenMap({
       onUserLocationChange={handleUserLocation}
       onLongPress={handleMapLongPress}>
       <SavedPlacesMapOverlay
-        places={savedPlaces}
-        momentClusters={savedPlaceMomentClusters}
+        places={showSavedPlaceMarkersOnMap ? savedPlaces : []}
+        momentClusters={
+          showSavedPlaceMarkersOnMap ? savedPlaceMomentClusters : []
+        }
         hideMarkerPlaceId={
           showHistoryMap
             ? (selectedSavedPlace?.id ??

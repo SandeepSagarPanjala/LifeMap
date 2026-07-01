@@ -63,6 +63,7 @@ export function areMapScreenMapPropsEqual(
     previous.onRegionChangeComplete === next.onRegionChangeComplete &&
     previous.handleUserLocation === next.handleUserLocation &&
     previous.showDayJourney === next.showDayJourney &&
+    previous.showSavedPlaceMarkersOnMap === next.showSavedPlaceMarkersOnMap &&
     previous.dayMomentMapPins === next.dayMomentMapPins &&
     previous.historyMomentMapPins === next.historyMomentMapPins &&
     previous.openMomentMapPinPreview === next.openMomentMapPinPreview &&

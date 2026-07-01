@@ -450,6 +450,30 @@ export function stayMapMarkerCoordinate(
   return stayMapCentroid(stay);
 }
 
+/** Within dwell radius of any stay point or the ongoing map centroid. */
+export function isUserStillAtStay(
+  userCoordinate: LocationPointLike,
+  stay: DetectedTrip,
+  config: TripDetectionConfig,
+): boolean {
+  if (stay.points.length === 0) {
+    return true;
+  }
+  const limitM = config.dwellRadiusMeters + 5;
+  if (minDistanceToStayM(userCoordinate, stay) <= limitM) {
+    return true;
+  }
+  const marker = stayMapMarkerCoordinate(stay, {ongoing: true});
+  return (
+    distanceKm(userCoordinate, {
+      lat: marker.latitude,
+      lng: marker.longitude,
+    }) *
+      1000 <=
+    limitM
+  );
+}
+
 /**
  * History visit map: inbound drive through turn-in until the visit arrival save.
  */

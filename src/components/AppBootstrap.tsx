@@ -10,7 +10,7 @@ import {
 import {ensureHistoryCalendarBounds} from '@/lib/history-calendar-bounds';
 import {preloadTodayHistory} from '@/lib/history-preload';
 import {sealYesterdayIfNeeded} from '@/lib/trip-materialization';
-import {refreshTodayOnForeground} from '@/lib/today-refresh-scheduler';
+import {refreshTodayOnForeground, setTodayRefreshAppForeground} from '@/lib/today-refresh-scheduler';
 import {warmCanonicalTravelGeometrySetting} from '@/lib/trip-geometry-settings';
 import {runWhenIdle, yieldToEventLoop} from '@/lib/run-when-idle';
 import {useAppStore} from '@/stores/app-store';
@@ -112,6 +112,7 @@ export function AppBootstrap({
 
   useEffect(() => {
     initializeTrackingDiagnosticsEnabled();
+    setTodayRefreshAppForeground(AppState.currentState === 'active');
   }, []);
 
   useEffect(() => {
@@ -122,6 +123,7 @@ export function AppBootstrap({
       }
       const previous = currentState;
       currentState = nextState;
+      setTodayRefreshAppForeground(nextState === 'active');
       void recordTrackingDiagnostic('app_state_change', {
         previous,
         next: nextState,
@@ -136,6 +138,7 @@ export function AppBootstrap({
           void warmCanonicalTravelGeometrySetting().then(() =>
             sealYesterdayIfNeeded(),
           );
+          refreshTodayOnForeground();
           void (async () => {
             try {
               await service.drainNativeQueue();

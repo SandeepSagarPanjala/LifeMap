@@ -499,6 +499,10 @@ export function scheduleTodayRepair(
   repairPromise = (async () => {
     try {
       await repairTodayInDb(detectionConfig);
+      const {refreshTodayOnForeground} = await import(
+        '@/lib/today-refresh-scheduler'
+      );
+      refreshTodayOnForeground();
     } catch {
       // Best-effort repair.
     } finally {

@@ -792,6 +792,11 @@ export function useMapScreenController() {
     historyReadyForDay &&
     selectedHistoryIndex >= 0 &&
     historyMapPlan.selected != null;
+
+  /** Defer pins until today's timeline exists so Home isn't shown then hidden when the card loads. */
+  const showSavedPlaceMarkersOnMap =
+    showHistoryMap || !viewingToday || historyHasGpsData;
+
   const dayMomentMapPinsRaw = useMemo((): MomentMapPin[] => {
     if (!showDayJourney || currentOpenVisit != null) {
       return [];
@@ -1559,6 +1564,7 @@ export function useMapScreenController() {
     showHistoryPanelContent,
     showHistoryMap,
     showDayJourney,
+    showSavedPlaceMarkersOnMap,
     currentVisitMomentCounts,
     dayMomentMapPins,
     historyMomentMapPins,

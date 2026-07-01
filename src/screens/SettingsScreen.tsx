@@ -15,6 +15,10 @@ import {TrackingSettings} from '@/components/settings/tracking-settings';
 import {TripRebuildSettings} from '@/components/settings/trip-rebuild-settings';
 import {backupScheduleLabel} from '@/lib/backup/backup-settings';
 import {getBackupStatus} from '@/lib/backup/backup-service';
+import {
+  driveMapRefreshIntervalLabel,
+  getDriveMapRefreshIntervalMs,
+} from '@/lib/drive-map-refresh-settings';
 import {formatStorageBytes} from '@/lib/format-storage';
 import {loadCachedStorageBreakdown} from '@/lib/settings-stats';
 import type {RootStackParamList} from '@/navigation/types';
@@ -33,6 +37,9 @@ export function SettingsScreen() {
   const preferredMapApp = useAppStore(state => state.preferredMapApp);
   const [storageSummary, setStorageSummary] = useState<string | undefined>();
   const [backupSummary, setBackupSummary] = useState<string | undefined>();
+  const [driveMapRefreshSummary, setDriveMapRefreshSummary] = useState<
+    string | undefined
+  >();
 
   useFocusEffect(
     useCallback(() => {
@@ -65,6 +72,17 @@ export function SettingsScreen() {
         } catch {
           if (!cancelled) {
             setBackupSummary(undefined);
+          }
+        }
+
+        try {
+          const intervalMs = await getDriveMapRefreshIntervalMs();
+          if (!cancelled) {
+            setDriveMapRefreshSummary(driveMapRefreshIntervalLabel(intervalMs));
+          }
+        } catch {
+          if (!cancelled) {
+            setDriveMapRefreshSummary(undefined);
           }
         }
       };
@@ -111,6 +129,13 @@ export function SettingsScreen() {
         <TrackingSettings />
 
         <SettingsGroupLabel title="Trips" />
+        <SettingsGroup>
+          <SettingsLinkRow
+            label="Drive map updates"
+            value={driveMapRefreshSummary}
+            onPress={() => navigation.navigate('DriveMapRefreshSettings')}
+          />
+        </SettingsGroup>
         <TripRebuildSettings />
 
         <SettingsGroupLabel title="Information" />

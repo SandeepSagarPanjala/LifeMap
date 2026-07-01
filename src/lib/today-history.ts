@@ -5,6 +5,7 @@ import {getDayRange, toDateKey} from '@/lib/day-utils';
 import {calculatePathDistanceKm} from '@/lib/location-geo';
 import {
   arePointsSamePlace,
+  isUserStillAtStay,
   dedupeLocationPoints,
   type DayTimelineEntry,
   type DetectedTrip,
@@ -499,11 +500,10 @@ export function getCurrentOpenActivity(
   }
 
   const {userCoordinate, config} = options ?? {};
-  if (userCoordinate != null && config != null && last.points.length > 0) {
-    const anchor = last.points[last.points.length - 1]!;
-    const stillHere = arePointsSamePlace(
+  if (userCoordinate != null && config != null) {
+    const stillHere = isUserStillAtStay(
       {lat: userCoordinate.latitude, lng: userCoordinate.longitude},
-      anchor,
+      last,
       config,
     );
     if (!stillHere) {
