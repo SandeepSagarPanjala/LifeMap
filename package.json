@@ -105,7 +105,7 @@
     "postcss": "^8.5.15",
     "prettier": "2.8.8",
     "react-test-renderer": "19.2.3",
-    "typescript": "^5.8.3"
+    "typescript": "^6.0.3"
   },
   "engines": {
     "node": ">= 20"
