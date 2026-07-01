@@ -27,6 +27,7 @@ import {
   useVideoOutput,
   type Recorder,
 } from 'react-native-vision-camera';
+import {ResizeMode} from 'react-native-video';
 import ViewShot from 'react-native-view-shot';
 
 import {FilteredCaptureImage} from '@/components/capture/FilteredCaptureImage';
@@ -348,10 +349,17 @@ export function CapturePhotoScreen() {
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextState => {
-      if (nextState === 'background' || nextState === 'inactive') {
+      if (nextState === 'background') {
         if (phase === 'review') {
           setReviewPlaybackPaused(true);
         }
+        if (phase === 'camera' && cameraShutdownIntentRef.current == null) {
+          cameraBackgroundPausedRef.current = true;
+          setCameraBackgroundPaused(true);
+        }
+        return;
+      }
+      if (nextState === 'inactive') {
         if (phase === 'camera' && cameraShutdownIntentRef.current == null) {
           cameraBackgroundPausedRef.current = true;
           setCameraBackgroundPaused(true);
@@ -435,14 +443,20 @@ export function CapturePhotoScreen() {
     (device.hasFlash || cameraPosition === 'front');
 
   useEffect(() => {
-    if (phase !== 'review') {
+    if (phase !== 'review' || draft?.kind !== 'photo') {
       return;
     }
     const timer = setTimeout(() => {
       void prepareVoiceRecordingSession();
     }, CAMERA_AUDIO_RELEASE_MS);
     return () => clearTimeout(timer);
-  }, [phase]);
+  }, [draft?.kind, phase]);
+
+  useEffect(() => {
+    if (phase === 'review' && draft?.kind === 'video') {
+      setReviewPlaybackPaused(false);
+    }
+  }, [draft?.kind, phase]);
 
   const handleOpenVoiceSheet = useCallback(() => {
     void (async () => {
@@ -1032,6 +1046,7 @@ export function CapturePhotoScreen() {
           <MomentVideoPlayer
             uri={draft.sourceUri}
             style={StyleSheet.absoluteFill}
+            resizeMode={ResizeMode.COVER}
             repeat
             paused={reviewPlaybackPaused || saving}
           />

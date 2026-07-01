@@ -1,11 +1,12 @@
 import type {StyleProp, ViewStyle} from 'react-native';
-import Video from 'react-native-video';
+import Video, {ResizeMode} from 'react-native-video';
 
 type MomentVideoPlayerProps = {
   uri: string;
   style?: StyleProp<ViewStyle>;
   paused?: boolean;
   repeat?: boolean;
+  resizeMode?: ResizeMode;
 };
 
 export function MomentVideoPlayer({
@@ -13,12 +14,13 @@ export function MomentVideoPlayer({
   style,
   paused = false,
   repeat = true,
+  resizeMode = ResizeMode.CONTAIN,
 }: MomentVideoPlayerProps) {
   return (
     <Video
       source={{uri}}
       style={style}
-      resizeMode="contain"
+      resizeMode={resizeMode}
       paused={paused}
       repeat={repeat}
       ignoreSilentSwitch="ignore"
