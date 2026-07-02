@@ -43,6 +43,7 @@ import {
 } from '@/lib/day-utils';
 import type { HistoryData } from '@/lib/history-data-types';
 import { clearHistoryDataCache } from '@/lib/history-data-cache';
+import { isCurrentHistoryDayLoad } from '@/lib/history-day-load';
 import { yieldToEventLoop } from '@/lib/run-when-idle';
 import { buildExplorerDayTimelineFromGps } from '@/lib/explorer-day-trips';
 import { buildTimelineFromStoredTrips } from '@/lib/timeline-from-trips';
@@ -477,7 +478,22 @@ export type LoadHistoryOptions = {
   /** Read sealed trips from DB without running live GPS detection. */
   preferStored?: boolean;
   onPartial?: (data: HistoryData) => void;
+  loadGeneration?: number;
 };
+
+function isStaleHistoryLoad(loadGeneration?: number): boolean {
+  return loadGeneration != null && !isCurrentHistoryDayLoad(loadGeneration);
+}
+
+function emptyHistoryForDateKey(dateKey: string): HistoryData {
+  const { start: dayStart } = getDayRange(dateKey);
+  return {
+    dateKey,
+    points: [],
+    entries: [],
+    range: { startAt: dayStart, endAt: endOfDay(dayStart) },
+  };
+}
 
 export async function loadHistoryForSelectedDay(
   dateKey: string,
@@ -532,7 +548,16 @@ export async function loadHistoryForSelectedDay(
     }
   }
 
+  if (isStaleHistoryLoad(options?.loadGeneration)) {
+    return emptyHistoryForDateKey(dateKey);
+  }
+
   await materializePastDayFromGps(dateKey, detectionConfig);
+
+  if (isStaleHistoryLoad(options?.loadGeneration)) {
+    return emptyHistoryForDateKey(dateKey);
+  }
+
   return loadHistoryFromStoredTrips(
     dateKey,
     undefined,

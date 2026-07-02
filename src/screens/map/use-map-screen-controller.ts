@@ -207,13 +207,6 @@ export function useMapScreenController() {
   const historyEntries = historyData.entries;
 
   useEffect(() => {
-    if (viewingToday) {
-      return;
-    }
-    void preloadTodayHistory();
-  }, [viewingToday, todayKey]);
-
-  useEffect(() => {
     setPlaceLabelEditStay(null);
   }, [selectedHistoryIndex, selectedDateKey]);
 
