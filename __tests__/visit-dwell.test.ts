@@ -26,6 +26,7 @@ function makeStay(
   durationMs: number,
   lat = 33.2,
   lng = -97.1,
+  savedPlaceId?: number,
 ): DetectedTrip {
   const startAt = new Date('2026-06-13T22:33:00.000Z');
   return {
@@ -57,18 +58,19 @@ function makeStay(
     endAt: new Date(startAt.getTime() + durationMs),
     distanceKm: 0,
     durationMs,
+    savedPlaceId,
   };
 }
 
 describe('visit dwell rules', () => {
   it('requires 1 minute at a saved place', () => {
-    const stay = makeStay(60_000);
+    const stay = makeStay(60_000, 33.2, -97.1, 1);
     expect(minimumVisitDwellMinutes(config, stay, savedPlaces)).toBe(1);
     expect(stayMeetsMinimumVisitDwell(stay, config, savedPlaces)).toBe(true);
   });
 
   it('does not count a saved-place stop shorter than 1 minute', () => {
-    const stay = makeStay(30_000);
+    const stay = makeStay(30_000, 33.2, -97.1, 1);
     expect(stayMeetsMinimumVisitDwell(stay, config, savedPlaces)).toBe(false);
   });
 

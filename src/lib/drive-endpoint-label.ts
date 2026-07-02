@@ -76,6 +76,16 @@ export function resolveDriveEndpointLabelFromStaySync(
     };
   }
 
+  const cacheLabel = stay.placeLookupLabel?.trim();
+  if (cacheLabel) {
+    return {
+      source: 'auto-label',
+      text: cacheLabel,
+      savedPlace: null,
+      pinned: false,
+    };
+  }
+
   return EMPTY_DRIVE_ENDPOINT_LABEL;
 }
 

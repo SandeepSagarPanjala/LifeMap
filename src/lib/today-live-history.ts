@@ -1,4 +1,5 @@
 import type {LocationPointRow} from '@/db/repositories/location-days';
+import {listPlaceLookupCacheRows} from '@/db/repositories/place-lookup-cache';
 import {listSavedPlaces} from '@/db/repositories/saved-places';
 import {getDayRange} from '@/lib/day-utils';
 import type {HistoryData} from '@/lib/history-data-types';
@@ -19,10 +20,12 @@ export async function buildTodayDisplayHistory(
   referenceNow: Date = new Date(),
 ): Promise<HistoryData & {dayPointCount: number}> {
   const {start: dayStart, end: dayEnd} = getDayRange(dateKey);
-  const [savedPlaces, {windowPoints, dayPointCount}] = await Promise.all([
-    listSavedPlaces(),
-    loadExplorerGpsWindow(dateKey),
-  ]);
+  const [savedPlaces, {windowPoints, dayPointCount}, placeLookupCache] =
+    await Promise.all([
+      listSavedPlaces(),
+      loadExplorerGpsWindow(dateKey),
+      listPlaceLookupCacheRows(),
+    ]);
 
   const dayPoints = filterPointsInRange(windowPoints, dayStart, dayEnd);
   const lookbackPoints = windowPoints.filter(
@@ -36,7 +39,7 @@ export async function buildTodayDisplayHistory(
     detectionConfig,
     referenceNow,
     [],
-    {savedPlaces},
+    {savedPlaces, placeLookupCache},
     true,
   );
 
@@ -57,10 +60,12 @@ export async function buildTodayTailDisplayHistory(
   referenceNow: Date = new Date(),
 ): Promise<HistoryData & {dayPointCount: number}> {
   const {start: dayStart, end: dayEnd} = getDayRange(dateKey);
-  const [savedPlaces, {windowPoints, dayPointCount}] = await Promise.all([
-    listSavedPlaces(),
-    loadExplorerGpsWindow(dateKey),
-  ]);
+  const [savedPlaces, {windowPoints, dayPointCount}, placeLookupCache] =
+    await Promise.all([
+      listSavedPlaces(),
+      loadExplorerGpsWindow(dateKey),
+      listPlaceLookupCacheRows(),
+    ]);
 
   const tailStartMs = tailStart.getTime();
   const dayPoints = filterPointsInRange(windowPoints, dayStart, dayEnd).filter(
@@ -77,7 +82,7 @@ export async function buildTodayTailDisplayHistory(
     detectionConfig,
     referenceNow,
     [],
-    {savedPlaces},
+    {savedPlaces, placeLookupCache},
     true,
   );
 

@@ -33,7 +33,7 @@ import {
 import type {VisitPlaceDisplay} from '@/lib/place-lookup-types';
 import {matchSavedPlaceForStay} from '@/lib/saved-places';
 import type {DetectedTrip} from '@/lib/trip-detection';
-import {stayTripCentroid} from '@/lib/trip-detection';
+import {resolveStayAnchor} from '@/lib/trip-detection';
 import {
   ensureTripForClosedStay,
   tripEventKey,
@@ -64,11 +64,8 @@ async function resolveCacheRowForTrip(
     }
   }
 
-  const anchor = stayTripCentroid(stay);
-  return findPlaceLookupNearAnchor({
-    lat: anchor.latitude,
-    lng: anchor.longitude,
-  });
+  const anchor = resolveStayAnchor(stay);
+  return findPlaceLookupNearAnchor(anchor);
 }
 
 function displayForTripAndCache(
@@ -148,11 +145,8 @@ export function useVisitPlaceDisplay(
         }
       }
 
-      const anchor = stayTripCentroid(stay);
-      const row = await findPlaceLookupNearAnchor({
-        lat: anchor.latitude,
-        lng: anchor.longitude,
-      });
+      const anchor = resolveStayAnchor(stay);
+      const row = await findPlaceLookupNearAnchor(anchor);
       if (!cancelled) {
         setDisplay({
           ...resolveVisitPlaceDisplay(row),
@@ -190,11 +184,8 @@ export function useSelectVisitPlaceCandidate() {
     if (tripId != null) {
       let cacheId = args.cacheId ?? trip?.placeLookupCacheId ?? null;
       if (cacheId == null) {
-        const anchor = stayTripCentroid(args.stay);
-        const row = await findPlaceLookupNearAnchor({
-          lat: anchor.latitude,
-          lng: anchor.longitude,
-        });
+        const anchor = resolveStayAnchor(args.stay);
+        const row = await findPlaceLookupNearAnchor(anchor);
         cacheId = row?.id ?? null;
       }
 
@@ -243,11 +234,8 @@ export function useSetCustomVisitPlaceLabel() {
 
     let cacheId = args.cacheId ?? trip?.placeLookupCacheId ?? null;
     if (cacheId == null) {
-      const anchor = stayTripCentroid(args.stay);
-      const row = await findPlaceLookupNearAnchor({
-        lat: anchor.latitude,
-        lng: anchor.longitude,
-      });
+      const anchor = resolveStayAnchor(args.stay);
+      const row = await findPlaceLookupNearAnchor(anchor);
       cacheId = row?.id ?? null;
     }
 

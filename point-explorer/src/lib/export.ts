@@ -2,10 +2,16 @@ import type {
   LocationPointRow,
   MomentRow,
   ParsedPoint,
+  PlaceLookupRow,
   SavedPlaceRow,
   UploadDataKind,
   UploadMode,
 } from '../types';
+import type {
+  PlaceLookupCandidate,
+  PlaceLookupStatus,
+} from '@lifemap/segmentation';
+import {rawRowsToParsedPoints} from '@lifemap/segmentation';
 
 const DATE_KEY_FORMATTER = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'America/Chicago',
@@ -18,7 +24,8 @@ export function dateKeyForTimestamp(iso: string): string {
   return DATE_KEY_FORMATTER.format(new Date(iso));
 }
 
-export function formatTimestamp(iso: string): string {
+export function formatTimestamp(iso: string | Date): string {
+  const date = iso instanceof Date ? iso : new Date(iso);
   return new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/Chicago',
     month: 'short',
@@ -29,7 +36,7 @@ export function formatTimestamp(iso: string): string {
     second: '2-digit',
     hour12: true,
     timeZoneName: 'short',
-  }).format(new Date(iso));
+  }).format(date);
 }
 
 export function formatDateLabel(dateKey: string): string {
@@ -141,24 +148,16 @@ export function parseExport(raw: unknown): ParsedPoint[] {
     );
   }
 
-  const points: ParsedPoint[] = [];
-  for (const row of rows) {
-    if (
-      typeof row.lat !== 'number' ||
-      typeof row.lng !== 'number' ||
-      !row.timestamp
-    ) {
-      continue;
-    }
-    points.push({
-      ...row,
-      at: new Date(row.timestamp),
-      dateKey: dateKeyForTimestamp(row.timestamp),
-    });
-  }
-
-  points.sort((a, b) => a.at.getTime() - b.at.getTime());
-  return points;
+  const parsed = rawRowsToParsedPoints(
+    rows.filter(
+      row =>
+        typeof row.lat === 'number' &&
+        typeof row.lng === 'number' &&
+        Boolean(row.timestamp),
+    ),
+  );
+  parsed.sort((a, b) => a.at.getTime() - b.at.getTime());
+  return parsed;
 }
 
 export function parseSavedPlaces(raw: unknown): SavedPlaceRow[] {
@@ -212,14 +211,110 @@ export function parseMoments(raw: unknown): MomentRow[] {
     if (typeof entry.id !== 'number' || typeof entry.timestamp !== 'string') {
       continue;
     }
+    const type = entry.type;
     moments.push({
       id: entry.id,
+      type:
+        type === 'photo' ||
+        type === 'video' ||
+        type === 'voice' ||
+        type === 'note' ||
+        type === 'activity'
+          ? type
+          : undefined,
       timestamp: entry.timestamp,
       lat: typeof entry.lat === 'number' ? entry.lat : null,
       lng: typeof entry.lng === 'number' ? entry.lng : null,
     });
   }
   return moments;
+}
+
+function parsePlaceLookupCandidates(raw: unknown): PlaceLookupCandidate[] {
+  let value = raw;
+  if (typeof value === 'string') {
+    try {
+      value = JSON.parse(value);
+    } catch {
+      return [];
+    }
+  }
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const candidates: PlaceLookupCandidate[] = [];
+  for (const item of value) {
+    if (typeof item !== 'object' || item == null) {
+      continue;
+    }
+    const entry = item as Record<string, unknown>;
+    const id = typeof entry.id === 'string' ? entry.id.trim() : '';
+    const name = typeof entry.name === 'string' ? entry.name.trim() : '';
+    if (!id || !name) {
+      continue;
+    }
+    const kind = entry.kind === 'address' ? 'address' : 'poi';
+    candidates.push({
+      id,
+      name,
+      kind,
+      distanceM: typeof entry.distanceM === 'number' ? entry.distanceM : 0,
+    });
+  }
+  return candidates;
+}
+
+function parsePlaceLookupStatus(raw: unknown): PlaceLookupStatus {
+  if (raw === 'pending' || raw === 'complete' || raw === 'failed') {
+    return raw;
+  }
+  return 'pending';
+}
+
+export function parsePlaceLookupCache(raw: unknown): PlaceLookupRow[] {
+  const record = normalizeExportPayload(raw);
+  if (record == null) {
+    return [];
+  }
+  const rows = getExportTables(record)?.place_lookup_cache;
+  if (!Array.isArray(rows)) {
+    return [];
+  }
+  const cache: PlaceLookupRow[] = [];
+  for (const row of rows) {
+    if (!row || typeof row !== 'object') {
+      continue;
+    }
+    const entry = row as Record<string, unknown>;
+    if (
+      typeof entry.id !== 'number' ||
+      typeof entry.anchorLat !== 'number' ||
+      typeof entry.anchorLng !== 'number' ||
+      typeof entry.venueRadiusMeters !== 'number'
+    ) {
+      continue;
+    }
+    const candidates = parsePlaceLookupCandidates(
+      entry.candidatesJson ?? entry.candidates,
+    );
+    cache.push({
+      id: entry.id,
+      anchorLat: entry.anchorLat,
+      anchorLng: entry.anchorLng,
+      venueRadiusMeters: entry.venueRadiusMeters,
+      addressLine:
+        typeof entry.addressLine === 'string' ? entry.addressLine : null,
+      candidates,
+      selectedCandidateIndex:
+        typeof entry.selectedCandidateIndex === 'number'
+          ? entry.selectedCandidateIndex
+          : null,
+      lookupStatus: parsePlaceLookupStatus(entry.lookupStatus),
+      fetchedAt:
+        typeof entry.fetchedAt === 'string' ? entry.fetchedAt : null,
+    });
+  }
+  return cache;
 }
 
 export function uniqueDateKeys(points: ParsedPoint[]): string[] {

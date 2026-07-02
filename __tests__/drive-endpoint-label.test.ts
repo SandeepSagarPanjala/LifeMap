@@ -42,6 +42,8 @@ describe('drive endpoint labels', () => {
     endAt: new Date('2026-06-09T12:30:00.000Z'),
     distanceKm: 0,
     durationMs: 30 * 60_000,
+    savedPlaceId: home.id,
+    savedPlaceLabel: home.label,
   };
 
   const travel: DetectedTrip = {
@@ -129,5 +131,19 @@ describe('drive endpoint labels', () => {
         },
       ),
     ).toBe('Home to 116 W University Dr');
+  });
+
+  it('uses detection placeLookupLabel for unlabeled stays', () => {
+    const stay: DetectedTrip = {
+      ...libraryStay,
+      placeLookupLabel: 'Walmart',
+    };
+    const label = resolveDriveEndpointLabelFromStaySync(stay, [home]);
+    expect(label).toEqual({
+      source: 'auto-label',
+      text: 'Walmart',
+      savedPlace: null,
+      pinned: false,
+    });
   });
 });

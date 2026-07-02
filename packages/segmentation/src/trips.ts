@@ -1,15 +1,14 @@
 import {
   addDaysToDateKey,
-  chicagoDayEnd,
-  chicagoDayStart,
   dateKeyForTimestamp,
-} from './export';
-import type {ParsedPoint, SavedPlaceRow} from '../types';
+  dayEndExclusive,
+  dayStart,
+} from './day-bounds';
 import {
-  matchSavedPlaceForPoint,
-  matchSavedPlaceForStop,
   matchDriveEndSavedPlace,
   matchDriveStartSavedPlace,
+  matchSavedPlaceForPoint,
+  matchSavedPlaceForStop,
 } from './saved-places';
 import {
   DEFAULT_STOP_CONFIG,
@@ -19,6 +18,18 @@ import {
   type Stop,
   type StopDetectionConfig,
 } from './stops';
+import {
+  matchCompletePlaceLookupAtAnchor,
+  primaryLabelFromPlaceLookup,
+} from './place-lookup';
+import {
+  annotateSegmentMoments,
+  type SegmentMomentCounts,
+} from './segment-moments';
+import type {PlaceLookupRow, SegmentationMoment} from './types';
+import type {ParsedPoint, SavedPlaceRow} from './types';
+
+export type {SegmentMomentCounts} from './segment-moments';
 
 /**
  * A drive must show real movement. Stationary residue around a stay (e.g. a
@@ -54,6 +65,10 @@ export type StaySegment = {
   /** Saved place label when the stay falls inside a user-defined place. */
   savedPlaceLabel?: string;
   savedPlaceId?: number;
+  /** Nearby-places cache hit at stop anchor (not a saved place). */
+  placeLookupCacheId?: number;
+  placeLookupLabel?: string;
+  momentCounts?: SegmentMomentCounts;
 };
 
 export type DriveSegment = {
@@ -71,6 +86,7 @@ export type DriveSegment = {
   fromSavedPlaceId?: number;
   toSavedPlaceLabel?: string;
   toSavedPlaceId?: number;
+  momentCounts?: SegmentMomentCounts;
 };
 
 export type MissingSegment = {
@@ -89,6 +105,7 @@ export type MissingSegment = {
   toLat: number;
   toLng: number;
   points: [];
+  momentCounts?: SegmentMomentCounts;
 };
 
 export type TripSegment = StaySegment | DriveSegment | MissingSegment;
@@ -501,52 +518,74 @@ export function buildTripSegments(
 function annotateSegments(
   segments: TripSegment[],
   savedPlaces: SavedPlaceRow[],
+  placeLookupCache: readonly PlaceLookupRow[] = [],
 ): TripSegment[] {
-  if (savedPlaces.length === 0) {
-    return segments;
-  }
-
   const withStays = segments.map(segment => {
     if (segment.kind !== 'stay') {
       return segment;
     }
+    let updated: StaySegment = segment;
     const place = matchSavedPlaceForStop(
       segment.stop,
       segment.points,
       savedPlaces,
     );
-    if (place == null) {
-      return segment;
+    if (place != null) {
+      updated = {
+        ...updated,
+        savedPlaceLabel: place.label,
+        savedPlaceId: place.id,
+      };
     }
-    return {
-      ...segment,
-      savedPlaceLabel: place.label,
-      savedPlaceId: place.id,
-    };
+    if (updated.savedPlaceId == null && placeLookupCache.length > 0) {
+      const cache = matchCompletePlaceLookupAtAnchor(
+        {lat: updated.stop.lat, lng: updated.stop.lng},
+        placeLookupCache,
+      );
+      if (cache != null) {
+        updated = {
+          ...updated,
+          placeLookupCacheId: cache.id,
+          placeLookupLabel: primaryLabelFromPlaceLookup(cache) ?? undefined,
+        };
+      }
+    }
+    return updated;
   });
 
   return withStays.map((segment, index) => {
     if (segment.kind !== 'drive') {
       return segment;
     }
+    const previousStay = withStays[index - 1];
+    const nextStay = withStays[index + 1];
     const fromPlace = matchDriveStartSavedPlace(
       segment,
-      withStays[index - 1],
+      previousStay,
       savedPlaces,
     );
-    const toPlace = matchDriveEndSavedPlace(
-      segment,
-      withStays[index + 1],
-      savedPlaces,
-    );
-    if (fromPlace == null && toPlace == null) {
+    const toPlace = matchDriveEndSavedPlace(segment, nextStay, savedPlaces);
+    const fromCacheLabel =
+      fromPlace == null && previousStay?.kind === 'stay'
+        ? previousStay.placeLookupLabel
+        : undefined;
+    const toCacheLabel =
+      toPlace == null && nextStay?.kind === 'stay'
+        ? nextStay.placeLookupLabel
+        : undefined;
+    if (
+      fromPlace == null &&
+      toPlace == null &&
+      fromCacheLabel == null &&
+      toCacheLabel == null
+    ) {
       return segment;
     }
     return {
       ...segment,
-      fromSavedPlaceLabel: fromPlace?.label,
+      fromSavedPlaceLabel: fromPlace?.label ?? fromCacheLabel,
       fromSavedPlaceId: fromPlace?.id,
-      toSavedPlaceLabel: toPlace?.label,
+      toSavedPlaceLabel: toPlace?.label ?? toCacheLabel,
       toSavedPlaceId: toPlace?.id,
     };
   });
@@ -567,8 +606,8 @@ function isHomeStay(
 
 function segmentDateKeys(segment: TripSegment): {startKey: string; endKey: string} {
   return {
-    startKey: dateKeyForTimestamp(segment.startAt.toISOString()),
-    endKey: dateKeyForTimestamp(segment.endAt.toISOString()),
+    startKey: dateKeyForTimestamp(segment.startAt),
+    endKey: dateKeyForTimestamp(segment.endAt),
   };
 }
 
@@ -613,13 +652,13 @@ export function projectSegmentsForDay(
   dayKey: string,
   savedPlaces: SavedPlaceRow[] = [],
 ): TripSegment[] {
-  const dayStart = chicagoDayStart(dayKey);
-  const dayEnd = chicagoDayEnd(dayKey);
+  const dayStartAt = dayStart(dayKey);
+  const dayEndAt = dayEndExclusive(dayKey);
   const projected: Array<{segment: TripSegment; sortKey: number}> = [];
 
   for (const segment of segments) {
     const overlapsDay =
-      segment.endAt > dayStart && segment.startAt < dayEnd;
+      segment.endAt > dayStartAt && segment.startAt < dayEndAt;
     if (!overlapsDay) {
       continue;
     }
@@ -633,19 +672,19 @@ export function projectSegmentsForDay(
       crossesMidnight
     ) {
       if (startKey === dayKey) {
-        const clipped = clipStay(segment, segment.startAt, dayEnd);
+        const clipped = clipStay(segment, segment.startAt, dayEndAt);
         if (clipped != null) {
           projected.push({segment: clipped, sortKey: segment.startAt.getTime()});
         }
       } else if (endKey === dayKey) {
-        const clipped = clipStay(segment, dayStart, segment.endAt);
+        const clipped = clipStay(segment, dayStartAt, segment.endAt);
         if (clipped != null) {
-          projected.push({segment: clipped, sortKey: dayStart.getTime()});
+          projected.push({segment: clipped, sortKey: dayStartAt.getTime()});
         }
       } else if (dayKey > startKey && dayKey < endKey) {
-        const clipped = clipStay(segment, dayStart, dayEnd);
+        const clipped = clipStay(segment, dayStartAt, dayEndAt);
         if (clipped != null) {
-          projected.push({segment: clipped, sortKey: dayStart.getTime()});
+          projected.push({segment: clipped, sortKey: dayStartAt.getTime()});
         }
       }
       continue;
@@ -661,9 +700,9 @@ export function projectSegmentsForDay(
       if (dayKey === startKey || dayKey === endKey) {
         let sortKey = segment.startAt.getTime();
         if (dayKey === startKey) {
-          sortKey = dayEnd.getTime() + 1;
+          sortKey = dayEndAt.getTime() + 1;
         } else {
-          sortKey = dayStart.getTime() - 1;
+          sortKey = dayStartAt.getTime() - 1;
         }
         projected.push({segment, sortKey});
       }
@@ -686,6 +725,8 @@ export function detectTrips(
   rawPoints: ParsedPoint[],
   config: StopDetectionConfig = DEFAULT_STOP_CONFIG,
   savedPlaces: SavedPlaceRow[] = [],
+  placeLookupCache: readonly PlaceLookupRow[] = [],
+  moments: readonly SegmentationMoment[] = [],
 ): TripResult {
   const points = prepareTripPoints(rawPoints, config);
   const baseStops = detectStops(rawPoints, config);
@@ -698,9 +739,13 @@ export function detectTrips(
   const stops = [...baseStops, ...savedPlaceStops].sort(
     (a, b) => a.arrivedAt.getTime() - b.arrivedAt.getTime(),
   );
-  const segments = annotateSegments(
-    buildTripSegments(points, stops, config),
-    savedPlaces,
+  const segments = annotateSegmentMoments(
+    annotateSegments(
+      buildTripSegments(points, stops, config),
+      savedPlaces,
+      placeLookupCache,
+    ),
+    moments,
   );
   return {points, stops, segments};
 }
@@ -711,13 +756,23 @@ export function detectTripsForDay(
   allRawPoints: ParsedPoint[],
   config: StopDetectionConfig = DEFAULT_STOP_CONFIG,
   savedPlaces: SavedPlaceRow[] = [],
+  placeLookupCache: readonly PlaceLookupRow[] = [],
+  moments: readonly SegmentationMoment[] = [],
 ): TripResult {
   const prevKey = addDaysToDateKey(dayKey, -1);
   const nextKey = addDaysToDateKey(dayKey, 1);
   const windowKeys = new Set([prevKey, dayKey, nextKey]);
   const windowPoints = allRawPoints.filter(point => windowKeys.has(point.dateKey));
-  const full = detectTrips(windowPoints, config, savedPlaces);
-  const segments = projectSegmentsForDay(full.segments, dayKey, savedPlaces);
+  const full = detectTrips(
+    windowPoints,
+    config,
+    savedPlaces,
+    placeLookupCache,
+  );
+  const segments = annotateSegmentMoments(
+    projectSegmentsForDay(full.segments, dayKey, savedPlaces),
+    moments,
+  );
 
   const segmentStopIds = new Set<string>();
   const segmentPointIds = new Set<number>();

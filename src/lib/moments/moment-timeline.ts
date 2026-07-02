@@ -1,6 +1,6 @@
 import type {LocationPointRow} from '@/db/repositories/location-days';
-import type {DayTimelineEntry} from '@/lib/trip-detection';
-import {stayTripCentroid} from '@/lib/trip-detection';
+import type {DayTimelineEntry, DetectedTrip} from '@/lib/trip-detection';
+import {resolveStayAnchor} from '@/lib/trip-detection';
 
 export type MomentTimelineMoment = {
   id: number;
@@ -84,6 +84,49 @@ export function attachMomentsToTimeline(
     }));
 }
 
+/** Closest GPS fix in time — same rule as stay canonical geometry. */
+export function nearestPointCoordinateAtTime(
+  points: readonly LocationPointRow[],
+  momentTimestamp: Date,
+): {lat: number; lng: number} | null {
+  const sorted = getSortedLocationPointsByTime(points);
+  if (sorted.length === 0) {
+    return null;
+  }
+  if (sorted.length === 1) {
+    const only = sorted[0]!;
+    return {lat: only.lat, lng: only.lng};
+  }
+
+  const timestampMs = momentTimestamp.getTime();
+  let best = sorted[0]!;
+  let bestDelta = Math.abs(best.timestamp.getTime() - timestampMs);
+  for (let i = 1; i < sorted.length; i += 1) {
+    const candidate = sorted[i]!;
+    const delta = Math.abs(candidate.timestamp.getTime() - timestampMs);
+    if (delta < bestDelta) {
+      best = candidate;
+      bestDelta = delta;
+    }
+  }
+  return {lat: best.lat, lng: best.lng};
+}
+
+function resolveStayMomentCoordinate(
+  stay: DetectedTrip,
+  momentTimestamp: Date,
+): {lat: number; lng: number} {
+  const fromStayPoints = nearestPointCoordinateAtTime(
+    stay.points,
+    momentTimestamp,
+  );
+  if (fromStayPoints != null) {
+    return fromStayPoints;
+  }
+  const anchor = resolveStayAnchor(stay);
+  return {lat: anchor.lat, lng: anchor.lng};
+}
+
 function findSegmentStartIndex(
   sorted: ReadonlyArray<LocationPointRow>,
   timestampMs: number,
@@ -136,10 +179,9 @@ function resolveFromSortedPoints(
 
   if (timestampMs < startMs || timestampMs > endMs) {
     if (containingEntry?.kind === 'stay') {
-      const centroid = stayTripCentroid(containingEntry);
-      return {lat: centroid.latitude, lng: centroid.longitude};
+      return resolveStayMomentCoordinate(containingEntry, momentTimestamp);
     }
-    return null;
+    return nearestPointCoordinateAtTime(sorted, momentTimestamp);
   }
 
   if (endMs === startMs) {
@@ -160,8 +202,7 @@ export function resolveMomentCoordinate(
 ): {lat: number; lng: number} | null {
   if (points.length === 0) {
     if (containingEntry?.kind === 'stay') {
-      const centroid = stayTripCentroid(containingEntry);
-      return {lat: centroid.latitude, lng: centroid.longitude};
+      return resolveStayMomentCoordinate(containingEntry, momentTimestamp);
     }
     return null;
   }

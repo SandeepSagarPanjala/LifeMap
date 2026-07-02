@@ -1,5 +1,4 @@
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
-import {matchSavedPlaceForStay} from '@/lib/saved-places';
 import type {DetectedTrip} from '@/lib/trip-detection';
 import {
   DEFAULT_TRIP_DWELL_MINUTES,
@@ -7,14 +6,8 @@ import {
   type TripDetectionConfig,
 } from '@/lib/trip-settings';
 
-export function isSavedPlaceVisit(
-  stay: DetectedTrip,
-  savedPlaces: readonly SavedPlaceRow[],
-): boolean {
-  return (
-    savedPlaces.length > 0 &&
-    matchSavedPlaceForStay(stay, savedPlaces) != null
-  );
+export function isSavedPlaceVisit(stay: DetectedTrip): boolean {
+  return stay.savedPlaceId != null;
 }
 
 /** Minimum minutes at a place before it counts as a visit. */
@@ -23,7 +16,7 @@ export function minimumVisitDwellMinutes(
   stay?: DetectedTrip,
   savedPlaces: readonly SavedPlaceRow[] = [],
 ): number {
-  if (stay != null && isSavedPlaceVisit(stay, savedPlaces)) {
+  if (stay != null && isSavedPlaceVisit(stay)) {
     return SAVED_PLACE_MIN_DWELL_MINUTES;
   }
   return config.dwellMinutes ?? DEFAULT_TRIP_DWELL_MINUTES;

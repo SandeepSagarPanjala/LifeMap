@@ -135,7 +135,7 @@ body {
 
 .mode-tabs {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 3px;
   padding: 4px;
   border-radius: 12px;
@@ -812,6 +812,12 @@ body {
   min-width: 0;
 }
 
+.segment-meta {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #636366;
+}
+
 .segment-time {
   font-size: 0.78rem;
   color: #636366;
@@ -831,6 +837,82 @@ body {
   font-size: 0.72rem;
   font-weight: 500;
   color: #48484a;
+}
+
+.segment-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #eef5ff;
+  color: #0050b3;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.segment-place-lookup,
+.segment-drive-lookups {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: #48484a;
+}
+
+.segment-place-lookup-id {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.segment-place-lookup-label {
+  color: #1c1c1e;
+}
+
+.segment-lookup-status {
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: lowercase;
+}
+
+.segment-lookup-status-complete {
+  background: #e8f8ee;
+  color: #248a3d;
+}
+
+.segment-lookup-status-pending {
+  background: #fff4e5;
+  color: #c93400;
+}
+
+.segment-lookup-status-failed {
+  background: #ffebe9;
+  color: #d70015;
+}
+
+.segment-drive-lookup {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.segment-moments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.segment-moment-chip {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #f2f2f7;
+  color: #48484a;
+  font-size: 0.72rem;
+  font-weight: 500;
 }
 
 .segment-card.is-active .segment-index {

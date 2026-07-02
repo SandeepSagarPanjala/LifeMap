@@ -1,7 +1,9 @@
 import type {LocationPointRow} from '@/db/repositories/location-days';
 import {getLocationPointsForDay} from '@/db/repositories/location-days';
+import {listPlaceLookupCacheRows} from '@/db/repositories/place-lookup-cache';
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import {listSavedPlaces} from '@/db/repositories/saved-places';
+import type {PlaceLookupRow} from '@/lib/place-lookup-types';
 import {shiftDateKey} from '@/lib/day-utils';
 import {
   buildSegmentationTimeline,
@@ -53,9 +55,11 @@ export function buildExplorerDayTimeline(
   windowPoints: readonly LocationPointRow[],
   config: TripDetectionConfig,
   savedPlaces: readonly SavedPlaceRow[] = [],
+  placeLookupCache: readonly PlaceLookupRow[] = [],
 ): DayTimelineEntry[] {
   return buildSegmentationTimeline(dateKey, windowPoints, config, {
     savedPlaces,
+    placeLookupCache,
   });
 }
 
@@ -67,13 +71,18 @@ export async function buildExplorerDayTimelineFromGps(
   entries: DayTimelineEntry[];
   dayPointCount: number;
 }> {
-  const places = savedPlaces ?? (await listSavedPlaces());
-  const {windowPoints, dayPointCount} = await loadExplorerGpsWindow(dateKey);
+  const [places, placeLookupCache, {windowPoints, dayPointCount}] =
+    await Promise.all([
+      savedPlaces ? Promise.resolve(savedPlaces) : listSavedPlaces(),
+      listPlaceLookupCacheRows(),
+      loadExplorerGpsWindow(dateKey),
+    ]);
   const entries = buildExplorerDayTimeline(
     dateKey,
     windowPoints,
     config,
     places,
+    placeLookupCache,
   );
   return {entries, dayPointCount};
 }

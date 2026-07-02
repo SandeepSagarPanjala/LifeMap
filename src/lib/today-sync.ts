@@ -8,7 +8,6 @@ import type {HistoryData} from '@/lib/history-data-types';
 import {buildExplorerDayTimelineFromGps} from '@/lib/explorer-day-trips';
 import {getSealableTodayEntries} from '@/lib/today-seal-policy';
 import {
-  buildTodayDisplayHistory,
   buildTodayTailDisplayHistory,
   historyDataFromEntries,
 } from '@/lib/today-live-history';
@@ -17,8 +16,48 @@ import {
   sealedThroughMs,
   tailGpsStartMs,
 } from '@/lib/today-sealed-history';
-import {arePointsSamePlace} from '@/lib/trip-detection';
+import {
+  arePointsSamePlace,
+  isPlayableTimelineEntry,
+  type DayTimelineEntry,
+  type DetectedTrip,
+} from '@/lib/trip-detection';
+import {TODAY_LIVE_BUFFER_MAX_SEGMENTS} from '@/lib/today-seal-policy';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
+
+/** Withholds last 2 live segments — need ≥3 tail segments before seal can persist anything. */
+export const TODAY_OPEN_SILENT_SEAL_MIN_TAIL_SEGMENTS =
+  TODAY_LIVE_BUFFER_MAX_SEGMENTS + 1;
+
+export type TodayDisplayMeta = {
+  storedTripCount: number;
+  tailPlayableCount: number;
+};
+
+let lastTodayDisplayMeta: TodayDisplayMeta | null = null;
+
+export function getLastTodayDisplayMeta(): TodayDisplayMeta | null {
+  return lastTodayDisplayMeta;
+}
+
+export function countPlayableTimelineSegments(
+  entries: readonly DayTimelineEntry[],
+): number {
+  return entries.filter((entry): entry is DetectedTrip =>
+    isPlayableTimelineEntry(entry),
+  ).length;
+}
+
+/** Skip silent seal when DB is empty and tail has too few segments to seal (X − 2 ≤ 0). */
+export function shouldRunTodayOpenSilentSeal(
+  storedTripCount: number,
+  tailPlayableCount: number,
+): boolean {
+  if (storedTripCount > 0) {
+    return true;
+  }
+  return tailPlayableCount >= TODAY_OPEN_SILENT_SEAL_MIN_TAIL_SEGMENTS;
+}
 
 async function loadHistoryFromStoredTripsToday(
   dateKey: string,
@@ -38,10 +77,6 @@ async function loadHistoryFromStoredTripsToday(
 
 export type SyncTodayTripsOptions = {
   force?: boolean;
-  /** Skip background today trip seal (tests / preload-only paths). */
-  skipSilentSeal?: boolean;
-  /** @deprecated Use skipSilentSeal */
-  skipRepair?: boolean;
   onPartial?: (data: HistoryData) => void;
 };
 
@@ -104,6 +139,7 @@ async function loadTodayFromTrips(
   );
 }
 
+/** Sealed trips from DB + GPS tail since the last trip end (or day start when none). */
 async function mergeTodayDisplayFromDbAndTail(
   dateKey: string,
   tripRows: TripRow[],
@@ -111,22 +147,17 @@ async function mergeTodayDisplayFromDbAndTail(
   referenceNow: Date,
   onPartial?: (data: HistoryData) => void,
 ): Promise<HistoryData> {
-  const sealedMs = sealedThroughMs(tripRows);
-  if (sealedMs == null) {
-    const history = await buildTodayDisplayHistory(
-      dateKey,
-      detectionConfig,
-      referenceNow,
-    );
-    onPartial?.(history);
-    return history;
-  }
-
   const {start: dayStart} = getDayRange(dateKey);
-  const tailStart = new Date(tailGpsStartMs(sealedMs, dayStart.getTime()));
+  const dayStartMs = dayStart.getTime();
+  const sealedMs = sealedThroughMs(tripRows) ?? dayStartMs;
+  const tailStart = new Date(tailGpsStartMs(sealedMs, dayStartMs));
 
   const [sealedData, liveHistory] = await Promise.all([
-    loadTodayFromTrips(dateKey, tripRows, detectionConfig, referenceNow),
+    tripRows.length > 0
+      ? loadTodayFromTrips(dateKey, tripRows, detectionConfig, referenceNow)
+      : Promise.resolve(
+          historyDataFromEntries(dateKey, dayStart, referenceNow, [], 0),
+        ),
     buildTodayTailDisplayHistory(
       dateKey,
       tailStart,
@@ -149,12 +180,18 @@ async function mergeTodayDisplayFromDbAndTail(
     liveHistory.dayPointCount,
   );
 
+  lastTodayDisplayMeta = {
+    storedTripCount: tripRows.length,
+    tailPlayableCount: countPlayableTimelineSegments(liveHistory.entries),
+  };
+
   onPartial?.(merged);
   return merged;
 }
 
 /**
- * Today display sync: read sealed trips from DB, merge live tail in memory only.
+ * Today display: trips from DB + tail detect on GPS since last trip end.
+ * Read-only — no DB writes. Does not run silent seal (see scheduleTodayOpenSilentSeal).
  */
 export async function syncTodayDisplay(
   detectionConfig: TripDetectionConfig,
@@ -164,7 +201,6 @@ export async function syncTodayDisplay(
   const dateKey = getTodayDateKey();
   const tripRows = await listTripsForDay(dateKey);
 
-  let result: HistoryData;
   if (tripRows.length > 0) {
     const stored = await loadTodayFromTrips(
       dateKey,
@@ -173,34 +209,20 @@ export async function syncTodayDisplay(
       referenceNow,
     );
     options.onPartial?.(stored);
-
-    result = await mergeTodayDisplayFromDbAndTail(
-      dateKey,
-      tripRows,
-      detectionConfig,
-      referenceNow,
-      options.onPartial,
-    );
-  } else {
-    result = await buildTodayDisplayHistory(
-      dateKey,
-      detectionConfig,
-      referenceNow,
-    );
-    options.onPartial?.(result);
   }
 
-  const skipSilentSeal = options.skipSilentSeal ?? options.skipRepair ?? false;
-  if (!skipSilentSeal) {
-    scheduleSilentTripSeal(detectionConfig, referenceNow);
-  }
-
-  return result;
+  return mergeTodayDisplayFromDbAndTail(
+    dateKey,
+    tripRows,
+    detectionConfig,
+    referenceNow,
+    options.onPartial,
+  );
 }
 
 /**
- * Recompute today's sealable prefix from all GPS and persist to trips.
- * Withholds the live buffer (last 2 events). Skips when signatures are unchanged.
+ * Full-day silent detect; persist sealable prefix (withholds last 2 live segments).
+ * Skips when nothing is sealable or signatures are unchanged.
  */
 export async function silentTripSealToday(
   detectionConfig: TripDetectionConfig,
@@ -235,30 +257,49 @@ export async function silentTripSealToday(
 }
 
 let sealPromise: Promise<void> | null = null;
-let sealPending = false;
+let openCycleSilentSealDone = false;
 
-/** Fire-and-forget background seal after today display sync. */
-export function scheduleSilentTripSeal(
+export function beginTodayOpenCycle(): void {
+  openCycleSilentSealDone = false;
+}
+
+/** One silent seal per app open — after display sync, not on GPS refresh. */
+export function scheduleTodayOpenSilentSeal(
   detectionConfig: TripDetectionConfig,
   referenceNow: Date = new Date(),
+  meta: TodayDisplayMeta | null = lastTodayDisplayMeta,
 ): void {
-  if (sealPromise != null) {
-    sealPending = true;
+  if (openCycleSilentSealDone || sealPromise != null) {
     return;
   }
 
+  if (
+    meta != null &&
+    !shouldRunTodayOpenSilentSeal(meta.storedTripCount, meta.tailPlayableCount)
+  ) {
+    openCycleSilentSealDone = true;
+    return;
+  }
+
+  openCycleSilentSealDone = true;
+
   sealPromise = (async () => {
     try {
-      do {
-        sealPending = false;
-        await silentTripSealToday(detectionConfig, referenceNow);
-      } while (sealPending);
+      await silentTripSealToday(detectionConfig, referenceNow);
     } catch {
       // Best-effort seal.
     } finally {
       sealPromise = null;
     }
   })();
+}
+
+/** @internal — legacy alias; prefer scheduleTodayOpenSilentSeal on app open only. */
+export function scheduleSilentTripSeal(
+  detectionConfig: TripDetectionConfig,
+  referenceNow: Date = new Date(),
+): void {
+  scheduleTodayOpenSilentSeal(detectionConfig, referenceNow);
 }
 
 /** @deprecated Use silentTripSealToday */
@@ -269,11 +310,11 @@ export async function repairTodayInDb(
   return silentTripSealToday(detectionConfig, referenceNow);
 }
 
-/** @deprecated Use scheduleSilentTripSeal */
+/** @deprecated Use scheduleTodayOpenSilentSeal */
 export function scheduleTodayRepair(
   detectionConfig: TripDetectionConfig,
 ): void {
-  scheduleSilentTripSeal(detectionConfig);
+  scheduleTodayOpenSilentSeal(detectionConfig);
 }
 
 /**
@@ -287,15 +328,16 @@ export async function syncTodayTrips(
   return syncTodayDisplay(detectionConfig, referenceNow, options);
 }
 
-/** @deprecated Use scheduleSilentTripSeal */
+/** @deprecated Use scheduleTodayOpenSilentSeal */
 export function scheduleSyncTodayTrips(
   detectionConfig: TripDetectionConfig,
 ): void {
-  scheduleSilentTripSeal(detectionConfig);
+  scheduleTodayOpenSilentSeal(detectionConfig);
 }
 
 /** @internal */
 export function resetTodaySyncStateForTests(): void {
   sealPromise = null;
-  sealPending = false;
+  openCycleSilentSealDone = false;
+  lastTodayDisplayMeta = null;
 }

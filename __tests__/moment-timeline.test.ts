@@ -123,4 +123,59 @@ describe('moment timeline', () => {
     expect(first).toEqual(second);
     expect(first).not.toBeNull();
   });
+
+  it('uses nearest stay GPS point at moment time when day trail is empty', () => {
+    const stayWithPoints: DayTimelineEntry = {
+      ...stay,
+      anchorLat: 33.5,
+      anchorLng: -97.5,
+      points: [
+        {
+          id: 1,
+          timestamp: new Date('2026-06-08T14:00:00.000Z'),
+          lat: 33.1,
+          lng: -97.1,
+          accuracy: null,
+          altitude: null,
+          speed: null,
+          source: 'gps',
+        },
+        {
+          id: 2,
+          timestamp: new Date('2026-06-08T15:30:00.000Z'),
+          lat: 33.2,
+          lng: -97.2,
+          accuracy: null,
+          altitude: null,
+          speed: null,
+          source: 'gps',
+        },
+      ],
+    };
+
+    expect(
+      resolveMomentCoordinate(
+        new Date('2026-06-08T14:10:00.000Z'),
+        [],
+        stayWithPoints,
+      ),
+    ).toEqual({lat: 33.1, lng: -97.1});
+  });
+
+  it('falls back to stay anchor when stay has no GPS points', () => {
+    const anchoredStay: DayTimelineEntry = {
+      ...stay,
+      anchorLat: 33.5,
+      anchorLng: -97.5,
+      points: [],
+    };
+
+    expect(
+      resolveMomentCoordinate(
+        new Date('2026-06-08T15:00:00.000Z'),
+        [],
+        anchoredStay,
+      ),
+    ).toEqual({lat: 33.5, lng: -97.5});
+  });
 });

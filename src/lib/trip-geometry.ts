@@ -121,6 +121,8 @@ export function tripRowToDetectedTripWithGeometry(
     savedPlaceLabel: row.savedPlaceLabel ?? undefined,
     savedPlaceId: row.savedPlaceId ?? undefined,
     inferred: row.inferred,
+    anchorLat: row.kind === 'stay' ? row.centroidLat : undefined,
+    anchorLng: row.kind === 'stay' ? row.centroidLng : undefined,
   };
 }
 

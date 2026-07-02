@@ -2,6 +2,11 @@ import {useCallback, useEffect, useMemo, useState} from 'react';
 
 import {PointsMap} from './components/PointsMap';
 import {
+  DEFAULT_EXPORT_NAME,
+  DEFAULT_EXPORT_PATH,
+  markDefaultExportLoadStarted,
+} from './lib/default-export';
+import {
   detectUploadDataKind,
   describeExportPayload,
   formatDateLabel,
@@ -9,6 +14,7 @@ import {
   inferDefaultUploadMode,
   parseExport,
   parseMoments,
+  parsePlaceLookupCache,
   parseSavedPlaces,
   uniqueDateKeys,
 } from './lib/export';
@@ -24,8 +30,6 @@ import {
   formatDuration,
   detectStops,
   type Stop,
-} from './lib/stops';
-import {
   detectTrips,
   detectTripsForDay,
   MERGE_STAY_MAX_DISTANCE_M,
@@ -34,35 +38,37 @@ import {
   MISSING_MIN_GAP_MS,
   SAVED_PLACE_MIN_DWELL_MS,
   type TripSegment,
-} from './lib/trips';
-import {describeTripSegment, drivePointCountLabel, stayPointCountLabel} from './lib/segment-display';
-import {
   displayPointsForSegment,
   plotPointsFromSegments,
   usesCanonicalSegmentGeometry,
-} from './lib/stay-geometry';
+  countBySource,
+  filterPointsBySources,
+  sourceLabel,
+  TRIP_PLOT_SOURCES,
+  uniqueSources,
+} from '@lifemap/segmentation';
+import {
+  buildTripExportPayload,
+  downloadTripExportJson,
+  type TripExportGeometry,
+} from './lib/trip-export';
+import {describeTripSegment, drivePointCountLabel, formatMomentCountChips, stayPointCountLabel} from './lib/segment-display';
 import {
   explainPoint,
   explainSegment,
   findSegmentForPoint,
 } from './lib/explain';
 import {
-  countBySource,
-  filterPointsBySources,
-  sourceLabel,
-  TRIP_PLOT_SOURCES,
-  uniqueSources,
-} from './lib/sources';
-import {
   adjacentPointId,
   indexOfPointId,
   sortPointsByTime,
 } from './lib/point-nav';
-import type {MomentRow, ParsedPoint, SavedPlaceRow, UploadMode} from './types';
+import type {MomentRow, ParsedPoint, PlaceLookupRow, SavedPlaceRow, UploadMode} from './types';
+import {MobileScreen} from './components/mobile/MobileScreen';
 
 import './App.css';
 
-type ExplorerMode = 'plot' | 'stops' | 'trips' | 'explain' | 'power';
+type ExplorerMode = 'plot' | 'stops' | 'trips' | 'explain' | 'power' | 'mobile';
 type PowerRunResult = {
   startedAt: Date;
   finishedAt: Date;
@@ -79,6 +85,7 @@ function TripSegmentList({
   onSelectSegment,
   onShowFullTrip,
   onDownload,
+  onDownloadCanonical,
   canonicalizeStayGeometry,
   canonicalizeDriveGeometry,
   moments,
@@ -88,6 +95,7 @@ function TripSegmentList({
   onSelectSegment: (segment: TripSegment) => void;
   onShowFullTrip: () => void;
   onDownload: () => void;
+  onDownloadCanonical: () => void;
   canonicalizeStayGeometry: boolean;
   canonicalizeDriveGeometry: boolean;
   moments: readonly MomentRow[];
@@ -104,6 +112,12 @@ function TripSegmentList({
           ) : null}
           <button type="button" className="link-btn" onClick={onDownload}>
             JSON
+          </button>
+          <button
+            type="button"
+            className="link-btn"
+            onClick={onDownloadCanonical}>
+            Canonical JSON
           </button>
         </div>
       </div>
@@ -131,6 +145,10 @@ function TripSegmentList({
                       drivePointCountLabel(segment, canonicalizeDriveGeometry),
                     ]
                   : display.stats;
+            const momentChips =
+              display.momentCounts != null
+                ? formatMomentCountChips(display.momentCounts)
+                : [];
             return (
               <li key={segment.id}>
                 <button
@@ -148,8 +166,22 @@ function TripSegmentList({
                     {display.subtitle ? (
                       <span className="segment-subtitle">{display.subtitle}</span>
                     ) : null}
+                    {display.placeLookupCacheId != null ? (
+                      <span className="segment-meta">
+                        cache #{display.placeLookupCacheId}
+                      </span>
+                    ) : null}
                   </div>
                   <div className="segment-time">{display.timeRange}</div>
+                  {momentChips.length > 0 ? (
+                    <div className="segment-moments">
+                      {momentChips.map(chip => (
+                        <span key={chip} className="segment-moment-chip">
+                          {chip}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
                   <div className="segment-stats">
                     {stats.map(stat => (
                       <span key={stat} className="segment-stat">
@@ -170,6 +202,9 @@ function TripSegmentList({
 export function App() {
   const [allPoints, setAllPoints] = useState<ParsedPoint[]>([]);
   const [savedPlaces, setSavedPlaces] = useState<SavedPlaceRow[]>([]);
+  const [placeLookupCache, setPlaceLookupCache] = useState<PlaceLookupRow[]>(
+    [],
+  );
   const [storedTripExport, setStoredTripExport] = useState<StoredTripExport | null>(
     null,
   );
@@ -386,8 +421,10 @@ export function App() {
       tripSourcePoints,
       undefined,
       savedPlaces,
+      placeLookupCache,
+      moments,
     );
-  }, [dateKey, allPoints, savedPlaces]);
+  }, [dateKey, allPoints, moments, placeLookupCache, savedPlaces]);
 
   const applyTripResult = useCallback(
     (
@@ -422,11 +459,10 @@ export function App() {
     [canonicalizeDriveGeometry, canonicalizeStayGeometry, moments],
   );
 
-  const loadFile = useCallback(
-    async (file: File) => {
+  const loadExportText = useCallback(
+    async (text: string, name: string) => {
       setError(null);
       try {
-        const text = await file.text();
         const raw = JSON.parse(text);
         const kind = detectUploadDataKind(raw);
         const effectiveMode =
@@ -442,9 +478,10 @@ export function App() {
           const parsed = parseExport(raw);
           setAllPoints(parsed);
           setSavedPlaces(parseSavedPlaces(raw));
+          setPlaceLookupCache(parsePlaceLookupCache(raw));
           setMoments(parseMoments(raw));
           setStoredTripExport(null);
-          setFileName(file.name);
+          setFileName(name);
           setDateKey('all');
           setSelectedId(null);
           setPointNavMode(false);
@@ -476,8 +513,9 @@ export function App() {
         setStoredTripExport(stored);
         setAllPoints(storedPoints);
         setSavedPlaces(stored.savedPlaces);
+        setPlaceLookupCache([]);
         setMoments([]);
-        setFileName(file.name);
+        setFileName(name);
         setDateKey(latestDate);
         setMode('trips');
         setSelectedId(null);
@@ -489,6 +527,7 @@ export function App() {
         setError(err instanceof Error ? err.message : 'Failed to parse JSON');
         setAllPoints([]);
         setSavedPlaces([]);
+        setPlaceLookupCache([]);
         setMoments([]);
         setStoredTripExport(null);
         setFileName(null);
@@ -498,6 +537,14 @@ export function App() {
       }
     },
     [applyTripResult, uploadMode],
+  );
+
+  const loadFile = useCallback(
+    async (file: File) => {
+      const text = await file.text();
+      await loadExportText(text, file.name);
+    },
+    [loadExportText],
   );
 
   const onFileChange = useCallback(
@@ -521,11 +568,36 @@ export function App() {
     [loadFile],
   );
 
+  useEffect(() => {
+    if (!markDefaultExportLoadStarted()) {
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const response = await fetch(DEFAULT_EXPORT_PATH);
+        if (!response.ok || cancelled) {
+          return;
+        }
+        const text = await response.text();
+        if (cancelled) {
+          return;
+        }
+        await loadExportText(text, DEFAULT_EXPORT_NAME);
+      } catch {
+        // Default export is optional (missing in prod or without __personal__).
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loadExportText]);
+
   const changeMode = useCallback(
     (next: ExplorerMode) => {
       setMode(next);
       if (
-        (next === 'trips' || next === 'explain') &&
+        (next === 'trips' || next === 'explain' || next === 'mobile') &&
         dateKey === 'all' &&
         dateKeys.length > 0
       ) {
@@ -553,6 +625,11 @@ export function App() {
     },
     [resetTripState, dateKey, dateKeys, storedTripExport, applyTripResult],
   );
+
+  const mobileDateKey =
+    dateKey === 'all' && dateKeys.length > 0
+      ? dateKeys[dateKeys.length - 1]!
+      : dateKey;
 
   const handleDetectTrips = useCallback(() => {
     setTripsCutoffAt(null);
@@ -583,6 +660,8 @@ export function App() {
       pointsUpTo,
       undefined,
       savedPlaces,
+      placeLookupCache,
+      moments,
     );
     setTripsCutoffAt(selectedPoint.at);
     setTripsCutoffPointId(selectedPoint.id);
@@ -593,6 +672,8 @@ export function App() {
     applyTripResult,
     dateKey,
     isPlotUpload,
+    moments,
+    placeLookupCache,
     savedPlaces,
     selectedPoint,
   ]);
@@ -606,7 +687,13 @@ export function App() {
       filtered.length > 0 ? filtered[filtered.length - 1]!.at : null;
     const startedAt = new Date();
     const startedPerf = performance.now();
-    const result = detectTrips(filtered, undefined, savedPlaces);
+    const result = detectTrips(
+      filtered,
+      undefined,
+      savedPlaces,
+      placeLookupCache,
+      moments,
+    );
     const finishedAt = new Date();
     const elapsedMs = performance.now() - startedPerf;
     setPowerResult({
@@ -618,97 +705,35 @@ export function App() {
       inputStartAt,
       inputEndAt,
     });
-  }, [filteredPoints, savedPlaces]);
+  }, [filteredPoints, moments, placeLookupCache, savedPlaces]);
 
-  const handleDownloadTrips = useCallback(() => {
-    if (segments == null || segments.length === 0) {
-      return;
-    }
-    const payload = {
-      exportedAt: new Date().toISOString(),
-      source: fileName,
-      dateFilter: dateKey,
-      segmentCount: segments.length,
-      stops: (tripStops ?? []).map(stop => ({
-        id: stop.id,
-        arrivedAt: stop.arrivedAt.toISOString(),
-        leftAt: stop.leftAt.toISOString(),
-        durationMs: stop.durationMs,
-        center: {lat: stop.lat, lng: stop.lng},
-        spreadM: Math.round(stop.spreadM),
-        pointCount: stop.pointCount,
-      })),
-      segments: segments.map(segment => {
-        if (segment.kind === 'missing') {
-          return {
-            kind: 'missing' as const,
-            order: segment.order,
-            startAt: segment.startAt.toISOString(),
-            endAt: segment.endAt.toISOString(),
-            durationMs: segment.durationMs,
-            distanceM: Math.round(segment.distanceM),
-            fromKind: segment.fromKind,
-            toKind: segment.toKind,
-            from: {lat: segment.fromLat, lng: segment.fromLng},
-            to: {lat: segment.toLat, lng: segment.toLng},
-            path: [],
-          };
-        }
-        const path = segment.points.map(p => ({
-          id: p.id,
-          timestamp: p.timestamp,
-          lat: p.lat,
-          lng: p.lng,
-          speed: p.speed,
-          source: p.source,
-        }));
-        if (segment.kind === 'stay') {
-          return {
-            kind: 'stay' as const,
-            order: segment.order,
-            stopId: segment.stop.id,
-            savedPlaceLabel: segment.savedPlaceLabel ?? null,
-            savedPlaceId: segment.savedPlaceId ?? null,
-            arrivedAt: segment.startAt.toISOString(),
-            leftAt: segment.endAt.toISOString(),
-            durationMs: segment.durationMs,
-            center: {lat: segment.stop.lat, lng: segment.stop.lng},
-            spreadM: Math.round(segment.stop.spreadM),
-            pointCount: segment.stop.pointCount,
-            path,
-          };
-        }
-        return {
-          kind: 'drive' as const,
-          order: segment.order,
-          startAt: segment.startAt.toISOString(),
-          endAt: segment.endAt.toISOString(),
-          durationMs: segment.durationMs,
-          distanceM: Math.round(segment.distanceM),
-          fromStopId: segment.fromStop?.id ?? null,
-          toStopId: segment.toStop?.id ?? null,
-          fromSavedPlaceLabel: segment.fromSavedPlaceLabel ?? null,
-          fromSavedPlaceId: segment.fromSavedPlaceId ?? null,
-          toSavedPlaceLabel: segment.toSavedPlaceLabel ?? null,
-          toSavedPlaceId: segment.toSavedPlaceId ?? null,
-          path,
-        };
-      }),
-    };
-
-    const blob = new Blob([JSON.stringify(payload, null, 2)], {
-      type: 'application/json',
-    });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    const stamp = dateKey === 'all' ? 'all-dates' : dateKey;
-    anchor.href = url;
-    anchor.download = `trips-${stamp}.json`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
-  }, [segments, tripStops, fileName, dateKey]);
+  const handleDownloadTrips = useCallback(
+    (geometry: TripExportGeometry) => {
+      if (segments == null || segments.length === 0) {
+        return;
+      }
+      const payload = buildTripExportPayload({
+        source: fileName,
+        dateFilter: dateKey,
+        geometry,
+        canonicalizeStayGeometry,
+        canonicalizeDriveGeometry,
+        segments,
+        stops: tripStops ?? [],
+        moments,
+      });
+      downloadTripExportJson(payload, dateKey);
+    },
+    [
+      canonicalizeDriveGeometry,
+      canonicalizeStayGeometry,
+      dateKey,
+      fileName,
+      moments,
+      segments,
+      tripStops,
+    ],
+  );
 
   const showFullTrip = useCallback(() => {
     if (tripPoints == null || segments == null) {
@@ -954,7 +979,7 @@ export function App() {
   const nextPointId = adjacentPointId(pointsById, selectedId, 1);
 
   return (
-    <div className="app">
+    <div className={mode === 'mobile' ? 'app is-mobile-mode' : 'app'}>
       <aside className="sidebar">
         <header className="sidebar-header">
           <h1>Location Point Explorer</h1>
@@ -1067,10 +1092,12 @@ export function App() {
                     ? 'Explain date (America/Chicago)'
                   : mode === 'power'
                     ? 'Power test range (America/Chicago)'
-                    : 'Date (America/Chicago)'}
+                    : mode === 'mobile'
+                      ? 'Day (America/Chicago)'
+                      : 'Date (America/Chicago)'}
               </span>
               <select
-                value={dateKey === 'all' && (mode === 'trips' || mode === 'explain') ? '' : dateKey}
+                value={dateKey === 'all' && (mode === 'trips' || mode === 'explain' || mode === 'mobile') ? '' : dateKey}
                 onChange={event => {
                   const nextDate = event.target.value;
                   setDateKey(nextDate);
@@ -1090,7 +1117,7 @@ export function App() {
                   setTripPoints(null);
                   setTripStops(null);
                 }}>
-                {mode !== 'trips' && mode !== 'explain' ? (
+                {mode !== 'trips' && mode !== 'explain' && mode !== 'mobile' ? (
                   <option value="all">All dates ({dateKeys.length})</option>
                 ) : null}
                 {dateKeys.map(key => (
@@ -1105,6 +1132,11 @@ export function App() {
                   {mode === 'trips'
                     ? 'Trips are built for the selected day only.'
                     : 'Build trips, then click a segment or map point for why.'}
+                </p>
+              ) : mode === 'mobile' ? (
+                <p className="mobile-mode-hint">
+                  Mobile preview runs the same trip algorithm on imported GPS,
+                  saved places, place cache, and moments — read-only, no saving.
                 </p>
               ) : null}
             </label>
@@ -1149,6 +1181,14 @@ export function App() {
                 className={mode === 'power' ? 'mode-tab is-active' : 'mode-tab'}
                 onClick={() => changeMode('power')}>
                 Power
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === 'mobile'}
+                className={mode === 'mobile' ? 'mode-tab is-active' : 'mode-tab'}
+                onClick={() => changeMode('mobile')}>
+                Mobile
               </button>
             </div>
 
@@ -1422,7 +1462,8 @@ export function App() {
                     selectedSegmentId={selectedSegmentId}
                     onSelectSegment={onSelectSegment}
                     onShowFullTrip={showFullTrip}
-                    onDownload={handleDownloadTrips}
+                    onDownload={() => handleDownloadTrips('raw')}
+                    onDownloadCanonical={() => handleDownloadTrips('canonical')}
                     canonicalizeStayGeometry={canonicalizeStayGeometry}
                     canonicalizeDriveGeometry={canonicalizeDriveGeometry}
                     moments={moments}
@@ -1485,7 +1526,8 @@ export function App() {
                       selectedSegmentId={selectedSegmentId}
                       onSelectSegment={onSelectSegment}
                       onShowFullTrip={showFullTrip}
-                      onDownload={handleDownloadTrips}
+                      onDownload={() => handleDownloadTrips('raw')}
+                    onDownloadCanonical={() => handleDownloadTrips('canonical')}
                       canonicalizeStayGeometry={canonicalizeStayGeometry}
                       canonicalizeDriveGeometry={canonicalizeDriveGeometry}
                       moments={moments}
@@ -1517,6 +1559,19 @@ export function App() {
                     )}
                   </>
                 ) : null}
+              </section>
+            ) : mode === 'mobile' ? (
+              <section className="stops-mode" aria-label="Mobile preview">
+                <p className="source-filter-hint">
+                  The map is on the right. Tap the circular{' '}
+                  <strong>History</strong> button (bottom-left, clock icon) to
+                  open the timeline — same as the LifeMap app.
+                </p>
+                <p className="source-filter-hint">
+                  {mobileDateKey === 'all'
+                    ? 'Pick a day above to build the timeline.'
+                    : `${formatDateLabel(mobileDateKey)} · timeline builds automatically from imported GPS.`}
+                </p>
               </section>
             ) : (
               <section className="power-mode" aria-label="Power benchmark">
@@ -1696,11 +1751,13 @@ export function App() {
               </section>
             ) : (
               <p className="muted">
-                {pointNavMode
-                  ? 'Select a point on the map or use the arrows.'
-                  : mode === 'explain'
-                    ? 'Click a map point to see why it belongs to a stay or drive.'
-                    : 'Click a point on the map for details.'}
+                {mode === 'mobile'
+                  ? 'Map and history panel are in the main area →'
+                  : pointNavMode
+                    ? 'Select a point on the map or use the arrows.'
+                    : mode === 'explain'
+                      ? 'Click a map point to see why it belongs to a stay or drive.'
+                      : 'Click a point on the map for details.'}
               </p>
             )}
           </>
@@ -1716,7 +1773,24 @@ export function App() {
         onDragOver={event => event.preventDefault()}
         onDrop={onDrop}>
         {allPoints.length > 0 ? (
-          plottedPoints != null ? (
+          mode === 'mobile' ? (
+            mobileDateKey !== 'all' ? (
+              <MobileScreen
+                dateKey={mobileDateKey}
+                dateKeys={dateKeys}
+                allPoints={allPoints}
+                savedPlaces={savedPlaces}
+                placeLookupCache={placeLookupCache}
+                moments={moments}
+                onDateChange={setDateKey}
+              />
+            ) : (
+              <div className="map-placeholder">
+                <p>Mobile preview</p>
+                <p className="muted">Pick a day in the sidebar date dropdown.</p>
+              </div>
+            )
+          ) : plottedPoints != null ? (
             <>
               {pointNavMode ? (
                 <div className="map-nav-overlay">

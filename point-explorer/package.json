@@ -11,7 +11,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@lifemap/segmentation": "workspace:*",
     "leaflet": "^1.9.4",
+    "lottie-react": "^2.4.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-leaflet": "^5.0.0"

@@ -1,9 +1,14 @@
-import {formatDuration} from './stops';
-import {formatDistance, type StaySegment, type TripSegment} from './trips';
-import {canonicalizeStaySegmentPoints} from './stay-geometry';
-import {canonicalizeTravelSegmentPoints} from './travel-geometry';
-import type {MomentRow} from '../types';
-import type {DriveSegment} from './trips';
+import {formatDuration} from '@lifemap/segmentation';
+import {
+  formatDistance,
+  type SegmentMomentCounts,
+  type StaySegment,
+  type TripSegment,
+} from '@lifemap/segmentation';
+import {canonicalizeStaySegmentPoints} from '@lifemap/segmentation';
+import {canonicalizeTravelSegmentPoints} from '@lifemap/segmentation';
+import type {SegmentationMoment} from '@lifemap/segmentation';
+import type {DriveSegment} from '@lifemap/segmentation';
 
 const TZ = 'America/Chicago';
 
@@ -34,10 +39,19 @@ export function formatTimeRange(startAt: Date, endAt: Date): string {
 export type SegmentDisplay = {
   kind: 'Stay' | 'Drive' | 'Missing';
   variant: 'stay' | 'drive' | 'missing';
-  /** Place name or route, e.g. "Home" or "Home → Work". */
   subtitle?: string;
+  placeLookupCacheId?: number;
+  momentCounts?: SegmentMomentCounts;
   timeRange: string;
   stats: string[];
+};
+
+const MOMENT_TYPE_LABELS: Record<keyof SegmentMomentCounts, string> = {
+  photo: 'photo',
+  video: 'video',
+  voice: 'voice',
+  note: 'note',
+  activity: 'activity',
 };
 
 function canonicalPointCountLabel(
@@ -53,7 +67,7 @@ function canonicalPointCountLabel(
 export function stayPointCountLabel(
   segment: StaySegment,
   canonicalizeStays: boolean,
-  moments: readonly MomentRow[] = [],
+  moments: readonly SegmentationMoment[] = [],
 ): string {
   const rawCount = segment.points.length;
   if (!canonicalizeStays) {
@@ -86,7 +100,9 @@ export function describeTripSegment(segment: TripSegment): SegmentDisplay {
     return {
       kind: 'Stay',
       variant: 'stay',
-      subtitle: segment.savedPlaceLabel,
+      subtitle: segment.savedPlaceLabel ?? segment.placeLookupLabel,
+      placeLookupCacheId: segment.placeLookupCacheId,
+      momentCounts: segment.momentCounts,
       timeRange,
       stats: [
         formatDuration(segment.durationMs),
@@ -111,6 +127,7 @@ export function describeTripSegment(segment: TripSegment): SegmentDisplay {
       kind: 'Drive',
       variant: 'drive',
       subtitle,
+      momentCounts: segment.momentCounts,
       timeRange,
       stats: [
         formatDuration(segment.durationMs),
@@ -124,6 +141,7 @@ export function describeTripSegment(segment: TripSegment): SegmentDisplay {
     kind: 'Missing',
     variant: 'missing',
     subtitle: `${segment.fromKind} → ${segment.toKind}`,
+    momentCounts: segment.momentCounts,
     timeRange,
     stats: [
       `${formatDuration(segment.durationMs)} lost`,
@@ -131,4 +149,13 @@ export function describeTripSegment(segment: TripSegment): SegmentDisplay {
       'no GPS',
     ],
   };
+}
+
+export function formatMomentCountChips(counts: SegmentMomentCounts): string[] {
+  return (Object.keys(MOMENT_TYPE_LABELS) as Array<keyof SegmentMomentCounts>)
+    .filter(key => counts[key] > 0)
+    .map(
+      key =>
+        `${counts[key]} ${MOMENT_TYPE_LABELS[key]}${counts[key] === 1 ? '' : 's'}`,
+    );
 }

@@ -139,6 +139,8 @@ export function stitchContinuedSegmentStartAt(
     endAt,
     durationMs: differenceInMilliseconds(endAt, startAt),
     openThroughNow: tail.openThroughNow ?? sealed.openThroughNow,
+    anchorLat: sealed.anchorLat ?? tail.anchorLat,
+    anchorLng: sealed.anchorLng ?? tail.anchorLng,
   };
 }
 

@@ -4,10 +4,8 @@ import {
   formatDuration,
   isMovingPoint,
   type StopDetectionConfig,
-} from './stops';
-import {
-  matchSavedPlaceForPoint,
-} from './saved-places';
+} from '@lifemap/segmentation';
+import {matchSavedPlaceForPoint} from '@lifemap/segmentation';
 import {
   formatDistance,
   MERGE_STAY_MAX_DISTANCE_M,
@@ -16,7 +14,7 @@ import {
   MISSING_MIN_GAP_MS,
   SAVED_PLACE_MIN_DWELL_MS,
   type TripSegment,
-} from './trips';
+} from '@lifemap/segmentation';
 import type {ParsedPoint, SavedPlaceRow} from '../types';
 
 export type SegmentExplanation = {

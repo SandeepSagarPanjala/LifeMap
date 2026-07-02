@@ -1,5 +1,7 @@
 import type {LocationPointRow} from '@/db/repositories/location-days';
 import {buildDayTimeline, detectTripsFromPoints} from '@/lib/segmentation';
+import type {PlaceLookupRow} from '@/lib/place-lookup-types';
+import {PLACE_LOOKUP_VENUE_RADIUS_M} from '@/lib/place-lookup-venue';
 import {buildTripDetectionConfig} from '@/lib/trip-settings';
 
 const HOME = {lat: 33.21, lng: -97.13};
@@ -162,6 +164,66 @@ describe('segmentation detection (current algorithm)', () => {
       );
 
       expect(timeline.filter(entry => entry.kind === 'stay')).toHaveLength(1);
+    });
+  });
+
+  describe('place lookup cache annotate', () => {
+    function walmartCache(): PlaceLookupRow {
+      return {
+        id: 42,
+        anchorLat: WALMART.lat,
+        anchorLng: WALMART.lng,
+        venueRadiusMeters: PLACE_LOOKUP_VENUE_RADIUS_M,
+        addressLine: '123 Retail Rd',
+        candidates: [
+          {
+            id: 'poi-walmart',
+            name: 'Walmart',
+            kind: 'poi',
+            distanceM: 10,
+          },
+        ],
+        selectedCandidateIndex: null,
+        lookupStatus: 'complete',
+        fetchedAt: new Date('2026-06-03T08:00:00.000Z'),
+      };
+    }
+
+    it('links unlabeled stays to cache and labels drive endpoints', () => {
+      const timeline = buildDayTimeline(
+        makePoints([
+          {minutes: 0, ...HOME},
+          {minutes: 60, ...HOME},
+          {minutes: 110, ...HOME},
+          {minutes: 118, lat: 33.215, lng: -97.12},
+          {minutes: 120, lat: 33.22, lng: -97.1},
+          {minutes: 125, lat: 33.23, lng: -97.08},
+          {minutes: 130, lat: 33.235, lng: -97.07},
+          {minutes: 135, ...WALMART},
+          {minutes: 150, ...WALMART},
+          {minutes: 165, lat: 33.24, lng: -97.07},
+          {minutes: 170, lat: 33.23, lng: -97.09},
+          {minutes: 175, lat: 33.22, lng: -97.11},
+          {minutes: 185, ...HOME},
+          {minutes: 200, ...HOME},
+        ]),
+        config,
+        {placeLookupCache: [walmartCache()]},
+      );
+
+      const walmartStay = timeline.find(
+        entry =>
+          entry.kind === 'stay' &&
+          entry.placeLookupCacheId === 42 &&
+          entry.placeLookupLabel === 'Walmart',
+      );
+      expect(walmartStay).toBeDefined();
+
+      const driveToWalmart = timeline.find(
+        entry =>
+          entry.kind === 'travel' && entry.toSavedPlaceLabel === 'Walmart',
+      );
+      expect(driveToWalmart).toBeDefined();
     });
   });
 });

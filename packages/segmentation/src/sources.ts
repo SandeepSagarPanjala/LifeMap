@@ -1,4 +1,4 @@
-import type {ParsedPoint} from '../types';
+import type {ParsedPoint} from './types';
 
 /** Common LifeMap location point sources (shown first in the UI). */
 export const PLOT_SOURCE_ORDER = [

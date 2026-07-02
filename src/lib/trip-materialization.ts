@@ -20,6 +20,7 @@ import {
 } from '@/db/repositories/trip-points';
 import { findPlaceLookupNearAnchor } from '@/db/repositories/place-lookup-cache';
 import { listSavedPlaces } from '@/db/repositories/saved-places';
+import { matchSavedPlaceForPoint } from '@/lib/saved-places';
 import { getMomentsForDay, type MomentRow } from '@/db/repositories/moments';
 import {
   deleteAllTrips,
@@ -65,7 +66,6 @@ import { getSealableTodayEntries } from '@/lib/today-seal-policy';
 import {syncTodayDisplay, syncTodayTrips} from '@/lib/today-sync';
 import {
   isPlayableTimelineEntry,
-  stayTripCentroid,
   type DayTimelineEntry,
   type DetectedTrip,
   type TimelineGap,
@@ -237,18 +237,6 @@ export function getDefaultTripDetectionConfig(): TripDetectionConfig {
   );
 }
 
-function travelCentroid(trip: DetectedTrip): { lat: number; lng: number } {
-  if (trip.points.length === 0) {
-    return { lat: 0, lng: 0 };
-  }
-  const first = trip.points[0]!;
-  const last = trip.points[trip.points.length - 1]!;
-  return {
-    lat: (first.lat + last.lat) / 2,
-    lng: (first.lng + last.lng) / 2,
-  };
-}
-
 function geometryPointsForPersist(
   entry: DetectedTrip,
   centroid: { lat: number; lng: number },
@@ -289,17 +277,21 @@ function tripCentroidForPersist(
   savedPlaces: Awaited<ReturnType<typeof listSavedPlaces>>,
 ): { lat: number; lng: number } {
   if (trip.kind === 'stay') {
+    if (trip.anchorLat != null && trip.anchorLng != null) {
+      if (savedPlaces.length > 0) {
+        const anchorMatch = matchSavedPlaceForPoint(
+          { lat: trip.anchorLat, lng: trip.anchorLng },
+          savedPlaces,
+        );
+        if (anchorMatch != null) {
+          return { lat: anchorMatch.lat, lng: anchorMatch.lng };
+        }
+      }
+      return { lat: trip.anchorLat, lng: trip.anchorLng };
+    }
     return resolveVisitAnchor(trip.points, savedPlaces);
   }
   return travelCentroidFromRoute(trip.points);
-}
-
-function tripCentroid(trip: DetectedTrip): { lat: number; lng: number } {
-  if (trip.kind === 'stay') {
-    const centroid = stayTripCentroid(trip);
-    return { lat: centroid.latitude, lng: centroid.longitude };
-  }
-  return travelCentroid(trip);
 }
 
 async function pastDayCanLoadFromStore(
@@ -741,7 +733,8 @@ export async function ensureTripForClosedStay(
     return null;
   }
 
-  const centroid = tripCentroid(stay);
+  const savedPlaces = await listSavedPlaces();
+  const centroid = tripCentroidForPersist(stay, savedPlaces);
   const placeLookup = await findPlaceLookupNearAnchor(centroid);
   const closedAt = new Date();
 

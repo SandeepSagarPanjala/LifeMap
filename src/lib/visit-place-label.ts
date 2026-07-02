@@ -12,7 +12,7 @@ import {
 import type {VisitPlaceDisplay} from '@/lib/place-lookup-types';
 import {matchSavedPlaceForStay} from '@/lib/saved-places';
 import type {DetectedTrip} from '@/lib/trip-detection';
-import {stayTripCentroid} from '@/lib/trip-detection';
+import {resolveStayAnchor} from '@/lib/trip-detection';
 import {tripEventKey} from '@/lib/trip-materialization';
 
 async function resolveCacheRowForTrip(
@@ -26,11 +26,8 @@ async function resolveCacheRowForTrip(
     }
   }
 
-  const anchor = stayTripCentroid(stay);
-  return findPlaceLookupNearAnchor({
-    lat: anchor.latitude,
-    lng: anchor.longitude,
-  });
+  const anchor = resolveStayAnchor(stay);
+  return findPlaceLookupNearAnchor(anchor);
 }
 
 /** Saved place, user-selected label, or auto-selected nearby POI for a visit. */
@@ -76,11 +73,8 @@ export async function loadVisitPlaceDisplayForStay(
     }
   }
 
-  const anchor = stayTripCentroid(stay);
-  const row = await findPlaceLookupNearAnchor({
-    lat: anchor.latitude,
-    lng: anchor.longitude,
-  });
+  const anchor = resolveStayAnchor(stay);
+  const row = await findPlaceLookupNearAnchor(anchor);
   return {
     ...resolveVisitPlaceDisplay(row),
     materializedTripId,

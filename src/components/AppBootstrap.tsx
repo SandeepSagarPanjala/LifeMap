@@ -7,9 +7,16 @@ import {
   initializeTrackingDiagnosticsEnabled,
   recordTrackingDiagnostic,
 } from '@/lib/tracking-diagnostics';
+import {getTodayDateKey} from '@/lib/day-utils';
+import {loadHistoryForDayCoalesced} from '@/lib/history-day-load';
 import {ensureHistoryCalendarBounds} from '@/lib/history-calendar-bounds';
 import {preloadTodayHistory} from '@/lib/history-preload';
 import {sealYesterdayIfNeeded} from '@/lib/trip-materialization';
+import {
+  beginTodayOpenCycle,
+  scheduleTodayOpenSilentSeal,
+} from '@/lib/today-sync';
+import {getCurrentTripDetectionConfig} from '@/lib/trip-detection-config';
 import {refreshTodayOnForeground, setTodayRefreshAppForeground} from '@/lib/today-refresh-scheduler';
 import {warmCanonicalTravelGeometrySetting} from '@/lib/trip-geometry-settings';
 import {runWhenIdle, yieldToEventLoop} from '@/lib/run-when-idle';
@@ -99,9 +106,14 @@ export function AppBootstrap({
       return;
     }
 
+    beginTodayOpenCycle();
+
     const preload = runWhenIdle(() => {
       void ensureHistoryCalendarBounds()
         .then(() => preloadTodayHistory())
+        .then(() => {
+          scheduleTodayOpenSilentSeal(getCurrentTripDetectionConfig());
+        })
         .catch(error => {
           logBootstrapFailure('history_preload', error);
         });
@@ -135,10 +147,10 @@ export function AppBootstrap({
           if (!trackingBootstrapSucceededRef.current) {
             void runTrackingBootstrap();
           }
+          beginTodayOpenCycle();
           void warmCanonicalTravelGeometrySetting().then(() =>
             sealYesterdayIfNeeded(),
           );
-          refreshTodayOnForeground();
           void (async () => {
             try {
               await service.drainNativeQueue();
@@ -150,7 +162,10 @@ export function AppBootstrap({
             } catch {
               // Best-effort — still refresh the map from whatever is in the DB.
             }
+            const detectionConfig = getCurrentTripDetectionConfig();
+            await loadHistoryForDayCoalesced(getTodayDateKey(), detectionConfig);
             refreshTodayOnForeground();
+            scheduleTodayOpenSilentSeal(detectionConfig);
           })();
         } else if (nextState === 'background') {
           void service.drainNativeQueue().catch(() => undefined);

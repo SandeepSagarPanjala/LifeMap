@@ -1,4 +1,4 @@
-import type {ParsedPoint} from '../types';
+import type {ParsedPoint} from './types';
 import type {DriveSegment} from './trips';
 
 /** Perpendicular distance threshold for straight / gentle curve segments. */

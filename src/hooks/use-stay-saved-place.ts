@@ -4,7 +4,7 @@ import {
   getSavedPlaceById,
   type SavedPlaceRow,
 } from '@/db/repositories/saved-places';
-import {matchSavedPlaceForStay} from '@/lib/saved-places';
+import {lookupSavedPlaceById} from '@/lib/saved-places';
 import type {DetectedTrip} from '@/lib/trip-detection';
 
 /** Active geofence match, or a trip-linked place that may be soft-deleted. */
@@ -13,7 +13,8 @@ export function useStaySavedPlace(
   savedPlaces: readonly SavedPlaceRow[],
 ): SavedPlaceRow | null {
   const activeMatch = useMemo(
-    () => (stay != null ? matchSavedPlaceForStay(stay, savedPlaces) : null),
+    () =>
+      stay != null ? lookupSavedPlaceById(stay.savedPlaceId, savedPlaces) : null,
     [savedPlaces, stay],
   );
   const [linkedPlace, setLinkedPlace] = useState<SavedPlaceRow | null>(null);

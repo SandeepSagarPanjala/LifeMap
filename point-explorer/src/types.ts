@@ -9,6 +9,14 @@ export type LocationPointRow = {
   source: string;
 };
 
+import type {
+  ParsedPoint,
+  PlaceLookupRow,
+  SavedPlaceRow,
+} from '@lifemap/segmentation';
+
+export type {ParsedPoint, PlaceLookupRow, SavedPlaceRow};
+
 export type StoredTripExportRow = {
   id: number;
   kind: 'stay' | 'travel' | 'missing';
@@ -44,18 +52,6 @@ export type LocationExport = {
   rows: LocationPointRow[];
 };
 
-/** Full database export from LifeMap Settings → All tables. */
-export type SavedPlaceRow = {
-  id: number;
-  kind: 'home' | 'work' | 'favorite';
-  label: string;
-  lat: number;
-  lng: number;
-  radiusMeters: number;
-  addressLine?: string | null;
-  createdAt?: string;
-};
-
 export type DatabaseExport = {
   exportedAt?: string;
   exportKind?: 'original_data' | string;
@@ -75,14 +71,12 @@ export type DatabaseExport = {
 export type UploadDataKind = 'location_points' | 'stored_trips' | 'unknown';
 export type UploadMode = 'detect' | 'plot';
 
+export type MomentType = 'photo' | 'note' | 'video' | 'voice' | 'activity';
+
 export type MomentRow = {
   id: number;
+  type?: MomentType;
   timestamp: string;
   lat: number | null;
   lng: number | null;
-};
-
-export type ParsedPoint = LocationPointRow & {
-  at: Date;
-  dateKey: string;
 };

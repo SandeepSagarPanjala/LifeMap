@@ -204,6 +204,29 @@ export async function setTripPlaceLookupCacheId(
     .where(eq(trips.id, tripId));
 }
 
+export type TripPersistedLabel = {
+  placeLookupCacheId: number | null;
+  selectedCandidateIndex: number | null;
+  savedPlaceLabel: string | null;
+  savedPlaceId: number | null;
+};
+
+export async function applyTripPersistedLabel(
+  tripId: number,
+  labels: TripPersistedLabel,
+): Promise<void> {
+  const db = await getDatabase();
+  await db
+    .update(trips)
+    .set({
+      placeLookupCacheId: labels.placeLookupCacheId,
+      selectedCandidateIndex: labels.selectedCandidateIndex,
+      savedPlaceLabel: labels.savedPlaceLabel,
+      savedPlaceId: labels.savedPlaceId,
+    })
+    .where(eq(trips.id, tripId));
+}
+
 export async function updateTripLabelSelection(
   tripId: number,
   selectedCandidateIndex: number,
