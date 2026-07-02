@@ -1,16 +1,11 @@
-import {NativeModules, Platform} from 'react-native';
+import {Platform} from 'react-native';
 
-type VoiceAudioSessionModule = {
-  prepareForRecording: () => Promise<boolean>;
-};
+import {releaseNativeVoiceRecordingSession} from '@/lib/native-voice-recorder';
 
-const nativeModule = NativeModules.VoiceAudioSessionModule as
-  | VoiceAudioSessionModule
-  | undefined;
-
-export async function prepareVoiceRecordingSession(): Promise<void> {
-  if (Platform.OS !== 'ios' || nativeModule?.prepareForRecording == null) {
+/** Clears the iOS recording audio session after camera/video capture. */
+export async function releaseVoiceRecordingSession(): Promise<void> {
+  if (Platform.OS !== 'ios') {
     return;
   }
-  await nativeModule.prepareForRecording();
+  await releaseNativeVoiceRecordingSession();
 }

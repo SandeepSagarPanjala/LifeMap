@@ -7,11 +7,20 @@ import {
 
 import {VOICE_MAX_DURATION_MS} from '@/lib/moments/media-compress-config';
 import {createTempVoiceRecordingPath, deleteMomentContentFile} from '@/lib/moments/moment-storage';
-import {prepareVoiceRecordingSession} from '@/lib/voice-audio-session';
+import {ensureMicrophonePermission} from '@/lib/microphone-permission';
+import {
+  cancelNativeVoiceRecording,
+  canPollNativeVoiceProgress,
+  getNativeVoiceRecordingProgress,
+  isNativeIosVoiceRecorderAvailable,
+  releaseNativeVoiceRecordingSession,
+  startNativeVoiceRecording,
+  stopNativeVoiceRecording,
+} from '@/lib/native-voice-recorder';
 
-const START_RECORDING_MAX_ATTEMPTS = 4;
-const START_RECORDING_RETRY_DELAY_MS = 400;
-const SESSION_SETTLE_DELAY_MS = 300;
+const START_RECORDING_MAX_ATTEMPTS = 3;
+const START_RECORDING_RETRY_DELAY_MS = 350;
+const NATIVE_PROGRESS_POLL_MS = 100;
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => {
@@ -29,7 +38,8 @@ function isRetryableRecordingStartError(error: unknown): boolean {
     message.includes('session') ||
     message.includes('recording setup') ||
     message.includes('hijacked') ||
-    message.includes('failed to start recording')
+    message.includes('failed to start recording') ||
+    message.includes('failed to prepare')
   );
 }
 
@@ -64,11 +74,64 @@ export type VoiceRecorderSession = {
 export function createVoiceRecorderSession(
   callbacks: VoiceRecorderCallbacks = {},
 ): VoiceRecorderSession {
+  const useNativeRecorder = isNativeIosVoiceRecorderAvailable();
   let sound = createSound();
   let activeRecordPath: string | null = null;
   let durationMs = 0;
   let stoppingForCap = false;
   let disposed = false;
+  let nativeProgressPoll: ReturnType<typeof setInterval> | null = null;
+  let nativeRecordingStartedAt = 0;
+
+  const stopNativeProgressPoll = () => {
+    if (nativeProgressPoll != null) {
+      clearInterval(nativeProgressPoll);
+      nativeProgressPoll = null;
+    }
+  };
+
+  const applyNativeProgress = (event: {
+    currentPosition: number;
+    currentMetering?: number;
+  }) => {
+    if (disposed) {
+      return;
+    }
+    durationMs = event.currentPosition;
+    callbacks.onDurationMs?.(durationMs);
+    if (event.currentMetering != null) {
+      callbacks.onMetering?.(event.currentMetering);
+    }
+    if (!stoppingForCap && durationMs >= VOICE_MAX_DURATION_MS) {
+      stoppingForCap = true;
+      callbacks.onMaxDurationReached?.();
+    }
+  };
+
+  const startNativeProgressPoll = () => {
+    stopNativeProgressPoll();
+    nativeRecordingStartedAt = Date.now();
+    nativeProgressPoll = setInterval(() => {
+      if (disposed) {
+        return;
+      }
+      if (canPollNativeVoiceProgress()) {
+        void getNativeVoiceRecordingProgress()
+          .then(progress => {
+            if (!progress.isRecording) {
+              return;
+            }
+            applyNativeProgress(progress);
+          })
+          .catch(() => undefined);
+        return;
+      }
+      applyNativeProgress({
+        currentPosition: Date.now() - nativeRecordingStartedAt,
+        currentMetering: -160,
+      });
+    }, NATIVE_PROGRESS_POLL_MS);
+  };
 
   const removeListenersSafely = () => {
     try {
@@ -103,43 +166,6 @@ export function createVoiceRecorderSession(
     sound = createSound();
   };
 
-  const discardRecording = async (filePath?: string | null) => {
-    const paths = new Set<string>();
-    if (activeRecordPath) {
-      paths.add(activeRecordPath);
-    }
-    if (filePath) {
-      paths.add(filePath);
-    }
-
-    if (disposed) {
-      for (const path of paths) {
-        await deleteMomentContentFile(path);
-      }
-      return;
-    }
-
-    try {
-      await sound.stopRecorder();
-    } catch {
-      // Not recording.
-    }
-    try {
-      await sound.stopPlayer();
-    } catch {
-      // Not playing.
-    }
-    removeListenersSafely();
-
-    for (const path of paths) {
-      await deleteMomentContentFile(path);
-    }
-
-    activeRecordPath = null;
-    durationMs = 0;
-    stoppingForCap = false;
-  };
-
   const handleRecordProgress = (event: RecordBackType) => {
     if (disposed) {
       return;
@@ -153,6 +179,44 @@ export function createVoiceRecorderSession(
       stoppingForCap = true;
       callbacks.onMaxDurationReached?.();
     }
+  };
+
+  const discardRecording = async (filePath?: string | null) => {
+    const paths = new Set<string>();
+    if (activeRecordPath) {
+      paths.add(activeRecordPath);
+    }
+    if (filePath) {
+      paths.add(filePath);
+    }
+
+    if (useNativeRecorder) {
+      stopNativeProgressPoll();
+      await cancelNativeVoiceRecording();
+    } else if (!disposed) {
+      try {
+        await sound.stopRecorder();
+      } catch {
+        // Not recording.
+      }
+    }
+
+    if (!disposed) {
+      try {
+        await sound.stopPlayer();
+      } catch {
+        // Not playing.
+      }
+      removeListenersSafely();
+    }
+
+    for (const path of paths) {
+      await deleteMomentContentFile(path);
+    }
+
+    activeRecordPath = null;
+    durationMs = 0;
+    stoppingForCap = false;
   };
 
   const handlePlaybackProgress = (event: {currentPosition: number; duration: number}) => {
@@ -170,6 +234,50 @@ export function createVoiceRecorderSession(
     callbacks.onPlaybackEnded?.();
   };
 
+  const startNativeRecording = async (recordPath: string) => {
+    await startNativeVoiceRecording(recordPath);
+    if (canPollNativeVoiceProgress()) {
+      const progress = await getNativeVoiceRecordingProgress();
+      if (!progress.isRecording) {
+        throw new Error('Failed to start recording.');
+      }
+      applyNativeProgress(progress);
+    } else {
+      applyNativeProgress({currentPosition: 0, currentMetering: -160});
+    }
+    startNativeProgressPoll();
+  };
+
+  const startNitroRecording = async (recordPath: string) => {
+    attachRecordListener();
+    let lastError: unknown;
+    for (let attempt = 0; attempt < START_RECORDING_MAX_ATTEMPTS; attempt += 1) {
+      if (disposed) {
+        throw new Error('Voice recorder disposed.');
+      }
+      if (attempt > 0) {
+        try {
+          await sound.stopRecorder();
+        } catch {
+          // Not recording.
+        }
+        resetNativeSound();
+        attachRecordListener();
+        await sleep(START_RECORDING_RETRY_DELAY_MS * attempt);
+      }
+      try {
+        await sound.startRecorder(recordPath, VOICE_AUDIO_SET, true);
+        return;
+      } catch (error) {
+        lastError = error;
+        if (!isRetryableRecordingStartError(error)) {
+          throw error;
+        }
+      }
+    }
+    throw lastError ?? new Error('Could not start voice recording.');
+  };
+
   return {
     async startRecording() {
       if (disposed) {
@@ -181,51 +289,36 @@ export function createVoiceRecorderSession(
       }
       stoppingForCap = false;
       durationMs = 0;
+
+      const micGranted = await ensureMicrophonePermission();
+      if (!micGranted) {
+        throw new Error('Microphone permission denied.');
+      }
+
       const recordPath = await createTempVoiceRecordingPath();
       if (disposed) {
         await deleteMomentContentFile(recordPath);
         throw new Error('Voice recorder disposed.');
       }
       activeRecordPath = recordPath;
-      attachRecordListener();
 
-      let lastError: unknown;
-      await prepareVoiceRecordingSession();
-      for (let attempt = 0; attempt < START_RECORDING_MAX_ATTEMPTS; attempt += 1) {
-        if (disposed) {
-          throw new Error('Voice recorder disposed.');
-        }
-        if (attempt > 0) {
-          await prepareVoiceRecordingSession();
-          try {
-            await sound.stopRecorder();
-          } catch {
-            // Not recording.
-          }
-          resetNativeSound();
-          attachRecordListener();
-          await sleep(START_RECORDING_RETRY_DELAY_MS * attempt);
-        }
-        await sleep(SESSION_SETTLE_DELAY_MS);
-        if (disposed) {
-          throw new Error('Voice recorder disposed.');
-        }
-        try {
-          await sound.startRecorder(activeRecordPath, VOICE_AUDIO_SET, true);
-          return;
-        } catch (error) {
-          lastError = error;
-          if (!isRetryableRecordingStartError(error)) {
-            throw error;
-          }
-        }
+      if (useNativeRecorder) {
+        await startNativeRecording(recordPath);
+        return;
       }
-      throw lastError ?? new Error('Could not start voice recording.');
+      await startNitroRecording(recordPath);
     },
 
     async stopRecording() {
       if (!activeRecordPath || disposed) {
         throw new Error('No active voice recording.');
+      }
+      if (useNativeRecorder) {
+        const result = await stopNativeVoiceRecording();
+        stopNativeProgressPoll();
+        stoppingForCap = false;
+        activeRecordPath = null;
+        return {filePath: result.filePath, durationMs: result.durationMs || durationMs};
       }
       const filePath = await sound.stopRecorder();
       removeListenersSafely();
@@ -238,6 +331,10 @@ export function createVoiceRecorderSession(
     async startPreview(filePath: string) {
       if (disposed) {
         return;
+      }
+      if (useNativeRecorder) {
+        await releaseNativeVoiceRecordingSession();
+        await sleep(150);
       }
       await sound.stopPlayer();
       if (disposed) {
@@ -275,11 +372,17 @@ export function createVoiceRecorderSession(
         return;
       }
       disposed = true;
+      stopNativeProgressPoll();
       void (async () => {
-        try {
-          await sound.stopRecorder();
-        } catch {
-          // Not recording.
+        if (useNativeRecorder) {
+          await cancelNativeVoiceRecording();
+          await releaseNativeVoiceRecordingSession();
+        } else {
+          try {
+            await sound.stopRecorder();
+          } catch {
+            // Not recording.
+          }
         }
         try {
           await sound.stopPlayer();
@@ -305,16 +408,23 @@ export function createVoiceRecorderSession(
 export function getVoiceRecordingErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     const message = error.message.toLowerCase();
+    if (message.includes('undefined is not a function')) {
+      return 'Voice recorder needs a full app rebuild. Quit the app, run pnpm ios, then try again.';
+    }
     if (message.includes('permission') || message.includes('denied')) {
-      return 'Microphone access is required to record voice memos.';
+      return 'Microphone access is required. Allow it in Settings → LifeMap → Microphone.';
+    }
+    if (message.includes('other audio')) {
+      return 'Stop other audio (music, calls, or videos) and tap the mic to try again.';
     }
     if (
       message.includes('prepare') ||
       message.includes('session') ||
       message.includes('hijacked') ||
-      message.includes('other audio')
+      message.includes('failed to start recording') ||
+      message.includes('failed to prepare')
     ) {
-      return 'Could not access the microphone. Tap the mic to try again — LifeMap resets audio after Bluetooth disconnects.';
+      return 'Could not start the recorder. Tap the mic to try again.';
     }
     return error.message;
   }
