@@ -497,7 +497,6 @@ export async function loadHistoryForSelectedDay(
 
   if (isToday) {
     return syncTodayDisplay(detectionConfig, referenceNow, {
-      skipRepair: true,
       onPartial: options?.onPartial,
     });
   }
