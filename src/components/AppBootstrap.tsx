@@ -7,8 +7,6 @@ import {
   initializeTrackingDiagnosticsEnabled,
   recordTrackingDiagnostic,
 } from '@/lib/tracking-diagnostics';
-import {getTodayDateKey} from '@/lib/day-utils';
-import {loadHistoryForDayCoalesced} from '@/lib/history-day-load';
 import {ensureHistoryCalendarBounds} from '@/lib/history-calendar-bounds';
 import {preloadTodayHistory} from '@/lib/history-preload';
 import {sealYesterdayIfNeeded} from '@/lib/trip-materialization';
@@ -24,6 +22,9 @@ import {useAppStore} from '@/stores/app-store';
 
 /** Defer timeline preload and yesterday seal — not location tracking. */
 const DEFER_SECONDARY_LAUNCH_WORK_MS = 2_000;
+
+/** Let the map paint cached today before drain / tail merge on foreground resume. */
+const DEFER_FOREGROUND_RESUME_MS = 100;
 
 type AppBootstrapProps = {
   children: React.ReactNode;
@@ -50,6 +51,7 @@ export function AppBootstrap({
   );
   const trackingBootstrapSucceededRef = useRef(false);
   const trackingBootstrapPromiseRef = useRef<Promise<void> | null>(null);
+  const cancelForegroundResumeRef = useRef<(() => void) | null>(null);
 
   const runTrackingBootstrap = useCallback((): Promise<void> => {
     if (trackingBootstrapSucceededRef.current) {
@@ -148,31 +150,42 @@ export function AppBootstrap({
             void runTrackingBootstrap();
           }
           beginTodayOpenCycle();
-          void warmCanonicalTravelGeometrySetting().then(() =>
-            sealYesterdayIfNeeded(),
-          );
-          void (async () => {
-            try {
-              await service.drainNativeQueue();
-            } catch {
-              // Best-effort — persist pipeline may still have rows in SQLite.
-            }
-            try {
-              await service.refreshPersistPipeline();
-            } catch {
-              // Best-effort — still refresh the map from whatever is in the DB.
-            }
-            const detectionConfig = getCurrentTripDetectionConfig();
-            await loadHistoryForDayCoalesced(getTodayDateKey(), detectionConfig);
-            refreshTodayOnForeground();
-            scheduleTodayOpenSilentSeal(detectionConfig);
-          })();
+          cancelForegroundResumeRef.current?.();
+          const resumeWork = runWhenIdle(() => {
+            void (async () => {
+              await yieldToEventLoop();
+              try {
+                await warmCanonicalTravelGeometrySetting();
+                await sealYesterdayIfNeeded();
+              } catch {
+                // Best-effort — map still shows cached today until sync runs.
+              }
+              try {
+                await service.drainNativeQueue();
+              } catch {
+                // Best-effort — persist pipeline may still have rows in SQLite.
+              }
+              try {
+                await service.refreshPersistPipeline();
+              } catch {
+                // Best-effort — still refresh the map from whatever is in the DB.
+              }
+              refreshTodayOnForeground();
+              scheduleTodayOpenSilentSeal(getCurrentTripDetectionConfig());
+            })();
+          }, DEFER_FOREGROUND_RESUME_MS);
+          cancelForegroundResumeRef.current = resumeWork.cancel;
         } else if (nextState === 'background') {
+          cancelForegroundResumeRef.current?.();
+          cancelForegroundResumeRef.current = null;
           void service.drainNativeQueue().catch(() => undefined);
         }
       }
     });
-    return () => subscription.remove();
+    return () => {
+      cancelForegroundResumeRef.current?.();
+      subscription.remove();
+    };
   }, [hasCompletedPrivacyOnboarding, runTrackingBootstrap]);
 
   return children;

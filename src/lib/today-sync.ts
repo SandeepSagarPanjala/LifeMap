@@ -201,16 +201,6 @@ export async function syncTodayDisplay(
   const dateKey = getTodayDateKey();
   const tripRows = await listTripsForDay(dateKey);
 
-  if (tripRows.length > 0) {
-    const stored = await loadTodayFromTrips(
-      dateKey,
-      tripRows,
-      detectionConfig,
-      referenceNow,
-    );
-    options.onPartial?.(stored);
-  }
-
   return mergeTodayDisplayFromDbAndTail(
     dateKey,
     tripRows,
