@@ -22,8 +22,6 @@ export async function preloadTodayHistory(): Promise<void> {
     return;
   }
 
-  const result = await syncTodayDisplay(detectionConfig, undefined, {
-    skipRepair: true,
-  });
+  const result = await syncTodayDisplay(detectionConfig);
   historyDataCache.write(cacheKey, result, TODAY_LIVE_FINGERPRINT);
 }
