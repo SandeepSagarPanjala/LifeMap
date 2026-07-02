@@ -53,10 +53,11 @@ import {
   type PhotoFilterId,
 } from '@/lib/moments/photo-filters';
 import type {RootStackParamList} from '@/navigation/types';
-import {prepareVoiceRecordingSession} from '@/lib/voice-audio-session';
+import {releaseVoiceRecordingSession} from '@/lib/voice-audio-session';
 
 const CAMERA_AUDIO_RELEASE_MS = 400;
-const CAMERA_STOP_RELEASE_MS = 600;
+const CAMERA_STOP_RELEASE_MS = 2500;
+const CAMERA_PREVIEW_SETTLE_MS = 250;
 const CAMERA_CAPTURE_RETRY_MS = 350;
 const CAMERA_CAPTURE_MAX_ATTEMPTS = 3;
 
@@ -225,6 +226,7 @@ export function CapturePhotoScreen() {
   const recordingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const cameraReadyFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cameraCloseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cameraPreviewStoppedRef = useRef(false);
   const cameraLeavingRef = useRef(false);
   const cameraShutdownIntentRef = useRef<CameraShutdownIntent | null>(null);
   const cameraShutdownCompletedRef = useRef(false);
@@ -297,6 +299,7 @@ export function CapturePhotoScreen() {
       }
       setCameraBackgroundPaused(false);
       cameraLeavingRef.current = true;
+      cameraPreviewStoppedRef.current = false;
       cameraShutdownCompletedRef.current = false;
       cameraShutdownIntentRef.current = intent;
       pendingReviewDraftRef.current =
@@ -304,6 +307,9 @@ export function CapturePhotoScreen() {
       setCameraLeaving(true);
       clearCameraCloseTimeout();
       cameraCloseTimeoutRef.current = setTimeout(() => {
+        if (cameraPreviewStoppedRef.current) {
+          return;
+        }
         completeCameraShutdown();
       }, CAMERA_STOP_RELEASE_MS);
     },
@@ -323,10 +329,15 @@ export function CapturePhotoScreen() {
 
   const handlePreviewStopped = useCallback(() => {
     markCameraNotReady();
-    if (cameraLeavingRef.current) {
-      completeCameraShutdown();
+    if (!cameraLeavingRef.current) {
+      return;
     }
-  }, [completeCameraShutdown, markCameraNotReady]);
+    cameraPreviewStoppedRef.current = true;
+    clearCameraCloseTimeout();
+    cameraCloseTimeoutRef.current = setTimeout(() => {
+      completeCameraShutdown();
+    }, CAMERA_PREVIEW_SETTLE_MS);
+  }, [clearCameraCloseTimeout, completeCameraShutdown, markCameraNotReady]);
 
   const isCameraMounted =
     hasPermission && phase === 'camera' && device != null;
@@ -446,7 +457,7 @@ export function CapturePhotoScreen() {
       return;
     }
     const timer = setTimeout(() => {
-      void prepareVoiceRecordingSession();
+      void releaseVoiceRecordingSession();
     }, CAMERA_AUDIO_RELEASE_MS);
     return () => clearTimeout(timer);
   }, [draft?.kind, phase]);
@@ -470,14 +481,7 @@ export function CapturePhotoScreen() {
 
   const handleOpenVoiceSheet = useCallback(() => {
     void (async () => {
-      try {
-        await prepareVoiceRecordingSession();
-        await new Promise<void>(resolve => {
-          setTimeout(resolve, CAMERA_AUDIO_RELEASE_MS);
-        });
-      } catch {
-        // VoiceMemoSheet retries when the user taps the mic.
-      }
+      await releaseVoiceRecordingSession().catch(() => undefined);
       setVoiceSheetOpen(true);
     })();
   }, []);

@@ -31,7 +31,6 @@ import {
   createVoiceRecorderSession,
   getVoiceRecordingErrorMessage,
 } from '@/lib/moments/voice-recorder';
-import {prepareVoiceRecordingSession} from '@/lib/voice-audio-session';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 type VoiceMemoPhase = 'idle' | 'recording' | 'preview' | 'saving';
@@ -45,7 +44,7 @@ type VoiceMemoSheetProps = {
   saveTarget?: VoiceMemoSaveTarget;
   onDiaryAttach?: (attachment: {uri: string; durationMs: number}) => void;
   onWillClose?: () => void;
-  /** When true, begin recording as soon as the sheet opens. */
+  /** When true, begin recording as soon as the sheet opens. Default: tap mic (Voice Memos style). */
   startRecordingOnOpen?: boolean;
   snapPoints?: (string | number)[];
   instantPresent?: boolean;
@@ -64,7 +63,7 @@ export function VoiceMemoSheet({
   saveTarget = 'moment',
   onDiaryAttach,
   onWillClose,
-  startRecordingOnOpen = true,
+  startRecordingOnOpen = false,
   snapPoints,
   instantPresent = false,
   embedded = false,
@@ -117,25 +116,6 @@ export function VoiceMemoSheet({
   useEffect(() => {
     visibleRef.current = visible;
   }, [visible]);
-
-  useEffect(() => {
-    if (phase !== 'recording') {
-      return;
-    }
-    const timer = setTimeout(() => {
-      if (phaseRef.current !== 'recording' || durationMsRef.current > 0) {
-        return;
-      }
-      setAutoStartFailed(true);
-      setPhase('idle');
-      void recorderRef.current?.discardRecording();
-      Alert.alert(
-        'Could not start recording',
-        'The microphone did not respond. Tap the mic to try again.',
-      );
-    }, 2500);
-    return () => clearTimeout(timer);
-  }, [phase]);
 
   useEffect(() => {
     paintDurationRef.current = throttleVoiceUi((ms: number) => {
@@ -385,9 +365,7 @@ export function VoiceMemoSheet({
     if (!visible) {
       autoStartAttemptedRef.current = false;
       setManualStartOnly(false);
-      return;
     }
-    void prepareVoiceRecordingSession().catch(() => undefined);
   }, [visible]);
 
   const tryAutoStartRecording = useCallback(() => {
@@ -477,7 +455,7 @@ export function VoiceMemoSheet({
   const handleAnimate = useCallback(
     (_fromIndex: number, toIndex: number) => {
       if (toIndex >= 0) {
-        tryAutoStartRecording();
+        void tryAutoStartRecording();
       }
     },
     [tryAutoStartRecording],
@@ -487,7 +465,7 @@ export function VoiceMemoSheet({
 
   useEffect(() => {
     if (visible && (instantPresent || embedded)) {
-      tryAutoStartRecording();
+      void tryAutoStartRecording();
     }
   }, [embedded, instantPresent, tryAutoStartRecording, visible]);
 
@@ -567,27 +545,26 @@ export function VoiceMemoSheet({
       ) : null}
 
       <View style={styles.controls}>
-        {phase === 'idle' &&
-        (manualStartOnly || !startRecordingOnOpen || autoStartFailed) ? (
-          <View style={styles.manualStartBlock}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Start recording"
-              onPress={() => void handleStartRecording()}
-              style={[styles.primaryCircle, {backgroundColor: voiceTheme.badgeBg}]}>
-              <Mic size={28} color={voiceTheme.icon} strokeWidth={2.25} />
-            </Pressable>
-            {autoStartFailed ? (
+        {phase === 'idle' ? (
+          startRecordingOnOpen && !autoStartFailed && !manualStartOnly ? (
+            <View style={styles.savingRow}>
+              <ActivityIndicator color={colors.primary} />
+              <Text variant="muted">Starting recorder…</Text>
+            </View>
+          ) : (
+            <View style={styles.manualStartBlock}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Start recording"
+                onPress={() => void handleStartRecording()}
+                style={[styles.primaryCircle, {backgroundColor: voiceTheme.badgeBg}]}>
+                <Mic size={28} color={voiceTheme.icon} strokeWidth={2.25} />
+              </Pressable>
               <Text variant="muted" className="text-xs text-center">
                 Tap the mic to record
               </Text>
-            ) : null}
-          </View>
-        ) : phase === 'idle' && startRecordingOnOpen && !autoStartFailed && !manualStartOnly ? (
-          <View style={styles.savingRow}>
-            <ActivityIndicator color={colors.primary} />
-            <Text variant="muted">Starting recorder…</Text>
-          </View>
+            </View>
+          )
         ) : null}
 
         {phase === 'recording' ? (

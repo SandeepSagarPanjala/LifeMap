@@ -26,6 +26,8 @@
 		E5F6A7B91A68108700A75B9A /* AppVersionModule.m in Sources */ = {isa = PBXBuildFile; fileRef = E5F6A7B71A68108700A75B9A /* AppVersionModule.m */; };
 		F6A7B8C91A68108700A75B9A /* VoiceAudioSessionModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6A7B8C71A68108700A75B9A /* VoiceAudioSessionModule.swift */; };
 		F6A7B8CA1A68108700A75B9A /* VoiceAudioSessionModule.m in Sources */ = {isa = PBXBuildFile; fileRef = F6A7B8C81A68108700A75B9A /* VoiceAudioSessionModule.m */; };
+		VRC0MOD3A68108700A75B9A /* VoiceRecorderModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = VRC0MOD1A68108700A75B9A /* VoiceRecorderModule.swift */; };
+		VRC0MOD4A68108700A75B9A /* VoiceRecorderModule.m in Sources */ = {isa = PBXBuildFile; fileRef = VRC0MOD2A68108700A75B9A /* VoiceRecorderModule.m */; };
 		WGT0BLD1A68108700A75B9A /* WidgetSnapshotBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = WGT0FR09A68108700A75B9A /* WidgetSnapshotBuilder.swift */; };
 		WGT0BLD2A68108700A75B9A /* WidgetSnapshotBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = WGT0FR09A68108700A75B9A /* WidgetSnapshotBuilder.swift */; };
 		WGT0CAP1A68108700A75B9A /* WidgetCaptureIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = WGT0FR13A68108700A75B9A /* WidgetCaptureIntents.swift */; };
@@ -98,6 +100,8 @@
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F6A7B8C71A68108700A75B9A /* VoiceAudioSessionModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VoiceAudioSessionModule.swift; path = LifeMap/VoiceAudioSessionModule.swift; sourceTree = "<group>"; };
 		F6A7B8C81A68108700A75B9A /* VoiceAudioSessionModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = VoiceAudioSessionModule.m; path = LifeMap/VoiceAudioSessionModule.m; sourceTree = "<group>"; };
+		VRC0MOD1A68108700A75B9A /* VoiceRecorderModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VoiceRecorderModule.swift; path = LifeMap/VoiceRecorderModule.swift; sourceTree = "<group>"; };
+		VRC0MOD2A68108700A75B9A /* VoiceRecorderModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = VoiceRecorderModule.m; path = LifeMap/VoiceRecorderModule.m; sourceTree = "<group>"; };
 		WGT0FR01A68108700A75B9A /* WidgetSnapshotModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WidgetSnapshotModule.swift; path = LifeMap/WidgetSnapshotModule.swift; sourceTree = "<group>"; };
 		WGT0FR02A68108700A75B9A /* WidgetSnapshotModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = WidgetSnapshotModule.m; path = LifeMap/WidgetSnapshotModule.m; sourceTree = "<group>"; };
 		WGT0FR03A68108700A75B9A /* WidgetSnapshotStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WidgetSnapshotStore.swift; path = Shared/WidgetSnapshotStore.swift; sourceTree = "<group>"; };
@@ -148,6 +152,8 @@
 				E5F6A7B71A68108700A75B9A /* AppVersionModule.m */,
 				F6A7B8C71A68108700A75B9A /* VoiceAudioSessionModule.swift */,
 				F6A7B8C81A68108700A75B9A /* VoiceAudioSessionModule.m */,
+				VRC0MOD1A68108700A75B9A /* VoiceRecorderModule.swift */,
+				VRC0MOD2A68108700A75B9A /* VoiceRecorderModule.m */,
 				WGT0FR01A68108700A75B9A /* WidgetSnapshotModule.swift */,
 				WGT0FR02A68108700A75B9A /* WidgetSnapshotModule.m */,
 				WGT0FR11A68108700A75B9A /* LifeMapAppShortcuts.swift */,
@@ -437,6 +443,8 @@
 				E5F6A7B91A68108700A75B9A /* AppVersionModule.m in Sources */,
 				F6A7B8C91A68108700A75B9A /* VoiceAudioSessionModule.swift in Sources */,
 				F6A7B8CA1A68108700A75B9A /* VoiceAudioSessionModule.m in Sources */,
+				VRC0MOD3A68108700A75B9A /* VoiceRecorderModule.swift in Sources */,
+				VRC0MOD4A68108700A75B9A /* VoiceRecorderModule.m in Sources */,
 				B2C3D4E61A68108700A75B9A /* LifeMapDatabase.swift in Sources */,
 				B2C3D4E81A68108700A75B9A /* LocationWakeCoordinator.swift in Sources */,
 				B2C3D4EA1A68108700A75B9A /* LocationPersistModule.swift in Sources */,
@@ -490,7 +498,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = LifeMap/LifeMap.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 38;
+				CURRENT_PROJECT_VERSION = 39;
 				DEVELOPMENT_TEAM = SRTH66N3SH;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = LifeMap/Info.plist;
@@ -524,7 +532,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = LifeMap/LifeMap.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 38;
+				CURRENT_PROJECT_VERSION = 39;
 				DEVELOPMENT_TEAM = SRTH66N3SH;
 				INFOPLIST_FILE = LifeMap/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.5;
@@ -710,7 +718,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = LifeMapWidget/LifeMapWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 38;
+				CURRENT_PROJECT_VERSION = 39;
 				DEVELOPMENT_TEAM = SRTH66N3SH;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = LifeMapWidget/Info.plist;
@@ -736,7 +744,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = LifeMapWidget/LifeMapWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 38;
+				CURRENT_PROJECT_VERSION = 39;
 				DEVELOPMENT_TEAM = SRTH66N3SH;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = LifeMapWidget/Info.plist;
