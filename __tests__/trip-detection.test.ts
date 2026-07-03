@@ -3,7 +3,7 @@ import {
   getTravelDisplayPoints,
   isSparseTravelRoute,
   isUserStillAtStay,
-  stayTripCentroid,
+  stayMapMarkerCoordinate,
   stayTripMarkerCoordinate,
   findNextPlayableTimelineIndex,
   findPrevPlayableTimelineIndex,
@@ -45,7 +45,7 @@ describe('trip-detection helpers', () => {
     expect(dedupeLocationPoints(dupes)).toHaveLength(1);
   });
 
-  it('uses visit centroid for map pin when not ongoing', () => {
+  it('uses detection anchor for map pin when not ongoing', () => {
     const stay: DetectedTrip = {
       id: 'stay-1',
       kind: 'stay',
@@ -57,11 +57,33 @@ describe('trip-detection helpers', () => {
       endAt: new Date('2026-06-03T08:15:00'),
       distanceKm: 0,
       durationMs: 15 * 60_000,
+      anchorLat: 33.210025,
+      anchorLng: -97.130025,
     };
     const pin = stayTripMarkerCoordinate(stay, {ongoing: false});
-    const centroid = stayTripCentroid(stay);
-    expect(pin.latitude).toBe(centroid.latitude);
-    expect(pin.longitude).toBe(centroid.longitude);
+    expect(pin.latitude).toBe(33.210025);
+    expect(pin.longitude).toBe(-97.130025);
+    expect(stayMapMarkerCoordinate(stay, {ongoing: false})).toEqual(pin);
+  });
+
+  it('uses latest GPS for ongoing map pin', () => {
+    const stay: DetectedTrip = {
+      id: 'stay-1',
+      kind: 'stay',
+      points: makePoints([
+        {minutes: 0, lat: 33.21, lng: -97.13},
+        {minutes: 15, lat: 33.21005, lng: -97.13005},
+      ]),
+      startAt: new Date('2026-06-03T08:00:00'),
+      endAt: new Date('2026-06-03T08:15:00'),
+      distanceKm: 0,
+      durationMs: 15 * 60_000,
+      anchorLat: 33.210025,
+      anchorLng: -97.130025,
+    };
+    const pin = stayMapMarkerCoordinate(stay, {ongoing: true});
+    expect(pin.latitude).toBe(33.21005);
+    expect(pin.longitude).toBe(-97.13005);
   });
 
   it('bridges drive start to visit pin when prior stay row ends on departure road GPS', () => {

@@ -7,6 +7,7 @@ module.exports = {
         root: ['./'],
         alias: {
           '@': './src',
+          '@lifemap/segmentation': './packages/segmentation/src',
         },
         extensions: ['.ios.js', '.android.js', '.js', '.ts', '.tsx', '.json'],
       },

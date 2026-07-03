@@ -1,5 +1,5 @@
-import type {ParsedPoint} from '../types';
 import {TRIP_PLOT_SOURCES} from './sources';
+import type {ParsedPoint} from './types';
 
 export type Stop = {
   id: string;

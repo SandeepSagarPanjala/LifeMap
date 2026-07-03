@@ -1,6 +1,8 @@
 import {
   canExtendOpenStayWithNewPoints,
   openStayEventKey,
+  shouldRunTodayOpenSilentSeal,
+  TODAY_OPEN_SILENT_SEAL_MIN_TAIL_SEGMENTS,
 } from '@/lib/today-sync';
 import {buildTripDetectionConfig} from '@/lib/trip-settings';
 import type {TripRow} from '@/db/repositories/trips';
@@ -77,5 +79,25 @@ describe('canExtendOpenStayWithNewPoints', () => {
         config,
       ),
     ).toBe(false);
+  });
+});
+
+describe('shouldRunTodayOpenSilentSeal', () => {
+  it('always runs when stored trips exist', () => {
+    expect(shouldRunTodayOpenSilentSeal(1, 0)).toBe(true);
+    expect(shouldRunTodayOpenSilentSeal(1, 1)).toBe(true);
+  });
+
+  it('skips when DB is empty and tail has fewer than 3 playable segments', () => {
+    expect(shouldRunTodayOpenSilentSeal(0, 0)).toBe(false);
+    expect(shouldRunTodayOpenSilentSeal(0, 1)).toBe(false);
+    expect(shouldRunTodayOpenSilentSeal(0, 2)).toBe(false);
+  });
+
+  it('runs when DB is empty and tail has at least 3 playable segments', () => {
+    expect(
+      shouldRunTodayOpenSilentSeal(0, TODAY_OPEN_SILENT_SEAL_MIN_TAIL_SEGMENTS),
+    ).toBe(true);
+    expect(shouldRunTodayOpenSilentSeal(0, 4)).toBe(true);
   });
 });

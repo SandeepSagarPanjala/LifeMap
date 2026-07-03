@@ -15,7 +15,14 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true
+    "noUncheckedSideEffectImports": true,
+    "baseUrl": ".",
+    "resolveJsonModule": true,
+    "paths": {
+      "@lifemap/assets/*": ["../assets/*"],
+      "@lifemap/segmentation": ["../packages/segmentation/src/index.ts"],
+      "@lifemap/segmentation/*": ["../packages/segmentation/src/*"]
+    }
   },
   "include": ["src"]
 }

@@ -68,7 +68,10 @@ export function buildMomentPreviewContextForEntry(
     return {
       entryKind: 'stay',
       kindLabel: 'Visit',
-      placeLabel: savedPlace ? savedPlaceDisplayLabel(savedPlace) : null,
+      placeLabel:
+        savedPlace != null
+          ? savedPlaceDisplayLabel(savedPlace)
+          : entry.savedPlaceLabel ?? null,
       timeLabel: visit.title,
       statsLabel: visit.subtitle,
       entryId: entry.id,

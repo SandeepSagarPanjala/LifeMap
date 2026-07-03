@@ -4,7 +4,9 @@
     "types": ["jest", "node"],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@lifemap/segmentation": ["./packages/segmentation/src/index.ts"],
+      "@lifemap/segmentation/*": ["./packages/segmentation/src/*"]
     }
   },
   "include": ["**/*.ts", "**/*.tsx", "nativewind-env.d.ts"],

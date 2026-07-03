@@ -40,6 +40,8 @@ describe('moment preview context', () => {
     endAt: new Date('2026-06-09T14:42:00.000Z'),
     distanceKm: 0,
     durationMs: 42 * 60_000,
+    savedPlaceId: kroger.id,
+    savedPlaceLabel: kroger.label,
   };
 
   const drive: DayTimelineEntry = {
@@ -120,13 +122,19 @@ describe('moment preview context', () => {
   });
 
   it('falls back to Visit moments when no saved place matches', () => {
-    const context = buildMomentPreviewContextForEntry(krogerStay, [], 'mi', now);
+    const unlabeledStay: DayTimelineEntry = {
+      ...krogerStay,
+      id: 'stay-unknown',
+      savedPlaceId: undefined,
+      savedPlaceLabel: undefined,
+    };
+    const context = buildMomentPreviewContextForEntry(unlabeledStay, [], 'mi', now);
     expect(context.placeLabel).toBeNull();
 
     const title = formatMomentsPreviewSheetTitle(
-      {kind: 'entry', entry: krogerStay},
+      {kind: 'entry', entry: unlabeledStay},
       [{timestamp: new Date('2026-06-09T14:10:00.000Z')}],
-      [krogerStay],
+      [unlabeledStay],
       [],
       'Tue, Jun 9',
       'mi',

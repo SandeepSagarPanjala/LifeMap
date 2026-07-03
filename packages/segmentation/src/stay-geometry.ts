@@ -1,4 +1,6 @@
-import type {MomentRow, ParsedPoint} from '../types';
+import type {SegmentationMoment} from './types';
+
+import type {ParsedPoint} from './types';
 import type {StaySegment, TripSegment} from './trips';
 import {pathLengthM} from './trips';
 import {canonicalizeTravelSegmentPoints} from './travel-geometry';
@@ -52,7 +54,6 @@ function maxSpreadFromAnchorM(
   return maxM;
 }
 
-/** First parked save in a stay cluster — turn-in pings before this belong on the drive. */
 function findVisitArrivalIndex(
   points: ParsedPoint[],
   departureIndex: number,
@@ -76,7 +77,6 @@ function findVisitArrivalIndex(
   return 0;
 }
 
-/** Last parked save before leaving — departure pings belong on the next drive. */
 function findVisitDepartureEndIndex(points: ParsedPoint[]): number {
   for (let index = points.length - 1; index >= 0; index -= 1) {
     if (isStationarySave(points[index]!)) {
@@ -86,7 +86,6 @@ function findVisitDepartureEndIndex(points: ParsedPoint[]): number {
   return points.length - 1;
 }
 
-/** In-area saves after arrival and before departure. */
 export function visitCorePoints(points: ParsedPoint[]): ParsedPoint[] {
   const sorted = sortedPoints(points);
   if (sorted.length === 0) {
@@ -177,10 +176,10 @@ function douglasPeucker(points: ParsedPoint[], epsilonM: number): ParsedPoint[] 
 }
 
 function momentsInStayWindow(
-  moments: readonly MomentRow[],
+  moments: readonly SegmentationMoment[],
   startAt: Date,
   endAt: Date,
-): MomentRow[] {
+): SegmentationMoment[] {
   const startMs = startAt.getTime();
   const endMs = endAt.getTime();
   return moments.filter(moment => {
@@ -191,7 +190,7 @@ function momentsInStayWindow(
 
 function nearestPointForMoment(
   core: ParsedPoint[],
-  moment: MomentRow,
+  moment: SegmentationMoment,
 ): ParsedPoint | null {
   if (core.length === 0) {
     return null;
@@ -240,10 +239,9 @@ function collectKeyPoints(
   return sortedPoints([...byId.values()]);
 }
 
-/** Reduce stay GPS to canonical geometry for map / export geometry. */
 export function canonicalizeStaySegmentPoints(
   segment: StaySegment,
-  moments: readonly MomentRow[] = [],
+  moments: readonly SegmentationMoment[] = [],
 ): ParsedPoint[] {
   const core = visitCorePoints(segment.points);
   if (core.length === 0) {
@@ -293,7 +291,7 @@ export function canonicalizeStaySegmentPoints(
 export function displayPointsForSegment(
   segment: TripSegment,
   canonicalizeStays: boolean,
-  moments: readonly MomentRow[] = [],
+  moments: readonly SegmentationMoment[] = [],
   canonicalizeDrives = false,
 ): ParsedPoint[] {
   if (segment.kind === 'missing') {
@@ -308,11 +306,10 @@ export function displayPointsForSegment(
   return segment.points;
 }
 
-/** Merged chronological plot track with optional stay / drive canonicalization. */
 export function plotPointsFromSegments(
   segments: readonly TripSegment[],
   canonicalizeStays: boolean,
-  moments: readonly MomentRow[] = [],
+  moments: readonly SegmentationMoment[] = [],
   canonicalizeDrives = false,
 ): ParsedPoint[] {
   const byId = new Map<number, ParsedPoint>();

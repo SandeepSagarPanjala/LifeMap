@@ -1,5 +1,4 @@
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
-import {matchSavedPlaceForStay} from '@/lib/saved-places';
 import type {DetectedTrip} from '@/lib/trip-detection';
 import {stayMapCentroid} from '@/lib/trip-detection';
 
@@ -12,14 +11,9 @@ export type StayMapCircle = {
 /** Saved places already have a pin — skip the orange dwell circle. */
 export function staysNeedingVisitAreaOverlay(
   stays: readonly DetectedTrip[],
-  savedPlaces: readonly SavedPlaceRow[],
+  _savedPlaces: readonly SavedPlaceRow[],
 ): DetectedTrip[] {
-  if (savedPlaces.length === 0) {
-    return [...stays];
-  }
-  return stays.filter(
-    stay => matchSavedPlaceForStay(stay, savedPlaces) == null,
-  );
+  return stays.filter(stay => stay.savedPlaceId == null);
 }
 
 export function buildStayMapCircles(

@@ -223,3 +223,46 @@ pnpm e2e:run:ios -- e2e/saved-places/deep-path.test.js
 ```
 
 For unit tests in `__tests__/`, use the terminal: `pnpm test` (not the e2e Run button).
+
+## Trip detection (`@lifemap/segmentation`)
+
+Stay/drive detection lives in one shared package: [`packages/segmentation`](packages/segmentation/README.md).
+
+- **iOS** — `src/lib/segmentation/index.ts` adapts DB rows → timeline entries
+- **Point Explorer** — imports the same package directly
+
+Edit detection in the package only; both apps stay in sync.
+
+## Place lookup backfill (planned)
+
+Sealed **stay** trips with no saved place and no place label (`savedPlaceId`, `placeLookupCacheId`, `selectedCandidateIndex`, and `savedPlaceLabel` all null) can be filled in the background from `place_lookup_cache` or a native nearby-places fetch.
+
+Implementation lives in [`src/lib/place-lookup-backfill.ts`](src/lib/place-lookup-backfill.ts). **Not wired into the app yet** — call it manually when you are ready.
+
+### API
+
+| Export | Role |
+|--------|------|
+| `runPlaceLookupBackfillBatch()` | Main entry — processes up to **3** unlabeled stays per call (override with `{ maxTrips }`). |
+| `listStaysNeedingPlaceLookup()` | Pure filter for stays that qualify for backfill. |
+| `mergeTripPlaceLabelAfterLookup()` | Rebuild-safe label merge via stable `eventKey` (user renames survive day re-materialization). |
+| `existingTripLabelsByEventKey()` | Build the label map from current trip rows (from `@/lib/trip-materialization`). |
+
+### Future integration
+
+When you enable steady backfill:
+
+1. After app bootstrap / day seal, schedule idle work (e.g. `runWhenIdle` from `@/lib/run-when-idle`).
+2. Call `runPlaceLookupBackfillBatch({ maxTrips: 3 })` in a loop while `remaining > 0`, respecting `PLACE_LOOKUP_SESSION_BUDGET` in `@/lib/place-lookup-venue`.
+3. On day re-materialization, pass `existingTripLabelsByEventKey(priorRows)` into seal/rebuild and use `mergeTripPlaceLabelAfterLookup(eventKey, …)` so user labels keyed by `eventKey` are preserved.
+
+Example (not active):
+
+```typescript
+import {runWhenIdle} from '@/lib/run-when-idle';
+import {runPlaceLookupBackfillBatch} from '@/lib/place-lookup-backfill';
+
+runWhenIdle(() => {
+  void runPlaceLookupBackfillBatch({maxTrips: 3});
+});
+```

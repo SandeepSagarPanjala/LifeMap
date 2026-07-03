@@ -4,7 +4,7 @@ import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import {distanceKm, type LocationPointLike} from '@/lib/location-geo';
 import {matchSavedPlaceForPoint} from '@/lib/saved-places';
 import type {DayTimelineEntry, DetectedTrip} from '@/lib/trip-detection';
-import {stayTripCentroid} from '@/lib/trip-detection';
+import {resolveStayAnchor} from '@/lib/trip-detection';
 
 import {
   effectiveTimelineEntryEnd,
@@ -193,10 +193,9 @@ export function momentMatchesStayLocation(
     return momentBelongsToEntry(moment, stay, now);
   }
 
-  const centroid = stayTripCentroid(stay);
+  const anchor = resolveStayAnchor(stay);
   return (
-    distanceKm(location, {lat: centroid.latitude, lng: centroid.longitude}) *
-      1000 <=
+    distanceKm(location, anchor) * 1000 <=
     dwellRadiusMeters + 5
   );
 }

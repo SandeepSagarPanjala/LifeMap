@@ -20,6 +20,7 @@ import {
 } from '@/db/repositories/trip-points';
 import { findPlaceLookupNearAnchor } from '@/db/repositories/place-lookup-cache';
 import { listSavedPlaces } from '@/db/repositories/saved-places';
+import { matchSavedPlaceForPoint } from '@/lib/saved-places';
 import { getMomentsForDay, type MomentRow } from '@/db/repositories/moments';
 import {
   deleteAllTrips,
@@ -42,6 +43,7 @@ import {
 } from '@/lib/day-utils';
 import type { HistoryData } from '@/lib/history-data-types';
 import { clearHistoryDataCache } from '@/lib/history-data-cache';
+import { isCurrentHistoryDayLoad } from '@/lib/history-day-load';
 import { yieldToEventLoop } from '@/lib/run-when-idle';
 import { buildExplorerDayTimelineFromGps } from '@/lib/explorer-day-trips';
 import { buildTimelineFromStoredTrips } from '@/lib/timeline-from-trips';
@@ -65,7 +67,6 @@ import { getSealableTodayEntries } from '@/lib/today-seal-policy';
 import {syncTodayDisplay, syncTodayTrips} from '@/lib/today-sync';
 import {
   isPlayableTimelineEntry,
-  stayTripCentroid,
   type DayTimelineEntry,
   type DetectedTrip,
   type TimelineGap,
@@ -237,18 +238,6 @@ export function getDefaultTripDetectionConfig(): TripDetectionConfig {
   );
 }
 
-function travelCentroid(trip: DetectedTrip): { lat: number; lng: number } {
-  if (trip.points.length === 0) {
-    return { lat: 0, lng: 0 };
-  }
-  const first = trip.points[0]!;
-  const last = trip.points[trip.points.length - 1]!;
-  return {
-    lat: (first.lat + last.lat) / 2,
-    lng: (first.lng + last.lng) / 2,
-  };
-}
-
 function geometryPointsForPersist(
   entry: DetectedTrip,
   centroid: { lat: number; lng: number },
@@ -289,17 +278,21 @@ function tripCentroidForPersist(
   savedPlaces: Awaited<ReturnType<typeof listSavedPlaces>>,
 ): { lat: number; lng: number } {
   if (trip.kind === 'stay') {
+    if (trip.anchorLat != null && trip.anchorLng != null) {
+      if (savedPlaces.length > 0) {
+        const anchorMatch = matchSavedPlaceForPoint(
+          { lat: trip.anchorLat, lng: trip.anchorLng },
+          savedPlaces,
+        );
+        if (anchorMatch != null) {
+          return { lat: anchorMatch.lat, lng: anchorMatch.lng };
+        }
+      }
+      return { lat: trip.anchorLat, lng: trip.anchorLng };
+    }
     return resolveVisitAnchor(trip.points, savedPlaces);
   }
   return travelCentroidFromRoute(trip.points);
-}
-
-function tripCentroid(trip: DetectedTrip): { lat: number; lng: number } {
-  if (trip.kind === 'stay') {
-    const centroid = stayTripCentroid(trip);
-    return { lat: centroid.latitude, lng: centroid.longitude };
-  }
-  return travelCentroid(trip);
 }
 
 async function pastDayCanLoadFromStore(
@@ -485,7 +478,22 @@ export type LoadHistoryOptions = {
   /** Read sealed trips from DB without running live GPS detection. */
   preferStored?: boolean;
   onPartial?: (data: HistoryData) => void;
+  loadGeneration?: number;
 };
+
+function isStaleHistoryLoad(loadGeneration?: number): boolean {
+  return loadGeneration != null && !isCurrentHistoryDayLoad(loadGeneration);
+}
+
+function emptyHistoryForDateKey(dateKey: string): HistoryData {
+  const { start: dayStart } = getDayRange(dateKey);
+  return {
+    dateKey,
+    points: [],
+    entries: [],
+    range: { startAt: dayStart, endAt: endOfDay(dayStart) },
+  };
+}
 
 export async function loadHistoryForSelectedDay(
   dateKey: string,
@@ -540,7 +548,16 @@ export async function loadHistoryForSelectedDay(
     }
   }
 
+  if (isStaleHistoryLoad(options?.loadGeneration)) {
+    return emptyHistoryForDateKey(dateKey);
+  }
+
   await materializePastDayFromGps(dateKey, detectionConfig);
+
+  if (isStaleHistoryLoad(options?.loadGeneration)) {
+    return emptyHistoryForDateKey(dateKey);
+  }
+
   return loadHistoryFromStoredTrips(
     dateKey,
     undefined,
@@ -741,7 +758,8 @@ export async function ensureTripForClosedStay(
     return null;
   }
 
-  const centroid = tripCentroid(stay);
+  const savedPlaces = await listSavedPlaces();
+  const centroid = tripCentroidForPersist(stay, savedPlaces);
   const placeLookup = await findPlaceLookupNearAnchor(centroid);
   const closedAt = new Date();
 

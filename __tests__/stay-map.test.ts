@@ -5,6 +5,7 @@ function stay(
   id: string,
   lat: number,
   lng: number,
+  savedPlaceId?: number,
 ): DetectedTrip {
   const timestamp = new Date('2026-06-04T09:00:00.000Z');
   return {
@@ -26,12 +27,16 @@ function stay(
     endAt: timestamp,
     distanceKm: 0,
     durationMs: 0,
+    savedPlaceId,
   };
 }
 
 describe('buildStayMapCircles', () => {
-  it('places a circle at the stay centroid with dwell radius', () => {
-    const circles = buildStayMapCircles([stay('a', 33.23, -97.16)], 150);
+  it('places a circle at the stay anchor with dwell radius', () => {
+    const circles = buildStayMapCircles(
+      [{...stay('a', 33.23, -97.16), anchorLat: 33.23, anchorLng: -97.16}],
+      150,
+    );
     expect(circles).toHaveLength(1);
     expect(circles[0]?.radiusMeters).toBe(150);
     expect(circles[0]?.center.latitude).toBe(33.23);
@@ -40,7 +45,7 @@ describe('buildStayMapCircles', () => {
 
   it('skips visit circles for stays at saved places', () => {
     const circles = buildStayMapCircles(
-      [stay('home', 33.23, -97.16), stay('shop', 33.25, -97.14)],
+      [stay('home', 33.23, -97.16, 1), stay('shop', 33.25, -97.14)],
       150,
       [
         {

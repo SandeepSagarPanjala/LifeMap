@@ -18,7 +18,7 @@ import {
   formatDuration,
   isMovingPoint,
   type Stop,
-} from '../lib/stops';
+} from '@lifemap/segmentation';
 import type {ParsedPoint} from '../types';
 
 const EARTH_RADIUS_M = 6_371_000;

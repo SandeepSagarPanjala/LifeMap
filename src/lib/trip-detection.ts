@@ -5,9 +5,8 @@
 
 import type {LocationPointRow} from '@/db/repositories/location-days';
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
-import {calculatePathDistanceKm, distanceKm} from '@/lib/location-geo';
-import type {LocationPointLike} from '@/lib/location-geo';
-import {canonicalizeStayGeometry} from '@/lib/stay-geometry';
+import type {PlaceLookupRow} from '@/lib/place-lookup-types';
+import {calculatePathDistanceKm, distanceKm, type LocationPointLike} from '@/lib/location-geo';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
 
 /** Optional inputs that refine timeline detection without changing trip settings. */
@@ -16,6 +15,8 @@ export type TripTimelineOptions = {
   momentTimestamps?: readonly Date[];
   /** Saved Home / Work / favorites — 150 m + 1 min visit rules from place center. */
   savedPlaces?: readonly SavedPlaceRow[];
+  /** Completed rows from `place_lookup_cache` — matched at stay anchors during annotate. */
+  placeLookupCache?: readonly PlaceLookupRow[];
 };
 
 export type DetectedTrip = {
@@ -34,7 +35,19 @@ export type DetectedTrip = {
   segmentOrder?: number;
   savedPlaceLabel?: string;
   savedPlaceId?: number;
+  /** Drive endpoints — set by detection (`annotateSegments`). */
+  fromSavedPlaceLabel?: string;
+  fromSavedPlaceId?: number;
+  toSavedPlaceLabel?: string;
+  toSavedPlaceId?: number;
   inferred?: boolean;
+  /** Stay anchor from detection (`stop.lat/lng`) or DB seal (`centroidLat/Lng`). */
+  anchorLat?: number;
+  anchorLng?: number;
+  /** Nearby-places cache link from detection annotate or DB seal. */
+  placeLookupCacheId?: number;
+  /** Auto label from `place_lookup_cache` at detection time (not a saved place). */
+  placeLookupLabel?: string;
 };
 
 export type TimelineGap = {
@@ -418,26 +431,35 @@ export function visitCorePoints(visit: DetectedTrip): LocationPointRow[] {
   return sorted.slice(arrivalIndex, departureIndex + 1);
 }
 
-function stayMapDisplayPoints(stay: DetectedTrip): LocationPointRow[] {
-  if (stay.kind !== 'stay') {
-    return stay.points;
+/** Map / overlay anchor — detection stop center or DB seal centroid (no raw GPS rescan). */
+export function resolveStayAnchor(stay: DetectedTrip): {lat: number; lng: number} {
+  if (stay.anchorLat != null && stay.anchorLng != null) {
+    return {lat: stay.anchorLat, lng: stay.anchorLng};
   }
-  const centroid = stayTripCentroid(stay);
-  return canonicalizeStayGeometry(stay, {
-    lat: centroid.latitude,
-    lng: centroid.longitude,
-  });
+  if (stay.points.length === 0) {
+    return {lat: 0, lng: 0};
+  }
+  if (stay.points.length === 1) {
+    const only = stay.points[0]!;
+    return {lat: only.lat, lng: only.lng};
+  }
+  const core = visitCorePoints(stay);
+  if (core.length > 0) {
+    return {
+      lat: core.reduce((sum, point) => sum + point.lat, 0) / core.length,
+      lng: core.reduce((sum, point) => sum + point.lng, 0) / core.length,
+    };
+  }
+  const first = stay.points[0]!;
+  return {lat: first.lat, lng: first.lng};
 }
 
 export function stayMapCentroid(stay: DetectedTrip): {
   latitude: number;
   longitude: number;
 } {
-  const displayPoints = stayMapDisplayPoints(stay);
-  if (displayPoints.length === 0) {
-    return stayTripCentroid(stay);
-  }
-  return stayTripCentroid({...stay, points: displayPoints});
+  const anchor = resolveStayAnchor(stay);
+  return {latitude: anchor.lat, longitude: anchor.lng};
 }
 
 export function stayMapMarkerCoordinate(
@@ -493,43 +515,6 @@ export function getVisitInboundTravelPoints(
   return mergeRoutePoints(base, visitArrivalPointsForInbound(visit));
 }
 
-/** Radius for picking the densest visit cluster (ignores approach/departure along roads). */
-const STAY_CENTROID_CLUSTER_M = 80;
-
-export function stayTripCentroid(trip: DetectedTrip): {
-  latitude: number;
-  longitude: number;
-} {
-  const points = trip.points;
-  if (points.length === 0) {
-    return {latitude: 0, longitude: 0};
-  }
-  if (points.length === 1) {
-    const only = points[0]!;
-    return {latitude: only.lat, longitude: only.lng};
-  }
-
-  let bestAnchor = points[0]!;
-  let bestNeighbors = 0;
-  for (const candidate of points) {
-    const neighbors = points.filter(
-      p => distanceKm(candidate, p) * 1000 <= STAY_CENTROID_CLUSTER_M,
-    ).length;
-    if (neighbors > bestNeighbors) {
-      bestNeighbors = neighbors;
-      bestAnchor = candidate;
-    }
-  }
-
-  const core = points.filter(
-    p => distanceKm(bestAnchor, p) * 1000 <= STAY_CENTROID_CLUSTER_M,
-  );
-  return {
-    latitude: core.reduce((sum, p) => sum + p.lat, 0) / core.length,
-    longitude: core.reduce((sum, p) => sum + p.lng, 0) / core.length,
-  };
-}
-
 export function stayTripMarkerCoordinate(
   trip: DetectedTrip,
   options?: {ongoing?: boolean},
@@ -544,5 +529,6 @@ export function stayTripMarkerCoordinate(
       longitude: point.lng,
     };
   }
-  return stayTripCentroid(trip);
+  const anchor = resolveStayAnchor(trip);
+  return {latitude: anchor.lat, longitude: anchor.lng};
 }

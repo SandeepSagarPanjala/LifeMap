@@ -10,26 +10,24 @@ import {
 import type {TripDetectionConfig} from '@/lib/trip-settings';
 import {HISTORY_SAME_PLACE_RADIUS_METERS} from '@/lib/trip-settings';
 
-import {locationRowsToParsedPoints} from './parse-points';
-import {
-  DEFAULT_STOP_CONFIG,
-  type StopDetectionConfig,
-} from './stops';
 import {
   detectTripsForDay,
   detectTrips as detectSegmentTrips,
+  locationRowsToParsedPoints,
+  DEFAULT_STOP_CONFIG,
   type DriveSegment,
   type MissingSegment,
   type StaySegment,
+  type StopDetectionConfig,
   type TripSegment,
-} from './trips';
+} from '@lifemap/segmentation';
 
 export {
   detectTripsForDay,
   detectTrips as detectSegmentTrips,
-} from './trips';
-export {DEFAULT_STOP_CONFIG} from './stops';
-export {TRIP_PLOT_SOURCES} from './sources';
+} from '@lifemap/segmentation';
+export {DEFAULT_STOP_CONFIG} from '@lifemap/segmentation';
+export {TRIP_PLOT_SOURCES} from '@lifemap/segmentation';
 
 function stopConfigFromTripConfig(
   config: TripDetectionConfig,
@@ -84,6 +82,10 @@ function staySegmentToTrip(segment: StaySegment): DetectedTrip {
     savedPlaceLabel: segment.savedPlaceLabel,
     savedPlaceId: segment.savedPlaceId,
     inferred: segment.stop.inferred,
+    anchorLat: segment.stop.lat,
+    anchorLng: segment.stop.lng,
+    placeLookupCacheId: segment.placeLookupCacheId,
+    placeLookupLabel: segment.placeLookupLabel,
   };
 }
 
@@ -100,6 +102,10 @@ function driveSegmentToTrip(segment: DriveSegment): DetectedTrip {
     durationMs: segment.durationMs,
     distanceKm: segment.distanceM / 1000,
     segmentOrder: segment.order,
+    fromSavedPlaceLabel: segment.fromSavedPlaceLabel,
+    fromSavedPlaceId: segment.fromSavedPlaceId,
+    toSavedPlaceLabel: segment.toSavedPlaceLabel,
+    toSavedPlaceId: segment.toSavedPlaceId,
     savedPlaceLabel: segment.toSavedPlaceLabel ?? segment.fromSavedPlaceLabel,
     savedPlaceId: segment.toSavedPlaceId ?? segment.fromSavedPlaceId,
   };
@@ -137,6 +143,7 @@ export function detectSegmentsForDay(
     dwellRadiusMeters: HISTORY_SAME_PLACE_RADIUS_METERS,
   },
   savedPlaces: readonly SavedPlaceRow[] = [],
+  options: TripTimelineOptions = {},
 ): TripSegment[] {
   const parsed = locationRowsToParsedPoints(allPoints);
   const stopConfig = stopConfigFromTripConfig(config);
@@ -145,6 +152,7 @@ export function detectSegmentsForDay(
     parsed,
     stopConfig,
     [...savedPlaces],
+    [...(options.placeLookupCache ?? [])],
   ).segments;
 }
 
@@ -164,6 +172,7 @@ export function buildSegmentationTimeline(
     allPoints,
     config,
     savedPlaces,
+    options,
   );
   return segments.map(segment => segmentToTimelineEntry(segment));
 }
@@ -176,7 +185,12 @@ export function detectTripsFromPoints(
 ): DetectedTrip[] {
   const parsed = locationRowsToParsedPoints(points);
   const stopConfig = stopConfigFromTripConfig(config);
-  const result = detectSegmentTrips(parsed, stopConfig, [...(options.savedPlaces ?? [])]);
+  const result = detectSegmentTrips(
+    parsed,
+    stopConfig,
+    [...(options.savedPlaces ?? [])],
+    [...(options.placeLookupCache ?? [])],
+  );
   return result.segments
     .filter(
       (segment): segment is StaySegment | DriveSegment =>

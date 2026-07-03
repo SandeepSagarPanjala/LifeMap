@@ -4,8 +4,8 @@ import {
   historyDataCache,
   TODAY_LIVE_FINGERPRINT,
 } from '@/lib/history-data-cache';
+import {loadHistoryForDayCoalesced} from '@/lib/history-day-load';
 import {ensureHistoryCalendarBounds} from '@/lib/history-calendar-bounds';
-import {syncTodayDisplay} from '@/lib/today-sync';
 import {getCurrentTripDetectionConfig} from '@/lib/trip-detection-config';
 
 import {ensureDatabaseReady} from '@/location/bootstrap';
@@ -22,6 +22,6 @@ export async function preloadTodayHistory(): Promise<void> {
     return;
   }
 
-  const result = await syncTodayDisplay(detectionConfig);
+  const result = await loadHistoryForDayCoalesced(todayKey, detectionConfig);
   historyDataCache.write(cacheKey, result, TODAY_LIVE_FINGERPRINT);
 }

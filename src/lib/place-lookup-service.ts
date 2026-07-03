@@ -17,14 +17,12 @@ import {
   PLACE_LOOKUP_VENUE_RADIUS_M,
 } from '@/lib/place-lookup-venue';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
-import {matchSavedPlaceForStay} from '@/lib/saved-places';
-import type {DetectedTrip} from '@/lib/trip-detection';
-import {stayTripCentroid} from '@/lib/trip-detection';
 import {stayMeetsMinimumVisitDwell} from '@/lib/visit-dwell';
+import {resolveStayAnchor} from '@/lib/trip-detection';
+import type {DetectedTrip} from '@/lib/trip-detection';
 
 function stayLookupAnchor(stay: DetectedTrip): {lat: number; lng: number} {
-  const centroid = stayTripCentroid(stay);
-  return {lat: centroid.latitude, lng: centroid.longitude};
+  return resolveStayAnchor(stay);
 }
 
 const inFlightKeys = new Set<string>();
@@ -44,9 +42,9 @@ export function stayQualifiesForPlaceLookup(
 
 export function shouldSkipPlaceLookupForStay(
   stay: DetectedTrip,
-  savedPlaces: SavedPlaceRow[],
+  _savedPlaces: SavedPlaceRow[],
 ): boolean {
-  return matchSavedPlaceForStay(stay, savedPlaces) != null;
+  return stay.savedPlaceId != null;
 }
 
 export async function resolveVisitPlaceLookupRow(

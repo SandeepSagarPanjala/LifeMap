@@ -1,9 +1,5 @@
-import {dateKeyForTimestamp} from './export';
-import type {Stop} from './stops';
-import type {
-  TripResult,
-  TripSegment,
-} from './trips';
+import {dateKeyForTimestamp, coerceTimestamp} from '@lifemap/segmentation';
+import type {Stop, TripResult, TripSegment} from '@lifemap/segmentation';
 import type {ParsedPoint, SavedPlaceRow} from '../types';
 
 export type StoredTripRow = {
@@ -116,10 +112,10 @@ function tripPointsToParsed(
       new Date(
         startMs + (spanMs * index) / Math.max(1, rows.length - 1),
       ).toISOString();
-    const at = new Date(timestamp);
+    const at = coerceTimestamp(timestamp);
     return {
       id: row.locationPointId ?? -(trip.id * 10_000 + row.seq),
-      timestamp,
+      timestamp: at,
       lat: row.lat,
       lng: row.lng,
       accuracy: null,
@@ -127,7 +123,7 @@ function tripPointsToParsed(
       speed: null,
       source: row.source ?? 'trip',
       at,
-      dateKey: dateKeyForTimestamp(timestamp),
+      dateKey: dateKeyForTimestamp(at),
     };
   });
 }

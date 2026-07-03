@@ -8,6 +8,8 @@ export type LoadHistoryCallbacks = {
 export type CoalescedLoadOptions = LoadHistoryCallbacks & {
   force?: boolean;
   preferStored?: boolean;
+  /** When set, stale loads skip heavy work and must not cache results. */
+  loadGeneration?: number;
 };
 
 type InflightEntry = {
@@ -23,6 +25,11 @@ let globalLoadGeneration = 0;
 /** Invalidate in-flight loads — only the latest generation may cache results. */
 export function beginHistoryDayLoad(): number {
   globalLoadGeneration += 1;
+  // Drop stale partial listeners so closures do not retain HistoryData.
+  for (const entry of inflightByDateKey.values()) {
+    entry.onPartials.length = 0;
+    entry.lastPartial = undefined;
+  }
   return globalLoadGeneration;
 }
 
@@ -48,6 +55,8 @@ export async function loadHistoryForDayCoalesced(
     const existing = inflightByDateKey.get(dateKey);
     if (existing != null) {
       if (options?.onPartial != null) {
+        // Only the latest subscriber should receive partials for this date key.
+        existing.onPartials.length = 0;
         existing.onPartials.push(options.onPartial);
         if (existing.lastPartial != null) {
           options.onPartial(existing.lastPartial);
@@ -67,6 +76,7 @@ export async function loadHistoryForDayCoalesced(
   entry.promise = loadHistoryForSelectedDay(dateKey, detectionConfig, {
     force: options?.force,
     preferStored: options?.preferStored,
+    loadGeneration: options?.loadGeneration,
     onPartial: partial => {
       entry.lastPartial = partial;
       for (const callback of onPartials) {
