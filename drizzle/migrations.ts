@@ -201,6 +201,10 @@ const m0018 = `ALTER TABLE \`saved_places\` ADD COLUMN \`active\` integer DEFAUL
 
 const m0019 = `CREATE UNIQUE INDEX IF NOT EXISTS \`location_points_timestamp_lat_lng_unique\` ON \`location_points\` (\`timestamp\`, \`lat\`, \`lng\`);`;
 
+const m0020 = `UPDATE \`saved_places\` SET \`radius_meters\` = 150 WHERE \`radius_meters\` != 150;
+--> statement-breakpoint
+UPDATE \`place_lookup_cache\` SET \`venue_radius_meters\` = 100 WHERE \`venue_radius_meters\` != 100;`;
+
 export default {
   journal,
   migrations: {
@@ -224,5 +228,6 @@ export default {
     m0017,
     m0018,
     m0019,
+    m0020,
   },
 };

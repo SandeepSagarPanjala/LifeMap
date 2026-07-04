@@ -80,6 +80,51 @@ type PowerRunResult = {
   inputEndAt: Date | null;
 };
 
+function TripDayExportActions({
+  dateKey,
+  segmentCount,
+  showGeometryHint,
+  onDownloadRaw,
+  onDownloadCanonical,
+}: {
+  dateKey: string;
+  segmentCount: number;
+  showGeometryHint: boolean;
+  onDownloadRaw: () => void;
+  onDownloadCanonical: () => void;
+}) {
+  return (
+    <div className="trip-export-actions" aria-label="Export day">
+      <p className="source-filter-hint">
+        Export {segmentCount.toLocaleString()} segment
+        {segmentCount === 1 ? '' : 's'} for {formatDateLabel(dateKey)}.
+      </p>
+      <div className="trip-export-buttons">
+        <button type="button" className="secondary-btn" onClick={onDownloadRaw}>
+          Raw JSON
+        </button>
+        <button
+          type="button"
+          className="secondary-btn"
+          onClick={onDownloadCanonical}>
+          Canonical JSON
+        </button>
+      </div>
+      {showGeometryHint ? (
+        <p className="source-filter-hint">
+          Raw keeps every GPS fix per segment. Canonical uses the geometry toggles
+          above.
+        </p>
+      ) : (
+        <p className="source-filter-hint">
+          Raw keeps every GPS fix per segment. Canonical simplifies stay and drive
+          paths for plotting.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function TripSegmentList({
   segments,
   selectedSegmentId,
@@ -112,13 +157,13 @@ function TripSegmentList({
             </button>
           ) : null}
           <button type="button" className="link-btn" onClick={onDownload}>
-            JSON
+            Export raw
           </button>
           <button
             type="button"
             className="link-btn"
             onClick={onDownloadCanonical}>
-            Canonical JSON
+            Export canonical
           </button>
         </div>
       </div>
@@ -1374,6 +1419,15 @@ export function App() {
                       </span>
                     </label>
                   </div>
+                ) : null}
+                {segments != null && dateKey !== 'all' ? (
+                  <TripDayExportActions
+                    dateKey={dateKey}
+                    segmentCount={segments.length}
+                    showGeometryHint={!isPlotUpload}
+                    onDownloadRaw={() => handleDownloadTrips('raw')}
+                    onDownloadCanonical={() => handleDownloadTrips('canonical')}
+                  />
                 ) : null}
                 <details className="meta-details">
                   <summary className="meta-summary">
