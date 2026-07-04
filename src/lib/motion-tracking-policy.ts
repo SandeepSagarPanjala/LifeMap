@@ -20,7 +20,7 @@ import {HEARTBEAT_DESIRED_ACCURACY_METERS} from '@/lib/app-constants';
 export const HEARTBEAT_CURRENT_POSITION_REQUEST = {
   desiredAccuracy: HEARTBEAT_DESIRED_ACCURACY_METERS,
   timeout: 30,
-  maximumAge: 5000,
+  maximumAge: 0,
   samples: 1,
   persist: false,
 } as const;
