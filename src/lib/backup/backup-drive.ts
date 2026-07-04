@@ -1,4 +1,5 @@
 import {format} from 'date-fns';
+import {APP_COPY, errorMessageOr} from '@/lib/app-copy';
 import {InteractionManager, Platform, Share} from 'react-native';
 import ReactNativeBlobUtil from 'react-native-blob-util';
 import {
@@ -134,7 +135,7 @@ export async function pickAndStageDriveBackup(
 
     if (localCopy.status !== 'success') {
       throw new Error(
-        localCopy.copyError ?? 'Could not read the selected backup file.',
+        localCopy.copyError ?? APP_COPY.alerts.couldNotReadBackupFile,
       );
     }
 

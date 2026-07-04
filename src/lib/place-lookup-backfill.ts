@@ -4,6 +4,7 @@
  * Not wired into the app yet — see README § Place lookup backfill.
  */
 
+import {DEFAULT_PLACE_LOOKUP_BACKFILL_BATCH_SIZE} from '@/lib/app-constants';
 import {findPlaceLookupNearAnchor} from '@/db/repositories/place-lookup-cache';
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import {
@@ -26,7 +27,7 @@ import {
 import type {DetectedTrip} from '@/lib/trip-detection';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
 
-export const DEFAULT_PLACE_LOOKUP_BACKFILL_BATCH_SIZE = 3;
+export {DEFAULT_PLACE_LOOKUP_BACKFILL_BATCH_SIZE};
 
 export type PlaceLookupBackfillOptions = {
   /** Max stays to process this batch (default 3). */

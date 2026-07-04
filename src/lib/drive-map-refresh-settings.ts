@@ -1,28 +1,27 @@
 import {getSetting, setSetting} from '@/db/repositories/settings';
+import {
+  DEFAULT_DRIVE_MAP_REFRESH_INTERVAL_MS,
+  DRIVE_MAP_REFRESH_INTERVAL_MS_OPTIONS,
+  SETTINGS_KEY_DRIVE_MAP_REFRESH_INTERVAL_MS,
+  type DriveMapRefreshIntervalMs,
+} from '@/lib/app-constants';
+import {driveMapRefreshIntervalLabel} from '@/lib/app-copy';
 
-export const SETTINGS_KEY_DRIVE_MAP_REFRESH_INTERVAL_MS =
-  'drive_map_refresh_interval_ms';
-
-export type DriveMapRefreshIntervalMs = 10_000 | 30_000 | 60_000;
+export {
+  DEFAULT_DRIVE_MAP_REFRESH_INTERVAL_MS,
+  SETTINGS_KEY_DRIVE_MAP_REFRESH_INTERVAL_MS,
+  type DriveMapRefreshIntervalMs,
+};
 
 export const DRIVE_MAP_REFRESH_INTERVAL_OPTIONS: ReadonlyArray<{
   ms: DriveMapRefreshIntervalMs;
   label: string;
-}> = [
-  {ms: 10_000, label: '10 seconds'},
-  {ms: 30_000, label: '30 seconds'},
-  {ms: 60_000, label: '1 minute'},
-];
+}> = DRIVE_MAP_REFRESH_INTERVAL_MS_OPTIONS.map(ms => ({
+  ms,
+  label: driveMapRefreshIntervalLabel(ms),
+}));
 
-export const DEFAULT_DRIVE_MAP_REFRESH_INTERVAL_MS: DriveMapRefreshIntervalMs =
-  30_000;
-
-export function driveMapRefreshIntervalLabel(ms: number): string {
-  return (
-    DRIVE_MAP_REFRESH_INTERVAL_OPTIONS.find(option => option.ms === ms)
-      ?.label ?? DRIVE_MAP_REFRESH_INTERVAL_OPTIONS[1]!.label
-  );
-}
+export {driveMapRefreshIntervalLabel};
 
 export function normalizeDriveMapRefreshIntervalMs(
   raw: string | null,

@@ -1,8 +1,6 @@
-/** Minimum time so the underline animation is visible even when the DB opens instantly. */
-export const SPLASH_MIN_MS = 400;
+export {SPLASH_MAX_MS, SPLASH_MIN_MS} from '@/lib/app-constants';
 
-/** Safety cap — never block launch longer than this on a stuck migration. */
-export const SPLASH_MAX_MS = 8_000;
+import {SPLASH_MAX_MS, SPLASH_MIN_MS} from '@/lib/app-constants';
 
 export function splashAnimationDurationMs(elapsedMs: number): number {
   return Math.min(SPLASH_MAX_MS, Math.max(SPLASH_MIN_MS, elapsedMs));

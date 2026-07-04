@@ -1,9 +1,10 @@
 import {listSavedPlaces, type SavedPlaceRow} from '@/db/repositories/saved-places';
+import {GEOFENCE_WAKE_MIN_RADIUS_METERS} from '@/lib/app-constants';
 import {nativeSyncGeofences, type NativeGeofenceSpec} from '@/location/native-location-persist';
 import {recordTrackingDiagnostic} from '@/lib/tracking-diagnostics';
 
 /** iOS geofence wake radius — Apple is unreliable below ~100 m. */
-export const GEOFENCE_WAKE_MIN_RADIUS_METERS = 100;
+export {GEOFENCE_WAKE_MIN_RADIUS_METERS} from '@/lib/app-constants';
 
 export function savedPlaceGeofenceSpecs(
   places: readonly SavedPlaceRow[],

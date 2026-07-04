@@ -1,4 +1,4 @@
-export const MAX_NOTE_PHOTO_ATTACHMENTS = 5;
+export {MAX_NOTE_PHOTO_ATTACHMENTS} from '@/lib/app-constants';
 
 export type NotePhotoAttachment = {
   path: string;

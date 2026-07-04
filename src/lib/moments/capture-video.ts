@@ -1,4 +1,5 @@
 import { Alert } from 'react-native';
+import {APP_COPY, errorMessageOr} from '@/lib/app-copy';
 
 import { insertMoment, type MomentRow } from '@/db/repositories/moments';
 import { saveMomentToGallery } from '@/lib/moments/capture-photo';
@@ -33,8 +34,8 @@ export async function saveVideoMoment(
     await saveMomentToGallery(sourceUri, 'video');
   } catch {
     Alert.alert(
-      'Video saved in LifeMap',
-      'Your moment was saved in the app, but we could not add a copy to Photos.',
+      APP_COPY.capture.videoSaved,
+      APP_COPY.capture.photoSavedPhotosFailed,
     );
   }
 

@@ -1,4 +1,5 @@
 import {format} from 'date-fns';
+import {APP_COPY, errorMessageOr} from '@/lib/app-copy';
 import {useCallback, useEffect, useState} from 'react';
 import {ActivityIndicator, Alert, InteractionManager, Pressable, Share, View} from 'react-native';
 import {CalendarDays, Database} from 'lucide-react-native';
@@ -45,8 +46,7 @@ type ExportPickerTarget =
   | 'all_tables'
   | 'original_data';
 
-/** Wait for the date picker modal to finish closing before opening the share sheet. */
-const EXPORT_SHARE_DELAY_MS = 360;
+import {EXPORT_SHARE_DELAY_MS} from '@/lib/app-constants';
 
 export function ExportSettings() {
   const colors = useThemeColors();
@@ -172,8 +172,8 @@ export function ExportSettings() {
       });
     } catch (error) {
       Alert.alert(
-        'Could not export',
-        error instanceof Error ? error.message : 'Something went wrong.',
+        APP_COPY.alerts.couldNotExport,
+        errorMessageOr(error),
       );
     } finally {
       setExporting(false);
@@ -228,8 +228,8 @@ export function ExportSettings() {
       );
     } catch (error) {
       Alert.alert(
-        'Could not delete diagnostics',
-        error instanceof Error ? error.message : 'Something went wrong.',
+        APP_COPY.alerts.couldNotDeleteDiagnostics,
+        errorMessageOr(error),
       );
     } finally {
       setDeletingDiagnostics(false);
@@ -265,8 +265,8 @@ export function ExportSettings() {
       );
     } catch (error) {
       Alert.alert(
-        'Could not compact database',
-        error instanceof Error ? error.message : 'Something went wrong.',
+        APP_COPY.alerts.couldNotCompactDatabase,
+        errorMessageOr(error),
       );
     } finally {
       setCompacting(false);

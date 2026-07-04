@@ -1,4 +1,5 @@
 import {useCallback, useRef, useState} from 'react';
+import {APP_COPY, errorMessageOr} from '@/lib/app-copy';
 import {Alert, StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
@@ -116,8 +117,8 @@ export function SavedPlacesScreen() {
         await refreshSavedPlaces();
       } catch (error) {
         const message =
-          error instanceof Error ? error.message : 'Could not rename place';
-        Alert.alert('Rename failed', message);
+          error instanceof Error ? error.message : APP_COPY.alerts.couldNotRenamePlace;
+        Alert.alert(APP_COPY.savedPlaces.renameFailed, message);
         throw error;
       }
     },
@@ -163,7 +164,7 @@ export function SavedPlacesScreen() {
             `You can save up to ${MAX_SAVED_PLACES} places.`,
           );
         } else if (error instanceof Error) {
-          Alert.alert('Could not save place', error.message);
+          Alert.alert(APP_COPY.savedPlaces.couldNotSavePlace, error.message);
         }
         throw error;
       }

@@ -5,16 +5,17 @@ import {
   type LocationPointLike,
   type MapCoordinate,
 } from '@/lib/location-geo';
+import {
+  PLAYBACK_MARKER_FRAME_MS,
+  TRIP_PLAYBACK_DURATION_MS,
+} from '@/lib/app-constants';
 
-/** Default cap; actual playback uses `getTripPlaybackDurationMs`. */
-export const TRIP_PLAYBACK_DURATION_MS = 13_000;
+export {PLAYBACK_MARKER_FRAME_MS, TRIP_PLAYBACK_DURATION_MS};
 
 /** Wall-clock playback length (accelerated, not real-time). */
 export function getTripPlaybackDurationMs(_tripDurationMs: number): number {
   return TRIP_PLAYBACK_DURATION_MS;
 }
-/** Native marker tween between React frames (~30fps updates). */
-export const PLAYBACK_MARKER_FRAME_MS = 40;
 const DENSE_STEP_METERS = 5;
 const MAX_DENSE_SAMPLES = 900;
 

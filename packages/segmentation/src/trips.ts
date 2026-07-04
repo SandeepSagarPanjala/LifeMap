@@ -1,4 +1,11 @@
 import {
+  MERGE_STAY_MAX_DISTANCE_M,
+  MIN_DRIVE_DISTANCE_M,
+  MISSING_MIN_DISTANCE_M,
+  MISSING_MIN_GAP_MS,
+  SAVED_PLACE_MIN_DWELL_MS,
+} from '@lifemap/constants';
+import {
   addDaysToDateKey,
   dateKeyForTimestamp,
   dayEndExclusive,
@@ -36,21 +43,13 @@ export type {SegmentMomentCounts} from './segment-moments';
  * trailing fix that could not fit the stay's radius) has no moving points and
  * ~0 m of travel, so it is not a real drive.
  */
-export const MIN_DRIVE_DISTANCE_M = 30;
-export const SAVED_PLACE_MIN_DWELL_MS = 5 * 60 * 1000;
+export {MIN_DRIVE_DISTANCE_M, SAVED_PLACE_MIN_DWELL_MS} from '@lifemap/constants';
 
-/**
- * Two consecutive stays at the same place are merged into one continuous stay,
- * even with a long sparse-GPS gap between them.
- */
-export const MERGE_STAY_MAX_DISTANCE_M = 200;
-
-/**
- * A "missing" gap (phone off, no GPS) requires BOTH a meaningful distance and
- * time between segment boundaries — avoids false positives from brief dropouts.
- */
-export const MISSING_MIN_DISTANCE_M = 500;
-export const MISSING_MIN_GAP_MS = 15 * 60 * 1000;
+export {
+  MERGE_STAY_MAX_DISTANCE_M,
+  MISSING_MIN_DISTANCE_M,
+  MISSING_MIN_GAP_MS,
+} from '@lifemap/constants';
 
 export type StaySegment = {
   kind: 'stay';

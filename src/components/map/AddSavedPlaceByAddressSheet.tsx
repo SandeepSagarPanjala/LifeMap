@@ -7,6 +7,7 @@ import {
   type ComponentRef,
   type RefObject,
 } from 'react';
+import {APP_COPY} from '@/lib/app-copy';
 import {
   ActivityIndicator,
   Keyboard,
@@ -138,7 +139,7 @@ function AddSavedPlaceByAddressPanel({
       setSelectedResult(null);
       setStep('results');
     } catch {
-      setLookupError('Could not look up that address. Try again.');
+      setLookupError(APP_COPY.alerts.couldNotLookUpAddress);
     } finally {
       setLookingUp(false);
     }

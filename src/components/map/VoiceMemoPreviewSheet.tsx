@@ -1,4 +1,5 @@
 import {useCallback, useEffect, useRef, useState, type ComponentRef} from 'react';
+import {APP_COPY, errorMessageOr} from '@/lib/app-copy';
 import {Alert, Keyboard, Pressable, StyleSheet, View} from 'react-native';
 import {AudioLines, Pause, Play} from 'lucide-react-native';
 import {BottomSheetModalProvider} from '@gorhom/bottom-sheet';
@@ -160,7 +161,7 @@ export function VoiceMemoPreviewSheet({
       await recorderRef.current.startPreview(current.path);
       setIsPlayingPreview(true);
     } catch (error) {
-      Alert.alert('Could not play recording', getVoiceRecordingErrorMessage(error));
+      Alert.alert(APP_COPY.alerts.couldNotPlayRecording, getVoiceRecordingErrorMessage(error));
     }
   };
 
@@ -178,8 +179,8 @@ export function VoiceMemoPreviewSheet({
       requestClose();
     } catch (error) {
       Alert.alert(
-        'Could not save voice memo',
-        error instanceof Error ? error.message : 'Something went wrong.',
+        APP_COPY.alerts.couldNotSaveVoiceMemo,
+        errorMessageOr(error),
       );
     } finally {
       setSaving(false);

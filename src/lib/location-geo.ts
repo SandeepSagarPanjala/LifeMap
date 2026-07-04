@@ -50,11 +50,12 @@ export function toMapCoordinates(points: LocationPointLike[]): MapCoordinate[] {
   }));
 }
 
-/** Cap polyline vertices — MapKit blows up RAM with thousands of points per line. */
-export const MAX_MAP_POLYLINE_POINTS = 320;
+export {
+  MAX_EMPHASIZED_TRIP_POLYLINE_POINTS,
+  MAX_MAP_POLYLINE_POINTS,
+} from '@/lib/app-constants';
 
-/** Selected drive / history scrub — show the real path, not a straight-line cheat. */
-export const MAX_EMPHASIZED_TRIP_POLYLINE_POINTS = 500;
+import {MAX_MAP_POLYLINE_POINTS} from '@/lib/app-constants';
 
 export function downsampleMapCoordinates(
   coordinates: readonly MapCoordinate[],

@@ -5,9 +5,15 @@ export type MapUserCoordinate = {
   longitude: number;
 };
 
-/** Label proximity only — the native blue puck updates on its own. */
-export const USER_COORDINATE_MIN_INTERVAL_MS = 10_000;
-export const USER_COORDINATE_MIN_MOVE_METERS = 25;
+import {
+  USER_COORDINATE_MIN_INTERVAL_MS,
+  USER_COORDINATE_MIN_MOVE_METERS,
+} from '@/lib/app-constants';
+
+export {
+  USER_COORDINATE_MIN_INTERVAL_MS,
+  USER_COORDINATE_MIN_MOVE_METERS,
+};
 
 export function shouldRefreshUserCoordinate(
   previous: MapUserCoordinate | null,

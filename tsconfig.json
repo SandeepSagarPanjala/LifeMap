@@ -5,6 +5,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
+      "@lifemap/constants": ["./packages/constants/src/index.ts"],
+      "@lifemap/copy": ["./packages/copy/src/index.ts"],
       "@lifemap/segmentation": ["./packages/segmentation/src/index.ts"],
       "@lifemap/segmentation/*": ["./packages/segmentation/src/*"]
     }

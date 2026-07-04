@@ -9,18 +9,18 @@ import {canonicalizeStaySegmentPoints} from '@lifemap/segmentation';
 import {canonicalizeTravelSegmentPoints} from '@lifemap/segmentation';
 import type {SegmentationMoment} from '@lifemap/segmentation';
 import type {DriveSegment} from '@lifemap/segmentation';
-
-const TZ = 'America/Chicago';
+import {APP_TIMEZONE} from '@lifemap/constants';
+import {APP_COPY} from '@lifemap/copy';
 
 const timeFmt = new Intl.DateTimeFormat('en-US', {
-  timeZone: TZ,
+  timeZone: APP_TIMEZONE,
   hour: 'numeric',
   minute: '2-digit',
   hour12: true,
 });
 
 const dateFmt = new Intl.DateTimeFormat('en-US', {
-  timeZone: TZ,
+  timeZone: APP_TIMEZONE,
   month: 'short',
   day: 'numeric',
 });
@@ -37,7 +37,7 @@ export function formatTimeRange(startAt: Date, endAt: Date): string {
 }
 
 export type SegmentDisplay = {
-  kind: 'Stay' | 'Drive' | 'Missing';
+  kind: typeof APP_COPY.explorer.segmentStay | typeof APP_COPY.explorer.segmentDrive | typeof APP_COPY.explorer.segmentMissing;
   variant: 'stay' | 'drive' | 'missing';
   subtitle?: string;
   placeLookupCacheId?: number;
@@ -47,11 +47,11 @@ export type SegmentDisplay = {
 };
 
 const MOMENT_TYPE_LABELS: Record<keyof SegmentMomentCounts, string> = {
-  photo: 'photo',
-  video: 'video',
-  voice: 'voice',
-  note: 'note',
-  activity: 'activity',
+  photo: APP_COPY.explorer.momentPhoto,
+  video: APP_COPY.explorer.momentVideo,
+  voice: APP_COPY.explorer.momentVoice,
+  note: APP_COPY.explorer.momentNote,
+  activity: APP_COPY.explorer.momentActivity,
 };
 
 function canonicalPointCountLabel(
@@ -98,7 +98,7 @@ export function describeTripSegment(segment: TripSegment): SegmentDisplay {
 
   if (segment.kind === 'stay') {
     return {
-      kind: 'Stay',
+      kind: APP_COPY.explorer.segmentStay,
       variant: 'stay',
       subtitle: segment.savedPlaceLabel ?? segment.placeLookupLabel,
       placeLookupCacheId: segment.placeLookupCacheId,
@@ -124,7 +124,7 @@ export function describeTripSegment(segment: TripSegment): SegmentDisplay {
     }
 
     return {
-      kind: 'Drive',
+      kind: APP_COPY.explorer.segmentDrive,
       variant: 'drive',
       subtitle,
       momentCounts: segment.momentCounts,
@@ -138,7 +138,7 @@ export function describeTripSegment(segment: TripSegment): SegmentDisplay {
   }
 
   return {
-    kind: 'Missing',
+    kind: APP_COPY.explorer.segmentMissing,
     variant: 'missing',
     subtitle: `${segment.fromKind} → ${segment.toKind}`,
     momentCounts: segment.momentCounts,

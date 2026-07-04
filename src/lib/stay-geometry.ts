@@ -4,8 +4,15 @@ import {calculatePathDistanceKm, distanceKm} from '@/lib/location-geo';
 import type {DetectedTrip} from '@/lib/trip-detection';
 import {visitCorePoints} from '@/lib/trip-detection';
 
-export const MIN_VISIT_IN_AREA_SPREAD_M = 100;
-export const MIN_VISIT_IN_AREA_PATH_M = 120;
+import {
+  MIN_VISIT_IN_AREA_PATH_M,
+  MIN_VISIT_IN_AREA_SPREAD_M,
+} from '@/lib/app-constants';
+
+export {
+  MIN_VISIT_IN_AREA_PATH_M,
+  MIN_VISIT_IN_AREA_SPREAD_M,
+};
 
 const VENUE_DOUGLAS_PEUCKER_EPSILON_M = 20;
 

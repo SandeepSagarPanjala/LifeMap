@@ -1,30 +1,43 @@
 import BackgroundGeolocation, {type Config} from 'react-native-background-geolocation';
 
-import {HEARTBEAT_CHECK_INTERVAL_SEC, HEARTBEAT_CHECK_INTERVAL_SEC_MAX_RELIABILITY} from '@/lib/motion-tracking-policy';
+import {
+  SETTINGS_KEY_TRACKING_ENABLED,
+  SETTINGS_KEY_TRACKING_MAX_RELIABILITY,
+  SETTINGS_KEY_TRACKING_PRESET,
+  TRACKING_ACTIVITY_RECOGNITION_INTERVAL_MS,
+  TRACKING_DISTANCE_FILTER_METERS,
+  TRACKING_LOCATION_UPDATE_INTERVAL_MS_BALANCED,
+  TRACKING_LOCATION_UPDATE_INTERVAL_MS_MAX_RELIABILITY,
+  TRACKING_MIN_ACTIVITY_RECOGNITION_CONFIDENCE,
+  TRACKING_STOP_DETECTION_DELAY_MS_BALANCED,
+  TRACKING_STOP_DETECTION_DELAY_MS_MAX_RELIABILITY,
+  TRACKING_STOP_TIMEOUT_MINUTES_BALANCED,
+  TRACKING_STATIONARY_RADIUS_M_BALANCED,
+  TRACKING_STATIONARY_RADIUS_M_MAX_RELIABILITY,
+} from '@/lib/app-constants';
+import {APP_COPY} from '@/lib/app-copy';
+import {
+  HEARTBEAT_CHECK_INTERVAL_SEC,
+  HEARTBEAT_CHECK_INTERVAL_SEC_MAX_RELIABILITY,
+} from '@/lib/motion-tracking-policy';
 
-/** SDK distance filter while MOVING — every qualifying fix is saved. */
-export const TRACKING_DISTANCE_FILTER_METERS = 10;
-
-export const SETTINGS_KEY_TRACKING_ENABLED = 'tracking_enabled';
-export const SETTINGS_KEY_TRACKING_MAX_RELIABILITY = 'tracking_max_reliability';
-
-/** @deprecated Legacy settings key; all installs now use the fixed config. */
-export const SETTINGS_KEY_TRACKING_PRESET = 'tracking_preset';
-
-const STOP_TIMEOUT_MINUTES_BALANCED = 5;
-const STOP_DETECTION_DELAY_MS_BALANCED = 60_000;
+export {
+  SETTINGS_KEY_TRACKING_ENABLED,
+  SETTINGS_KEY_TRACKING_MAX_RELIABILITY,
+  SETTINGS_KEY_TRACKING_PRESET,
+  TRACKING_DISTANCE_FILTER_METERS,
+};
 
 const NOTIFICATION = {
-  title: 'LifeMap',
-  text: 'Recording your day privately on this device',
+  title: APP_COPY.tracking.notificationTitle,
+  text: APP_COPY.tracking.notificationText,
 };
 
 const BACKGROUND_PERMISSION_RATIONALE = {
-  title: 'Allow LifeMap to track in the background?',
-  message:
-    'LifeMap needs always-on location so your timeline stays complete when the app is closed. Everything stays encrypted on your phone.',
-  positiveAction: 'Change to Always',
-  negativeAction: 'Cancel',
+  title: APP_COPY.tracking.backgroundPermissionTitle,
+  message: APP_COPY.tracking.backgroundPermissionMessage,
+  positiveAction: APP_COPY.tracking.backgroundPermissionPositive,
+  negativeAction: APP_COPY.tracking.backgroundPermissionNegative,
 };
 
 /** v5 compound config for ready() / setConfig(). */
@@ -34,19 +47,28 @@ export function getTrackingConfig(maxReliability: boolean): Config {
       desiredAccuracy: BackgroundGeolocation.DesiredAccuracy.High,
       distanceFilter: TRACKING_DISTANCE_FILTER_METERS,
       disableElasticity: maxReliability,
-      stopTimeout: maxReliability ? 1 : STOP_TIMEOUT_MINUTES_BALANCED,
+      stopTimeout: maxReliability ? 1 : TRACKING_STOP_TIMEOUT_MINUTES_BALANCED,
       pausesLocationUpdatesAutomatically: !maxReliability,
       locationAuthorizationRequest: BackgroundGeolocation.LocationRequest.Always,
-      locationUpdateInterval: maxReliability ? 30_000 : 60_000,
-      fastestLocationUpdateInterval: maxReliability ? 30_000 : 60_000,
-      stationaryRadius: maxReliability ? 75 : 25,
+      locationUpdateInterval: maxReliability
+        ? TRACKING_LOCATION_UPDATE_INTERVAL_MS_MAX_RELIABILITY
+        : TRACKING_LOCATION_UPDATE_INTERVAL_MS_BALANCED,
+      fastestLocationUpdateInterval: maxReliability
+        ? TRACKING_LOCATION_UPDATE_INTERVAL_MS_MAX_RELIABILITY
+        : TRACKING_LOCATION_UPDATE_INTERVAL_MS_BALANCED,
+      stationaryRadius: maxReliability
+        ? TRACKING_STATIONARY_RADIUS_M_MAX_RELIABILITY
+        : TRACKING_STATIONARY_RADIUS_M_BALANCED,
     },
     activity: {
       disableStopDetection: maxReliability,
       disableMotionActivityUpdates: false,
-      stopDetectionDelay: maxReliability ? 30_000 : STOP_DETECTION_DELAY_MS_BALANCED,
-      minimumActivityRecognitionConfidence: 55,
-      activityRecognitionInterval: 5000,
+      stopDetectionDelay: maxReliability
+        ? TRACKING_STOP_DETECTION_DELAY_MS_MAX_RELIABILITY
+        : TRACKING_STOP_DETECTION_DELAY_MS_BALANCED,
+      minimumActivityRecognitionConfidence:
+        TRACKING_MIN_ACTIVITY_RECOGNITION_CONFIDENCE,
+      activityRecognitionInterval: TRACKING_ACTIVITY_RECOGNITION_INTERVAL_MS,
       motionTriggerDelay: 0,
     },
     app: {

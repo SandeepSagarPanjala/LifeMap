@@ -10,6 +10,7 @@ import {useNavigation} from '@react-navigation/native';
 
 import {Button} from '@/components/ui/button';
 import {Text} from '@/components/ui/text';
+import {APP_COPY} from '@/lib/app-copy';
 
 type AppErrorBoundaryProps = {
   children: ReactNode;
@@ -35,14 +36,8 @@ type ErrorBoundaryState = {
 };
 
 const FEATURE_COPY: Record<FeatureId, {title: string; body: string}> = {
-  map: {
-    title: 'Map unavailable',
-    body: 'The map hit an unexpected error. Your location history on this device is unchanged.',
-  },
-  capture: {
-    title: 'Capture unavailable',
-    body: 'The camera flow hit an unexpected error. Nothing was saved yet.',
-  },
+  map: APP_COPY.errors.mapUnavailable,
+  capture: APP_COPY.errors.captureUnavailable,
 };
 
 function ErrorFallback({
@@ -65,11 +60,11 @@ function ErrorFallback({
         {body}
       </Text>
       <Button className="mt-6" onPress={resetError}>
-        Try again
+        {APP_COPY.common.tryAgain}
       </Button>
       {onDismiss != null ? (
         <Button className="mt-3" variant="outline" onPress={onDismiss}>
-          Close
+          {APP_COPY.common.close}
         </Button>
       ) : null}
     </View>
@@ -80,8 +75,8 @@ function RootErrorFallback({resetError}: {resetError: () => void}) {
   return (
     <ErrorFallback
       resetError={resetError}
-      title="Something went wrong"
-      body="LifeMap hit an unexpected error. Your data on this device is unchanged. Try again, or restart the app."
+      title={APP_COPY.errors.root.title}
+      body={APP_COPY.errors.root.body}
     />
   );
 }

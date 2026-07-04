@@ -1,4 +1,9 @@
 import type {SavedPlaceKind, SavedPlaceRow} from '@/db/repositories/saved-places';
+import {APP_COPY} from '@/lib/app-copy';
+import {
+  MAX_SAVED_PLACE_LABEL_LENGTH,
+  MAX_SAVED_PLACES,
+} from '@/lib/app-constants';
 import {distanceKm, type LocationPointLike} from '@/lib/location-geo';
 import type {DetectedTrip} from '@/lib/trip-detection';
 
@@ -108,26 +113,22 @@ export function savedPlaceDisplayLabel(place: SavedPlaceRow): string {
   return place.label;
 }
 
-export const MAX_SAVED_PLACE_LABEL_LENGTH = 30;
+export {MAX_SAVED_PLACE_LABEL_LENGTH, MAX_SAVED_PLACES} from '@/lib/app-constants';
 
 export function normalizeSavedPlaceLabel(label: string): string {
   const trimmed = label.trim();
   if (!trimmed) {
-    throw new Error('Place name is required');
+    throw new Error(APP_COPY.savedPlaces.placeNameRequired);
   }
   if (trimmed.length > MAX_SAVED_PLACE_LABEL_LENGTH) {
-    throw new Error(
-      `Place name must be ${MAX_SAVED_PLACE_LABEL_LENGTH} characters or fewer`,
-    );
+    throw new Error(APP_COPY.savedPlaces.placeNameTooLong);
   }
   return trimmed;
 }
 
-export const MAX_SAVED_PLACES = 20;
-
 export class SavedPlaceLimitError extends Error {
   constructor() {
-    super(`You can save up to ${MAX_SAVED_PLACES} places. Remove one to add another.`);
+    super(APP_COPY.savedPlaces.limitReached);
     this.name = 'SavedPlaceLimitError';
   }
 }

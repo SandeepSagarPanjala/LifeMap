@@ -1,4 +1,5 @@
 import {useCallback, useState} from 'react';
+import {APP_COPY, errorMessageOr} from '@/lib/app-copy';
 import {ActivityIndicator, Alert, Pressable, View} from 'react-native';
 import {MapPin} from 'lucide-react-native';
 
@@ -41,7 +42,7 @@ export function LocationPointsDedupeDevCard() {
     } catch (error) {
       Alert.alert(
         'Scan failed',
-        error instanceof Error ? error.message : 'Something went wrong.',
+        errorMessageOr(error),
       );
     } finally {
       setScanning(false);
@@ -98,7 +99,7 @@ export function LocationPointsDedupeDevCard() {
               } catch (error) {
                 Alert.alert(
                   'Cleanup failed',
-                  error instanceof Error ? error.message : 'Something went wrong.',
+                  errorMessageOr(error),
                 );
               } finally {
                 setWorking(false);

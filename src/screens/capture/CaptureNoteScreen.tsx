@@ -1,4 +1,5 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
+import {APP_COPY, errorMessageOr} from '@/lib/app-copy';
 import {
   ActivityIndicator,
   Alert,
@@ -165,7 +166,7 @@ export function CaptureNoteScreen() {
       await voicePlayerRef.current.startPreview(voiceUri);
       setVoicePlaying(true);
     } catch (error) {
-      Alert.alert('Could not play recording', getVoiceRecordingErrorMessage(error));
+      Alert.alert(APP_COPY.alerts.couldNotPlayRecording, getVoiceRecordingErrorMessage(error));
     }
   };
 
@@ -299,8 +300,8 @@ export function CaptureNoteScreen() {
       navigation.goBack();
     } catch (error) {
       Alert.alert(
-        'Could not save diary entry',
-        error instanceof Error ? error.message : 'Something went wrong.',
+        APP_COPY.alerts.couldNotSaveDiaryEntry,
+        errorMessageOr(error),
       );
     } finally {
       setSaving(false);

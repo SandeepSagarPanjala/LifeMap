@@ -1,4 +1,5 @@
 import {useCallback, useEffect, useState} from 'react';
+import {APP_COPY, errorMessageOr} from '@/lib/app-copy';
 import {format} from 'date-fns';
 import {
   ActivityIndicator,
@@ -119,7 +120,7 @@ export function BackupSettings() {
     } catch (error) {
       Alert.alert(
         'Backup failed',
-        error instanceof Error ? error.message : 'Something went wrong.',
+        errorMessageOr(error),
       );
     } finally {
       setBackingUp(false);
@@ -176,7 +177,7 @@ export function BackupSettings() {
     } catch (error) {
       Alert.alert(
         'Export failed',
-        error instanceof Error ? error.message : 'Something went wrong.',
+        errorMessageOr(error),
       );
     } finally {
       setExportingToDrive(false);
@@ -197,7 +198,7 @@ export function BackupSettings() {
     } catch (error) {
       Alert.alert(
         'Import failed',
-        error instanceof Error ? error.message : 'Something went wrong.',
+        errorMessageOr(error),
       );
     } finally {
       setImportingFromDrive(false);

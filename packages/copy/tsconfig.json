@@ -6,10 +6,7 @@
     "strict": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "isolatedModules": true,
-    "paths": {
-      "@lifemap/constants": ["../constants/src/index.ts"]
-    }
+    "isolatedModules": true
   },
   "include": ["src/**/*.ts"]
 }

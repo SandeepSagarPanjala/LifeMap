@@ -1,7 +1,20 @@
-/** JPEG compression defaults — used when react-native-compressor ships in Phase 3. */
-export const IMAGE_COMPRESS_MAX_DIMENSION = 2048;
-export const IMAGE_COMPRESS_QUALITY = 0.78;
-export const IMAGE_COMPRESS_FORMAT = 'jpeg' as const;
+export {
+  IMAGE_COMPRESS_FORMAT,
+  IMAGE_COMPRESS_MAX_DIMENSION,
+  IMAGE_COMPRESS_QUALITY,
+  VIDEO_COMPRESS_MAX_SIZE,
+  VIDEO_CONTENT_FORMAT,
+  VIDEO_MAX_DURATION_MS,
+  VOICE_CONTENT_FORMAT,
+  VOICE_MAX_DURATION_MS,
+} from '@/lib/app-constants';
+
+import {
+  IMAGE_COMPRESS_FORMAT,
+  IMAGE_COMPRESS_MAX_DIMENSION,
+  IMAGE_COMPRESS_QUALITY,
+  VIDEO_COMPRESS_MAX_SIZE,
+} from '@/lib/app-constants';
 
 export type ImageCompressOptions = {
   maxDimension: number;
@@ -14,15 +27,6 @@ export const DEFAULT_IMAGE_COMPRESS_OPTIONS: ImageCompressOptions = {
   quality: IMAGE_COMPRESS_QUALITY,
   format: IMAGE_COMPRESS_FORMAT,
 };
-
-/** Voice memo defaults for Phase 4. */
-export const VOICE_MAX_DURATION_MS = 5 * 60_000;
-export const VOICE_CONTENT_FORMAT = 'aac' as const;
-
-/** Video moment defaults. */
-export const VIDEO_MAX_DURATION_MS = 5 * 60_000;
-export const VIDEO_CONTENT_FORMAT = 'mp4' as const;
-export const VIDEO_COMPRESS_MAX_SIZE = 1280;
 
 export type VideoCompressOptions = {
   compressionMethod: 'auto' | 'manual';

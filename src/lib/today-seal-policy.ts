@@ -5,8 +5,9 @@ import {
 } from '@/lib/trip-detection';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
 
-/** Max live segments kept out of DB while today is still in motion. */
-export const TODAY_LIVE_BUFFER_MAX_SEGMENTS = 2;
+import {TODAY_LIVE_BUFFER_MAX_SEGMENTS} from '@/lib/app-constants';
+
+export {TODAY_LIVE_BUFFER_MAX_SEGMENTS};
 
 function shouldStayLive(
   entry: DetectedTrip,

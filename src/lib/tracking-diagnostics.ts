@@ -20,8 +20,9 @@ const RATE_LIMITED_EVENTS = new Set([
   'geofence_sync',
 ]);
 
-/** Auto-disable diagnostics when the table is this large (prevents DB lock starvation). */
-export const TRACKING_EVENTS_BLOAT_DISABLE_THRESHOLD = 50_000;
+import {TRACKING_EVENTS_BLOAT_DISABLE_THRESHOLD} from '@/lib/app-constants';
+
+export {TRACKING_EVENTS_BLOAT_DISABLE_THRESHOLD};
 
 let cachedEnabled: boolean | null = null;
 const lastLoggedAtMs = new Map<string, number>();
