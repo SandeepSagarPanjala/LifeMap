@@ -27,8 +27,10 @@ export function normalizeDriveMapRefreshIntervalMs(
   raw: string | null,
 ): DriveMapRefreshIntervalMs {
   const parsed = Number(raw);
-  if (parsed === 10_000 || parsed === 30_000 || parsed === 60_000) {
-    return parsed;
+  if (
+    (DRIVE_MAP_REFRESH_INTERVAL_MS_OPTIONS as readonly number[]).includes(parsed)
+  ) {
+    return parsed as DriveMapRefreshIntervalMs;
   }
   return DEFAULT_DRIVE_MAP_REFRESH_INTERVAL_MS;
 }

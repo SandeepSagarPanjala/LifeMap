@@ -1,4 +1,10 @@
 import type {Region} from 'react-native-maps';
+import {
+  MAP_USER_ZOOM_DELTA,
+  VISIT_MAX_ZOOM_DELTA,
+} from '@/lib/app-constants';
+
+export {MAP_USER_ZOOM_DELTA, VISIT_MAX_ZOOM_DELTA};
 
 export type MapCoordinate = {
   latitude: number;
@@ -35,12 +41,6 @@ export function regionAroundCoordinate(
   };
 }
 
-export {
-  MAP_USER_ZOOM_DELTA,
-  VISIT_MAX_ZOOM_DELTA,
-} from '@/lib/app-constants';
-
-import {MAP_USER_ZOOM_DELTA} from '@/lib/app-constants';
 const RECENTER_ZOOM_DELTA = MAP_USER_ZOOM_DELTA;
 const ZOOM_OUT_FACTOR = 1.5;
 const ZOOM_OUT_MS = 280;

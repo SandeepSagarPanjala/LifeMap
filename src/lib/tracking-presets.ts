@@ -1,6 +1,8 @@
 import BackgroundGeolocation, {type Config} from 'react-native-background-geolocation';
 
 import {
+  HEARTBEAT_CHECK_INTERVAL_SEC,
+  HEARTBEAT_CHECK_INTERVAL_SEC_MAX_RELIABILITY,
   SETTINGS_KEY_TRACKING_ENABLED,
   SETTINGS_KEY_TRACKING_MAX_RELIABILITY,
   SETTINGS_KEY_TRACKING_PRESET,
@@ -16,10 +18,6 @@ import {
   TRACKING_STATIONARY_RADIUS_M_MAX_RELIABILITY,
 } from '@/lib/app-constants';
 import {APP_COPY} from '@/lib/app-copy';
-import {
-  HEARTBEAT_CHECK_INTERVAL_SEC,
-  HEARTBEAT_CHECK_INTERVAL_SEC_MAX_RELIABILITY,
-} from '@/lib/motion-tracking-policy';
 
 export {
   SETTINGS_KEY_TRACKING_ENABLED,

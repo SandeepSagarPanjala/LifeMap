@@ -4,7 +4,7 @@ import {nativeSyncGeofences, type NativeGeofenceSpec} from '@/location/native-lo
 import {recordTrackingDiagnostic} from '@/lib/tracking-diagnostics';
 
 /** iOS geofence wake radius — Apple is unreliable below ~100 m. */
-export {GEOFENCE_WAKE_MIN_RADIUS_METERS} from '@/lib/app-constants';
+export {GEOFENCE_WAKE_MIN_RADIUS_METERS};
 
 export function savedPlaceGeofenceSpecs(
   places: readonly SavedPlaceRow[],

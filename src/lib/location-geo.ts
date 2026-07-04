@@ -1,4 +1,10 @@
 import type {Region} from 'react-native-maps';
+import {
+  MAX_EMPHASIZED_TRIP_POLYLINE_POINTS,
+  MAX_MAP_POLYLINE_POINTS,
+} from '@/lib/app-constants';
+
+export {MAX_EMPHASIZED_TRIP_POLYLINE_POINTS, MAX_MAP_POLYLINE_POINTS};
 
 export type MapCoordinate = {
   latitude: number;
@@ -49,13 +55,6 @@ export function toMapCoordinates(points: LocationPointLike[]): MapCoordinate[] {
     longitude: point.lng,
   }));
 }
-
-export {
-  MAX_EMPHASIZED_TRIP_POLYLINE_POINTS,
-  MAX_MAP_POLYLINE_POINTS,
-} from '@/lib/app-constants';
-
-import {MAX_MAP_POLYLINE_POINTS} from '@/lib/app-constants';
 
 export function downsampleMapCoordinates(
   coordinates: readonly MapCoordinate[],

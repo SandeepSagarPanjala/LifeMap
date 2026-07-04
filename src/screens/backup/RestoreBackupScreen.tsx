@@ -1,5 +1,5 @@
 import {useCallback, useEffect, useMemo, useState} from 'react';
-import {APP_COPY} from '@/lib/app-copy';
+import {APP_COPY, errorMessageOr} from '@/lib/app-copy';
 import {format} from 'date-fns';
 import {
   ActivityIndicator,
@@ -99,7 +99,7 @@ export function RestoreBackupScreen({
       setPhase('offer');
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : APP_COPY.alerts.couldNotLoadBackup,
+        errorMessageOr(error, APP_COPY.alerts.couldNotLoadBackup),
       );
       setPhase('error');
     }
@@ -163,7 +163,7 @@ export function RestoreBackupScreen({
       return mergePlan;
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : APP_COPY.alerts.couldNotLoadBackup,
+        errorMessageOr(error, APP_COPY.alerts.couldNotLoadBackup),
       );
       setPhase('error');
       return null;

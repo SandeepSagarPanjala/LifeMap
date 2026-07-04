@@ -113,7 +113,7 @@ export function savedPlaceDisplayLabel(place: SavedPlaceRow): string {
   return place.label;
 }
 
-export {MAX_SAVED_PLACE_LABEL_LENGTH, MAX_SAVED_PLACES} from '@/lib/app-constants';
+export {MAX_SAVED_PLACE_LABEL_LENGTH, MAX_SAVED_PLACES};
 
 export function normalizeSavedPlaceLabel(label: string): string {
   const trimmed = label.trim();

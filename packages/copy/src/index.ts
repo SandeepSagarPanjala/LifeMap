@@ -2,7 +2,7 @@
  * Single source of truth for user-facing static text (mobile + web).
  */
 
-import {APP_TIMEZONE, MAX_SAVED_PLACE_LABEL_LENGTH, MAX_SAVED_PLACES} from '@lifemap/constants';
+import {APP_TIMEZONE, DRIVE_MAP_REFRESH_INTERVAL_MS_OPTIONS, MAX_SAVED_PLACE_LABEL_LENGTH, MAX_SAVED_PLACES} from '@lifemap/constants';
 
 export const APP_NAME = 'LifeMap';
 
@@ -252,11 +252,11 @@ export function formatTripRadiusLabel(meters: number): string {
 
 export function driveMapRefreshIntervalLabel(ms: number): string {
   switch (ms) {
-    case 10_000:
+    case DRIVE_MAP_REFRESH_INTERVAL_MS_OPTIONS[0]:
       return APP_COPY.settings.driveMapRefresh.tenSeconds;
-    case 30_000:
+    case DRIVE_MAP_REFRESH_INTERVAL_MS_OPTIONS[1]:
       return APP_COPY.settings.driveMapRefresh.thirtySeconds;
-    case 60_000:
+    case DRIVE_MAP_REFRESH_INTERVAL_MS_OPTIONS[2]:
       return APP_COPY.settings.driveMapRefresh.oneMinute;
     default:
       return APP_COPY.settings.driveMapRefresh.thirtySeconds;

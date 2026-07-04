@@ -2,7 +2,7 @@ export type AccentThemeId = import('@lifemap/constants').AccentThemeId;
 export type ThemeTokens = import('@lifemap/constants').ThemeTokens;
 export type AccentTheme = import('@lifemap/constants').AccentTheme;
 
-export {
+import {
   ACCENT_THEME_ORDER,
   ACCENT_THEMES,
   DEFAULT_ACCENT_THEME,
@@ -10,10 +10,13 @@ export {
   THEME_DESTRUCTIVE_HSL,
 } from '@/lib/app-constants';
 
-import {
+export {
+  ACCENT_THEME_ORDER,
+  ACCENT_THEMES,
+  DEFAULT_ACCENT_THEME,
   THEME_DESTRUCTIVE_FOREGROUND_HSL,
   THEME_DESTRUCTIVE_HSL,
-} from '@/lib/app-constants';
+};
 
 export function themeTokensToCssVars(tokens: ThemeTokens): Record<string, string> {
   return {

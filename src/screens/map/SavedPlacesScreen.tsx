@@ -1,5 +1,5 @@
 import {useCallback, useRef, useState} from 'react';
-import {APP_COPY} from '@/lib/app-copy';
+import {APP_COPY, errorMessageOr} from '@/lib/app-copy';
 import {Alert, StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
@@ -116,9 +116,10 @@ export function SavedPlacesScreen() {
         await updateFavoritePlaceLabel(place.id, label);
         await refreshSavedPlaces();
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : APP_COPY.alerts.couldNotRenamePlace;
-        Alert.alert(APP_COPY.savedPlaces.renameFailed, message);
+        Alert.alert(
+          APP_COPY.savedPlaces.renameFailed,
+          errorMessageOr(error, APP_COPY.alerts.couldNotRenamePlace),
+        );
         throw error;
       }
     },
@@ -163,8 +164,11 @@ export function SavedPlacesScreen() {
             'Saved place limit reached',
             `You can save up to ${MAX_SAVED_PLACES} places.`,
           );
-        } else if (error instanceof Error) {
-          Alert.alert(APP_COPY.savedPlaces.couldNotSavePlace, error.message);
+        } else {
+          Alert.alert(
+            APP_COPY.savedPlaces.couldNotSavePlace,
+            errorMessageOr(error, APP_COPY.savedPlaces.couldNotSavePlace),
+          );
         }
         throw error;
       }
