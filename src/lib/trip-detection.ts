@@ -6,6 +6,7 @@
 import type {LocationPointRow} from '@/db/repositories/location-days';
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import type {PlaceLookupRow} from '@/lib/place-lookup-types';
+import type {RouteMomentAnchor, TripMomentRef} from '@/lib/moment-refs';
 import {calculatePathDistanceKm, distanceKm, type LocationPointLike} from '@/lib/location-geo';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
 
@@ -47,6 +48,10 @@ export type DetectedTrip = {
   toPlaceId?: number;
   toPlaceKind?: PlaceKind;
   inferred?: boolean;
+  /** Materialized moment membership when read from DB. */
+  momentRefs?: TripMomentRef[];
+  /** Drive-only anchors from trip_points.moment_id. */
+  routeMomentAnchors?: RouteMomentAnchor[];
   /** Stay anchor from detection (`stop.lat/lng`) or DB seal (`centroidLat/Lng`). */
   anchorLat?: number;
   anchorLng?: number;

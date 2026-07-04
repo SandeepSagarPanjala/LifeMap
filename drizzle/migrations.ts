@@ -223,6 +223,12 @@ ALTER TABLE \`trips\` DROP COLUMN \`saved_place_id\`;
 --> statement-breakpoint
 ALTER TABLE \`trips\` DROP COLUMN \`place_lookup_cache_id\`;`;
 
+const m0023 = `ALTER TABLE \`trips\` ADD COLUMN \`moment_refs\` text;
+--> statement-breakpoint
+ALTER TABLE \`trip_points\` ADD COLUMN \`moment_id\` integer REFERENCES \`moments\`(\`id\`);`;
+
+const m0024 = `SELECT 1`;
+
 export default {
   journal,
   migrations: {
@@ -249,5 +255,7 @@ export default {
     m0020,
     m0021,
     m0022,
+    m0023,
+    m0024,
   },
 };

@@ -14,6 +14,7 @@ import {
   resolveMomentCoordinate,
 } from '@/lib/moments/moment-timeline';
 import type {DayTimelineEntry} from '@/lib/trip-detection';
+import {isMaterializedEntry, momentsForTripRefs} from '@/lib/moment-refs';
 
 const MARKER_ANCHOR = {x: 0.5, y: 0.5} as const;
 
@@ -64,6 +65,58 @@ export function buildMomentMapPins(
       };
     })
     .filter((pin): pin is MomentMapPin => pin != null);
+}
+
+/** History scrub pins — uses materialized anchors on sealed drives when available. */
+export function buildHistoryMomentMapPins(
+  entry: DayTimelineEntry,
+  dayMoments: MomentRow[],
+  points: LocationPointRow[],
+  now: Date = new Date(),
+): MomentMapPin[] {
+  if (entry.kind === 'gap') {
+    return [];
+  }
+
+  const materializedMoments = isMaterializedEntry(entry)
+    ? momentsForTripRefs(dayMoments, entry.momentRefs ?? [])
+    : filterMomentsForTimelineEntry(dayMoments, entry, now);
+
+  if (
+    isMaterializedEntry(entry) &&
+    entry.kind === 'travel' &&
+    entry.routeMomentAnchors != null &&
+    entry.routeMomentAnchors.length > 0
+  ) {
+    const byId = new Map(materializedMoments.map(moment => [moment.id, moment]));
+    return entry.routeMomentAnchors
+      .map(anchor => {
+        const moment = byId.get(anchor.momentId);
+        if (moment == null) {
+          return null;
+        }
+        return {
+          moment,
+          coordinate: {latitude: anchor.lat, longitude: anchor.lng},
+        };
+      })
+      .filter((pin): pin is MomentMapPin => pin != null);
+  }
+
+  return buildMomentMapPins(materializedMoments, points, [entry], now);
+}
+
+function filterMomentsForTimelineEntry(
+  moments: MomentRow[],
+  entry: Extract<DayTimelineEntry, {kind: 'stay' | 'travel'}>,
+  now: Date,
+): MomentRow[] {
+  return moments.filter(moment => {
+    const timestampMs = moment.timestamp.getTime();
+    const endMs =
+      entry.openThroughNow === true ? now.getTime() : entry.endAt.getTime();
+    return timestampMs >= entry.startAt.getTime() && timestampMs <= endMs;
+  });
 }
 
 type MomentMapOverlayProps = {

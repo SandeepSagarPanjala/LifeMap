@@ -137,6 +137,14 @@ export async function migrationAlreadyApplied(
       return columnExists(sqlite, 'trips', 'place_label');
     case '0022_drop_trip_legacy_place_columns':
       return !(await columnExists(sqlite, 'trips', 'place_lookup_cache_id'));
+    case '0023_trip_moment_refs':
+      return columnExists(sqlite, 'trips', 'moment_refs');
+    case '0024_drop_moment_location_columns':
+      return (
+        !(await columnExists(sqlite, 'moments', 'lat')) &&
+        !(await columnExists(sqlite, 'moments', 'lng')) &&
+        !(await columnExists(sqlite, 'moments', 'linked_point_id'))
+      );
     default:
       return false;
   }
@@ -177,6 +185,12 @@ export async function ensureTripSegmentMetadataColumns(sqlite: DB): Promise<void
       `ALTER TABLE trips ADD COLUMN inferred integer DEFAULT 0 NOT NULL`,
     );
   }
+  if (!(await columnExists(sqlite, 'trips', 'moment_refs'))) {
+    await executeMigrationStatement(
+      sqlite,
+      `ALTER TABLE trips ADD COLUMN moment_refs text`,
+    );
+  }
 }
 
 export async function ensureTripPointMetadataColumns(sqlite: DB): Promise<void> {
@@ -199,6 +213,12 @@ export async function ensureTripPointMetadataColumns(sqlite: DB): Promise<void> 
     await executeMigrationStatement(
       sqlite,
       `ALTER TABLE trip_points ADD COLUMN source text DEFAULT 'gps'`,
+    );
+  }
+  if (!(await columnExists(sqlite, 'trip_points', 'moment_id'))) {
+    await executeMigrationStatement(
+      sqlite,
+      `ALTER TABLE trip_points ADD COLUMN moment_id integer REFERENCES moments(id)`,
     );
   }
 }
@@ -275,6 +295,141 @@ async function ensureMigrationsTable(sqlite: DB): Promise<void> {
 }
 
 type SqlExecutor = Pick<DB, 'execute'>;
+
+async function tableExistsOn(
+  executor: SqlExecutor,
+  tableName: string,
+): Promise<boolean> {
+  const result = await executor.execute(
+    `SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?`,
+    [tableName],
+  );
+  return (result.rows?.length ?? 0) > 0;
+}
+
+async function columnExistsOn(
+  executor: SqlExecutor,
+  tableName: string,
+  columnName: string,
+): Promise<boolean> {
+  const result = await executor.execute(`PRAGMA table_info("${tableName}")`);
+  return (
+    result.rows?.some(
+      (row: Record<string, unknown>) =>
+        String(row.name ?? '') === columnName,
+    ) ?? false
+  );
+}
+
+const MOMENTS_COLUMNS_WITHOUT_LOCATION = [
+  'id',
+  'type',
+  'timestamp',
+  'content_path',
+  'voice_attachment_path',
+  'voice_attachment_bytes',
+  'voice_duration_sec',
+  'photo_attachments_json',
+  'text_body',
+  'caption',
+  'place_label',
+  'title',
+  'mood_score',
+  'mood_label',
+  'finished_at',
+  'content_bytes',
+  'source_bytes',
+  'content_format',
+  'share_visibility',
+  'content_sync_state',
+  'activity_id',
+  'activity_emoji',
+  'activity_label',
+] as const;
+
+/** SQLite cannot DROP COLUMN on `linked_point_id` — rebuild the table instead. */
+export async function rebuildMomentsTableWithoutLocationColumns(
+  sqlite: SqlExecutor,
+): Promise<boolean> {
+  if (!(await tableExistsOn(sqlite, 'moments'))) {
+    return false;
+  }
+
+  const hasLocationColumn =
+    (await columnExistsOn(sqlite, 'moments', 'lat')) ||
+    (await columnExistsOn(sqlite, 'moments', 'lng')) ||
+    (await columnExistsOn(sqlite, 'moments', 'linked_point_id'));
+  if (!hasLocationColumn) {
+    return false;
+  }
+
+  const copyColumns: string[] = [];
+  for (const column of MOMENTS_COLUMNS_WITHOUT_LOCATION) {
+    if (await columnExistsOn(sqlite, 'moments', column)) {
+      copyColumns.push(column);
+    }
+  }
+  if (copyColumns.length === 0) {
+    return false;
+  }
+
+  const columnList = copyColumns.join(', ');
+  await sqlite.execute('PRAGMA foreign_keys=OFF');
+  try {
+    await sqlite.execute(`DROP TABLE IF EXISTS moments_new`);
+    await sqlite.execute(`
+      CREATE TABLE moments_new (
+        id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+        type text NOT NULL,
+        timestamp integer NOT NULL,
+        content_path text,
+        voice_attachment_path text,
+        voice_attachment_bytes integer,
+        voice_duration_sec integer,
+        photo_attachments_json text,
+        text_body text,
+        caption text,
+        place_label text,
+        title text,
+        mood_score real,
+        mood_label text,
+        finished_at integer,
+        content_bytes integer,
+        source_bytes integer,
+        content_format text,
+        share_visibility text DEFAULT 'private' NOT NULL,
+        content_sync_state text DEFAULT 'local_only' NOT NULL,
+        activity_id integer,
+        activity_emoji text,
+        activity_label text
+      )
+    `);
+    await sqlite.execute(
+      `INSERT INTO moments_new (${columnList}) SELECT ${columnList} FROM moments`,
+    );
+    await sqlite.execute(`DROP TABLE moments`);
+    await sqlite.execute(`ALTER TABLE moments_new RENAME TO moments`);
+    await sqlite.execute(
+      `CREATE INDEX IF NOT EXISTS moments_timestamp_idx ON moments (timestamp)`,
+    );
+    await sqlite.execute(
+      `CREATE INDEX IF NOT EXISTS moments_type_timestamp_idx ON moments (type, timestamp)`,
+    );
+  } finally {
+    await sqlite.execute('PRAGMA foreign_keys=ON');
+  }
+
+  return true;
+}
+
+export async function ensureMomentsWithoutLocationColumns(
+  sqlite: DB,
+): Promise<void> {
+  const rebuilt = await rebuildMomentsTableWithoutLocationColumns(sqlite);
+  if (rebuilt) {
+    await markMigrationAppliedByTag(sqlite, '0024_drop_moment_location_columns');
+  }
+}
 
 async function recordMigration(
   migration: PreparedMigration,
@@ -379,6 +534,11 @@ export async function runMigrations(sqlite: DB): Promise<void> {
         if ((await countLocationPointDuplicateExtraRows(tx)) > 0) {
           continue;
         }
+      }
+      if (migration.tag === '0024_drop_moment_location_columns') {
+        await rebuildMomentsTableWithoutLocationColumns(tx);
+        await recordMigrationIfMissing(migration, tx);
+        continue;
       }
       for (const statement of migration.sql) {
         await executeMigrationStatement(tx, statement);

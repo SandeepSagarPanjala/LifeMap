@@ -195,9 +195,6 @@ function nearestPointForMoment(
   if (core.length === 0) {
     return null;
   }
-  if (moment.lat != null && moment.lng != null) {
-    return closestPointTo(core, {lat: moment.lat, lng: moment.lng});
-  }
   const targetMs = new Date(moment.timestamp).getTime();
   let best = core[0]!;
   let bestDelta = Math.abs(best.at.getTime() - targetMs);

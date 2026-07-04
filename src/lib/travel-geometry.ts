@@ -1,4 +1,7 @@
 import type {LocationPointRow} from '@/db/repositories/location-days';
+import type {MomentRow} from '@/db/repositories/moments';
+import type {PersistTripPointInput} from '@/db/repositories/trip-points';
+import {momentTimestampInSegment} from '@/lib/moment-refs';
 import {distanceKm} from '@/lib/location-geo';
 
 /** Perpendicular distance threshold for straight / gentle curve segments. */
@@ -138,4 +141,106 @@ export function canonicalizeTravelGeometry(
   }
 
   return sortedPoints([...byId.values()]);
+}
+
+function nearestPointByTimestamp(
+  points: readonly LocationPointRow[],
+  timestamp: Date,
+): LocationPointRow | null {
+  if (points.length === 0) {
+    return null;
+  }
+  const targetMs = timestamp.getTime();
+  let best = points[0]!;
+  let bestDelta = Math.abs(best.timestamp.getTime() - targetMs);
+  for (let index = 1; index < points.length; index += 1) {
+    const candidate = points[index]!;
+    const delta = Math.abs(candidate.timestamp.getTime() - targetMs);
+    if (delta < bestDelta) {
+      best = candidate;
+      bestDelta = delta;
+    }
+  }
+  return best;
+}
+
+function locationPointToPersist(
+  point: LocationPointRow,
+  momentId: number | null = null,
+): PersistTripPointInput {
+  return {
+    lat: point.lat,
+    lng: point.lng,
+    recordedAt: point.timestamp,
+    locationPointId: point.id > 0 ? point.id : null,
+    source: point.source ?? 'gps',
+    momentId,
+  };
+}
+
+function sortPersistPoints(
+  points: PersistTripPointInput[],
+): PersistTripPointInput[] {
+  return [...points].sort(
+    (a, b) => a.recordedAt.getTime() - b.recordedAt.getTime() || a.lat - b.lat,
+  );
+}
+
+/** Drive canonical geometry with forced anchors for in-segment moments. */
+export function canonicalizeTravelGeometryForPersist(
+  points: readonly LocationPointRow[],
+  moments: readonly MomentRow[],
+  startAt: Date,
+  endAt: Date,
+  options: {
+    epsilonM?: number;
+    minTurnDeg?: number;
+    minPointsToSimplify?: number;
+    canonicalize?: boolean;
+  } = {},
+): PersistTripPointInput[] {
+  const sorted = sortedPoints([...points]);
+  if (sorted.length === 0) {
+    return [];
+  }
+
+  const canonicalize = options.canonicalize ?? true;
+  const simplified = canonicalize
+    ? canonicalizeTravelGeometry(sorted, options)
+    : sorted;
+  const output = simplified.map(point => locationPointToPersist(point));
+  const byLocationPointId = new Map<number, PersistTripPointInput>();
+  for (const row of output) {
+    if (row.locationPointId != null) {
+      byLocationPointId.set(row.locationPointId, row);
+    }
+  }
+
+  for (const moment of moments) {
+    if (!momentTimestampInSegment(moment, startAt, endAt)) {
+      continue;
+    }
+    const nearest = nearestPointByTimestamp(sorted, moment.timestamp);
+    if (nearest == null) {
+      continue;
+    }
+    const locationPointId = nearest.id > 0 ? nearest.id : null;
+    const existing =
+      locationPointId != null ? byLocationPointId.get(locationPointId) : undefined;
+    if (existing != null) {
+      if (existing.momentId == null) {
+        existing.momentId = moment.id;
+      } else if (existing.momentId !== moment.id) {
+        output.push(locationPointToPersist(nearest, moment.id));
+      }
+      continue;
+    }
+    const forced = locationPointToPersist(nearest, moment.id);
+    output.push(forced);
+    if (locationPointId != null) {
+      byLocationPointId.set(locationPointId, forced);
+    }
+  }
+
+  return sortPersistPoints(output);
 }

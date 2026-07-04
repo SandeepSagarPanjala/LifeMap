@@ -143,8 +143,6 @@ function serializeMoments(rows: Array<typeof moments.$inferSelect>): unknown[] {
     type: row.type,
     timestamp: iso(row.timestamp),
     finishedAt: iso(row.finishedAt),
-    lat: row.lat,
-    lng: row.lng,
     contentPath: row.contentPath,
     voiceAttachmentPath: row.voiceAttachmentPath,
     voiceAttachmentBytes: row.voiceAttachmentBytes,
@@ -156,7 +154,6 @@ function serializeMoments(rows: Array<typeof moments.$inferSelect>): unknown[] {
     moodScore: row.moodScore,
     moodLabel: row.moodLabel,
     placeLabel: row.placeLabel,
-    linkedPointId: row.linkedPointId,
     contentBytes: row.contentBytes,
     sourceBytes: row.sourceBytes,
     contentFormat: row.contentFormat,
@@ -196,6 +193,7 @@ function serializeTrips(rows: Array<typeof trips.$inferSelect>): unknown[] {
     selectedCandidateIndex: row.selectedCandidateIndex,
     detectionVersion: row.detectionVersion,
     closedAt: iso(row.closedAt),
+    momentRefs: row.momentRefs,
   }));
 }
 

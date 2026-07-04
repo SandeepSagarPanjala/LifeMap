@@ -17,6 +17,7 @@ export function makeTripRow(
     selectedCandidateIndex: null,
     detectionVersion: 14,
     closedAt: partial.endAt,
+    momentRefs: [],
     ...partial,
   };
 }

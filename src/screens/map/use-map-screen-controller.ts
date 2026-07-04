@@ -34,6 +34,7 @@ import {useStaySavedPlace} from '@/hooks/use-stay-saved-place';
 import {useDriveEndpointLabels} from '@/hooks/use-drive-endpoint-labels';
 import {useDayMoments} from '@/hooks/use-day-moments';
 import {
+  buildHistoryMomentMapPins,
   buildMomentMapPins,
   type MomentMapPin,
 } from '@/components/map/MomentMapOverlay';
@@ -41,7 +42,6 @@ import type {SavedPlaceMomentClusterOnMap} from '@/components/map/SavedPlacesMap
 import {
   countMomentsForEntry,
   countMomentsForStayEntry,
-  filterMomentsForEntry,
   filterMomentsForStayEntry,
   shouldHideSavedPlaceMomentCluster,
   hasMomentCounts,
@@ -801,10 +801,10 @@ export function useMapScreenController() {
     if (!showHistoryMap || !selectedEntry) {
       return [];
     }
-    return buildMomentMapPins(
-      filterMomentsForEntry(dayMoments, selectedEntry),
+    return buildHistoryMomentMapPins(
+      selectedEntry,
+      dayMoments,
       historyData.points,
-      [selectedEntry],
     );
   }, [showHistoryMap, selectedEntry, dayMoments, historyData.points]);
 

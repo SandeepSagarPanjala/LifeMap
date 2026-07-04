@@ -114,8 +114,9 @@ function makeGap(startAt: Date, endAt: Date, index: number): TimelineGap {
 function tripRowToDetectedTrip(
   row: TripRow,
   points: LocationPointRow[],
+  route: readonly TripPointRow[] = [],
 ): DetectedTrip {
-  return tripRowToDetectedTripWithGeometry(row, points);
+  return tripRowToDetectedTripWithGeometry(row, points, route);
 }
 
 export function buildTimelineFromStoredTrips(
@@ -145,6 +146,7 @@ export function buildTimelineFromStoredTrips(
         ...tripRowToDetectedTrip(
           row,
           locationPointsForTripRow(row, route),
+          route,
         ),
         materializedTripId: row.id,
         segmentOrder: row.segmentOrder,
@@ -153,7 +155,7 @@ export function buildTimelineFromStoredTrips(
     }
     const route = pointsByTripId.get(row.id) ?? [];
     return {
-      ...tripRowToDetectedTrip(row, locationPointsForTripRow(row, route)),
+      ...tripRowToDetectedTrip(row, locationPointsForTripRow(row, route), route),
       materializedTripId: row.id,
       segmentOrder: row.segmentOrder,
     };
@@ -320,5 +322,6 @@ function toPseudoTripRow(trip: DetectedTrip): TripRow {
     selectedCandidateIndex: null,
     detectionVersion: 0,
     closedAt: trip.endAt,
+    momentRefs: trip.momentRefs ?? [],
   };
 }

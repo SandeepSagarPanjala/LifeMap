@@ -4,6 +4,11 @@ import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import {distanceKm, type LocationPointLike} from '@/lib/location-geo';
 import {matchSavedPlaceForPoint} from '@/lib/saved-places';
 import type {DayTimelineEntry, DetectedTrip} from '@/lib/trip-detection';
+import {
+  isMaterializedEntry,
+  momentCountsFromRefs,
+  momentsForTripRefs,
+} from '@/lib/moment-refs';
 import {resolveStayAnchor} from '@/lib/trip-detection';
 
 import {
@@ -108,6 +113,9 @@ export function countMomentsForEntry(
   entry: DayTimelineEntry,
   now: Date = new Date(),
 ): MomentCounts {
+  if (entry.kind !== 'gap' && isMaterializedEntry(entry)) {
+    return momentCountsFromRefs(entry.momentRefs ?? []);
+  }
   const counts = emptyMomentCounts();
   for (const moment of moments) {
     if (!momentBelongsToEntry(moment, entry, now)) {
@@ -133,6 +141,9 @@ export function filterMomentsForEntry(
   entry: DayTimelineEntry,
   now: Date = new Date(),
 ): MomentRow[] {
+  if (entry.kind !== 'gap' && isMaterializedEntry(entry)) {
+    return momentsForTripRefs(moments, entry.momentRefs ?? []);
+  }
   return moments.filter(moment => momentBelongsToEntry(moment, entry, now));
 }
 
@@ -142,10 +153,6 @@ export function resolveMomentLocation(
   entries: DayTimelineEntry[],
   now: Date = new Date(),
 ): LocationPointLike | null {
-  if (moment.lat != null && moment.lng != null) {
-    return {lat: moment.lat, lng: moment.lng};
-  }
-
   const containingEntry = findContainingTimelineEntry(
     moment.timestamp,
     entries,

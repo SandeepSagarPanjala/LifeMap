@@ -44,8 +44,6 @@ export const moments = sqliteTable(
       enum: ['photo', 'note', 'video', 'voice', 'activity'],
     }).notNull(),
     timestamp: integer('timestamp', {mode: 'timestamp'}).notNull(),
-    lat: real('lat'),
-    lng: real('lng'),
     contentPath: text('content_path'),
     voiceAttachmentPath: text('voice_attachment_path'),
     voiceAttachmentBytes: integer('voice_attachment_bytes'),
@@ -54,9 +52,6 @@ export const moments = sqliteTable(
     textBody: text('text_body'),
     caption: text('caption'),
     placeLabel: text('place_label'),
-    linkedPointId: integer('linked_point_id').references(
-      () => locationPoints.id,
-    ),
     title: text('title'),
     moodScore: real('mood_score'),
     moodLabel: text('mood_label'),
@@ -160,6 +155,8 @@ export const trips = sqliteTable(
     /** Saved place id or place_lookup_cache id (see placeKind). */
     placeId: integer('place_id'),
     placeKind: text('place_kind', {enum: ['saved', 'cache']}),
+    /** Materialized moment membership — [{ momentId, momentKind }]. */
+    momentRefs: text('moment_refs'),
     inferred: integer('inferred').notNull().default(0),
     selectedCandidateIndex: integer('selected_candidate_index'),
     detectionVersion: integer('detection_version').notNull(),
@@ -184,6 +181,7 @@ export const tripPoints = sqliteTable(
     recordedAt: integer('recorded_at', {mode: 'timestamp'}),
     locationPointId: integer('location_point_id'),
     source: text('source').default('gps'),
+    momentId: integer('moment_id').references(() => moments.id),
   },
   table => ({
     tripIdSeqIdx: index('trip_points_trip_id_seq_idx').on(

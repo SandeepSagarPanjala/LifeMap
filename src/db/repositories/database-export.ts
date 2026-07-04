@@ -20,6 +20,7 @@ import type {
 import {estimateExportTableStorageBytes} from '@/lib/export-table-storage';
 import {getDatabaseFileStats} from './storage-stats';
 import {toDateKey} from '@/lib/day-utils';
+import {parseMomentRefs} from '@/lib/moment-refs';
 
 function iso(value: Date | null | undefined): string | null {
   return value ? value.toISOString() : null;
@@ -145,6 +146,7 @@ export async function fetchDatabaseExportTables(
             recordedAt: tripPoints.recordedAt,
             locationPointId: tripPoints.locationPointId,
             source: tripPoints.source,
+            momentId: tripPoints.momentId,
           })
           .from(tripPoints)
           .innerJoin(trips, eq(tripPoints.tripId, trips.id))
@@ -161,6 +163,7 @@ export async function fetchDatabaseExportTables(
               recordedAt: tripPoints.recordedAt,
               locationPointId: tripPoints.locationPointId,
               source: tripPoints.source,
+              momentId: tripPoints.momentId,
             })
             .from(tripPoints)
             .orderBy(asc(tripPoints.tripId), asc(tripPoints.seq))
@@ -174,6 +177,7 @@ export async function fetchDatabaseExportTables(
               recordedAt: tripPoints.recordedAt,
               locationPointId: tripPoints.locationPointId,
               source: tripPoints.source,
+              momentId: tripPoints.momentId,
             })
             .from(tripPoints)
             .innerJoin(trips, eq(tripPoints.tripId, trips.id))
@@ -249,6 +253,7 @@ export async function fetchDatabaseExportTables(
       selectedCandidateIndex: row.selectedCandidateIndex,
       detectionVersion: row.detectionVersion,
       closedAt: iso(row.closedAt),
+      momentRefs: parseMomentRefs(row.momentRefs),
     })),
     trip_points: tripPointRows.map(row => ({
       id: row.id,
@@ -259,6 +264,7 @@ export async function fetchDatabaseExportTables(
       recordedAt: iso(row.recordedAt),
       locationPointId: row.locationPointId,
       source: row.source,
+      momentId: row.momentId,
     })),
     materialized_days: materializedDayRows.map(row => ({
       dateKey: row.dateKey,
@@ -302,8 +308,6 @@ export async function fetchDatabaseExportTables(
       type: row.type,
       timestamp: iso(row.timestamp),
       finishedAt: iso(row.finishedAt),
-      lat: row.lat,
-      lng: row.lng,
       contentPath: row.contentPath,
       voiceAttachmentPath: row.voiceAttachmentPath,
       voiceAttachmentBytes: row.voiceAttachmentBytes,
@@ -314,7 +318,6 @@ export async function fetchDatabaseExportTables(
       moodScore: row.moodScore,
       moodLabel: row.moodLabel,
       placeLabel: row.placeLabel,
-      linkedPointId: row.linkedPointId,
       contentBytes: row.contentBytes,
       sourceBytes: row.sourceBytes,
       contentFormat: row.contentFormat,

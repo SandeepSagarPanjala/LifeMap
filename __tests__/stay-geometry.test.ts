@@ -2,6 +2,7 @@ import type {MomentRow} from '@/db/repositories/moments';
 import type {LocationPointRow} from '@/db/repositories/location-days';
 import {canonicalizeStayGeometry} from '@/lib/stay-geometry';
 import type {DetectedTrip} from '@/lib/trip-detection';
+import {makeMoment} from './helpers/fixtures';
 
 function point(
   id: number,
@@ -61,34 +62,11 @@ describe('canonicalizeStayGeometry', () => {
       point(4, '2026-06-17T22:00:00.000Z', 33.2503, -97.1503),
     ]);
     const moments: MomentRow[] = [
-      {
+      makeMoment({
         id: 9,
         type: 'photo',
         timestamp: new Date('2026-06-17T12:04:00.000Z'),
-        finishedAt: null,
-        lat: null,
-        lng: null,
-        contentPath: null,
-        voiceAttachmentPath: null,
-        voiceAttachmentBytes: null,
-        voiceDurationSec: null,
-        photoAttachmentsJson: null,
-        textBody: null,
-        caption: null,
-        title: null,
-        moodScore: null,
-        moodLabel: null,
-        placeLabel: null,
-        linkedPointId: null,
-        contentBytes: null,
-        sourceBytes: null,
-        contentFormat: null,
-        shareVisibility: 'private',
-        contentSyncState: 'local_only',
-        activityId: null,
-        activityEmoji: null,
-        activityLabel: null,
-      },
+      }),
     ];
 
     const canonical = canonicalizeStayGeometry(

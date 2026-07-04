@@ -12,35 +12,10 @@ import {
 import type {MomentRow} from '../src/db/repositories/moments';
 import type {SavedPlaceRow} from '../src/db/repositories/saved-places';
 import type {DayTimelineEntry} from '../src/lib/trip-detection';
-import {makeLocationPoint} from './helpers/fixtures';
+import {makeLocationPoint, makeMoment} from './helpers/fixtures';
 
 function moment(partial: Partial<MomentRow> & Pick<MomentRow, 'id' | 'type' | 'timestamp'>): MomentRow {
-  return {
-    finishedAt: null,
-    lat: null,
-    lng: null,
-    contentPath: null,
-    voiceAttachmentPath: null,
-    voiceAttachmentBytes: null,
-    voiceDurationSec: null,
-    photoAttachmentsJson: null,
-    textBody: null,
-    caption: null,
-    title: null,
-    moodScore: null,
-    moodLabel: null,
-    placeLabel: null,
-    linkedPointId: null,
-    contentBytes: null,
-    sourceBytes: null,
-    contentFormat: null,
-    shareVisibility: 'private',
-    contentSyncState: 'local_only',
-    activityId: null,
-    activityEmoji: null,
-    activityLabel: null,
-    ...partial,
-  };
+  return makeMoment(partial);
 }
 
 describe('moment counts', () => {
@@ -194,41 +169,60 @@ describe('moment counts', () => {
       openThroughNow: true,
     };
 
+    const trailPoints = [
+      makeLocationPoint({
+        id: 10,
+        lat: 33.1,
+        lng: -97.1,
+        timestamp: new Date('2026-06-08T15:00:00.000Z'),
+      }),
+      makeLocationPoint({
+        id: 11,
+        lat: 33.1,
+        lng: -97.1,
+        timestamp: new Date('2026-06-08T15:10:00.000Z'),
+      }),
+      makeLocationPoint({
+        id: 12,
+        lat: 33.1,
+        lng: -97.1,
+        timestamp: new Date('2026-06-08T15:20:00.000Z'),
+      }),
+      makeLocationPoint({
+        id: 13,
+        lat: 34,
+        lng: -96,
+        timestamp: new Date('2026-06-08T11:30:00.000Z'),
+      }),
+    ];
+
     const moments = [
       moment({
         id: 1,
         type: 'photo',
         timestamp: new Date('2026-06-08T15:00:00.000Z'),
-        lat: 33.1,
-        lng: -97.1,
       }),
       moment({
         id: 2,
         type: 'voice',
         timestamp: new Date('2026-06-08T15:10:00.000Z'),
-        lat: 33.1,
-        lng: -97.1,
       }),
       moment({
         id: 3,
         type: 'note',
         timestamp: new Date('2026-06-08T15:20:00.000Z'),
-        lat: 33.1,
-        lng: -97.1,
       }),
       moment({
         id: 4,
         type: 'photo',
         timestamp: new Date('2026-06-08T11:30:00.000Z'),
-        lat: 34,
-        lng: -96,
       }),
     ];
 
     const stayOptions = {
       savedPlace: home,
       dwellRadiusMeters: 80,
-      points: [],
+      points: trailPoints,
       entries: [afternoonStay, eveningStay],
       aggregation: 'place' as const,
       now,
@@ -293,43 +287,31 @@ describe('moment counts', () => {
         id: 1,
         type: 'photo',
         timestamp: new Date('2026-06-08T18:00:00.000Z'),
-        lat: 33.1,
-        lng: -97.1,
       }),
       moment({
         id: 2,
         type: 'photo',
         timestamp: new Date('2026-06-08T19:00:00.000Z'),
-        lat: 33.1,
-        lng: -97.1,
       }),
       moment({
         id: 3,
         type: 'photo',
         timestamp: new Date('2026-06-08T20:00:00.000Z'),
-        lat: 33.1,
-        lng: -97.1,
       }),
       moment({
         id: 4,
         type: 'voice',
         timestamp: new Date('2026-06-08T20:30:00.000Z'),
-        lat: 33.1,
-        lng: -97.1,
       }),
       moment({
         id: 5,
         type: 'note',
         timestamp: new Date('2026-06-08T21:00:00.000Z'),
-        lat: 33.1,
-        lng: -97.1,
       }),
       moment({
         id: 6,
         type: 'photo',
         timestamp: new Date('2026-06-08T23:00:00.000Z'),
-        lat: 33.1,
-        lng: -97.1,
       }),
     ];
 

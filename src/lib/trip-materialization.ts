@@ -16,7 +16,7 @@ import {
   dayHasStoredTripGeometry,
   deleteAllTripPoints,
   listTripPointsForDay,
-  replaceTripPointsFromLocations,
+  replaceTripPersistPoints,
 } from '@/db/repositories/trip-points';
 import { listSavedPlaces } from '@/db/repositories/saved-places';
 import {
@@ -56,14 +56,15 @@ import {
   travelCentroidFromRoute,
 } from '@/lib/trip-geometry';
 import { notifyMaterializationUpdated } from '@/lib/trip-materialization-events';
-import { backfillMomentsForDateKey } from '@/lib/moments/backfill-moment-locations';
 import { resolveVisitAnchor } from '@/lib/visit-anchor';
 import { canonicalizeStayGeometry } from '@/lib/stay-geometry';
 import {
   getGeometryPersistFingerprint,
   isCanonicalTravelGeometryEnabled,
 } from '@/lib/trip-geometry-settings';
-import { canonicalizeTravelGeometry } from '@/lib/travel-geometry';
+import { canonicalizeTravelGeometryForPersist } from '@/lib/travel-geometry';
+import type { PersistTripPointInput } from '@/db/repositories/trip-points';
+import { buildMomentRefsForSegment } from '@/lib/moment-refs';
 import {
   sealedThroughMs,
 } from '@/lib/today-sealed-history';
@@ -249,24 +250,43 @@ export function getDefaultTripDetectionConfig(): TripDetectionConfig {
   );
 }
 
+function locationPointsToPersistPoints(
+  points: readonly LocationPointRow[],
+): PersistTripPointInput[] {
+  return points.map(point => ({
+    lat: point.lat,
+    lng: point.lng,
+    recordedAt: point.timestamp,
+    locationPointId: point.id > 0 ? point.id : null,
+    source: point.source ?? 'gps',
+    momentId: null,
+  }));
+}
+
 function geometryPointsForPersist(
   entry: DetectedTrip,
   centroid: { lat: number; lng: number },
   moments: readonly MomentRow[],
   canonicalizeTravel: boolean,
-): LocationPointRow[] {
+): PersistTripPointInput[] {
   /** Persist pipeline: detection segments → stay canonical geometry → travel (if enabled). */
   if (entry.kind === 'travel') {
     if (entry.points.length === 0) {
       return [];
     }
-    return canonicalizeTravel
-      ? canonicalizeTravelGeometry(entry.points)
-      : entry.points;
+    if (!canonicalizeTravel) {
+      return locationPointsToPersistPoints(entry.points);
+    }
+    return canonicalizeTravelGeometryForPersist(
+      entry.points,
+      moments,
+      entry.startAt,
+      entry.endAt,
+    );
   }
   if (entry.kind === 'stay') {
     if (entry.points.length === 0) {
-      return [
+      return locationPointsToPersistPoints([
         {
           id: -1,
           timestamp: entry.startAt,
@@ -277,9 +297,11 @@ function geometryPointsForPersist(
           speed: null,
           source: 'anchor',
         },
-      ];
+      ]);
     }
-    return canonicalizeStayGeometry(entry, centroid, moments);
+    return locationPointsToPersistPoints(
+      canonicalizeStayGeometry(entry, centroid, moments),
+    );
   }
   return [];
 }
@@ -673,6 +695,11 @@ export async function persistClosedTripsIncremental(
       placeId: entry.placeId ?? null,
       placeKind: entry.placeKind ?? null,
     });
+    const momentRefs = buildMomentRefsForSegment(
+      dayMoments,
+      entry.startAt,
+      entry.endAt,
+    );
     const row = await upsertTrip({
       eventKey,
       kind: entry.kind,
@@ -691,6 +718,7 @@ export async function persistClosedTripsIncremental(
       selectedCandidateIndex: labels.selectedCandidateIndex,
       detectionVersion: TRIP_DETECTION_VERSION,
       closedAt,
+      momentRefs,
     });
     upserted += 1;
     const geometry = geometryPointsForPersist(
@@ -700,7 +728,7 @@ export async function persistClosedTripsIncremental(
       canonicalizeTravel,
     );
     if (geometry.length > 0) {
-      await replaceTripPointsFromLocations(row.id, geometry);
+      await replaceTripPersistPoints(row.id, geometry);
     }
   }
 
@@ -878,7 +906,6 @@ export async function rebuildPastDayTrips(
   }
 
   const tripsSaved = await materializePastDayFromGps(dateKey, detectionConfig);
-  await backfillMomentsForDateKey(dateKey, detectionConfig);
   return tripsSaved;
 }
 
@@ -911,7 +938,6 @@ export async function rebuildTodayTrips(
     fullReplace: true,
     pointCount: dayPointCount,
   });
-  await backfillMomentsForDateKey(dateKey, detectionConfig);
   return tripsSaved;
 }
 

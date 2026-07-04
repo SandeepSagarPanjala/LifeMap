@@ -1,6 +1,10 @@
 import type {LocationPointRow} from '@/db/repositories/location-days';
 import type {TripPointRow} from '@/db/repositories/trip-points';
 import type {TripRow} from '@/db/repositories/trips';
+import {
+  routeMomentAnchorsFromTripPoints,
+  type TripMomentRef,
+} from '@/lib/moment-refs';
 import {resolvedPlaceFromTripRow} from '@/lib/resolved-place';
 import {
   isPlayableTimelineEntry,
@@ -108,8 +112,10 @@ export function travelCentroidFromRoute(
 export function tripRowToDetectedTripWithGeometry(
   row: TripRow,
   points: LocationPointRow[],
+  route: readonly TripPointRow[] = [],
 ): DetectedTrip {
   const resolved = resolvedPlaceFromTripRow(row);
+  const momentRefs: TripMomentRef[] = row.momentRefs;
   return {
     id: `materialized-${row.id}`,
     kind: row.kind === 'travel' ? 'travel' : 'stay',
@@ -126,6 +132,9 @@ export function tripRowToDetectedTripWithGeometry(
     inferred: row.inferred,
     anchorLat: row.kind === 'stay' ? row.centroidLat : undefined,
     anchorLng: row.kind === 'stay' ? row.centroidLng : undefined,
+    momentRefs,
+    routeMomentAnchors:
+      row.kind === 'travel' ? routeMomentAnchorsFromTripPoints(route) : undefined,
   };
 }
 

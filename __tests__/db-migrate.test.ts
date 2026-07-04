@@ -2,12 +2,13 @@ import {
   collectPendingMigrations,
   migrationAlreadyApplied,
   prepareMigrations,
+  rebuildMomentsTableWithoutLocationColumns,
 } from '@/db/migrate';
 
 describe('database migrations', () => {
   it('loads bundled sqlite migrations in journal order', () => {
     const prepared = prepareMigrations();
-    expect(prepared).toHaveLength(23);
+    expect(prepared).toHaveLength(25);
     expect(prepared[0]?.tag).toBe('0000_init');
     expect(prepared[0]?.sql[0]).toContain('CREATE TABLE `location_points`');
     expect(prepared[6]?.tag).toBe('0006_moments_mood');
@@ -21,6 +22,8 @@ describe('database migrations', () => {
     expect(prepared[20]?.tag).toBe('0020_standardize_place_radii');
     expect(prepared[21]?.tag).toBe('0021_trip_resolved_place');
     expect(prepared[22]?.tag).toBe('0022_drop_trip_legacy_place_columns');
+    expect(prepared[23]?.tag).toBe('0023_trip_moment_refs');
+    expect(prepared[24]?.tag).toBe('0024_drop_moment_location_columns');
   });
 
   it('detects whether a migration is already applied', async () => {
@@ -87,5 +90,47 @@ describe('database migrations', () => {
     expect(tags).toContain('0004_place_lookup_cache');
     expect(tags).not.toContain('0000_init');
     expect(tags).not.toContain('0005_trips_materialization');
+  });
+
+  it('rebuilds moments without location columns when legacy FK column remains', async () => {
+    let momentsTable = 'CREATE TABLE moments (id integer PRIMARY KEY, type text, timestamp integer, lat real, lng real, linked_point_id integer REFERENCES location_points(id), share_visibility text, content_sync_state text)';
+    const sqlite = {
+      execute: jest.fn(async (query: string, params?: unknown[]) => {
+        if (
+          query.includes('sqlite_master') &&
+          query.includes('type = \'table\'') &&
+          params?.[0] === 'moments'
+        ) {
+          return {rows: [{name: 'moments'}]};
+        }
+        if (query.includes('PRAGMA table_info("moments")')) {
+          const columns = [
+            'id',
+            'type',
+            'timestamp',
+            'lat',
+            'lng',
+            'linked_point_id',
+            'share_visibility',
+            'content_sync_state',
+          ].map(name => ({name}));
+          return {rows: columns};
+        }
+        if (query.startsWith('CREATE TABLE moments_new')) {
+          momentsTable = query;
+        }
+        if (query.startsWith('DROP TABLE moments')) {
+          momentsTable = 'renamed';
+        }
+        return {rows: []};
+      }),
+    };
+
+    const rebuilt = await rebuildMomentsTableWithoutLocationColumns(
+      sqlite as never,
+    );
+    expect(rebuilt).toBe(true);
+    expect(sqlite.execute).toHaveBeenCalledWith('PRAGMA foreign_keys=OFF');
+    expect(sqlite.execute).toHaveBeenCalledWith('PRAGMA foreign_keys=ON');
   });
 });
