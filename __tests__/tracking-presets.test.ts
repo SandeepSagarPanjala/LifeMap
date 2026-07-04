@@ -1,7 +1,7 @@
+import {TRACKING_DISTANCE_FILTER_METERS} from '@/lib/app-constants';
 import {
   getTrackingConfig,
   getTrackingPresetConfig,
-  TRACKING_DISTANCE_FILTER_METERS,
 } from '../src/lib/tracking-presets';
 
 describe('tracking presets', () => {

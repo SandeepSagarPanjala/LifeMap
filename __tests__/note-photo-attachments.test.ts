@@ -1,5 +1,5 @@
+import {MAX_NOTE_PHOTO_ATTACHMENTS} from '@/lib/app-constants';
 import {
-  MAX_NOTE_PHOTO_ATTACHMENTS,
   notePhotoAttachmentPaths,
   parseNotePhotoAttachments,
   serializeNotePhotoAttachments,

@@ -5,7 +5,8 @@ jest.mock('@/lib/drive-map-refresh-settings', () => ({
   getDriveMapRefreshIntervalMs: jest.fn().mockResolvedValue(30_000),
 }));
 
-import {getDriveMapRefreshIntervalMs, type DriveMapRefreshIntervalMs} from '@/lib/drive-map-refresh-settings';
+import type {DriveMapRefreshIntervalMs} from '@/lib/app-constants';
+import {getDriveMapRefreshIntervalMs} from '@/lib/drive-map-refresh-settings';
 import {
   getTodayHistoryRefreshRevision,
   isDriveRefreshIntervalActiveForTests,

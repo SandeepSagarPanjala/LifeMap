@@ -5,7 +5,7 @@ import {
   HEARTBEAT_DEPARTURE_DISTANCE_METERS,
   STATIONARY_PING_MIN_MS,
   STATIONARY_PING_MIN_MS_MAX_RELIABILITY,
-} from '../src/lib/motion-tracking-policy';
+} from '@/lib/app-constants';
 
 const theater = {lat: 33.217236, lng: -96.822545};
 const friend = {lat: 33.229244, lng: -96.901663};

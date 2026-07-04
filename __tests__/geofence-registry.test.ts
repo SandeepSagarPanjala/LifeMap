@@ -1,4 +1,5 @@
-import {savedPlaceGeofenceSpecs, GEOFENCE_WAKE_MIN_RADIUS_METERS} from '@/location/geofence-registry';
+import {GEOFENCE_WAKE_MIN_RADIUS_METERS} from '@/lib/app-constants';
+import {savedPlaceGeofenceSpecs} from '@/location/geofence-registry';
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 
 describe('geofence registry', () => {

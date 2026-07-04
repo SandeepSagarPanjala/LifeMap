@@ -51,8 +51,8 @@ import {
   createVoiceRecorderSession,
   getVoiceRecordingErrorMessage,
 } from '@/lib/moments/voice-recorder';
+import {MAX_NOTE_PHOTO_ATTACHMENTS} from '@/lib/app-constants';
 import {
-  MAX_NOTE_PHOTO_ATTACHMENTS,
   type DraftNotePhoto,
 } from '@/lib/moments/note-photo-attachments';
 import {

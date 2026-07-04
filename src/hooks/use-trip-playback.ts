@@ -1,6 +1,6 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
 
-import {TRIP_PLAYBACK_DURATION_MS} from '@/lib/trip-playback';
+import {TRIP_PLAYBACK_DURATION_MS} from '@/lib/app-constants';
 
 /** Limit React updates during route playback — native map still animates smoothly. */
 const PLAYBACK_UI_INTERVAL_MS = 66;
