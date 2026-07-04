@@ -1,11 +1,11 @@
-export type AccentThemeId = import('@lifemap/constants').AccentThemeId;
-export type ThemeTokens = import('@lifemap/constants').ThemeTokens;
-export type AccentTheme = import('@lifemap/constants').AccentTheme;
-
 import {
   THEME_DESTRUCTIVE_FOREGROUND_HSL,
   THEME_DESTRUCTIVE_HSL,
 } from '@/lib/app-constants';
+
+export type AccentThemeId = import('@lifemap/constants').AccentThemeId;
+export type ThemeTokens = import('@lifemap/constants').ThemeTokens;
+export type AccentTheme = import('@lifemap/constants').AccentTheme;
 
 export function themeTokensToCssVars(tokens: ThemeTokens): Record<string, string> {
   return {

@@ -2,7 +2,7 @@ import {distanceMeters, type LocationPointLike} from './geo';
 import type {PlaceLookupRow} from './types';
 import {PLACE_LOOKUP_VENUE_RADIUS_M} from '@lifemap/constants';
 
-export {PLACE_LOOKUP_VENUE_RADIUS_M} from '@lifemap/constants';
+export {PLACE_LOOKUP_VENUE_RADIUS_M};
 
 export function findNearestPlaceLookupMatch<
   T extends {anchorLat: number; anchorLng: number; venueRadiusMeters: number},

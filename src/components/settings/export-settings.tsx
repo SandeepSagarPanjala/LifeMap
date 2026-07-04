@@ -1,4 +1,5 @@
 import {format} from 'date-fns';
+import {EXPORT_SHARE_DELAY_MS} from '@/lib/app-constants';
 import {APP_COPY, errorMessageOr} from '@/lib/app-copy';
 import {useCallback, useEffect, useState} from 'react';
 import {ActivityIndicator, Alert, InteractionManager, Pressable, Share, View} from 'react-native';
@@ -45,8 +46,6 @@ type ExportPickerTarget =
   | DatabaseExportTableName
   | 'all_tables'
   | 'original_data';
-
-import {EXPORT_SHARE_DELAY_MS} from '@/lib/app-constants';
 
 export function ExportSettings() {
   const colors = useThemeColors();

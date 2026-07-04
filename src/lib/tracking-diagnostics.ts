@@ -1,6 +1,7 @@
 import {insertTrackingEvent} from '@/db/repositories/tracking-events';
 import {countTrackingEvents} from '@/db/repositories/tracking-events';
 import {getSetting, setSetting} from '@/db/repositories/settings';
+import {TRACKING_EVENTS_BLOAT_DISABLE_THRESHOLD} from '@/lib/app-constants';
 
 /** Diagnostics are opt-in — they write to SQLite and can block location saves. */
 export const SETTINGS_KEY_TRACKING_DIAGNOSTICS_ENABLED =
@@ -19,8 +20,6 @@ const RATE_LIMITED_EVENTS = new Set([
   'app_state_change',
   'geofence_sync',
 ]);
-
-import {TRACKING_EVENTS_BLOAT_DISABLE_THRESHOLD} from '@/lib/app-constants';
 
 let cachedEnabled: boolean | null = null;
 const lastLoggedAtMs = new Map<string, number>();

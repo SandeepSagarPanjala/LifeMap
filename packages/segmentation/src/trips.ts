@@ -43,13 +43,13 @@ export type {SegmentMomentCounts} from './segment-moments';
  * trailing fix that could not fit the stay's radius) has no moving points and
  * ~0 m of travel, so it is not a real drive.
  */
-export {MIN_DRIVE_DISTANCE_M, SAVED_PLACE_MIN_DWELL_MS} from '@lifemap/constants';
-
 export {
   MERGE_STAY_MAX_DISTANCE_M,
+  MIN_DRIVE_DISTANCE_M,
   MISSING_MIN_DISTANCE_M,
   MISSING_MIN_GAP_MS,
-} from '@lifemap/constants';
+  SAVED_PLACE_MIN_DWELL_MS,
+};
 
 export type StaySegment = {
   kind: 'stay';
