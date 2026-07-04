@@ -528,24 +528,34 @@ export async function runMigrations(sqlite: DB): Promise<void> {
     return;
   }
 
-  await sqlite.transaction(async tx => {
-    for (const migration of pending) {
-      if (migration.tag === '0019_location_points_dedupe_unique') {
-        if ((await countLocationPointDuplicateExtraRows(tx)) > 0) {
-          continue;
+  const deferredMomentLocationMigration = pending.find(
+    migration => migration.tag === '0024_drop_moment_location_columns',
+  );
+  const transactionalPending = pending.filter(
+    migration => migration.tag !== '0024_drop_moment_location_columns',
+  );
+
+  if (transactionalPending.length > 0) {
+    await sqlite.transaction(async tx => {
+      for (const migration of transactionalPending) {
+        if (migration.tag === '0019_location_points_dedupe_unique') {
+          if ((await countLocationPointDuplicateExtraRows(tx)) > 0) {
+            continue;
+          }
         }
-      }
-      if (migration.tag === '0024_drop_moment_location_columns') {
-        await rebuildMomentsTableWithoutLocationColumns(tx);
+        for (const statement of migration.sql) {
+          await executeMigrationStatement(tx, statement);
+        }
         await recordMigrationIfMissing(migration, tx);
-        continue;
       }
-      for (const statement of migration.sql) {
-        await executeMigrationStatement(tx, statement);
-      }
-      await recordMigrationIfMissing(migration, tx);
-    }
-  });
+    });
+  }
+
+  // Table rebuild toggles PRAGMA foreign_keys — must run outside a transaction.
+  if (deferredMomentLocationMigration) {
+    await rebuildMomentsTableWithoutLocationColumns(sqlite);
+    await recordMigrationIfMissing(deferredMomentLocationMigration, sqlite);
+  }
 }
 
 /** Create the GPS dedupe unique index when the table has no duplicate rows. */
