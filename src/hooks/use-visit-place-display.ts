@@ -1,9 +1,6 @@
 import {useCallback, useEffect, useState, useSyncExternalStore} from 'react';
 
-import {
-  findPlaceLookupNearAnchor,
-  getPlaceLookupById,
-} from '@/db/repositories/place-lookup-cache';
+import {getPlaceLookupById} from '@/db/repositories/place-lookup-cache';
 import {
   getTripByEventKey,
   getTripById,
@@ -21,7 +18,6 @@ import {
 import {
   getPlaceLookupRevision,
   subscribePlaceLookup,
-  notifyPlaceLookupUpdated,
 } from '@/lib/place-lookup-events';
 import {expandPlaceLookupArea} from '@/lib/place-lookup-service';
 import {PLACE_LOOKUP_VENUE_RADIUS_M} from '@/lib/app-constants';
@@ -31,9 +27,9 @@ import {
   notifyMaterializationUpdated,
 } from '@/lib/trip-materialization-events';
 import type {VisitPlaceDisplay} from '@/lib/place-lookup-types';
+import {resolvedPlaceFromTripRow} from '@/lib/resolved-place';
 import {matchSavedPlaceForStay} from '@/lib/saved-places';
 import type {DetectedTrip} from '@/lib/trip-detection';
-import {resolveStayAnchor} from '@/lib/trip-detection';
 import {
   ensureTripForClosedStay,
   tripEventKey,
@@ -53,26 +49,11 @@ const EMPTY_DISPLAY: VisitPlaceDisplay = {
   isTripLabel: false,
 };
 
-async function resolveCacheRowForTrip(
-  trip: NonNullable<Awaited<ReturnType<typeof getTripById>>>,
-  stay: DetectedTrip,
-) {
-  if (trip.placeLookupCacheId != null) {
-    const linked = await getPlaceLookupById(trip.placeLookupCacheId);
-    if (linked) {
-      return linked;
-    }
-  }
-
-  const anchor = resolveStayAnchor(stay);
-  return findPlaceLookupNearAnchor(anchor);
-}
-
 function displayForTripAndCache(
   trip: NonNullable<Awaited<ReturnType<typeof getTripById>>>,
   cacheRow: NonNullable<Awaited<ReturnType<typeof getPlaceLookupById>>>,
 ): VisitPlaceDisplay {
-  const customLabel = trip.savedPlaceLabel?.trim() || null;
+  const customLabel = trip.placeLabel?.trim() || null;
   const hasTripLabel =
     customLabel != null || trip.selectedCandidateIndex != null;
   return {
@@ -120,10 +101,25 @@ export function useVisitPlaceDisplay(
         return;
       }
 
-      if (stay.savedPlaceId != null) {
-        const linkedPlace = await getSavedPlaceById(stay.savedPlaceId);
+      if (stay.placeKind === 'saved' && stay.placeId != null) {
+        const linkedPlace = await getSavedPlaceById(stay.placeId);
         if (!cancelled && linkedPlace) {
           setDisplay(savedPlaceVisitDisplay(linkedPlace));
+          return;
+        }
+      }
+
+      if (stay.placeKind === 'cache' && stay.placeId != null) {
+        const cacheRow = await getPlaceLookupById(stay.placeId);
+        if (!cancelled && cacheRow) {
+          const customLabel = stay.placeLabel?.trim() || null;
+          setDisplay({
+            ...resolveVisitPlaceDisplay(cacheRow, {
+              isTripLabel: customLabel != null,
+              customLabel,
+            }),
+            materializedTripId: stay.materializedTripId ?? null,
+          });
           return;
         }
       }
@@ -137,21 +133,31 @@ export function useVisitPlaceDisplay(
       if (materializedTripId != null) {
         const trip = await getTripById(materializedTripId);
         if (trip) {
-          const cacheRow = await resolveCacheRowForTrip(trip, stay);
-          if (!cancelled && cacheRow) {
-            setDisplay(displayForTripAndCache(trip, cacheRow));
-            return;
+          const resolved = resolvedPlaceFromTripRow(trip);
+          if (resolved.placeKind === 'saved' && resolved.placeId != null) {
+            const linkedPlace = await getSavedPlaceById(resolved.placeId);
+            if (!cancelled && linkedPlace) {
+              setDisplay(savedPlaceVisitDisplay(linkedPlace));
+              return;
+            }
+          }
+          if (resolved.placeKind === 'cache' && resolved.placeId != null) {
+            const cacheRow = await getPlaceLookupById(resolved.placeId);
+            if (!cancelled && cacheRow) {
+              setDisplay(displayForTripAndCache(trip, cacheRow));
+              return;
+            }
           }
         }
       }
 
-      const anchor = resolveStayAnchor(stay);
-      const row = await findPlaceLookupNearAnchor(anchor);
       if (!cancelled) {
-        setDisplay({
-          ...resolveVisitPlaceDisplay(row),
-          materializedTripId,
-        });
+        const label = stay.placeLabel?.trim() || null;
+        setDisplay(
+          label != null
+            ? {...EMPTY_DISPLAY, primaryLabel: label, materializedTripId}
+            : {...EMPTY_DISPLAY, materializedTripId},
+        );
       }
     }
 
@@ -174,40 +180,25 @@ export type SelectVisitPlaceCandidateArgs = {
 
 export function useSelectVisitPlaceCandidate() {
   return useCallback(async (args: SelectVisitPlaceCandidateArgs) => {
-    const {setPlaceLookupSelectedIndex} = await import(
-      '@/db/repositories/place-lookup-cache'
-    );
-
     const trip = await ensureTripForClosedStay(args.stay, args.dateKey);
     const tripId = trip?.id ?? args.materializedTripId ?? null;
 
-    if (tripId != null) {
-      let cacheId = args.cacheId ?? trip?.placeLookupCacheId ?? null;
-      if (cacheId == null) {
-        const anchor = resolveStayAnchor(args.stay);
-        const row = await findPlaceLookupNearAnchor(anchor);
-        cacheId = row?.id ?? null;
-      }
-
-      if (cacheId == null) {
-        return;
-      }
-
-      await updateTripLabelSelection(
-        tripId,
-        args.selectedIndex,
-        cacheId,
-      );
-      notifyMaterializationUpdated();
+    if (tripId == null) {
       return;
     }
 
-    if (args.cacheId == null) {
+    const resolved = trip != null ? resolvedPlaceFromTripRow(trip) : null;
+    const cacheId =
+      args.cacheId ??
+      (resolved?.placeKind === 'cache' ? resolved.placeId : null) ??
+      (args.stay.placeKind === 'cache' ? args.stay.placeId ?? null : null);
+
+    if (cacheId == null) {
       return;
     }
 
-    await setPlaceLookupSelectedIndex(args.cacheId, args.selectedIndex);
-    notifyPlaceLookupUpdated();
+    await updateTripLabelSelection(tripId, args.selectedIndex, cacheId);
+    notifyMaterializationUpdated();
   }, []);
 }
 
@@ -232,12 +223,11 @@ export function useSetCustomVisitPlaceLabel() {
       return;
     }
 
-    let cacheId = args.cacheId ?? trip?.placeLookupCacheId ?? null;
-    if (cacheId == null) {
-      const anchor = resolveStayAnchor(args.stay);
-      const row = await findPlaceLookupNearAnchor(anchor);
-      cacheId = row?.id ?? null;
-    }
+    const resolved = trip != null ? resolvedPlaceFromTripRow(trip) : null;
+    const cacheId =
+      args.cacheId ??
+      (resolved?.placeKind === 'cache' ? resolved.placeId : null) ??
+      (args.stay.placeKind === 'cache' ? args.stay.placeId ?? null : null);
 
     await updateTripCustomLabel(tripId, trimmed, cacheId);
     notifyMaterializationUpdated();

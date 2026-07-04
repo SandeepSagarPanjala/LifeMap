@@ -94,7 +94,7 @@ export function formatTimelineStats(entry: DayTimelineEntry): string {
 }
 
 export function visitPlaceName(entry: DetectedTrip): string | null {
-  return entry.savedPlaceLabel ?? entry.placeLookupLabel ?? null;
+  return entry.placeLabel ?? null;
 }
 
 export function savedPlaceIcon(kind: DetectedTrip['savedPlaceKind']): string {

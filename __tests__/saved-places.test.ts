@@ -62,8 +62,9 @@ describe('saved places matching', () => {
       endAt: new Date('2026-06-08T17:00:00.000Z'),
       distanceKm: 0,
       durationMs: 0,
-      savedPlaceId: home.id,
-      savedPlaceLabel: home.label,
+      placeId: home.id,
+      placeLabel: home.label,
+      placeKind: 'saved' as const,
     };
     expect(matchSavedPlaceForStay(stay, [home])?.label).toBe('Home');
   });
@@ -103,10 +104,12 @@ describe('saved places matching', () => {
       endAt: new Date('2026-06-08T05:10:00.000Z'),
       distanceKm: 5,
       durationMs: 600_000,
-      fromSavedPlaceId: home.id,
-      fromSavedPlaceLabel: home.label,
-      toSavedPlaceId: work.id,
-      toSavedPlaceLabel: work.label,
+      fromPlaceId: home.id,
+      fromPlaceLabel: home.label,
+      fromPlaceKind: 'saved' as const,
+      toPlaceId: work.id,
+      toPlaceLabel: work.label,
+      toPlaceKind: 'saved' as const,
     };
     expect(
       matchSavedPlaceForTripEndpoint(travel, 'start', [home, work])?.label,
@@ -135,8 +138,9 @@ describe('saved places matching', () => {
       endAt: new Date('2026-06-08T05:40:00.000Z'),
       distanceKm: 0,
       durationMs: 1_800_000,
-      savedPlaceId: library.id,
-      savedPlaceLabel: library.label,
+      placeId: library.id,
+      placeLabel: library.label,
+      placeKind: 'saved' as const,
     };
 
     expect(matchDriveEndSavedPlace(travel, nextStay, [library])?.label).toBe(
@@ -154,8 +158,9 @@ describe('saved places matching', () => {
       endAt: new Date('2026-06-08T04:55:00.000Z'),
       distanceKm: 0,
       durationMs: 3_300_000,
-      savedPlaceId: library.id,
-      savedPlaceLabel: library.label,
+      placeId: library.id,
+      placeLabel: library.label,
+      placeKind: 'saved' as const,
     };
     const travel: DetectedTrip = {
       id: 'travel-1',

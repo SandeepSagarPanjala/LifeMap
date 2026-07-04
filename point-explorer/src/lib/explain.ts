@@ -108,12 +108,13 @@ export function explainSegment(
         `Gap ≥ ${Math.round(config.minDwellMs / 60000)} min and end displacement ≤ ${config.radiusM} m.`,
       );
     } else if (
-      segment.savedPlaceLabel != null &&
+      segment.placeKind === 'saved' &&
+      segment.placeLabel != null &&
       segment.durationMs >= SAVED_PLACE_MIN_DWELL_MS &&
       segment.durationMs < config.minDwellMs
     ) {
       reasons.push(
-        `Saved place rule: inside “${segment.savedPlaceLabel}” for at least ${Math.round(SAVED_PLACE_MIN_DWELL_MS / 60000)} min.`,
+        `Saved place rule: inside “${segment.placeLabel}” for at least ${Math.round(SAVED_PLACE_MIN_DWELL_MS / 60000)} min.`,
       );
     } else {
       reasons.push(
@@ -124,8 +125,8 @@ export function explainSegment(
       );
     }
 
-    if (segment.savedPlaceLabel) {
-      reasons.push(`Matched saved place: ${segment.savedPlaceLabel}.`);
+    if (segment.placeKind === 'saved' && segment.placeLabel) {
+      reasons.push(`Matched saved place: ${segment.placeLabel}.`);
     }
 
     reasons.push(
@@ -150,8 +151,8 @@ export function explainSegment(
 
     return {
       kind: 'stay',
-      title: segment.savedPlaceLabel
-        ? `${APP_COPY.explorer.segmentStay} · ${segment.savedPlaceLabel}`
+      title: segment.placeLabel
+        ? `${APP_COPY.explorer.segmentStay} · ${segment.placeLabel}`
         : APP_COPY.explorer.segmentStay,
       reasons,
       notes,
@@ -165,7 +166,7 @@ export function explainSegment(
   const movingCount = segment.points.filter(p =>
     isMovingPoint(p, config),
   ).length;
-  const route = [segment.fromSavedPlaceLabel, segment.toSavedPlaceLabel]
+  const route = [segment.fromPlaceLabel, segment.toPlaceLabel]
     .filter(Boolean)
     .join(' → ');
 
@@ -267,8 +268,8 @@ export function explainPoint(
     if (segment.stop.inferred) {
       reasons.push('Stay was inferred from a sparse GPS gap, not continuous fixes.');
     }
-    if (segment.savedPlaceLabel) {
-      reasons.push(`Stay matched saved place: ${segment.savedPlaceLabel}.`);
+    if (segment.placeKind === 'saved' && segment.placeLabel) {
+      reasons.push(`Stay matched saved place: ${segment.placeLabel}.`);
     } else if (savedPlace) {
       hints.push(
         `Point is inside “${savedPlace.label}” geofence but this stay was not labeled — centroid may be outside radius.`,
@@ -277,7 +278,7 @@ export function explainPoint(
     return {
       assignment: 'stay',
       segmentOrder: segment.order,
-      segmentLabel: segment.savedPlaceLabel ?? APP_COPY.explorer.segmentStay,
+      segmentLabel: segment.placeLabel ?? APP_COPY.explorer.segmentStay,
       reasons,
       hints,
     };
@@ -289,7 +290,7 @@ export function explainPoint(
       moving
         ? `Speed ${speedMph(point.speed)} — moving (≥ ${config.movingSpeedMps} m/s), supports drive classification.`
         : `Speed ${speedMph(point.speed)} — stationary fix on the drive path (common at lights or GPS lag).`,
-      `Drive connects ${segment.fromSavedPlaceLabel ?? 'unknown'} → ${segment.toSavedPlaceLabel ?? 'unknown'}.`,
+      `Drive connects ${segment.fromPlaceLabel ?? 'unknown'} → ${segment.toPlaceLabel ?? 'unknown'}.`,
     ];
 
     if (savedPlace) {
@@ -301,7 +302,7 @@ export function explainPoint(
     return {
       assignment: 'drive',
       segmentOrder: segment.order,
-      segmentLabel: [segment.fromSavedPlaceLabel, segment.toSavedPlaceLabel]
+      segmentLabel: [segment.fromPlaceLabel, segment.toPlaceLabel]
         .filter(Boolean)
         .join(' → ') || APP_COPY.explorer.segmentDrive,
       reasons,

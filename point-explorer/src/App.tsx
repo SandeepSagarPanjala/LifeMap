@@ -212,9 +212,9 @@ function TripSegmentList({
                     {display.subtitle ? (
                       <span className="segment-subtitle">{display.subtitle}</span>
                     ) : null}
-                    {display.placeLookupCacheId != null ? (
+                    {display.placeKind === 'cache' && display.placeId != null ? (
                       <span className="segment-meta">
-                        cache #{display.placeLookupCacheId}
+                        cache #{display.placeId}
                       </span>
                     ) : null}
                   </div>

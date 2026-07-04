@@ -33,8 +33,9 @@ function homeStay(points: LocationPointRow[]): DetectedTrip {
     endAt,
     durationMs: endAt.getTime() - startAt.getTime(),
     distanceKm: 0,
-    savedPlaceLabel: 'Home',
-    savedPlaceId: 1,
+    placeLabel: 'Home',
+    placeId: 1,
+    placeKind: 'saved' as const,
   };
 }
 

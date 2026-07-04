@@ -214,14 +214,15 @@ describe('segmentation detection (current algorithm)', () => {
       const walmartStay = timeline.find(
         entry =>
           entry.kind === 'stay' &&
-          entry.placeLookupCacheId === 42 &&
-          entry.placeLookupLabel === 'Walmart',
+          entry.placeKind === 'cache' &&
+          entry.placeId === 42 &&
+          entry.placeLabel === 'Walmart',
       );
       expect(walmartStay).toBeDefined();
 
       const driveToWalmart = timeline.find(
         entry =>
-          entry.kind === 'travel' && entry.toSavedPlaceLabel === 'Walmart',
+          entry.kind === 'travel' && entry.toPlaceLabel === 'Walmart',
       );
       expect(driveToWalmart).toBeDefined();
     });

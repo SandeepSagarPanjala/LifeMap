@@ -1,6 +1,8 @@
 import type {SegmentMomentCounts} from '@lifemap/segmentation';
 import type {ParsedPoint} from '../types';
 
+export type PlaceKind = 'saved' | 'cache';
+
 export type MobileTimelinePoint = ParsedPoint;
 
 export type DetectedTrip = {
@@ -13,15 +15,16 @@ export type DetectedTrip = {
   durationMs: number;
   openThroughNow?: boolean;
   segmentOrder?: number;
-  savedPlaceLabel?: string;
-  savedPlaceId?: number;
+  placeLabel?: string;
+  placeId?: number;
+  placeKind?: PlaceKind;
   savedPlaceKind?: 'home' | 'work' | 'favorite';
-  fromSavedPlaceLabel?: string;
-  fromSavedPlaceId?: number;
-  toSavedPlaceLabel?: string;
-  toSavedPlaceId?: number;
-  placeLookupCacheId?: number;
-  placeLookupLabel?: string;
+  fromPlaceLabel?: string;
+  fromPlaceId?: number;
+  fromPlaceKind?: PlaceKind;
+  toPlaceLabel?: string;
+  toPlaceId?: number;
+  toPlaceKind?: PlaceKind;
   anchorLat?: number;
   anchorLng?: number;
   momentCounts?: SegmentMomentCounts;

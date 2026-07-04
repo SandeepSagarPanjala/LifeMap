@@ -42,8 +42,9 @@ describe('drive endpoint labels', () => {
     endAt: new Date('2026-06-09T12:30:00.000Z'),
     distanceKm: 0,
     durationMs: 30 * 60_000,
-    savedPlaceId: home.id,
-    savedPlaceLabel: home.label,
+    placeId: home.id,
+    placeLabel: home.label,
+    placeKind: 'saved',
   };
 
   const travel: DetectedTrip = {
@@ -133,10 +134,11 @@ describe('drive endpoint labels', () => {
     ).toBe('Home to 116 W University Dr');
   });
 
-  it('uses detection placeLookupLabel for unlabeled stays', () => {
+  it('uses detection placeLabel for unlabeled stays', () => {
     const stay: DetectedTrip = {
       ...libraryStay,
-      placeLookupLabel: 'Walmart',
+      placeKind: 'cache',
+      placeLabel: 'Walmart',
     };
     const label = resolveDriveEndpointLabelFromStaySync(stay, [home]);
     expect(label).toEqual({

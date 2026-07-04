@@ -19,6 +19,8 @@ export type TripTimelineOptions = {
   placeLookupCache?: readonly PlaceLookupRow[];
 };
 
+export type PlaceKind = 'saved' | 'cache';
+
 export type DetectedTrip = {
   id: string;
   kind: 'travel' | 'stay';
@@ -33,21 +35,21 @@ export type DetectedTrip = {
   materializedTripId?: number;
   /** Display order within the day (1-based). */
   segmentOrder?: number;
-  savedPlaceLabel?: string;
-  savedPlaceId?: number;
-  /** Drive endpoints — set by detection (`annotateSegments`). */
-  fromSavedPlaceLabel?: string;
-  fromSavedPlaceId?: number;
-  toSavedPlaceLabel?: string;
-  toSavedPlaceId?: number;
+  /** Resolved stay place — saved or cache, never both. */
+  placeLabel?: string;
+  placeId?: number;
+  placeKind?: PlaceKind;
+  /** Drive endpoints — copied from endpoint match or adjacent stays. */
+  fromPlaceLabel?: string;
+  fromPlaceId?: number;
+  fromPlaceKind?: PlaceKind;
+  toPlaceLabel?: string;
+  toPlaceId?: number;
+  toPlaceKind?: PlaceKind;
   inferred?: boolean;
   /** Stay anchor from detection (`stop.lat/lng`) or DB seal (`centroidLat/Lng`). */
   anchorLat?: number;
   anchorLng?: number;
-  /** Nearby-places cache link from detection annotate or DB seal. */
-  placeLookupCacheId?: number;
-  /** Auto label from `place_lookup_cache` at detection time (not a saved place). */
-  placeLookupLabel?: string;
 };
 
 export type TimelineGap = {

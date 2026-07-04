@@ -40,8 +40,9 @@ describe('moment preview context', () => {
     endAt: new Date('2026-06-09T14:42:00.000Z'),
     distanceKm: 0,
     durationMs: 42 * 60_000,
-    savedPlaceId: kroger.id,
-    savedPlaceLabel: kroger.label,
+    placeId: kroger.id,
+    placeLabel: kroger.label,
+    placeKind: 'saved',
   };
 
   const drive: DayTimelineEntry = {
@@ -125,8 +126,9 @@ describe('moment preview context', () => {
     const unlabeledStay: DayTimelineEntry = {
       ...krogerStay,
       id: 'stay-unknown',
-      savedPlaceId: undefined,
-      savedPlaceLabel: undefined,
+      placeId: undefined,
+      placeLabel: undefined,
+      placeKind: undefined,
     };
     const context = buildMomentPreviewContextForEntry(unlabeledStay, [], 'mi', now);
     expect(context.placeLabel).toBeNull();

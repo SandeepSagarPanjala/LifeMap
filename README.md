@@ -233,9 +233,15 @@ Stay/drive detection lives in one shared package: [`packages/segmentation`](pack
 
 Edit detection in the package only; both apps stay in sync.
 
+## Backup / restore
+
+Encrypted backups export trip rows with unified place fields (`placeLabel`, `placeId`, `placeKind`).
+
+**Known limitation:** Backups created before migration `0022` stored visit labels under legacy column names (`savedPlaceLabel`, `savedPlaceId`, `placeLookupCacheId`). Restoring those backups will not re-apply custom visit labels until backup import is updated — GPS, moments, and saved places still restore normally; trips are rebuilt from location data.
+
 ## Place lookup backfill (planned)
 
-Sealed **stay** trips with no saved place and no place label (`savedPlaceId`, `placeLookupCacheId`, `selectedCandidateIndex`, and `savedPlaceLabel` all null) can be filled in the background from `place_lookup_cache` or a native nearby-places fetch.
+Sealed **stay** trips with no saved place and no place label (`placeId`, `placeKind`, `selectedCandidateIndex`, and `placeLabel` all null) can be filled in the background from `place_lookup_cache` or a native nearby-places fetch.
 
 Implementation lives in [`src/lib/place-lookup-backfill.ts`](src/lib/place-lookup-backfill.ts). **Not wired into the app yet** — call it manually when you are ready.
 

@@ -26,7 +26,7 @@ function makeStay(
   durationMs: number,
   lat = 33.2,
   lng = -97.1,
-  savedPlaceId?: number,
+  placeId?: number,
 ): DetectedTrip {
   const startAt = new Date('2026-06-13T22:33:00.000Z');
   return {
@@ -58,7 +58,9 @@ function makeStay(
     endAt: new Date(startAt.getTime() + durationMs),
     distanceKm: 0,
     durationMs,
-    savedPlaceId,
+    ...(placeId != null
+      ? {placeId, placeKind: 'saved' as const}
+      : {}),
   };
 }
 

@@ -7,7 +7,7 @@ import {
 import type {TripDetectionConfig} from '@/lib/trip-settings';
 
 export function isSavedPlaceVisit(stay: DetectedTrip): boolean {
-  return stay.savedPlaceId != null;
+  return stay.placeKind === 'saved' && stay.placeId != null;
 }
 
 /** Minimum minutes at a place before it counts as a visit. */

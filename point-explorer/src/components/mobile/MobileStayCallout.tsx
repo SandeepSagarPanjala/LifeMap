@@ -107,8 +107,8 @@ export function MobileStayCallout({
   }
 
   const savedPlace =
-    entry.savedPlaceId != null
-      ? savedPlaces.find(place => place.id === entry.savedPlaceId)
+    entry.placeKind === 'saved' && entry.placeId != null
+      ? savedPlaces.find(place => place.id === entry.placeId)
       : undefined;
   const placeName = visitPlaceName(entry);
   const placeLineHtml =

@@ -71,7 +71,7 @@ export function useDriveEndpointLabels(
   }, [endSync, startSync]);
 
   useEffect(() => {
-    if (!previousStay || startSync.source === 'saved') {
+    if (!previousStay || startSync.source === 'saved' || startSync.text) {
       return;
     }
 
@@ -90,7 +90,7 @@ export function useDriveEndpointLabels(
   }, [previousStay, savedPlaces, startSync, materializationRevision]);
 
   useEffect(() => {
-    if (!nextStay || endSync.source === 'saved') {
+    if (!nextStay || endSync.source === 'saved' || endSync.text) {
       return;
     }
 

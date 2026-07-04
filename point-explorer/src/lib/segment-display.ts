@@ -40,7 +40,8 @@ export type SegmentDisplay = {
   kind: typeof APP_COPY.explorer.segmentStay | typeof APP_COPY.explorer.segmentDrive | typeof APP_COPY.explorer.segmentMissing;
   variant: 'stay' | 'drive' | 'missing';
   subtitle?: string;
-  placeLookupCacheId?: number;
+  placeId?: number;
+  placeKind?: 'saved' | 'cache';
   momentCounts?: SegmentMomentCounts;
   timeRange: string;
   stats: string[];
@@ -100,8 +101,9 @@ export function describeTripSegment(segment: TripSegment): SegmentDisplay {
     return {
       kind: APP_COPY.explorer.segmentStay,
       variant: 'stay',
-      subtitle: segment.savedPlaceLabel ?? segment.placeLookupLabel,
-      placeLookupCacheId: segment.placeLookupCacheId,
+      subtitle: segment.placeLabel,
+      placeId: segment.placeId,
+      placeKind: segment.placeKind,
       momentCounts: segment.momentCounts,
       timeRange,
       stats: [
@@ -113,8 +115,8 @@ export function describeTripSegment(segment: TripSegment): SegmentDisplay {
 
   if (segment.kind === 'drive') {
     let subtitle: string | undefined;
-    const from = segment.fromSavedPlaceLabel;
-    const to = segment.toSavedPlaceLabel;
+    const from = segment.fromPlaceLabel;
+    const to = segment.toPlaceLabel;
     if (from && to) {
       subtitle = `${from} → ${to}`;
     } else if (from) {

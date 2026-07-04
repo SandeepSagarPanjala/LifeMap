@@ -2,6 +2,7 @@ import type {SavedPlaceRow} from '../types';
 import type {
   DriveSegment,
   MissingSegment,
+  PlaceKind,
   StaySegment,
   TripSegment,
 } from '@lifemap/segmentation';
@@ -10,12 +11,13 @@ import type {DayTimelineEntry, DetectedTrip, TimelineGap} from './types';
 
 function savedPlaceKind(
   savedPlaces: readonly SavedPlaceRow[],
-  savedPlaceId: number | undefined,
+  placeId: number | undefined,
+  placeKind: PlaceKind | undefined,
 ): DetectedTrip['savedPlaceKind'] {
-  if (savedPlaceId == null) {
+  if (placeKind !== 'saved' || placeId == null) {
     return undefined;
   }
-  return savedPlaces.find(place => place.id === savedPlaceId)?.kind;
+  return savedPlaces.find(place => place.id === placeId)?.kind;
 }
 
 function stayToEntry(
@@ -31,11 +33,14 @@ function stayToEntry(
     durationMs: segment.durationMs,
     distanceKm: 0,
     segmentOrder: segment.order,
-    savedPlaceLabel: segment.savedPlaceLabel,
-    savedPlaceId: segment.savedPlaceId,
-    savedPlaceKind: savedPlaceKind(savedPlaces, segment.savedPlaceId),
-    placeLookupCacheId: segment.placeLookupCacheId,
-    placeLookupLabel: segment.placeLookupLabel,
+    placeLabel: segment.placeLabel,
+    placeId: segment.placeId,
+    placeKind: segment.placeKind,
+    savedPlaceKind: savedPlaceKind(
+      savedPlaces,
+      segment.placeId,
+      segment.placeKind,
+    ),
     anchorLat: segment.stop.lat,
     anchorLng: segment.stop.lng,
     momentCounts: segment.momentCounts,
@@ -52,12 +57,12 @@ function driveToEntry(segment: DriveSegment): DetectedTrip {
     durationMs: segment.durationMs,
     distanceKm: segment.distanceM / 1000,
     segmentOrder: segment.order,
-    fromSavedPlaceLabel: segment.fromSavedPlaceLabel,
-    fromSavedPlaceId: segment.fromSavedPlaceId,
-    toSavedPlaceLabel: segment.toSavedPlaceLabel,
-    toSavedPlaceId: segment.toSavedPlaceId,
-    savedPlaceLabel: segment.toSavedPlaceLabel ?? segment.fromSavedPlaceLabel,
-    savedPlaceId: segment.toSavedPlaceId ?? segment.fromSavedPlaceId,
+    fromPlaceLabel: segment.fromPlaceLabel,
+    fromPlaceId: segment.fromPlaceId,
+    fromPlaceKind: segment.fromPlaceKind,
+    toPlaceLabel: segment.toPlaceLabel,
+    toPlaceId: segment.toPlaceId,
+    toPlaceKind: segment.toPlaceKind,
     momentCounts: segment.momentCounts,
   };
 }

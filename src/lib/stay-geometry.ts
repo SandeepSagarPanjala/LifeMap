@@ -165,7 +165,7 @@ export function shouldUseVenueWanderGeometry(stay: DetectedTrip): boolean {
   if (stay.kind !== 'stay') {
     return false;
   }
-  if (stay.savedPlaceLabel != null || stay.savedPlaceId != null) {
+  if (stay.placeKind != null || stay.placeId != null || stay.placeLabel != null) {
     return false;
   }
   const core = visitCorePoints(stay);

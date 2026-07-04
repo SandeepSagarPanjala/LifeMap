@@ -46,7 +46,7 @@ export function shouldSkipPlaceLookupForStay(
   stay: DetectedTrip,
   _savedPlaces: readonly SavedPlaceRow[],
 ): boolean {
-  return stay.savedPlaceId != null;
+  return stay.placeKind === 'saved' && stay.placeId != null;
 }
 
 export async function resolveVisitPlaceLookupRow(

@@ -81,7 +81,15 @@ export function matchSavedPlaceForStop(
 /** Drive start — endpoint GPS first, then the previous stay's saved place. */
 export function matchDriveStartSavedPlace(
   drive: {points: ParsedPoint[]; fromStop: Stop | null},
-  previousSegment: {kind: string; stop?: Stop; points?: ParsedPoint[]; savedPlaceId?: number} | undefined,
+  previousSegment:
+    | {
+        kind: string;
+        stop?: Stop;
+        points?: ParsedPoint[];
+        placeId?: number;
+        placeKind?: 'saved' | 'cache';
+      }
+    | undefined,
   places: SavedPlaceRow[],
 ): SavedPlaceRow | null {
   if (drive.points.length > 0) {
@@ -101,9 +109,10 @@ export function matchDriveStartSavedPlace(
   }
   if (
     previousSegment?.kind === 'stay' &&
-    previousSegment.savedPlaceId != null
+    previousSegment.placeKind === 'saved' &&
+    previousSegment.placeId != null
   ) {
-    return places.find(place => place.id === previousSegment.savedPlaceId) ?? null;
+    return places.find(place => place.id === previousSegment.placeId) ?? null;
   }
   if (
     previousSegment?.kind === 'stay' &&
@@ -122,7 +131,15 @@ export function matchDriveStartSavedPlace(
 /** Drive end — endpoint GPS first, then the next stay's saved place. */
 export function matchDriveEndSavedPlace(
   drive: {points: ParsedPoint[]; toStop: Stop | null},
-  nextSegment: {kind: string; stop?: Stop; points?: ParsedPoint[]; savedPlaceId?: number} | undefined,
+  nextSegment:
+    | {
+        kind: string;
+        stop?: Stop;
+        points?: ParsedPoint[];
+        placeId?: number;
+        placeKind?: 'saved' | 'cache';
+      }
+    | undefined,
   places: SavedPlaceRow[],
 ): SavedPlaceRow | null {
   if (drive.points.length > 0) {
@@ -143,8 +160,12 @@ export function matchDriveEndSavedPlace(
       return toStop;
     }
   }
-  if (nextSegment?.kind === 'stay' && nextSegment.savedPlaceId != null) {
-    return places.find(place => place.id === nextSegment.savedPlaceId) ?? null;
+  if (
+    nextSegment?.kind === 'stay' &&
+    nextSegment.placeKind === 'saved' &&
+    nextSegment.placeId != null
+  ) {
+    return places.find(place => place.id === nextSegment.placeId) ?? null;
   }
   if (
     nextSegment?.kind === 'stay' &&

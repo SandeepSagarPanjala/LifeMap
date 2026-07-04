@@ -8,68 +8,32 @@ import {useTripDetectionConfig} from '@/hooks/use-trip-detection-config';
 import {parseDateKey} from '@/lib/day-utils';
 import {clearHistoryDataCache} from '@/lib/history-data-cache';
 import {
-  rebuildAllPastDayTrips,
-  rebuildTodayTrips,
+  rebuildAllTrips,
   type RebuildPastTripsProgress,
 } from '@/lib/trip-materialization';
 import {refreshTodayOnForeground} from '@/lib/today-refresh-scheduler';
 
 export function TripRebuildSettings() {
   const detectionConfig = useTripDetectionConfig();
-  const [rebuildingToday, setRebuildingToday] = useState(false);
   const [rebuilding, setRebuilding] = useState(false);
   const [progress, setProgress] = useState<RebuildPastTripsProgress | null>(
     null,
   );
 
-  const runRebuildToday = useCallback(async () => {
-    setRebuildingToday(true);
+  const runRebuild = useCallback(async () => {
+    setRebuilding(true);
+    setProgress({phase: 'past', completed: 0, total: 0, dateKey: ''});
     try {
-      const tripsSaved = await rebuildTodayTrips(detectionConfig);
+      const result = await rebuildAllTrips(detectionConfig, setProgress);
       clearHistoryDataCache();
       refreshTodayOnForeground();
-      Alert.alert(
-        'Today rebuilt',
-        tripsSaved > 0
-          ? `Saved ${tripsSaved.toLocaleString()} trip segments from today's GPS.`
-          : 'Cleared stale trip cache. The map will show live detection until new segments seal.',
-      );
-    } catch (error) {
-      Alert.alert(
-        APP_COPY.alerts.couldNotRebuildToday,
-        errorMessageOr(error),
-      );
-    } finally {
-      setRebuildingToday(false);
-    }
-  }, [detectionConfig]);
-
-  const confirmRebuildToday = () => {
-    Alert.alert(
-      'Rebuild today?',
-      'This deletes cached trips for today, rebuilds visits and drives from GPS, and saves segment routes. Your raw location points are not deleted.',
-      [
-        {text: 'Cancel', style: 'cancel'},
-        {
-          text: 'Rebuild today',
-          style: 'destructive',
-          onPress: () => {
-            void runRebuildToday();
-          },
-        },
-      ],
-    );
-  };
-
-  const runRebuildAll = useCallback(async () => {
-    setRebuilding(true);
-    setProgress({completed: 0, total: 0, dateKey: ''});
-    try {
-      const result = await rebuildAllPastDayTrips(detectionConfig, setProgress);
-      clearHistoryDataCache();
+      const pastDays = result.daysProcessed.toLocaleString();
+      const segments = result.tripsSaved.toLocaleString();
       Alert.alert(
         'Trips rebuilt',
-        `Processed ${result.daysProcessed.toLocaleString()} past days and saved ${result.tripsSaved.toLocaleString()} trip segments.`,
+        result.daysProcessed > 0
+          ? `Processed ${pastDays} past days and saved ${segments} trip segments (today keeps a live tail).`
+          : `Saved ${segments} trip segments for today (live tail not persisted).`,
       );
     } catch (error) {
       Alert.alert(
@@ -82,17 +46,17 @@ export function TripRebuildSettings() {
     }
   }, [detectionConfig]);
 
-  const confirmRebuildAll = () => {
+  const confirmRebuild = () => {
     Alert.alert(
-      'Rebuild all past trips?',
-      'This deletes cached trips for all past days, rebuilds visits and drives from GPS, and saves segment routes. Your raw location points are not deleted.\n\nThis runs now and may take a few minutes.',
+      'Rebuild trips?',
+      'This deletes cached trips, rebuilds visits and drives from GPS for all past days plus today’s settled prefix, and saves segment routes. Your raw location points are not deleted.\n\nThis may take a few minutes.',
       [
         {text: 'Cancel', style: 'cancel'},
         {
-          text: 'Rebuild all',
+          text: 'Rebuild',
           style: 'destructive',
           onPress: () => {
-            void runRebuildAll();
+            void runRebuild();
           },
         },
       ],
@@ -104,56 +68,42 @@ export function TripRebuildSettings() {
       ? Math.min(1, progress.completed / progress.total)
       : 0;
 
+  const progressLabel =
+    progress?.phase === 'today'
+      ? 'Today'
+      : progress?.dateKey
+        ? format(parseDateKey(progress.dateKey), 'MMM d, yyyy')
+        : 'Preparing…';
+
   return (
     <>
       <View className="bg-card border-border mt-2 rounded-xl border px-4 py-4">
         <Text variant="muted" className="text-sm leading-5">
           Recompute visits and drives from GPS using the same rules as the point
-          explorer, then save segment routes for past days.
+          explorer, then save segment routes. Today’s last two segments stay live
+          on the map and are not written to the database.
         </Text>
 
         <Pressable
           accessibilityRole="button"
-          disabled={rebuildingToday || rebuilding}
-          onPress={confirmRebuildToday}
-          className={`border-border mt-4 items-center rounded-full border px-4 py-3 ${
-            rebuildingToday || rebuilding ? 'opacity-50' : ''
+          disabled={rebuilding}
+          onPress={confirmRebuild}
+          className={`bg-primary mt-4 items-center rounded-full px-4 py-3 ${
+            rebuilding ? 'opacity-50' : ''
           }`}>
-          <Text className="font-medium">Rebuild today</Text>
-        </Pressable>
-
-        <Pressable
-          accessibilityRole="button"
-          disabled={rebuilding || rebuildingToday}
-          onPress={confirmRebuildAll}
-          className={`bg-primary mt-3 items-center rounded-full px-4 py-3 ${
-            rebuilding || rebuildingToday ? 'opacity-50' : ''
-          }`}>
-          <Text className="text-primary-foreground font-medium">
-            Rebuild all past days
-          </Text>
+          <Text className="text-primary-foreground font-medium">Rebuild</Text>
         </Pressable>
       </View>
 
-      <Modal visible={rebuilding || rebuildingToday} transparent animationType="fade">
+      <Modal visible={rebuilding} transparent animationType="fade">
         <View className="flex-1 items-center justify-center bg-black/50 px-6">
           <View className="bg-card w-full max-w-sm rounded-2xl p-5">
             <Text className="text-center text-base font-semibold">
-              {rebuildingToday ? 'Rebuilding today' : 'Rebuilding trips'}
+              Rebuilding trips
             </Text>
-            {rebuildingToday ? (
-              <Text variant="muted" className="mt-2 text-center text-sm">
-                Recomputing from GPS…
-              </Text>
-            ) : progress?.dateKey ? (
-              <Text variant="muted" className="mt-2 text-center text-sm">
-                {format(parseDateKey(progress.dateKey), 'MMM d, yyyy')}
-              </Text>
-            ) : (
-              <Text variant="muted" className="mt-2 text-center text-sm">
-                Preparing…
-              </Text>
-            )}
+            <Text variant="muted" className="mt-2 text-center text-sm">
+              {progressLabel}
+            </Text>
             <View className="bg-muted mt-4 h-2 overflow-hidden rounded-full">
               <View
                 className="bg-primary h-2 rounded-full"
@@ -163,11 +113,9 @@ export function TripRebuildSettings() {
             <View className="mt-3 flex-row items-center justify-center gap-2">
               <ActivityIndicator />
               <Text variant="muted" className="text-sm">
-                {rebuildingToday
-                  ? 'Working…'
-                  : progress != null && progress.total > 0
-                    ? `${progress.completed} / ${progress.total} days`
-                    : 'Working…'}
+                {progress != null && progress.total > 0
+                  ? `${progress.completed} / ${progress.total} steps`
+                  : 'Working…'}
               </Text>
             </View>
           </View>

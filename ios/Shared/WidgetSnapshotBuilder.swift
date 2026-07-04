@@ -82,7 +82,7 @@ private struct StayRow {
   let endAtStored: Int64
   let centroidLat: Double
   let centroidLng: Double
-  let savedPlaceLabel: String?
+  let placeLabel: String?
 
   var startAtMs: Int64 {
     timestampStorageToMs(startAtStored)
@@ -141,7 +141,7 @@ enum WidgetSnapshotBuilder {
       if let stay = latestStay,
          !hasTravelAfterLatestStay,
          isNear(point, lat: stay.centroidLat, lng: stay.centroidLng, radiusM: 150) {
-        let label = stay.savedPlaceLabel?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let label = stay.placeLabel?.trimmingCharacters(in: .whitespacesAndNewlines)
         let placeLabel = (label?.isEmpty == false) ? label! : "Nearby"
         return WidgetSnapshotPayload(
           updatedAt: updatedAt,
@@ -219,7 +219,7 @@ enum WidgetSnapshotBuilder {
 
   private static func fetchLatestStay(db: OpaquePointer, dateKey: String) -> StayRow? {
     let sql = """
-      SELECT start_at, end_at, centroid_lat, centroid_lng, saved_place_label
+      SELECT start_at, end_at, centroid_lat, centroid_lng, place_label
       FROM trips
       WHERE date_key = ? AND kind = 'stay'
       ORDER BY segment_order DESC
@@ -242,7 +242,7 @@ enum WidgetSnapshotBuilder {
       endAtStored: sqlite3_column_int64(statement, 1),
       centroidLat: sqlite3_column_double(statement, 2),
       centroidLng: sqlite3_column_double(statement, 3),
-      savedPlaceLabel: savedLabel
+      placeLabel: savedLabel
     )
   }
 
@@ -313,7 +313,7 @@ enum WidgetSnapshotBuilder {
   }
 
   private static func stayMatchesSavedPlace(stay: StayRow, place: SavedPlaceRow) -> Bool {
-    if let label = stay.savedPlaceLabel?.trimmingCharacters(in: .whitespacesAndNewlines), !label.isEmpty {
+    if let label = stay.placeLabel?.trimmingCharacters(in: .whitespacesAndNewlines), !label.isEmpty {
       switch place.kind {
       case "home":
         return label.compare("Home", options: .caseInsensitive) == .orderedSame

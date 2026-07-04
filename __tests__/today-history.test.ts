@@ -252,13 +252,13 @@ describe('prepareTodayHistoryTimeline', () => {
         entry.startAt.getTime() >= new Date('2026-06-20T00:00:00.000Z').getTime(),
     );
     const vishnuStay = evening.find(
-      entry => entry.kind === 'stay' && entry.savedPlaceLabel === 'Vishnu',
+      entry => entry.kind === 'stay' && entry.placeLabel === 'Vishnu',
     );
     const followingTravel = evening.find(
       (entry, index) =>
         entry.kind === 'travel' &&
         evening[index - 1]?.kind === 'stay' &&
-        (evening[index - 1] as {savedPlaceLabel?: string}).savedPlaceLabel ===
+        (evening[index - 1] as {placeLabel?: string}).placeLabel ===
           'Vishnu',
     );
 

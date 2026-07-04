@@ -11,24 +11,24 @@ describe('backup export', () => {
     const overrides = extractTripLabelOverrides([
       {
         eventKey: 'stay-1',
-        savedPlaceLabel: null,
+        placeLabel: null,
+        placeId: null,
+        placeKind: null,
         selectedCandidateIndex: null,
-        placeLookupCacheId: null,
-        savedPlaceId: null,
       },
       {
         eventKey: 'stay-2',
-        savedPlaceLabel: 'Coffee shop',
+        placeLabel: 'Coffee shop',
+        placeId: 3,
+        placeKind: 'cache',
         selectedCandidateIndex: null,
-        placeLookupCacheId: 3,
-        savedPlaceId: null,
       },
       {
         eventKey: 'stay-3',
-        savedPlaceLabel: null,
+        placeLabel: null,
+        placeId: 4,
+        placeKind: 'cache',
         selectedCandidateIndex: 1,
-        placeLookupCacheId: 4,
-        savedPlaceId: null,
       },
     ]);
 

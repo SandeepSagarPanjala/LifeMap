@@ -14,7 +14,9 @@ export function useStaySavedPlace(
 ): SavedPlaceRow | null {
   const activeMatch = useMemo(
     () =>
-      stay != null ? lookupSavedPlaceById(stay.savedPlaceId, savedPlaces) : null,
+      stay != null && stay.placeKind === 'saved'
+        ? lookupSavedPlaceById(stay.placeId, savedPlaces)
+        : null,
     [savedPlaces, stay],
   );
   const [linkedPlace, setLinkedPlace] = useState<SavedPlaceRow | null>(null);
@@ -24,7 +26,8 @@ export function useStaySavedPlace(
       setLinkedPlace(null);
       return;
     }
-    const savedPlaceId = stay?.savedPlaceId;
+    const savedPlaceId =
+      stay?.placeKind === 'saved' ? stay.placeId : undefined;
     if (savedPlaceId == null) {
       setLinkedPlace(null);
       return;
@@ -39,7 +42,7 @@ export function useStaySavedPlace(
     return () => {
       cancelled = true;
     };
-  }, [activeMatch, stay?.savedPlaceId]);
+  }, [activeMatch, stay?.placeId, stay?.placeKind]);
 
   return activeMatch ?? linkedPlace;
 }

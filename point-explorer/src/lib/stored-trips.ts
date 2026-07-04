@@ -15,6 +15,7 @@ export type StoredTripRow = {
   segmentOrder: number;
   savedPlaceLabel: string | null;
   savedPlaceId: number | null;
+  placeLookupCacheId?: number | null;
   inferred: boolean;
 };
 
@@ -45,6 +46,9 @@ type ExplorerSegmentJson = {
   distanceM?: number;
   savedPlaceLabel?: string | null;
   savedPlaceId?: number | null;
+  placeLabel?: string | null;
+  placeId?: number | null;
+  placeKind?: 'saved' | 'cache' | null;
   stopId?: string;
   center?: {lat: number; lng: number};
   spreadM?: number;
@@ -64,6 +68,38 @@ type ExplorerSegmentJson = {
 };
 
 const EARTH_RADIUS_M = 6_371_000;
+
+type ResolvedPlaceFields = {
+  placeLabel: string | null;
+  placeId: number | null;
+  placeKind: 'saved' | 'cache' | null;
+};
+
+function resolvedPlaceFromStoredRow(trip: {
+  savedPlaceLabel: string | null;
+  savedPlaceId: number | null;
+  placeLookupCacheId?: number | null;
+}): ResolvedPlaceFields {
+  if (trip.savedPlaceId != null) {
+    return {
+      placeLabel: trip.savedPlaceLabel?.trim() || null,
+      placeId: trip.savedPlaceId,
+      placeKind: 'saved',
+    };
+  }
+  if (trip.placeLookupCacheId != null) {
+    return {
+      placeLabel: trip.savedPlaceLabel?.trim() || null,
+      placeId: trip.placeLookupCacheId,
+      placeKind: 'cache',
+    };
+  }
+  return {
+    placeLabel: trip.savedPlaceLabel?.trim() || null,
+    placeId: null,
+    placeKind: null,
+  };
+}
 
 function haversineM(
   a: {lat: number; lng: number},
@@ -186,6 +222,10 @@ function normalizeStoredTripRow(raw: Record<string, unknown>): StoredTripRow | n
     savedPlaceId:
       (raw.savedPlaceId as number | null | undefined) ??
       (raw.saved_place_id as number | null | undefined) ??
+      null,
+    placeLookupCacheId:
+      (raw.placeLookupCacheId as number | null | undefined) ??
+      (raw.place_lookup_cache_id as number | null | undefined) ??
       null,
     inferred: Boolean(raw.inferred),
   };
@@ -325,8 +365,11 @@ function parseExplorerSegmentsExport(
       centroidLat: center.lat,
       centroidLng: center.lng,
       segmentOrder: segment.order,
-      savedPlaceLabel: segment.savedPlaceLabel ?? null,
-      savedPlaceId: segment.savedPlaceId ?? null,
+      savedPlaceLabel: segment.placeLabel ?? segment.savedPlaceLabel ?? null,
+      savedPlaceId:
+        segment.placeKind === 'saved'
+          ? segment.placeId ?? segment.savedPlaceId ?? null
+          : segment.savedPlaceId ?? null,
       inferred: false,
     });
     const path = segment.path ?? [];
@@ -406,6 +449,7 @@ export function buildTripResultForDay(
       const stop = makeStopFromStay(trip, routePoints, stopId);
       stops.push(stop);
       stopById.set(stopId, stop);
+      const resolved = resolvedPlaceFromStoredRow(trip);
       segments.push({
         kind: 'stay',
         id: `stay-${trip.id}`,
@@ -415,8 +459,9 @@ export function buildTripResultForDay(
         endAt: stop.leftAt,
         durationMs: trip.durationMs,
         points: routePoints,
-        savedPlaceLabel: trip.savedPlaceLabel ?? undefined,
-        savedPlaceId: trip.savedPlaceId ?? undefined,
+        placeLabel: resolved.placeLabel ?? undefined,
+        placeId: resolved.placeId ?? undefined,
+        placeKind: resolved.placeKind ?? undefined,
       });
       continue;
     }
@@ -427,6 +472,9 @@ export function buildTripResultForDay(
     const nextStay = dayTrips
       .slice(index + 1)
       .find(row => row.kind === 'stay');
+    const nextResolved = nextStay != null
+      ? resolvedPlaceFromStoredRow(nextStay)
+      : null;
     segments.push({
       kind: 'drive',
       id: `drive-${trip.id}`,
@@ -454,10 +502,12 @@ export function buildTripResultForDay(
               `stop-${nextStay.id}`,
             )
           : null,
-      fromSavedPlaceLabel: prevStay?.kind === 'stay' ? prevStay.savedPlaceLabel : undefined,
-      fromSavedPlaceId: prevStay?.kind === 'stay' ? prevStay.savedPlaceId : undefined,
-      toSavedPlaceLabel: nextStay?.savedPlaceLabel ?? undefined,
-      toSavedPlaceId: nextStay?.savedPlaceId ?? undefined,
+      fromPlaceLabel: prevStay?.kind === 'stay' ? prevStay.placeLabel : undefined,
+      fromPlaceId: prevStay?.kind === 'stay' ? prevStay.placeId : undefined,
+      fromPlaceKind: prevStay?.kind === 'stay' ? prevStay.placeKind : undefined,
+      toPlaceLabel: nextResolved?.placeLabel ?? undefined,
+      toPlaceId: nextResolved?.placeId ?? undefined,
+      toPlaceKind: nextResolved?.placeKind ?? undefined,
     });
   }
 

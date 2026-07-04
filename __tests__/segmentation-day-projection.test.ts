@@ -29,8 +29,9 @@ function homeStaySegment(points: ParsedPoint[]): StaySegment {
     endAt,
     durationMs: endAt.getTime() - startAt.getTime(),
     points,
-    savedPlaceLabel: 'Home',
-    savedPlaceId: 1,
+    placeLabel: 'Home',
+    placeId: 1,
+    placeKind: 'saved',
     stop: {
       id: 'stop-home',
       lat: 33.25,
@@ -77,7 +78,7 @@ describe('projectSegmentsForDay', () => {
 
     expect(jun17[0]?.kind).toBe('stay');
     if (jun17[0]?.kind === 'stay') {
-      expect(jun17[0].savedPlaceLabel).toBe('Home');
+      expect(jun17[0].placeLabel).toBe('Home');
       expect(jun17[0].startAt).toEqual(dayStart('2026-06-17'));
       expect(jun17[0].endAt).toEqual(dayEndExclusive('2026-06-17'));
       expect(jun17[0].points).toHaveLength(1);

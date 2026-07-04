@@ -33,10 +33,10 @@ export type BackupManifest = {
 
 export type TripLabelOverride = {
   eventKey: string;
-  savedPlaceLabel: string | null;
+  placeLabel: string | null;
+  placeId: number | null;
+  placeKind: 'saved' | 'cache' | null;
   selectedCandidateIndex: number | null;
-  placeLookupCacheId: number | null;
-  savedPlaceId: number | null;
 };
 
 export type CloudBackupMetadata = {
