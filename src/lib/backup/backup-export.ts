@@ -189,10 +189,10 @@ function serializeTrips(rows: Array<typeof trips.$inferSelect>): unknown[] {
     centroidLat: row.centroidLat,
     centroidLng: row.centroidLng,
     segmentOrder: row.segmentOrder,
-    savedPlaceLabel: row.savedPlaceLabel,
-    savedPlaceId: row.savedPlaceId,
+    placeLabel: row.placeLabel,
+    placeId: row.placeId,
+    placeKind: row.placeKind,
     inferred: row.inferred === 1,
-    placeLookupCacheId: row.placeLookupCacheId,
     selectedCandidateIndex: row.selectedCandidateIndex,
     detectionVersion: row.detectionVersion,
     closedAt: iso(row.closedAt),
@@ -213,34 +213,31 @@ export function extractTripLabelOverrides(
       if (!eventKey) {
         return null;
       }
-      const savedPlaceLabel =
-        typeof record.savedPlaceLabel === 'string'
-          ? record.savedPlaceLabel
+      const placeLabel =
+        typeof record.placeLabel === 'string' ? record.placeLabel : null;
+      const placeId =
+        typeof record.placeId === 'number' ? record.placeId : null;
+      const placeKind =
+        record.placeKind === 'saved' || record.placeKind === 'cache'
+          ? record.placeKind
           : null;
       const selectedCandidateIndex =
         typeof record.selectedCandidateIndex === 'number'
           ? record.selectedCandidateIndex
           : null;
-      const placeLookupCacheId =
-        typeof record.placeLookupCacheId === 'number'
-          ? record.placeLookupCacheId
-          : null;
-      const savedPlaceId =
-        typeof record.savedPlaceId === 'number' ? record.savedPlaceId : null;
       const hasOverride =
-        (savedPlaceLabel != null && savedPlaceLabel.trim().length > 0) ||
+        (placeLabel != null && placeLabel.trim().length > 0) ||
         selectedCandidateIndex != null ||
-        placeLookupCacheId != null ||
-        savedPlaceId != null;
+        placeId != null;
       if (!hasOverride) {
         return null;
       }
       return {
         eventKey,
-        savedPlaceLabel,
+        placeLabel,
+        placeId,
+        placeKind,
         selectedCandidateIndex,
-        placeLookupCacheId,
-        savedPlaceId,
       };
     })
     .filter((row): row is TripLabelOverride => row != null);

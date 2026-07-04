@@ -29,7 +29,6 @@ import {
 import {historyPanelChromeHeight} from '@/components/map/HistoryPanelChrome';
 import {useHistoryForDay} from '@/hooks/use-history-data';
 import {useLatestLocationSave} from '@/hooks/use-latest-location-save';
-import {usePlaceLookupScheduler} from '@/hooks/use-place-lookup-scheduler';
 import {useSavedPlaces} from '@/hooks/use-saved-places';
 import {useStaySavedPlace} from '@/hooks/use-stay-saved-place';
 import {useDriveEndpointLabels} from '@/hooks/use-drive-endpoint-labels';
@@ -617,16 +616,6 @@ export function useMapScreenController() {
   }, [historyPanelOpen, insets.bottom, locateButtonBottom]);
 
   const scrubOnEvent = historyScrubOnEvent;
-
-  usePlaceLookupScheduler({
-    entries: historyEntries,
-    selectedStay,
-    selectedDateKey,
-    savedPlaces,
-    tripConfig: tripDetectionConfig,
-    viewingToday,
-    historyPanelOpen,
-  });
 
   const selectedVisitPlaceDisplay = useVisitPlaceDisplay(
     scrubOnEvent && selectedStay ? selectedStay : null,

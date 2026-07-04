@@ -5,7 +5,7 @@ function stay(
   id: string,
   lat: number,
   lng: number,
-  savedPlaceId?: number,
+  placeId?: number,
 ): DetectedTrip {
   const timestamp = new Date('2026-06-04T09:00:00.000Z');
   return {
@@ -27,7 +27,9 @@ function stay(
     endAt: timestamp,
     distanceKm: 0,
     durationMs: 0,
-    savedPlaceId,
+    ...(placeId != null
+      ? {placeId, placeKind: 'saved' as const}
+      : {}),
   };
 }
 

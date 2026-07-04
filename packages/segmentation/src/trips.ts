@@ -26,9 +26,14 @@ import {
   type StopDetectionConfig,
 } from './stops';
 import {
-  matchCompletePlaceLookupAtAnchor,
-  primaryLabelFromPlaceLookup,
-} from './place-lookup';
+  applyResolvedPlace,
+  clearResolvedPlace,
+  resolvedPlaceFromCache,
+  resolvedPlaceFromSaved,
+  type PlaceKind,
+  type ResolvedPlace,
+} from './resolved-place';
+import {matchCompletePlaceLookupAtAnchor} from './place-lookup';
 import {
   annotateSegmentMoments,
   type SegmentMomentCounts,
@@ -51,6 +56,8 @@ export {
   SAVED_PLACE_MIN_DWELL_MS,
 };
 
+export type {PlaceKind, ResolvedPlace} from './resolved-place';
+
 export type StaySegment = {
   kind: 'stay';
   id: string;
@@ -61,12 +68,10 @@ export type StaySegment = {
   endAt: Date;
   durationMs: number;
   points: ParsedPoint[];
-  /** Saved place label when the stay falls inside a user-defined place. */
-  savedPlaceLabel?: string;
-  savedPlaceId?: number;
-  /** Nearby-places cache hit at stop anchor (not a saved place). */
-  placeLookupCacheId?: number;
-  placeLookupLabel?: string;
+  /** Resolved place match from saved place or cache (mutually exclusive). */
+  placeLabel?: string;
+  placeId?: number;
+  placeKind?: PlaceKind;
   momentCounts?: SegmentMomentCounts;
 };
 
@@ -81,10 +86,12 @@ export type DriveSegment = {
   points: ParsedPoint[];
   fromStop: Stop | null;
   toStop: Stop | null;
-  fromSavedPlaceLabel?: string;
-  fromSavedPlaceId?: number;
-  toSavedPlaceLabel?: string;
-  toSavedPlaceId?: number;
+  fromPlaceLabel?: string;
+  fromPlaceId?: number;
+  fromPlaceKind?: PlaceKind;
+  toPlaceLabel?: string;
+  toPlaceId?: number;
+  toPlaceKind?: PlaceKind;
   momentCounts?: SegmentMomentCounts;
 };
 
@@ -514,6 +521,21 @@ export function buildTripSegments(
   return reconcileSegments(segments);
 }
 
+function resolvedPlaceFromStay(stay: StaySegment): ResolvedPlace | null {
+  if (
+    stay.placeKind == null ||
+    stay.placeId == null ||
+    stay.placeLabel == null
+  ) {
+    return null;
+  }
+  return {
+    placeLabel: stay.placeLabel,
+    placeId: stay.placeId,
+    placeKind: stay.placeKind,
+  };
+}
+
 function annotateSegments(
   segments: TripSegment[],
   savedPlaces: SavedPlaceRow[],
@@ -524,29 +546,25 @@ function annotateSegments(
       return segment;
     }
     let updated: StaySegment = segment;
+    clearResolvedPlace(updated);
+
     const place = matchSavedPlaceForStop(
       segment.stop,
       segment.points,
       savedPlaces,
     );
     if (place != null) {
-      updated = {
-        ...updated,
-        savedPlaceLabel: place.label,
-        savedPlaceId: place.id,
-      };
-    }
-    if (updated.savedPlaceId == null && placeLookupCache.length > 0) {
+      applyResolvedPlace(updated, resolvedPlaceFromSaved(place));
+    } else if (placeLookupCache.length > 0) {
       const cache = matchCompletePlaceLookupAtAnchor(
         {lat: updated.stop.lat, lng: updated.stop.lng},
         placeLookupCache,
       );
       if (cache != null) {
-        updated = {
-          ...updated,
-          placeLookupCacheId: cache.id,
-          placeLookupLabel: primaryLabelFromPlaceLookup(cache) ?? undefined,
-        };
+        const resolved = resolvedPlaceFromCache(cache);
+        if (resolved != null) {
+          applyResolvedPlace(updated, resolved);
+        }
       }
     }
     return updated;
@@ -556,36 +574,41 @@ function annotateSegments(
     if (segment.kind !== 'drive') {
       return segment;
     }
-    const previousStay = withStays[index - 1];
-    const nextStay = withStays[index + 1];
+    const previousCandidate = withStays[index - 1];
+    const previousStay: StaySegment | undefined =
+      previousCandidate?.kind === 'stay' ? previousCandidate : undefined;
+    const nextCandidate = withStays[index + 1];
+    const nextStay: StaySegment | undefined =
+      nextCandidate?.kind === 'stay' ? nextCandidate : undefined;
     const fromPlace = matchDriveStartSavedPlace(
       segment,
       previousStay,
       savedPlaces,
     );
     const toPlace = matchDriveEndSavedPlace(segment, nextStay, savedPlaces);
-    const fromCacheLabel =
-      fromPlace == null && previousStay?.kind === 'stay'
-        ? previousStay.placeLookupLabel
-        : undefined;
-    const toCacheLabel =
-      toPlace == null && nextStay?.kind === 'stay'
-        ? nextStay.placeLookupLabel
-        : undefined;
-    if (
-      fromPlace == null &&
-      toPlace == null &&
-      fromCacheLabel == null &&
-      toCacheLabel == null
-    ) {
+    const fromResolved =
+      fromPlace != null
+        ? resolvedPlaceFromSaved(fromPlace)
+        : previousStay != null
+          ? resolvedPlaceFromStay(previousStay)
+          : null;
+    const toResolved =
+      toPlace != null
+        ? resolvedPlaceFromSaved(toPlace)
+        : nextStay != null
+          ? resolvedPlaceFromStay(nextStay)
+          : null;
+    if (fromResolved == null && toResolved == null) {
       return segment;
     }
     return {
       ...segment,
-      fromSavedPlaceLabel: fromPlace?.label ?? fromCacheLabel,
-      fromSavedPlaceId: fromPlace?.id,
-      toSavedPlaceLabel: toPlace?.label ?? toCacheLabel,
-      toSavedPlaceId: toPlace?.id,
+      fromPlaceLabel: fromResolved?.placeLabel,
+      fromPlaceId: fromResolved?.placeId,
+      fromPlaceKind: fromResolved?.placeKind,
+      toPlaceLabel: toResolved?.placeLabel,
+      toPlaceId: toResolved?.placeId,
+      toPlaceKind: toResolved?.placeKind,
     };
   });
 }
@@ -594,9 +617,12 @@ function isHomeStay(
   segment: StaySegment,
   savedPlaces: SavedPlaceRow[],
 ): boolean {
-  if (segment.savedPlaceId != null) {
+  if (
+    segment.placeKind === 'saved' &&
+    segment.placeId != null
+  ) {
     return (
-      savedPlaces.find(place => place.id === segment.savedPlaceId)?.kind ===
+      savedPlaces.find(place => place.id === segment.placeId)?.kind ===
       'home'
     );
   }

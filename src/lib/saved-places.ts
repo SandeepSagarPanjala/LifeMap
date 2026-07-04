@@ -53,6 +53,13 @@ export function matchSavedPlaceForPoint(
   return match;
 }
 
+function savedPlaceIdFromDetected(
+  placeKind: DetectedTrip['placeKind'] | undefined,
+  placeId: number | undefined,
+): number | null | undefined {
+  return placeKind === 'saved' ? placeId : undefined;
+}
+
 /** Trip saved-place link from detection or DB — id only, no geofence rescan. */
 export function matchSavedPlaceForStay(
   stay: DetectedTrip | null,
@@ -61,7 +68,10 @@ export function matchSavedPlaceForStay(
   if (stay == null) {
     return null;
   }
-  return lookupSavedPlaceById(stay.savedPlaceId, places);
+  return lookupSavedPlaceById(
+    savedPlaceIdFromDetected(stay.placeKind, stay.placeId),
+    places,
+  );
 }
 
 /** Only Home visits are cut at midnight; other stays show the full span on both days. */
@@ -69,7 +79,12 @@ export function shouldSplitStayAtMidnight(
   stay: DetectedTrip,
   savedPlaces: readonly SavedPlaceRow[],
 ): boolean {
-  return lookupSavedPlaceById(stay.savedPlaceId, savedPlaces)?.kind === 'home';
+  return (
+    lookupSavedPlaceById(
+      savedPlaceIdFromDetected(stay.placeKind, stay.placeId),
+      savedPlaces,
+    )?.kind === 'home'
+  );
 }
 
 /** Drive endpoint label — from detection ids on the drive or adjacent stay. */
@@ -79,30 +94,38 @@ export function matchSavedPlaceForTripEndpoint(
   places: readonly SavedPlaceRow[],
 ): SavedPlaceRow | null {
   const savedPlaceId =
-    endpoint === 'start' ? trip.fromSavedPlaceId : trip.toSavedPlaceId;
+    endpoint === 'start'
+      ? savedPlaceIdFromDetected(trip.fromPlaceKind, trip.fromPlaceId)
+      : savedPlaceIdFromDetected(trip.toPlaceKind, trip.toPlaceId);
   return lookupSavedPlaceById(savedPlaceId, places);
 }
 
-/** Drive end — detection `toSavedPlaceId`, else the following stay's saved place id. */
+/** Drive end — detection `toPlaceId`, else the following stay's saved place id. */
 export function matchDriveEndSavedPlace(
   travel: DetectedTrip,
   nextStay: DetectedTrip | null,
   places: readonly SavedPlaceRow[],
 ): SavedPlaceRow | null {
-  const fromDrive = lookupSavedPlaceById(travel.toSavedPlaceId, places);
+  const fromDrive = lookupSavedPlaceById(
+    savedPlaceIdFromDetected(travel.toPlaceKind, travel.toPlaceId),
+    places,
+  );
   if (fromDrive != null) {
     return fromDrive;
   }
   return matchSavedPlaceForStay(nextStay, places);
 }
 
-/** Drive start — detection `fromSavedPlaceId`, else the previous stay's saved place id. */
+/** Drive start — detection `fromPlaceId`, else the previous stay's saved place id. */
 export function matchDriveStartSavedPlace(
   travel: DetectedTrip,
   previousStay: DetectedTrip | null,
   places: readonly SavedPlaceRow[],
 ): SavedPlaceRow | null {
-  const fromDrive = lookupSavedPlaceById(travel.fromSavedPlaceId, places);
+  const fromDrive = lookupSavedPlaceById(
+    savedPlaceIdFromDetected(travel.fromPlaceKind, travel.fromPlaceId),
+    places,
+  );
   if (fromDrive != null) {
     return fromDrive;
   }

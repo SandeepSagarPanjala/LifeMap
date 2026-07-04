@@ -128,6 +128,15 @@ export async function migrationAlreadyApplied(
       return columnExists(sqlite, 'saved_places', 'active');
     case '0019_location_points_dedupe_unique':
       return indexExists(sqlite, LOCATION_POINTS_DEDUPE_UNIQUE_INDEX);
+    case '0020_standardize_place_radii':
+      return (
+        columnExists(sqlite, 'trips', 'place_label') ||
+        !(await columnExists(sqlite, 'trips', 'place_lookup_cache_id'))
+      );
+    case '0021_trip_resolved_place':
+      return columnExists(sqlite, 'trips', 'place_label');
+    case '0022_drop_trip_legacy_place_columns':
+      return !(await columnExists(sqlite, 'trips', 'place_lookup_cache_id'));
     default:
       return false;
   }
@@ -144,16 +153,22 @@ export async function ensureTripSegmentMetadataColumns(sqlite: DB): Promise<void
       `ALTER TABLE trips ADD COLUMN segment_order integer DEFAULT 0 NOT NULL`,
     );
   }
-  if (!(await columnExists(sqlite, 'trips', 'saved_place_label'))) {
+  if (!(await columnExists(sqlite, 'trips', 'place_label'))) {
     await executeMigrationStatement(
       sqlite,
-      `ALTER TABLE trips ADD COLUMN saved_place_label text`,
+      `ALTER TABLE trips ADD COLUMN place_label text`,
     );
   }
-  if (!(await columnExists(sqlite, 'trips', 'saved_place_id'))) {
+  if (!(await columnExists(sqlite, 'trips', 'place_id'))) {
     await executeMigrationStatement(
       sqlite,
-      `ALTER TABLE trips ADD COLUMN saved_place_id integer`,
+      `ALTER TABLE trips ADD COLUMN place_id integer`,
+    );
+  }
+  if (!(await columnExists(sqlite, 'trips', 'place_kind'))) {
+    await executeMigrationStatement(
+      sqlite,
+      `ALTER TABLE trips ADD COLUMN place_kind text`,
     );
   }
   if (!(await columnExists(sqlite, 'trips', 'inferred'))) {

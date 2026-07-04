@@ -71,7 +71,7 @@ export function buildMomentPreviewContextForEntry(
       placeLabel:
         savedPlace != null
           ? savedPlaceDisplayLabel(savedPlace)
-          : entry.savedPlaceLabel ?? null,
+          : entry.placeLabel ?? null,
       timeLabel: visit.title,
       statsLabel: visit.subtitle,
       entryId: entry.id,

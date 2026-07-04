@@ -24,13 +24,22 @@ function savedPlaceForId(
   return savedPlaces.find(place => place.id === id);
 }
 
+function savedPlaceIdFromEntry(
+  placeKind: DetectedTrip['placeKind'] | undefined,
+  placeId: number | undefined,
+): number | undefined {
+  return placeKind === 'saved' ? placeId : undefined;
+}
+
 function travelEndpointCoordinate(
   entry: DetectedTrip,
   savedPlaces: readonly SavedPlaceRow[],
   end: 'start' | 'finish',
 ): LatLngTuple | null {
   const savedPlaceId =
-    end === 'start' ? entry.fromSavedPlaceId : entry.toSavedPlaceId;
+    end === 'start'
+      ? savedPlaceIdFromEntry(entry.fromPlaceKind, entry.fromPlaceId)
+      : savedPlaceIdFromEntry(entry.toPlaceKind, entry.toPlaceId);
   const savedPlace = savedPlaceForId(savedPlaces, savedPlaceId);
   if (savedPlace != null) {
     return [savedPlace.lat, savedPlace.lng];
@@ -111,19 +120,28 @@ export function MobileDriveEndpointMarkers({
     return null;
   }
 
-  const startPlace = savedPlaceForId(savedPlaces, entry.fromSavedPlaceId);
+  const startPlace = savedPlaceForId(
+    savedPlaces,
+    savedPlaceIdFromEntry(entry.fromPlaceKind, entry.fromPlaceId),
+  );
   const endPlace =
     anchorEndStay != null
-      ? savedPlaceForId(savedPlaces, anchorEndStay.savedPlaceId)
-      : savedPlaceForId(savedPlaces, entry.toSavedPlaceId);
-  const startLabel = entry.fromSavedPlaceLabel ?? startPlace?.label ?? null;
+      ? savedPlaceForId(
+          savedPlaces,
+          savedPlaceIdFromEntry(anchorEndStay.placeKind, anchorEndStay.placeId),
+        )
+      : savedPlaceForId(
+          savedPlaces,
+          savedPlaceIdFromEntry(entry.toPlaceKind, entry.toPlaceId),
+        );
+  const startLabel = entry.fromPlaceLabel ?? startPlace?.label ?? null;
   const endLabel =
     anchorEndStay != null
       ? (visitPlaceName(anchorEndStay) ??
-        entry.toSavedPlaceLabel ??
+        entry.toPlaceLabel ??
         endPlace?.label ??
         null)
-      : (entry.toSavedPlaceLabel ?? endPlace?.label ?? null);
+      : (entry.toPlaceLabel ?? endPlace?.label ?? null);
 
   return (
     <>

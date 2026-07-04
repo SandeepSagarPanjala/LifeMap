@@ -130,8 +130,8 @@ export function MobileEventCard({
             </span>
           ) : placeName ? (
             <span className="mobile-visit-place">{placeName}</span>
-          ) : entry.placeLookupCacheId != null ? (
-            <span className="mobile-visit-place">Place #{entry.placeLookupCacheId}</span>
+          ) : entry.placeKind === 'cache' && entry.placeId != null ? (
+            <span className="mobile-visit-place">Place #{entry.placeId}</span>
           ) : null}
         </div>
         <div className="mobile-visit-lottie-anchor">
@@ -168,10 +168,16 @@ function MobileDriveCard({
   entry: DetectedTrip;
   savedPlaces: readonly SavedPlaceRow[];
 }) {
-  const from = driveEndpointLabel(entry.fromSavedPlaceLabel);
-  const to = driveEndpointLabel(entry.toSavedPlaceLabel);
-  const fromKind = savedPlaceKindForId(savedPlaces, entry.fromSavedPlaceId);
-  const toKind = savedPlaceKindForId(savedPlaces, entry.toSavedPlaceId);
+  const from = driveEndpointLabel(entry.fromPlaceLabel);
+  const to = driveEndpointLabel(entry.toPlaceLabel);
+  const fromKind = savedPlaceKindForId(
+    savedPlaces,
+    entry.fromPlaceKind === 'saved' ? entry.fromPlaceId : undefined,
+  );
+  const toKind = savedPlaceKindForId(
+    savedPlaces,
+    entry.toPlaceKind === 'saved' ? entry.toPlaceId : undefined,
+  );
   const showRoute = from != null || to != null;
 
   return (

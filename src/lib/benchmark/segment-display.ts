@@ -41,7 +41,7 @@ export function describeTripSegment(segment: TripSegment): SegmentDisplay {
     return {
       kind: 'Stay',
       variant: 'stay',
-      subtitle: segment.savedPlaceLabel,
+      subtitle: segment.placeLabel,
       timeRange,
       stats: [formatDuration(segment.durationMs), `${segment.points.length} pts`],
     };
@@ -49,8 +49,8 @@ export function describeTripSegment(segment: TripSegment): SegmentDisplay {
 
   if (segment.kind === 'drive') {
     let subtitle: string | undefined;
-    const from = segment.fromSavedPlaceLabel;
-    const to = segment.toSavedPlaceLabel;
+    const from = segment.fromPlaceLabel;
+    const to = segment.toPlaceLabel;
     if (from && to) {
       subtitle = from === to ? from : `${from} → ${to}`;
     } else if (from) {

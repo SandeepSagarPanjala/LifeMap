@@ -155,10 +155,12 @@ export const trips = sqliteTable(
     centroidLat: real('centroid_lat').notNull(),
     centroidLng: real('centroid_lng').notNull(),
     segmentOrder: integer('segment_order').notNull().default(0),
-    savedPlaceLabel: text('saved_place_label'),
-    savedPlaceId: integer('saved_place_id'),
+    /** Denormalized display label — detection or user custom override. */
+    placeLabel: text('place_label'),
+    /** Saved place id or place_lookup_cache id (see placeKind). */
+    placeId: integer('place_id'),
+    placeKind: text('place_kind', {enum: ['saved', 'cache']}),
     inferred: integer('inferred').notNull().default(0),
-    placeLookupCacheId: integer('place_lookup_cache_id'),
     selectedCandidateIndex: integer('selected_candidate_index'),
     detectionVersion: integer('detection_version').notNull(),
     closedAt: integer('closed_at', {mode: 'timestamp'}).notNull(),

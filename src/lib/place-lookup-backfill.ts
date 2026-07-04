@@ -24,6 +24,7 @@ import {
   tripLabelForPersist,
   type PersistedTripLabel,
 } from '@/lib/trip-materialization';
+import {resolvedPlaceFromTripRow} from '@/lib/resolved-place';
 import type {DetectedTrip} from '@/lib/trip-detection';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
 
@@ -48,7 +49,7 @@ export type PlaceLookupBackfillTripResult = {
   eventKey: string;
   tripId: number;
   status: PlaceLookupBackfillTripStatus;
-  placeLookupCacheId: number | null;
+  placeId: number | null;
 };
 
 export type PlaceLookupBackfillBatchResult = {
@@ -68,22 +69,20 @@ export function isStayMissingPlaceLabel(trip: TripRow): boolean {
   if (trip.kind !== 'stay') {
     return false;
   }
-  if (trip.savedPlaceId != null) {
-    return false;
-  }
-  if (trip.placeLookupCacheId != null) {
+  if (trip.placeId != null) {
     return false;
   }
   if (trip.selectedCandidateIndex != null) {
     return false;
   }
-  if (trip.savedPlaceLabel?.trim()) {
+  if (trip.placeLabel?.trim()) {
     return false;
   }
   return true;
 }
 
 export function tripRowToBackfillStay(trip: TripRow): DetectedTrip {
+  const resolved = resolvedPlaceFromTripRow(trip);
   return {
     id: trip.eventKey,
     kind: 'stay',
@@ -106,8 +105,9 @@ export function tripRowToBackfillStay(trip: TripRow): DetectedTrip {
     materializedTripId: trip.id,
     anchorLat: trip.centroidLat,
     anchorLng: trip.centroidLng,
-    savedPlaceId: trip.savedPlaceId ?? undefined,
-    savedPlaceLabel: trip.savedPlaceLabel ?? undefined,
+    placeLabel: resolved.placeLabel ?? undefined,
+    placeId: resolved.placeId ?? undefined,
+    placeKind: resolved.placeKind ?? undefined,
   };
 }
 
@@ -134,21 +134,29 @@ export function mergeTripPlaceLabelAfterLookup(
   existingByEventKey: ReadonlyMap<string, PersistedTripLabel>,
   placeLookup: PlaceLookupRow | null,
   detected?: {
-    savedPlaceLabel?: string | null;
-    savedPlaceId?: number | null;
+    placeLabel?: string | null;
+    placeId?: number | null;
+    placeKind?: DetectedTrip['placeKind'] | null;
   },
 ): PersistedTripLabel {
-  return tripLabelForPersist(
-    eventKey,
-    existingByEventKey,
-    placeLookup
-      ? {
-          id: placeLookup.id,
-          selectedCandidateIndex: placeLookup.selectedCandidateIndex,
-        }
-      : null,
-    detected,
-  );
+  if (placeLookup != null) {
+    return tripLabelForPersist(eventKey, existingByEventKey, {
+      placeKind: 'cache',
+      placeId: placeLookup.id,
+      placeLabel: detected?.placeLabel ?? null,
+      selectedCandidateIndex: placeLookup.selectedCandidateIndex,
+    });
+  }
+
+  if (detected?.placeKind != null) {
+    return tripLabelForPersist(eventKey, existingByEventKey, {
+      placeLabel: detected.placeLabel ?? null,
+      placeId: detected.placeId ?? null,
+      placeKind: detected.placeKind,
+    });
+  }
+
+  return tripLabelForPersist(eventKey, existingByEventKey);
 }
 
 export async function backfillPlaceLookupForStay(
@@ -162,7 +170,7 @@ export async function backfillPlaceLookupForStay(
   const base = {
     eventKey: trip.eventKey,
     tripId: trip.id,
-    placeLookupCacheId: trip.placeLookupCacheId,
+    placeId: trip.placeId,
   };
 
   if (!isStayMissingPlaceLabel(trip)) {
@@ -195,7 +203,7 @@ export async function backfillPlaceLookupForStay(
     return {
       ...base,
       status: cache?.lookupStatus === 'pending' ? 'still_pending' : 'skipped',
-      placeLookupCacheId: null,
+      placeId: null,
     };
   }
 
@@ -203,10 +211,7 @@ export async function backfillPlaceLookupForStay(
     trip.eventKey,
     options.existingByEventKey,
     cache,
-    {
-      savedPlaceId: trip.savedPlaceId,
-      savedPlaceLabel: trip.savedPlaceLabel,
-    },
+    resolvedPlaceFromTripRow(trip),
   );
   await applyTripPersistedLabel(trip.id, labels);
 
@@ -214,7 +219,7 @@ export async function backfillPlaceLookupForStay(
     eventKey: trip.eventKey,
     tripId: trip.id,
     status: fetched ? 'fetched' : 'linked_cache',
-    placeLookupCacheId: cache.id,
+    placeId: cache.id,
   };
 }
 

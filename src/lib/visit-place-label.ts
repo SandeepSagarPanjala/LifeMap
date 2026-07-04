@@ -1,7 +1,4 @@
-import {
-  findPlaceLookupNearAnchor,
-  getPlaceLookupById,
-} from '@/db/repositories/place-lookup-cache';
+import {getPlaceLookupById} from '@/db/repositories/place-lookup-cache';
 import {getTripByEventKey, getTripById} from '@/db/repositories/trips';
 import {getSavedPlaceById} from '@/db/repositories/saved-places';
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
@@ -10,25 +7,10 @@ import {
   savedPlaceVisitDisplay,
 } from '@/lib/place-lookup-display';
 import type {VisitPlaceDisplay} from '@/lib/place-lookup-types';
+import {resolvedPlaceFromTripRow} from '@/lib/resolved-place';
 import {matchSavedPlaceForStay} from '@/lib/saved-places';
 import type {DetectedTrip} from '@/lib/trip-detection';
-import {resolveStayAnchor} from '@/lib/trip-detection';
 import {tripEventKey} from '@/lib/trip-materialization';
-
-async function resolveCacheRowForTrip(
-  trip: NonNullable<Awaited<ReturnType<typeof getTripById>>>,
-  stay: DetectedTrip,
-) {
-  if (trip.placeLookupCacheId != null) {
-    const linked = await getPlaceLookupById(trip.placeLookupCacheId);
-    if (linked) {
-      return linked;
-    }
-  }
-
-  const anchor = resolveStayAnchor(stay);
-  return findPlaceLookupNearAnchor(anchor);
-}
 
 /** Saved place, user-selected label, or auto-selected nearby POI for a visit. */
 export async function loadVisitPlaceDisplayForStay(
@@ -40,10 +22,25 @@ export async function loadVisitPlaceDisplayForStay(
     return savedPlaceVisitDisplay(savedPlace);
   }
 
-  if (stay.savedPlaceId != null) {
-    const linkedPlace = await getSavedPlaceById(stay.savedPlaceId);
+  if (stay.placeKind === 'saved' && stay.placeId != null) {
+    const linkedPlace = await getSavedPlaceById(stay.placeId);
     if (linkedPlace) {
       return savedPlaceVisitDisplay(linkedPlace);
+    }
+  }
+
+  if (stay.placeKind === 'cache' && stay.placeId != null) {
+    const cacheRow = await getPlaceLookupById(stay.placeId);
+    if (cacheRow) {
+      const customLabel = stay.placeLabel?.trim() || null;
+      const hasTripLabel = customLabel != null;
+      return {
+        ...resolveVisitPlaceDisplay(cacheRow, {
+          isTripLabel: hasTripLabel,
+          customLabel,
+        }),
+        materializedTripId: stay.materializedTripId ?? null,
+      };
     }
   }
 
@@ -56,27 +53,44 @@ export async function loadVisitPlaceDisplayForStay(
   if (materializedTripId != null) {
     const trip = await getTripById(materializedTripId);
     if (trip) {
-      const cacheRow = await resolveCacheRowForTrip(trip, stay);
-      if (cacheRow) {
-        const customLabel = trip.savedPlaceLabel?.trim() || null;
-        const hasTripLabel =
-          customLabel != null || trip.selectedCandidateIndex != null;
-        return {
-          ...resolveVisitPlaceDisplay(cacheRow, {
-            selectedIndexOverride: trip.selectedCandidateIndex,
-            isTripLabel: hasTripLabel,
-            customLabel,
-          }),
-          materializedTripId: trip.id,
-        };
+      const resolved = resolvedPlaceFromTripRow(trip);
+      if (resolved.placeKind === 'saved' && resolved.placeId != null) {
+        const linkedPlace = await getSavedPlaceById(resolved.placeId);
+        if (linkedPlace) {
+          return savedPlaceVisitDisplay(linkedPlace);
+        }
+      }
+      if (resolved.placeKind === 'cache' && resolved.placeId != null) {
+        const cacheRow = await getPlaceLookupById(resolved.placeId);
+        if (cacheRow) {
+          const customLabel =
+            trip.placeLabel?.trim() || resolved.placeLabel?.trim() || null;
+          const hasTripLabel =
+            customLabel != null || trip.selectedCandidateIndex != null;
+          return {
+            ...resolveVisitPlaceDisplay(cacheRow, {
+              selectedIndexOverride: trip.selectedCandidateIndex,
+              isTripLabel: hasTripLabel,
+              customLabel,
+            }),
+            materializedTripId: trip.id,
+          };
+        }
       }
     }
   }
 
-  const anchor = resolveStayAnchor(stay);
-  const row = await findPlaceLookupNearAnchor(anchor);
   return {
-    ...resolveVisitPlaceDisplay(row),
+    source: 'none',
+    primaryLabel: stay.placeLabel?.trim() || null,
+    customLabel: null,
+    candidates: [],
+    selectedIndex: 0,
+    cacheId: null,
     materializedTripId,
+    loading: false,
+    venueRadiusMeters: 0,
+    isAreaDefault: false,
+    isTripLabel: false,
   };
 }

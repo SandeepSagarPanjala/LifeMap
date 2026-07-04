@@ -76,7 +76,8 @@ export function resolveDriveEndpointLabelFromStaySync(
     };
   }
 
-  const cacheLabel = stay.placeLookupLabel?.trim();
+  const cacheLabel =
+    stay.placeKind === 'cache' ? stay.placeLabel?.trim() : undefined;
   if (cacheLabel) {
     return {
       source: 'auto-label',

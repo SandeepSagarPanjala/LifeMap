@@ -79,13 +79,12 @@ function staySegmentToTrip(segment: StaySegment): DetectedTrip {
     durationMs: segment.durationMs,
     distanceKm: 0,
     segmentOrder: segment.order,
-    savedPlaceLabel: segment.savedPlaceLabel,
-    savedPlaceId: segment.savedPlaceId,
+    placeLabel: segment.placeLabel,
+    placeId: segment.placeId,
+    placeKind: segment.placeKind,
     inferred: segment.stop.inferred,
     anchorLat: segment.stop.lat,
     anchorLng: segment.stop.lng,
-    placeLookupCacheId: segment.placeLookupCacheId,
-    placeLookupLabel: segment.placeLookupLabel,
   };
 }
 
@@ -102,12 +101,12 @@ function driveSegmentToTrip(segment: DriveSegment): DetectedTrip {
     durationMs: segment.durationMs,
     distanceKm: segment.distanceM / 1000,
     segmentOrder: segment.order,
-    fromSavedPlaceLabel: segment.fromSavedPlaceLabel,
-    fromSavedPlaceId: segment.fromSavedPlaceId,
-    toSavedPlaceLabel: segment.toSavedPlaceLabel,
-    toSavedPlaceId: segment.toSavedPlaceId,
-    savedPlaceLabel: segment.toSavedPlaceLabel ?? segment.fromSavedPlaceLabel,
-    savedPlaceId: segment.toSavedPlaceId ?? segment.fromSavedPlaceId,
+    fromPlaceLabel: segment.fromPlaceLabel,
+    fromPlaceId: segment.fromPlaceId,
+    fromPlaceKind: segment.fromPlaceKind,
+    toPlaceLabel: segment.toPlaceLabel,
+    toPlaceId: segment.toPlaceId,
+    toPlaceKind: segment.toPlaceKind,
   };
 }
 

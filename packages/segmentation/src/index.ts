@@ -3,6 +3,7 @@ export * from './day-bounds';
 export * from './geo';
 export * from './parse-points';
 export * from './place-lookup';
+export * from './resolved-place';
 export * from './saved-places';
 export * from './sources';
 export * from './stay-geometry';

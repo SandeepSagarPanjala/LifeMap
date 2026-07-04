@@ -205,6 +205,24 @@ const m0020 = `UPDATE \`saved_places\` SET \`radius_meters\` = 150 WHERE \`radiu
 --> statement-breakpoint
 UPDATE \`place_lookup_cache\` SET \`venue_radius_meters\` = 100 WHERE \`venue_radius_meters\` != 100;`;
 
+const m0021 = `ALTER TABLE \`trips\` ADD COLUMN \`place_label\` text;
+--> statement-breakpoint
+ALTER TABLE \`trips\` ADD COLUMN \`place_id\` integer;
+--> statement-breakpoint
+ALTER TABLE \`trips\` ADD COLUMN \`place_kind\` text;
+--> statement-breakpoint
+UPDATE \`trips\` SET \`place_id\` = \`saved_place_id\`, \`place_kind\` = 'saved', \`place_label\` = \`saved_place_label\` WHERE \`saved_place_id\` IS NOT NULL;
+--> statement-breakpoint
+UPDATE \`trips\` SET \`place_id\` = \`place_lookup_cache_id\`, \`place_kind\` = 'cache', \`place_label\` = \`saved_place_label\` WHERE \`place_lookup_cache_id\` IS NOT NULL AND \`saved_place_id\` IS NULL;
+--> statement-breakpoint
+UPDATE \`trips\` SET \`place_label\` = \`saved_place_label\` WHERE \`saved_place_id\` IS NULL AND \`place_lookup_cache_id\` IS NULL AND \`saved_place_label\` IS NOT NULL;`;
+
+const m0022 = `ALTER TABLE \`trips\` DROP COLUMN \`saved_place_label\`;
+--> statement-breakpoint
+ALTER TABLE \`trips\` DROP COLUMN \`saved_place_id\`;
+--> statement-breakpoint
+ALTER TABLE \`trips\` DROP COLUMN \`place_lookup_cache_id\`;`;
+
 export default {
   journal,
   migrations: {
@@ -229,5 +247,7 @@ export default {
     m0018,
     m0019,
     m0020,
+    m0021,
+    m0022,
   },
 };

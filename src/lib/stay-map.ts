@@ -13,7 +13,9 @@ export function staysNeedingVisitAreaOverlay(
   stays: readonly DetectedTrip[],
   _savedPlaces: readonly SavedPlaceRow[],
 ): DetectedTrip[] {
-  return stays.filter(stay => stay.savedPlaceId == null);
+  return stays.filter(
+    stay => !(stay.placeKind === 'saved' && stay.placeId != null),
+  );
 }
 
 export function buildStayMapCircles(

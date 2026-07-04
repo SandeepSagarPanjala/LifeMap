@@ -4,6 +4,7 @@ import type {LocationPointRow} from '@/db/repositories/location-days';
 import type {MaterializedDayRow} from '@/db/repositories/materialized-days';
 import type {TripPointRow} from '@/db/repositories/trip-points';
 import type {TripRow} from '@/db/repositories/trips';
+import {tripPlaceFieldsFromDetected} from '@/lib/resolved-place';
 import {
   locationPointsForTripRow,
   tripRowToDetectedTripWithGeometry,
@@ -147,8 +148,6 @@ export function buildTimelineFromStoredTrips(
         ),
         materializedTripId: row.id,
         segmentOrder: row.segmentOrder,
-        savedPlaceLabel: row.savedPlaceLabel ?? undefined,
-        savedPlaceId: row.savedPlaceId ?? undefined,
         inferred: row.inferred,
       };
     }
@@ -157,8 +156,6 @@ export function buildTimelineFromStoredTrips(
       ...tripRowToDetectedTrip(row, locationPointsForTripRow(row, route)),
       materializedTripId: row.id,
       segmentOrder: row.segmentOrder,
-      savedPlaceLabel: row.savedPlaceLabel ?? undefined,
-      savedPlaceId: row.savedPlaceId ?? undefined,
     };
   });
 }
@@ -303,6 +300,7 @@ export function hydrateTravelRoutesFromDayPoints(
 }
 
 function toPseudoTripRow(trip: DetectedTrip): TripRow {
+  const persisted = tripPlaceFieldsFromDetected(trip);
   return {
     id: trip.materializedTripId ?? 0,
     eventKey: trip.id,
@@ -315,10 +313,10 @@ function toPseudoTripRow(trip: DetectedTrip): TripRow {
     centroidLat: trip.anchorLat ?? 0,
     centroidLng: trip.anchorLng ?? 0,
     segmentOrder: trip.segmentOrder ?? 0,
-    savedPlaceLabel: trip.savedPlaceLabel ?? null,
-    savedPlaceId: trip.savedPlaceId ?? null,
+    placeLabel: persisted.placeLabel,
+    placeId: persisted.placeId,
+    placeKind: persisted.placeKind,
     inferred: trip.inferred ?? false,
-    placeLookupCacheId: null,
     selectedCandidateIndex: null,
     detectionVersion: 0,
     closedAt: trip.endAt,

@@ -62,11 +62,17 @@ function hideSavedPlaceMarkerId(
   if (selected == null) {
     return null;
   }
-  if (selected.kind === 'stay' && selected.savedPlaceId != null) {
-    return selected.savedPlaceId;
+  if (selected.kind === 'stay' && selected.placeKind === 'saved' && selected.placeId != null) {
+    return selected.placeId;
   }
   if (selected.kind === 'travel') {
-    return selected.toSavedPlaceId ?? selected.fromSavedPlaceId ?? null;
+    const savedEndId =
+      selected.toPlaceKind === 'saved'
+        ? selected.toPlaceId
+        : selected.fromPlaceKind === 'saved'
+          ? selected.fromPlaceId
+          : null;
+    return savedEndId ?? null;
   }
   return null;
 }
@@ -112,7 +118,9 @@ export function MobileMap({
   const selectedStayCenter =
     selectedStayEntry != null ? stayCoordinate(selectedStayEntry) : null;
   const selectedIsSavedPlaceVisit =
-    selectedStayEntry != null && selectedStayEntry.savedPlaceId != null;
+    selectedStayEntry != null &&
+    selectedStayEntry.placeKind === 'saved' &&
+    selectedStayEntry.placeId != null;
 
   const driveEndpointEntry =
     plan.selectedEntry?.kind === 'travel' ? plan.selectedEntry : null;

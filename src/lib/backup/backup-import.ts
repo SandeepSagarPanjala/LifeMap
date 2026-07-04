@@ -15,11 +15,8 @@ import {
 } from '@/db/repositories/trips';
 import {
   getDefaultTripDetectionConfig,
-  rebuildAllPastDayTrips,
-  rebuildTodayTrips,
+  rebuildAllTrips,
 } from '@/lib/trip-materialization';
-import {clearHistoryDataCache} from '@/lib/history-data-cache';
-import {notifyMaterializationUpdated} from '@/lib/trip-materialization-events';
 
 import type {BackupBundleTables} from './backup-export';
 import {
@@ -282,29 +279,27 @@ export async function applyTripLabelOverrides(
       continue;
     }
 
-    const placeLookupCacheId =
-      maps != null
-        ? remapId(override.placeLookupCacheId, maps.placeLookupMap)
-        : override.placeLookupCacheId;
-    const savedPlaceId =
-      maps != null
-        ? remapId(override.savedPlaceId, maps.savedPlaceMap)
-        : override.savedPlaceId;
+    const placeId =
+      override.placeKind === 'cache' && maps != null
+        ? remapId(override.placeId, maps.placeLookupMap)
+        : override.placeKind === 'saved' && maps != null
+          ? remapId(override.placeId, maps.savedPlaceMap)
+          : override.placeId;
 
     if (
-      override.savedPlaceLabel != null &&
-      override.savedPlaceLabel.trim().length > 0
+      override.placeLabel != null &&
+      override.placeLabel.trim().length > 0
     ) {
       await updateTripCustomLabel(
         trip.id,
-        override.savedPlaceLabel,
-        placeLookupCacheId,
+        override.placeLabel,
+        override.placeKind === 'cache' ? placeId : undefined,
       );
-      if (savedPlaceId != null) {
+      if (override.placeKind === 'saved' && placeId != null) {
         await updateTripSavedPlaceAssociation(
           trip.id,
-          savedPlaceId,
-          override.savedPlaceLabel,
+          placeId,
+          override.placeLabel,
         );
       }
       applied += 1;
@@ -315,17 +310,17 @@ export async function applyTripLabelOverrides(
       await updateTripLabelSelection(
         trip.id,
         override.selectedCandidateIndex,
-        placeLookupCacheId,
+        override.placeKind === 'cache' ? placeId : undefined,
       );
-      if (savedPlaceId != null) {
-        await updateTripSavedPlaceAssociation(trip.id, savedPlaceId);
+      if (override.placeKind === 'saved' && placeId != null) {
+        await updateTripSavedPlaceAssociation(trip.id, placeId);
       }
       applied += 1;
       continue;
     }
 
-    if (savedPlaceId != null) {
-      await updateTripSavedPlaceAssociation(trip.id, savedPlaceId);
+    if (override.placeKind === 'saved' && placeId != null) {
+      await updateTripSavedPlaceAssociation(trip.id, placeId);
       applied += 1;
     }
   }
@@ -342,17 +337,17 @@ export async function rebuildTripsAfterRestore(
     completed: 0,
     total: 0,
   });
-  await rebuildAllPastDayTrips(detectionConfig, progress => {
+  await rebuildAllTrips(detectionConfig, progress => {
     onProgress?.({
       phase: 'rebuilding_trips',
-      message: `Rebuilding ${progress.dateKey}…`,
+      message:
+        progress.phase === 'today'
+          ? 'Rebuilding today…'
+          : `Rebuilding ${progress.dateKey}…`,
       completed: progress.completed,
       total: progress.total,
     });
   });
-  await rebuildTodayTrips(detectionConfig);
-  clearHistoryDataCache();
-  notifyMaterializationUpdated();
 }
 
 export async function buildOverrideMaps(

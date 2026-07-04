@@ -132,8 +132,9 @@ describe('place lookup service guards', () => {
   it('skips saved places', () => {
     const visit = stay([{lat: 33.21, lng: -97.13}]);
     visit.durationMs = 30 * 60_000;
-    visit.savedPlaceId = 1;
-    visit.savedPlaceLabel = 'Home';
+    visit.placeId = 1;
+    visit.placeLabel = 'Home';
+    visit.placeKind = 'saved';
     expect(
       shouldSkipPlaceLookupForStay(visit, [
         {

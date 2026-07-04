@@ -135,37 +135,41 @@ describe('tripLabelForPersist', () => {
         startAt: new Date(1_000),
         endAt: new Date(2_000),
         detectionVersion: 2,
-        placeLookupCacheId: 12,
+        placeId: 12,
+        placeKind: 'cache',
         selectedCandidateIndex: 2,
       }),
     ]);
 
     expect(
       tripLabelForPersist(eventKey, existing, {
-        id: 12,
+        placeKind: 'cache',
+        placeId: 12,
         selectedCandidateIndex: 0,
       }),
     ).toEqual({
-      placeLookupCacheId: 12,
+      placeLabel: null,
+      placeId: 12,
+      placeKind: 'cache',
       selectedCandidateIndex: 2,
-      savedPlaceLabel: null,
-      savedPlaceId: null,
     });
   });
 
-  it('falls back to the area default when no visit label was saved', () => {
+  it('uses detected cache when no visit label was saved', () => {
     const eventKey = tripEventKey(stay(1_000, 2_000));
 
     expect(
       tripLabelForPersist(eventKey, new Map(), {
-        id: 9,
+        placeKind: 'cache',
+        placeId: 9,
+        placeLabel: 'Walmart',
         selectedCandidateIndex: 1,
       }),
     ).toEqual({
-      placeLookupCacheId: 9,
+      placeLabel: 'Walmart',
+      placeId: 9,
+      placeKind: 'cache',
       selectedCandidateIndex: 1,
-      savedPlaceLabel: null,
-      savedPlaceId: null,
     });
   });
 });

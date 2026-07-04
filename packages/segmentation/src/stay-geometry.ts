@@ -213,7 +213,7 @@ function nearestPointForMoment(
 }
 
 export function shouldUseVenueWanderGeometry(segment: StaySegment): boolean {
-  if (segment.savedPlaceLabel != null) {
+  if (segment.placeKind === 'saved') {
     return false;
   }
   const core = visitCorePoints(segment.points);

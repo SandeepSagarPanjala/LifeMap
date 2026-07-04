@@ -148,6 +148,20 @@
       "when": 1788912000000,
       "tag": "0020_standardize_place_radii",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1788913000000,
+      "tag": "0021_trip_resolved_place",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1788914000000,
+      "tag": "0022_drop_trip_legacy_place_columns",
+      "breakpoints": true
     }
   ]
 }

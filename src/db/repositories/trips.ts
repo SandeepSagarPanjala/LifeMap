@@ -1,5 +1,7 @@
 import {and, asc, eq, inArray, notInArray} from 'drizzle-orm';
 
+import type {ResolvedPlaceFields} from '@/lib/resolved-place';
+
 import {getDatabase} from '../client';
 import {trips} from '../schema';
 
@@ -17,10 +19,10 @@ export type TripRow = {
   centroidLat: number;
   centroidLng: number;
   segmentOrder: number;
-  savedPlaceLabel: string | null;
-  savedPlaceId: number | null;
+  placeLabel: string | null;
+  placeId: number | null;
+  placeKind: 'saved' | 'cache' | null;
   inferred: boolean;
-  placeLookupCacheId: number | null;
   selectedCandidateIndex: number | null;
   detectionVersion: number;
   closedAt: Date;
@@ -39,10 +41,10 @@ function mapRow(row: typeof trips.$inferSelect): TripRow {
     centroidLat: row.centroidLat,
     centroidLng: row.centroidLng,
     segmentOrder: row.segmentOrder,
-    savedPlaceLabel: row.savedPlaceLabel,
-    savedPlaceId: row.savedPlaceId,
+    placeLabel: row.placeLabel,
+    placeId: row.placeId,
+    placeKind: row.placeKind,
     inferred: row.inferred === 1,
-    placeLookupCacheId: row.placeLookupCacheId,
     selectedCandidateIndex: row.selectedCandidateIndex,
     detectionVersion: row.detectionVersion,
     closedAt: row.closedAt,
@@ -94,10 +96,10 @@ export type InsertTripInput = {
   centroidLat: number;
   centroidLng: number;
   segmentOrder?: number;
-  savedPlaceLabel?: string | null;
-  savedPlaceId?: number | null;
+  placeLabel?: string | null;
+  placeId?: number | null;
+  placeKind?: 'saved' | 'cache' | null;
   inferred?: boolean;
-  placeLookupCacheId?: number | null;
   selectedCandidateIndex?: number | null;
   detectionVersion: number;
   closedAt: Date;
@@ -115,10 +117,10 @@ function tripValues(input: InsertTripInput) {
     centroidLat: input.centroidLat,
     centroidLng: input.centroidLng,
     segmentOrder: input.segmentOrder ?? 0,
-    savedPlaceLabel: input.savedPlaceLabel ?? null,
-    savedPlaceId: input.savedPlaceId ?? null,
+    placeLabel: input.placeLabel ?? null,
+    placeId: input.placeId ?? null,
+    placeKind: input.placeKind ?? null,
     inferred: input.inferred ? 1 : 0,
-    placeLookupCacheId: input.placeLookupCacheId ?? null,
     selectedCandidateIndex: input.selectedCandidateIndex ?? null,
     detectionVersion: input.detectionVersion,
     closedAt: input.closedAt,
@@ -159,10 +161,10 @@ export async function upsertTrip(input: InsertTripInput): Promise<TripRow> {
         centroidLat: input.centroidLat,
         centroidLng: input.centroidLng,
         segmentOrder: input.segmentOrder ?? 0,
-        savedPlaceLabel: input.savedPlaceLabel ?? null,
-        savedPlaceId: input.savedPlaceId ?? null,
+        placeLabel: input.placeLabel ?? null,
+        placeId: input.placeId ?? null,
+        placeKind: input.placeKind ?? null,
         inferred: input.inferred ? 1 : 0,
-        placeLookupCacheId: input.placeLookupCacheId ?? null,
         selectedCandidateIndex: input.selectedCandidateIndex ?? null,
         detectionVersion: input.detectionVersion,
         closedAt: input.closedAt,
@@ -193,22 +195,8 @@ export async function updateTripEndTime(
     .where(eq(trips.id, tripId));
 }
 
-export async function setTripPlaceLookupCacheId(
-  tripId: number,
-  placeLookupCacheId: number,
-): Promise<void> {
-  const db = await getDatabase();
-  await db
-    .update(trips)
-    .set({placeLookupCacheId})
-    .where(eq(trips.id, tripId));
-}
-
-export type TripPersistedLabel = {
-  placeLookupCacheId: number | null;
+export type TripPersistedLabel = ResolvedPlaceFields & {
   selectedCandidateIndex: number | null;
-  savedPlaceLabel: string | null;
-  savedPlaceId: number | null;
 };
 
 export async function applyTripPersistedLabel(
@@ -219,10 +207,10 @@ export async function applyTripPersistedLabel(
   await db
     .update(trips)
     .set({
-      placeLookupCacheId: labels.placeLookupCacheId,
+      placeLabel: labels.placeLabel,
+      placeId: labels.placeId,
+      placeKind: labels.placeKind,
       selectedCandidateIndex: labels.selectedCandidateIndex,
-      savedPlaceLabel: labels.savedPlaceLabel,
-      savedPlaceId: labels.savedPlaceId,
     })
     .where(eq(trips.id, tripId));
 }
@@ -230,16 +218,19 @@ export async function applyTripPersistedLabel(
 export async function updateTripLabelSelection(
   tripId: number,
   selectedCandidateIndex: number,
-  placeLookupCacheId?: number | null,
+  cachePlaceId?: number | null,
 ): Promise<void> {
   const db = await getDatabase();
   await db
     .update(trips)
     .set({
       selectedCandidateIndex,
-      savedPlaceLabel: null,
-      ...(placeLookupCacheId != null
-        ? {placeLookupCacheId}
+      placeLabel: null,
+      ...(cachePlaceId != null
+        ? {
+            placeId: cachePlaceId,
+            placeKind: 'cache' as const,
+          }
         : {}),
     })
     .where(eq(trips.id, tripId));
@@ -248,7 +239,7 @@ export async function updateTripLabelSelection(
 export async function updateTripCustomLabel(
   tripId: number,
   label: string,
-  placeLookupCacheId?: number | null,
+  cachePlaceId?: number | null,
 ): Promise<void> {
   const trimmed = label.trim();
   if (!trimmed) {
@@ -258,10 +249,13 @@ export async function updateTripCustomLabel(
   await db
     .update(trips)
     .set({
-      savedPlaceLabel: trimmed,
+      placeLabel: trimmed,
       selectedCandidateIndex: null,
-      ...(placeLookupCacheId != null
-        ? {placeLookupCacheId}
+      ...(cachePlaceId != null
+        ? {
+            placeId: cachePlaceId,
+            placeKind: 'cache' as const,
+          }
         : {}),
     })
     .where(eq(trips.id, tripId));
@@ -270,14 +264,16 @@ export async function updateTripCustomLabel(
 export async function updateTripSavedPlaceAssociation(
   tripId: number,
   savedPlaceId: number | null,
-  savedPlaceLabel?: string | null,
+  placeLabel?: string | null,
 ): Promise<void> {
   const db = await getDatabase();
+  const label = placeLabel?.trim() || null;
   await db
     .update(trips)
     .set({
-      savedPlaceId,
-      ...(savedPlaceLabel != null ? {savedPlaceLabel} : {}),
+      placeId: savedPlaceId,
+      placeKind: savedPlaceId != null ? ('saved' as const) : null,
+      ...(label != null ? {placeLabel: label} : {}),
     })
     .where(eq(trips.id, tripId));
 }

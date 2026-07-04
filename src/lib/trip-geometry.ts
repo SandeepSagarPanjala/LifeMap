@@ -1,6 +1,7 @@
 import type {LocationPointRow} from '@/db/repositories/location-days';
 import type {TripPointRow} from '@/db/repositories/trip-points';
 import type {TripRow} from '@/db/repositories/trips';
+import {resolvedPlaceFromTripRow} from '@/lib/resolved-place';
 import {
   isPlayableTimelineEntry,
   type DayTimelineEntry,
@@ -108,6 +109,7 @@ export function tripRowToDetectedTripWithGeometry(
   row: TripRow,
   points: LocationPointRow[],
 ): DetectedTrip {
+  const resolved = resolvedPlaceFromTripRow(row);
   return {
     id: `materialized-${row.id}`,
     kind: row.kind === 'travel' ? 'travel' : 'stay',
@@ -118,8 +120,9 @@ export function tripRowToDetectedTripWithGeometry(
     durationMs: row.durationMs,
     materializedTripId: row.id,
     segmentOrder: row.segmentOrder,
-    savedPlaceLabel: row.savedPlaceLabel ?? undefined,
-    savedPlaceId: row.savedPlaceId ?? undefined,
+    placeLabel: resolved.placeLabel ?? undefined,
+    placeId: resolved.placeId ?? undefined,
+    placeKind: resolved.placeKind ?? undefined,
     inferred: row.inferred,
     anchorLat: row.kind === 'stay' ? row.centroidLat : undefined,
     anchorLng: row.kind === 'stay' ? row.centroidLng : undefined,

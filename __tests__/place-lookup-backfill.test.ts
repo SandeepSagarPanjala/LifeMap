@@ -24,10 +24,10 @@ function tripRow(overrides: Partial<TripRow> = {}): TripRow {
     centroidLat: 37.7749,
     centroidLng: -122.4194,
     segmentOrder: 1,
-    savedPlaceLabel: null,
-    savedPlaceId: null,
+    placeLabel: null,
+    placeId: null,
+    placeKind: null,
     inferred: false,
-    placeLookupCacheId: null,
     selectedCandidateIndex: null,
     detectionVersion: 1,
     closedAt: new Date('2026-03-09T13:00:00.000Z'),
@@ -58,15 +58,15 @@ describe('place-lookup-backfill', () => {
 
   it('detects stays missing any place label', () => {
     expect(isStayMissingPlaceLabel(tripRow())).toBe(true);
-    expect(isStayMissingPlaceLabel(tripRow({savedPlaceId: 2}))).toBe(false);
+    expect(isStayMissingPlaceLabel(tripRow({placeId: 2, placeKind: 'saved'}))).toBe(false);
     expect(
-      isStayMissingPlaceLabel(tripRow({placeLookupCacheId: 3})),
+      isStayMissingPlaceLabel(tripRow({placeId: 3, placeKind: 'cache'})),
     ).toBe(false);
     expect(
       isStayMissingPlaceLabel(tripRow({selectedCandidateIndex: 0})),
     ).toBe(false);
     expect(
-      isStayMissingPlaceLabel(tripRow({savedPlaceLabel: 'Walmart'})),
+      isStayMissingPlaceLabel(tripRow({placeLabel: 'Walmart'})),
     ).toBe(false);
     expect(isStayMissingPlaceLabel(tripRow({kind: 'travel'}))).toBe(false);
   });
@@ -83,7 +83,9 @@ describe('place-lookup-backfill', () => {
       tripRow({
         id: 3,
         eventKey: 'stay:3',
-        savedPlaceLabel: 'Home',
+        placeLabel: 'Home',
+        placeKind: 'saved',
+        placeId: 1,
       }),
     ];
     expect(listStaysNeedingPlaceLookup(rows, config)).toHaveLength(1);
@@ -104,10 +106,10 @@ describe('place-lookup-backfill', () => {
       [
         eventKey,
         {
-          placeLookupCacheId: 5,
+          placeLabel: 'Walmart',
+          placeId: 5,
+          placeKind: 'cache',
           selectedCandidateIndex: null,
-          savedPlaceLabel: 'Walmart',
-          savedPlaceId: null,
         },
       ],
     ]);
@@ -118,8 +120,8 @@ describe('place-lookup-backfill', () => {
       cacheRow({id: 9, selectedCandidateIndex: 1}),
     );
 
-    expect(merged.savedPlaceLabel).toBe('Walmart');
+    expect(merged.placeLabel).toBe('Walmart');
     expect(merged.selectedCandidateIndex).toBeNull();
-    expect(merged.placeLookupCacheId).toBe(5);
+    expect(merged.placeId).toBe(5);
   });
 });
