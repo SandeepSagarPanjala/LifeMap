@@ -42,6 +42,11 @@ export default defineConfig({
   resolve: {
     alias: {
       '@lifemap/assets': path.resolve(rootDir, '../assets'),
+      '@lifemap/constants': path.resolve(
+        rootDir,
+        '../packages/constants/src/index.ts',
+      ),
+      '@lifemap/copy': path.resolve(rootDir, '../packages/copy/src/index.ts'),
       '@lifemap/segmentation': path.resolve(
         rootDir,
         '../packages/segmentation/src',

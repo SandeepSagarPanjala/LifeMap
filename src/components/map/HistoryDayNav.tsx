@@ -3,7 +3,8 @@ import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {ChevronLeft, ChevronRight} from 'lucide-react-native';
 
 import {getTodayDateKey, shiftDateKey} from '@/lib/day-utils';
-import {formatHistoryDayNavLabel, HISTORY_COLORS} from '@/lib/history-timeline';
+import {HISTORY_COLORS} from '@/lib/app-constants';
+import {formatHistoryDayNavLabel} from '@/lib/history-timeline';
 import {useAppStore} from '@/stores/app-store';
 
 const ICON_COLOR = HISTORY_COLORS.playhead;

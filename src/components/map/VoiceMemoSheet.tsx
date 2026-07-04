@@ -1,4 +1,5 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
+import {APP_COPY, errorMessageOr} from '@/lib/app-copy';
 import {
   ActivityIndicator,
   Alert,
@@ -16,7 +17,7 @@ import type {BottomSheetModal} from '@gorhom/bottom-sheet';
 import {CAPTURE_BUTTON_THEMES} from '@/components/map/map-capture-button-theme';
 import {VoiceLiveMeter, VoicePlaybackMeter} from '@/components/voice/VoiceMeter';
 import {Text} from '@/components/ui/text';
-import {BOTTOM_SHEET_SURFACE} from '@/components/ui/bottom-sheet-chrome';
+import {BOTTOM_SHEET_SURFACE} from '@/lib/app-constants';
 import {AppBottomSheet} from '@/components/ui/app-bottom-sheet';
 import type {VoiceMemoPreviewDraft} from '@/components/map/VoiceMemoPreviewSheet';
 import {useThemeColors} from '@/hooks/use-theme-colors';
@@ -291,7 +292,7 @@ export function VoiceMemoSheet({
       setIsPlayingPreview(false);
       setPlaybackPositionMs(0);
     } catch (error) {
-      Alert.alert('Could not stop recording', getVoiceRecordingErrorMessage(error));
+      Alert.alert(APP_COPY.alerts.couldNotStopRecording, getVoiceRecordingErrorMessage(error));
       setPhase('idle');
     }
   }, [onBeginPreview, useExternalPreview]);
@@ -348,7 +349,7 @@ export function VoiceMemoSheet({
       }
       setAutoStartFailed(true);
       if (showErrorAlert) {
-        Alert.alert('Could not start recording', getVoiceRecordingErrorMessage(error));
+        Alert.alert(APP_COPY.alerts.couldNotStartRecording, getVoiceRecordingErrorMessage(error));
       }
       return false;
     }
@@ -395,7 +396,7 @@ export function VoiceMemoSheet({
       await recorderRef.current.startPreview(previewPath);
       setIsPlayingPreview(true);
     } catch (error) {
-      Alert.alert('Could not play recording', getVoiceRecordingErrorMessage(error));
+      Alert.alert(APP_COPY.alerts.couldNotPlayRecording, getVoiceRecordingErrorMessage(error));
     }
   };
 
@@ -425,8 +426,8 @@ export function VoiceMemoSheet({
     } catch (error) {
       setPhase('preview');
       Alert.alert(
-        'Could not save voice memo',
-        error instanceof Error ? error.message : 'Something went wrong.',
+        APP_COPY.alerts.couldNotSaveVoiceMemo,
+        errorMessageOr(error),
       );
     }
   };

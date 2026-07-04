@@ -5,7 +5,7 @@ import {
   MAX_DEPARTURE_ACCURACY_METERS,
   MIN_DEPARTURE_SPEED_MS,
   STATIONARY_PING_MIN_MS,
-} from '@/lib/motion-tracking-policy';
+} from '@/lib/app-constants';
 
 export type FreshLocationSample = LocationPointLike & {
   accuracy: number | null;

@@ -1,39 +1,21 @@
 import type {Region} from 'react-native-maps';
 
-/** Neutral world view — never a specific user's city (avoids showing Denton to everyone). */
-export const MAP_FALLBACK_REGION: Region = {
-  latitude: 20,
-  longitude: 0,
-  latitudeDelta: 120,
-  longitudeDelta: 120,
-};
+import {
+  MAP_FALLBACK_REGION as MAP_FALLBACK_REGION_VALUES,
+  MAP_HISTORY_ADDRESS_CARD_GAP,
+  MAP_HISTORY_ADDRESS_CARD_HEIGHT,
+  MAP_HISTORY_DATE_NAV_ABOVE_PANEL_GAP,
+  MAP_HISTORY_EVENT_CARD_HEIGHT,
+  MAP_HISTORY_EVENT_CARD_MOMENTS_EXTRA_HEIGHT,
+  MAP_HISTORY_TIMELINE_HEIGHT,
+  MAP_LOCATE_BUTTON_BOTTOM_GAP,
+  MAP_STACK_BUTTON_GAP,
+  MAP_STACK_BUTTON_SIZE,
+} from '@/lib/app-constants';
 
-export const MAP_SETTINGS_TOP_GAP = 8;
-export const MAP_SETTINGS_SIZE = 44;
-export const MAP_SETTINGS_STACK_GAP = 8;
-export const MAP_LOCATE_BUTTON_BOTTOM_GAP = 20;
-/** Full history panel when address + event + timeline are visible. */
-export const MAP_HISTORY_PANEL_HEIGHT = 308;
-export const MAP_HISTORY_TIMELINE_HEIGHT = 72;
-export const MAP_HISTORY_EVENT_CARD_HEIGHT = 100;
-/** Extra height when the event card shows a moment counts row. */
-export const MAP_HISTORY_EVENT_CARD_MOMENTS_EXTRA_HEIGHT = 44;
-/** Height of the address-selection card (pager + action row). */
-export const MAP_HISTORY_ADDRESS_CARD_HEIGHT = 128;
-export const MAP_HISTORY_ADDRESS_CARD_GAP = 8;
-export const MAP_HISTORY_FLOATING_CONTROLS_GAP = 8;
-/** Gap between date navigation and the panel content below it. */
-export const MAP_HISTORY_DATE_NAV_ABOVE_PANEL_GAP = 8;
-/** History panel slide-down duration when closing (open still uses spring). */
-export const MAP_HISTORY_PANEL_CLOSE_MS = 350;
-export const MAP_STACK_BUTTON_SIZE = 44;
-export const MAP_STACK_BUTTON_GAP = 8;
-/** Close button + gap + date row in MapDateLabel navigation mode. */
-export const MAP_DATE_NAV_ROW_GAP = 10;
-export const MAP_DATE_NAV_CLUSTER_HEIGHT =
-  MAP_SETTINGS_SIZE + MAP_DATE_NAV_ROW_GAP + MAP_STACK_BUTTON_SIZE;
-export const MAP_LEFT_STACK_COUNT = 3;
-export const MAP_RIGHT_STACK_COUNT = 4;
+export const MAP_FALLBACK_REGION: Region = {
+  ...MAP_FALLBACK_REGION_VALUES,
+};
 
 /** Index 0 = bottom-most button in a vertical stack. */
 export function mapStackButtonBottom(baseBottom: number, indexFromBottom: number): number {

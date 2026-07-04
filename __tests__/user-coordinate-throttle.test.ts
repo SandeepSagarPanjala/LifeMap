@@ -1,8 +1,8 @@
+import {shouldRefreshUserCoordinate} from '../src/lib/user-coordinate-throttle';
 import {
-  shouldRefreshUserCoordinate,
   USER_COORDINATE_MIN_INTERVAL_MS,
   USER_COORDINATE_MIN_MOVE_METERS,
-} from '../src/lib/user-coordinate-throttle';
+} from '../src/lib/app-constants';
 
 const home = {latitude: 33.21, longitude: -97.13};
 

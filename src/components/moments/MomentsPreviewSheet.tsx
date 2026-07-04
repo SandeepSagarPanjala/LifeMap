@@ -1,4 +1,5 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
+import {APP_COPY} from '@/lib/app-copy';
 import {
   Alert,
   Dimensions,
@@ -615,7 +616,7 @@ export function MomentPreviewViewer({
         return;
       }
       setPlayingVoiceId(null);
-      Alert.alert('Could not play voice memo', getVoiceRecordingErrorMessage(error));
+      Alert.alert(APP_COPY.alerts.couldNotPlayVoiceMemo, getVoiceRecordingErrorMessage(error));
     }
   }, []);
 
@@ -747,7 +748,7 @@ export function MomentPreviewViewer({
           if (!aliveRef.current) {
             return;
           }
-          Alert.alert('Could not pause voice memo', getVoiceRecordingErrorMessage(error));
+          Alert.alert(APP_COPY.alerts.couldNotPauseVoiceMemo, getVoiceRecordingErrorMessage(error));
         }
         return;
       }
@@ -781,7 +782,7 @@ export function MomentPreviewViewer({
                 try {
                   await onDeleteMoment(moment.id);
                 } catch {
-                  Alert.alert('Could not delete moment', 'Something went wrong. Try again.');
+                  Alert.alert(APP_COPY.common.couldNotDeleteMoment, APP_COPY.common.deleteMomentTryAgain);
                 } finally {
                   setDeletingMomentId(null);
                 }

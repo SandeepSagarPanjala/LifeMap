@@ -1,5 +1,5 @@
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
-import {PLACE_LOOKUP_VENUE_RADIUS_M} from '@/lib/place-lookup-venue';
+import {PLACE_LOOKUP_VENUE_RADIUS_M} from '@/lib/app-constants';
 import type {
   PlaceLookupRow,
   VisitPlaceDisplay,

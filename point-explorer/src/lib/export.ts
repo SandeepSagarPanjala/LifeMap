@@ -12,9 +12,10 @@ import type {
   PlaceLookupStatus,
 } from '@lifemap/segmentation';
 import {rawRowsToParsedPoints} from '@lifemap/segmentation';
+import {APP_TIMEZONE} from '@lifemap/constants';
 
 const DATE_KEY_FORMATTER = new Intl.DateTimeFormat('en-CA', {
-  timeZone: 'America/Chicago',
+  timeZone: APP_TIMEZONE,
   year: 'numeric',
   month: '2-digit',
   day: '2-digit',
@@ -27,7 +28,7 @@ export function dateKeyForTimestamp(iso: string): string {
 export function formatTimestamp(iso: string | Date): string {
   const date = iso instanceof Date ? iso : new Date(iso);
   return new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/Chicago',
+    timeZone: APP_TIMEZONE,
     month: 'short',
     day: 'numeric',
     year: 'numeric',

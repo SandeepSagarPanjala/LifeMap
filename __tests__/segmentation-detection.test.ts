@@ -1,7 +1,7 @@
 import type {LocationPointRow} from '@/db/repositories/location-days';
 import {buildDayTimeline, detectTripsFromPoints} from '@/lib/segmentation';
 import type {PlaceLookupRow} from '@/lib/place-lookup-types';
-import {PLACE_LOOKUP_VENUE_RADIUS_M} from '@/lib/place-lookup-venue';
+import {PLACE_LOOKUP_VENUE_RADIUS_M} from '@/lib/app-constants';
 import {buildTripDetectionConfig} from '@/lib/trip-settings';
 
 const HOME = {lat: 33.21, lng: -97.13};

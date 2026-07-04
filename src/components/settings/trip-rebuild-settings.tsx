@@ -1,4 +1,5 @@
 import {useCallback, useState} from 'react';
+import {APP_COPY, errorMessageOr} from '@/lib/app-copy';
 import {format} from 'date-fns';
 import {ActivityIndicator, Alert, Modal, Pressable, View} from 'react-native';
 
@@ -35,8 +36,8 @@ export function TripRebuildSettings() {
       );
     } catch (error) {
       Alert.alert(
-        'Could not rebuild today',
-        error instanceof Error ? error.message : 'Something went wrong.',
+        APP_COPY.alerts.couldNotRebuildToday,
+        errorMessageOr(error),
       );
     } finally {
       setRebuildingToday(false);
@@ -72,8 +73,8 @@ export function TripRebuildSettings() {
       );
     } catch (error) {
       Alert.alert(
-        'Could not rebuild trips',
-        error instanceof Error ? error.message : 'Something went wrong.',
+        APP_COPY.alerts.couldNotRebuildTrips,
+        errorMessageOr(error),
       );
     } finally {
       setRebuilding(false);

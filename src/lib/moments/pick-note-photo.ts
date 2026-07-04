@@ -1,4 +1,5 @@
 import {Alert} from 'react-native';
+import {APP_COPY} from '@/lib/app-copy';
 import {
   launchCamera,
   launchImageLibrary,
@@ -8,7 +9,7 @@ import {
 } from 'react-native-image-picker';
 
 import {compressMomentImage} from '@/lib/moments/compress-image';
-import {MAX_NOTE_PHOTO_ATTACHMENTS} from '@/lib/moments/note-photo-attachments';
+import {MAX_NOTE_PHOTO_ATTACHMENTS} from '@/lib/app-constants';
 
 const LIBRARY_OPTIONS: ImageLibraryOptions = {
   mediaType: 'photo',
@@ -73,13 +74,13 @@ async function pickNotePhotosFromResponse(
     return [];
   }
   if (errorMessage) {
-    Alert.alert('Could not open photo library', errorMessage);
+    Alert.alert(APP_COPY.alerts.couldNotOpenPhotoLibrary, errorMessage);
     return [];
   }
 
   const assets = response.assets?.filter(asset => asset.uri) ?? [];
   if (assets.length === 0) {
-    Alert.alert('Could not attach photo', 'No images were returned from the library.');
+    Alert.alert(APP_COPY.alerts.couldNotAttachPhoto, APP_COPY.alerts.noImagesFromLibrary);
     return [];
   }
 
@@ -95,7 +96,7 @@ async function pickNotePhotosFromResponse(
         sourceBytes: asset.fileSize ?? null,
       });
     } catch {
-      Alert.alert('Could not attach photo', 'Failed to compress one of the selected photos.');
+      Alert.alert(APP_COPY.alerts.couldNotAttachPhoto, APP_COPY.alerts.failedCompressPhoto);
       break;
     }
   }
@@ -110,13 +111,13 @@ async function pickNotePhotoFromResponse(
     return null;
   }
   if (errorMessage) {
-    Alert.alert('Could not open photo library', errorMessage);
+    Alert.alert(APP_COPY.alerts.couldNotOpenPhotoLibrary, errorMessage);
     return null;
   }
 
   const asset = response.assets?.[0];
   if (!asset?.uri) {
-    Alert.alert('Could not attach photo', 'No image was returned from the library.');
+    Alert.alert(APP_COPY.alerts.couldNotAttachPhoto, APP_COPY.alerts.noImageFromLibrary);
     return null;
   }
 
@@ -127,7 +128,7 @@ async function pickNotePhotoFromResponse(
       sourceBytes: asset.fileSize ?? null,
     };
   } catch {
-    Alert.alert('Could not attach photo', 'Failed to compress the photo for LifeMap.');
+    Alert.alert(APP_COPY.alerts.couldNotAttachPhoto, APP_COPY.alerts.failedCompressPhotoForLifeMap);
     return null;
   }
 }

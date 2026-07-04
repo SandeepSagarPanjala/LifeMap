@@ -1,6 +1,4 @@
-export const BACKUP_FORMAT_VERSION = 1;
-
-export const BACKUP_SCHEMA_VERSION = '0017_activities';
+import {BACKUP_FORMAT_VERSION} from '@/lib/app-constants';
 
 export type BackupTableName =
   | 'activities'

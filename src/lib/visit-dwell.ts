@@ -3,8 +3,8 @@ import type {DetectedTrip} from '@/lib/trip-detection';
 import {
   DEFAULT_TRIP_DWELL_MINUTES,
   SAVED_PLACE_MIN_DWELL_MINUTES,
-  type TripDetectionConfig,
-} from '@/lib/trip-settings';
+} from '@/lib/app-constants';
+import type {TripDetectionConfig} from '@/lib/trip-settings';
 
 export function isSavedPlaceVisit(stay: DetectedTrip): boolean {
   return stay.savedPlaceId != null;
@@ -14,7 +14,7 @@ export function isSavedPlaceVisit(stay: DetectedTrip): boolean {
 export function minimumVisitDwellMinutes(
   config: TripDetectionConfig,
   stay?: DetectedTrip,
-  savedPlaces: readonly SavedPlaceRow[] = [],
+  _savedPlaces: readonly SavedPlaceRow[] = [],
 ): number {
   if (stay != null && isSavedPlaceVisit(stay)) {
     return SAVED_PLACE_MIN_DWELL_MINUTES;

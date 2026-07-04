@@ -9,7 +9,7 @@ import {
   ROUTE_PATH_BORDER_WIDTH,
   ROUTE_PATH_FILL,
   ROUTE_PATH_FILL_WIDTH,
-} from '@/lib/route-map-style';
+} from '@/lib/app-constants';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
 
 type RoutePathOverlayProps = {

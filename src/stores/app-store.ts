@@ -3,13 +3,13 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { DEFAULT_ACCENT_THEME, type AccentThemeId } from '@/lib/color-themes';
 import {
+  DEFAULT_ACCENT_THEME,
   DEFAULT_TRIP_DWELL_MINUTES,
   DEFAULT_TRIP_DWELL_RADIUS_METERS,
-  type TripDwellMinutes,
-  type TripRadiusMeters,
-} from '@/lib/trip-settings';
+  type AccentThemeId,
+} from '@/lib/app-constants';
+import type {TripDwellMinutes, TripRadiusMeters} from '@/lib/trip-settings';
 
 export type DistanceUnit = 'km' | 'mi';
 export type PreferredMapApp = 'google' | 'apple';

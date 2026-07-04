@@ -19,9 +19,6 @@ import {stayMeetsMinimumVisitDwell} from '@/lib/visit-dwell';
 
 const LOOKBACK_HOURS = 48;
 const LOOKAHEAD_HOURS = 48;
-/** Past-day map loads only need enough context for midnight splits. */
-export const HISTORY_COMPACT_CONTEXT_HOURS = 12;
-
 function lastPointBefore(
   points: LocationPointRow[],
   dayStart: Date,

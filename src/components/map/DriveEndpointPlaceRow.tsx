@@ -3,7 +3,7 @@ import {StyleSheet, Text, View} from 'react-native';
 
 import {SavedPlaceIcon} from '@/components/map/SavedPlaceIcon';
 import type {DriveEndpointLabel} from '@/lib/drive-endpoint-label';
-import {HISTORY_COLORS} from '@/lib/history-timeline';
+import {HISTORY_COLORS} from '@/lib/app-constants';
 import {SAVED_PLACE_MAP_STYLE} from '@/lib/saved-places-map';
 
 type DriveEndpointPlaceRowProps = {

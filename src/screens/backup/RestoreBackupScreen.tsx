@@ -1,4 +1,5 @@
 import {useCallback, useEffect, useMemo, useState} from 'react';
+import {APP_COPY, errorMessageOr} from '@/lib/app-copy';
 import {format} from 'date-fns';
 import {
   ActivityIndicator,
@@ -98,7 +99,7 @@ export function RestoreBackupScreen({
       setPhase('offer');
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : 'Could not load your backup.',
+        errorMessageOr(error, APP_COPY.alerts.couldNotLoadBackup),
       );
       setPhase('error');
     }
@@ -162,7 +163,7 @@ export function RestoreBackupScreen({
       return mergePlan;
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : 'Could not load your backup.',
+        errorMessageOr(error, APP_COPY.alerts.couldNotLoadBackup),
       );
       setPhase('error');
       return null;
@@ -220,7 +221,7 @@ export function RestoreBackupScreen({
     phase === 'conflicts'
       ? 'Merge your data'
       : phase === 'error'
-        ? 'Could not restore'
+        ? APP_COPY.alerts.couldNotRestore
         : phase === 'loading' || phase === 'restoring'
           ? phase === 'loading'
             ? 'Finding your backup'
@@ -237,7 +238,7 @@ export function RestoreBackupScreen({
     phase === 'conflicts'
       ? `LifeMap found a backup from ${backupLabel} and new data on this device. Choose what to keep for overlaps.`
       : phase === 'error'
-        ? (errorMessage ?? 'Something went wrong.')
+        ? (errorMessage ?? APP_COPY.common.somethingWentWrong)
         : phase === 'loading' || phase === 'restoring'
           ? (progress?.message ?? 'Working…')
           : isDevPreview

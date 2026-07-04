@@ -1,11 +1,11 @@
 import {formatDuration, formatDistance} from '@lifemap/segmentation';
+import {APP_TIMEZONE} from '@lifemap/constants';
+import {APP_COPY} from '@lifemap/copy';
 
 import type {DayTimelineEntry, DetectedTrip} from './types';
 
-const TZ = 'America/Chicago';
-
 const timeFmt = new Intl.DateTimeFormat('en-US', {
-  timeZone: TZ,
+  timeZone: APP_TIMEZONE,
   hour: 'numeric',
   minute: '2-digit',
   hour12: true,
@@ -90,7 +90,7 @@ export function formatTimelineStats(entry: DayTimelineEntry): string {
   }
   const distance =
     entry.distanceKm > 0 ? formatDistance(entry.distanceKm * 1000) : '0 m';
-  return `Drive · ${distance} · ${formatTripDuration(entry.durationMs)}`;
+  return `${APP_COPY.explorer.segmentDrive} · ${distance} · ${formatTripDuration(entry.durationMs)}`;
 }
 
 export function visitPlaceName(entry: DetectedTrip): string | null {
@@ -111,5 +111,7 @@ export function driveEndpointLabel(
 }
 
 export function driveStatsLine(entry: DetectedTrip): string {
-  return formatTimelineStats(entry).replace(/^Drive · /, '');
+  const stats = formatTimelineStats(entry);
+  const prefix = `${APP_COPY.explorer.segmentDrive} · `;
+  return stats.startsWith(prefix) ? stats.slice(prefix.length) : stats;
 }

@@ -1,6 +1,6 @@
-type IdleTask = {cancel: () => void};
+import {DEFAULT_IDLE_TIMEOUT_MS} from '@/lib/app-constants';
 
-const DEFAULT_IDLE_TIMEOUT_MS = 100;
+type IdleTask = {cancel: () => void};
 
 type IdleGlobal = typeof globalThis & {
   requestIdleCallback?: (

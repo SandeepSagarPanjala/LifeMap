@@ -5,9 +5,9 @@ import {StyleSheet, Text, View} from 'react-native';
 import {format} from 'date-fns';
 
 import type {MapCoordinate} from '@/lib/location-geo';
+import {PLAYBACK_MARKER_FRAME_MS} from '@/lib/app-constants';
 import {
   getPlaybackLabelCenterOffset,
-  PLAYBACK_MARKER_FRAME_MS,
   type PlaybackLabelPlacement,
 } from '@/lib/trip-playback';
 

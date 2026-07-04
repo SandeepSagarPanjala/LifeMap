@@ -1,4 +1,5 @@
 import {useCallback, useEffect, useRef, useState, type ElementRef} from 'react';
+import {APP_COPY, errorMessageOr} from '@/lib/app-copy';
 import {
   ActivityIndicator,
   Alert,
@@ -45,7 +46,7 @@ import {
   createVoiceRecorderSession,
   getVoiceRecordingErrorMessage,
 } from '@/lib/moments/voice-recorder';
-import {VIDEO_MAX_DURATION_MS} from '@/lib/moments/media-compress-config';
+import {VIDEO_MAX_DURATION_MS} from '@/lib/app-constants';
 import {normalizeCameraPhoto} from '@/lib/moments/normalize-camera-photo';
 import {
   captureFilteredPhotoUri,
@@ -541,7 +542,7 @@ export function CapturePhotoScreen() {
       await voicePlayerRef.current.startPreview(voiceUri);
       setVoicePlaying(true);
     } catch (error) {
-      Alert.alert('Could not play recording', getVoiceRecordingErrorMessage(error));
+      Alert.alert(APP_COPY.alerts.couldNotPlayRecording, getVoiceRecordingErrorMessage(error));
     }
   }, [voicePlaying, voiceUri]);
 
@@ -640,8 +641,8 @@ export function CapturePhotoScreen() {
     (error: Error) => {
       resetRecordingState();
       Alert.alert(
-        'Could not record video',
-        error.message || 'Something went wrong.',
+        APP_COPY.alerts.couldNotRecordVideo,
+        errorMessageOr(error),
       );
     },
     [resetRecordingState],
@@ -683,8 +684,8 @@ export function CapturePhotoScreen() {
     } catch (error) {
       resetRecordingState();
       Alert.alert(
-        'Could not start recording',
-        error instanceof Error ? error.message : 'Something went wrong.',
+        APP_COPY.alerts.couldNotStartRecording,
+        errorMessageOr(error),
       );
     } finally {
       setCapturing(false);
@@ -710,8 +711,8 @@ export function CapturePhotoScreen() {
     } catch (error) {
       resetRecordingState();
       Alert.alert(
-        'Could not stop recording',
-        error instanceof Error ? error.message : 'Something went wrong.',
+        APP_COPY.alerts.couldNotStopRecording,
+        errorMessageOr(error),
       );
     } finally {
       setCapturing(false);
@@ -759,8 +760,8 @@ export function CapturePhotoScreen() {
       });
     } catch (error) {
       Alert.alert(
-        'Could not take photo',
-        error instanceof Error ? error.message : 'Something went wrong.',
+        APP_COPY.alerts.couldNotTakePhoto,
+        errorMessageOr(error),
       );
     } finally {
       setCapturing(false);
@@ -803,8 +804,8 @@ export function CapturePhotoScreen() {
       navigation.goBack();
     } catch (error) {
       Alert.alert(
-        draft.kind === 'photo' ? 'Could not save photo' : 'Could not save video',
-        error instanceof Error ? error.message : 'Something went wrong.',
+        draft.kind === 'photo' ? APP_COPY.alerts.couldNotSavePhoto : APP_COPY.alerts.couldNotSaveVideo,
+        errorMessageOr(error),
       );
     } finally {
       setSaving(false);

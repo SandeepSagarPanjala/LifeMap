@@ -3,8 +3,8 @@ import type {Region} from 'react-native-maps';
 import {getLatestLocationPoint} from '@/db/repositories/location-points';
 import {MAP_FALLBACK_REGION} from '@/screens/map/map-screen-constants';
 
+import {MAP_USER_ZOOM_DELTA} from '@/lib/app-constants';
 import {
-  MAP_USER_ZOOM_DELTA,
   regionAroundCoordinate,
   type MapCoordinate,
 } from './map-location-utils';

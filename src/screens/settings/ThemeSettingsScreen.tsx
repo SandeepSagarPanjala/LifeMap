@@ -4,7 +4,7 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 
 import {Text} from '@/components/ui/text';
 import {useThemeColors} from '@/hooks/use-theme-colors';
-import {ACCENT_THEME_ORDER, ACCENT_THEMES} from '@/lib/color-themes';
+import {ACCENT_THEME_ORDER, ACCENT_THEMES} from '@/lib/app-constants';
 import {cn} from '@/lib/utils';
 import {useAppStore} from '@/stores/app-store';
 

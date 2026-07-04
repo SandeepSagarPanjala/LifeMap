@@ -7,7 +7,7 @@ import {
   MAP_DATE_NAV_ROW_GAP,
   MAP_SETTINGS_SIZE,
   MAP_STACK_BUTTON_SIZE,
-} from '@/screens/map/map-screen-constants';
+} from '@/lib/app-constants';
 
 const MAP_CLOSE_ICON_COLOR = '#E0352B';
 const HISTORY_NAV_ICON_COLOR = CAPTURE_BUTTON_THEMES.camera.icon;

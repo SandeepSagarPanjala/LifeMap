@@ -19,13 +19,13 @@ import {Pressable, ScrollView, StyleSheet, View} from 'react-native';
 
 import {Text} from '@/components/ui/text';
 import {AppBottomSheet} from '@/components/ui/app-bottom-sheet';
-import {BOTTOM_SHEET_SURFACE} from '@/components/ui/bottom-sheet-chrome';
+import {BOTTOM_SHEET_SURFACE} from '@/lib/app-constants';
 import {
   getTodayDateKey,
   parseDateKey,
   toDateKey,
 } from '@/lib/day-utils';
-import {HISTORY_COLORS} from '@/lib/history-timeline';
+import {HISTORY_COLORS} from '@/lib/app-constants';
 import {useAppStore} from '@/stores/app-store';
 
 const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];

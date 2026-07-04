@@ -1,4 +1,5 @@
 import {useCallback, useEffect, useState} from 'react';
+import {APP_COPY} from '@/lib/app-copy';
 import {View} from 'react-native';
 
 import {SettingsStatsRefreshBar} from '@/components/settings/settings-stats-refresh-bar';
@@ -34,7 +35,7 @@ export function StorageSettings() {
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : 'Could not load saved storage stats.',
+          : APP_COPY.alerts.couldNotLoadStorageStats,
       );
     }
   }, []);
@@ -50,7 +51,7 @@ export function StorageSettings() {
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : 'Could not calculate storage breakdown.',
+          : APP_COPY.alerts.couldNotCalculateStorage,
       );
     } finally {
       setCalculating(false);

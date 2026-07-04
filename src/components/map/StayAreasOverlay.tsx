@@ -13,7 +13,7 @@ import {
   STAY_AREA_STROKE,
   STAY_AREA_STROKE_EMPHASIS,
   STAY_AREA_STROKE_WIDTH,
-} from '@/lib/route-map-style';
+} from '@/lib/app-constants';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
 
 export type StayAreasTone = 'default' | 'emphasized' | 'past' | 'future';

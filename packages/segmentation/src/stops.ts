@@ -1,3 +1,4 @@
+import {DEFAULT_STOP_DETECTION_CONFIG} from '@lifemap/constants';
 import {TRIP_PLOT_SOURCES} from './sources';
 import type {ParsedPoint} from './types';
 
@@ -45,13 +46,7 @@ export type StopDetectionConfig = {
 };
 
 export const DEFAULT_STOP_CONFIG: StopDetectionConfig = {
-  radiusM: 75,
-  minDwellMs: 5 * 60 * 1000,
-  maxAccuracyM: 100,
-  movingSpeedMps: 2,
-  sparseBridgeMinGapMs: 15 * 60 * 1000,
-  sparseBridgeMaxDistanceM: 150,
-  movingBurstReturnMaxMs: 30 * 60 * 1000,
+  ...DEFAULT_STOP_DETECTION_CONFIG,
 };
 
 function canSparseBridge(

@@ -5,7 +5,9 @@ import {
   type RecordBackType,
 } from 'react-native-nitro-sound';
 
-import {VOICE_MAX_DURATION_MS} from '@/lib/moments/media-compress-config';
+import {APP_COPY} from '@/lib/app-copy';
+
+import {VOICE_MAX_DURATION_MS} from '@/lib/app-constants';
 import {createTempVoiceRecordingPath, deleteMomentContentFile} from '@/lib/moments/moment-storage';
 import {ensureMicrophonePermission} from '@/lib/microphone-permission';
 import {
@@ -275,7 +277,7 @@ export function createVoiceRecorderSession(
         }
       }
     }
-    throw lastError ?? new Error('Could not start voice recording.');
+    throw lastError ?? new Error(APP_COPY.voiceRecorder.couldNotStart);
   };
 
   return {
@@ -424,9 +426,9 @@ export function getVoiceRecordingErrorMessage(error: unknown): string {
       message.includes('failed to start recording') ||
       message.includes('failed to prepare')
     ) {
-      return 'Could not start the recorder. Tap the mic to try again.';
+      return APP_COPY.voiceRecorder.couldNotStartRecorder;
     }
     return error.message;
   }
-  return 'Could not record voice memo.';
+  return APP_COPY.voiceRecorder.couldNotRecord;
 }

@@ -1,4 +1,6 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
+import {HISTORY_DAY_LOAD_DEBOUNCE_MS} from '@/lib/app-constants';
+import {APP_COPY} from '@/lib/app-copy';
 
 import type {HistoryData} from '@/lib/history-data-types';
 import {
@@ -26,7 +28,6 @@ import {
 export type {HistoryData} from '@/lib/history-data-types';
 
 /** Wait for rapid calendar day taps to settle before hitting the database. */
-const HISTORY_DAY_LOAD_DEBOUNCE_MS = 300;
 
 export type UseHistoryForDayOptions = {
   /** When false, today is not loaded until the history panel opens. */
@@ -266,7 +267,7 @@ export function useHistoryForDay(
           const message =
             cause instanceof Error
               ? cause.message
-              : 'Could not load this day';
+              : APP_COPY.alerts.couldNotLoadDay;
           setError(message);
           throw cause;
         })

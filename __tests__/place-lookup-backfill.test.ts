@@ -6,9 +6,9 @@ import {
   tripRowToBackfillStay,
 } from '@/lib/place-lookup-backfill';
 import type {PlaceLookupRow} from '@/lib/place-lookup-types';
-import {PLACE_LOOKUP_VENUE_RADIUS_M} from '@/lib/place-lookup-venue';
+import {PLACE_LOOKUP_VENUE_RADIUS_M} from '@/lib/app-constants';
 import type {PersistedTripLabel} from '@/lib/trip-materialization';
-import {DEFAULT_TRIP_DWELL_MINUTES} from '@/lib/trip-settings';
+import {DEFAULT_TRIP_DWELL_MINUTES} from '@/lib/app-constants';
 import type {TripRow} from '@/db/repositories/trips';
 
 function tripRow(overrides: Partial<TripRow> = {}): TripRow {

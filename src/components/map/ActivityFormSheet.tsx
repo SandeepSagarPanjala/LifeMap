@@ -1,4 +1,5 @@
 import {useCallback, useEffect, useRef, useState, type ComponentRef} from 'react';
+import {APP_COPY, errorMessageOr} from '@/lib/app-copy';
 import {Alert, Keyboard, StyleSheet, View} from 'react-native';
 import {BottomSheetModalProvider} from '@gorhom/bottom-sheet';
 import type {BottomSheetModal} from '@gorhom/bottom-sheet';
@@ -113,8 +114,8 @@ export function ActivityFormSheet({
       requestClose();
     } catch (error) {
       Alert.alert(
-        'Could not save activity',
-        error instanceof Error ? error.message : 'Please try again.',
+        APP_COPY.alerts.couldNotSaveActivity,
+        errorMessageOr(error, APP_COPY.common.pleaseTryAgain),
       );
     } finally {
       setSaving(false);

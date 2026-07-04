@@ -7,7 +7,7 @@ import {SavedPlaceIcon} from '@/components/map/SavedPlaceIcon';
 import {MomentCountsRow} from '@/components/moments/MomentCountsRow';
 import {Text} from '@/components/ui/text';
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
-import {HISTORY_COLORS} from '@/lib/history-timeline';
+import {HISTORY_COLORS} from '@/lib/app-constants';
 import type {MomentCountType, MomentCounts} from '@/lib/moments/moment-counts';
 import {hasMomentCounts} from '@/lib/moments/moment-counts';
 import type {DriveEndpointLabel} from '@/lib/drive-endpoint-label';

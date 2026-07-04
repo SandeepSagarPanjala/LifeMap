@@ -1,4 +1,5 @@
 import {CameraRoll} from '@react-native-camera-roll/camera-roll';
+import {APP_COPY, errorMessageOr} from '@/lib/app-copy';
 import {Alert, Platform} from 'react-native';
 import {
   launchCamera,
@@ -8,7 +9,7 @@ import {
 
 import {insertMoment, type MomentRow} from '@/db/repositories/moments';
 import {compressMomentImage} from '@/lib/moments/compress-image';
-import {IMAGE_COMPRESS_FORMAT} from '@/lib/moments/media-compress-config';
+import {IMAGE_COMPRESS_FORMAT} from '@/lib/app-constants';
 import {
   MOMENT_IMAGE_FILE_EXTENSION,
   deleteMomentContentFile,
@@ -71,13 +72,13 @@ export async function launchCameraPhotoDraft(): Promise<CameraPhotoDraft | null>
     return null;
   }
   if (errorMessage) {
-    Alert.alert('Could not open camera', errorMessage);
+    Alert.alert(APP_COPY.alerts.couldNotOpenCamera, errorMessage);
     return null;
   }
 
   const asset = response.assets?.[0];
   if (!asset?.uri) {
-    Alert.alert('Could not save photo', 'No image was returned from the camera.');
+    Alert.alert(APP_COPY.alerts.couldNotSavePhoto, APP_COPY.alerts.noImageFromCamera);
     return null;
   }
 
@@ -85,7 +86,7 @@ export async function launchCameraPhotoDraft(): Promise<CameraPhotoDraft | null>
   try {
     normalized = await normalizeCameraPhoto(asset.uri);
   } catch {
-    Alert.alert('Could not prepare photo', 'Failed to orient the photo for editing.');
+    Alert.alert(APP_COPY.alerts.couldNotPreparePhoto, APP_COPY.alerts.failedOrientPhoto);
     return null;
   }
 
@@ -107,8 +108,8 @@ export async function savePhotoMoment(
     await saveCaptureToPhotoLibrary(sourceUri);
   } catch {
     Alert.alert(
-      'Photo saved in LifeMap',
-      'Your moment was saved in the app, but we could not add a copy to Photos.',
+      APP_COPY.capture.photoSaved,
+      APP_COPY.capture.photoSavedPhotosFailed,
     );
   }
 
@@ -116,7 +117,7 @@ export async function savePhotoMoment(
   try {
     compressedUri = await compressMomentImage(sourceUri);
   } catch {
-    throw new Error('Failed to compress the photo for LifeMap.');
+    throw new Error(APP_COPY.alerts.failedCompressPhotoForLifeMap);
   }
 
   const sandboxFile = await persistFileToMomentSandbox(
@@ -171,8 +172,8 @@ export async function capturePhotoFromCamera(): Promise<MomentRow | null> {
     return await savePhotoMoment(draft.sourceUri, draft.sourceBytes);
   } catch (error) {
     Alert.alert(
-      'Could not save photo',
-      error instanceof Error ? error.message : 'Something went wrong.',
+      APP_COPY.alerts.couldNotSavePhoto,
+      errorMessageOr(error),
     );
     return null;
   }

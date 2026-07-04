@@ -31,6 +31,8 @@
   },
   "dependencies": {
     "@date-fns/tz": "^1.5.0",
+    "@lifemap/constants": "workspace:*",
+    "@lifemap/copy": "workspace:*",
     "@lifemap/segmentation": "workspace:*",
     "@gorhom/bottom-sheet": "^5.2.14",
     "@op-engineering/op-sqlite": "^16.2.0",

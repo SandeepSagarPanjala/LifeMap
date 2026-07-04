@@ -1,4 +1,5 @@
 import {useCallback, useRef, useState} from 'react';
+import {APP_COPY, errorMessageOr} from '@/lib/app-copy';
 import {Alert, StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
@@ -18,13 +19,13 @@ import {
   upsertWorkPlace,
 } from '@/db/repositories/saved-places';
 import {useSavedPlaces} from '@/hooks/use-saved-places';
+import {MAX_SAVED_PLACES} from '@/lib/app-constants';
 import {
-  MAX_SAVED_PLACES,
   SavedPlaceLimitError,
   savedPlaceAddByAddressOptions,
 } from '@/lib/saved-places';
 import type {RootStackParamList} from '@/navigation/types';
-import {NATIVE_HALF_SHEET_HEIGHT_RATIO} from '@/navigation/native-half-sheet-capture-options';
+import {NATIVE_HALF_SHEET_HEIGHT_RATIO} from '@/lib/app-constants';
 import {useSheetCaptureClose} from '@/screens/sheets/use-sheet-capture-close';
 
 function SavedPlacesPanel({
@@ -115,9 +116,10 @@ export function SavedPlacesScreen() {
         await updateFavoritePlaceLabel(place.id, label);
         await refreshSavedPlaces();
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : 'Could not rename place';
-        Alert.alert('Rename failed', message);
+        Alert.alert(
+          APP_COPY.savedPlaces.renameFailed,
+          errorMessageOr(error, APP_COPY.alerts.couldNotRenamePlace),
+        );
         throw error;
       }
     },
@@ -162,8 +164,11 @@ export function SavedPlacesScreen() {
             'Saved place limit reached',
             `You can save up to ${MAX_SAVED_PLACES} places.`,
           );
-        } else if (error instanceof Error) {
-          Alert.alert('Could not save place', error.message);
+        } else {
+          Alert.alert(
+            APP_COPY.savedPlaces.couldNotSavePlace,
+            errorMessageOr(error, APP_COPY.savedPlaces.couldNotSavePlace),
+          );
         }
         throw error;
       }

@@ -1,3 +1,4 @@
+import {APP_COPY} from '@lifemap/copy';
 import {formatTimestamp} from './export';
 import {
   DEFAULT_STOP_CONFIG,
@@ -150,8 +151,8 @@ export function explainSegment(
     return {
       kind: 'stay',
       title: segment.savedPlaceLabel
-        ? `Stay · ${segment.savedPlaceLabel}`
-        : 'Stay',
+        ? `${APP_COPY.explorer.segmentStay} · ${segment.savedPlaceLabel}`
+        : APP_COPY.explorer.segmentStay,
       reasons,
       notes,
     };
@@ -189,7 +190,9 @@ export function explainSegment(
 
   return {
     kind: 'drive',
-    title: route ? `Drive · ${route}` : 'Drive',
+    title: route
+      ? `${APP_COPY.explorer.segmentDrive} · ${route}`
+      : APP_COPY.explorer.segmentDrive,
     reasons,
     notes,
   };
@@ -274,7 +277,7 @@ export function explainPoint(
     return {
       assignment: 'stay',
       segmentOrder: segment.order,
-      segmentLabel: segment.savedPlaceLabel ?? 'Stay',
+      segmentLabel: segment.savedPlaceLabel ?? APP_COPY.explorer.segmentStay,
       reasons,
       hints,
     };
@@ -300,7 +303,7 @@ export function explainPoint(
       segmentOrder: segment.order,
       segmentLabel: [segment.fromSavedPlaceLabel, segment.toSavedPlaceLabel]
         .filter(Boolean)
-        .join(' → ') || 'Drive',
+        .join(' → ') || APP_COPY.explorer.segmentDrive,
       reasons,
       hints,
     };

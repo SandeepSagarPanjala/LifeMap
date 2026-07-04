@@ -9,7 +9,7 @@ import {
   queueHistoryDatePickerResult,
 } from '@/lib/history-date-picker-navigation';
 import {getTodayDateKey} from '@/lib/day-utils';
-import {HISTORY_DATE_PICKER_HEIGHT_RATIO} from '@/navigation/native-half-sheet-capture-options';
+import {HISTORY_DATE_PICKER_HEIGHT_RATIO} from '@/lib/app-constants';
 import {useSheetCaptureClose} from '@/screens/sheets/use-sheet-capture-close';
 
 function HistoryDatePickerPanelHost({selectedDateKey}: {selectedDateKey: string}) {

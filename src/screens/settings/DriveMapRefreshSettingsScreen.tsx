@@ -9,11 +9,11 @@ import {
   SettingsGroupDivider,
 } from '@/components/settings/settings-group';
 import {Text} from '@/components/ui/text';
+import type {DriveMapRefreshIntervalMs} from '@/lib/app-constants';
 import {
   DRIVE_MAP_REFRESH_INTERVAL_OPTIONS,
   getDriveMapRefreshIntervalMs,
   setDriveMapRefreshIntervalMs,
-  type DriveMapRefreshIntervalMs,
 } from '@/lib/drive-map-refresh-settings';
 import {notifyDriveMapRefreshIntervalChanged} from '@/lib/today-refresh-scheduler';
 

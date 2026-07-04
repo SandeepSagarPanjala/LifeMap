@@ -19,6 +19,8 @@ import {getAllMoments} from '@/db/repositories/moments';
 import {
   BACKUP_FORMAT_VERSION,
   BACKUP_SCHEMA_VERSION,
+} from '@/lib/app-constants';
+import {
   BACKUP_TABLE_NAMES,
   type BackupManifest,
   type BackupTableName,

@@ -2,6 +2,7 @@ import {and, desc, eq} from 'drizzle-orm';
 
 import {getDatabase} from '../client';
 import {savedPlaces} from '../schema';
+import {DEFAULT_SAVED_PLACE_RADIUS_METERS} from '@/lib/app-constants';
 import {lookupSavedPlaceAddress} from '@/lib/saved-place-address';
 import {notifySavedPlacesUpdated} from '@/lib/saved-places-events';
 import {
@@ -23,8 +24,6 @@ export type SavedPlaceRow = {
   active: boolean;
   createdAt: Date;
 };
-
-export const DEFAULT_SAVED_PLACE_RADIUS_METERS = 20;
 
 function mapRow(row: typeof savedPlaces.$inferSelect): SavedPlaceRow {
   return {

@@ -1,4 +1,5 @@
 import {useCallback, useEffect, useRef, useState, type ComponentRef, type RefObject} from 'react';
+import {APP_COPY, errorMessageOr} from '@/lib/app-copy';
 import {
   ActivityIndicator,
   Alert,
@@ -23,7 +24,7 @@ import {
 } from 'react-native-system-emoji-picker';
 
 import {Text} from '@/components/ui/text';
-import {BOTTOM_SHEET_SURFACE} from '@/components/ui/bottom-sheet-chrome';
+import {BOTTOM_SHEET_SURFACE} from '@/lib/app-constants';
 import {useThemeColors} from '@/hooks/use-theme-colors';
 import {
   archiveActivity,
@@ -379,8 +380,8 @@ export function ActivityLogSheet({
       handleClose();
     } catch (error) {
       Alert.alert(
-        'Could not log activity',
-        error instanceof Error ? error.message : 'Please try again.',
+        APP_COPY.alerts.couldNotLogActivity,
+        errorMessageOr(error, APP_COPY.common.pleaseTryAgain),
       );
     } finally {
       setLoggingId(null);
@@ -394,7 +395,7 @@ export function ActivityLogSheet({
         await reorderActivities(data.map(row => row.id));
       } catch {
         await loadActivities();
-        Alert.alert('Could not reorder', 'Please try again.');
+        Alert.alert(APP_COPY.common.couldNotReorder, APP_COPY.common.pleaseTryAgain);
       }
     },
     [loadActivities],

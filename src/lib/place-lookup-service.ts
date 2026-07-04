@@ -11,10 +11,12 @@ import {
 import {notifyPlaceLookupUpdated} from '@/lib/place-lookup-events';
 import {fetchNearbyPlaceLookup} from '@/lib/place-lookup-native';
 import {
-  nextPlaceLookupRadiusM,
-  placeLookupAnchorKey,
   PLACE_LOOKUP_SESSION_BUDGET,
   PLACE_LOOKUP_VENUE_RADIUS_M,
+} from '@/lib/app-constants';
+import {
+  nextPlaceLookupRadiusM,
+  placeLookupAnchorKey,
 } from '@/lib/place-lookup-venue';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
 import {stayMeetsMinimumVisitDwell} from '@/lib/visit-dwell';

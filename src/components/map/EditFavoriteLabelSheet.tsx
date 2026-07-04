@@ -3,7 +3,7 @@ import {Pressable, StyleSheet, View} from 'react-native';
 import {BottomSheetTextInput} from '@gorhom/bottom-sheet';
 
 import {Text} from '@/components/ui/text';
-import {MAX_SAVED_PLACE_LABEL_LENGTH} from '@/lib/saved-places';
+import {MAX_SAVED_PLACE_LABEL_LENGTH} from '@/lib/app-constants';
 
 type EditFavoriteLabelPanelProps = {
   initialValue?: string;

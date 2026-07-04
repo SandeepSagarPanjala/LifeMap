@@ -1,4 +1,5 @@
 import {useCallback, useEffect, useMemo, useState} from 'react';
+import {timezoneFieldLabel} from '@lifemap/copy';
 
 import {PointsMap} from './components/PointsMap';
 import {
@@ -1087,14 +1088,14 @@ export function App() {
             <label className="field">
               <span className="field-label">
                 {mode === 'trips'
-                  ? 'Trip date (America/Chicago)'
+                  ? timezoneFieldLabel('Trip date')
                   : mode === 'explain'
-                    ? 'Explain date (America/Chicago)'
+                    ? timezoneFieldLabel('Explain date')
                   : mode === 'power'
-                    ? 'Power test range (America/Chicago)'
+                    ? timezoneFieldLabel('Power test range')
                     : mode === 'mobile'
-                      ? 'Day (America/Chicago)'
-                      : 'Date (America/Chicago)'}
+                      ? timezoneFieldLabel('Day')
+                      : timezoneFieldLabel('Date')}
               </span>
               <select
                 value={dateKey === 'all' && (mode === 'trips' || mode === 'explain' || mode === 'mobile') ? '' : dateKey}

@@ -1,4 +1,5 @@
 import type {SavedPlaceRow} from '../src/db/repositories/saved-places';
+import {MAX_SAVED_PLACE_LABEL_LENGTH, MAX_SAVED_PLACES} from '../src/lib/app-constants';
 import {
   canAddSavedPlace,
   lookupSavedPlaceById,
@@ -7,8 +8,6 @@ import {
   matchSavedPlaceForPoint,
   matchSavedPlaceForStay,
   matchSavedPlaceForTripEndpoint,
-  MAX_SAVED_PLACES,
-  MAX_SAVED_PLACE_LABEL_LENGTH,
   normalizeSavedPlaceLabel,
 } from '../src/lib/saved-places';
 import {shouldShowSavedPlaceCircles} from '../src/lib/saved-places-map';

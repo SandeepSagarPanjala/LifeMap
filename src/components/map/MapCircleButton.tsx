@@ -7,7 +7,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import {MAP_STACK_BUTTON_SIZE} from '@/screens/map/map-screen-constants';
+import {MAP_STACK_BUTTON_SIZE} from '@/lib/app-constants';
 import {CAPTURE_BUTTON_THEMES} from '@/components/map/map-capture-button-theme';
 
 const MAP_SOFT_RED_CLOSE_BG = '#FFE8E6';

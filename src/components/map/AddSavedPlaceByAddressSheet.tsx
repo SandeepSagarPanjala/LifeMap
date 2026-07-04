@@ -7,6 +7,7 @@ import {
   type ComponentRef,
   type RefObject,
 } from 'react';
+import {APP_COPY} from '@/lib/app-copy';
 import {
   ActivityIndicator,
   Keyboard,
@@ -26,10 +27,8 @@ import type {SavedPlaceKind} from '@/db/repositories/saved-places';
 import {useThemeColors} from '@/hooks/use-theme-colors';
 import type {AddressGeocodeResult} from '@/lib/place-lookup-types';
 import {fetchAddressGeocode} from '@/lib/place-lookup-native';
-import {
-  MAX_SAVED_PLACE_LABEL_LENGTH,
-  type SavedPlaceAddByAddressOptions,
-} from '@/lib/saved-places';
+import {MAX_SAVED_PLACE_LABEL_LENGTH} from '@/lib/app-constants';
+import type {SavedPlaceAddByAddressOptions} from '@/lib/saved-places';
 
 const MIN_ADDRESS_LENGTH = 5;
 
@@ -138,7 +137,7 @@ function AddSavedPlaceByAddressPanel({
       setSelectedResult(null);
       setStep('results');
     } catch {
-      setLookupError('Could not look up that address. Try again.');
+      setLookupError(APP_COPY.alerts.couldNotLookUpAddress);
     } finally {
       setLookingUp(false);
     }

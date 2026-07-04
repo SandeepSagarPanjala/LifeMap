@@ -1,4 +1,5 @@
-import {splashAnimationDurationMs, SPLASH_MAX_MS, SPLASH_MIN_MS} from '@/components/splash/splash-timing';
+import {splashAnimationDurationMs} from '@/components/splash/splash-timing';
+import {SPLASH_MAX_MS, SPLASH_MIN_MS} from '@/lib/app-constants';
 
 describe('splashAnimationDurationMs', () => {
   it('enforces a minimum visible duration', () => {

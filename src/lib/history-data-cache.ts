@@ -1,9 +1,6 @@
 import type {HistoryData} from '@/lib/history-data-types';
+import {HISTORY_DATA_CACHE_MAX_ENTRIES, TRIP_DETECTION_VERSION} from '@/lib/app-constants';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
-import {TRIP_DETECTION_VERSION} from '@/lib/trip-settings';
-
-/** Only the day the user is viewing — no background pin for today. */
-export const HISTORY_DATA_CACHE_MAX_ENTRIES = 1;
 
 /** Today never uses fingerprint cache validation — placeholder for RAM peek only. */
 export const TODAY_LIVE_FINGERPRINT = 'today-live';

@@ -12,7 +12,7 @@ import {
   tripEventKey,
   tripLabelForPersist,
 } from '@/lib/trip-materialization';
-import {TRIP_DETECTION_VERSION} from '@/lib/trip-settings';
+import {TRIP_DETECTION_VERSION} from '@/lib/app-constants';
 import type {TripRow} from '@/db/repositories/trips';
 import type {DetectedTrip} from '@/lib/trip-detection';
 import {makeMaterializedDay, makeTripPoint} from './helpers/fixtures';

@@ -1,5 +1,3 @@
-export const MAX_NOTE_PHOTO_ATTACHMENTS = 5;
-
 export type NotePhotoAttachment = {
   path: string;
   bytes: number | null;

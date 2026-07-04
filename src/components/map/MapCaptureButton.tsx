@@ -7,10 +7,8 @@ import {
   CAPTURE_ICON_SIZE,
   type CaptureButtonVariant,
 } from './map-capture-button-theme';
-import {
-  MAP_STACK_BUTTON_RIGHT,
-  mapStackButtonStyles,
-} from './map-stack-button-styles';
+import {MAP_STACK_BUTTON_RIGHT} from '@/lib/app-constants';
+import {mapStackButtonStyles} from './map-stack-button-styles';
 
 type MapCaptureButtonProps = {
   bottom: number;

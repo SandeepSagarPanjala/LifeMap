@@ -1,7 +1,7 @@
 import Svg, {Path} from 'react-native-svg';
 
 import type {SavedPlaceKind} from '@/db/repositories/saved-places';
-import {HISTORY_COLORS} from '@/lib/history-timeline';
+import {HISTORY_COLORS} from '@/lib/app-constants';
 
 type SavedPlaceIconProps = {
   kind: SavedPlaceKind;

@@ -1,13 +1,13 @@
 import {distanceKm} from '@/lib/location-geo';
+import {
+  USER_COORDINATE_MIN_INTERVAL_MS,
+  USER_COORDINATE_MIN_MOVE_METERS,
+} from '@/lib/app-constants';
 
 export type MapUserCoordinate = {
   latitude: number;
   longitude: number;
 };
-
-/** Label proximity only — the native blue puck updates on its own. */
-export const USER_COORDINATE_MIN_INTERVAL_MS = 10_000;
-export const USER_COORDINATE_MIN_MOVE_METERS = 25;
 
 export function shouldRefreshUserCoordinate(
   previous: MapUserCoordinate | null,

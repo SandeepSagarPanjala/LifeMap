@@ -7,7 +7,7 @@ import {HistoryPanelSkeleton} from '@/components/map/HistoryPanelSkeleton';
 import {HistoryTimelineBar} from '@/components/map/HistoryTimelineBar';
 import {VisitPlaceAddressCard} from '@/components/map/VisitPlaceAddressCard';
 import {VisitPlaceCustomLabelSheet} from '@/components/map/VisitPlaceCustomLabelSheet';
-import {MAP_HISTORY_DATE_NAV_ABOVE_PANEL_GAP} from '@/screens/map/map-screen-constants';
+import {MAP_HISTORY_DATE_NAV_ABOVE_PANEL_GAP} from '@/lib/app-constants';
 
 import type {MapScreenController} from './use-map-screen-controller';
 

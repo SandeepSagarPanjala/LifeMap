@@ -24,7 +24,7 @@ import {
   notifyPlaceLookupUpdated,
 } from '@/lib/place-lookup-events';
 import {expandPlaceLookupArea} from '@/lib/place-lookup-service';
-import {PLACE_LOOKUP_VENUE_RADIUS_M} from '@/lib/place-lookup-venue';
+import {PLACE_LOOKUP_VENUE_RADIUS_M} from '@/lib/app-constants';
 import {
   getMaterializationRevision,
   subscribeMaterialization,

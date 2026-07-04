@@ -6,7 +6,7 @@ import {getMomentsDayFingerprint} from '@/db/repositories/moments';
 import {getTodayDateKey} from '@/lib/day-utils';
 import {sealedThroughMs} from '@/lib/today-sealed-history';
 import {getGeometryPersistFingerprint} from '@/lib/trip-geometry-settings';
-import {TRIP_DETECTION_VERSION, TRIP_GEOMETRY_VERSION} from '@/lib/trip-settings';
+import {TRIP_DETECTION_VERSION, TRIP_GEOMETRY_VERSION} from '@/lib/app-constants';
 
 /** Cache key for history timeline — GPS, moments, and materialized trip generation. */
 export async function getDayHistoryFingerprint(

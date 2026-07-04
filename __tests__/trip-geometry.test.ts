@@ -70,8 +70,8 @@ describe('bearingDegrees', () => {
 describe('buildDrawableRouteSegments', () => {
   it('keeps stored trip routes as one polyline despite synthetic timestamps', () => {
     const {buildDrawableRouteSegments} = require('@/lib/route-segments');
-    const {buildTripDetectionConfig, HISTORY_SAME_PLACE_RADIUS_METERS} =
-      require('@/lib/trip-settings');
+    const {HISTORY_SAME_PLACE_RADIUS_METERS} = require('@/lib/app-constants');
+    const {buildTripDetectionConfig} = require('@/lib/trip-settings');
     const config = buildTripDetectionConfig(10, 5, HISTORY_SAME_PLACE_RADIUS_METERS);
 
     const storedRoute: LocationPointRow[] = [

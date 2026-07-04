@@ -11,6 +11,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@lifemap/constants": "workspace:*",
+    "@lifemap/copy": "workspace:*",
     "@lifemap/segmentation": "workspace:*",
     "leaflet": "^1.9.4",
     "lottie-react": "^2.4.1",

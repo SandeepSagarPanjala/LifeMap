@@ -10,31 +10,18 @@ import {parseDateKey, getDayRange, shiftDateKey, toDateKey} from '@/lib/day-util
 import type {DayTimelineEntry} from '@/lib/trip-detection';
 import {isVisitOngoing} from '@/lib/trip-format';
 
-const MIN_GAP_SEGMENT_PX = 2;
+import {
+  HISTORY_ANCHOR_SIZE_PX,
+  HISTORY_COLORS,
+  HISTORY_MIN_GAP_SEGMENT_PX,
+} from '@/lib/app-constants';
 
-export const ANCHOR_SIZE_PX = 20;
+export const ANCHOR_SIZE_PX = HISTORY_ANCHOR_SIZE_PX;
 
 /** @deprecated Use ANCHOR_SIZE_PX */
 export const MIN_SEGMENT_TOUCH_PX = ANCHOR_SIZE_PX;
 
-export const HISTORY_COLORS = {
-  track: '#FFFFFF',
-  trackEdge: '#E5E5EA',
-  stay: '#FF9500',
-  stayMuted: '#FFC56E',
-  travel: '#007AFF',
-  travelMuted: '#6EB0FF',
-  gap: '#AEAEB2',
-  gapMuted: '#D1D1D6',
-  segmentSelectedBorder: '#FFFFFF',
-  playhead: '#1C1C1E',
-  anchor: '#FFFFFF',
-  anchorBorder: '#1C1C1E',
-  tickLabel: '#636366',
-  tickMinor: '#C7C7CC',
-  tickMajor: '#8E8E93',
-  nowMarker: '#34C759',
-} as const;
+const MIN_GAP_SEGMENT_PX = HISTORY_MIN_GAP_SEGMENT_PX;
 
 export function historySegmentColor(
   kind: DayTimelineEntry['kind'],
