@@ -37,14 +37,14 @@ export function resetPlaceLookupSessionBudget(): void {
 export function stayQualifiesForPlaceLookup(
   stay: DetectedTrip,
   config: TripDetectionConfig,
-  savedPlaces: SavedPlaceRow[] = [],
+  savedPlaces: readonly SavedPlaceRow[] = [],
 ): boolean {
   return stayMeetsMinimumVisitDwell(stay, config, savedPlaces);
 }
 
 export function shouldSkipPlaceLookupForStay(
   stay: DetectedTrip,
-  _savedPlaces: SavedPlaceRow[],
+  _savedPlaces: readonly SavedPlaceRow[],
 ): boolean {
   return stay.savedPlaceId != null;
 }

@@ -9,7 +9,34 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
   clear: jest.fn(() => Promise.resolve()),
 }));
 
-jest.mock('react-native-reanimated', () => require('react-native-reanimated/mock'));
+jest.mock('react-native-reanimated', () => {
+  const {View} = require('react-native');
+  const createAnimatableComponent = Component => Component;
+  return {
+    __esModule: true,
+    default: {
+      createAnimatedComponent: createAnimatableComponent,
+      addWhitelistedNativeProps: () => {},
+      addWhitelistedUIProps: () => {},
+      View,
+    },
+    useSharedValue: initial => ({value: initial}),
+    useAnimatedStyle: () => ({}),
+    useDerivedValue: fn => ({value: typeof fn === 'function' ? fn() : fn}),
+    useAnimatedScrollHandler: () => () => {},
+    useAnimatedRef: () => ({current: null}),
+    withTiming: value => value,
+    withSpring: value => value,
+    runOnJS: fn => fn,
+    runOnUI: fn => fn,
+    Easing: {linear: t => t},
+    FadeIn: {duration: () => ({})},
+    FadeOut: {duration: () => ({})},
+    Layout: {duration: () => ({})},
+    SlideInDown: {duration: () => ({})},
+    SlideOutDown: {duration: () => ({})},
+  };
+});
 
 jest.mock('react-native-gesture-handler', () => {
   const {View} = require('react-native');

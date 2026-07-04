@@ -1,5 +1,6 @@
 import {Check, ChevronRight} from 'lucide-react-native';
-import {Pressable, Switch, View, type ReactNode} from 'react-native';
+import type {ReactNode} from 'react';
+import {Pressable, Switch, View} from 'react-native';
 
 import {Text} from '@/components/ui/text';
 import {useThemeColors} from '@/hooks/use-theme-colors';

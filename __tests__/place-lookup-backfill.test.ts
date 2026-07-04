@@ -8,7 +8,7 @@ import {
 import type {PlaceLookupRow} from '@/lib/place-lookup-types';
 import {PLACE_LOOKUP_VENUE_RADIUS_M} from '@/lib/app-constants';
 import type {PersistedTripLabel} from '@/lib/trip-materialization';
-import {DEFAULT_TRIP_DWELL_MINUTES} from '@/lib/app-constants';
+import {getDefaultTripDetectionConfig} from '@/lib/trip-materialization';
 import type {TripRow} from '@/db/repositories/trips';
 
 function tripRow(overrides: Partial<TripRow> = {}): TripRow {
@@ -72,7 +72,7 @@ describe('place-lookup-backfill', () => {
   });
 
   it('lists qualifying unlabeled stays only', () => {
-    const config = {dwellMinutes: DEFAULT_TRIP_DWELL_MINUTES, gapMinutes: 15};
+    const config = {...getDefaultTripDetectionConfig(), gapMinutes: 15};
     const rows = [
       tripRow(),
       tripRow({

@@ -1,9 +1,9 @@
 import type {HistoryData} from '../src/lib/history-data-types';
 import {getTodayDateKey} from '../src/lib/day-utils';
+import {HISTORY_DATA_CACHE_MAX_ENTRIES} from '@/lib/app-constants';
 import {
   historyCacheKey,
   historyDataCache,
-  HISTORY_DATA_CACHE_MAX_ENTRIES,
   resetHistoryDataCacheForTests,
 } from '../src/lib/history-data-cache';
 import {buildTripDetectionConfig} from '../src/lib/trip-settings';

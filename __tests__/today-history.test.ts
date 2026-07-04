@@ -49,6 +49,7 @@ describe('prepareTodayHistoryTimeline', () => {
         lng: home.lng,
         radiusMeters: 100,
         addressLine: null,
+        active: true,
         createdAt: new Date('2026-01-01'),
       },
     ];
@@ -133,6 +134,7 @@ describe('prepareTodayHistoryTimeline', () => {
         lng: home.lng,
         radiusMeters: 100,
         addressLine: null,
+        active: true,
         createdAt: new Date('2026-01-01'),
       },
     ];
@@ -333,9 +335,8 @@ describe('prepareTodayHistoryTimeline', () => {
       expect(todayDrive.startAt.toISOString()).toBe(
         '2026-06-08T04:51:00.000Z',
       );
-      expect(todayDrive.endAt.toISOString()).toBe(
-        '2026-06-08T05:20:00.000Z',
-      );
+      expect(todayDrive.endAt.toISOString()).toBe(referenceNow.toISOString());
+      expect(todayDrive.openThroughNow).toBe(true);
     }
 
     const yesterdayBar = buildHistoryDayRuler(
@@ -361,9 +362,7 @@ describe('prepareTodayHistoryTimeline', () => {
     expect(todaySegment.startAt.toISOString()).toBe(
       '2026-06-08T05:00:00.000Z',
     );
-    expect(todaySegment.endAt.toISOString()).toBe(
-      '2026-06-08T05:20:00.000Z',
-    );
+    expect(todaySegment.endAt.toISOString()).toBe(referenceNow.toISOString());
   });
 
   it('keeps home visit separate from cross-day drive when persisting (Jun 8 export)', () => {

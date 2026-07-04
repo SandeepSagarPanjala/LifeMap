@@ -488,8 +488,9 @@ export function CapturePhotoScreen() {
   }, []);
 
   useEffect(() => {
+    const voicePlayer = voicePlayerRef.current;
     return () => {
-      void voicePlayerRef.current.dispose();
+      void voicePlayer.dispose();
     };
   }, []);
 
