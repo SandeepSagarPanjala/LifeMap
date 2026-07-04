@@ -16,6 +16,16 @@ export type TripPointRow = {
   recordedAt: Date | null;
   locationPointId: number | null;
   source: string | null;
+  momentId: number | null;
+};
+
+export type PersistTripPointInput = {
+  lat: number;
+  lng: number;
+  recordedAt: Date;
+  locationPointId: number | null;
+  source: string;
+  momentId: number | null;
 };
 
 let tripPointSchemaEnsured = false;
@@ -39,6 +49,7 @@ function mapRow(row: typeof tripPoints.$inferSelect): TripPointRow {
     recordedAt: row.recordedAt ?? null,
     locationPointId: row.locationPointId ?? null,
     source: row.source ?? null,
+    momentId: row.momentId ?? null,
   };
 }
 
@@ -95,6 +106,7 @@ export async function listTripPointsForDay(
       recordedAt: tripPoints.recordedAt,
       locationPointId: tripPoints.locationPointId,
       source: tripPoints.source,
+      momentId: tripPoints.momentId,
     })
     .from(tripPoints)
     .innerJoin(trips, eq(tripPoints.tripId, trips.id))
@@ -134,9 +146,9 @@ export async function replaceTripPoints(
 }
 
 /** Persist full segment GPS — stays and drives — for history replay without location_points. */
-export async function replaceTripPointsFromLocations(
+export async function replaceTripPersistPoints(
   tripId: number,
-  points: readonly LocationPointRow[],
+  points: readonly PersistTripPointInput[],
 ): Promise<void> {
   await ensureTripPointSchema();
   const db = await getDatabase();
@@ -151,9 +163,28 @@ export async function replaceTripPointsFromLocations(
       seq,
       lat: point.lat,
       lng: point.lng,
+      recordedAt: point.recordedAt,
+      locationPointId: point.locationPointId,
+      source: point.source,
+      momentId: point.momentId,
+    })),
+  );
+}
+
+/** @deprecated Use replaceTripPersistPoints */
+export async function replaceTripPointsFromLocations(
+  tripId: number,
+  points: readonly LocationPointRow[],
+): Promise<void> {
+  await replaceTripPersistPoints(
+    tripId,
+    points.map(point => ({
+      lat: point.lat,
+      lng: point.lng,
       recordedAt: point.timestamp,
       locationPointId: point.id > 0 ? point.id : null,
       source: point.source ?? 'gps',
+      momentId: null,
     })),
   );
 }

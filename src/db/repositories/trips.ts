@@ -1,6 +1,11 @@
 import {and, asc, eq, inArray, notInArray} from 'drizzle-orm';
 
 import type {ResolvedPlaceFields} from '@/lib/resolved-place';
+import {
+  parseMomentRefs,
+  serializeMomentRefs,
+  type TripMomentRef,
+} from '@/lib/moment-refs';
 
 import {getDatabase} from '../client';
 import {trips} from '../schema';
@@ -26,6 +31,7 @@ export type TripRow = {
   selectedCandidateIndex: number | null;
   detectionVersion: number;
   closedAt: Date;
+  momentRefs: TripMomentRef[];
 };
 
 function mapRow(row: typeof trips.$inferSelect): TripRow {
@@ -48,6 +54,7 @@ function mapRow(row: typeof trips.$inferSelect): TripRow {
     selectedCandidateIndex: row.selectedCandidateIndex,
     detectionVersion: row.detectionVersion,
     closedAt: row.closedAt,
+    momentRefs: parseMomentRefs(row.momentRefs),
   };
 }
 
@@ -103,6 +110,7 @@ export type InsertTripInput = {
   selectedCandidateIndex?: number | null;
   detectionVersion: number;
   closedAt: Date;
+  momentRefs?: readonly TripMomentRef[];
 };
 
 function tripValues(input: InsertTripInput) {
@@ -124,6 +132,7 @@ function tripValues(input: InsertTripInput) {
     selectedCandidateIndex: input.selectedCandidateIndex ?? null,
     detectionVersion: input.detectionVersion,
     closedAt: input.closedAt,
+    momentRefs: serializeMomentRefs(input.momentRefs ?? []),
   };
 }
 
@@ -168,6 +177,7 @@ export async function upsertTrip(input: InsertTripInput): Promise<TripRow> {
         selectedCandidateIndex: input.selectedCandidateIndex ?? null,
         detectionVersion: input.detectionVersion,
         closedAt: input.closedAt,
+        momentRefs: serializeMomentRefs(input.momentRefs ?? []),
       },
     })
     .returning();

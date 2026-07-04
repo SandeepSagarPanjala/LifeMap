@@ -35,8 +35,6 @@ export function makeMoment(
 ): MomentRow {
   return {
     finishedAt: null,
-    lat: null,
-    lng: null,
     contentPath: null,
     voiceAttachmentPath: null,
     voiceAttachmentBytes: null,
@@ -48,7 +46,6 @@ export function makeMoment(
     moodScore: null,
     moodLabel: null,
     placeLabel: null,
-    linkedPointId: null,
     contentBytes: null,
     sourceBytes: null,
     contentFormat: null,
@@ -84,6 +81,7 @@ export function makeTripPoint(
     recordedAt: null,
     locationPointId: null,
     source: 'gps',
+    momentId: null,
     ...partial,
   };
 }
@@ -91,16 +89,12 @@ export function makeTripPoint(
 export function mapExportMoment(row: {
   id: number;
   timestamp: string;
-  lat: number | null;
-  lng: number | null;
   kind: string;
 }): MomentRow {
   return makeMoment({
     id: row.id,
     type: row.kind as MomentType,
     timestamp: new Date(row.timestamp),
-    lat: row.lat,
-    lng: row.lng,
   });
 }
 

@@ -162,6 +162,20 @@
       "when": 1788914000000,
       "tag": "0022_drop_trip_legacy_place_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1788915000000,
+      "tag": "0023_trip_moment_refs",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1788916000000,
+      "tag": "0024_drop_moment_location_columns",
+      "breakpoints": true
     }
   ]
 }

@@ -15,8 +15,6 @@ export type MomentRow = {
   type: MomentType;
   timestamp: Date;
   finishedAt: Date | null;
-  lat: number | null;
-  lng: number | null;
   contentPath: string | null;
   voiceAttachmentPath: string | null;
   voiceAttachmentBytes: number | null;
@@ -28,7 +26,6 @@ export type MomentRow = {
   moodScore: number | null;
   moodLabel: string | null;
   placeLabel: string | null;
-  linkedPointId: number | null;
   contentBytes: number | null;
   sourceBytes: number | null;
   contentFormat: string | null;
@@ -68,8 +65,6 @@ function mapRow(row: typeof moments.$inferSelect): MomentRow {
     type: row.type,
     timestamp: row.timestamp,
     finishedAt: row.finishedAt ?? null,
-    lat: row.lat ?? null,
-    lng: row.lng ?? null,
     contentPath: row.contentPath ?? null,
     voiceAttachmentPath: row.voiceAttachmentPath ?? null,
     voiceAttachmentBytes: row.voiceAttachmentBytes ?? null,
@@ -81,7 +76,6 @@ function mapRow(row: typeof moments.$inferSelect): MomentRow {
     moodScore: row.moodScore ?? null,
     moodLabel: row.moodLabel ?? null,
     placeLabel: row.placeLabel ?? null,
-    linkedPointId: row.linkedPointId ?? null,
     contentBytes: row.contentBytes ?? null,
     sourceBytes: row.sourceBytes ?? null,
     contentFormat: row.contentFormat ?? null,
@@ -101,9 +95,6 @@ export async function insertMoment(input: NewMoment): Promise<MomentRow> {
       type: input.type,
       timestamp: input.timestamp,
       finishedAt: input.finishedAt ?? null,
-      lat: null,
-      lng: null,
-      linkedPointId: null,
       title: input.title ?? null,
       textBody: input.textBody ?? null,
       caption: input.caption ?? null,
@@ -128,43 +119,7 @@ export async function insertMoment(input: NewMoment): Promise<MomentRow> {
 
   const row = mapRow(rows[0]!);
   notifyMomentChange(row.timestamp);
-  void import('@/lib/moments/backfill-moment-locations').then(
-    ({scheduleMomentLocationBackfillAfterInsert}) => {
-      scheduleMomentLocationBackfillAfterInsert(row);
-    },
-  );
   return row;
-}
-
-export async function updateMomentLocation(
-  id: number,
-  patch: {
-    lat: number;
-    lng: number;
-    placeLabel?: string | null;
-    linkedPointId?: number | null;
-  },
-): Promise<void> {
-  const existing = await getMomentById(id);
-  if (!existing) {
-    return;
-  }
-
-  const db = await getDatabase();
-  await db
-    .update(moments)
-    .set({
-      lat: patch.lat,
-      lng: patch.lng,
-      placeLabel:
-        patch.placeLabel !== undefined ? patch.placeLabel : existing.placeLabel,
-      linkedPointId:
-        patch.linkedPointId !== undefined
-          ? patch.linkedPointId
-          : existing.linkedPointId,
-    })
-    .where(eq(moments.id, id));
-  notifyMomentChange(existing.timestamp);
 }
 
 export async function getMomentById(id: number): Promise<MomentRow | null> {

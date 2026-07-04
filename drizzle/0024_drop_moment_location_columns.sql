@@ -1,0 +1,1 @@
+-- Location columns removed via table rebuild in src/db/migrate.ts (SQLite FK constraint).

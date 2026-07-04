@@ -39,8 +39,6 @@ export type SegmentationMomentType =
 
 export type SegmentationMoment = {
   timestamp: Date | string;
-  lat?: number | null;
-  lng?: number | null;
   type?: SegmentationMomentType;
 };
 

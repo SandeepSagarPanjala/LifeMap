@@ -1,9 +1,11 @@
 import type {LocationPointRow} from '@/db/repositories/location-days';
 import {
   canonicalizeTravelGeometry,
+  canonicalizeTravelGeometryForPersist,
   DRIVE_MIN_POINTS_TO_SIMPLIFY,
   findTurnAnchorIndices,
 } from '@/lib/travel-geometry';
+import {makeMoment} from './helpers/fixtures';
 
 function point(
   id: number,
@@ -73,5 +75,41 @@ describe('canonicalizeTravelGeometry', () => {
     expect(anchors.length).toBeGreaterThan(0);
     const simplified = canonicalizeTravelGeometry(points);
     expect(simplified.some(p => p.id === turn.id)).toBe(true);
+  });
+});
+
+function momentRow(
+  id: number,
+  iso: string,
+) {
+  return makeMoment({id, timestamp: new Date(iso), type: 'note'});
+}
+
+describe('canonicalizeTravelGeometryForPersist', () => {
+  it('forces a moment anchor onto the simplified route', () => {
+    const points: LocationPointRow[] = [];
+    for (let i = 0; i < 120; i += 1) {
+      const minutes = Math.floor(i / 60);
+      const seconds = (i % 60) * 1;
+      points.push(
+        point(
+          i + 1,
+          `2026-06-17T10:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.000Z`,
+          33.2 + i * 0.001,
+          -97.13,
+        ),
+      );
+    }
+    const startAt = points[0]!.timestamp;
+    const endAt = points[points.length - 1]!.timestamp;
+    const anchorMoment = momentRow(7, points[60]!.timestamp.toISOString());
+    const persisted = canonicalizeTravelGeometryForPersist(
+      points,
+      [anchorMoment],
+      startAt,
+      endAt,
+    );
+    expect(persisted.some(row => row.momentId === 7)).toBe(true);
+    expect(persisted.length).toBeLessThan(points.length);
   });
 });
