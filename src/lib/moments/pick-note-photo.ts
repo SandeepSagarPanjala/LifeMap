@@ -1,5 +1,5 @@
 import {Alert} from 'react-native';
-import {APP_COPY, errorMessageOr} from '@/lib/app-copy';
+import {APP_COPY} from '@/lib/app-copy';
 import {
   launchCamera,
   launchImageLibrary,

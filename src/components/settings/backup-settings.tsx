@@ -1,5 +1,5 @@
 import {useCallback, useEffect, useState} from 'react';
-import {APP_COPY, errorMessageOr} from '@/lib/app-copy';
+import {errorMessageOr} from '@/lib/app-copy';
 import {format} from 'date-fns';
 import {
   ActivityIndicator,

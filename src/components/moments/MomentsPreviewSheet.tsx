@@ -1,5 +1,5 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
-import {APP_COPY, errorMessageOr} from '@/lib/app-copy';
+import {APP_COPY} from '@/lib/app-copy';
 import {
   Alert,
   Dimensions,

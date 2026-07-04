@@ -1,5 +1,5 @@
 import {useCallback, useRef, useState} from 'react';
-import {APP_COPY, errorMessageOr} from '@/lib/app-copy';
+import {APP_COPY} from '@/lib/app-copy';
 import {Alert, StyleSheet, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';

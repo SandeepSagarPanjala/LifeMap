@@ -1,5 +1,5 @@
 import {useCallback, useEffect, useState} from 'react';
-import {APP_COPY, errorMessageOr} from '@/lib/app-copy';
+import {APP_COPY} from '@/lib/app-copy';
 import {View} from 'react-native';
 
 import {SettingsStatsRefreshBar} from '@/components/settings/settings-stats-refresh-bar';

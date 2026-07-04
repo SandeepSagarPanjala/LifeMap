@@ -111,8 +111,7 @@ export function driveEndpointLabel(
 }
 
 export function driveStatsLine(entry: DetectedTrip): string {
-  return formatTimelineStats(entry).replace(
-    new RegExp(`^${APP_COPY.explorer.segmentDrive} · `),
-    '',
-  );
+  const stats = formatTimelineStats(entry);
+  const prefix = `${APP_COPY.explorer.segmentDrive} · `;
+  return stats.startsWith(prefix) ? stats.slice(prefix.length) : stats;
 }

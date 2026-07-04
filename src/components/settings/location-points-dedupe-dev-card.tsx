@@ -1,5 +1,5 @@
 import {useCallback, useState} from 'react';
-import {APP_COPY, errorMessageOr} from '@/lib/app-copy';
+import {errorMessageOr} from '@/lib/app-copy';
 import {ActivityIndicator, Alert, Pressable, View} from 'react-native';
 import {MapPin} from 'lucide-react-native';
 

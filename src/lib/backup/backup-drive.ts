@@ -1,5 +1,5 @@
 import {format} from 'date-fns';
-import {APP_COPY, errorMessageOr} from '@/lib/app-copy';
+import {APP_COPY} from '@/lib/app-copy';
 import {InteractionManager, Platform, Share} from 'react-native';
 import ReactNativeBlobUtil from 'react-native-blob-util';
 import {
