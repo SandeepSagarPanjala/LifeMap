@@ -79,7 +79,7 @@ async function deactivateSavedPlacesByKind(
 export async function upsertHomePlace(
   lat: number,
   lng: number,
-  radiusMeters = DEFAULT_SAVED_PLACE_RADIUS_METERS,
+  _radiusMeters = DEFAULT_SAVED_PLACE_RADIUS_METERS,
   addressLineOverride?: string | null,
 ): Promise<SavedPlaceRow> {
   const db = await getDatabase();
@@ -98,7 +98,7 @@ export async function upsertHomePlace(
     label: 'Home',
     lat,
     lng,
-    radiusMeters,
+    radiusMeters: DEFAULT_SAVED_PLACE_RADIUS_METERS,
     addressLine,
     active: 1,
     createdAt: new Date(),
@@ -115,7 +115,7 @@ export async function upsertHomePlace(
 export async function upsertWorkPlace(
   lat: number,
   lng: number,
-  radiusMeters = DEFAULT_SAVED_PLACE_RADIUS_METERS,
+  _radiusMeters = DEFAULT_SAVED_PLACE_RADIUS_METERS,
   addressLineOverride?: string | null,
 ): Promise<SavedPlaceRow> {
   const db = await getDatabase();
@@ -134,7 +134,7 @@ export async function upsertWorkPlace(
     label: 'Work',
     lat,
     lng,
-    radiusMeters,
+    radiusMeters: DEFAULT_SAVED_PLACE_RADIUS_METERS,
     addressLine,
     active: 1,
     createdAt: new Date(),
@@ -152,7 +152,7 @@ export async function addFavoritePlace(
   lat: number,
   lng: number,
   label: string,
-  radiusMeters = DEFAULT_SAVED_PLACE_RADIUS_METERS,
+  _radiusMeters = DEFAULT_SAVED_PLACE_RADIUS_METERS,
   addressLineOverride?: string | null,
 ): Promise<SavedPlaceRow> {
   const db = await getDatabase();
@@ -171,7 +171,7 @@ export async function addFavoritePlace(
     label: trimmed,
     lat,
     lng,
-    radiusMeters,
+    radiusMeters: DEFAULT_SAVED_PLACE_RADIUS_METERS,
     addressLine,
     active: 1,
     createdAt: new Date(),

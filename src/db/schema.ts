@@ -124,7 +124,7 @@ export const placeLookupCache = sqliteTable(
     id: integer('id').primaryKey({autoIncrement: true}),
     anchorLat: real('anchor_lat').notNull(),
     anchorLng: real('anchor_lng').notNull(),
-    venueRadiusMeters: integer('venue_radius_meters').notNull().default(250),
+    venueRadiusMeters: integer('venue_radius_meters').notNull().default(100),
     addressLine: text('address_line'),
     candidatesJson: text('candidates_json'),
     selectedCandidateIndex: integer('selected_candidate_index'),

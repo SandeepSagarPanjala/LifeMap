@@ -11,7 +11,7 @@ export const APP_TIMEZONE = 'America/Chicago';
 export const MAX_SAVED_PLACES = 20;
 export const MAX_SAVED_PLACE_LABEL_LENGTH = 30;
 /** Default geofence radius for Home, Work, and favorites. */
-export const DEFAULT_SAVED_PLACE_RADIUS_METERS = 20;
+export const DEFAULT_SAVED_PLACE_RADIUS_METERS = 150;
 export const SAVED_PLACE_CIRCLE_MAX_ZOOM_DELTA = 0.012;
 export const MIN_SAVED_PLACE_ADDRESS_LENGTH = 5;
 export const GEOFENCE_WAKE_MIN_RADIUS_METERS = 100;
@@ -189,8 +189,8 @@ export const TRACKING_DIAGNOSTICS_RATE_LIMIT_MS = 60_000;
 // ——— Place lookup ———
 
 /** Default venue match radius for cached reverse-geocode anchors (not saved places). */
-export const PLACE_LOOKUP_VENUE_RADIUS_M = 250;
-export const PLACE_LOOKUP_RADIUS_STEPS = [250, 500, 750, 1000] as const;
+export const PLACE_LOOKUP_VENUE_RADIUS_M = 100;
+export const PLACE_LOOKUP_RADIUS_STEPS = [100, 250, 500, 750, 1000] as const;
 export const PLACE_LOOKUP_MAX_RADIUS_M =
   PLACE_LOOKUP_RADIUS_STEPS[PLACE_LOOKUP_RADIUS_STEPS.length - 1];
 export const PLACE_LOOKUP_SESSION_BUDGET = 10;
