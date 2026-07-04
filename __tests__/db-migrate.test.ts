@@ -93,7 +93,6 @@ describe('database migrations', () => {
   });
 
   it('rebuilds moments without location columns when legacy FK column remains', async () => {
-    let momentsTable = 'CREATE TABLE moments (id integer PRIMARY KEY, type text, timestamp integer, lat real, lng real, linked_point_id integer REFERENCES location_points(id), share_visibility text, content_sync_state text)';
     const sqlite = {
       execute: jest.fn(async (query: string, params?: unknown[]) => {
         if (
@@ -116,12 +115,6 @@ describe('database migrations', () => {
           ].map(name => ({name}));
           return {rows: columns};
         }
-        if (query.startsWith('CREATE TABLE moments_new')) {
-          momentsTable = query;
-        }
-        if (query.startsWith('DROP TABLE moments')) {
-          momentsTable = 'renamed';
-        }
         return {rows: []};
       }),
     };
@@ -130,6 +123,9 @@ describe('database migrations', () => {
       sqlite as never,
     );
     expect(rebuilt).toBe(true);
+    expect(sqlite.execute).toHaveBeenCalledWith(
+      expect.stringContaining('CREATE TABLE moments_new'),
+    );
     expect(sqlite.execute).toHaveBeenCalledWith('PRAGMA foreign_keys=OFF');
     expect(sqlite.execute).toHaveBeenCalledWith('PRAGMA foreign_keys=ON');
   });
