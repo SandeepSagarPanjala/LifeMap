@@ -19,7 +19,7 @@ import {
 import type { DetectedTrip } from '@/lib/trip-detection';
 import { stayMapMarkerCoordinate } from '@/lib/trip-detection';
 import { savedPlaceDisplayLabel } from '@/lib/saved-places';
-import { HISTORY_COLORS } from '@/lib/history-timeline';
+import {HISTORY_COLORS} from '@/lib/app-constants';
 
 const DOT_SIZE = 18;
 const DOT_RING_SIZE = 28;

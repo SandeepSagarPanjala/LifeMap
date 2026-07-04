@@ -1,5 +1,3 @@
-export {MAX_NOTE_PHOTO_ATTACHMENTS} from '@/lib/app-constants';
-
 export type NotePhotoAttachment = {
   path: string;
   bytes: number | null;

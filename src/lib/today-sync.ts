@@ -22,7 +22,7 @@ import {
   type DayTimelineEntry,
   type DetectedTrip,
 } from '@/lib/trip-detection';
-import {TODAY_LIVE_BUFFER_MAX_SEGMENTS} from '@/lib/today-seal-policy';
+import {TODAY_LIVE_BUFFER_MAX_SEGMENTS} from '@/lib/app-constants';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
 
 /** Withholds last 2 live segments — need ≥3 tail segments before seal can persist anything. */

@@ -15,8 +15,8 @@ import {TrackingSettings} from '@/components/settings/tracking-settings';
 import {TripRebuildSettings} from '@/components/settings/trip-rebuild-settings';
 import {backupScheduleLabel} from '@/lib/backup/backup-settings';
 import {getBackupStatus} from '@/lib/backup/backup-service';
+import {driveMapRefreshIntervalLabel} from '@/lib/app-copy';
 import {
-  driveMapRefreshIntervalLabel,
   getDriveMapRefreshIntervalMs,
 } from '@/lib/drive-map-refresh-settings';
 import {formatStorageBytes} from '@/lib/format-storage';

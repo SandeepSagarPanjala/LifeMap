@@ -1,4 +1,4 @@
-import {TRIP_GEOMETRY_VERSION} from '@/lib/trip-settings';
+import {TRIP_GEOMETRY_VERSION} from '@/lib/app-constants';
 
 /** Canonical drive geometry is always enabled — not user-configurable. */
 export async function isCanonicalTravelGeometryEnabled(): Promise<boolean> {

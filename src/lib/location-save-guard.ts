@@ -1,5 +1,5 @@
 import {distanceKm, type LocationPointLike} from '@/lib/location-geo';
-import {TRACKING_DISTANCE_FILTER_METERS} from '@/lib/tracking-presets';
+import {TRACKING_DISTANCE_FILTER_METERS} from '@/lib/app-constants';
 
 export type LastPersistedFix = {
   timestampMs: number;

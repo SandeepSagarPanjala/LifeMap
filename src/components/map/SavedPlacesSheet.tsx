@@ -5,7 +5,7 @@ import { Trash2, Pencil } from 'lucide-react-native';
 import { SavedPlaceIcon } from '@/components/map/SavedPlaceIcon';
 import { SavedPlacesEmptyState } from '@/components/map/SavedPlacesEmptyState';
 import { Text } from '@/components/ui/text';
-import { BOTTOM_SHEET_SURFACE } from '@/components/ui/bottom-sheet-chrome';
+import { BOTTOM_SHEET_SURFACE } from '@/lib/app-constants';
 import type { SavedPlaceRow } from '@/db/repositories/saved-places';
 import { savedPlaceDisplayLabel } from '@/lib/saved-places';
 import { SAVED_PLACE_MAP_STYLE } from '@/lib/saved-places-map';

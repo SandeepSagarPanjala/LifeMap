@@ -5,12 +5,7 @@ import {
   type LocationPointLike,
   type MapCoordinate,
 } from '@/lib/location-geo';
-import {
-  PLAYBACK_MARKER_FRAME_MS,
-  TRIP_PLAYBACK_DURATION_MS,
-} from '@/lib/app-constants';
-
-export {PLAYBACK_MARKER_FRAME_MS, TRIP_PLAYBACK_DURATION_MS};
+import {TRIP_PLAYBACK_DURATION_MS} from '@/lib/app-constants';
 
 /** Wall-clock playback length (accelerated, not real-time). */
 export function getTripPlaybackDurationMs(_tripDurationMs: number): number {

@@ -11,7 +11,7 @@ import {
   HISTORY_GHOST_ROUTE_FILL_WIDTH,
   HISTORY_PAST_ROUTE_BORDER,
   HISTORY_PAST_ROUTE_FILL,
-} from '@/lib/route-map-style';
+} from '@/lib/app-constants';
 
 type HistoryRoutePathProps = {
   points: LocationPointRow[];

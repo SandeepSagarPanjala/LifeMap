@@ -7,12 +7,6 @@ import {
 } from '@/lib/app-constants';
 import {driveMapRefreshIntervalLabel} from '@/lib/app-copy';
 
-export {
-  DEFAULT_DRIVE_MAP_REFRESH_INTERVAL_MS,
-  SETTINGS_KEY_DRIVE_MAP_REFRESH_INTERVAL_MS,
-  type DriveMapRefreshIntervalMs,
-};
-
 export const DRIVE_MAP_REFRESH_INTERVAL_OPTIONS: ReadonlyArray<{
   ms: DriveMapRefreshIntervalMs;
   label: string;
@@ -20,8 +14,6 @@ export const DRIVE_MAP_REFRESH_INTERVAL_OPTIONS: ReadonlyArray<{
   ms,
   label: driveMapRefreshIntervalLabel(ms),
 }));
-
-export {driveMapRefreshIntervalLabel};
 
 export function normalizeDriveMapRefreshIntervalMs(
   raw: string | null,

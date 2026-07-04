@@ -81,19 +81,18 @@ import {
 } from '@/lib/history-date-picker-navigation';
 import {useAppStore} from '@/stores/app-store';
 import {regionForCoordinates, toMapCoordinates} from '@/lib/location-geo';
+import {MAP_USER_ZOOM_DELTA, VISIT_MAX_ZOOM_DELTA} from '@/lib/app-constants';
 import {
   animateRecenterToUser,
   centerMapOnUser,
-  MAP_USER_ZOOM_DELTA,
   regionAroundCoordinate,
-  VISIT_MAX_ZOOM_DELTA,
 } from '@/lib/map-location-utils';
 import {getTripPlaybackDurationMs} from '@/lib/trip-playback';
 import {isVisitOngoing} from '@/lib/trip-format';
+import {MAX_SAVED_PLACES} from '@/lib/app-constants';
 import {
   canAddSavedPlace,
   matchSavedPlaceForStay,
-  MAX_SAVED_PLACES,
   SavedPlaceLimitError,
 } from '@/lib/saved-places';
 import {getCurrentOpenActivity} from '@/lib/today-history';
@@ -125,7 +124,6 @@ import {
 } from '@/lib/map-bootstrap-region';
 
 import {
-  MAP_FALLBACK_REGION,
   MAP_HISTORY_DATE_NAV_ABOVE_PANEL_GAP,
   MAP_HISTORY_FLOATING_CONTROLS_GAP,
   MAP_HISTORY_PANEL_CLOSE_MS,
@@ -135,6 +133,9 @@ import {
   MAP_SETTINGS_TOP_GAP,
   MAP_STACK_BUTTON_GAP,
   MAP_STACK_BUTTON_SIZE,
+} from '@/lib/app-constants';
+import {
+  MAP_FALLBACK_REGION,
   mapHistoryPanelContentHeight,
   mapStackButtonBottom,
   mapStackTotalHeight,

@@ -9,11 +9,6 @@ import {
   MIN_VISIT_IN_AREA_SPREAD_M,
 } from '@/lib/app-constants';
 
-export {
-  MIN_VISIT_IN_AREA_PATH_M,
-  MIN_VISIT_IN_AREA_SPREAD_M,
-};
-
 const VENUE_DOUGLAS_PEUCKER_EPSILON_M = 20;
 
 function sortedPoints(points: LocationPointRow[]): LocationPointRow[] {

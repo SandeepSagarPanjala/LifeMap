@@ -9,7 +9,7 @@ import type {LocationAuthorizationStatus} from '@/location/types';
 import {
   SETTINGS_KEY_TRACKING_MAX_RELIABILITY,
   TRACKING_DISTANCE_FILTER_METERS,
-} from '@/lib/tracking-presets';
+} from '@/lib/app-constants';
 
 export function TrackingSettings() {
   const [loading, setLoading] = useState(true);

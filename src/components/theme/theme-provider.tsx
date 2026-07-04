@@ -2,10 +2,8 @@ import {View, useColorScheme} from 'react-native';
 import {vars} from 'nativewind';
 import type {ReactNode} from 'react';
 
-import {
-  ACCENT_THEMES,
-  themeTokensToCssVars,
-} from '@/lib/color-themes';
+import {ACCENT_THEMES} from '@/lib/app-constants';
+import {themeTokensToCssVars} from '@/lib/color-themes';
 import {useAppStore} from '@/stores/app-store';
 
 type ThemeProviderProps = {

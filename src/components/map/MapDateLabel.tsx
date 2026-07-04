@@ -8,7 +8,7 @@ import {
   MAP_SETTINGS_TOP_GAP,
   MAP_STACK_BUTTON_SIZE,
   MAP_DATE_NAV_ROW_GAP,
-} from '@/screens/map/map-screen-constants';
+} from '@/lib/app-constants';
 
 type MapDateLabelProps = {
   label: string;

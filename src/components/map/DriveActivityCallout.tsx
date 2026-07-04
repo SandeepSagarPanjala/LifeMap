@@ -11,7 +11,7 @@ import {
   isVisitOngoing,
 } from '@/lib/trip-format';
 import type {DetectedTrip} from '@/lib/trip-detection';
-import {HISTORY_COLORS} from '@/lib/history-timeline';
+import {HISTORY_COLORS} from '@/lib/app-constants';
 
 const LIVE_PUCK_ANCHOR = {x: 0.5, y: 1} as const;
 const LIVE_PUCK_CENTER_OFFSET = {x: 0, y: -100} as const;

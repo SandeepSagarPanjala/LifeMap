@@ -9,7 +9,7 @@ import {
 } from 'react-native-image-picker';
 
 import {compressMomentImage} from '@/lib/moments/compress-image';
-import {MAX_NOTE_PHOTO_ATTACHMENTS} from '@/lib/moments/note-photo-attachments';
+import {MAX_NOTE_PHOTO_ATTACHMENTS} from '@/lib/app-constants';
 
 const LIBRARY_OPTIONS: ImageLibraryOptions = {
   mediaType: 'photo',

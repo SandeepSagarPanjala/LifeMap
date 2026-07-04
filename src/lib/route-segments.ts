@@ -3,7 +3,7 @@ import {distanceKm, type MapCoordinate, toMapCoordinates} from '@/lib/location-g
 import {
   MAX_PLAUSIBLE_SPEED_MS,
   SAME_PLACE_LINE_BREAK_MS,
-} from '@/lib/motion-tracking-policy';
+} from '@/lib/app-constants';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
 import {isStoredRoutePoints} from '@/lib/trip-geometry';
 

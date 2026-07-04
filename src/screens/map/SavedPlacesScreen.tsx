@@ -19,13 +19,13 @@ import {
   upsertWorkPlace,
 } from '@/db/repositories/saved-places';
 import {useSavedPlaces} from '@/hooks/use-saved-places';
+import {MAX_SAVED_PLACES} from '@/lib/app-constants';
 import {
-  MAX_SAVED_PLACES,
   SavedPlaceLimitError,
   savedPlaceAddByAddressOptions,
 } from '@/lib/saved-places';
 import type {RootStackParamList} from '@/navigation/types';
-import {NATIVE_HALF_SHEET_HEIGHT_RATIO} from '@/navigation/native-half-sheet-capture-options';
+import {NATIVE_HALF_SHEET_HEIGHT_RATIO} from '@/lib/app-constants';
 import {useSheetCaptureClose} from '@/screens/sheets/use-sheet-capture-close';
 
 function SavedPlacesPanel({

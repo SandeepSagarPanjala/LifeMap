@@ -4,8 +4,6 @@ import {
   SAVED_PLACE_MAP_STYLE as SAVED_PLACE_MAP_STYLE_VALUES,
 } from '@/lib/app-constants';
 
-export {SAVED_PLACE_CIRCLE_MAX_ZOOM_DELTA};
-
 export const SAVED_PLACE_MAP_STYLE: Record<
   SavedPlaceKind,
   {fill: string; stroke: string; badgeBg: string; icon: string}

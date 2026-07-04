@@ -21,8 +21,6 @@ export const ANCHOR_SIZE_PX = HISTORY_ANCHOR_SIZE_PX;
 /** @deprecated Use ANCHOR_SIZE_PX */
 export const MIN_SEGMENT_TOUCH_PX = ANCHOR_SIZE_PX;
 
-export {HISTORY_COLORS};
-
 const MIN_GAP_SEGMENT_PX = HISTORY_MIN_GAP_SEGMENT_PX;
 
 export function historySegmentColor(

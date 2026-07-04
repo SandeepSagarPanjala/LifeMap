@@ -1,18 +1,12 @@
 import {distanceKm} from '@/lib/location-geo';
-
-export type MapUserCoordinate = {
-  latitude: number;
-  longitude: number;
-};
-
 import {
   USER_COORDINATE_MIN_INTERVAL_MS,
   USER_COORDINATE_MIN_MOVE_METERS,
 } from '@/lib/app-constants';
 
-export {
-  USER_COORDINATE_MIN_INTERVAL_MS,
-  USER_COORDINATE_MIN_MOVE_METERS,
+export type MapUserCoordinate = {
+  latitude: number;
+  longitude: number;
 };
 
 export function shouldRefreshUserCoordinate(

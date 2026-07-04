@@ -1,9 +1,4 @@
-import {
-  BACKUP_FORMAT_VERSION,
-  BACKUP_SCHEMA_VERSION,
-} from '@/lib/app-constants';
-
-export {BACKUP_FORMAT_VERSION, BACKUP_SCHEMA_VERSION};
+import {BACKUP_FORMAT_VERSION} from '@/lib/app-constants';
 
 export type BackupTableName =
   | 'activities'

@@ -9,7 +9,7 @@ import {
 
 import {insertMoment, type MomentRow} from '@/db/repositories/moments';
 import {compressMomentImage} from '@/lib/moments/compress-image';
-import {IMAGE_COMPRESS_FORMAT} from '@/lib/moments/media-compress-config';
+import {IMAGE_COMPRESS_FORMAT} from '@/lib/app-constants';
 import {
   MOMENT_IMAGE_FILE_EXTENSION,
   deleteMomentContentFile,

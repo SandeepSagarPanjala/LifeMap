@@ -1,4 +1,4 @@
-import {and, desc, eq, gte, like, or, sql} from 'drizzle-orm';
+import {desc, eq, gte, like, or, sql} from 'drizzle-orm';
 
 import {getDatabase, getSqlite} from '../client';
 import {locationPoints} from '../schema';

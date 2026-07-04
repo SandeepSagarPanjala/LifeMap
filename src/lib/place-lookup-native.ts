@@ -7,7 +7,7 @@ import type {
   NativePlaceLookupResult,
   PlaceLookupCandidate,
 } from '@/lib/place-lookup-types';
-import {PLACE_LOOKUP_VENUE_RADIUS_M} from '@/lib/place-lookup-venue';
+import {PLACE_LOOKUP_VENUE_RADIUS_M} from '@/lib/app-constants';
 
 type PlaceLookupNativeModule = {
   lookupNearbyPlace(

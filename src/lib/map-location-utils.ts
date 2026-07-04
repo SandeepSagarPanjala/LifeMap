@@ -1,10 +1,5 @@
 import type {Region} from 'react-native-maps';
-import {
-  MAP_USER_ZOOM_DELTA,
-  VISIT_MAX_ZOOM_DELTA,
-} from '@/lib/app-constants';
-
-export {MAP_USER_ZOOM_DELTA, VISIT_MAX_ZOOM_DELTA};
+import {MAP_USER_ZOOM_DELTA} from '@/lib/app-constants';
 
 export type MapCoordinate = {
   latitude: number;

@@ -5,10 +5,10 @@ import {
   shouldSkipPlaceLookupForStay,
   stayQualifiesForPlaceLookup,
 } from '@/lib/place-lookup-service';
+import {PLACE_LOOKUP_VENUE_RADIUS_M} from '@/lib/app-constants';
 import {
   findNearestPlaceLookupMatch,
   isWithinPlaceLookupVenue,
-  PLACE_LOOKUP_VENUE_RADIUS_M,
 } from '@/lib/place-lookup-venue';
 import {resolveVisitPlaceDisplay} from '@/lib/place-lookup-display';
 import {isVisitPlaceLabelConfirmed} from '@/lib/place-lookup-types';

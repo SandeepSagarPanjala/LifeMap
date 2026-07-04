@@ -1,16 +1,5 @@
 import {StyleSheet} from 'react-native';
-
-import {
-  MAP_STACK_BUTTON_LEFT,
-  MAP_STACK_BUTTON_RIGHT,
-  MAP_SOFT_BLUE_BUTTON_BG,
-} from '@/lib/app-constants';
-
-export {
-  MAP_STACK_BUTTON_LEFT,
-  MAP_STACK_BUTTON_RIGHT,
-  MAP_SOFT_BLUE_BUTTON_BG,
-};
+import {MAP_SOFT_BLUE_BUTTON_BG} from '@/lib/app-constants';
 
 export const mapStackButtonStyles = StyleSheet.create({
   button: {

@@ -16,9 +16,9 @@ import {
   firstPlayableTimelineIndex,
   lastPlayableTimelineIndex,
 } from '@/lib/trip-detection';
+import {HISTORY_COLORS} from '@/lib/app-constants';
 import {
   buildHistoryDayRuler,
-  HISTORY_COLORS,
   historySegmentColor,
 } from '@/lib/history-timeline';
 

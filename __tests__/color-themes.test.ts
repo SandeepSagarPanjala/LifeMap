@@ -2,9 +2,8 @@ import {
   ACCENT_THEMES,
   ACCENT_THEME_ORDER,
   DEFAULT_ACCENT_THEME,
-  themeTokensToColors,
-  themeTokensToCssVars,
-} from '@/lib/color-themes';
+} from '@/lib/app-constants';
+import {themeTokensToColors, themeTokensToCssVars} from '@/lib/color-themes';
 
 describe('color-themes', () => {
   it('defaults to Verdant Path', () => {

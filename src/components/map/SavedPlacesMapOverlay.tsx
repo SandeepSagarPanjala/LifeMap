@@ -12,7 +12,7 @@ import {
 } from '@/lib/moments/moment-counts';
 import {savedPlaceDisplayLabel} from '@/lib/saved-places';
 import {SAVED_PLACE_MAP_STYLE} from '@/lib/saved-places-map';
-import {HISTORY_COLORS} from '@/lib/history-timeline';
+import {HISTORY_COLORS} from '@/lib/app-constants';
 
 /** Geographic point stays on the home/work badge center — never changes with zoom. */
 const SAVED_PLACE_MARKER_ANCHOR = {x: 0.5, y: 0.3} as const;

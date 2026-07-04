@@ -18,10 +18,10 @@ import {
 import {
   DEPARTURE_WATCHDOG_MIN_MS,
   DEPARTURE_WATCHDOG_MIN_MS_MAX_RELIABILITY,
-  HEARTBEAT_CURRENT_POSITION_REQUEST,
   STATIONARY_PING_MIN_MS,
   STATIONARY_PING_MIN_MS_MAX_RELIABILITY,
-} from '@/lib/motion-tracking-policy';
+} from '@/lib/app-constants';
+import {HEARTBEAT_CURRENT_POSITION_REQUEST} from '@/lib/motion-tracking-policy';
 import {recordTrackingDiagnostic} from '@/lib/tracking-diagnostics';
 import {
   createTrackingMotionGuardState,

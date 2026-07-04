@@ -27,8 +27,6 @@ import {
 import type {DetectedTrip} from '@/lib/trip-detection';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
 
-export {DEFAULT_PLACE_LOOKUP_BACKFILL_BATCH_SIZE};
-
 export type PlaceLookupBackfillOptions = {
   /** Max stays to process this batch (default 3). */
   maxTrips?: number;

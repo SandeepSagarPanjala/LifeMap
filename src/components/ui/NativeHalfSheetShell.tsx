@@ -12,7 +12,7 @@ import {BottomSheetDragHandle} from '@/components/ui/BottomSheetDragHandle';
 import {
   BOTTOM_SHEET_BACKDROP,
   BOTTOM_SHEET_SURFACE,
-} from '@/components/ui/bottom-sheet-chrome';
+} from '@/lib/app-constants';
 import {NativeHalfSheetCloseContext} from '@/components/ui/native-half-sheet-context';
 
 const BACKDROP_FADE_MS = 220;

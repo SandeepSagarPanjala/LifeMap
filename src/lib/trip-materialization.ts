@@ -72,13 +72,12 @@ import {
   type TimelineGap,
 } from '@/lib/trip-detection';
 import {
-  buildTripDetectionConfig,
   DEFAULT_TRIP_DWELL_MINUTES,
   DEFAULT_TRIP_GAP_MINUTES,
   HISTORY_SAME_PLACE_RADIUS_METERS,
   TRIP_DETECTION_VERSION,
-  type TripDetectionConfig,
-} from '@/lib/trip-settings';
+} from '@/lib/app-constants';
+import {buildTripDetectionConfig, type TripDetectionConfig} from '@/lib/trip-settings';
 const MIN_IMPLAUSIBLE_DRIVE_HOURS = 2;
 const MIN_IMPLAUSIBLE_DRIVE_AVG_KMH = 8;
 
@@ -946,4 +945,3 @@ export async function rebuildAllPastDayTrips(
 }
 
 export type { TripRow };
-export { TRIP_DETECTION_VERSION } from '@/lib/trip-settings';

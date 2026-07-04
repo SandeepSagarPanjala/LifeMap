@@ -3,10 +3,8 @@ import {Pressable, Text, View} from 'react-native';
 
 import {useThemeColors} from '@/hooks/use-theme-colors';
 
-import {
-  MAP_STACK_BUTTON_LEFT,
-  mapStackButtonStyles,
-} from './map-stack-button-styles';
+import {MAP_STACK_BUTTON_LEFT} from '@/lib/app-constants';
+import {mapStackButtonStyles} from './map-stack-button-styles';
 
 type MapHistoryButtonProps = {
   bottom: number;

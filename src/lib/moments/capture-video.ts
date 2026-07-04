@@ -4,7 +4,7 @@ import {APP_COPY} from '@/lib/app-copy';
 import { insertMoment, type MomentRow } from '@/db/repositories/moments';
 import { saveMomentToGallery } from '@/lib/moments/capture-photo';
 import { compressMomentVideo } from '@/lib/moments/compress-video';
-import { VIDEO_CONTENT_FORMAT } from '@/lib/moments/media-compress-config';
+import {VIDEO_CONTENT_FORMAT} from '@/lib/app-constants';
 import { persistFileToMomentSandbox } from '@/lib/moments/moment-storage';
 
 const MIN_VIDEO_DURATION_MS = 500;

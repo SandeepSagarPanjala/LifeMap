@@ -16,7 +16,7 @@ import {
   runLocationHeartbeat,
   toLocationSource,
 } from '@/location/location-persist-pipeline';
-import { DRIVE_GPS_WAKE_SPEED_MS } from '@/lib/motion-tracking-policy';
+import { DRIVE_GPS_WAKE_SPEED_MS } from '@/lib/app-constants';
 import { recordTrackingDiagnostic } from '@/lib/tracking-diagnostics';
 import {
   createTrackingMotionGuardState,
@@ -28,10 +28,12 @@ import {
 } from '@/lib/tracking-diagnostic-guards';
 import {
   getTrackingConfig,
+} from '@/lib/tracking-presets';
+import {
   SETTINGS_KEY_TRACKING_ENABLED,
   SETTINGS_KEY_TRACKING_MAX_RELIABILITY,
   TRACKING_DISTANCE_FILTER_METERS,
-} from '@/lib/tracking-presets';
+} from '@/lib/app-constants';
 
 import type {
   LocationAuthorizationStatus,

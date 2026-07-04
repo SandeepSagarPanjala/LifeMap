@@ -1,10 +1,5 @@
 import type {Region} from 'react-native-maps';
-import {
-  MAX_EMPHASIZED_TRIP_POLYLINE_POINTS,
-  MAX_MAP_POLYLINE_POINTS,
-} from '@/lib/app-constants';
-
-export {MAX_EMPHASIZED_TRIP_POLYLINE_POINTS, MAX_MAP_POLYLINE_POINTS};
+import {MAX_MAP_POLYLINE_POINTS} from '@/lib/app-constants';
 
 export type MapCoordinate = {
   latitude: number;

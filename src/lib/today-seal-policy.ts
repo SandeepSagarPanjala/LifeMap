@@ -7,8 +7,6 @@ import type {TripDetectionConfig} from '@/lib/trip-settings';
 
 import {TODAY_LIVE_BUFFER_MAX_SEGMENTS} from '@/lib/app-constants';
 
-export {TODAY_LIVE_BUFFER_MAX_SEGMENTS};
-
 function shouldStayLive(
   entry: DetectedTrip,
   index: number,

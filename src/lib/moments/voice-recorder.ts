@@ -7,7 +7,7 @@ import {
 
 import {APP_COPY} from '@/lib/app-copy';
 
-import {VOICE_MAX_DURATION_MS} from '@/lib/moments/media-compress-config';
+import {VOICE_MAX_DURATION_MS} from '@/lib/app-constants';
 import {createTempVoiceRecordingPath, deleteMomentContentFile} from '@/lib/moments/moment-storage';
 import {ensureMicrophonePermission} from '@/lib/microphone-permission';
 import {

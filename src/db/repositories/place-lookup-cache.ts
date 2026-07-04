@@ -11,10 +11,8 @@ import type {
   PlaceLookupRow,
   PlaceLookupStatus,
 } from '@/lib/place-lookup-types';
-import {
-  findNearestPlaceLookupMatch,
-  PLACE_LOOKUP_VENUE_RADIUS_M,
-} from '@/lib/place-lookup-venue';
+import {PLACE_LOOKUP_VENUE_RADIUS_M} from '@/lib/app-constants';
+import {findNearestPlaceLookupMatch} from '@/lib/place-lookup-venue';
 
 function mapRow(row: typeof placeLookupCache.$inferSelect): PlaceLookupRow {
   return {

@@ -1,17 +1,5 @@
 import {distanceKm, type LocationPointLike} from '@/lib/location-geo';
-import {
-  PLACE_LOOKUP_MAX_RADIUS_M,
-  PLACE_LOOKUP_RADIUS_STEPS,
-  PLACE_LOOKUP_SESSION_BUDGET,
-  PLACE_LOOKUP_VENUE_RADIUS_M,
-} from '@/lib/app-constants';
-
-export {
-  PLACE_LOOKUP_MAX_RADIUS_M,
-  PLACE_LOOKUP_RADIUS_STEPS,
-  PLACE_LOOKUP_SESSION_BUDGET,
-  PLACE_LOOKUP_VENUE_RADIUS_M,
-};
+import {PLACE_LOOKUP_RADIUS_STEPS, PLACE_LOOKUP_VENUE_RADIUS_M} from '@/lib/app-constants';
 
 export function nextPlaceLookupRadiusM(current: number): number | null {
   for (const step of PLACE_LOOKUP_RADIUS_STEPS) {

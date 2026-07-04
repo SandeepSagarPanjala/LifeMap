@@ -7,10 +7,7 @@ import {MapDateLabel} from '@/components/map/MapDateLabel';
 import {useThemeColors} from '@/hooks/use-theme-colors';
 import type {RootStackParamList} from '@/navigation/types';
 
-import {
-  MAP_SETTINGS_SIZE,
-  MAP_SETTINGS_TOP_GAP,
-} from './map-screen-constants';
+import {MAP_SETTINGS_SIZE, MAP_SETTINGS_TOP_GAP} from '@/lib/app-constants';
 import type {MapScreenController} from './use-map-screen-controller';
 
 type MapScreenTopBarProps = {

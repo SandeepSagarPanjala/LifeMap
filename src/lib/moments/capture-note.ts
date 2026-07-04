@@ -1,5 +1,5 @@
 import {insertMoment, type MomentRow} from '@/db/repositories/moments';
-import {IMAGE_COMPRESS_FORMAT, VOICE_CONTENT_FORMAT} from '@/lib/moments/media-compress-config';
+import {IMAGE_COMPRESS_FORMAT, VOICE_CONTENT_FORMAT} from '@/lib/app-constants';
 import {
   serializeNotePhotoAttachments,
   type NotePhotoAttachment,

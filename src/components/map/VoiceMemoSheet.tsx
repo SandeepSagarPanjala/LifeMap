@@ -17,7 +17,7 @@ import type {BottomSheetModal} from '@gorhom/bottom-sheet';
 import {CAPTURE_BUTTON_THEMES} from '@/components/map/map-capture-button-theme';
 import {VoiceLiveMeter, VoicePlaybackMeter} from '@/components/voice/VoiceMeter';
 import {Text} from '@/components/ui/text';
-import {BOTTOM_SHEET_SURFACE} from '@/components/ui/bottom-sheet-chrome';
+import {BOTTOM_SHEET_SURFACE} from '@/lib/app-constants';
 import {AppBottomSheet} from '@/components/ui/app-bottom-sheet';
 import type {VoiceMemoPreviewDraft} from '@/components/map/VoiceMemoPreviewSheet';
 import {useThemeColors} from '@/hooks/use-theme-colors';

@@ -19,8 +19,6 @@ import {stayMeetsMinimumVisitDwell} from '@/lib/visit-dwell';
 
 const LOOKBACK_HOURS = 48;
 const LOOKAHEAD_HOURS = 48;
-export {HISTORY_COMPACT_CONTEXT_HOURS} from '@/lib/app-constants';
-
 function lastPointBefore(
   points: LocationPointRow[],
   dayStart: Date,

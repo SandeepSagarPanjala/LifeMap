@@ -6,10 +6,12 @@ import {TripPlaybackHead} from '@/components/map/TripPlaybackHead';
 import type {LocationPointRow} from '@/db/repositories/location-days';
 import type {DriveEndpointLabel} from '@/lib/drive-endpoint-label';
 import {
-  distanceKm,
-  downsampleMapCoordinates,
   MAX_EMPHASIZED_TRIP_POLYLINE_POINTS,
   MAX_MAP_POLYLINE_POINTS,
+} from '@/lib/app-constants';
+import {
+  distanceKm,
+  downsampleMapCoordinates,
   type MapCoordinate,
   toDisplayMapCoordinates,
 } from '@/lib/location-geo';
@@ -26,7 +28,7 @@ import {
   ROUTE_PATH_FILL,
   ROUTE_PATH_FILL_SOLID,
   ROUTE_PATH_FILL_WIDTH,
-} from '@/lib/route-map-style';
+} from '@/lib/app-constants';
 
 type TripRouteOverlayProps = {
   points: LocationPointRow[];

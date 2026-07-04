@@ -24,7 +24,7 @@ import {
 } from 'react-native-system-emoji-picker';
 
 import {Text} from '@/components/ui/text';
-import {BOTTOM_SHEET_SURFACE} from '@/components/ui/bottom-sheet-chrome';
+import {BOTTOM_SHEET_SURFACE} from '@/lib/app-constants';
 import {useThemeColors} from '@/hooks/use-theme-colors';
 import {
   archiveActivity,

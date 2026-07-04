@@ -46,7 +46,7 @@ import {
   createVoiceRecorderSession,
   getVoiceRecordingErrorMessage,
 } from '@/lib/moments/voice-recorder';
-import {VIDEO_MAX_DURATION_MS} from '@/lib/moments/media-compress-config';
+import {VIDEO_MAX_DURATION_MS} from '@/lib/app-constants';
 import {normalizeCameraPhoto} from '@/lib/moments/normalize-camera-photo';
 import {
   captureFilteredPhotoUri,

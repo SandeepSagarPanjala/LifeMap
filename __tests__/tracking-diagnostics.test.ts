@@ -16,8 +16,8 @@ import {
   recordTrackingDiagnostic,
   resetTrackingDiagnosticsForTests,
   SETTINGS_KEY_TRACKING_DIAGNOSTICS_ENABLED,
-  TRACKING_EVENTS_BLOAT_DISABLE_THRESHOLD,
 } from '@/lib/tracking-diagnostics';
+import {TRACKING_EVENTS_BLOAT_DISABLE_THRESHOLD} from '@/lib/app-constants';
 
 const mockedGetSetting = jest.mocked(getSetting);
 const mockedSetSetting = jest.mocked(setSetting);

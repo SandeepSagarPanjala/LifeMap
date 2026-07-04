@@ -6,10 +6,8 @@ import {Text} from '@/components/ui/text';
 import {VisitPlaceLabelPager} from '@/components/map/VisitPlaceLabelPager';
 import {useThemeColors} from '@/hooks/use-theme-colors';
 import type {VisitPlaceDisplay} from '@/lib/place-lookup-types';
-import {
-  nextPlaceLookupRadiusM,
-  PLACE_LOOKUP_MAX_RADIUS_M,
-} from '@/lib/place-lookup-venue';
+import {PLACE_LOOKUP_MAX_RADIUS_M} from '@/lib/app-constants';
+import {nextPlaceLookupRadiusM} from '@/lib/place-lookup-venue';
 
 type VisitPlaceAddressCardProps = {
   display: VisitPlaceDisplay;

@@ -2,7 +2,7 @@ import {StyleSheet, View} from 'react-native';
 
 import {
   BOTTOM_SHEET_HANDLE,
-} from '@/components/ui/bottom-sheet-chrome';
+} from '@/lib/app-constants';
 
 /** Drag handle matching gorhom AppBottomSheet. */
 export function BottomSheetDragHandle() {

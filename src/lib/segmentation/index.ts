@@ -7,8 +7,8 @@ import {
   type TimelineGap,
   type TripTimelineOptions,
 } from '@/lib/trip-detection';
+import {HISTORY_SAME_PLACE_RADIUS_METERS} from '@/lib/app-constants';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
-import {HISTORY_SAME_PLACE_RADIUS_METERS} from '@/lib/trip-settings';
 
 import {
   detectTripsForDay,

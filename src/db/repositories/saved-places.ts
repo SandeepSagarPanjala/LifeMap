@@ -25,8 +25,6 @@ export type SavedPlaceRow = {
   createdAt: Date;
 };
 
-export {DEFAULT_SAVED_PLACE_RADIUS_METERS};
-
 function mapRow(row: typeof savedPlaces.$inferSelect): SavedPlaceRow {
   return {
     id: row.id,
