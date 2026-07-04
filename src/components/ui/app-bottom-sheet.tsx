@@ -108,13 +108,12 @@ export function AppBottomSheet({
   const [keyboardInset, setKeyboardInset] = useState(0);
   const [isClosing, setIsClosing] = useState(false);
 
-  const snapPointsKey = snapPointsProp?.join('|') ?? '';
   const snapPoints = useMemo(() => {
     if (enableDynamicSizing) {
       return undefined;
     }
     return snapPointsProp ?? DEFAULT_SNAP_POINTS;
-  }, [enableDynamicSizing, snapPointsKey, snapPointsProp]);
+  }, [enableDynamicSizing, snapPointsProp]);
 
   useEffect(() => {
     if (visible) {
@@ -147,6 +146,9 @@ export function AppBottomSheet({
     ref.current?.dismiss();
     isOpenRef.current = false;
     suppressDismissRef.current = false;
+    // instantPresent is read only when `visible` becomes true; omit from deps to
+    // avoid re-present/dismiss if the prop reference changes while open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
   }, [visible]);
 
   useEffect(() => {

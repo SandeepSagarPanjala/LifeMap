@@ -12,6 +12,7 @@ describe('geofence registry', () => {
         lng: -96.8,
         radiusMeters: 20,
         addressLine: null,
+        active: true,
         createdAt: new Date('2026-01-01'),
       },
     ]);

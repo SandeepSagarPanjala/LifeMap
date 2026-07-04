@@ -106,8 +106,8 @@ export function tripRowToBackfillStay(trip: TripRow): DetectedTrip {
     materializedTripId: trip.id,
     anchorLat: trip.centroidLat,
     anchorLng: trip.centroidLng,
-    savedPlaceId: trip.savedPlaceId,
-    savedPlaceLabel: trip.savedPlaceLabel,
+    savedPlaceId: trip.savedPlaceId ?? undefined,
+    savedPlaceLabel: trip.savedPlaceLabel ?? undefined,
   };
 }
 

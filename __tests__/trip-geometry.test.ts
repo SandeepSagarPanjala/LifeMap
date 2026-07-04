@@ -50,6 +50,7 @@ describe('resolveVisitAnchor', () => {
           lng: -97.132,
           radiusMeters: 150,
           addressLine: null,
+          active: true,
           createdAt: new Date(),
         },
       ],

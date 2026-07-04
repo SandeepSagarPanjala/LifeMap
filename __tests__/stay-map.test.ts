@@ -56,6 +56,7 @@ describe('buildStayMapCircles', () => {
           lng: -97.16,
           radiusMeters: 150,
           addressLine: null,
+          active: true,
           createdAt: new Date(),
         },
       ],

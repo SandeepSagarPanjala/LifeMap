@@ -5,7 +5,7 @@ jest.mock('@/lib/drive-map-refresh-settings', () => ({
   getDriveMapRefreshIntervalMs: jest.fn().mockResolvedValue(30_000),
 }));
 
-import {getDriveMapRefreshIntervalMs} from '@/lib/drive-map-refresh-settings';
+import {getDriveMapRefreshIntervalMs, type DriveMapRefreshIntervalMs} from '@/lib/drive-map-refresh-settings';
 import {
   getTodayHistoryRefreshRevision,
   isDriveRefreshIntervalActiveForTests,
@@ -148,10 +148,10 @@ describe('today refresh scheduler', () => {
   });
 
   it('starts only one drive interval when start is requested concurrently', async () => {
-    let resolveInterval: ((ms: number) => void) | null = null;
+    let resolveInterval: ((ms: DriveMapRefreshIntervalMs) => void) | null = null;
     jest.mocked(getDriveMapRefreshIntervalMs).mockImplementation(
       () =>
-        new Promise<number>(resolve => {
+        new Promise<DriveMapRefreshIntervalMs>(resolve => {
           resolveInterval = resolve;
         }),
     );
@@ -159,7 +159,7 @@ describe('today refresh scheduler', () => {
     updateTodayRefreshAfterSync(openDrive());
     updateTodayRefreshAfterSync(openDrive());
 
-    resolveInterval?.(30_000);
+    resolveInterval!(30_000);
     await Promise.resolve();
 
     const listener = jest.fn();

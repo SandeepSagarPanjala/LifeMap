@@ -144,6 +144,7 @@ describe('place lookup service guards', () => {
           lng: -97.13,
           radiusMeters: 150,
           addressLine: null,
+          active: true,
           createdAt: new Date(),
         },
       ]),

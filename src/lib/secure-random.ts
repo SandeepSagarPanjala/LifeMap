@@ -4,7 +4,7 @@ const CHARSET =
 function fillSecureRandomBytes(bytes: Uint8Array): void {
   const cryptoApi = globalThis.crypto;
   if (cryptoApi?.getRandomValues) {
-    cryptoApi.getRandomValues(bytes);
+    cryptoApi.getRandomValues(bytes as Uint8Array<ArrayBuffer>);
     return;
   }
   throw new Error('Secure random bytes are unavailable.');
