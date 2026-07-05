@@ -2474,6 +2474,30 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
+  - RNSentry (8.17.1):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-hermes
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Sentry (= 9.19.1)
+    - Yoga
   - RNSVG (15.15.5):
     - hermes-engine
     - RCTRequired
@@ -2613,6 +2637,9 @@ PODS:
     - ReactNativeDependencies
     - SSZipArchive (~> 2.5.5)
     - Yoga
+  - Sentry (9.19.1):
+    - Sentry/Core (= 9.19.1)
+  - Sentry/Core (9.19.1)
   - SSZipArchive (2.5.5)
   - TSBackgroundFetch (4.1.1)
   - TSLocationManager (4.1.7):
@@ -2741,6 +2768,7 @@ DEPENDENCIES:
   - RNKeychain (from `../node_modules/react-native-keychain`)
   - RNReanimated (from `../node_modules/react-native-reanimated`)
   - RNScreens (from `../node_modules/react-native-screens`)
+  - "RNSentry (from `../node_modules/@sentry/react-native`)"
   - RNSVG (from `../node_modules/react-native-svg`)
   - RNWorklets (from `../node_modules/react-native-worklets`)
   - RNZipArchive (from `../node_modules/react-native-zip-archive`)
@@ -2750,6 +2778,7 @@ DEPENDENCIES:
 SPEC REPOS:
   trunk:
     - lottie-ios
+    - Sentry
     - SSZipArchive
     - TSBackgroundFetch
     - TSLocationManager
@@ -2946,6 +2975,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-reanimated"
   RNScreens:
     :path: "../node_modules/react-native-screens"
+  RNSentry:
+    :path: "../node_modules/@sentry/react-native"
   RNSVG:
     :path: "../node_modules/react-native-svg"
   RNWorklets:
@@ -3054,9 +3085,11 @@ SPEC CHECKSUMS:
   RNKeychain: 91be81cd32b30c7d4c2569dcad29b472d9b93982
   RNReanimated: bfe71d65ce0aa482eeeae790d5db7838f2c025b0
   RNScreens: 26399d05b67fd899031458944802c218a04c8217
+  RNSentry: ce80952cb9734fd9aaec0ba2f62c520434c1a02c
   RNSVG: 7f2453d6a1cb84b5fbc9144f6e6333c196ef784b
   RNWorklets: 4dba1eb7cbfc3e8db49e5cce18a1a471fd2ed696
   RNZipArchive: 647ead787c9854c3cfd2ed818bb295da9542f8d0
+  Sentry: e4588d62ac3fd3c82652bb7c8a215ec8c3de776b
   SSZipArchive: c69881e8ac5521f0e622291387add5f60f30f3c4
   TSBackgroundFetch: 18918b6449a1e3f01eb0f5b44d6d79ce6160a5a5
   TSLocationManager: 0c1b8ed109ae05ea4247def2992b3e4e3f49f839
