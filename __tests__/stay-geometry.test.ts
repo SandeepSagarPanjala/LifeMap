@@ -1,6 +1,9 @@
 import type {MomentRow} from '@/db/repositories/moments';
 import type {LocationPointRow} from '@/db/repositories/location-days';
-import {canonicalizeStayGeometry} from '@/lib/stay-geometry';
+import {
+  canonicalizeStayGeometry,
+  canonicalizeStayGeometryForPersist,
+} from '@/lib/stay-geometry';
 import type {DetectedTrip} from '@/lib/trip-detection';
 import {makeMoment} from './helpers/fixtures';
 
@@ -76,5 +79,35 @@ describe('canonicalizeStayGeometry', () => {
     );
 
     expect(canonical.map(row => row.id)).toEqual([1, 2, 4]);
+  });
+
+  it('tags moment anchors when persisting stay geometry', () => {
+    const stay = homeStay([
+      point(1, '2026-06-17T10:00:00.000Z', 33.25, -97.15),
+      point(2, '2026-06-17T12:05:00.000Z', 33.2504, -97.1504),
+      point(3, '2026-06-17T18:00:00.000Z', 33.2502, -97.1502),
+      point(4, '2026-06-17T22:00:00.000Z', 33.2503, -97.1503),
+    ]);
+    const moments: MomentRow[] = [
+      makeMoment({
+        id: 9,
+        type: 'photo',
+        timestamp: new Date('2026-06-17T12:04:00.000Z'),
+      }),
+      makeMoment({
+        id: 10,
+        type: 'photo',
+        timestamp: new Date('2026-06-17T12:06:00.000Z'),
+      }),
+    ];
+
+    const persisted = canonicalizeStayGeometryForPersist(
+      stay,
+      {lat: 33.25, lng: -97.15},
+      moments,
+    );
+
+    expect(persisted.some(row => row.momentId === 9)).toBe(true);
+    expect(persisted.some(row => row.momentId === 10)).toBe(true);
   });
 });

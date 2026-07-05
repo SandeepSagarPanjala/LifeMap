@@ -2,6 +2,7 @@ import type {MomentMapPin} from '@/components/map/MomentMapOverlay';
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import type {MomentRow} from '@/db/repositories/moments';
 import {
+  coalesceMomentMapPins,
   partitionMomentMapPins,
   shouldClusterMomentsOnMap,
 } from '../src/lib/moments/moment-map-clustering';
@@ -65,5 +66,19 @@ describe('partitionMomentMapPins', () => {
     expect(result.savedPlaceClusters[0]?.momentIds).toEqual([1, 2]);
     expect(result.individualPins).toHaveLength(1);
     expect(result.individualPins[0]?.moment.id).toBe(3);
+  });
+});
+
+describe('coalesceMomentMapPins', () => {
+  it('merges pins in the same coordinate bucket', () => {
+    const pins = [
+      momentPin(1, 33.2149, -97.1366),
+      momentPin(2, 33.21491, -97.13661),
+      momentPin(3, 33.29, -97.05),
+    ];
+    const result = coalesceMomentMapPins(pins);
+    expect(result).toHaveLength(2);
+    const merged = result.find(pin => pin.moment.id === 1);
+    expect(merged?.groupedMoments?.map(row => row.id)).toEqual([2]);
   });
 });

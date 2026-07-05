@@ -52,6 +52,7 @@ import {
 } from '@/lib/moments/moment-counts';
 import {queueMomentPreview} from '@/lib/moments/moment-preview-navigation';
 import {
+  coalesceMomentMapPins,
   partitionMomentMapPins,
   shouldClusterMomentsOnMap,
 } from '@/lib/moments/moment-map-clustering';
@@ -784,10 +785,12 @@ export function useMapScreenController() {
     if (!showDayJourney || currentOpenVisit != null) {
       return [];
     }
-    return buildMomentMapPins(
-      dayMoments,
-      historyData.points,
-      historyEntries,
+    return coalesceMomentMapPins(
+      buildMomentMapPins(
+        dayMoments,
+        historyData.points,
+        historyEntries,
+      ),
     );
   }, [
     currentOpenVisit,
@@ -948,8 +951,15 @@ export function useMapScreenController() {
 
   const openMomentMapPinPreview = useCallback(
     (pin: MomentMapPin) => {
+      const grouped = pin.groupedMoments ?? [];
+      const moments =
+        grouped.length > 0
+          ? [pin.moment, ...grouped].sort(
+              (a, b) => a.timestamp.getTime() - b.timestamp.getTime(),
+            )
+          : dayMoments;
       openMomentPreview({
-        moments: dayMoments,
+        moments,
         initialMomentId: pin.moment.id,
       });
     },

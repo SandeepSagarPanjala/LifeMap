@@ -14,7 +14,7 @@ import {resolveStayAnchor} from '@/lib/trip-detection';
 import {
   effectiveTimelineEntryEnd,
   findContainingTimelineEntry,
-  resolveMomentCoordinate,
+  resolveMomentPinCoordinate,
 } from './moment-timeline';
 
 export type MomentCounts = {
@@ -158,8 +158,8 @@ export function resolveMomentLocation(
     entries,
     now,
   );
-  const coordinate = resolveMomentCoordinate(
-    moment.timestamp,
+  const coordinate = resolveMomentPinCoordinate(
+    moment,
     points,
     containingEntry,
   );
@@ -286,7 +286,7 @@ export function buildTravelMomentMarkers(
       continue;
     }
 
-    const resolved = resolveMomentCoordinate(moment.timestamp, points, entry);
+    const resolved = resolveMomentPinCoordinate(moment, points, entry);
     if (!resolved) {
       continue;
     }

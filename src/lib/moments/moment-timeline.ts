@@ -1,6 +1,7 @@
 import type {LocationPointRow} from '@/db/repositories/location-days';
 import type {DayTimelineEntry, DetectedTrip} from '@/lib/trip-detection';
 import {resolveStayAnchor} from '@/lib/trip-detection';
+import {isMaterializedEntry} from '@/lib/moment-refs';
 
 export type MomentTimelineMoment = {
   id: number;
@@ -209,4 +210,25 @@ export function resolveMomentCoordinate(
 
   const sorted = getSortedLocationPointsByTime(points);
   return resolveFromSortedPoints(momentTimestamp, sorted, containingEntry);
+}
+
+/** Prefer materialized trip_points anchors; fall back to GPS interpolation. */
+export function resolveMomentPinCoordinate(
+  moment: {id: number; timestamp: Date},
+  points: LocationPointRow[],
+  containingEntry: DayTimelineEntry | null,
+): {lat: number; lng: number} | null {
+  if (
+    containingEntry != null &&
+    containingEntry.kind !== 'gap' &&
+    isMaterializedEntry(containingEntry)
+  ) {
+    const anchor = containingEntry.routeMomentAnchors?.find(
+      row => row.momentId === moment.id,
+    );
+    if (anchor != null) {
+      return {lat: anchor.lat, lng: anchor.lng};
+    }
+  }
+  return resolveMomentCoordinate(moment.timestamp, points, containingEntry);
 }

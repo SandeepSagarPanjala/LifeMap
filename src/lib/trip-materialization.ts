@@ -57,7 +57,7 @@ import {
 } from '@/lib/trip-geometry';
 import { notifyMaterializationUpdated } from '@/lib/trip-materialization-events';
 import { resolveVisitAnchor } from '@/lib/visit-anchor';
-import { canonicalizeStayGeometry } from '@/lib/stay-geometry';
+import { canonicalizeStayGeometryForPersist } from '@/lib/stay-geometry';
 import {
   getGeometryPersistFingerprint,
   isCanonicalTravelGeometryEnabled,
@@ -285,23 +285,7 @@ function geometryPointsForPersist(
     );
   }
   if (entry.kind === 'stay') {
-    if (entry.points.length === 0) {
-      return locationPointsToPersistPoints([
-        {
-          id: -1,
-          timestamp: entry.startAt,
-          lat: centroid.lat,
-          lng: centroid.lng,
-          accuracy: null,
-          altitude: null,
-          speed: null,
-          source: 'anchor',
-        },
-      ]);
-    }
-    return locationPointsToPersistPoints(
-      canonicalizeStayGeometry(entry, centroid, moments),
-    );
+    return canonicalizeStayGeometryForPersist(entry, centroid, moments);
   }
   return [];
 }

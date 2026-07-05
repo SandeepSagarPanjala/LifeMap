@@ -1,5 +1,9 @@
-import {buildMomentMapPins} from '../src/components/map/MomentMapOverlay';
+import {
+  buildHistoryMomentMapPins,
+  buildMomentMapPins,
+} from '../src/components/map/MomentMapOverlay';
 import {makeMoment} from './helpers/fixtures';
+import type {DayTimelineEntry} from '@/lib/trip-detection';
 
 describe('buildMomentMapPins', () => {
   it('places photo moments on the GPS trail at capture time', () => {
@@ -42,5 +46,63 @@ describe('buildMomentMapPins', () => {
 
     expect(pins).toHaveLength(1);
     expect(pins[0]?.coordinate).toEqual({latitude: 33.5, longitude: -96.5});
+  });
+
+  it('uses materialized route anchors when available', () => {
+    const entry: DayTimelineEntry = {
+      id: 'materialized-5',
+      kind: 'stay',
+      points: [],
+      startAt: new Date('2026-06-08T14:00:00.000Z'),
+      endAt: new Date('2026-06-08T16:00:00.000Z'),
+      durationMs: 7_200_000,
+      distanceKm: 0,
+      materializedTripId: 5,
+      momentRefs: [{momentId: 1, momentKind: 'photo'}],
+      routeMomentAnchors: [{momentId: 1, lat: 33.21, lng: -97.14}],
+    };
+    const pins = buildMomentMapPins(
+      [
+        makeMoment({
+          id: 1,
+          type: 'photo',
+          timestamp: new Date('2026-06-08T15:00:00.000Z'),
+        }),
+      ],
+      [],
+      [entry],
+    );
+
+    expect(pins).toHaveLength(1);
+    expect(pins[0]?.coordinate).toEqual({latitude: 33.21, longitude: -97.14});
+  });
+});
+
+describe('buildHistoryMomentMapPins', () => {
+  it('returns no pins for materialized stays', () => {
+    const entry: DayTimelineEntry = {
+      id: 'materialized-5',
+      kind: 'stay',
+      points: [],
+      startAt: new Date('2026-06-08T14:00:00.000Z'),
+      endAt: new Date('2026-06-08T16:00:00.000Z'),
+      durationMs: 7_200_000,
+      distanceKm: 0,
+      materializedTripId: 5,
+      momentRefs: [{momentId: 1, momentKind: 'photo'}],
+      routeMomentAnchors: [{momentId: 1, lat: 33.21, lng: -97.14}],
+    };
+    const pins = buildHistoryMomentMapPins(
+      entry,
+      [
+        makeMoment({
+          id: 1,
+          type: 'photo',
+          timestamp: new Date('2026-06-08T15:00:00.000Z'),
+        }),
+      ],
+      [],
+    );
+    expect(pins).toEqual([]);
   });
 });
