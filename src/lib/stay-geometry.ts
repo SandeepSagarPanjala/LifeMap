@@ -1,5 +1,6 @@
 import type {MomentRow} from '@/db/repositories/moments';
 import type {LocationPointRow} from '@/db/repositories/location-days';
+import type {PersistTripPointInput} from '@/db/repositories/trip-points';
 import {calculatePathDistanceKm, distanceKm} from '@/lib/location-geo';
 import type {DetectedTrip} from '@/lib/trip-detection';
 import {visitCorePoints} from '@/lib/trip-detection';
@@ -220,4 +221,90 @@ export function canonicalizeStayGeometry(
   }
 
   return collectKeyPoints([arrival, departure, centroidPoint, ...momentPoints]);
+}
+
+function locationPointToPersist(
+  point: LocationPointRow,
+  momentId: number | null = null,
+): PersistTripPointInput {
+  return {
+    lat: point.lat,
+    lng: point.lng,
+    recordedAt: point.timestamp,
+    locationPointId: point.id > 0 ? point.id : null,
+    source: point.source ?? 'gps',
+    momentId,
+  };
+}
+
+function sortPersistPoints(
+  points: PersistTripPointInput[],
+): PersistTripPointInput[] {
+  return [...points].sort(
+    (a, b) => a.recordedAt.getTime() - b.recordedAt.getTime() || a.lat - b.lat,
+  );
+}
+
+/** Stay canonical geometry with forced anchors for in-segment moments. */
+export function canonicalizeStayGeometryForPersist(
+  stay: DetectedTrip,
+  centroid: {lat: number; lng: number},
+  moments: readonly MomentRow[],
+): PersistTripPointInput[] {
+  if (stay.kind !== 'stay') {
+    return [];
+  }
+
+  const shapePoints =
+    stay.points.length === 0
+      ? [
+          {
+            id: -1,
+            timestamp: stay.startAt,
+            lat: centroid.lat,
+            lng: centroid.lng,
+            accuracy: null,
+            altitude: null,
+            speed: null,
+            source: 'anchor' as const,
+          },
+        ]
+      : canonicalizeStayGeometry(stay, centroid, moments);
+
+  const output = shapePoints.map(point => locationPointToPersist(point, null));
+  const byLocationPointId = new Map<number, PersistTripPointInput>();
+  for (const row of output) {
+    if (row.locationPointId != null) {
+      byLocationPointId.set(row.locationPointId, row);
+    }
+  }
+
+  const core = stay.points.length === 0 ? shapePoints : visitCorePoints(stay);
+  const searchPoints = core.length > 0 ? core : stay.points;
+  const stayMoments = momentsInStayWindow(moments, stay.startAt, stay.endAt);
+
+  for (const moment of stayMoments) {
+    const nearest = nearestPointForMoment(searchPoints, moment);
+    if (nearest == null) {
+      continue;
+    }
+    const locationPointId = nearest.id > 0 ? nearest.id : null;
+    const existing =
+      locationPointId != null ? byLocationPointId.get(locationPointId) : undefined;
+    if (existing != null) {
+      if (existing.momentId == null) {
+        existing.momentId = moment.id;
+      } else if (existing.momentId !== moment.id) {
+        output.push(locationPointToPersist(nearest, moment.id));
+      }
+      continue;
+    }
+    const forced = locationPointToPersist(nearest, moment.id);
+    output.push(forced);
+    if (locationPointId != null) {
+      byLocationPointId.set(locationPointId, forced);
+    }
+  }
+
+  return sortPersistPoints(output);
 }

@@ -133,8 +133,10 @@ export function tripRowToDetectedTripWithGeometry(
     anchorLat: row.kind === 'stay' ? row.centroidLat : undefined,
     anchorLng: row.kind === 'stay' ? row.centroidLng : undefined,
     momentRefs,
-    routeMomentAnchors:
-      row.kind === 'travel' ? routeMomentAnchorsFromTripPoints(route) : undefined,
+    routeMomentAnchors: (() => {
+      const anchors = routeMomentAnchorsFromTripPoints(route);
+      return anchors.length > 0 ? anchors : undefined;
+    })(),
   };
 }
 

@@ -27,6 +27,50 @@ export type PartitionedMomentMapPins = {
   individualPins: MomentMapPin[];
 };
 
+function momentIdsForPin(pin: MomentMapPin): number[] {
+  return [
+    pin.moment.id,
+    ...(pin.groupedMoments?.map(moment => moment.id) ?? []),
+  ];
+}
+
+function coordinateBucket(lat: number, lng: number): string {
+  return `${lat.toFixed(4)}:${lng.toFixed(4)}`;
+}
+
+/** Merge day-journey pins that land on the same map bucket. */
+export function coalesceMomentMapPins(pins: MomentMapPin[]): MomentMapPin[] {
+  const grouped = new Map<string, MomentMapPin[]>();
+  for (const pin of pins) {
+    const bucket = coordinateBucket(
+      pin.coordinate.latitude,
+      pin.coordinate.longitude,
+    );
+    const existing = grouped.get(bucket);
+    if (existing != null) {
+      existing.push(pin);
+    } else {
+      grouped.set(bucket, [pin]);
+    }
+  }
+
+  return [...grouped.values()].map(bucketPins => {
+    if (bucketPins.length === 1) {
+      return bucketPins[0]!;
+    }
+
+    const moments = bucketPins
+      .flatMap(pin => [pin.moment, ...(pin.groupedMoments ?? [])])
+      .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+    const [first, ...rest] = moments;
+    return {
+      moment: first!,
+      coordinate: bucketPins[0]!.coordinate,
+      groupedMoments: rest.length > 0 ? rest : undefined,
+    };
+  });
+}
+
 export function partitionMomentMapPins(
   pins: MomentMapPin[],
   places: readonly SavedPlaceRow[],
@@ -55,9 +99,14 @@ export function partitionMomentMapPins(
     const counts = emptyMomentCounts();
     const momentIds: number[] = [];
     for (const pin of atPlace) {
+      for (const momentId of momentIdsForPin(pin)) {
+        momentIds.push(momentId);
+        clusteredIds.add(momentId);
+      }
       addToCounts(counts, pin.moment);
-      momentIds.push(pin.moment.id);
-      clusteredIds.add(pin.moment.id);
+      for (const grouped of pin.groupedMoments ?? []) {
+        addToCounts(counts, grouped);
+      }
     }
 
     if (hasMomentCounts(counts)) {
@@ -67,6 +116,8 @@ export function partitionMomentMapPins(
 
   return {
     savedPlaceClusters,
-    individualPins: pins.filter(pin => !clusteredIds.has(pin.moment.id)),
+    individualPins: pins.filter(
+      pin => !momentIdsForPin(pin).some(id => clusteredIds.has(id)),
+    ),
   };
 }

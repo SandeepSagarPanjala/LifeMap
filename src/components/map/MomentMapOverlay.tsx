@@ -9,9 +9,14 @@ import {
   CAPTURE_ICON_SIZE,
   type CaptureButtonVariant,
 } from '@/components/map/map-capture-button-theme';
+import {MomentCountsRow} from '@/components/moments/MomentCountsRow';
+import {
+  countMoments,
+  type MomentCounts,
+} from '@/lib/moments/moment-counts';
 import {
   findContainingTimelineEntry,
-  resolveMomentCoordinate,
+  resolveMomentPinCoordinate,
 } from '@/lib/moments/moment-timeline';
 import type {DayTimelineEntry} from '@/lib/trip-detection';
 import {isMaterializedEntry, momentsForTripRefs} from '@/lib/moment-refs';
@@ -21,6 +26,8 @@ const MARKER_ANCHOR = {x: 0.5, y: 0.5} as const;
 export type MomentMapPin = {
   moment: MomentRow;
   coordinate: {latitude: number; longitude: number};
+  /** Co-located moments merged for day-journey map display. */
+  groupedMoments?: MomentRow[];
 };
 
 function momentCaptureVariant(
@@ -38,6 +45,16 @@ function momentCaptureVariant(
   return 'camera';
 }
 
+function allMomentsForPin(pin: MomentMapPin): MomentRow[] {
+  return pin.groupedMoments != null
+    ? [pin.moment, ...pin.groupedMoments]
+    : [pin.moment];
+}
+
+function countsForPin(pin: MomentMapPin): MomentCounts {
+  return countMoments(allMomentsForPin(pin));
+}
+
 export function buildMomentMapPins(
   moments: MomentRow[],
   points: LocationPointRow[],
@@ -51,8 +68,8 @@ export function buildMomentMapPins(
         entries,
         now,
       );
-      const coordinate = resolveMomentCoordinate(
-        moment.timestamp,
+      const coordinate = resolveMomentPinCoordinate(
+        moment,
         points,
         containingEntry,
       );
@@ -67,14 +84,36 @@ export function buildMomentMapPins(
     .filter((pin): pin is MomentMapPin => pin != null);
 }
 
-/** History scrub pins — uses materialized anchors on sealed drives when available. */
+function materializedMomentMapPins(
+  entry: Extract<DayTimelineEntry, {kind: 'stay' | 'travel'}>,
+  materializedMoments: MomentRow[],
+): MomentMapPin[] {
+  if (entry.routeMomentAnchors == null || entry.routeMomentAnchors.length === 0) {
+    return [];
+  }
+  const byId = new Map(materializedMoments.map(moment => [moment.id, moment]));
+  return entry.routeMomentAnchors
+    .map(anchor => {
+      const moment = byId.get(anchor.momentId);
+      if (moment == null) {
+        return null;
+      }
+      return {
+        moment,
+        coordinate: {latitude: anchor.lat, longitude: anchor.lng},
+      };
+    })
+    .filter((pin): pin is MomentMapPin => pin != null);
+}
+
+/** History scrub pins — materialized anchors on sealed segments; stays use callout only. */
 export function buildHistoryMomentMapPins(
   entry: DayTimelineEntry,
   dayMoments: MomentRow[],
   points: LocationPointRow[],
   now: Date = new Date(),
 ): MomentMapPin[] {
-  if (entry.kind === 'gap') {
+  if (entry.kind === 'gap' || entry.kind === 'stay') {
     return [];
   }
 
@@ -82,25 +121,11 @@ export function buildHistoryMomentMapPins(
     ? momentsForTripRefs(dayMoments, entry.momentRefs ?? [])
     : filterMomentsForTimelineEntry(dayMoments, entry, now);
 
-  if (
-    isMaterializedEntry(entry) &&
-    entry.kind === 'travel' &&
-    entry.routeMomentAnchors != null &&
-    entry.routeMomentAnchors.length > 0
-  ) {
-    const byId = new Map(materializedMoments.map(moment => [moment.id, moment]));
-    return entry.routeMomentAnchors
-      .map(anchor => {
-        const moment = byId.get(anchor.momentId);
-        if (moment == null) {
-          return null;
-        }
-        return {
-          moment,
-          coordinate: {latitude: anchor.lat, longitude: anchor.lng},
-        };
-      })
-      .filter((pin): pin is MomentMapPin => pin != null);
+  if (isMaterializedEntry(entry)) {
+    const anchored = materializedMomentMapPins(entry, materializedMoments);
+    if (anchored.length > 0) {
+      return anchored;
+    }
   }
 
   return buildMomentMapPins(materializedMoments, points, [entry], now);
@@ -132,7 +157,8 @@ export function MomentMapOverlay({pins, onPressPin}: MomentMapOverlayProps) {
   return (
     <>
       {pins.map(pin => {
-        const {moment, coordinate} = pin;
+        const {moment, coordinate, groupedMoments} = pin;
+        const grouped = groupedMoments != null && groupedMoments.length > 0;
         const variant = momentCaptureVariant(moment.type);
         const theme = CAPTURE_BUTTON_THEMES[variant];
         const Icon =
@@ -144,22 +170,41 @@ export function MomentMapOverlay({pins, onPressPin}: MomentMapOverlayProps) {
         const tappable = onPressPin != null;
         const activityEmoji =
           moment.type === 'activity' ? moment.activityEmoji?.trim() : null;
+        const pinKey = grouped
+          ? `moment-cluster-${[moment.id, ...groupedMoments.map(row => row.id)].join('-')}`
+          : `moment-${moment.id}`;
 
         return (
           <Marker
-            key={`moment-${moment.id}`}
+            key={pinKey}
             coordinate={coordinate}
             anchor={MARKER_ANCHOR}
             zIndex={7}
             tracksViewChanges={false}
             onPress={tappable ? () => onPressPin(pin) : undefined}>
-            <View style={[styles.badge, {backgroundColor: theme.badgeBg}]}>
-              {activityEmoji ? (
-                <Text style={styles.activityEmoji}>{activityEmoji}</Text>
-              ) : (
-                <Icon size={CAPTURE_ICON_SIZE} color={theme.icon} strokeWidth={2.25} />
-              )}
-            </View>
+            {grouped ? (
+              <View style={styles.clusterColumn}>
+                <View style={styles.clusterBubble}>
+                  <MomentCountsRow
+                    counts={countsForPin(pin)}
+                    layout="stacked"
+                    dense
+                  />
+                </View>
+              </View>
+            ) : (
+              <View style={[styles.badge, {backgroundColor: theme.badgeBg}]}>
+                {activityEmoji ? (
+                  <Text style={styles.activityEmoji}>{activityEmoji}</Text>
+                ) : (
+                  <Icon
+                    size={CAPTURE_ICON_SIZE}
+                    color={theme.icon}
+                    strokeWidth={2.25}
+                  />
+                )}
+              </View>
+            )}
           </Marker>
         );
       })}
@@ -174,6 +219,20 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.14,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  clusterColumn: {
+    alignItems: 'center',
+  },
+  clusterBubble: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.14,
