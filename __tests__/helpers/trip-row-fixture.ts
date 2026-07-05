@@ -13,6 +13,8 @@ export function makeTripRow(
     placeLabel: null,
     placeId: null,
     placeKind: null,
+    poiId: null,
+    poiLabel: null,
     inferred: false,
     selectedCandidateIndex: null,
     detectionVersion: 14,

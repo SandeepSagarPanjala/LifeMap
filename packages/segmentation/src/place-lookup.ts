@@ -36,30 +36,3 @@ export function matchCompletePlaceLookupAtAnchor(
   }
   return row;
 }
-
-function buildCandidateNames(row: PlaceLookupRow): string[] {
-  const names = row.candidates.map(candidate => candidate.name.trim()).filter(Boolean);
-  if (
-    row.addressLine &&
-    !names.some(
-      name => name.toLowerCase() === row.addressLine!.trim().toLowerCase(),
-    )
-  ) {
-    names.push(row.addressLine.trim());
-  }
-  return names;
-}
-
-export function primaryLabelFromPlaceLookup(row: PlaceLookupRow): string | null {
-  const names = buildCandidateNames(row);
-  if (names.length === 0) {
-    return null;
-  }
-  const index =
-    row.selectedCandidateIndex != null &&
-    row.selectedCandidateIndex >= 0 &&
-    row.selectedCandidateIndex < names.length
-      ? row.selectedCandidateIndex
-      : 0;
-  return names[index] ?? null;
-}

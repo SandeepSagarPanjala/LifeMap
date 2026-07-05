@@ -37,6 +37,7 @@ describe('database export', () => {
       tracking_events: [],
       saved_places: [{id: 1}],
       place_lookup_cache: [],
+      place_pois: [],
       moments: [],
       settings: [{key: 'distance_unit', value: 'mi'}],
     };
@@ -107,6 +108,7 @@ describe('database export', () => {
         moments: [],
         settings: [{key: 'distance_unit', value: 'mi'}],
         place_lookup_cache: [{id: 1}],
+        place_pois: [],
       }),
     );
 

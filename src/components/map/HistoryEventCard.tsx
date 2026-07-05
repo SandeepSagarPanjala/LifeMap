@@ -1,5 +1,5 @@
 import LottieView from 'lottie-react-native';
-import {Pressable, StyleSheet, View} from 'react-native';
+import {ActivityIndicator, Pressable, StyleSheet, View} from 'react-native';
 import {Pencil, Play} from 'lucide-react-native';
 
 import {DriveRouteStrip} from '@/components/map/DriveRouteStrip';
@@ -27,6 +27,7 @@ type HistoryEventCardProps = {
   entry: DayTimelineEntry | null;
   savedPlace?: SavedPlaceRow | null;
   visitPlaceLabel?: string | null;
+  visitPlaceResolving?: boolean;
   onEditVisitPlaceLabel?: () => void;
   driveStartLabel?: DriveEndpointLabel;
   driveEndLabel?: DriveEndpointLabel;
@@ -84,6 +85,7 @@ export function HistoryEventCard({
   entry,
   savedPlace = null,
   visitPlaceLabel = null,
+  visitPlaceResolving = false,
   onEditVisitPlaceLabel,
   driveStartLabel,
   driveEndLabel,
@@ -173,8 +175,14 @@ export function HistoryEventCard({
               </View>
             ) : (
               <View style={styles.visitPlaceRow}>
+                {visitPlaceResolving ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : null}
                 {visitPlaceLabel ? (
-                  <Text className="text-base font-semibold" numberOfLines={1}>
+                  <Text
+                    className="text-base font-semibold"
+                    numberOfLines={1}
+                    variant={visitPlaceResolving ? 'muted' : undefined}>
                     {visitPlaceLabel}
                   </Text>
                 ) : null}

@@ -145,6 +145,12 @@ export async function migrationAlreadyApplied(
         !(await columnExists(sqlite, 'moments', 'lng')) &&
         !(await columnExists(sqlite, 'moments', 'linked_point_id'))
       );
+    case '0025_place_pois':
+      return (
+        (await tableExists(sqlite, 'place_pois')) &&
+        (await columnExists(sqlite, 'trips', 'poi_id')) &&
+        (await columnExists(sqlite, 'trips', 'poi_label'))
+      );
     default:
       return false;
   }
@@ -189,6 +195,18 @@ export async function ensureTripSegmentMetadataColumns(sqlite: DB): Promise<void
     await executeMigrationStatement(
       sqlite,
       `ALTER TABLE trips ADD COLUMN moment_refs text`,
+    );
+  }
+  if (!(await columnExists(sqlite, 'trips', 'poi_id'))) {
+    await executeMigrationStatement(
+      sqlite,
+      `ALTER TABLE trips ADD COLUMN poi_id integer`,
+    );
+  }
+  if (!(await columnExists(sqlite, 'trips', 'poi_label'))) {
+    await executeMigrationStatement(
+      sqlite,
+      `ALTER TABLE trips ADD COLUMN poi_label text`,
     );
   }
 }

@@ -5,11 +5,17 @@ import {
   findPlaceLookupNearAnchor,
   getPlaceLookupById,
   insertPendingPlaceLookup,
-  mergePlaceLookupCandidates,
   updatePlaceLookupVenueRadius,
 } from '@/db/repositories/place-lookup-cache';
+import {
+  listPlacePoisForCache,
+  syncMapkitPlacePoisForCache,
+} from '@/db/repositories/place-pois';
 import {notifyPlaceLookupUpdated} from '@/lib/place-lookup-events';
-import {fetchNearbyPlaceLookup} from '@/lib/place-lookup-native';
+import {
+  fetchNearbyPlaceLookup,
+  platformResolvesClosestPoi,
+} from '@/lib/place-lookup-native';
 import {
   PLACE_LOOKUP_SESSION_BUDGET,
   PLACE_LOOKUP_VENUE_RADIUS_M,
@@ -18,6 +24,10 @@ import {
   nextPlaceLookupRadiusM,
   placeLookupAnchorKey,
 } from '@/lib/place-lookup-venue';
+import type {
+  PlaceLookupCandidate,
+  PlaceLookupRow,
+} from '@/lib/place-lookup-types';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
 import {stayMeetsMinimumVisitDwell} from '@/lib/visit-dwell';
 import {resolveStayAnchor} from '@/lib/trip-detection';
@@ -49,29 +59,75 @@ export function shouldSkipPlaceLookupForStay(
   return stay.placeKind === 'saved' && stay.placeId != null;
 }
 
-export async function resolveVisitPlaceLookupRow(
-  stay: DetectedTrip,
-): Promise<Awaited<ReturnType<typeof findPlaceLookupNearAnchor>>> {
-  return findPlaceLookupNearAnchor(stayLookupAnchor(stay));
+function mapkitPoisFromCandidates(
+  candidates: readonly PlaceLookupCandidate[],
+): Array<{name: string; lat: number; lng: number; source: 'mapkit'}> {
+  return candidates
+    .filter(candidate => candidate.kind === 'poi')
+    .map(candidate => ({
+      name: candidate.name,
+      lat: candidate.lat,
+      lng: candidate.lng,
+      source: 'mapkit' as const,
+    }));
 }
 
-async function performPlaceLookup(anchor: {lat: number; lng: number}): Promise<void> {
+async function persistLookupPois(
+  cacheId: number,
+  candidates: readonly PlaceLookupCandidate[],
+): Promise<void> {
+  const pois = mapkitPoisFromCandidates(candidates);
+  if (pois.length === 0) {
+    return;
+  }
+  await syncMapkitPlacePoisForCache(
+    cacheId,
+    pois.map(poi => ({
+      name: poi.name,
+      lat: poi.lat,
+      lng: poi.lng,
+    })),
+  );
+}
+
+async function performPlaceLookup(
+  anchor: {lat: number; lng: number},
+  options?: {bypassSessionBudget?: boolean},
+): Promise<PlaceLookupRow | null> {
   const key = placeLookupAnchorKey(anchor.lat, anchor.lng);
   if (inFlightKeys.has(key)) {
-    return;
+    for (let attempt = 0; attempt < 60; attempt += 1) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      const row = await findPlaceLookupNearAnchor(anchor);
+      if (row?.lookupStatus === 'complete') {
+        return row;
+      }
+      if (!inFlightKeys.has(key)) {
+        break;
+      }
+    }
+    return findPlaceLookupNearAnchor(anchor);
   }
 
   const existing = await findPlaceLookupNearAnchor(anchor);
-  if (existing?.lookupStatus === 'complete' || existing?.lookupStatus === 'failed') {
-    return;
+  if (existing?.lookupStatus === 'complete') {
+    return existing;
+  }
+  if (existing?.lookupStatus === 'failed') {
+    return existing;
   }
 
-  if (sessionFetchCount >= PLACE_LOOKUP_SESSION_BUDGET) {
-    return;
+  if (
+    !options?.bypassSessionBudget &&
+    sessionFetchCount >= PLACE_LOOKUP_SESSION_BUDGET
+  ) {
+    return existing;
   }
 
   inFlightKeys.add(key);
-  sessionFetchCount += 1;
+  if (!options?.bypassSessionBudget) {
+    sessionFetchCount += 1;
+  }
 
   let rowId = existing?.id;
   try {
@@ -88,16 +144,32 @@ async function performPlaceLookup(anchor: {lat: number; lng: number}): Promise<v
     );
     await completePlaceLookup(rowId, {
       addressLine: result.addressLine,
-      candidates: result.candidates,
     });
+    if (platformResolvesClosestPoi()) {
+      await persistLookupPois(rowId, result.candidates);
+    }
+    return getPlaceLookupById(rowId);
   } catch {
     if (rowId != null) {
       await failPlaceLookup(rowId);
     }
+    return rowId != null ? getPlaceLookupById(rowId) : null;
   } finally {
     inFlightKeys.delete(key);
     notifyPlaceLookupUpdated();
   }
+}
+
+/** Fetch or wait for a complete cache row at the stay anchor (catch-up / lazy label). */
+export async function ensureCompletePlaceLookupAtAnchor(
+  anchor: {lat: number; lng: number},
+  options?: {bypassSessionBudget?: boolean},
+): Promise<PlaceLookupRow | null> {
+  const row = await performPlaceLookup(anchor, options);
+  if (row?.lookupStatus === 'complete') {
+    return row;
+  }
+  return null;
 }
 
 export async function enqueuePlaceLookupForStay(
@@ -156,11 +228,12 @@ export async function expandPlaceLookupArea(cacheId: number): Promise<boolean> {
       row.anchorLng,
       nextRadius,
     );
-    await mergePlaceLookupCandidates(cacheId, {
-      addressLine: result.addressLine,
-      candidates: result.candidates,
-      venueRadiusMeters: nextRadius,
+    await completePlaceLookup(cacheId, {
+      addressLine: result.addressLine ?? row.addressLine,
     });
+    if (platformResolvesClosestPoi()) {
+      await persistLookupPois(cacheId, result.candidates);
+    }
     return true;
   } catch {
     await failPlaceLookup(cacheId);
@@ -171,8 +244,14 @@ export async function expandPlaceLookupArea(cacheId: number): Promise<boolean> {
   }
 }
 
+export async function loadPoisForCache(cacheId: number) {
+  return listPlacePoisForCache(cacheId);
+}
+
 /** @internal Test helper */
 export function __resetPlaceLookupServiceForTests(): void {
   inFlightKeys.clear();
   sessionFetchCount = 0;
 }
+
+export {platformResolvesClosestPoi};

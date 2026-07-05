@@ -137,7 +137,8 @@ describe('tripLabelForPersist', () => {
         detectionVersion: 2,
         placeId: 12,
         placeKind: 'cache',
-        selectedCandidateIndex: 2,
+        poiId: 2,
+        poiLabel: 'Custom POI',
       }),
     ]);
 
@@ -145,13 +146,16 @@ describe('tripLabelForPersist', () => {
       tripLabelForPersist(eventKey, existing, {
         placeKind: 'cache',
         placeId: 12,
-        selectedCandidateIndex: 0,
+        placeLabel: null,
+        poiId: 0,
+        poiLabel: 'Other POI',
       }),
     ).toEqual({
       placeLabel: null,
       placeId: 12,
       placeKind: 'cache',
-      selectedCandidateIndex: 2,
+      poiId: 2,
+      poiLabel: 'Custom POI',
     });
   });
 
@@ -162,14 +166,16 @@ describe('tripLabelForPersist', () => {
       tripLabelForPersist(eventKey, new Map(), {
         placeKind: 'cache',
         placeId: 9,
-        placeLabel: 'Walmart',
-        selectedCandidateIndex: 1,
+        placeLabel: '123 Main St',
+        poiId: 1,
+        poiLabel: 'Walmart',
       }),
     ).toEqual({
-      placeLabel: 'Walmart',
+      placeLabel: '123 Main St',
       placeId: 9,
       placeKind: 'cache',
-      selectedCandidateIndex: 1,
+      poiId: 1,
+      poiLabel: 'Walmart',
     });
   });
 });

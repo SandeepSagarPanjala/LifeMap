@@ -12,7 +12,7 @@ import {
 } from '@/lib/place-lookup-venue';
 import {resolveVisitPlaceDisplay} from '@/lib/place-lookup-display';
 import {isVisitPlaceLabelConfirmed} from '@/lib/place-lookup-types';
-import type {PlaceLookupRow} from '@/lib/place-lookup-types';
+import type {PlaceLookupRow, PlacePoiRow} from '@/lib/place-lookup-types';
 import type {DetectedTrip} from '@/lib/trip-detection';
 
 function placeRow(
@@ -26,25 +26,33 @@ function placeRow(
     anchorLng: lng,
     venueRadiusMeters: PLACE_LOOKUP_VENUE_RADIUS_M,
     addressLine: '123 Main St',
-    candidates: [
-      {
-        id: 'poi-walmart',
-        name: 'Walmart',
-        kind: 'poi',
-        distanceM: 12,
-      },
-      {
-        id: 'address-main',
-        name: '123 Main St',
-        kind: 'address',
-        distanceM: 0,
-      },
-    ],
-    selectedCandidateIndex: null,
     lookupStatus: 'complete',
     fetchedAt: new Date(),
     ...overrides,
   };
+}
+
+function poisForCache(cacheId: number): PlacePoiRow[] {
+  return [
+    {
+      id: 1,
+      cacheId,
+      name: 'Walmart',
+      lat: 33.2101,
+      lng: -97.1301,
+      source: 'mapkit',
+      createdAt: new Date(),
+    },
+    {
+      id: 2,
+      cacheId,
+      name: '123 Main St',
+      lat: 33.21,
+      lng: -97.13,
+      source: 'mapkit',
+      createdAt: new Date(),
+    },
+  ];
 }
 
 function stay(points: {lat: number; lng: number}[]): DetectedTrip {
@@ -88,24 +96,45 @@ describe('place lookup venue matching', () => {
 });
 
 describe('place lookup display', () => {
-  it('uses the selected candidate when set', () => {
-    const row = placeRow(33.21, -97.13, {selectedCandidateIndex: 1});
-    const display = resolveVisitPlaceDisplay(row);
+  it('uses the selected POI when set', () => {
+    const row = placeRow(33.21, -97.13);
+    const display = resolveVisitPlaceDisplay({
+      placeKind: 'cache',
+      placeLabel: row.addressLine,
+      poiId: 2,
+      poiLabel: '123 Main St',
+      cacheId: row.id,
+      pois: poisForCache(row.id),
+    });
     expect(display.primaryLabel).toBe('123 Main St');
-    expect(display.isAreaDefault).toBe(true);
+    expect(display.selectedPoiId).toBe(2);
     expect(isVisitPlaceLabelConfirmed(display)).toBe(true);
   });
 
   it('treats unselected lookup labels as not confirmed', () => {
     const row = placeRow(33.21, -97.13);
-    const display = resolveVisitPlaceDisplay(row);
+    const display = resolveVisitPlaceDisplay({
+      placeKind: 'cache',
+      placeLabel: row.addressLine,
+      poiLabel: 'Walmart',
+      cacheId: row.id,
+      pois: poisForCache(row.id),
+    });
     expect(display.primaryLabel).toBe('Walmart');
+    expect(display.selectedPoiId).toBeNull();
     expect(isVisitPlaceLabelConfirmed(display)).toBe(false);
   });
 
-  it('uses a custom trip label when provided', () => {
+  it('uses a user-selected POI label when provided', () => {
     const row = placeRow(33.21, -97.13);
-    const display = resolveVisitPlaceDisplay(row, {customLabel: 'Client HQ'});
+    const display = resolveVisitPlaceDisplay({
+      placeKind: 'cache',
+      placeLabel: row.addressLine,
+      poiId: 99,
+      poiLabel: 'Client HQ',
+      cacheId: row.id,
+      pois: poisForCache(row.id),
+    });
     expect(display.primaryLabel).toBe('Client HQ');
     expect(isVisitPlaceLabelConfirmed(display)).toBe(true);
   });

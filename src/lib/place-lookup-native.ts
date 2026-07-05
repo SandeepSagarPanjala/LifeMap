@@ -24,6 +24,8 @@ const nativeModule = NativeModules.PlaceLookupModule as
 
 function dedupeCandidates(
   candidates: PlaceLookupCandidate[],
+  fallbackLat: number,
+  fallbackLng: number,
 ): PlaceLookupCandidate[] {
   const seen = new Set<string>();
   const sorted = [...candidates].sort(
@@ -37,7 +39,11 @@ function dedupeCandidates(
       continue;
     }
     seen.add(key);
-    unique.push(candidate);
+    unique.push({
+      ...candidate,
+      lat: Number.isFinite(candidate.lat) ? candidate.lat : fallbackLat,
+      lng: Number.isFinite(candidate.lng) ? candidate.lng : fallbackLng,
+    });
   }
 
   return unique.slice(0, 8);
@@ -88,7 +94,7 @@ export async function fetchNearbyPlaceLookup(
   }
 
   const result = await nativeModule.lookupNearbyPlace(lat, lng, radiusM);
-  const candidates = dedupeCandidates(result.candidates ?? []);
+  const candidates = dedupeCandidates(result.candidates ?? [], lat, lng);
 
   if (Platform.OS === 'android') {
     const addressOnly = candidates.filter(c => c.kind === 'address');
@@ -101,6 +107,8 @@ export async function fetchNearbyPlaceLookup(
             name: result.addressLine,
             kind: 'address',
             distanceM: 0,
+            lat,
+            lng,
           },
         ],
       };
@@ -112,23 +120,13 @@ export async function fetchNearbyPlaceLookup(
   }
 
   const poiCandidates = candidates.filter(c => c.kind === 'poi');
-  const merged = [...poiCandidates];
-  if (result.addressLine) {
-    const hasAddress = merged.some(
-      c => c.name.trim().toLowerCase() === result.addressLine!.trim().toLowerCase(),
-    );
-    if (!hasAddress) {
-      merged.push({
-        id: `address-${lat.toFixed(5)}-${lng.toFixed(5)}`,
-        name: result.addressLine,
-        kind: 'address',
-        distanceM: 0,
-      });
-    }
-  }
-
   return {
     addressLine: result.addressLine,
-    candidates: dedupeCandidates(merged),
+    candidates: dedupeCandidates(poiCandidates, lat, lng),
   };
+}
+
+/** iOS-only — POI resolution uses MapKit coordinates. */
+export function platformResolvesClosestPoi(): boolean {
+  return Platform.OS === 'ios';
 }

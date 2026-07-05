@@ -1,6 +1,6 @@
 import type {LocationPointRow} from '@/db/repositories/location-days';
 import {buildDayTimeline, detectTripsFromPoints} from '@/lib/segmentation';
-import type {PlaceLookupRow} from '@/lib/place-lookup-types';
+import type {PlaceLookupRow, PlacePoiRow} from '@/lib/place-lookup-types';
 import {PLACE_LOOKUP_VENUE_RADIUS_M} from '@/lib/app-constants';
 import {buildTripDetectionConfig} from '@/lib/trip-settings';
 
@@ -175,18 +175,23 @@ describe('segmentation detection (current algorithm)', () => {
         anchorLng: WALMART.lng,
         venueRadiusMeters: PLACE_LOOKUP_VENUE_RADIUS_M,
         addressLine: '123 Retail Rd',
-        candidates: [
-          {
-            id: 'poi-walmart',
-            name: 'Walmart',
-            kind: 'poi',
-            distanceM: 10,
-          },
-        ],
-        selectedCandidateIndex: null,
         lookupStatus: 'complete',
         fetchedAt: new Date('2026-06-03T08:00:00.000Z'),
       };
+    }
+
+    function walmartPois(): PlacePoiRow[] {
+      return [
+        {
+          id: 7,
+          cacheId: 42,
+          name: 'Walmart',
+          lat: WALMART.lat,
+          lng: WALMART.lng,
+          source: 'mapkit',
+          createdAt: new Date('2026-06-03T08:00:00.000Z'),
+        },
+      ];
     }
 
     it('links unlabeled stays to cache and labels drive endpoints', () => {
@@ -208,7 +213,11 @@ describe('segmentation detection (current algorithm)', () => {
           {minutes: 200, ...HOME},
         ]),
         config,
-        {placeLookupCache: [walmartCache()]},
+        {
+          placeLookupCache: [walmartCache()],
+          placePois: walmartPois(),
+          resolveClosestPoi: true,
+        },
       );
 
       const walmartStay = timeline.find(
@@ -216,13 +225,13 @@ describe('segmentation detection (current algorithm)', () => {
           entry.kind === 'stay' &&
           entry.placeKind === 'cache' &&
           entry.placeId === 42 &&
-          entry.placeLabel === 'Walmart',
+          entry.poiLabel === 'Walmart',
       );
       expect(walmartStay).toBeDefined();
 
       const driveToWalmart = timeline.find(
         entry =>
-          entry.kind === 'travel' && entry.toPlaceLabel === 'Walmart',
+          entry.kind === 'travel' && entry.toPoiLabel === 'Walmart',
       );
       expect(driveToWalmart).toBeDefined();
     });

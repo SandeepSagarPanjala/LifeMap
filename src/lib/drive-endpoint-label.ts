@@ -1,5 +1,6 @@
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import type {VisitPlaceDisplay} from '@/lib/place-lookup-types';
+import {visitDisplayLabel} from '@/lib/place-lookup-types';
 import {matchSavedPlaceForStay, savedPlaceDisplayLabel} from '@/lib/saved-places';
 import type {DetectedTrip} from '@/lib/trip-detection';
 
@@ -13,7 +14,6 @@ export type DriveEndpointLabel = {
   source: DriveEndpointLabelSource;
   text: string | null;
   savedPlace: SavedPlaceRow | null;
-  /** User picked this name from visit place candidates. */
   pinned: boolean;
 };
 
@@ -41,9 +41,12 @@ export function driveEndpointLabelFromVisitDisplay(
     return EMPTY_DRIVE_ENDPOINT_LABEL;
   }
 
-  if (display.isTripLabel) {
+  if (display.selectedPoiId != null) {
+    const selected = display.candidates.find(
+      candidate => candidate.id === display.selectedPoiId,
+    );
     return {
-      source: 'selected-label',
+      source: selected?.source === 'user' ? 'selected-label' : 'auto-label',
       text,
       savedPlace: null,
       pinned: true,
@@ -54,7 +57,7 @@ export function driveEndpointLabelFromVisitDisplay(
     source: 'auto-label',
     text,
     savedPlace: null,
-    pinned: display.isAreaDefault,
+    pinned: false,
   };
 }
 
@@ -76,18 +79,31 @@ export function resolveDriveEndpointLabelFromStaySync(
     };
   }
 
-  const cacheLabel =
-    stay.placeKind === 'cache' ? stay.placeLabel?.trim() : undefined;
-  if (cacheLabel) {
+  if (stay.placeKind === 'saved' && stay.placeLabel?.trim()) {
     return {
-      source: 'auto-label',
-      text: cacheLabel,
+      source: 'saved',
+      text: stay.placeLabel.trim(),
       savedPlace: null,
       pinned: false,
     };
   }
 
-  return EMPTY_DRIVE_ENDPOINT_LABEL;
+  const text = visitDisplayLabel({
+    placeKind: stay.placeKind ?? null,
+    placeLabel: stay.placeLabel ?? null,
+    poiLabel: stay.poiLabel ?? null,
+  });
+
+  if (!text) {
+    return EMPTY_DRIVE_ENDPOINT_LABEL;
+  }
+
+  return {
+    source: stay.poiId != null ? 'auto-label' : 'auto-label',
+    text,
+    savedPlace: null,
+    pinned: stay.poiId != null,
+  };
 }
 
 export function hasDriveEndpointLabel(label: DriveEndpointLabel): boolean {

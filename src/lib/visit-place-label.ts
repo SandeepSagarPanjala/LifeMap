@@ -1,4 +1,5 @@
 import {getPlaceLookupById} from '@/db/repositories/place-lookup-cache';
+import {listPlacePoisForCache} from '@/db/repositories/place-pois';
 import {getTripByEventKey, getTripById} from '@/db/repositories/trips';
 import {getSavedPlaceById} from '@/db/repositories/saved-places';
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
@@ -12,7 +13,7 @@ import {matchSavedPlaceForStay} from '@/lib/saved-places';
 import type {DetectedTrip} from '@/lib/trip-detection';
 import {tripEventKey} from '@/lib/trip-materialization';
 
-/** Saved place, user-selected label, or auto-selected nearby POI for a visit. */
+/** Saved place or cache address + optional POI for a visit. */
 export async function loadVisitPlaceDisplayForStay(
   stay: DetectedTrip,
   savedPlaces: readonly SavedPlaceRow[],
@@ -29,68 +30,60 @@ export async function loadVisitPlaceDisplayForStay(
     }
   }
 
-  if (stay.placeKind === 'cache' && stay.placeId != null) {
-    const cacheRow = await getPlaceLookupById(stay.placeId);
-    if (cacheRow) {
-      const customLabel = stay.placeLabel?.trim() || null;
-      const hasTripLabel = customLabel != null;
-      return {
-        ...resolveVisitPlaceDisplay(cacheRow, {
-          isTripLabel: hasTripLabel,
-          customLabel,
-        }),
-        materializedTripId: stay.materializedTripId ?? null,
-      };
-    }
-  }
-
   let materializedTripId = stay.materializedTripId ?? null;
+  let placeLabel = stay.placeLabel ?? null;
+  let placeId = stay.placeId ?? null;
+  let placeKind = stay.placeKind ?? null;
+  let poiId = stay.poiId ?? null;
+  let poiLabel = stay.poiLabel ?? null;
+
   if (materializedTripId == null && !stay.openThroughNow) {
     const persisted = await getTripByEventKey(tripEventKey(stay));
     materializedTripId = persisted?.id ?? null;
-  }
-
-  if (materializedTripId != null) {
+    if (persisted) {
+      const resolved = resolvedPlaceFromTripRow(persisted);
+      placeLabel = resolved.placeLabel;
+      placeId = resolved.placeId;
+      placeKind = resolved.placeKind;
+      poiId = resolved.poiId;
+      poiLabel = resolved.poiLabel;
+    }
+  } else if (materializedTripId != null) {
     const trip = await getTripById(materializedTripId);
     if (trip) {
       const resolved = resolvedPlaceFromTripRow(trip);
-      if (resolved.placeKind === 'saved' && resolved.placeId != null) {
-        const linkedPlace = await getSavedPlaceById(resolved.placeId);
-        if (linkedPlace) {
-          return savedPlaceVisitDisplay(linkedPlace);
-        }
-      }
-      if (resolved.placeKind === 'cache' && resolved.placeId != null) {
-        const cacheRow = await getPlaceLookupById(resolved.placeId);
-        if (cacheRow) {
-          const customLabel =
-            trip.placeLabel?.trim() || resolved.placeLabel?.trim() || null;
-          const hasTripLabel =
-            customLabel != null || trip.selectedCandidateIndex != null;
-          return {
-            ...resolveVisitPlaceDisplay(cacheRow, {
-              selectedIndexOverride: trip.selectedCandidateIndex,
-              isTripLabel: hasTripLabel,
-              customLabel,
-            }),
-            materializedTripId: trip.id,
-          };
-        }
-      }
+      placeLabel = resolved.placeLabel;
+      placeId = resolved.placeId;
+      placeKind = resolved.placeKind;
+      poiId = resolved.poiId;
+      poiLabel = resolved.poiLabel;
     }
   }
 
-  return {
-    source: 'none',
-    primaryLabel: stay.placeLabel?.trim() || null,
-    customLabel: null,
-    candidates: [],
-    selectedIndex: 0,
-    cacheId: null,
+  if (placeKind === 'saved' && placeId != null) {
+    const linkedPlace = await getSavedPlaceById(placeId);
+    if (linkedPlace) {
+      return savedPlaceVisitDisplay(linkedPlace);
+    }
+  }
+
+  if (placeKind === 'cache' && placeId != null) {
+    const cacheRow = await getPlaceLookupById(placeId);
+    const pois = await listPlacePoisForCache(placeId);
+    return resolveVisitPlaceDisplay({
+      placeKind: 'cache',
+      placeLabel,
+      poiId,
+      poiLabel,
+      cacheId: placeId,
+      pois,
+      materializedTripId,
+      venueRadiusMeters: cacheRow?.venueRadiusMeters,
+    });
+  }
+
+  return resolveVisitPlaceDisplay({
+    placeLabel,
     materializedTripId,
-    loading: false,
-    venueRadiusMeters: 0,
-    isAreaDefault: false,
-    isTripLabel: false,
-  };
+  });
 }

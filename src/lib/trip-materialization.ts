@@ -160,17 +160,10 @@ export function isClosedPlayableEntry(
   return !entry.openThroughNow;
 }
 
-export type PersistedTripLabel = ResolvedPlaceFields & {
-  selectedCandidateIndex: number | null;
-};
+export type PersistedTripLabel = ResolvedPlaceFields;
 
 function persistedLabelFromTripRow(row: TripRow): PersistedTripLabel {
-  const resolved = resolvedPlaceFromTripRow(row);
-  const place = tripPlaceFieldsFromResolved(resolved);
-  return {
-    ...place,
-    selectedCandidateIndex: row.selectedCandidateIndex,
-  };
+  return resolvedPlaceFromTripRow(row);
 }
 
 /** User label choices keyed by stable trip event id — survives day re-materialization. */
@@ -181,7 +174,7 @@ export function existingTripLabelsByEventKey(
   for (const row of rows) {
     const label = persistedLabelFromTripRow(row);
     const hasLabel =
-      label.selectedCandidateIndex != null ||
+      label.poiId != null ||
       label.placeLabel != null ||
       label.placeId != null;
     if (!hasLabel) {
@@ -192,12 +185,7 @@ export function existingTripLabelsByEventKey(
   return map;
 }
 
-export type DetectedTripLabels = {
-  placeLabel?: string | null;
-  placeId?: number | null;
-  placeKind?: 'saved' | 'cache' | null;
-  selectedCandidateIndex?: number | null;
-};
+export type DetectedTripLabels = ResolvedPlaceFields;
 
 export function tripLabelForPersist(
   eventKey: string,
@@ -209,35 +197,35 @@ export function tripLabelForPersist(
     placeLabel: detected?.placeLabel ?? null,
     placeId: detected?.placeId ?? null,
     placeKind: detected?.placeKind ?? null,
+    poiId: detected?.poiId ?? null,
+    poiLabel: detected?.poiLabel ?? null,
   });
 
-  if (existing?.selectedCandidateIndex != null) {
+  if (existing?.poiId != null) {
     return {
-      ...existing,
+      placeLabel: existing.placeLabel ?? detectedPlace.placeLabel,
       placeId: existing.placeId ?? detectedPlace.placeId,
       placeKind: existing.placeKind ?? detectedPlace.placeKind,
+      poiId: existing.poiId,
+      poiLabel: existing.poiLabel,
     };
   }
 
-  if (existing?.placeLabel) {
+  if (existing?.placeKind === 'saved' && existing.placeId != null) {
     return existing;
   }
 
   if (detectedPlace.placeKind != null && detectedPlace.placeId != null) {
-    return {
-      ...detectedPlace,
-      selectedCandidateIndex: detected?.selectedCandidateIndex ?? null,
-    };
+    return detectedPlace;
   }
 
   return (
     existing ?? {
-      ...tripPlaceFieldsFromResolved({
-        placeLabel: null,
-        placeId: null,
-        placeKind: null,
-      }),
-      selectedCandidateIndex: null,
+      placeLabel: null,
+      placeId: null,
+      placeKind: null,
+      poiId: null,
+      poiLabel: null,
     }
   );
 }
@@ -678,6 +666,8 @@ export async function persistClosedTripsIncremental(
       placeLabel: entry.placeLabel ?? null,
       placeId: entry.placeId ?? null,
       placeKind: entry.placeKind ?? null,
+      poiId: entry.poiId ?? null,
+      poiLabel: entry.poiLabel ?? null,
     });
     const momentRefs = buildMomentRefsForSegment(
       dayMoments,
@@ -698,8 +688,9 @@ export async function persistClosedTripsIncremental(
       placeLabel: labels.placeLabel,
       placeId: labels.placeId,
       placeKind: labels.placeKind,
+      poiId: labels.poiId,
+      poiLabel: labels.poiLabel,
       inferred: entry.inferred ?? false,
-      selectedCandidateIndex: labels.selectedCandidateIndex,
       detectionVersion: TRIP_DETECTION_VERSION,
       closedAt,
       momentRefs,
@@ -795,6 +786,8 @@ export async function ensureTripForClosedStay(
     placeLabel: stay.placeLabel ?? null,
     placeId: stay.placeId ?? null,
     placeKind: stay.placeKind ?? null,
+    poiId: stay.poiId ?? null,
+    poiLabel: stay.poiLabel ?? null,
   });
 
   if (!trip) {
@@ -811,7 +804,8 @@ export async function ensureTripForClosedStay(
       placeLabel: labels.placeLabel,
       placeId: labels.placeId,
       placeKind: labels.placeKind,
-      selectedCandidateIndex: labels.selectedCandidateIndex,
+      poiId: labels.poiId,
+      poiLabel: labels.poiLabel,
       detectionVersion: TRIP_DETECTION_VERSION,
       closedAt,
     });
@@ -950,7 +944,8 @@ export async function rebuildAllTrips(
       placeLabel: row.placeLabel,
       placeId: row.placeId,
       placeKind: row.placeKind,
-      selectedCandidateIndex: row.selectedCandidateIndex,
+      poiId: row.poiId,
+      poiLabel: row.poiLabel,
     })),
   );
 

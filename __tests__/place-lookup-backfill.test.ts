@@ -27,6 +27,8 @@ function tripRow(overrides: Partial<TripRow> = {}): TripRow {
     placeLabel: null,
     placeId: null,
     placeKind: null,
+    poiId: null,
+    poiLabel: null,
     inferred: false,
     selectedCandidateIndex: null,
     detectionVersion: 1,
@@ -43,8 +45,6 @@ function cacheRow(overrides: Partial<PlaceLookupRow> = {}): PlaceLookupRow {
     anchorLng: -122.4194,
     venueRadiusMeters: PLACE_LOOKUP_VENUE_RADIUS_M,
     addressLine: '123 Main St',
-    candidates: [],
-    selectedCandidateIndex: 0,
     lookupStatus: 'complete',
     fetchedAt: new Date(),
     ...overrides,
@@ -64,7 +64,7 @@ describe('place-lookup-backfill', () => {
       isStayMissingPlaceLabel(tripRow({placeId: 3, placeKind: 'cache'})),
     ).toBe(false);
     expect(
-      isStayMissingPlaceLabel(tripRow({selectedCandidateIndex: 0})),
+      isStayMissingPlaceLabel(tripRow({poiId: 42, poiLabel: 'Walmart'})),
     ).toBe(false);
     expect(
       isStayMissingPlaceLabel(tripRow({placeLabel: 'Walmart'})),
@@ -101,16 +101,17 @@ describe('place-lookup-backfill', () => {
     expect(stay.durationMs).toBe(row.durationMs);
   });
 
-  it('preserves user custom label on rebuild merge by eventKey', () => {
+  it('preserves user POI selection on rebuild merge by eventKey', () => {
     const eventKey = 'stay:1710000000000:1710003600000';
     const existing = new Map<string, PersistedTripLabel>([
       [
         eventKey,
         {
-          placeLabel: 'Walmart',
+          placeLabel: '123 Main St',
           placeId: 5,
           placeKind: 'cache',
-          selectedCandidateIndex: null,
+          poiId: 10,
+          poiLabel: 'Walmart',
         },
       ],
     ]);
@@ -118,11 +119,12 @@ describe('place-lookup-backfill', () => {
     const merged = mergeTripPlaceLabelAfterLookup(
       eventKey,
       existing,
-      cacheRow({id: 9, selectedCandidateIndex: 1}),
+      cacheRow({id: 9}),
     );
 
-    expect(merged.placeLabel).toBe('Walmart');
-    expect(merged.selectedCandidateIndex).toBeNull();
+    expect(merged.placeLabel).toBe('123 Main St');
+    expect(merged.poiId).toBe(10);
+    expect(merged.poiLabel).toBe('Walmart');
     expect(merged.placeId).toBe(5);
   });
 });

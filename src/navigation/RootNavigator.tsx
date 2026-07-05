@@ -21,12 +21,15 @@ import {MomentPreviewScreen} from '@/screens/moments/MomentPreviewScreen';
 import {SavedPlacesScreen} from '@/screens/map/SavedPlacesScreen';
 import {RestoreBackupScreen} from '@/screens/backup/RestoreBackupScreen';
 import {ScheduledBackupRunner} from '@/components/backup/ScheduledBackupRunner';
+import {PlaceLookupCatchUpRunner} from '@/components/place-lookup/PlaceLookupCatchUpRunner';
 import {SettingsScreen} from '@/screens/SettingsScreen';
 import {DeveloperSettingsScreen} from '@/screens/settings/DeveloperSettingsScreen';
 import {BackupSettingsScreen} from '@/screens/settings/BackupSettingsScreen';
 import {DistanceUnitSettingsScreen} from '@/screens/settings/DistanceUnitSettingsScreen';
 import {DriveMapRefreshSettingsScreen} from '@/screens/settings/DriveMapRefreshSettingsScreen';
 import {PreferredMapsSettingsScreen} from '@/screens/settings/PreferredMapsSettingsScreen';
+import {CachedPlacesSettingsScreen} from '@/screens/settings/CachedPlacesSettingsScreen';
+import {CachedPlaceMapScreen} from '@/screens/settings/CachedPlaceMapScreen';
 import {StorageSettingsScreen} from '@/screens/settings/StorageSettingsScreen';
 import {ThemeSettingsScreen} from '@/screens/settings/ThemeSettingsScreen';
 import {useThemeColors} from '@/hooks/use-theme-colors';
@@ -124,6 +127,16 @@ export function RootNavigator() {
           options={settingsSubScreenOptions('Storage')}
         />
         <Stack.Screen
+          name="CachedPlacesSettings"
+          component={CachedPlacesSettingsScreen}
+          options={settingsSubScreenOptions('Cached places')}
+        />
+        <Stack.Screen
+          name="CachedPlaceMap"
+          component={CachedPlaceMapScreen}
+          options={settingsSubScreenOptions('Cached place map')}
+        />
+        <Stack.Screen
           name="BackupSettings"
           component={BackupSettingsScreen}
           options={settingsSubScreenOptions('Backup')}
@@ -191,6 +204,7 @@ export function RootNavigator() {
         />
       </Stack.Navigator>
       <ScheduledBackupRunner />
+      <PlaceLookupCatchUpRunner />
     </NavigationContainer>
   );
 }

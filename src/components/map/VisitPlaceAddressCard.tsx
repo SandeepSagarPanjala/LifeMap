@@ -12,7 +12,7 @@ import {nextPlaceLookupRadiusM} from '@/lib/place-lookup-venue';
 type VisitPlaceAddressCardProps = {
   display: VisitPlaceDisplay;
   expandingArea?: boolean;
-  onSelectIndex: (index: number) => void;
+  onSelectPoiId: (poiId: number, poiLabel: string) => void;
   onExpandArea: () => void;
   onRequestCustomLabel: () => void;
   onDone: () => void;
@@ -21,7 +21,7 @@ type VisitPlaceAddressCardProps = {
 export function VisitPlaceAddressCard({
   display,
   expandingArea = false,
-  onSelectIndex,
+  onSelectPoiId,
   onExpandArea,
   onRequestCustomLabel,
   onDone,
@@ -84,7 +84,7 @@ export function VisitPlaceAddressCard({
       <VisitPlaceLabelPager
         display={display}
         compact
-        onSelectIndex={onSelectIndex}
+        onSelectPoiId={onSelectPoiId}
       />
       {actionButtons}
       {display.venueRadiusMeters >= PLACE_LOOKUP_MAX_RADIUS_M ? (

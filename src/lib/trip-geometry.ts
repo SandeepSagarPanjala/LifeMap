@@ -129,6 +129,8 @@ export function tripRowToDetectedTripWithGeometry(
     placeLabel: resolved.placeLabel ?? undefined,
     placeId: resolved.placeId ?? undefined,
     placeKind: resolved.placeKind ?? undefined,
+    poiId: resolved.poiId ?? undefined,
+    poiLabel: resolved.poiLabel ?? undefined,
     inferred: row.inferred,
     anchorLat: row.kind === 'stay' ? row.centroidLat : undefined,
     anchorLng: row.kind === 'stay' ? row.centroidLng : undefined,
