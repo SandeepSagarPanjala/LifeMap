@@ -97,7 +97,7 @@ jobs:
 
       - name: Pod install
         working-directory: ios
-        run: pod install
+        run: pod install --repo-update
 
       - name: Build for iOS Simulator
         run: |

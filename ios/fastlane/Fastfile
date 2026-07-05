@@ -19,6 +19,7 @@ platform :ios do
     end
     cocoapods(
       podfile: File.expand_path("../Podfile", __dir__),
+      repo_update: true,
     )
   end
 
