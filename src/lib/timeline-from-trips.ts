@@ -318,6 +318,8 @@ function toPseudoTripRow(trip: DetectedTrip): TripRow {
     placeLabel: persisted.placeLabel,
     placeId: persisted.placeId,
     placeKind: persisted.placeKind,
+    poiId: persisted.poiId,
+    poiLabel: persisted.poiLabel,
     inferred: trip.inferred ?? false,
     selectedCandidateIndex: null,
     detectionVersion: 0,

@@ -1,3 +1,15 @@
+export type PlacePoiSource = 'mapkit' | 'user';
+
+export type PlacePoiRow = {
+  id: number;
+  cacheId: number;
+  name: string;
+  lat: number;
+  lng: number;
+  source: PlacePoiSource;
+  createdAt: Date;
+};
+
 export type PlaceLookupCandidateKind = 'poi' | 'address';
 
 export type PlaceLookupCandidate = {
@@ -5,18 +17,19 @@ export type PlaceLookupCandidate = {
   name: string;
   kind: PlaceLookupCandidateKind;
   distanceM: number;
+  lat: number;
+  lng: number;
 };
 
 export type PlaceLookupStatus = 'pending' | 'complete' | 'failed';
 
+/** Geocode cache row — address anchor only; POIs live in place_pois. */
 export type PlaceLookupRow = {
   id: number;
   anchorLat: number;
   anchorLng: number;
   venueRadiusMeters: number;
   addressLine: string | null;
-  candidates: PlaceLookupCandidate[];
-  selectedCandidateIndex: number | null;
   lookupStatus: PlaceLookupStatus;
   fetchedAt: Date | null;
 };
@@ -36,40 +49,57 @@ export type NativeAddressGeocodeResponse = {
   results: AddressGeocodeResult[];
 };
 
+export type ResolvedVisitPlace = {
+  placeKind: 'saved' | 'cache' | null;
+  placeId: number | null;
+  /** Saved place name or street address. */
+  placeLabel: string | null;
+  poiId: number | null;
+  poiLabel: string | null;
+};
+
+/** Primary label shown in history / map callouts. */
+export function visitDisplayLabel(resolved: {
+  placeKind?: 'saved' | 'cache' | null;
+  placeLabel?: string | null;
+  poiLabel?: string | null;
+}): string | null {
+  if (resolved.placeKind === 'saved') {
+    return resolved.placeLabel?.trim() || null;
+  }
+  if (resolved.placeKind === 'cache') {
+    return resolved.poiLabel?.trim() || resolved.placeLabel?.trim() || null;
+  }
+  return resolved.placeLabel?.trim() || null;
+}
+
 export type VisitPlaceDisplayCandidate = {
+  id: number;
   name: string;
-  kind: PlaceLookupCandidateKind;
+  source: PlacePoiSource;
 };
 
 export type VisitPlaceDisplay = {
   source: 'saved' | 'lookup' | 'none';
+  /** Saved name or street address. */
+  addressLabel: string | null;
+  /** POI or user label for cache visits. */
   primaryLabel: string | null;
-  /** User-entered label that overrides lookup candidates. */
-  customLabel: string | null;
   candidates: VisitPlaceDisplayCandidate[];
-  selectedIndex: number;
+  selectedPoiId: number | null;
   cacheId: number | null;
   materializedTripId: number | null;
   loading: boolean;
   venueRadiusMeters: number;
-  /** User swiped to set the default label for this area. */
-  isAreaDefault: boolean;
-  /** User swiped to set the label for this specific visit. */
-  isTripLabel: boolean;
 };
 
 export function isVisitPlaceLabelConfirmed(display: VisitPlaceDisplay): boolean {
   if (display.source === 'saved') {
     return true;
   }
-  if (display.customLabel?.trim()) {
-    return true;
-  }
-  return display.isTripLabel || display.isAreaDefault;
+  return display.selectedPoiId != null;
 }
 
-/** First lookup option shown in the visit card before the user confirms a label. */
 export function visitPlaceDefaultLabel(display: VisitPlaceDisplay): string | null {
-  const name = display.candidates[0]?.name ?? display.primaryLabel;
-  return name?.trim() || null;
+  return display.primaryLabel?.trim() || display.addressLabel?.trim() || null;
 }

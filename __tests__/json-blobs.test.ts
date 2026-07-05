@@ -42,17 +42,26 @@ describe('json-blobs', () => {
 
   it('keeps valid place lookup candidate JSON', () => {
     const raw =
-      '[{"id":"poi-1","name":"Cafe","kind":"poi","distanceM":42}]';
+      '[{"id":"poi-1","name":"Cafe","kind":"poi","distanceM":42,"lat":33.2,"lng":-97.1}]';
     expect(parsePlaceLookupCandidates(raw)).toEqual([
       {id: 'poi-1', name: 'Cafe', kind: 'poi', distanceM: 42},
     ]);
-    expect(sanitizeCandidatesJson(raw)).toBe(raw);
+    expect(sanitizeCandidatesJson(raw)).toBe(
+      '[{"id":"poi-1","name":"Cafe","kind":"poi","distanceM":42}]',
+    );
   });
 
   it('serializes typed place lookup candidates on write', () => {
     expect(
       serializePlaceLookupCandidates([
-        {id: 'poi-1', name: 'Cafe', kind: 'poi', distanceM: 42},
+        {
+          id: 'poi-1',
+          name: 'Cafe',
+          kind: 'poi',
+          distanceM: 42,
+          lat: 33.2,
+          lng: -97.1,
+        },
       ]),
     ).toBe('[{"id":"poi-1","name":"Cafe","kind":"poi","distanceM":42}]');
     expect(serializePlaceLookupCandidates([])).toBeNull();

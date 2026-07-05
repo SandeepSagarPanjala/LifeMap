@@ -27,7 +27,9 @@ import {
 } from './stops';
 import {
   applyResolvedPlace,
+  applyResolvedPoi,
   clearResolvedPlace,
+  clearResolvedPoi,
   resolvedPlaceFromCache,
   resolvedPlaceFromSaved,
   type PlaceKind,
@@ -35,11 +37,20 @@ import {
 } from './resolved-place';
 import {matchCompletePlaceLookupAtAnchor} from './place-lookup';
 import {
+  closestPlacePoiToAnchor,
+  listPlacePoisForCache,
+} from './place-poi';
+import {
   annotateSegmentMoments,
   type SegmentMomentCounts,
 } from './segment-moments';
-import type {PlaceLookupRow, SegmentationMoment} from './types';
-import type {ParsedPoint, SavedPlaceRow} from './types';
+import type {
+  ParsedPoint,
+  PlaceLookupRow,
+  PlacePoiRow,
+  SavedPlaceRow,
+  SegmentationMoment,
+} from './types';
 
 export type {SegmentMomentCounts} from './segment-moments';
 
@@ -68,10 +79,12 @@ export type StaySegment = {
   endAt: Date;
   durationMs: number;
   points: ParsedPoint[];
-  /** Resolved place match from saved place or cache (mutually exclusive). */
+  /** Resolved saved place or cache address (mutually exclusive kinds). */
   placeLabel?: string;
   placeId?: number;
   placeKind?: PlaceKind;
+  poiId?: number;
+  poiLabel?: string;
   momentCounts?: SegmentMomentCounts;
 };
 
@@ -89,9 +102,13 @@ export type DriveSegment = {
   fromPlaceLabel?: string;
   fromPlaceId?: number;
   fromPlaceKind?: PlaceKind;
+  fromPoiId?: number;
+  fromPoiLabel?: string;
   toPlaceLabel?: string;
   toPlaceId?: number;
   toPlaceKind?: PlaceKind;
+  toPoiId?: number;
+  toPoiLabel?: string;
   momentCounts?: SegmentMomentCounts;
 };
 
@@ -533,13 +550,26 @@ function resolvedPlaceFromStay(stay: StaySegment): ResolvedPlace | null {
     placeLabel: stay.placeLabel,
     placeId: stay.placeId,
     placeKind: stay.placeKind,
+    poiId: stay.poiId,
+    poiLabel: stay.poiLabel,
   };
+}
+
+function resolvedPoiFromStay(
+  stay: StaySegment,
+): {poiId: number; poiLabel: string} | null {
+  if (stay.poiId == null || stay.poiLabel == null) {
+    return null;
+  }
+  return {poiId: stay.poiId, poiLabel: stay.poiLabel};
 }
 
 function annotateSegments(
   segments: TripSegment[],
   savedPlaces: SavedPlaceRow[],
   placeLookupCache: readonly PlaceLookupRow[] = [],
+  placePois: readonly PlacePoiRow[] = [],
+  resolveClosestPoi = false,
 ): TripSegment[] {
   const withStays = segments.map(segment => {
     if (segment.kind !== 'stay') {
@@ -547,6 +577,7 @@ function annotateSegments(
     }
     let updated: StaySegment = segment;
     clearResolvedPlace(updated);
+    clearResolvedPoi(updated);
 
     const place = matchSavedPlaceForStop(
       segment.stop,
@@ -564,6 +595,15 @@ function annotateSegments(
         const resolved = resolvedPlaceFromCache(cache);
         if (resolved != null) {
           applyResolvedPlace(updated, resolved);
+          if (resolveClosestPoi) {
+            const closest = closestPlacePoiToAnchor(
+              {lat: updated.stop.lat, lng: updated.stop.lng},
+              listPlacePoisForCache(cache.id, placePois),
+            );
+            if (closest != null) {
+              applyResolvedPoi(updated, closest);
+            }
+          }
         }
       }
     }
@@ -598,6 +638,18 @@ function annotateSegments(
         : nextStay != null
           ? resolvedPlaceFromStay(nextStay)
           : null;
+    const fromPoi =
+      fromPlace != null
+        ? null
+        : previousStay != null
+          ? resolvedPoiFromStay(previousStay)
+          : null;
+    const toPoi =
+      toPlace != null
+        ? null
+        : nextStay != null
+          ? resolvedPoiFromStay(nextStay)
+          : null;
     if (fromResolved == null && toResolved == null) {
       return segment;
     }
@@ -606,9 +658,13 @@ function annotateSegments(
       fromPlaceLabel: fromResolved?.placeLabel,
       fromPlaceId: fromResolved?.placeId,
       fromPlaceKind: fromResolved?.placeKind,
+      fromPoiId: fromPoi?.poiId,
+      fromPoiLabel: fromPoi?.poiLabel,
       toPlaceLabel: toResolved?.placeLabel,
       toPlaceId: toResolved?.placeId,
       toPlaceKind: toResolved?.placeKind,
+      toPoiId: toPoi?.poiId,
+      toPoiLabel: toPoi?.poiLabel,
     };
   });
 }
@@ -751,7 +807,9 @@ export function detectTrips(
   config: StopDetectionConfig = DEFAULT_STOP_CONFIG,
   savedPlaces: SavedPlaceRow[] = [],
   placeLookupCache: readonly PlaceLookupRow[] = [],
+  placePois: readonly PlacePoiRow[] = [],
   moments: readonly SegmentationMoment[] = [],
+  options: {resolveClosestPoi?: boolean} = {},
 ): TripResult {
   const points = prepareTripPoints(rawPoints, config);
   const baseStops = detectStops(rawPoints, config);
@@ -769,6 +827,8 @@ export function detectTrips(
       buildTripSegments(points, stops, config),
       savedPlaces,
       placeLookupCache,
+      placePois,
+      options.resolveClosestPoi === true,
     ),
     moments,
   );
@@ -782,7 +842,9 @@ export function detectTripsForDay(
   config: StopDetectionConfig = DEFAULT_STOP_CONFIG,
   savedPlaces: SavedPlaceRow[] = [],
   placeLookupCache: readonly PlaceLookupRow[] = [],
+  placePois: readonly PlacePoiRow[] = [],
   moments: readonly SegmentationMoment[] = [],
+  options: {resolveClosestPoi?: boolean} = {},
 ): TripResult {
   const prevKey = addDaysToDateKey(dayKey, -1);
   const nextKey = addDaysToDateKey(dayKey, 1);
@@ -793,6 +855,9 @@ export function detectTripsForDay(
     config,
     savedPlaces,
     placeLookupCache,
+    placePois,
+    moments,
+    options,
   );
   const segments = annotateSegmentMoments(
     projectSegmentsForDay(full.segments, dayKey, savedPlaces),

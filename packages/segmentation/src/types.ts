@@ -49,20 +49,37 @@ export type PlaceLookupCandidate = {
   name: string;
   kind: PlaceLookupCandidateKind;
   distanceM: number;
+  lat: number;
+  lng: number;
 };
 
 export type PlaceLookupStatus = 'pending' | 'complete' | 'failed';
 
+/** Geocode cache row — address anchor only. */
 export type PlaceLookupRow = {
   id: number;
   anchorLat: number;
   anchorLng: number;
   venueRadiusMeters: number;
   addressLine: string | null;
-  candidates: PlaceLookupCandidate[];
-  selectedCandidateIndex: number | null;
   lookupStatus: PlaceLookupStatus;
   fetchedAt?: Date | string | null;
+};
+
+export type PlacePoiSource = 'mapkit' | 'user';
+
+export type PlacePoiRow = {
+  id: number;
+  cacheId: number;
+  name: string;
+  lat: number;
+  lng: number;
+  source: PlacePoiSource;
+  createdAt?: Date | string;
+};
+
+export type SegmentationPlaceOptions = {
+  resolveClosestPoi?: boolean;
 };
 
 /** Detection tuning — same shape as mobile `TripDetectionConfig`. */
@@ -75,4 +92,6 @@ export type SegmentationConfig = {
 export type SegmentationOptions = {
   savedPlaces?: readonly SavedPlaceRow[];
   placeLookupCache?: readonly PlaceLookupRow[];
+  placePois?: readonly PlacePoiRow[];
+  resolveClosestPoi?: boolean;
 };

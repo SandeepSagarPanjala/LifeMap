@@ -6,6 +6,7 @@ import {
   materializedDays,
   moments,
   placeLookupCache,
+  placePois,
   savedPlaces,
   settings,
   trackingEvents,
@@ -38,6 +39,7 @@ export async function countExportTableRows(): Promise<
     trackingEventCount,
     savedPlaceCount,
     placeLookupCount,
+    placePoiCount,
     momentCount,
     settingCount,
   ] = await Promise.all([
@@ -48,6 +50,7 @@ export async function countExportTableRows(): Promise<
     db.select({count: sql<number>`count(*)`}).from(trackingEvents),
     db.select({count: sql<number>`count(*)`}).from(savedPlaces),
     db.select({count: sql<number>`count(*)`}).from(placeLookupCache),
+    db.select({count: sql<number>`count(*)`}).from(placePois),
     db.select({count: sql<number>`count(*)`}).from(moments),
     db.select({count: sql<number>`count(*)`}).from(settings),
   ]);
@@ -60,6 +63,7 @@ export async function countExportTableRows(): Promise<
     tracking_events: Number(trackingEventCount[0]?.count ?? 0),
     saved_places: Number(savedPlaceCount[0]?.count ?? 0),
     place_lookup_cache: Number(placeLookupCount[0]?.count ?? 0),
+    place_pois: Number(placePoiCount[0]?.count ?? 0),
     moments: Number(momentCount[0]?.count ?? 0),
     settings: Number(settingCount[0]?.count ?? 0),
   };
@@ -111,6 +115,7 @@ export async function fetchDatabaseExportTables(
     trackingEventRows,
     savedPlaceRows,
     placeLookupRows,
+    placePoiRows,
     momentRows,
     settingRows,
   ] = await Promise.all([
@@ -213,6 +218,7 @@ export async function fetchDatabaseExportTables(
       .orderBy(asc(trackingEvents.timestamp)),
     db.select().from(savedPlaces).orderBy(asc(savedPlaces.createdAt)),
     db.select().from(placeLookupCache).orderBy(asc(placeLookupCache.id)),
+    db.select().from(placePois).orderBy(asc(placePois.id)),
     db
       .select()
       .from(moments)
@@ -249,6 +255,8 @@ export async function fetchDatabaseExportTables(
       placeLabel: row.placeLabel,
       placeId: row.placeId,
       placeKind: row.placeKind,
+      poiId: row.poiId,
+      poiLabel: row.poiLabel,
       inferred: row.inferred === 1,
       selectedCandidateIndex: row.selectedCandidateIndex,
       detectionVersion: row.detectionVersion,
@@ -302,6 +310,15 @@ export async function fetchDatabaseExportTables(
       selectedCandidateIndex: row.selectedCandidateIndex,
       lookupStatus: row.lookupStatus,
       fetchedAt: iso(row.fetchedAt),
+    })),
+    place_pois: placePoiRows.map(row => ({
+      id: row.id,
+      cacheId: row.cacheId,
+      name: row.name,
+      lat: row.lat,
+      lng: row.lng,
+      source: row.source,
+      createdAt: iso(row.createdAt),
     })),
     moments: momentRows.map(row => ({
       id: row.id,

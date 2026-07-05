@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useRef, useState} from 'react';
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -14,7 +14,7 @@ import type {VisitPlaceDisplay} from '@/lib/place-lookup-types';
 type VisitPlaceLabelPagerProps = {
   display: VisitPlaceDisplay;
   compact?: boolean;
-  onSelectIndex: (index: number) => void;
+  onSelectPoiId: (poiId: number, poiLabel: string) => void;
 };
 
 const PAGE_WIDTH = 220;
@@ -23,17 +23,26 @@ const PAGE_WIDTH_COMPACT = 168;
 export function VisitPlaceLabelPager({
   display,
   compact = false,
-  onSelectIndex,
+  onSelectPoiId,
 }: VisitPlaceLabelPagerProps) {
   const pageWidth = compact ? PAGE_WIDTH_COMPACT : PAGE_WIDTH;
   const scrollRef = useRef<ScrollView>(null);
-  const [pageIndex, setPageIndex] = useState(display.selectedIndex);
+  const candidates = display.candidates;
+  const selectedIndex = useMemo(() => {
+    if (display.selectedPoiId == null) {
+      return 0;
+    }
+    const index = candidates.findIndex(
+      candidate => candidate.id === display.selectedPoiId,
+    );
+    return index >= 0 ? index : 0;
+  }, [candidates, display.selectedPoiId]);
+  const [pageIndex, setPageIndex] = useState(selectedIndex);
 
   useEffect(() => {
-    setPageIndex(display.selectedIndex);
-  }, [display.selectedIndex]);
+    setPageIndex(selectedIndex);
+  }, [selectedIndex]);
 
-  const candidates = display.candidates;
   const handleMomentumEnd = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
       const nextIndex = Math.round(
@@ -41,14 +50,15 @@ export function VisitPlaceLabelPager({
       );
       const clamped = Math.max(0, Math.min(nextIndex, candidates.length - 1));
       setPageIndex(clamped);
-      if (clamped !== display.selectedIndex) {
-        onSelectIndex(clamped);
+      const candidate = candidates[clamped];
+      if (candidate && candidate.id !== display.selectedPoiId) {
+        onSelectPoiId(candidate.id, candidate.name);
       }
     },
-    [candidates.length, display.selectedIndex, onSelectIndex, pageWidth],
+    [candidates, display.selectedPoiId, onSelectPoiId, pageWidth],
   );
 
-  const showUserPin = display.isAreaDefault || display.isTripLabel;
+  const showUserPin = display.selectedPoiId != null;
   if (display.source !== 'lookup' || candidates.length <= 1) {
     if (!display.primaryLabel) {
       return null;
@@ -68,29 +78,29 @@ export function VisitPlaceLabelPager({
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        contentOffset={{x: display.selectedIndex * pageWidth, y: 0}}
+        contentOffset={{x: selectedIndex * pageWidth, y: 0}}
         snapToInterval={pageWidth}
         decelerationRate="fast"
         onMomentumScrollEnd={handleMomentumEnd}
         style={styles.scroll}>
         {candidates.map((candidate, index) => (
-          <View key={`${candidate.name}-${index}`} style={[styles.page, {width: pageWidth}]}>
+          <View
+            key={`${candidate.id}-${candidate.name}`}
+            style={[styles.page, {width: pageWidth}]}>
             <VisitPlaceLabelWithPin
               name={candidate.name}
-              showPin={
-                showUserPin && index === display.selectedIndex
-              }
+              showPin={showUserPin && candidate.id === display.selectedPoiId}
             />
             <Text variant="muted" className="text-[10px] uppercase tracking-wide">
-              {candidate.kind === 'address' ? 'Address' : 'Nearby'}
+              {candidate.source === 'user' ? 'Custom' : 'Nearby'}
             </Text>
           </View>
         ))}
       </ScrollView>
       <View style={styles.dots}>
-        {candidates.map((_, index) => (
+        {candidates.map((candidate, index) => (
           <View
-            key={`dot-${index}`}
+            key={`dot-${candidate.id}`}
             style={[styles.dot, index === pageIndex && styles.dotActive]}
           />
         ))}

@@ -10,6 +10,7 @@ describe('estimateExportTableStorageBytes', () => {
       tracking_events: 90,
       saved_places: 0,
       place_lookup_cache: 0,
+      place_pois: 0,
       moments: 0,
       settings: 0,
     };
@@ -30,6 +31,7 @@ describe('estimateExportTableStorageBytes', () => {
         tracking_events: 0,
         saved_places: 0,
         place_lookup_cache: 0,
+        place_pois: 0,
         moments: 0,
         settings: 0,
       },

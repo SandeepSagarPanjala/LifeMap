@@ -1,22 +1,19 @@
 /**
  * Background place-lookup backfill for sealed stays with no label.
- *
- * Not wired into the app yet — see README § Place lookup backfill.
  */
 
 import {DEFAULT_PLACE_LOOKUP_BACKFILL_BATCH_SIZE} from '@/lib/app-constants';
 import {findPlaceLookupNearAnchor} from '@/db/repositories/place-lookup-cache';
 import type {SavedPlaceRow} from '@/db/repositories/saved-places';
 import {
-  applyTripPersistedLabel,
-  listAllTrips,
+  listUnlabeledStayTrips,
   type TripRow,
 } from '@/db/repositories/trips';
 import {
-  enqueuePlaceLookupForStay,
   shouldSkipPlaceLookupForStay,
   stayQualifiesForPlaceLookup,
 } from '@/lib/place-lookup-service';
+import {resolveAndPersistPlaceLabelForTripRow} from '@/lib/place-lookup-resolve';
 import type {PlaceLookupRow} from '@/lib/place-lookup-types';
 import {
   existingTripLabelsByEventKey,
@@ -29,7 +26,7 @@ import type {DetectedTrip} from '@/lib/trip-detection';
 import type {TripDetectionConfig} from '@/lib/trip-settings';
 
 export type PlaceLookupBackfillOptions = {
-  /** Max stays to process this batch (default 3). */
+  /** Max stays to process this batch (default 10). */
   maxTrips?: number;
   tripConfig?: TripDetectionConfig;
   savedPlaces?: readonly SavedPlaceRow[];
@@ -72,7 +69,7 @@ export function isStayMissingPlaceLabel(trip: TripRow): boolean {
   if (trip.placeId != null) {
     return false;
   }
-  if (trip.selectedCandidateIndex != null) {
+  if (trip.poiId != null) {
     return false;
   }
   if (trip.placeLabel?.trim()) {
@@ -108,6 +105,8 @@ export function tripRowToBackfillStay(trip: TripRow): DetectedTrip {
     placeLabel: resolved.placeLabel ?? undefined,
     placeId: resolved.placeId ?? undefined,
     placeKind: resolved.placeKind ?? undefined,
+    poiId: resolved.poiId ?? undefined,
+    poiLabel: resolved.poiLabel ?? undefined,
   };
 }
 
@@ -137,14 +136,17 @@ export function mergeTripPlaceLabelAfterLookup(
     placeLabel?: string | null;
     placeId?: number | null;
     placeKind?: DetectedTrip['placeKind'] | null;
+    poiId?: number | null;
+    poiLabel?: string | null;
   },
 ): PersistedTripLabel {
   if (placeLookup != null) {
     return tripLabelForPersist(eventKey, existingByEventKey, {
       placeKind: 'cache',
       placeId: placeLookup.id,
-      placeLabel: detected?.placeLabel ?? null,
-      selectedCandidateIndex: placeLookup.selectedCandidateIndex,
+      placeLabel: placeLookup.addressLine ?? detected?.placeLabel ?? null,
+      poiId: detected?.poiId ?? null,
+      poiLabel: detected?.poiLabel ?? null,
     });
   }
 
@@ -153,6 +155,8 @@ export function mergeTripPlaceLabelAfterLookup(
       placeLabel: detected.placeLabel ?? null,
       placeId: detected.placeId ?? null,
       placeKind: detected.placeKind,
+      poiId: detected.poiId ?? null,
+      poiLabel: detected.poiLabel ?? null,
     });
   }
 
@@ -173,53 +177,26 @@ export async function backfillPlaceLookupForStay(
     placeId: trip.placeId,
   };
 
-  if (!isStayMissingPlaceLabel(trip)) {
+  const result = await resolveAndPersistPlaceLabelForTripRow(trip, {
+    config: options.config,
+    savedPlaces: options.savedPlaces,
+    existingByEventKey: options.existingByEventKey,
+    bypassSessionBudget: true,
+  });
+
+  if (result === 'skipped') {
     return {...base, status: 'skipped'};
   }
-
-  const stay = tripRowToBackfillStay(trip);
-  if (
-    !stayQualifiesForPlaceLookup(stay, options.config, options.savedPlaces) ||
-    shouldSkipPlaceLookupForStay(stay, options.savedPlaces)
-  ) {
-    return {...base, status: 'skipped'};
+  if (result === 'failed') {
+    return {...base, status: 'still_pending', placeId: null};
   }
 
-  const anchor = tripLookupAnchorFromRow(trip);
-  let cache = await findPlaceLookupNearAnchor(anchor);
-  let fetched = false;
-
-  if (cache?.lookupStatus !== 'complete') {
-    await enqueuePlaceLookupForStay(
-      stay,
-      [...options.savedPlaces],
-      options.config,
-    );
-    fetched = true;
-    cache = await findPlaceLookupNearAnchor(anchor);
-  }
-
-  if (cache?.lookupStatus !== 'complete') {
-    return {
-      ...base,
-      status: cache?.lookupStatus === 'pending' ? 'still_pending' : 'skipped',
-      placeId: null,
-    };
-  }
-
-  const labels = mergeTripPlaceLabelAfterLookup(
-    trip.eventKey,
-    options.existingByEventKey,
-    cache,
-    resolvedPlaceFromTripRow(trip),
-  );
-  await applyTripPersistedLabel(trip.id, labels);
-
+  const cache = await findPlaceLookupNearAnchor(tripLookupAnchorFromRow(trip));
   return {
     eventKey: trip.eventKey,
     tripId: trip.id,
-    status: fetched ? 'fetched' : 'linked_cache',
-    placeId: cache.id,
+    status: result === 'fetched' ? 'fetched' : 'linked_cache',
+    placeId: cache?.id ?? null,
   };
 }
 
@@ -229,21 +206,25 @@ export async function backfillPlaceLookupForStay(
 export async function runPlaceLookupBackfillBatch(
   options: PlaceLookupBackfillOptions = {},
 ): Promise<PlaceLookupBackfillBatchResult> {
-  const maxTrips =
-    options.maxTrips ?? DEFAULT_PLACE_LOOKUP_BACKFILL_BATCH_SIZE;
   const config = options.tripConfig ?? getDefaultTripDetectionConfig();
   const savedPlaces = options.savedPlaces ?? [];
 
-  const allTrips = options.trips ?? (await listAllTrips());
+  const candidateRows =
+    options.trips ??
+    (await listUnlabeledStayTrips(
+      options.maxTrips ?? DEFAULT_PLACE_LOOKUP_BACKFILL_BATCH_SIZE,
+    ));
   const existingByEventKey =
     options.existingLabelsByEventKey ??
-    existingTripLabelsByEventKey(allTrips);
+    existingTripLabelsByEventKey(candidateRows);
 
   const candidates = listStaysNeedingPlaceLookup(
-    allTrips,
+    candidateRows,
     config,
     savedPlaces,
   );
+  const maxTrips =
+    options.maxTrips ?? DEFAULT_PLACE_LOOKUP_BACKFILL_BATCH_SIZE;
   const batch = candidates.slice(0, maxTrips);
 
   const results: PlaceLookupBackfillTripResult[] = [];

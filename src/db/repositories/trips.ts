@@ -1,4 +1,4 @@
-import {and, asc, eq, inArray, notInArray} from 'drizzle-orm';
+import {and, asc, desc, eq, inArray, isNull, notInArray, or, sql} from 'drizzle-orm';
 
 import type {ResolvedPlaceFields} from '@/lib/resolved-place';
 import {
@@ -27,7 +27,10 @@ export type TripRow = {
   placeLabel: string | null;
   placeId: number | null;
   placeKind: 'saved' | 'cache' | null;
+  poiId: number | null;
+  poiLabel: string | null;
   inferred: boolean;
+  /** @deprecated Replaced by poi_id. */
   selectedCandidateIndex: number | null;
   detectionVersion: number;
   closedAt: Date;
@@ -50,6 +53,8 @@ function mapRow(row: typeof trips.$inferSelect): TripRow {
     placeLabel: row.placeLabel,
     placeId: row.placeId,
     placeKind: row.placeKind,
+    poiId: row.poiId,
+    poiLabel: row.poiLabel,
     inferred: row.inferred === 1,
     selectedCandidateIndex: row.selectedCandidateIndex,
     detectionVersion: row.detectionVersion,
@@ -106,6 +111,8 @@ export type InsertTripInput = {
   placeLabel?: string | null;
   placeId?: number | null;
   placeKind?: 'saved' | 'cache' | null;
+  poiId?: number | null;
+  poiLabel?: string | null;
   inferred?: boolean;
   selectedCandidateIndex?: number | null;
   detectionVersion: number;
@@ -128,6 +135,8 @@ function tripValues(input: InsertTripInput) {
     placeLabel: input.placeLabel ?? null,
     placeId: input.placeId ?? null,
     placeKind: input.placeKind ?? null,
+    poiId: input.poiId ?? null,
+    poiLabel: input.poiLabel ?? null,
     inferred: input.inferred ? 1 : 0,
     selectedCandidateIndex: input.selectedCandidateIndex ?? null,
     detectionVersion: input.detectionVersion,
@@ -173,6 +182,8 @@ export async function upsertTrip(input: InsertTripInput): Promise<TripRow> {
         placeLabel: input.placeLabel ?? null,
         placeId: input.placeId ?? null,
         placeKind: input.placeKind ?? null,
+        poiId: input.poiId ?? null,
+        poiLabel: input.poiLabel ?? null,
         inferred: input.inferred ? 1 : 0,
         selectedCandidateIndex: input.selectedCandidateIndex ?? null,
         detectionVersion: input.detectionVersion,
@@ -205,9 +216,7 @@ export async function updateTripEndTime(
     .where(eq(trips.id, tripId));
 }
 
-export type TripPersistedLabel = ResolvedPlaceFields & {
-  selectedCandidateIndex: number | null;
-};
+export type TripPersistedLabel = ResolvedPlaceFields;
 
 export async function applyTripPersistedLabel(
   tripId: number,
@@ -220,46 +229,25 @@ export async function applyTripPersistedLabel(
       placeLabel: labels.placeLabel,
       placeId: labels.placeId,
       placeKind: labels.placeKind,
-      selectedCandidateIndex: labels.selectedCandidateIndex,
+      poiId: labels.poiId,
+      poiLabel: labels.poiLabel,
+      selectedCandidateIndex: null,
     })
     .where(eq(trips.id, tripId));
 }
 
-export async function updateTripLabelSelection(
+export async function updateTripPoiSelection(
   tripId: number,
-  selectedCandidateIndex: number,
+  poiId: number,
+  poiLabel: string,
   cachePlaceId?: number | null,
 ): Promise<void> {
   const db = await getDatabase();
   await db
     .update(trips)
     .set({
-      selectedCandidateIndex,
-      placeLabel: null,
-      ...(cachePlaceId != null
-        ? {
-            placeId: cachePlaceId,
-            placeKind: 'cache' as const,
-          }
-        : {}),
-    })
-    .where(eq(trips.id, tripId));
-}
-
-export async function updateTripCustomLabel(
-  tripId: number,
-  label: string,
-  cachePlaceId?: number | null,
-): Promise<void> {
-  const trimmed = label.trim();
-  if (!trimmed) {
-    return;
-  }
-  const db = await getDatabase();
-  await db
-    .update(trips)
-    .set({
-      placeLabel: trimmed,
+      poiId,
+      poiLabel: poiLabel.trim(),
       selectedCandidateIndex: null,
       ...(cachePlaceId != null
         ? {
@@ -269,6 +257,33 @@ export async function updateTripCustomLabel(
         : {}),
     })
     .where(eq(trips.id, tripId));
+}
+
+/** @deprecated Use updateTripPoiSelection */
+export async function updateTripLabelSelection(
+  tripId: number,
+  _selectedCandidateIndex: number,
+  cachePlaceId?: number | null,
+): Promise<void> {
+  await updateTripPoiSelection(tripId, 0, '', cachePlaceId);
+}
+
+/** @deprecated Custom labels are user POI rows — use createUserPlacePoi + updateTripPoiSelection */
+export async function updateTripCustomLabel(
+  tripId: number,
+  _label: string,
+  cachePlaceId?: number | null,
+): Promise<void> {
+  if (cachePlaceId != null) {
+    const db = await getDatabase();
+    await db
+      .update(trips)
+      .set({
+        placeId: cachePlaceId,
+        placeKind: 'cache' as const,
+      })
+      .where(eq(trips.id, tripId));
+  }
 }
 
 export async function updateTripSavedPlaceAssociation(
@@ -283,9 +298,42 @@ export async function updateTripSavedPlaceAssociation(
     .set({
       placeId: savedPlaceId,
       placeKind: savedPlaceId != null ? ('saved' as const) : null,
+      poiId: null,
+      poiLabel: null,
       ...(label != null ? {placeLabel: label} : {}),
     })
     .where(eq(trips.id, tripId));
+}
+
+function unlabeledStayTripConditions() {
+  return and(
+    eq(trips.kind, 'stay'),
+    isNull(trips.placeId),
+    isNull(trips.poiId),
+    or(isNull(trips.placeLabel), eq(trips.placeLabel, '')),
+  );
+}
+
+export async function countUnlabeledStayTrips(): Promise<number> {
+  const db = await getDatabase();
+  const rows = await db
+    .select({count: sql<number>`count(*)`})
+    .from(trips)
+    .where(unlabeledStayTripConditions());
+  return Number(rows[0]?.count ?? 0);
+}
+
+export async function listUnlabeledStayTrips(
+  limit: number,
+): Promise<TripRow[]> {
+  const db = await getDatabase();
+  const rows = await db
+    .select()
+    .from(trips)
+    .where(unlabeledStayTripConditions())
+    .orderBy(desc(trips.dateKey), desc(trips.startAt))
+    .limit(limit);
+  return rows.map(mapRow);
 }
 
 export async function countTripsForDay(dateKey: string): Promise<number> {

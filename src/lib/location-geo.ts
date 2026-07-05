@@ -124,6 +124,25 @@ export function regionForCoordinates(
   return {latitude, longitude, latitudeDelta, longitudeDelta};
 }
 
+/** Map region that frames a circular venue around an anchor. */
+export function regionForVenueRadius(
+  anchor: LocationPointLike,
+  radiusMeters: number,
+  paddingFactor = 1.35,
+): Region {
+  const diameterM = Math.max(radiusMeters, 1) * 2 * paddingFactor;
+  const latitudeDelta = diameterM / 111_000;
+  const longitudeDelta =
+    latitudeDelta / Math.max(0.2, Math.cos((anchor.lat * Math.PI) / 180));
+
+  return {
+    latitude: anchor.lat,
+    longitude: anchor.lng,
+    latitudeDelta: Math.max(latitudeDelta, 0.0015),
+    longitudeDelta: Math.max(longitudeDelta, 0.0015),
+  };
+}
+
 /** Bearing from a → b in degrees (0 = north, clockwise). */
 export function bearingDegrees(a: LocationPointLike, b: LocationPointLike): number {
   const lat1 = toRad(a.lat);

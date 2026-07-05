@@ -4,6 +4,7 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import {useFocusEffect, useNavigation} from '@react-navigation/native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 
+import {loadCachedPlacesCount} from '@/components/settings/cached-places-settings';
 import {AppVersionFooter} from '@/components/settings/app-version-footer';
 import {
   SettingsGroup,
@@ -36,6 +37,9 @@ export function SettingsScreen() {
   const distanceUnit = useAppStore(state => state.distanceUnit);
   const preferredMapApp = useAppStore(state => state.preferredMapApp);
   const [storageSummary, setStorageSummary] = useState<string | undefined>();
+  const [cachedPlacesSummary, setCachedPlacesSummary] = useState<
+    string | undefined
+  >();
   const [backupSummary, setBackupSummary] = useState<string | undefined>();
   const [driveMapRefreshSummary, setDriveMapRefreshSummary] = useState<
     string | undefined
@@ -60,6 +64,21 @@ export function SettingsScreen() {
         } catch {
           if (!cancelled) {
             setStorageSummary(undefined);
+          }
+        }
+
+        try {
+          const cachedPlacesCount = await loadCachedPlacesCount();
+          if (!cancelled) {
+            setCachedPlacesSummary(
+              cachedPlacesCount === 1
+                ? '1 place'
+                : `${cachedPlacesCount.toLocaleString()} places`,
+            );
+          }
+        } catch {
+          if (!cancelled) {
+            setCachedPlacesSummary(undefined);
           }
         }
 
@@ -144,6 +163,12 @@ export function SettingsScreen() {
             label="Storage"
             value={storageSummary}
             onPress={() => navigation.navigate('StorageSettings')}
+          />
+          <SettingsGroupDivider />
+          <SettingsLinkRow
+            label="Cached places"
+            value={cachedPlacesSummary}
+            onPress={() => navigation.navigate('CachedPlacesSettings')}
           />
           <SettingsGroupDivider />
           <SettingsLinkRow

@@ -27,13 +27,14 @@ export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
     selectedSavedPlace,
     selectedDriveEndpointLabels,
     placeLabelEditDisplay,
-    handleSelectVisitPlaceIndex,
+    handleSelectVisitPlacePoi,
     handleExpandVisitPlaceArea,
     handleSaveCustomVisitPlaceLabel,
     handleDonePlaceLabel,
     expandingVisitPlaceArea,
     showPlaceLabelCard,
     visitPlaceLabelInEventCard,
+    visitPlaceResolving,
     openVisitPlaceLabelCard,
     openDriveStartLabelCard,
     openDriveEndLabelCard,
@@ -98,7 +99,7 @@ export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
             <VisitPlaceAddressCard
               display={placeLabelEditDisplay}
               expandingArea={expandingVisitPlaceArea}
-              onSelectIndex={handleSelectVisitPlaceIndex}
+              onSelectPoiId={handleSelectVisitPlacePoi}
               onExpandArea={handleExpandVisitPlaceArea}
               onRequestCustomLabel={() => setCustomLabelOpen(true)}
               onDone={handleDonePlaceLabel}
@@ -108,6 +109,7 @@ export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
             entry={eventSelected ? selectedEntry : null}
             savedPlace={scrubOnEvent ? selectedSavedPlace : null}
             visitPlaceLabel={visitPlaceLabelInEventCard}
+            visitPlaceResolving={visitPlaceResolving}
             onEditVisitPlaceLabel={
               scrubOnEvent &&
               selectedEntry?.kind === 'stay' &&
@@ -148,7 +150,7 @@ export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
           />
           <VisitPlaceCustomLabelSheet
             visible={customLabelOpen}
-            initialValue={placeLabelEditDisplay.customLabel ?? ''}
+            initialValue=""
             onClose={() => setCustomLabelOpen(false)}
             onSave={label => {
               handleSaveCustomVisitPlaceLabel(label);

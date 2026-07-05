@@ -62,6 +62,7 @@ import {
   useSetCustomVisitPlaceLabel,
   useVisitPlaceDisplay,
 } from '@/hooks/use-visit-place-display';
+import {useResolvePlaceOnStaySelect} from '@/hooks/use-resolve-place-on-stay-select';
 import {useTripDetectionConfig} from '@/hooks/use-trip-detection-config';
 import {useTripPlayback} from '@/hooks/use-trip-playback';
 import {buildHistoryMapPlan} from '@/lib/history-map-plan';
@@ -623,12 +624,22 @@ export function useMapScreenController() {
     savedPlaces,
   );
 
+  const visitPlaceResolving = useResolvePlaceOnStaySelect(
+    scrubOnEvent && selectedStay ? selectedStay : null,
+    selectedDateKey,
+    savedPlaces,
+    historyScrubOnEvent,
+  );
+
   const placeLabelEditDisplay = useVisitPlaceDisplay(
     placeLabelEditStay,
     savedPlaces,
   );
 
   const visitPlaceLabelInEventCard = useMemo(() => {
+    if (visitPlaceResolving) {
+      return 'Finding place…';
+    }
     if (!historyScrubOnEvent || selectedSavedPlace != null) {
       return null;
     }
@@ -637,6 +648,7 @@ export function useMapScreenController() {
     }
     return visitPlaceDefaultLabel(selectedVisitPlaceDisplay);
   }, [
+    visitPlaceResolving,
     historyScrubOnEvent,
     selectedSavedPlace,
     selectedVisitPlaceDisplay,
@@ -688,14 +700,15 @@ export function useMapScreenController() {
   const setCustomVisitPlaceLabel = useSetCustomVisitPlaceLabel();
   const expandVisitPlaceLookupArea = useExpandVisitPlaceLookupArea();
 
-  const handleSelectVisitPlaceIndex = useCallback(
-    (index: number) => {
+  const handleSelectVisitPlacePoi = useCallback(
+    (poiId: number, poiLabel: string) => {
       if (!placeLabelEditStay) {
         return;
       }
       void selectVisitPlaceCandidate({
         cacheId: placeLabelEditDisplay.cacheId,
-        selectedIndex: index,
+        poiId,
+        poiLabel,
         stay: placeLabelEditStay,
         dateKey: selectedDateKey,
         materializedTripId: placeLabelEditDisplay.materializedTripId,
@@ -715,19 +728,30 @@ export function useMapScreenController() {
     if (!stay) {
       return;
     }
-    void selectVisitPlaceCandidate({
-      cacheId: placeLabelEditDisplay.cacheId,
-      selectedIndex: placeLabelEditDisplay.selectedIndex,
-      stay,
-      dateKey: selectedDateKey,
-      materializedTripId: placeLabelEditDisplay.materializedTripId,
-    }).finally(() => {
+    const {selectedPoiId, candidates} = placeLabelEditDisplay;
+    const selected =
+      selectedPoiId != null
+        ? candidates.find(candidate => candidate.id === selectedPoiId)
+        : null;
+    const done =
+      selected != null
+        ? selectVisitPlaceCandidate({
+            cacheId: placeLabelEditDisplay.cacheId,
+            poiId: selected.id,
+            poiLabel: selected.name,
+            stay,
+            dateKey: selectedDateKey,
+            materializedTripId: placeLabelEditDisplay.materializedTripId,
+          })
+        : Promise.resolve();
+    void done.finally(() => {
       setPlaceLabelEditStay(null);
     });
   }, [
     placeLabelEditDisplay.cacheId,
+    placeLabelEditDisplay.candidates,
     placeLabelEditDisplay.materializedTripId,
-    placeLabelEditDisplay.selectedIndex,
+    placeLabelEditDisplay.selectedPoiId,
     placeLabelEditStay,
     selectVisitPlaceCandidate,
     selectedDateKey,
@@ -1571,6 +1595,7 @@ export function useMapScreenController() {
     selectedDriveEndpointLabels,
     selectedVisitPlaceDisplay,
     visitPlaceLabelInEventCard,
+    visitPlaceResolving,
     showPlaceLabelCard,
     placeLabelEditDisplay,
     openVisitPlaceLabelCard,
@@ -1580,7 +1605,7 @@ export function useMapScreenController() {
     canEditDriveEndLabel,
     handleDonePlaceLabel,
     currentOpenVisitPlaceDisplay,
-    handleSelectVisitPlaceIndex,
+    handleSelectVisitPlacePoi,
     handleExpandVisitPlaceArea,
     handleSaveCustomVisitPlaceLabel,
     expandingVisitPlaceArea,

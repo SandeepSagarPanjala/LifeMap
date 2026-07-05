@@ -1,9 +1,9 @@
 import type {LocationPointRow} from '@/db/repositories/location-days';
-import {listPlaceLookupCacheRows} from '@/db/repositories/place-lookup-cache';
 import {listSavedPlaces} from '@/db/repositories/saved-places';
 import {getDayRange} from '@/lib/day-utils';
 import type {HistoryData} from '@/lib/history-data-types';
 import {loadExplorerGpsWindow} from '@/lib/explorer-day-trips';
+import {loadPlaceLookupContext} from '@/lib/place-lookup-context';
 import {prepareDayHistoryTimeline} from '@/lib/today-history';
 import {
   isPlayableTimelineEntry,
@@ -20,11 +20,11 @@ export async function buildTodayDisplayHistory(
   referenceNow: Date = new Date(),
 ): Promise<HistoryData & {dayPointCount: number}> {
   const {start: dayStart, end: dayEnd} = getDayRange(dateKey);
-  const [savedPlaces, {windowPoints, dayPointCount}, placeLookupCache] =
+  const [savedPlaces, {windowPoints, dayPointCount}, placeLookup] =
     await Promise.all([
       listSavedPlaces(),
       loadExplorerGpsWindow(dateKey),
-      listPlaceLookupCacheRows(),
+      loadPlaceLookupContext(),
     ]);
 
   const dayPoints = filterPointsInRange(windowPoints, dayStart, dayEnd);
@@ -39,7 +39,11 @@ export async function buildTodayDisplayHistory(
     detectionConfig,
     referenceNow,
     [],
-    {savedPlaces, placeLookupCache},
+    {
+      savedPlaces,
+      placeLookupCache: placeLookup.placeLookupCache,
+      placePois: placeLookup.placePois,
+    },
     true,
   );
 
@@ -60,11 +64,11 @@ export async function buildTodayTailDisplayHistory(
   referenceNow: Date = new Date(),
 ): Promise<HistoryData & {dayPointCount: number}> {
   const {start: dayStart, end: dayEnd} = getDayRange(dateKey);
-  const [savedPlaces, {windowPoints, dayPointCount}, placeLookupCache] =
+  const [savedPlaces, {windowPoints, dayPointCount}, placeLookup] =
     await Promise.all([
       listSavedPlaces(),
       loadExplorerGpsWindow(dateKey),
-      listPlaceLookupCacheRows(),
+      loadPlaceLookupContext(),
     ]);
 
   const tailStartMs = tailStart.getTime();
@@ -82,7 +86,11 @@ export async function buildTodayTailDisplayHistory(
     detectionConfig,
     referenceNow,
     [],
-    {savedPlaces, placeLookupCache},
+    {
+      savedPlaces,
+      placeLookupCache: placeLookup.placeLookupCache,
+      placePois: placeLookup.placePois,
+    },
     true,
   );
 

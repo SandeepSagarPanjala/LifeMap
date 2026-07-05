@@ -21,6 +21,7 @@ import {
   type StopDetectionConfig,
   type TripSegment,
 } from '@lifemap/segmentation';
+import {platformResolvesClosestPoi} from '@/lib/place-lookup-native';
 
 export {
   detectTripsForDay,
@@ -82,6 +83,8 @@ function staySegmentToTrip(segment: StaySegment): DetectedTrip {
     placeLabel: segment.placeLabel,
     placeId: segment.placeId,
     placeKind: segment.placeKind,
+    poiId: segment.poiId,
+    poiLabel: segment.poiLabel,
     inferred: segment.stop.inferred,
     anchorLat: segment.stop.lat,
     anchorLng: segment.stop.lng,
@@ -104,9 +107,13 @@ function driveSegmentToTrip(segment: DriveSegment): DetectedTrip {
     fromPlaceLabel: segment.fromPlaceLabel,
     fromPlaceId: segment.fromPlaceId,
     fromPlaceKind: segment.fromPlaceKind,
+    fromPoiId: segment.fromPoiId,
+    fromPoiLabel: segment.fromPoiLabel,
     toPlaceLabel: segment.toPlaceLabel,
     toPlaceId: segment.toPlaceId,
     toPlaceKind: segment.toPlaceKind,
+    toPoiId: segment.toPoiId,
+    toPoiLabel: segment.toPoiLabel,
   };
 }
 
@@ -146,12 +153,17 @@ export function detectSegmentsForDay(
 ): TripSegment[] {
   const parsed = locationRowsToParsedPoints(allPoints);
   const stopConfig = stopConfigFromTripConfig(config);
+  const resolveClosestPoi =
+    options.resolveClosestPoi ?? platformResolvesClosestPoi();
   return detectTripsForDay(
     dateKey,
     parsed,
     stopConfig,
     [...savedPlaces],
     [...(options.placeLookupCache ?? [])],
+    [...(options.placePois ?? [])],
+    [],
+    {resolveClosestPoi},
   ).segments;
 }
 
@@ -189,6 +201,12 @@ export function detectTripsFromPoints(
     stopConfig,
     [...(options.savedPlaces ?? [])],
     [...(options.placeLookupCache ?? [])],
+    [...(options.placePois ?? [])],
+    [],
+    {
+      resolveClosestPoi:
+        options.resolveClosestPoi ?? platformResolvesClosestPoi(),
+    },
   );
   return result.segments
     .filter(

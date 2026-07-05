@@ -123,6 +123,8 @@ class PlaceLookupModule: NSObject {
             "name": name,
             "kind": "poi",
             "distanceM": 0,
+            "lat": location.coordinate.latitude,
+            "lng": location.coordinate.longitude,
           ])
         }
       }
@@ -140,6 +142,8 @@ class PlaceLookupModule: NSObject {
                 "name": name,
                 "kind": "poi",
                 "distanceM": location.distance(from: itemLocation),
+                "lat": item.placemark.coordinate.latitude,
+                "lng": item.placemark.coordinate.longitude,
               ])
             }
           }

@@ -1,4 +1,1 @@
-export {
-  matchCompletePlaceLookupAtAnchor,
-  primaryLabelFromPlaceLookup,
-} from '@lifemap/segmentation';
+export {matchCompletePlaceLookupAtAnchor} from '@lifemap/segmentation';

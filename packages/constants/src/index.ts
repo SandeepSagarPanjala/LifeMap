@@ -194,7 +194,11 @@ export const PLACE_LOOKUP_RADIUS_STEPS = [100, 250, 500, 750, 1000] as const;
 export const PLACE_LOOKUP_MAX_RADIUS_M =
   PLACE_LOOKUP_RADIUS_STEPS[PLACE_LOOKUP_RADIUS_STEPS.length - 1];
 export const PLACE_LOOKUP_SESSION_BUDGET = 10;
-export const DEFAULT_PLACE_LOOKUP_BACKFILL_BATCH_SIZE = 3;
+export const DEFAULT_PLACE_LOOKUP_BACKFILL_BATCH_SIZE = 10;
+/** Show bottom progress strip when this many unlabeled stays need catch-up. */
+export const PLACE_LOOKUP_CATCH_UP_STRIP_THRESHOLD = 3;
+export const PLACE_LOOKUP_CATCH_UP_BATCH_MAX = 10;
+export const PLACE_LOOKUP_CATCH_UP_DELAY_MS = 150;
 
 // ——— Moments media ———
 

@@ -121,7 +121,9 @@ export const placeLookupCache = sqliteTable(
     anchorLng: real('anchor_lng').notNull(),
     venueRadiusMeters: integer('venue_radius_meters').notNull().default(100),
     addressLine: text('address_line'),
+    /** @deprecated Migrated to place_pois — kept for one-time data migration. */
     candidatesJson: text('candidates_json'),
+    /** @deprecated Replaced by per-trip poi_id. */
     selectedCandidateIndex: integer('selected_candidate_index'),
     lookupStatus: text('lookup_status').notNull().default('pending'),
     fetchedAt: integer('fetched_at', {mode: 'timestamp'}),
@@ -133,6 +135,26 @@ export const placeLookupCache = sqliteTable(
     anchorLngIdx: index('place_lookup_cache_anchor_lng_idx').on(
       table.anchorLng,
     ),
+  }),
+);
+
+export const placePois = sqliteTable(
+  'place_pois',
+  {
+    id: integer('id').primaryKey({autoIncrement: true}),
+    cacheId: integer('cache_id')
+      .notNull()
+      .references(() => placeLookupCache.id, {onDelete: 'cascade'}),
+    name: text('name').notNull(),
+    lat: real('lat').notNull(),
+    lng: real('lng').notNull(),
+    source: text('source', {enum: ['mapkit', 'user']})
+      .notNull()
+      .default('mapkit'),
+    createdAt: integer('created_at', {mode: 'timestamp'}).notNull(),
+  },
+  table => ({
+    cacheIdIdx: index('place_pois_cache_id_idx').on(table.cacheId),
   }),
 );
 
@@ -150,14 +172,19 @@ export const trips = sqliteTable(
     centroidLat: real('centroid_lat').notNull(),
     centroidLng: real('centroid_lng').notNull(),
     segmentOrder: integer('segment_order').notNull().default(0),
-    /** Denormalized display label — detection or user custom override. */
+    /** Saved place name, or street address when placeKind is cache. */
     placeLabel: text('place_label'),
     /** Saved place id or place_lookup_cache id (see placeKind). */
     placeId: integer('place_id'),
     placeKind: text('place_kind', {enum: ['saved', 'cache']}),
+    /** POI row when placeKind is cache (MapKit or user-created). */
+    poiId: integer('poi_id'),
+    /** Denormalized POI display name. */
+    poiLabel: text('poi_label'),
     /** Materialized moment membership — [{ momentId, momentKind }]. */
     momentRefs: text('moment_refs'),
     inferred: integer('inferred').notNull().default(0),
+    /** @deprecated Replaced by poi_id. */
     selectedCandidateIndex: integer('selected_candidate_index'),
     detectionVersion: integer('detection_version').notNull(),
     closedAt: integer('closed_at', {mode: 'timestamp'}).notNull(),

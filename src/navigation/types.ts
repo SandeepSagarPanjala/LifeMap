@@ -8,6 +8,8 @@ export type RootStackParamList = {
   PreferredMapsSettings: undefined;
   DriveMapRefreshSettings: undefined;
   StorageSettings: undefined;
+  CachedPlacesSettings: undefined;
+  CachedPlaceMap: {cacheId: number};
   BackupSettings: undefined;
   DeveloperSettings: undefined;
   RestoreBackup:

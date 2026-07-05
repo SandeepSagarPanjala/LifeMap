@@ -19,8 +19,14 @@ const WIDGET_ACTIONS = new Set<WidgetAction>([
   'refresh',
 ]);
 
+type CaptureScreenName =
+  | 'CaptureNote'
+  | 'CapturePhoto'
+  | 'CaptureVoice'
+  | 'CaptureActivity';
+
 const CAPTURE_SCREEN_BY_ACTION: Partial<
-  Record<WidgetAction, keyof RootStackParamList>
+  Record<WidgetAction, CaptureScreenName>
 > = {
   note: 'CaptureNote',
   photo: 'CapturePhoto',

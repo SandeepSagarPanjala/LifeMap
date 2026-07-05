@@ -18,6 +18,10 @@ export type TripTimelineOptions = {
   savedPlaces?: readonly SavedPlaceRow[];
   /** Completed rows from `place_lookup_cache` — matched at stay anchors during annotate. */
   placeLookupCache?: readonly PlaceLookupRow[];
+  /** POI rows keyed by cache_id — used for closest-POI resolution on iOS. */
+  placePois?: readonly import('@/lib/place-lookup-types').PlacePoiRow[];
+  /** When true (iOS), pick closest POI to each stay anchor. */
+  resolveClosestPoi?: boolean;
 };
 
 export type PlaceKind = 'saved' | 'cache';
@@ -36,17 +40,23 @@ export type DetectedTrip = {
   materializedTripId?: number;
   /** Display order within the day (1-based). */
   segmentOrder?: number;
-  /** Resolved stay place — saved or cache, never both. */
+  /** Saved place name or street address when placeKind is cache. */
   placeLabel?: string;
   placeId?: number;
   placeKind?: PlaceKind;
+  poiId?: number;
+  poiLabel?: string;
   /** Drive endpoints — copied from endpoint match or adjacent stays. */
   fromPlaceLabel?: string;
   fromPlaceId?: number;
   fromPlaceKind?: PlaceKind;
+  fromPoiId?: number;
+  fromPoiLabel?: string;
   toPlaceLabel?: string;
   toPlaceId?: number;
   toPlaceKind?: PlaceKind;
+  toPoiId?: number;
+  toPoiLabel?: string;
   inferred?: boolean;
   /** Materialized moment membership when read from DB. */
   momentRefs?: TripMomentRef[];

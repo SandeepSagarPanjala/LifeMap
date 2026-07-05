@@ -9,6 +9,7 @@ export type DatabaseExportTables = {
   tracking_events: unknown[];
   saved_places: unknown[];
   place_lookup_cache: unknown[];
+  place_pois: unknown[];
   moments: unknown[];
   settings: unknown[];
 };
@@ -23,6 +24,7 @@ export const DATABASE_EXPORT_TABLE_NAMES: DatabaseExportTableName[] = [
   'tracking_events',
   'saved_places',
   'place_lookup_cache',
+  'place_pois',
   'moments',
   'settings',
 ];
@@ -34,6 +36,7 @@ export const ORIGINAL_DATA_EXPORT_TABLE_NAMES = [
   'moments',
   'settings',
   'place_lookup_cache',
+  'place_pois',
 ] as const satisfies readonly DatabaseExportTableName[];
 
 export type OriginalDataExportTableName =
@@ -53,6 +56,7 @@ export function emptyDatabaseExportTables(): DatabaseExportTables {
     tracking_events: [],
     saved_places: [],
     place_lookup_cache: [],
+    place_pois: [],
     moments: [],
     settings: [],
   };
@@ -94,6 +98,7 @@ export function pickOriginalDataExportTables(
     moments: tables.moments,
     settings: tables.settings,
     place_lookup_cache: tables.place_lookup_cache,
+    place_pois: tables.place_pois,
   };
 }
 

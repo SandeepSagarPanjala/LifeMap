@@ -10,6 +10,7 @@ import {
 import {ensureHistoryCalendarBounds} from '@/lib/history-calendar-bounds';
 import {preloadTodayHistory} from '@/lib/history-preload';
 import {sealYesterdayIfNeeded} from '@/lib/trip-materialization';
+import {startPlaceLookupCatchUp} from '@/lib/place-lookup-catch-up';
 import {
   beginTodayOpenCycle,
   scheduleTodayOpenSilentSeal,
@@ -94,6 +95,8 @@ export function AppBootstrap({
           void (async () => {
             await yieldToEventLoop();
             await sealYesterdayIfNeeded();
+            await yieldToEventLoop();
+            startPlaceLookupCatchUp();
           })();
         }, DEFER_SECONDARY_LAUNCH_WORK_MS);
         cancelSeal = sealWork.cancel;
@@ -160,6 +163,8 @@ export function AppBootstrap({
               } catch {
                 // Best-effort — map still shows cached today until sync runs.
               }
+              await yieldToEventLoop();
+              startPlaceLookupCatchUp();
               try {
                 await service.drainNativeQueue();
               } catch {
