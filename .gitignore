@@ -52,6 +52,9 @@ src/config/env.local.ts
 .env
 .env.local
 
+# Sentry upload auth (generate via wizard or set SENTRY_AUTH_TOKEN in CI)
+**/sentry.properties
+
 # TransistorSoft license keys (trial/production JWT — never commit)
 ios/Config/Secrets.xcconfig
 android/transistor-license.properties
