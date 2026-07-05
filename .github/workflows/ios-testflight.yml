@@ -43,7 +43,7 @@ jobs:
 
       - name: Install CocoaPods
         working-directory: ios
-        run: bundle exec pod install
+        run: bundle exec pod install --repo-update
 
       - name: Verify App Store Connect API secrets
         run: |

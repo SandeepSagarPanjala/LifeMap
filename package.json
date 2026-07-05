@@ -13,7 +13,7 @@
     "ios:sim:17P": "react-native run-ios --simulator \"iPhone 17 Pro\"",
     "ios:release": "bash -c 'source scripts/ruby-env.sh && cd ios && bundle exec fastlane build'",
     "ios:beta": "bash -c 'source scripts/ruby-env.sh && cd ios && bundle exec fastlane beta'",
-    "pod-install": "bash -c 'source scripts/ruby-env.sh && cd ios && bundle exec pod install'",
+    "pod-install": "bash -c 'source scripts/ruby-env.sh && cd ios && bundle exec pod install --repo-update'",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "start": "react-native start",
