@@ -262,28 +262,52 @@ export async function updateTripPoiSelection(
 /** @deprecated Use updateTripPoiSelection */
 export async function updateTripLabelSelection(
   tripId: number,
-  _selectedCandidateIndex: number,
+  selectedCandidateIndex: number,
   cachePlaceId?: number | null,
 ): Promise<void> {
-  await updateTripPoiSelection(tripId, 0, '', cachePlaceId);
+  const db = await getDatabase();
+  await db
+    .update(trips)
+    .set({
+      selectedCandidateIndex,
+      poiId: null,
+      poiLabel: null,
+      ...(cachePlaceId != null
+        ? {
+            placeId: cachePlaceId,
+            placeKind: 'cache' as const,
+          }
+        : {}),
+    })
+    .where(eq(trips.id, tripId));
 }
 
 /** @deprecated Custom labels are user POI rows — use createUserPlacePoi + updateTripPoiSelection */
 export async function updateTripCustomLabel(
   tripId: number,
-  _label: string,
+  label: string,
   cachePlaceId?: number | null,
 ): Promise<void> {
-  if (cachePlaceId != null) {
-    const db = await getDatabase();
-    await db
-      .update(trips)
-      .set({
-        placeId: cachePlaceId,
-        placeKind: 'cache' as const,
-      })
-      .where(eq(trips.id, tripId));
+  const trimmed = label.trim();
+  if (!trimmed) {
+    return;
   }
+  const db = await getDatabase();
+  await db
+    .update(trips)
+    .set({
+      placeLabel: trimmed,
+      poiLabel: cachePlaceId != null ? trimmed : null,
+      poiId: null,
+      selectedCandidateIndex: null,
+      ...(cachePlaceId != null
+        ? {
+            placeId: cachePlaceId,
+            placeKind: 'cache' as const,
+          }
+        : {}),
+    })
+    .where(eq(trips.id, tripId));
 }
 
 export async function updateTripSavedPlaceAssociation(

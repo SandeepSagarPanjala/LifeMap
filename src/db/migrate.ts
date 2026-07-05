@@ -148,7 +148,8 @@ export async function migrationAlreadyApplied(
     case '0025_place_pois':
       return (
         (await tableExists(sqlite, 'place_pois')) &&
-        (await columnExists(sqlite, 'trips', 'poi_id'))
+        (await columnExists(sqlite, 'trips', 'poi_id')) &&
+        (await columnExists(sqlite, 'trips', 'poi_label'))
       );
     default:
       return false;

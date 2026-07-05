@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useMemo, useState} from 'react';
 import {Animated, StyleSheet, View} from 'react-native';
 
 import {HistoryEventCard} from '@/components/map/HistoryEventCard';
@@ -64,6 +64,18 @@ export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
   } = controller;
 
   const [customLabelOpen, setCustomLabelOpen] = useState(false);
+  const customLabelInitialValue = useMemo(() => {
+    const selected =
+      placeLabelEditDisplay.selectedPoiId != null
+        ? placeLabelEditDisplay.candidates.find(
+            candidate => candidate.id === placeLabelEditDisplay.selectedPoiId,
+          )
+        : null;
+    return selected?.source === 'user' ? selected.name : '';
+  }, [
+    placeLabelEditDisplay.candidates,
+    placeLabelEditDisplay.selectedPoiId,
+  ]);
   const eventSelected =
     selectedHistoryIndex >= 0 && selectedEntry != null;
 
@@ -150,7 +162,7 @@ export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
           />
           <VisitPlaceCustomLabelSheet
             visible={customLabelOpen}
-            initialValue=""
+            initialValue={customLabelInitialValue}
             onClose={() => setCustomLabelOpen(false)}
             onSave={label => {
               handleSaveCustomVisitPlaceLabel(label);

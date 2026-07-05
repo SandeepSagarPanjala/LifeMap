@@ -83,7 +83,7 @@ export function VisitPlaceLabelPager({
         decelerationRate="fast"
         onMomentumScrollEnd={handleMomentumEnd}
         style={styles.scroll}>
-        {candidates.map((candidate, index) => (
+        {candidates.map(candidate => (
           <View
             key={`${candidate.id}-${candidate.name}`}
             style={[styles.page, {width: pageWidth}]}>
