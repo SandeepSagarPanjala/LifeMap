@@ -748,10 +748,7 @@ export function useMapScreenController() {
       setPlaceLabelEditStay(null);
     });
   }, [
-    placeLabelEditDisplay.cacheId,
-    placeLabelEditDisplay.candidates,
-    placeLabelEditDisplay.materializedTripId,
-    placeLabelEditDisplay.selectedPoiId,
+    placeLabelEditDisplay,
     placeLabelEditStay,
     selectVisitPlaceCandidate,
     selectedDateKey,
