@@ -635,6 +635,12 @@ export function useMapScreenController() {
     placeLabelEditStay,
     savedPlaces,
   );
+  const {
+    cacheId: placeLabelEditCacheId,
+    candidates: placeLabelEditCandidates,
+    materializedTripId: placeLabelEditMaterializedTripId,
+    selectedPoiId: placeLabelEditSelectedPoiId,
+  } = placeLabelEditDisplay;
 
   const visitPlaceLabelInEventCard = useMemo(() => {
     if (visitPlaceResolving) {
@@ -728,43 +734,47 @@ export function useMapScreenController() {
     if (!stay) {
       return;
     }
-    const {selectedPoiId, candidates} = placeLabelEditDisplay;
     const selected =
-      selectedPoiId != null
-        ? candidates.find(candidate => candidate.id === selectedPoiId)
+      placeLabelEditSelectedPoiId != null
+        ? placeLabelEditCandidates.find(
+            candidate => candidate.id === placeLabelEditSelectedPoiId,
+          )
         : null;
     const done =
       selected != null
         ? selectVisitPlaceCandidate({
-            cacheId: placeLabelEditDisplay.cacheId,
+            cacheId: placeLabelEditCacheId,
             poiId: selected.id,
             poiLabel: selected.name,
             stay,
             dateKey: selectedDateKey,
-            materializedTripId: placeLabelEditDisplay.materializedTripId,
+            materializedTripId: placeLabelEditMaterializedTripId,
           })
         : Promise.resolve();
     void done.finally(() => {
       setPlaceLabelEditStay(null);
     });
   }, [
-    placeLabelEditDisplay,
+    placeLabelEditCacheId,
+    placeLabelEditCandidates,
+    placeLabelEditMaterializedTripId,
+    placeLabelEditSelectedPoiId,
     placeLabelEditStay,
     selectVisitPlaceCandidate,
     selectedDateKey,
   ]);
 
   const handleExpandVisitPlaceArea = useCallback(() => {
-    if (!placeLabelEditStay || placeLabelEditDisplay.cacheId == null) {
+    if (!placeLabelEditStay || placeLabelEditCacheId == null) {
       return;
     }
     setExpandingVisitPlaceArea(true);
-    void expandVisitPlaceLookupArea(placeLabelEditDisplay.cacheId).finally(
+    void expandVisitPlaceLookupArea(placeLabelEditCacheId).finally(
       () => setExpandingVisitPlaceArea(false),
     );
   }, [
     expandVisitPlaceLookupArea,
-    placeLabelEditDisplay.cacheId,
+    placeLabelEditCacheId,
     placeLabelEditStay,
   ]);
 
