@@ -3,18 +3,18 @@ import {Pressable} from 'react-native';
 
 import {SettingsIosToggle} from '@/components/settings/settings-group';
 import {Text} from '@/components/ui/text';
-import {getSetting, setSetting} from '@/db/repositories/settings';
 import {getLocationService} from '@/location/transistorsoft-location-service';
 import type {LocationAuthorizationStatus} from '@/location/types';
 import {
-  SETTINGS_KEY_TRACKING_MAX_RELIABILITY,
+  STATIONARY_PING_MIN_MS_MAX_RELIABILITY,
   TRACKING_DISTANCE_FILTER_METERS,
 } from '@/lib/app-constants';
+
+const BACKUP_PING_MINUTES = STATIONARY_PING_MIN_MS_MAX_RELIABILITY / 60_000;
 
 export function TrackingSettings() {
   const [loading, setLoading] = useState(true);
   const [enabled, setEnabled] = useState(false);
-  const [maxReliability, setMaxReliability] = useState(true);
   const [authorizationStatus, setAuthorizationStatus] =
     useState<LocationAuthorizationStatus>('not_determined');
 
@@ -23,10 +23,8 @@ export function TrackingSettings() {
     try {
       const service = getLocationService();
       const state = await service.getState();
-      const storedMax = await getSetting(SETTINGS_KEY_TRACKING_MAX_RELIABILITY);
 
       setEnabled(state.enabled);
-      setMaxReliability(storedMax === null ? true : storedMax === 'true');
       setAuthorizationStatus(state.authorizationStatus);
     } finally {
       setLoading(false);
@@ -61,34 +59,18 @@ export function TrackingSettings() {
     await refresh();
   };
 
-  const handleMaxReliabilityToggle = async (next: boolean) => {
-    await setSetting(SETTINGS_KEY_TRACKING_MAX_RELIABILITY, next ? 'true' : 'false');
-    setMaxReliability(next);
-    await getLocationService().applyTrackingProfile(next);
-  };
-
-  const backupMinutes = maxReliability ? '10' : '30';
-
   return (
     <>
       <SettingsIosToggle
         label="Background tracking"
         description={
           enabled
-            ? `Saves every ${TRACKING_DISTANCE_FILTER_METERS} m while moving, with a backup ping every ${backupMinutes} min when still.`
+            ? `Saves every ${TRACKING_DISTANCE_FILTER_METERS} m while moving, with a backup ping every ${BACKUP_PING_MINUTES} min when still.`
             : 'Records GPS in the background so your timeline stays complete.'
         }
         value={enabled}
         loading={loading}
         onValueChange={value => void handleToggle(value)}
-      />
-
-      <SettingsIosToggle
-        label="Maximum reliability"
-        description="Saves more often when you're still. Uses extra iOS wake-ups for fewer timeline gaps."
-        value={maxReliability}
-        disabled={!enabled}
-        onValueChange={value => void handleMaxReliabilityToggle(value)}
       />
 
       {authorizationStatus === 'denied' || authorizationStatus === 'when_in_use' ? (
