@@ -31,7 +31,6 @@ import {
 } from '@/lib/tracking-presets';
 import {
   SETTINGS_KEY_TRACKING_ENABLED,
-  SETTINGS_KEY_TRACKING_MAX_RELIABILITY,
   TRACKING_DISTANCE_FILTER_METERS,
 } from '@/lib/app-constants';
 
@@ -59,11 +58,7 @@ function mapAuthorizationStatus(status: number): LocationAuthorizationStatus {
 }
 
 async function readMaxReliability(): Promise<boolean> {
-  const stored = await getSetting(SETTINGS_KEY_TRACKING_MAX_RELIABILITY);
-  if (stored === null) {
-    return true;
-  }
-  return stored === 'true';
+  return true;
 }
 
 export class TransistorSoftLocationService implements LocationService {
@@ -160,10 +155,6 @@ export class TransistorSoftLocationService implements LocationService {
   async configure(): Promise<void> {
     if (this.configured) {
       return;
-    }
-
-    if ((await getSetting(SETTINGS_KEY_TRACKING_MAX_RELIABILITY)) === null) {
-      await setSetting(SETTINGS_KEY_TRACKING_MAX_RELIABILITY, 'true');
     }
 
     const maxReliability = await readMaxReliability();

@@ -4,6 +4,7 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import {DevSettings} from '@/components/settings/dev-settings';
 import {ExportSettings} from '@/components/settings/export-settings';
 import {SentryTestSettings} from '@/components/settings/sentry-test-settings';
+import {TripRebuildSettings} from '@/components/settings/trip-rebuild-settings';
 import {SettingsGroupLabel} from '@/components/settings/settings-group';
 import {Text} from '@/components/ui/text';
 
@@ -26,6 +27,7 @@ export function DeveloperSettingsScreen() {
             <SettingsGroupLabel title="Developer tools" />
             <DevSettings />
             <SentryTestSettings />
+            <TripRebuildSettings />
           </View>
         ) : null}
       </ScrollView>
