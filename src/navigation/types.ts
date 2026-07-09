@@ -12,6 +12,8 @@ export type RootStackParamList = {
   CachedPlaceMap: {cacheId: number};
   BackupSettings: undefined;
   DeveloperSettings: undefined;
+  ExportTripDays: undefined;
+  ExportTripDetail: {dateKey: string; tripIndex: number};
   RestoreBackup:
     | {source?: 'install' | 'settings' | 'drive'; preview?: boolean}
     | undefined;

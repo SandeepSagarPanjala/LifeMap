@@ -33,11 +33,30 @@ export const DATABASE_EXPORT_TABLE_NAMES: DatabaseExportTableName[] = [
 export const ORIGINAL_DATA_EXPORT_TABLE_NAMES = [
   'location_points',
   'saved_places',
-  'moments',
-  'settings',
   'place_lookup_cache',
   'place_pois',
+  'moments',
+  'settings',
 ] as const satisfies readonly DatabaseExportTableName[];
+
+/** Materialized trip tables — always cleared together. */
+export const MATERIALIZED_TRIP_EXPORT_TABLE_NAMES = [
+  'trips',
+  'trip_points',
+  'materialized_days',
+] as const satisfies readonly DatabaseExportTableName[];
+
+export type MaterializedTripExportTableName =
+  (typeof MATERIALIZED_TRIP_EXPORT_TABLE_NAMES)[number];
+
+/** Materialized / derived tables — trips, seal metadata, diagnostics. */
+export const ALGORITHM_DATA_EXPORT_TABLE_NAMES = [
+  ...MATERIALIZED_TRIP_EXPORT_TABLE_NAMES,
+  'tracking_events',
+] as const satisfies readonly DatabaseExportTableName[];
+
+export type AlgorithmDataExportTableName =
+  (typeof ALGORITHM_DATA_EXPORT_TABLE_NAMES)[number];
 
 export type OriginalDataExportTableName =
   (typeof ORIGINAL_DATA_EXPORT_TABLE_NAMES)[number];
@@ -84,6 +103,24 @@ export function sumOriginalDataExportStorageBytes(
   storageBytes: Partial<Record<DatabaseExportTableName, number>>,
 ): number {
   return ORIGINAL_DATA_EXPORT_TABLE_NAMES.reduce(
+    (sum, tableName) => sum + (storageBytes[tableName] ?? 0),
+    0,
+  );
+}
+
+export function sumAlgorithmDataExportRowCounts(
+  counts: Partial<Record<DatabaseExportTableName, number>>,
+): number {
+  return ALGORITHM_DATA_EXPORT_TABLE_NAMES.reduce(
+    (sum, tableName) => sum + (counts[tableName] ?? 0),
+    0,
+  );
+}
+
+export function sumAlgorithmDataExportStorageBytes(
+  storageBytes: Partial<Record<DatabaseExportTableName, number>>,
+): number {
+  return ALGORITHM_DATA_EXPORT_TABLE_NAMES.reduce(
     (sum, tableName) => sum + (storageBytes[tableName] ?? 0),
     0,
   );

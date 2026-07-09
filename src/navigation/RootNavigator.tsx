@@ -24,6 +24,8 @@ import {ScheduledBackupRunner} from '@/components/backup/ScheduledBackupRunner';
 import {PlaceLookupCatchUpRunner} from '@/components/place-lookup/PlaceLookupCatchUpRunner';
 import {SettingsScreen} from '@/screens/SettingsScreen';
 import {DeveloperSettingsScreen} from '@/screens/settings/DeveloperSettingsScreen';
+import {ExportTripDaysScreen} from '@/screens/settings/export/ExportTripDaysScreen';
+import {ExportTripDetailScreen} from '@/screens/settings/export/ExportTripDetailScreen';
 import {BackupSettingsScreen} from '@/screens/settings/BackupSettingsScreen';
 import {DistanceUnitSettingsScreen} from '@/screens/settings/DistanceUnitSettingsScreen';
 import {DriveMapRefreshSettingsScreen} from '@/screens/settings/DriveMapRefreshSettingsScreen';
@@ -145,6 +147,16 @@ export function RootNavigator() {
           name="DeveloperSettings"
           component={DeveloperSettingsScreen}
           options={settingsSubScreenOptions('Developer tools')}
+        />
+        <Stack.Screen
+          name="ExportTripDays"
+          component={ExportTripDaysScreen}
+          options={settingsSubScreenOptions('Trip days')}
+        />
+        <Stack.Screen
+          name="ExportTripDetail"
+          component={ExportTripDetailScreen}
+          options={settingsSubScreenOptions('Trip detail')}
         />
         <Stack.Screen
           name="CaptureNote"

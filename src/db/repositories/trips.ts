@@ -73,6 +73,36 @@ export async function listTripsForDay(dateKey: string): Promise<TripRow[]> {
   return rows.map(mapRow);
 }
 
+export type TripDaySummary = {
+  dateKey: string;
+  tripCount: number;
+  stayCount: number;
+  travelCount: number;
+  missingCount: number;
+};
+
+export async function listTripDaySummaries(): Promise<TripDaySummary[]> {
+  const db = await getDatabase();
+  const rows = await db
+    .select({
+      dateKey: trips.dateKey,
+      tripCount: sql<number>`cast(count(*) as integer)`,
+      stayCount: sql<number>`cast(sum(case when ${trips.kind} = 'stay' then 1 else 0 end) as integer)`,
+      travelCount: sql<number>`cast(sum(case when ${trips.kind} = 'travel' then 1 else 0 end) as integer)`,
+      missingCount: sql<number>`cast(sum(case when ${trips.kind} = 'missing' then 1 else 0 end) as integer)`,
+    })
+    .from(trips)
+    .groupBy(trips.dateKey)
+    .orderBy(desc(trips.dateKey));
+  return rows.map(row => ({
+    dateKey: row.dateKey,
+    tripCount: row.tripCount ?? 0,
+    stayCount: row.stayCount ?? 0,
+    travelCount: row.travelCount ?? 0,
+    missingCount: row.missingCount ?? 0,
+  }));
+}
+
 export async function listAllTrips(): Promise<TripRow[]> {
   const db = await getDatabase();
   const rows = await db.select().from(trips).orderBy(asc(trips.startAt));
