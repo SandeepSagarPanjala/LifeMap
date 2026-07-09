@@ -1,8 +1,11 @@
-import type {SavedPlaceRow} from '@/db/repositories/saved-places';
-import type {VisitPlaceDisplay} from '@/lib/place-lookup-types';
-import {visitDisplayLabel} from '@/lib/place-lookup-types';
-import {matchSavedPlaceForStay, savedPlaceDisplayLabel} from '@/lib/saved-places';
-import type {DetectedTrip} from '@/lib/trip-detection';
+import type { SavedPlaceRow } from '@/db/repositories/saved-places';
+import type { VisitPlaceDisplay } from '@/lib/place-lookup-types';
+import { visitDisplayLabel } from '@/lib/place-lookup-types';
+import {
+  matchSavedPlaceForStay,
+  savedPlaceDisplayLabel,
+} from '@/lib/saved-places';
+import type { DetectedTrip } from '@/lib/trip-detection';
 
 export type DriveEndpointLabelSource =
   | 'saved'
@@ -110,7 +113,9 @@ export function hasDriveEndpointLabel(label: DriveEndpointLabel): boolean {
   return label.text != null && label.text.length > 0;
 }
 
-export function isDriveEndpointLabelEditable(label: DriveEndpointLabel): boolean {
+export function isDriveEndpointLabelEditable(
+  label: DriveEndpointLabel,
+): boolean {
   return label.source !== 'saved' && label.savedPlace == null;
 }
 

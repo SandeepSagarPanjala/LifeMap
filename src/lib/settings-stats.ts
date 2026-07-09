@@ -2,9 +2,7 @@ import {
   getExportTableStats,
   type ExportTableStats,
 } from '@/db/repositories/database-export';
-import {
-  normalizeExportTableCounts,
-} from '@/lib/database-export';
+import { normalizeExportTableCounts } from '@/lib/database-export';
 import {
   readSettingsStatsCache,
   SETTINGS_STATS_CACHE_KEYS,
@@ -16,9 +14,7 @@ import {
   type AppStorageBreakdown,
 } from '@/db/repositories/storage-stats';
 
-export async function loadCachedStorageBreakdown(): Promise<
-  CachedSettingsStats<AppStorageBreakdown> | null
-> {
+export async function loadCachedStorageBreakdown(): Promise<CachedSettingsStats<AppStorageBreakdown> | null> {
   return readSettingsStatsCache<AppStorageBreakdown>(
     SETTINGS_STATS_CACHE_KEYS.storageBreakdown,
   );
@@ -34,9 +30,7 @@ export async function computeAndCacheStorageBreakdown(): Promise<
   ) as Promise<CachedSettingsStats<AppStorageBreakdown>>;
 }
 
-export async function loadCachedExportTableStats(): Promise<
-  CachedSettingsStats<ExportTableStats> | null
-> {
+export async function loadCachedExportTableStats(): Promise<CachedSettingsStats<ExportTableStats> | null> {
   const cached = await readSettingsStatsCache<ExportTableStats>(
     SETTINGS_STATS_CACHE_KEYS.exportTableStats,
   );

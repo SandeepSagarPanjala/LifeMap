@@ -1,5 +1,5 @@
-import type {Stop} from './stops';
-import type {ParsedPoint, SavedPlaceRow} from './types';
+import type { Stop } from './stops';
+import type { ParsedPoint, SavedPlaceRow } from './types';
 
 const KIND_PRIORITY: Record<SavedPlaceRow['kind'], number> = {
   home: 0,
@@ -10,8 +10,8 @@ const KIND_PRIORITY: Record<SavedPlaceRow['kind'], number> = {
 const EARTH_RADIUS_KM = 6371;
 
 function distanceKm(
-  a: {lat: number; lng: number},
-  b: {lat: number; lng: number},
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
 ): number {
   const toRad = (x: number) => (x * Math.PI) / 180;
   const dLat = toRad(b.lat - a.lat);
@@ -23,7 +23,7 @@ function distanceKm(
 }
 
 export function matchSavedPlaceForPoint(
-  point: {lat: number; lng: number},
+  point: { lat: number; lng: number },
   places: SavedPlaceRow[],
 ): SavedPlaceRow | null {
   let match: SavedPlaceRow | null = null;
@@ -61,7 +61,7 @@ export function matchSavedPlaceForStop(
   }
 
   const centroidMatch = matchSavedPlaceForPoint(
-    {lat: stop.lat, lng: stop.lng},
+    { lat: stop.lat, lng: stop.lng },
     places,
   );
   if (centroidMatch != null) {
@@ -80,7 +80,7 @@ export function matchSavedPlaceForStop(
 
 /** Drive start — endpoint GPS first, then the previous stay's saved place. */
 export function matchDriveStartSavedPlace(
-  drive: {points: ParsedPoint[]; fromStop: Stop | null},
+  drive: { points: ParsedPoint[]; fromStop: Stop | null },
   previousSegment:
     | {
         kind: string;
@@ -100,7 +100,7 @@ export function matchDriveStartSavedPlace(
   }
   if (drive.fromStop != null) {
     const fromStop = matchSavedPlaceForPoint(
-      {lat: drive.fromStop.lat, lng: drive.fromStop.lng},
+      { lat: drive.fromStop.lat, lng: drive.fromStop.lng },
       places,
     );
     if (fromStop != null) {
@@ -130,7 +130,7 @@ export function matchDriveStartSavedPlace(
 
 /** Drive end — endpoint GPS first, then the next stay's saved place. */
 export function matchDriveEndSavedPlace(
-  drive: {points: ParsedPoint[]; toStop: Stop | null},
+  drive: { points: ParsedPoint[]; toStop: Stop | null },
   nextSegment:
     | {
         kind: string;
@@ -153,7 +153,7 @@ export function matchDriveEndSavedPlace(
   }
   if (drive.toStop != null) {
     const toStop = matchSavedPlaceForPoint(
-      {lat: drive.toStop.lat, lng: drive.toStop.lng},
+      { lat: drive.toStop.lat, lng: drive.toStop.lng },
       places,
     );
     if (toStop != null) {
@@ -172,11 +172,7 @@ export function matchDriveEndSavedPlace(
     nextSegment.stop != null &&
     nextSegment.points != null
   ) {
-    return matchSavedPlaceForStop(
-      nextSegment.stop,
-      nextSegment.points,
-      places,
-    );
+    return matchSavedPlaceForStop(nextSegment.stop, nextSegment.points, places);
   }
   return null;
 }

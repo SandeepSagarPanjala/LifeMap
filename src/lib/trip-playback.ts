@@ -1,11 +1,11 @@
-import type {LocationPointRow} from '@/db/repositories/location-days';
+import type { LocationPointRow } from '@/db/repositories/location-days';
 import {
   bearingDegrees,
   distanceKm,
   type LocationPointLike,
   type MapCoordinate,
 } from '@/lib/location-geo';
-import {TRIP_PLAYBACK_DURATION_MS} from '@/lib/app-constants';
+import { TRIP_PLAYBACK_DURATION_MS } from '@/lib/app-constants';
 
 /** Wall-clock playback length (accelerated, not real-time). */
 export function getTripPlaybackDurationMs(_tripDurationMs: number): number {
@@ -78,19 +78,21 @@ export function getPlaybackLabelCenterOffset(
   placement: PlaybackLabelPlacement,
 ): PlaybackLabelOffset {
   const fromDot =
-    PLAYBACK_DOT_RADIUS_PX + PLAYBACK_CHIP_GAP_PX + PLAYBACK_CHIP_HALF_HEIGHT_PX;
+    PLAYBACK_DOT_RADIUS_PX +
+    PLAYBACK_CHIP_GAP_PX +
+    PLAYBACK_CHIP_HALF_HEIGHT_PX;
   const fromDotHorizontal =
     PLAYBACK_DOT_RADIUS_PX + PLAYBACK_CHIP_GAP_PX + PLAYBACK_CHIP_HALF_WIDTH_PX;
 
   switch (placement) {
     case 'top':
-      return {x: 0, y: -fromDot};
+      return { x: 0, y: -fromDot };
     case 'bottom':
-      return {x: 0, y: fromDot};
+      return { x: 0, y: fromDot };
     case 'left':
-      return {x: -fromDotHorizontal, y: 0};
+      return { x: -fromDotHorizontal, y: 0 };
     case 'right':
-      return {x: fromDotHorizontal, y: 0};
+      return { x: fromDotHorizontal, y: 0 };
   }
 }
 
@@ -106,7 +108,7 @@ export function buildDensePlaybackSamples(
     const point = points[0]!;
     return [
       {
-        coordinate: {latitude: point.lat, longitude: point.lng},
+        coordinate: { latitude: point.lat, longitude: point.lng },
         timestampMs: point.timestamp.getTime(),
         segmentIndex: 0,
       },
@@ -143,7 +145,7 @@ export function buildDensePlaybackSamples(
 
   const last = points[points.length - 1]!;
   samples.push({
-    coordinate: {latitude: last.lat, longitude: last.lng},
+    coordinate: { latitude: last.lat, longitude: last.lng },
     timestampMs: last.timestamp.getTime(),
     segmentIndex: Math.max(0, points.length - 2),
   });
@@ -183,7 +185,11 @@ export function getTripPlaybackFrame(
   const end = samples[endIndex]!;
 
   const coordinate: MapCoordinate = {
-    latitude: lerp(start.coordinate.latitude, end.coordinate.latitude, segmentT),
+    latitude: lerp(
+      start.coordinate.latitude,
+      end.coordinate.latitude,
+      segmentT,
+    ),
     longitude: lerp(
       start.coordinate.longitude,
       end.coordinate.longitude,
@@ -208,7 +214,9 @@ export function getTripPlaybackFrame(
   return {
     coordinate,
     pointIndex: start.segmentIndex,
-    interpolatedAt: new Date(lerp(start.timestampMs, end.timestampMs, segmentT)),
+    interpolatedAt: new Date(
+      lerp(start.timestampMs, end.timestampMs, segmentT),
+    ),
     progress: clamped,
     labelPlacement,
     pathCoordinates,

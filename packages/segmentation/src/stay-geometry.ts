@@ -1,9 +1,9 @@
-import type {SegmentationMoment} from './types';
+import type { SegmentationMoment } from './types';
 
-import type {ParsedPoint} from './types';
-import type {StaySegment, TripSegment} from './trips';
-import {pathLengthM} from './trips';
-import {canonicalizeTravelSegmentPoints} from './travel-geometry';
+import type { ParsedPoint } from './types';
+import type { StaySegment, TripSegment } from './trips';
+import { pathLengthM } from './trips';
+import { canonicalizeTravelSegmentPoints } from './travel-geometry';
 
 /** Turn-in faster than this stays on the drive; slower = parked (visit starts). */
 const VISIT_ARRIVAL_SPEED_MS = 2;
@@ -17,8 +17,8 @@ const VENUE_DOUGLAS_PEUCKER_EPSILON_M = 20;
 const EARTH_RADIUS_M = 6_371_000;
 
 function haversineM(
-  a: {lat: number; lng: number},
-  b: {lat: number; lng: number},
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
 ): number {
   const toRad = (x: number) => (x * Math.PI) / 180;
   const dLat = toRad(b.lat - a.lat);
@@ -98,7 +98,7 @@ export function visitCorePoints(points: ParsedPoint[]): ParsedPoint[] {
 
 function closestPointTo(
   points: ParsedPoint[],
-  target: {lat: number; lng: number},
+  target: { lat: number; lng: number },
 ): ParsedPoint | null {
   if (points.length === 0) {
     return null;
@@ -118,7 +118,7 @@ function closestPointTo(
 
 function farthestPointFrom(
   points: ParsedPoint[],
-  anchor: {lat: number; lng: number},
+  anchor: { lat: number; lng: number },
   excludeIds: ReadonlySet<number>,
 ): ParsedPoint | null {
   let best: ParsedPoint | null = null;
@@ -152,7 +152,10 @@ function pointLineDistanceM(
   return (2 * Math.sqrt(area)) / total;
 }
 
-function douglasPeucker(points: ParsedPoint[], epsilonM: number): ParsedPoint[] {
+function douglasPeucker(
+  points: ParsedPoint[],
+  epsilonM: number,
+): ParsedPoint[] {
   if (points.length <= 2) {
     return points;
   }

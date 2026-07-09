@@ -1,5 +1,5 @@
-import {Platform} from 'react-native';
-import {NativeModules} from 'react-native';
+import { Platform } from 'react-native';
+import { NativeModules } from 'react-native';
 
 import type {
   AddressGeocodeResult,
@@ -7,7 +7,7 @@ import type {
   NativePlaceLookupResult,
   PlaceLookupCandidate,
 } from '@/lib/place-lookup-types';
-import {PLACE_LOOKUP_VENUE_RADIUS_M} from '@/lib/app-constants';
+import { PLACE_LOOKUP_VENUE_RADIUS_M } from '@/lib/app-constants';
 
 type PlaceLookupNativeModule = {
   lookupNearbyPlace(
@@ -90,7 +90,7 @@ export async function fetchNearbyPlaceLookup(
   radiusM = PLACE_LOOKUP_VENUE_RADIUS_M,
 ): Promise<NativePlaceLookupResult> {
   if (!nativeModule?.lookupNearbyPlace) {
-    return {addressLine: null, candidates: []};
+    return { addressLine: null, candidates: [] };
   }
 
   const result = await nativeModule.lookupNearbyPlace(lat, lng, radiusM);

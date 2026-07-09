@@ -1,4 +1,6 @@
-import BackgroundGeolocation, {type Config} from 'react-native-background-geolocation';
+import BackgroundGeolocation, {
+  type Config,
+} from 'react-native-background-geolocation';
 
 import {
   HEARTBEAT_CHECK_INTERVAL_SEC,
@@ -14,7 +16,7 @@ import {
   TRACKING_STATIONARY_RADIUS_M_BALANCED,
   TRACKING_STATIONARY_RADIUS_M_MAX_RELIABILITY,
 } from '@/lib/app-constants';
-import {APP_COPY} from '@/lib/app-copy';
+import { APP_COPY } from '@/lib/app-copy';
 
 const NOTIFICATION = {
   title: APP_COPY.tracking.notificationTitle,
@@ -37,7 +39,8 @@ export function getTrackingConfig(maxReliability: boolean): Config {
       disableElasticity: maxReliability,
       stopTimeout: maxReliability ? 1 : TRACKING_STOP_TIMEOUT_MINUTES_BALANCED,
       pausesLocationUpdatesAutomatically: !maxReliability,
-      locationAuthorizationRequest: BackgroundGeolocation.LocationRequest.Always,
+      locationAuthorizationRequest:
+        BackgroundGeolocation.LocationRequest.Always,
       locationUpdateInterval: maxReliability
         ? TRACKING_LOCATION_UPDATE_INTERVAL_MS_MAX_RELIABILITY
         : TRACKING_LOCATION_UPDATE_INTERVAL_MS_BALANCED,

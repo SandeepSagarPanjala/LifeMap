@@ -1,12 +1,12 @@
-import type {DetectedTrip} from '@/lib/trip-detection';
+import type { DetectedTrip } from '@/lib/trip-detection';
 
 jest.mock('@/lib/drive-map-refresh-settings', () => ({
   ...jest.requireActual('@/lib/drive-map-refresh-settings'),
   getDriveMapRefreshIntervalMs: jest.fn().mockResolvedValue(30_000),
 }));
 
-import type {DriveMapRefreshIntervalMs} from '@/lib/app-constants';
-import {getDriveMapRefreshIntervalMs} from '@/lib/drive-map-refresh-settings';
+import type { DriveMapRefreshIntervalMs } from '@/lib/app-constants';
+import { getDriveMapRefreshIntervalMs } from '@/lib/drive-map-refresh-settings';
 import {
   getTodayHistoryRefreshRevision,
   isDriveRefreshIntervalActiveForTests,
@@ -149,7 +149,8 @@ describe('today refresh scheduler', () => {
   });
 
   it('starts only one drive interval when start is requested concurrently', async () => {
-    let resolveInterval: ((ms: DriveMapRefreshIntervalMs) => void) | null = null;
+    let resolveInterval: ((ms: DriveMapRefreshIntervalMs) => void) | null =
+      null;
     jest.mocked(getDriveMapRefreshIntervalMs).mockImplementation(
       () =>
         new Promise<DriveMapRefreshIntervalMs>(resolve => {

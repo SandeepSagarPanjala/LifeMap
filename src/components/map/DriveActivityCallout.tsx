@@ -1,27 +1,24 @@
-import {useEffect, useState} from 'react';
-import {Marker} from 'react-native-maps';
-import {StyleSheet, Text, View} from 'react-native';
+import { useEffect, useState } from 'react';
+import { Marker } from 'react-native-maps';
+import { StyleSheet, Text, View } from 'react-native';
 
-import {DriveEndpointPlaceRow} from '@/components/map/DriveEndpointPlaceRow';
-import {useMarkerTracksViewChanges} from '@/hooks/use-marker-tracks-view-changes';
-import type {DriveEndpointLabel} from '@/lib/drive-endpoint-label';
-import {hasDriveEndpointLabel} from '@/lib/drive-endpoint-label';
-import {
-  formatDriveVisitLabel,
-  isVisitOngoing,
-} from '@/lib/trip-format';
-import type {DetectedTrip} from '@/lib/trip-detection';
-import {HISTORY_COLORS} from '@/lib/app-constants';
+import { DriveEndpointPlaceRow } from '@/components/map/DriveEndpointPlaceRow';
+import { useMarkerTracksViewChanges } from '@/hooks/use-marker-tracks-view-changes';
+import type { DriveEndpointLabel } from '@/lib/drive-endpoint-label';
+import { hasDriveEndpointLabel } from '@/lib/drive-endpoint-label';
+import { formatDriveVisitLabel, isVisitOngoing } from '@/lib/trip-format';
+import type { DetectedTrip } from '@/lib/trip-detection';
+import { HISTORY_COLORS } from '@/lib/app-constants';
 
-const LIVE_PUCK_ANCHOR = {x: 0.5, y: 1} as const;
-const LIVE_PUCK_CENTER_OFFSET = {x: 0, y: -100} as const;
+const LIVE_PUCK_ANCHOR = { x: 0.5, y: 1 } as const;
+const LIVE_PUCK_CENTER_OFFSET = { x: 0, y: -100 } as const;
 const BUBBLE_DOT_GAP = 4;
 
 type DriveActivityCalloutProps = {
   trip: DetectedTrip;
   startLabel: DriveEndpointLabel;
   endLabel?: DriveEndpointLabel;
-  anchorCoordinate?: {latitude: number; longitude: number} | null;
+  anchorCoordinate?: { latitude: number; longitude: number } | null;
 };
 
 export function DriveActivityCallout({
@@ -40,7 +37,7 @@ export function DriveActivityCallout({
     trip.startAt,
     trip.endAt,
     trip.durationMs,
-    {openThroughNow: trip.openThroughNow, now},
+    { openThroughNow: trip.openThroughNow, now },
   );
   const bubbleCenterOffset =
     bubbleHeight > 0
@@ -53,7 +50,7 @@ export function DriveActivityCallout({
   const showEnd = endLabel != null && hasDriveEndpointLabel(endLabel);
   const showOpenEndPlaceholder =
     trip.openThroughNow === true && showStart && !showEnd;
-  const {tracksViewChanges, onLayout: onMarkerLayout} =
+  const { tracksViewChanges, onLayout: onMarkerLayout } =
     useMarkerTracksViewChanges(
       `${bubbleHeight}:${drive.title}:${drive.subtitle}:${showOpenEndPlaceholder}`,
     );
@@ -76,7 +73,8 @@ export function DriveActivityCallout({
       anchor={LIVE_PUCK_ANCHOR}
       centerOffset={bubbleCenterOffset}
       zIndex={12}
-      tracksViewChanges={bubbleHeight === 0 && tracksViewChanges}>
+      tracksViewChanges={bubbleHeight === 0 && tracksViewChanges}
+    >
       <View
         style={styles.bubble}
         collapsable={false}
@@ -86,7 +84,8 @@ export function DriveActivityCallout({
           if (nextHeight > 0 && nextHeight !== bubbleHeight) {
             setBubbleHeight(nextHeight);
           }
-        }}>
+        }}
+      >
         <View style={styles.body}>
           {showStart ? (
             <DriveEndpointPlaceRow
@@ -133,7 +132,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     maxWidth: 260,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.14,
     shadowRadius: 8,
     elevation: 5,

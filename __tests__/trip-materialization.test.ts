@@ -12,11 +12,11 @@ import {
   tripEventKey,
   tripLabelForPersist,
 } from '@/lib/trip-materialization';
-import {TRIP_DETECTION_VERSION} from '@/lib/app-constants';
-import type {TripRow} from '@/db/repositories/trips';
-import type {DetectedTrip} from '@/lib/trip-detection';
-import {makeMaterializedDay, makeTripPoint} from './helpers/fixtures';
-import {makeTripRow} from './helpers/trip-row-fixture';
+import { TRIP_DETECTION_VERSION } from '@/lib/app-constants';
+import type { TripRow } from '@/db/repositories/trips';
+import type { DetectedTrip } from '@/lib/trip-detection';
+import { makeMaterializedDay, makeTripPoint } from './helpers/fixtures';
+import { makeTripRow } from './helpers/trip-row-fixture';
 
 function stay(
   startMs: number,
@@ -91,10 +91,7 @@ describe('todaySealNeedsPersist', () => {
     const drive = travel(4_000, 5_000);
     expect(
       todaySealNeedsPersist(
-        [
-          {eventKey: tripEventKey(home)},
-          {eventKey: tripEventKey(drive)},
-        ],
+        [{ eventKey: tripEventKey(home) }, { eventKey: tripEventKey(drive) }],
         [home, drive],
       ),
     ).toBe(false);
@@ -107,8 +104,8 @@ describe('todaySealNeedsPersist', () => {
     expect(
       todaySealNeedsPersist(
         [
-          {eventKey: tripEventKey(home)},
-          {eventKey: tripEventKey(partialDrive)},
+          { eventKey: tripEventKey(home) },
+          { eventKey: tripEventKey(partialDrive) },
         ],
         [home, finalDrive],
       ),
@@ -118,9 +115,9 @@ describe('todaySealNeedsPersist', () => {
   it('returns true when a new closed segment appears', () => {
     const home = stay(1_000, 4_000);
     const drive = travel(4_000, 5_000);
-    expect(todaySealNeedsPersist([{eventKey: tripEventKey(home)}], [home, drive])).toBe(
-      true,
-    );
+    expect(
+      todaySealNeedsPersist([{ eventKey: tripEventKey(home) }], [home, drive]),
+    ).toBe(true);
   });
 });
 
@@ -376,8 +373,20 @@ describe('buildTimelineFromStoredTrips', () => {
       [
         2,
         [
-          makeTripPoint({id: 10, tripId: 2, seq: 0, lat: 37.77, lng: -122.42}),
-          makeTripPoint({id: 11, tripId: 2, seq: 1, lat: 37.78, lng: -122.41}),
+          makeTripPoint({
+            id: 10,
+            tripId: 2,
+            seq: 0,
+            lat: 37.77,
+            lng: -122.42,
+          }),
+          makeTripPoint({
+            id: 11,
+            tripId: 2,
+            seq: 1,
+            lat: 37.78,
+            lng: -122.41,
+          }),
         ],
       ],
     ]);

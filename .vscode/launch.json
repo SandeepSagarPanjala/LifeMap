@@ -1,0 +1,20 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Attach to Hermes application",
+      "cwd": "${workspaceFolder}",
+      "type": "reactnativedirect",
+      "request": "attach"
+    },
+    {
+      "name": "Debug iOS Hermes (Device)",
+      "cwd": "${workspaceFolder}",
+      "type": "reactnativedirect",
+      "request": "launch",
+      "platform": "ios",
+      "target": "device",
+      "runArguments": ["--udid", "00008140-000C75AC3C88801C"]
+    }
+  ]
+}

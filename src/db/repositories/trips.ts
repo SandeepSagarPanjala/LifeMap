@@ -1,16 +1,26 @@
-import {and, asc, desc, eq, inArray, isNull, notInArray, or, sql} from 'drizzle-orm';
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNull,
+  notInArray,
+  or,
+  sql,
+} from 'drizzle-orm';
 
-import type {ResolvedPlaceFields} from '@/lib/resolved-place';
+import type { ResolvedPlaceFields } from '@/lib/resolved-place';
 import {
   parseMomentRefs,
   serializeMomentRefs,
   type TripMomentRef,
 } from '@/lib/moment-refs';
 
-import {getDatabase} from '../client';
-import {trips} from '../schema';
+import { getDatabase } from '../client';
+import { trips } from '../schema';
 
-import {deleteTripPointsForTripIds} from './trip-points';
+import { deleteTripPointsForTripIds } from './trip-points';
 
 export type TripRow = {
   id: number;
@@ -182,7 +192,7 @@ export async function insertTripIfAbsent(
   const inserted = await db
     .insert(trips)
     .values(tripValues(input))
-    .onConflictDoNothing({target: trips.eventKey})
+    .onConflictDoNothing({ target: trips.eventKey })
     .returning();
 
   if (inserted[0]) {
@@ -240,10 +250,7 @@ export async function updateTripEndTime(
   durationMs: number,
 ): Promise<void> {
   const db = await getDatabase();
-  await db
-    .update(trips)
-    .set({endAt, durationMs})
-    .where(eq(trips.id, tripId));
+  await db.update(trips).set({ endAt, durationMs }).where(eq(trips.id, tripId));
 }
 
 export type TripPersistedLabel = ResolvedPlaceFields;
@@ -354,7 +361,7 @@ export async function updateTripSavedPlaceAssociation(
       placeKind: savedPlaceId != null ? ('saved' as const) : null,
       poiId: null,
       poiLabel: null,
-      ...(label != null ? {placeLabel: label} : {}),
+      ...(label != null ? { placeLabel: label } : {}),
     })
     .where(eq(trips.id, tripId));
 }
@@ -371,7 +378,7 @@ function unlabeledStayTripConditions() {
 export async function countUnlabeledStayTrips(): Promise<number> {
   const db = await getDatabase();
   const rows = await db
-    .select({count: sql<number>`count(*)`})
+    .select({ count: sql<number>`count(*)` })
     .from(trips)
     .where(unlabeledStayTripConditions());
   return Number(rows[0]?.count ?? 0);
@@ -397,23 +404,23 @@ export async function countTripsForDay(dateKey: string): Promise<number> {
 
 export async function deleteAllTrips(): Promise<number> {
   const db = await getDatabase();
-  const ids = await db.select({id: trips.id}).from(trips);
+  const ids = await db.select({ id: trips.id }).from(trips);
   await deleteTripPointsForTripIds(ids.map(row => row.id));
-  const deleted = await db.delete(trips).returning({id: trips.id});
+  const deleted = await db.delete(trips).returning({ id: trips.id });
   return deleted.length;
 }
 
 export async function deleteTripsForDay(dateKey: string): Promise<number> {
   const db = await getDatabase();
   const ids = await db
-    .select({id: trips.id})
+    .select({ id: trips.id })
     .from(trips)
     .where(eq(trips.dateKey, dateKey));
   await deleteTripPointsForTripIds(ids.map(row => row.id));
   const deleted = await db
     .delete(trips)
     .where(eq(trips.dateKey, dateKey))
-    .returning({id: trips.id});
+    .returning({ id: trips.id });
   return deleted.length;
 }
 
@@ -428,7 +435,7 @@ export async function deleteTripsForDayExceptEventKeys(
 
   const db = await getDatabase();
   const obsolete = await db
-    .select({id: trips.id})
+    .select({ id: trips.id })
     .from(trips)
     .where(
       and(
@@ -445,6 +452,6 @@ export async function deleteTripsForDayExceptEventKeys(
   const deleted = await db
     .delete(trips)
     .where(inArray(trips.id, obsoleteIds))
-    .returning({id: trips.id});
+    .returning({ id: trips.id });
   return deleted.length;
 }

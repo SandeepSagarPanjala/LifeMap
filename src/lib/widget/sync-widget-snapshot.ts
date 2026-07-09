@@ -1,13 +1,18 @@
-import {ensureDatabaseReady} from '@/location/bootstrap';
+import { ensureDatabaseReady } from '@/location/bootstrap';
 
-import {buildWidgetSnapshot} from './build-widget-snapshot';
-import {reloadWidgetTimelines, writeWidgetSnapshot} from './native-widget-snapshot';
-import type {WidgetSnapshot} from './types';
+import { buildWidgetSnapshot } from './build-widget-snapshot';
+import {
+  reloadWidgetTimelines,
+  writeWidgetSnapshot,
+} from './native-widget-snapshot';
+import type { WidgetSnapshot } from './types';
 
 const MIN_WIDGET_REFRESH_MS = 60_000;
 let lastWidgetRefreshMs = 0;
 
-export async function refreshWidgetSnapshot(now: Date = new Date()): Promise<WidgetSnapshot> {
+export async function refreshWidgetSnapshot(
+  now: Date = new Date(),
+): Promise<WidgetSnapshot> {
   await ensureDatabaseReady();
   const snapshot = await buildWidgetSnapshot(now);
   await writeWidgetSnapshot(snapshot);

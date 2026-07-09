@@ -1,4 +1,4 @@
-import {getSetting, setSetting} from '@/db/repositories/settings';
+import { getSetting, setSetting } from '@/db/repositories/settings';
 
 export const SETTINGS_KEY_BACKUP_AUTO_SCHEDULE = 'backup_auto_schedule';
 export const SETTINGS_KEY_BACKUP_LAST_AT = 'backup_last_at';
@@ -41,7 +41,9 @@ export async function getBackupLastBytes(): Promise<number> {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-export async function recordBackupCompletion(totalBytes: number): Promise<void> {
+export async function recordBackupCompletion(
+  totalBytes: number,
+): Promise<void> {
   await setSetting(SETTINGS_KEY_BACKUP_LAST_AT, new Date().toISOString());
   await setSetting(SETTINGS_KEY_BACKUP_LAST_BYTES, String(totalBytes));
 }

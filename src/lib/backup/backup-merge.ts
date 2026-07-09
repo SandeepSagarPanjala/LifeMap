@@ -1,6 +1,6 @@
-import {eq} from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 
-import {getDatabase} from '@/db/client';
+import { getDatabase } from '@/db/client';
 import {
   activities,
   locationPoints,
@@ -9,11 +9,11 @@ import {
   savedPlaces,
   settings,
 } from '@/db/schema';
-import {getAllMoments, deleteMoment} from '@/db/repositories/moments';
-import {getSetting, setSetting} from '@/db/repositories/settings';
+import { getAllMoments, deleteMoment } from '@/db/repositories/moments';
+import { getSetting, setSetting } from '@/db/repositories/settings';
 
-import type {BackupBundleTables} from './backup-export';
-import {readBackupBundleFromDirectory} from './backup-export';
+import type { BackupBundleTables } from './backup-export';
+import { readBackupBundleFromDirectory } from './backup-export';
 import {
   buildConflictResolutionMap,
   detectRestoreConflicts,
@@ -36,14 +36,18 @@ import {
   parseRequiredNumber,
   parseRequiredString,
 } from './backup-serialize';
-import type {BackupProgress, TripLabelOverride} from './backup-types';
-import {copyBackupMediaToSandbox, hasLocalUserData} from './backup-clear';
+import type { BackupProgress, TripLabelOverride } from './backup-types';
+import { copyBackupMediaToSandbox, hasLocalUserData } from './backup-clear';
 import {
   downloadBackupDirectory,
   getBackupStagingDirectory,
   getCloudProviderLabel,
 } from './native-backup-cloud';
-import {prepareEmptyDirectory, removeDirectoryRecursive, yieldToUi} from './backup-fs';
+import {
+  prepareEmptyDirectory,
+  removeDirectoryRecursive,
+  yieldToUi,
+} from './backup-fs';
 
 type IdMap = Map<number, number>;
 
@@ -89,10 +93,8 @@ export async function prepareMergeRestoreFromDirectory(
   stagingPath: string,
   onProgress?: (progress: BackupProgress) => void,
 ): Promise<MergeRestorePlan> {
-  const {manifest, tables, tripOverrides} = await readBackupBundleFromDirectory(
-    stagingPath,
-    onProgress,
-  );
+  const { manifest, tables, tripOverrides } =
+    await readBackupBundleFromDirectory(stagingPath, onProgress);
 
   onProgress?.({
     phase: 'downloading',
@@ -159,16 +161,11 @@ function placeLookupNaturalKey(lat: number, lng: number): string {
   return `${lat.toFixed(5)}|${lng.toFixed(5)}`;
 }
 
-async function mergeActivities(
-  rows: unknown[],
-): Promise<IdMap> {
+async function mergeActivities(rows: unknown[]): Promise<IdMap> {
   const db = await getDatabase();
   const existing = await db.select().from(activities);
   const byKey = new Map(
-    existing.map(row => [
-      activityNaturalKey(row.emoji, row.label),
-      row.id,
-    ]),
+    existing.map(row => [activityNaturalKey(row.emoji, row.label), row.id]),
   );
   const map: IdMap = new Map();
 
@@ -191,11 +188,17 @@ async function mergeActivities(
       .values({
         emoji,
         label,
-        sortOrder: parseRequiredNumber(record.sortOrder, 'activities.sortOrder'),
-        createdAt: parseRequiredIsoDate(record.createdAt, 'activities.createdAt'),
+        sortOrder: parseRequiredNumber(
+          record.sortOrder,
+          'activities.sortOrder',
+        ),
+        createdAt: parseRequiredIsoDate(
+          record.createdAt,
+          'activities.createdAt',
+        ),
         archivedAt: parseIsoDate(record.archivedAt),
       })
-      .returning({id: activities.id});
+      .returning({ id: activities.id });
     const newId = inserted[0]!.id;
     map.set(oldId, newId);
     byKey.set(key, newId);
@@ -231,7 +234,10 @@ async function mergeLocationPoints(
     }
     const record = row as Record<string, unknown>;
     const oldId = parseRequiredNumber(record.id, 'location_points.id');
-    const timestamp = parseRequiredIsoDate(record.timestamp, 'location_points.timestamp');
+    const timestamp = parseRequiredIsoDate(
+      record.timestamp,
+      'location_points.timestamp',
+    );
     const lat = parseRequiredNumber(record.lat, 'location_points.lat');
     const lng = parseRequiredNumber(record.lng, 'location_points.lng');
     const key = locationPointKey(timestamp.getTime(), lat, lng);
@@ -263,7 +269,7 @@ async function mergeLocationPoints(
         speed: parseOptionalNumber(record.speed),
         source: parseRequiredString(record.source, 'location_points.source'),
       })
-      .returning({id: locationPoints.id});
+      .returning({ id: locationPoints.id });
     const newId = inserted[0]!.id;
     map.set(oldId, newId);
     localByKey.set(key, {
@@ -282,9 +288,7 @@ async function mergeLocationPoints(
   return map;
 }
 
-async function mergeSavedPlaces(
-  rows: unknown[],
-): Promise<IdMap> {
+async function mergeSavedPlaces(rows: unknown[]): Promise<IdMap> {
   const db = await getDatabase();
   const existing = await db.select().from(savedPlaces);
   const byKey = new Map(
@@ -330,11 +334,14 @@ async function mergeSavedPlaces(
           typeof record.active === 'number'
             ? record.active
             : record.active === false
-              ? 0
-              : 1,
-        createdAt: parseRequiredIsoDate(record.createdAt, 'saved_places.createdAt'),
+            ? 0
+            : 1,
+        createdAt: parseRequiredIsoDate(
+          record.createdAt,
+          'saved_places.createdAt',
+        ),
       })
-      .returning({id: savedPlaces.id});
+      .returning({ id: savedPlaces.id });
     const newId = inserted[0]!.id;
     map.set(oldId, newId);
     byKey.set(key, newId);
@@ -360,8 +367,14 @@ async function mergePlaceLookupCache(rows: unknown[]): Promise<IdMap> {
     }
     const record = row as Record<string, unknown>;
     const oldId = parseRequiredNumber(record.id, 'place_lookup_cache.id');
-    const anchorLat = parseRequiredNumber(record.anchorLat, 'place_lookup_cache.anchorLat');
-    const anchorLng = parseRequiredNumber(record.anchorLng, 'place_lookup_cache.anchorLng');
+    const anchorLat = parseRequiredNumber(
+      record.anchorLat,
+      'place_lookup_cache.anchorLat',
+    );
+    const anchorLng = parseRequiredNumber(
+      record.anchorLng,
+      'place_lookup_cache.anchorLng',
+    );
     const key = placeLookupNaturalKey(anchorLat, anchorLng);
     const existingId = byKey.get(key);
     if (existingId != null) {
@@ -379,14 +392,16 @@ async function mergePlaceLookupCache(rows: unknown[]): Promise<IdMap> {
         ),
         addressLine: parseOptionalString(record.addressLine),
         candidatesJson: parseOptionalString(record.candidatesJson),
-        selectedCandidateIndex: parseOptionalNumber(record.selectedCandidateIndex),
+        selectedCandidateIndex: parseOptionalNumber(
+          record.selectedCandidateIndex,
+        ),
         lookupStatus: parseRequiredString(
           record.lookupStatus,
           'place_lookup_cache.lookupStatus',
         ),
         fetchedAt: parseIsoDate(record.fetchedAt),
       })
-      .returning({id: placeLookupCache.id});
+      .returning({ id: placeLookupCache.id });
     const newId = inserted[0]!.id;
     map.set(oldId, newId);
     byKey.set(key, newId);
@@ -395,13 +410,7 @@ async function mergePlaceLookupCache(rows: unknown[]): Promise<IdMap> {
   return map;
 }
 
-const MOMENT_TYPES = new Set([
-  'photo',
-  'note',
-  'video',
-  'voice',
-  'activity',
-]);
+const MOMENT_TYPES = new Set(['photo', 'note', 'video', 'voice', 'activity']);
 
 function remapId(value: number | null | undefined, map: IdMap): number | null {
   if (value == null) {
@@ -439,7 +448,10 @@ async function mergeMoments(
     if (!MOMENT_TYPES.has(type)) {
       throw new Error(`Unsupported moment type: ${type}`);
     }
-    const timestamp = parseRequiredIsoDate(record.timestamp, 'moments.timestamp');
+    const timestamp = parseRequiredIsoDate(
+      record.timestamp,
+      'moments.timestamp',
+    );
     const contentPath = parseOptionalString(record.contentPath);
     const textBody = parseOptionalString(record.textBody);
     const key = momentKey(timestamp.getTime(), type, contentPath, textBody);
@@ -480,8 +492,7 @@ async function mergeMoments(
       contentBytes: parseOptionalNumber(record.contentBytes),
       sourceBytes: parseOptionalNumber(record.sourceBytes),
       contentFormat: parseOptionalString(record.contentFormat),
-      shareVisibility:
-        parseOptionalString(record.shareVisibility) ?? 'private',
+      shareVisibility: parseOptionalString(record.shareVisibility) ?? 'private',
       contentSyncState:
         parseOptionalString(record.contentSyncState) ?? 'local_only',
       activityId: remapId(parseOptionalNumber(record.activityId), activityMap),
@@ -538,12 +549,18 @@ export async function executeMergeRestore(input: {
 
   const tables = input.plan.tables;
   const mergeSteps = [
-    {label: 'activities', weight: Math.max(tables.activities.length, 1)},
-    {label: 'location history', weight: Math.max(tables.location_points.length, 1)},
-    {label: 'saved places', weight: Math.max(tables.saved_places.length, 1)},
-    {label: 'place lookups', weight: Math.max(tables.place_lookup_cache.length, 1)},
-    {label: 'memories', weight: Math.max(tables.moments.length, 1)},
-    {label: 'settings', weight: Math.max(tables.settings.length, 1)},
+    { label: 'activities', weight: Math.max(tables.activities.length, 1) },
+    {
+      label: 'location history',
+      weight: Math.max(tables.location_points.length, 1),
+    },
+    { label: 'saved places', weight: Math.max(tables.saved_places.length, 1) },
+    {
+      label: 'place lookups',
+      weight: Math.max(tables.place_lookup_cache.length, 1),
+    },
+    { label: 'memories', weight: Math.max(tables.moments.length, 1) },
+    { label: 'settings', weight: Math.max(tables.settings.length, 1) },
   ];
   const mergeTotal = mergeSteps.reduce((sum, step) => sum + step.weight, 0);
   let mergeBase = 0;
@@ -625,12 +642,12 @@ export async function executeMergeRestore(input: {
 export async function runMergeRestoreFromCloud(input: {
   conflictChoices?: Record<string, RestoreConflictChoice | undefined>;
   onProgress?: (progress: BackupProgress) => void;
-}): Promise<{conflicts: RestoreConflict[]}> {
+}): Promise<{ conflicts: RestoreConflict[] }> {
   const plan = await prepareMergeRestore(input.onProgress);
   await executeMergeRestore({
     plan,
     conflictChoices: input.conflictChoices,
     onProgress: input.onProgress,
   });
-  return {conflicts: plan.conflicts};
+  return { conflicts: plan.conflicts };
 }

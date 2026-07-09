@@ -1,4 +1,4 @@
-import {distanceKm} from '@/lib/location-geo';
+import { distanceKm } from '@/lib/location-geo';
 import {
   USER_COORDINATE_MIN_INTERVAL_MS,
   USER_COORDINATE_MIN_MOVE_METERS,
@@ -25,8 +25,8 @@ export function shouldRefreshUserCoordinate(
 
   const movedMeters =
     distanceKm(
-      {lat: previous.latitude, lng: previous.longitude},
-      {lat: next.latitude, lng: next.longitude},
+      { lat: previous.latitude, lng: previous.longitude },
+      { lat: next.latitude, lng: next.longitude },
     ) * 1000;
   return movedMeters >= USER_COORDINATE_MIN_MOVE_METERS;
 }

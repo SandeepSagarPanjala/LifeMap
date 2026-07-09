@@ -35,12 +35,12 @@ describe('database migrations', () => {
           query.includes('sqlite_master') &&
           params?.[0] === 'location_points'
         ) {
-          return {rows: [{name: 'location_points'}]};
+          return { rows: [{ name: 'location_points' }] };
         }
         if (query.includes('PRAGMA table_info')) {
-          return {rows: []};
+          return { rows: [] };
         }
-        return {rows: []};
+        return { rows: [] };
       }),
     };
 
@@ -60,27 +60,27 @@ describe('database migrations', () => {
           query.includes('sqlite_master') &&
           params?.[0] === 'location_points'
         ) {
-          return {rows: [{name: 'location_points'}]};
+          return { rows: [{ name: 'location_points' }] };
         }
         if (
           query.includes('sqlite_master') &&
           params?.[0] === 'tracking_events'
         ) {
-          return {rows: [{name: 'tracking_events'}]};
+          return { rows: [{ name: 'tracking_events' }] };
         }
         if (query.includes('sqlite_master') && params?.[0] === 'trips') {
-          return {rows: [{name: 'trips'}]};
+          return { rows: [{ name: 'trips' }] };
         }
         if (
           query.includes('sqlite_master') &&
           params?.[0] === 'materialized_days'
         ) {
-          return {rows: [{name: 'materialized_days'}]};
+          return { rows: [{ name: 'materialized_days' }] };
         }
         if (query.includes('PRAGMA table_info')) {
-          return {rows: []};
+          return { rows: [] };
         }
-        return {rows: []};
+        return { rows: [] };
       }),
     };
 
@@ -98,10 +98,10 @@ describe('database migrations', () => {
       execute: jest.fn(async (query: string, params?: unknown[]) => {
         if (
           query.includes('sqlite_master') &&
-          query.includes('type = \'table\'') &&
+          query.includes("type = 'table'") &&
           params?.[0] === 'moments'
         ) {
-          return {rows: [{name: 'moments'}]};
+          return { rows: [{ name: 'moments' }] };
         }
         if (query.includes('PRAGMA table_info("moments")')) {
           const columns = [
@@ -113,10 +113,10 @@ describe('database migrations', () => {
             'linked_point_id',
             'share_visibility',
             'content_sync_state',
-          ].map(name => ({name}));
-          return {rows: columns};
+          ].map(name => ({ name }));
+          return { rows: columns };
         }
-        return {rows: []};
+        return { rows: [] };
       }),
     };
 

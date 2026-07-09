@@ -1,16 +1,19 @@
-import {memo, useMemo} from 'react';
-import {Polyline} from 'react-native-maps';
+import { memo, useMemo } from 'react';
+import { Polyline } from 'react-native-maps';
 
-import type {LocationPointRow} from '@/db/repositories/location-days';
-import {buildDrawableRouteSegments} from '@/lib/route-segments';
-import {downsampleMapCoordinates, type MapCoordinate} from '@/lib/location-geo';
+import type { LocationPointRow } from '@/db/repositories/location-days';
+import { buildDrawableRouteSegments } from '@/lib/route-segments';
+import {
+  downsampleMapCoordinates,
+  type MapCoordinate,
+} from '@/lib/location-geo';
 import {
   ROUTE_PATH_BORDER,
   ROUTE_PATH_BORDER_WIDTH,
   ROUTE_PATH_FILL,
   ROUTE_PATH_FILL_WIDTH,
 } from '@/lib/app-constants';
-import type {TripDetectionConfig} from '@/lib/trip-settings';
+import type { TripDetectionConfig } from '@/lib/trip-settings';
 
 type RoutePathOverlayProps = {
   points: LocationPointRow[];
@@ -34,7 +37,10 @@ export const RoutePathOverlay = memo(function RoutePathOverlay({
   return (
     <>
       {segments.map((coordinates, index) => (
-        <RouteSegmentPolylines key={`route-seg-${index}`} coordinates={coordinates} />
+        <RouteSegmentPolylines
+          key={`route-seg-${index}`}
+          coordinates={coordinates}
+        />
       ))}
     </>
   );

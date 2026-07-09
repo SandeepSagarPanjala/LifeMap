@@ -1,11 +1,11 @@
-import {asc, eq, inArray, sql} from 'drizzle-orm';
+import { asc, eq, inArray, sql } from 'drizzle-orm';
 
-import type {LocationPointRow} from '@/db/repositories/location-days';
-import {getDatabase, getSqlite} from '../client';
-import {ensureTripPointMetadataColumns} from '../migrate';
-import {tripPoints, trips} from '../schema';
+import type { LocationPointRow } from '@/db/repositories/location-days';
+import { getDatabase, getSqlite } from '../client';
+import { ensureTripPointMetadataColumns } from '../migrate';
+import { tripPoints, trips } from '../schema';
 
-import type {TripRow} from './trips';
+import type { TripRow } from './trips';
 
 export type TripPointRow = {
   id: number;
@@ -128,7 +128,7 @@ export async function listTripPointsForDay(
 
 export async function replaceTripPoints(
   tripId: number,
-  coordinates: readonly {lat: number; lng: number}[],
+  coordinates: readonly { lat: number; lng: number }[],
 ): Promise<void> {
   await replaceTripPointsFromLocations(
     tripId,
@@ -199,22 +199,20 @@ export async function deleteTripPointsForTripIds(
   const deleted = await db
     .delete(tripPoints)
     .where(inArray(tripPoints.tripId, [...tripIds]))
-    .returning({id: tripPoints.id});
+    .returning({ id: tripPoints.id });
   return deleted.length;
 }
 
 export async function deleteAllTripPoints(): Promise<number> {
   const db = await getDatabase();
-  const deleted = await db
-    .delete(tripPoints)
-    .returning({id: tripPoints.id});
+  const deleted = await db.delete(tripPoints).returning({ id: tripPoints.id });
   return deleted.length;
 }
 
 export async function countTripPointsForDay(dateKey: string): Promise<number> {
   const db = await getDatabase();
   const [row] = await db
-    .select({count: sql<number>`cast(count(*) as integer)`})
+    .select({ count: sql<number>`cast(count(*) as integer)` })
     .from(tripPoints)
     .innerJoin(trips, eq(tripPoints.tripId, trips.id))
     .where(eq(trips.dateKey, dateKey));

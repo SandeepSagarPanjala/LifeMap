@@ -3,12 +3,16 @@
  * Detection lives in `@/lib/segmentation`.
  */
 
-import type {LocationPointRow} from '@/db/repositories/location-days';
-import type {SavedPlaceRow} from '@/db/repositories/saved-places';
-import type {PlaceLookupRow} from '@/lib/place-lookup-types';
-import type {RouteMomentAnchor, TripMomentRef} from '@/lib/moment-refs';
-import {calculatePathDistanceKm, distanceKm, type LocationPointLike} from '@/lib/location-geo';
-import type {TripDetectionConfig} from '@/lib/trip-settings';
+import type { LocationPointRow } from '@/db/repositories/location-days';
+import type { SavedPlaceRow } from '@/db/repositories/saved-places';
+import type { PlaceLookupRow } from '@/lib/place-lookup-types';
+import type { RouteMomentAnchor, TripMomentRef } from '@/lib/moment-refs';
+import {
+  calculatePathDistanceKm,
+  distanceKm,
+  type LocationPointLike,
+} from '@/lib/location-geo';
+import type { TripDetectionConfig } from '@/lib/trip-settings';
 
 /** Optional inputs that refine timeline detection without changing trip settings. */
 export type TripTimelineOptions = {
@@ -100,14 +104,18 @@ function roundCoord(value: number): number {
 /**
  * Collapse duplicate DB rows (same instant + place) before timeline logic.
  */
-export function dedupeLocationPoints(points: LocationPointRow[]): LocationPointRow[] {
+export function dedupeLocationPoints(
+  points: LocationPointRow[],
+): LocationPointRow[] {
   const sorted = [...points].sort(
     (a, b) => a.timestamp.getTime() - b.timestamp.getTime(),
   );
   const byKey = new Map<string, LocationPointRow>();
 
   for (const point of sorted) {
-    const key = `${point.timestamp.getTime()}|${roundCoord(point.lat)}|${roundCoord(point.lng)}`;
+    const key = `${point.timestamp.getTime()}|${roundCoord(
+      point.lat,
+    )}|${roundCoord(point.lng)}`;
     const existing = byKey.get(key);
     if (!existing) {
       byKey.set(key, point);
@@ -117,7 +125,7 @@ export function dedupeLocationPoints(points: LocationPointRow[]): LocationPointR
       point.accuracy != null &&
       (existing.accuracy == null || point.accuracy < existing.accuracy)
     ) {
-      byKey.set(key, {...point, id: existing.id});
+      byKey.set(key, { ...point, id: existing.id });
     }
   }
 
@@ -133,7 +141,10 @@ export function isSparseTravelRoute(points: LocationPointRow[]): boolean {
   }
   const pathM = calculatePathDistanceKm(points) * 1000;
   const straightM = distanceKm(points[0]!, points[points.length - 1]!) * 1000;
-  if (pathM >= LONG_DRIVE_DISTANCE_M && straightM / Math.max(pathM, 1) >= SPARSE_ROUTE_STRAIGHTNESS_RATIO) {
+  if (
+    pathM >= LONG_DRIVE_DISTANCE_M &&
+    straightM / Math.max(pathM, 1) >= SPARSE_ROUTE_STRAIGHTNESS_RATIO
+  ) {
     return points.length < SPARSE_ROUTE_MAX_POINTS;
   }
   if (points.length >= MIN_TRAVEL_POINTS_FOR_LONG_DRIVE) {
@@ -202,9 +213,7 @@ export function firstPlayableTimelineIndex(
   return -1;
 }
 
-export function lastPlayableTimelineIndex(
-  entries: DayTimelineEntry[],
-): number {
+export function lastPlayableTimelineIndex(entries: DayTimelineEntry[]): number {
   for (let index = entries.length - 1; index >= 0; index -= 1) {
     if (isPlayableTimelineEntry(entries[index]!)) {
       return index;
@@ -260,8 +269,8 @@ function previousStayDepartureAnchor(
   const marker = stayMapMarkerCoordinate(stay);
   const markerDistM =
     distanceKm(
-      {lat: last.lat, lng: last.lng},
-      {lat: marker.latitude, lng: marker.longitude},
+      { lat: last.lat, lng: last.lng },
+      { lat: marker.latitude, lng: marker.longitude },
     ) * 1000;
 
   if (markerDistM > DEPARTURE_BRIDGE_M) {
@@ -327,7 +336,11 @@ export function stayAfterEntryIndex(
   entries: DayTimelineEntry[],
   index: number,
 ): DetectedTrip | null {
-  for (let entryIndex = index + 1; entryIndex < entries.length; entryIndex += 1) {
+  for (
+    let entryIndex = index + 1;
+    entryIndex < entries.length;
+    entryIndex += 1
+  ) {
     const entry = entries[entryIndex]!;
     if (entry.kind === 'stay') {
       return entry;
@@ -449,16 +462,19 @@ export function visitCorePoints(visit: DetectedTrip): LocationPointRow[] {
 }
 
 /** Map / overlay anchor — detection stop center or DB seal centroid (no raw GPS rescan). */
-export function resolveStayAnchor(stay: DetectedTrip): {lat: number; lng: number} {
+export function resolveStayAnchor(stay: DetectedTrip): {
+  lat: number;
+  lng: number;
+} {
   if (stay.anchorLat != null && stay.anchorLng != null) {
-    return {lat: stay.anchorLat, lng: stay.anchorLng};
+    return { lat: stay.anchorLat, lng: stay.anchorLng };
   }
   if (stay.points.length === 0) {
-    return {lat: 0, lng: 0};
+    return { lat: 0, lng: 0 };
   }
   if (stay.points.length === 1) {
     const only = stay.points[0]!;
-    return {lat: only.lat, lng: only.lng};
+    return { lat: only.lat, lng: only.lng };
   }
   const core = visitCorePoints(stay);
   if (core.length > 0) {
@@ -468,7 +484,7 @@ export function resolveStayAnchor(stay: DetectedTrip): {lat: number; lng: number
     };
   }
   const first = stay.points[0]!;
-  return {lat: first.lat, lng: first.lng};
+  return { lat: first.lat, lng: first.lng };
 }
 
 export function stayMapCentroid(stay: DetectedTrip): {
@@ -476,13 +492,13 @@ export function stayMapCentroid(stay: DetectedTrip): {
   longitude: number;
 } {
   const anchor = resolveStayAnchor(stay);
-  return {latitude: anchor.lat, longitude: anchor.lng};
+  return { latitude: anchor.lat, longitude: anchor.lng };
 }
 
 export function stayMapMarkerCoordinate(
   stay: DetectedTrip,
-  options?: {ongoing?: boolean},
-): {latitude: number; longitude: number} {
+  options?: { ongoing?: boolean },
+): { latitude: number; longitude: number } {
   if (options?.ongoing && stay.points.length > 0) {
     return stayTripMarkerCoordinate(stay, options);
   }
@@ -502,7 +518,7 @@ export function isUserStillAtStay(
   if (minDistanceToStayM(userCoordinate, stay) <= limitM) {
     return true;
   }
-  const marker = stayMapMarkerCoordinate(stay, {ongoing: true});
+  const marker = stayMapMarkerCoordinate(stay, { ongoing: true });
   return (
     distanceKm(userCoordinate, {
       lat: marker.latitude,
@@ -534,8 +550,8 @@ export function getVisitInboundTravelPoints(
 
 export function stayTripMarkerCoordinate(
   trip: DetectedTrip,
-  options?: {ongoing?: boolean},
-): {latitude: number; longitude: number} {
+  options?: { ongoing?: boolean },
+): { latitude: number; longitude: number } {
   if (options?.ongoing && trip.points.length > 0) {
     const sorted = [...trip.points].sort(
       (a, b) => a.timestamp.getTime() - b.timestamp.getTime(),
@@ -547,5 +563,5 @@ export function stayTripMarkerCoordinate(
     };
   }
   const anchor = resolveStayAnchor(trip);
-  return {latitude: anchor.lat, longitude: anchor.lng};
+  return { latitude: anchor.lat, longitude: anchor.lng };
 }

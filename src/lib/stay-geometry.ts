@@ -1,9 +1,9 @@
-import type {MomentRow} from '@/db/repositories/moments';
-import type {LocationPointRow} from '@/db/repositories/location-days';
-import type {PersistTripPointInput} from '@/db/repositories/trip-points';
-import {calculatePathDistanceKm, distanceKm} from '@/lib/location-geo';
-import type {DetectedTrip} from '@/lib/trip-detection';
-import {visitCorePoints} from '@/lib/trip-detection';
+import type { MomentRow } from '@/db/repositories/moments';
+import type { LocationPointRow } from '@/db/repositories/location-days';
+import type { PersistTripPointInput } from '@/db/repositories/trip-points';
+import { calculatePathDistanceKm, distanceKm } from '@/lib/location-geo';
+import type { DetectedTrip } from '@/lib/trip-detection';
+import { visitCorePoints } from '@/lib/trip-detection';
 
 import {
   MIN_VISIT_IN_AREA_PATH_M,
@@ -33,7 +33,7 @@ function maxSpreadFromAnchorM(
 
 function closestPointTo(
   points: LocationPointRow[],
-  target: {lat: number; lng: number},
+  target: { lat: number; lng: number },
 ): LocationPointRow | null {
   if (points.length === 0) {
     return null;
@@ -53,7 +53,7 @@ function closestPointTo(
 
 function farthestPointFrom(
   points: LocationPointRow[],
-  anchor: {lat: number; lng: number},
+  anchor: { lat: number; lng: number },
   excludeIds: ReadonlySet<number>,
 ): LocationPointRow | null {
   let best: LocationPointRow | null = null;
@@ -163,7 +163,11 @@ export function shouldUseVenueWanderGeometry(stay: DetectedTrip): boolean {
   if (stay.kind !== 'stay') {
     return false;
   }
-  if (stay.placeKind != null || stay.placeId != null || stay.placeLabel != null) {
+  if (
+    stay.placeKind != null ||
+    stay.placeId != null ||
+    stay.placeLabel != null
+  ) {
     return false;
   }
   const core = visitCorePoints(stay);
@@ -180,7 +184,7 @@ export function shouldUseVenueWanderGeometry(stay: DetectedTrip): boolean {
 /** Reduce stay GPS to canonical geometry for trip_points + map display. */
 export function canonicalizeStayGeometry(
   stay: DetectedTrip,
-  centroid: {lat: number; lng: number},
+  centroid: { lat: number; lng: number },
   moments: readonly MomentRow[] = [],
 ): LocationPointRow[] {
   if (stay.kind !== 'stay') {
@@ -248,7 +252,7 @@ function sortPersistPoints(
 /** Stay canonical geometry with forced anchors for in-segment moments. */
 export function canonicalizeStayGeometryForPersist(
   stay: DetectedTrip,
-  centroid: {lat: number; lng: number},
+  centroid: { lat: number; lng: number },
   moments: readonly MomentRow[],
 ): PersistTripPointInput[] {
   if (stay.kind !== 'stay') {
@@ -290,7 +294,9 @@ export function canonicalizeStayGeometryForPersist(
     }
     const locationPointId = nearest.id > 0 ? nearest.id : null;
     const existing =
-      locationPointId != null ? byLocationPointId.get(locationPointId) : undefined;
+      locationPointId != null
+        ? byLocationPointId.get(locationPointId)
+        : undefined;
     if (existing != null) {
       if (existing.momentId == null) {
         existing.momentId = moment.id;

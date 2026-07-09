@@ -1,15 +1,18 @@
-import {listPlaceLookupCacheRows} from '@/db/repositories/place-lookup-cache';
+import { listPlaceLookupCacheRows } from '@/db/repositories/place-lookup-cache';
 import {
   cacheNeedsPoiCoordinateRefresh,
   listPlacePoisForCaches,
   syncMapkitPlacePoisForCache,
 } from '@/db/repositories/place-pois';
-import {notifyPlaceLookupUpdated} from '@/lib/place-lookup-events';
+import { notifyPlaceLookupUpdated } from '@/lib/place-lookup-events';
 import {
   fetchNearbyPlaceLookup,
   platformResolvesClosestPoi,
 } from '@/lib/place-lookup-native';
-import type {PlaceLookupCandidate, PlaceLookupRow} from '@/lib/place-lookup-types';
+import type {
+  PlaceLookupCandidate,
+  PlaceLookupRow,
+} from '@/lib/place-lookup-types';
 
 const REFRESH_DELAY_MS = 250;
 
@@ -40,7 +43,7 @@ export type PlacePoiCoordinateRefreshBatchResult = {
 
 function mapkitCandidatesFromLookup(
   candidates: readonly PlaceLookupCandidate[],
-): Array<{name: string; lat: number; lng: number}> {
+): Array<{ name: string; lat: number; lng: number }> {
   return candidates
     .filter(candidate => candidate.kind === 'poi')
     .map(candidate => ({
@@ -56,13 +59,16 @@ function sleep(ms: number): Promise<void> {
 
 export function listCompleteCachesNeedingPoiCoordinateRefresh(
   cacheRows: readonly PlaceLookupRow[],
-  poisByCacheId: ReadonlyMap<number, readonly import('@/lib/place-lookup-types').PlacePoiRow[]>,
+  poisByCacheId: ReadonlyMap<
+    number,
+    readonly import('@/lib/place-lookup-types').PlacePoiRow[]
+  >,
 ): PlaceLookupRow[] {
   return cacheRows.filter(row => {
     if (row.lookupStatus !== 'complete') {
       return false;
     }
-    const anchor = {lat: row.anchorLat, lng: row.anchorLng};
+    const anchor = { lat: row.anchorLat, lng: row.anchorLng };
     const pois = poisByCacheId.get(row.id) ?? [];
     return cacheNeedsPoiCoordinateRefresh(anchor, pois);
   });
@@ -93,7 +99,7 @@ export async function refreshPlacePoiCoordinatesForCache(
   const rows = await listPlaceLookupCacheRows();
   const row = rows.find(entry => entry.id === cacheId);
   if (row == null || row.lookupStatus !== 'complete') {
-    return {cacheId, status: 'skipped', updated: 0, inserted: 0};
+    return { cacheId, status: 'skipped', updated: 0, inserted: 0 };
   }
 
   try {
@@ -104,7 +110,7 @@ export async function refreshPlacePoiCoordinatesForCache(
     );
     const incoming = mapkitCandidatesFromLookup(result.candidates);
     if (incoming.length === 0) {
-      return {cacheId, status: 'skipped', updated: 0, inserted: 0};
+      return { cacheId, status: 'skipped', updated: 0, inserted: 0 };
     }
     const sync = await syncMapkitPlacePoisForCache(cacheId, incoming);
     return {

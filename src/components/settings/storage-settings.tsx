@@ -1,12 +1,12 @@
-import {useCallback, useEffect, useState} from 'react';
-import {APP_COPY} from '@/lib/app-copy';
-import {View} from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { APP_COPY } from '@/lib/app-copy';
+import { View } from 'react-native';
 
-import {SettingsStatsRefreshBar} from '@/components/settings/settings-stats-refresh-bar';
-import {Text} from '@/components/ui/text';
-import type {AppStorageBreakdown} from '@/db/repositories/storage-stats';
-import {formatStorageBytes} from '@/lib/format-storage';
-import type {StorageBreakdownItem} from '@/lib/app-storage-breakdown';
+import { SettingsStatsRefreshBar } from '@/components/settings/settings-stats-refresh-bar';
+import { Text } from '@/components/ui/text';
+import type { AppStorageBreakdown } from '@/db/repositories/storage-stats';
+import { formatStorageBytes } from '@/lib/format-storage';
+import type { StorageBreakdownItem } from '@/lib/app-storage-breakdown';
 import {
   computeAndCacheStorageBreakdown,
   loadCachedStorageBreakdown,
@@ -95,17 +95,22 @@ export function StorageSettings() {
 function StorageTableHeader() {
   return (
     <View className="bg-muted/40 border-border flex-row items-center border-b px-2 py-2">
-      <Text variant="muted" className="flex-[1.4] text-[10px] font-semibold uppercase">
+      <Text
+        variant="muted"
+        className="flex-[1.4] text-[10px] font-semibold uppercase"
+      >
         Item
       </Text>
       <Text
         variant="muted"
-        className="w-14 text-right text-[10px] font-semibold uppercase">
+        className="w-14 text-right text-[10px] font-semibold uppercase"
+      >
         Count
       </Text>
       <Text
         variant="muted"
-        className="w-20 text-right text-[10px] font-semibold uppercase">
+        className="w-20 text-right text-[10px] font-semibold uppercase"
+      >
         Size
       </Text>
     </View>
@@ -130,22 +135,26 @@ function StorageTableRow({
     <View
       className={`border-border flex-row items-center border-b px-2 py-2.5 ${
         emphasized ? 'bg-primary/5' : ''
-      }`}>
+      }`}
+    >
       <Text
         className={`flex-[1.4] text-xs ${emphasized ? 'font-semibold' : ''}`}
-        numberOfLines={2}>
+        numberOfLines={2}
+      >
         {item.label}
       </Text>
       <Text
         className={`w-14 text-right text-xs font-medium ${
           emphasized ? 'font-semibold' : ''
-        }`}>
+        }`}
+      >
         {formatStorageCount(item.count)}
       </Text>
       <Text
         className={`w-20 text-right text-xs font-medium ${
           emphasized ? 'font-semibold' : ''
-        }`}>
+        }`}
+      >
         {formatStorageBytes(item.bytes)}
       </Text>
     </View>

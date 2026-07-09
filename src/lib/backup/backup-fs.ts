@@ -32,7 +32,9 @@ export async function prepareEmptyDirectory(path: string): Promise<void> {
   await ensureDirectory(path);
 }
 
-export async function computeDirectoryBytes(directoryPath: string): Promise<number> {
+export async function computeDirectoryBytes(
+  directoryPath: string,
+): Promise<number> {
   if (!(await fs.exists(directoryPath))) {
     return 0;
   }

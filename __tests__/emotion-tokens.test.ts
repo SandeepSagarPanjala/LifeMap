@@ -5,7 +5,7 @@ import {
   getEmotionTokenByLabel,
   parseEmotionMoodLabel,
 } from '../src/lib/moments/emotion-tokens';
-import {emotionContextPrompt} from '../src/lib/moments/emotion-context-tokens';
+import { emotionContextPrompt } from '../src/lib/moments/emotion-context-tokens';
 
 describe('emotion tokens', () => {
   it('defines all requested emotion stickers', () => {

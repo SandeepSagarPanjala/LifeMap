@@ -1,16 +1,19 @@
-import {useEffect, useRef, useState, useSyncExternalStore} from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 
-import type {SavedPlaceRow} from '@/db/repositories/saved-places';
+import type { SavedPlaceRow } from '@/db/repositories/saved-places';
 import {
   resolveAndPersistPlaceLabelForStay,
   stayNeedsLazyPlaceLookup,
 } from '@/lib/place-lookup-resolve';
-import {getPlaceLookupRevision, subscribePlaceLookup} from '@/lib/place-lookup-events';
+import {
+  getPlaceLookupRevision,
+  subscribePlaceLookup,
+} from '@/lib/place-lookup-events';
 import {
   getMaterializationRevision,
   subscribeMaterialization,
 } from '@/lib/trip-materialization-events';
-import type {DetectedTrip} from '@/lib/trip-detection';
+import type { DetectedTrip } from '@/lib/trip-detection';
 
 /** MapKit lookup when the user selects an unlabeled sealed stay in history. */
 export function useResolvePlaceOnStaySelect(
@@ -53,7 +56,7 @@ export function useResolvePlaceOnStaySelect(
     setResolving(true);
     let cancelled = false;
 
-    void resolveAndPersistPlaceLabelForStay(stay, dateKey, {savedPlaces})
+    void resolveAndPersistPlaceLabelForStay(stay, dateKey, { savedPlaces })
       .catch(() => undefined)
       .finally(() => {
         if (cancelled) {

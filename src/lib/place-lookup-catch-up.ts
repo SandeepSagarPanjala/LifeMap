@@ -8,17 +8,17 @@ import {
   countUnlabeledStayTrips,
   listUnlabeledStayTrips,
 } from '@/db/repositories/trips';
-import {listSavedPlaces} from '@/db/repositories/saved-places';
+import { listSavedPlaces } from '@/db/repositories/saved-places';
 import {
   listStaysNeedingPlaceLookup,
   tripRowToBackfillStay,
 } from '@/lib/place-lookup-backfill';
-import {resolveAndPersistPlaceLabelForTripRow} from '@/lib/place-lookup-resolve';
+import { resolveAndPersistPlaceLabelForTripRow } from '@/lib/place-lookup-resolve';
 import {
   clearPlaceLookupCatchUpProgress,
   setPlaceLookupCatchUpProgress,
 } from '@/lib/place-lookup-catch-up-events';
-import {runWhenIdle, yieldToEventLoop} from '@/lib/run-when-idle';
+import { runWhenIdle, yieldToEventLoop } from '@/lib/run-when-idle';
 import {
   existingTripLabelsByEventKey,
   getDefaultTripDetectionConfig,

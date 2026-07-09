@@ -1,4 +1,4 @@
-import type {SavedPlaceRow} from '@/db/repositories/saved-places';
+import type { SavedPlaceRow } from '@/db/repositories/saved-places';
 import {
   completePlaceLookup,
   failPlaceLookup,
@@ -11,7 +11,7 @@ import {
   listPlacePoisForCache,
   syncMapkitPlacePoisForCache,
 } from '@/db/repositories/place-pois';
-import {notifyPlaceLookupUpdated} from '@/lib/place-lookup-events';
+import { notifyPlaceLookupUpdated } from '@/lib/place-lookup-events';
 import {
   fetchNearbyPlaceLookup,
   platformResolvesClosestPoi,
@@ -28,12 +28,12 @@ import type {
   PlaceLookupCandidate,
   PlaceLookupRow,
 } from '@/lib/place-lookup-types';
-import type {TripDetectionConfig} from '@/lib/trip-settings';
-import {stayMeetsMinimumVisitDwell} from '@/lib/visit-dwell';
-import {resolveStayAnchor} from '@/lib/trip-detection';
-import type {DetectedTrip} from '@/lib/trip-detection';
+import type { TripDetectionConfig } from '@/lib/trip-settings';
+import { stayMeetsMinimumVisitDwell } from '@/lib/visit-dwell';
+import { resolveStayAnchor } from '@/lib/trip-detection';
+import type { DetectedTrip } from '@/lib/trip-detection';
 
-function stayLookupAnchor(stay: DetectedTrip): {lat: number; lng: number} {
+function stayLookupAnchor(stay: DetectedTrip): { lat: number; lng: number } {
   return resolveStayAnchor(stay);
 }
 
@@ -61,7 +61,7 @@ export function shouldSkipPlaceLookupForStay(
 
 function mapkitPoisFromCandidates(
   candidates: readonly PlaceLookupCandidate[],
-): Array<{name: string; lat: number; lng: number; source: 'mapkit'}> {
+): Array<{ name: string; lat: number; lng: number; source: 'mapkit' }> {
   return candidates
     .filter(candidate => candidate.kind === 'poi')
     .map(candidate => ({
@@ -91,8 +91,8 @@ async function persistLookupPois(
 }
 
 async function performPlaceLookup(
-  anchor: {lat: number; lng: number},
-  options?: {bypassSessionBudget?: boolean},
+  anchor: { lat: number; lng: number },
+  options?: { bypassSessionBudget?: boolean },
 ): Promise<PlaceLookupRow | null> {
   const key = placeLookupAnchorKey(anchor.lat, anchor.lng);
   if (inFlightKeys.has(key)) {
@@ -162,8 +162,8 @@ async function performPlaceLookup(
 
 /** Fetch or wait for a complete cache row at the stay anchor (catch-up / lazy label). */
 export async function ensureCompletePlaceLookupAtAnchor(
-  anchor: {lat: number; lng: number},
-  options?: {bypassSessionBudget?: boolean},
+  anchor: { lat: number; lng: number },
+  options?: { bypassSessionBudget?: boolean },
 ): Promise<PlaceLookupRow | null> {
   const row = await performPlaceLookup(anchor, options);
   if (row?.lookupStatus === 'complete') {
@@ -254,4 +254,4 @@ export function __resetPlaceLookupServiceForTests(): void {
   sessionFetchCount = 0;
 }
 
-export {platformResolvesClosestPoi};
+export { platformResolvesClosestPoi };

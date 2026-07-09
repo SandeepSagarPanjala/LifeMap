@@ -1,21 +1,21 @@
-import {useMemo, useState} from 'react';
-import {Animated, StyleSheet, View} from 'react-native';
+import { useMemo, useState } from 'react';
+import { Animated, StyleSheet, View } from 'react-native';
 
-import {HistoryEventCard} from '@/components/map/HistoryEventCard';
-import {HistoryPanelChrome} from '@/components/map/HistoryPanelChrome';
-import {HistoryPanelSkeleton} from '@/components/map/HistoryPanelSkeleton';
-import {HistoryTimelineBar} from '@/components/map/HistoryTimelineBar';
-import {VisitPlaceAddressCard} from '@/components/map/VisitPlaceAddressCard';
-import {VisitPlaceCustomLabelSheet} from '@/components/map/VisitPlaceCustomLabelSheet';
-import {MAP_HISTORY_DATE_NAV_ABOVE_PANEL_GAP} from '@/lib/app-constants';
+import { HistoryEventCard } from '@/components/map/HistoryEventCard';
+import { HistoryPanelChrome } from '@/components/map/HistoryPanelChrome';
+import { HistoryPanelSkeleton } from '@/components/map/HistoryPanelSkeleton';
+import { HistoryTimelineBar } from '@/components/map/HistoryTimelineBar';
+import { VisitPlaceAddressCard } from '@/components/map/VisitPlaceAddressCard';
+import { VisitPlaceCustomLabelSheet } from '@/components/map/VisitPlaceCustomLabelSheet';
+import { MAP_HISTORY_DATE_NAV_ABOVE_PANEL_GAP } from '@/lib/app-constants';
 
-import type {MapScreenController} from './use-map-screen-controller';
+import type { MapScreenController } from './use-map-screen-controller';
 
 type MapHistoryPanelProps = {
   controller: MapScreenController;
 };
 
-export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
+export function MapHistoryPanel({ controller }: MapHistoryPanelProps) {
   const {
     historyPanelChromeVisible,
     historyPanelOpen,
@@ -72,12 +72,8 @@ export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
           )
         : null;
     return selected?.source === 'user' ? selected.name : '';
-  }, [
-    placeLabelEditDisplay.candidates,
-    placeLabelEditDisplay.selectedPoiId,
-  ]);
-  const eventSelected =
-    selectedHistoryIndex >= 0 && selectedEntry != null;
+  }, [placeLabelEditDisplay.candidates, placeLabelEditDisplay.selectedPoiId]);
+  const eventSelected = selectedHistoryIndex >= 0 && selectedEntry != null;
 
   if (!historyPanelChromeVisible) {
     return null;
@@ -90,9 +86,10 @@ export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
         styles.host,
         {
           bottom: insets.bottom,
-          transform: [{translateY: historyPanelY}],
+          transform: [{ translateY: historyPanelY }],
         },
-      ]}>
+      ]}
+    >
       <HistoryPanelChrome
         viewingToday={viewingToday}
         label={mapDateLabel}
@@ -104,9 +101,7 @@ export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
         onPressLabel={openHistoryDatePicker}
       />
       {showHistoryPanelContent ? (
-        <View
-          style={styles.content}
-          onLayout={handleHistoryPanelContentLayout}>
+        <View style={styles.content} onLayout={handleHistoryPanelContentLayout}>
           {showPlaceLabelCard ? (
             <VisitPlaceAddressCard
               display={placeLabelEditDisplay}
@@ -144,7 +139,9 @@ export function MapHistoryPanel({controller}: MapHistoryPanelProps) {
               scrubOnEvent ? openSelectedEntryMomentsPreview : undefined
             }
             scrubOnEmpty={
-              historyEntries.length > 0 && !eventSelected && showHistoryPanelContent
+              historyEntries.length > 0 &&
+              !eventSelected &&
+              showHistoryPanelContent
             }
             emptyDayWithoutData={!historyHasGpsData}
             viewingToday={viewingToday}

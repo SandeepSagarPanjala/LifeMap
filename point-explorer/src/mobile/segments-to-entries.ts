@@ -1,4 +1,4 @@
-import type {SavedPlaceRow} from '../types';
+import type { SavedPlaceRow } from '../types';
 import type {
   DriveSegment,
   MissingSegment,
@@ -7,7 +7,7 @@ import type {
   TripSegment,
 } from '@lifemap/segmentation';
 
-import type {DayTimelineEntry, DetectedTrip, TimelineGap} from './types';
+import type { DayTimelineEntry, DetectedTrip, TimelineGap } from './types';
 
 function savedPlaceKind(
   savedPlaces: readonly SavedPlaceRow[],

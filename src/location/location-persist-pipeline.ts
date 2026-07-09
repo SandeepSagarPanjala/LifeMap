@@ -1,4 +1,6 @@
-import BackgroundGeolocation, {type Location} from 'react-native-background-geolocation';
+import BackgroundGeolocation, {
+  type Location,
+} from 'react-native-background-geolocation';
 
 import {
   nativeDrainTransistorQueue,
@@ -9,7 +11,7 @@ import {
   getLatestLocationPoint,
   insertLocationPoint,
 } from '@/db/repositories/location-points';
-import {evaluateDepartureWatchdog} from '@/lib/departure-watchdog';
+import { evaluateDepartureWatchdog } from '@/lib/departure-watchdog';
 import {
   isExactDuplicatePersist,
   shouldSkipMotionPersist,
@@ -21,8 +23,7 @@ import {
   STATIONARY_PING_MIN_MS,
   STATIONARY_PING_MIN_MS_MAX_RELIABILITY,
 } from '@/lib/app-constants';
-import {HEARTBEAT_CURRENT_POSITION_REQUEST} from '@/lib/motion-tracking-policy';
-import {recordTrackingDiagnostic} from '@/lib/tracking-diagnostics';
+import { HEARTBEAT_CURRENT_POSITION_REQUEST } from '@/lib/motion-tracking-policy';
 import {
   createTrackingMotionGuardState,
   resetDepartureWake,
@@ -39,17 +40,18 @@ export function locationTimestamp(location: Location): Date {
 }
 
 export function isSampleLocation(location: Location): boolean {
-  return (location as Location & {sample?: boolean}).sample === true;
+  return (location as Location & { sample?: boolean }).sample === true;
 }
 
 export function isLocationLike(value: unknown): value is Location {
   if (value == null || typeof value !== 'object') {
     return false;
   }
-  const candidate = value as {coords?: {latitude?: number; longitude?: number}};
+  const candidate = value as {
+    coords?: { latitude?: number; longitude?: number };
+  };
   return (
-    candidate.coords?.latitude != null &&
-    candidate.coords?.longitude != null
+    candidate.coords?.latitude != null && candidate.coords?.longitude != null
   );
 }
 
@@ -75,10 +77,10 @@ export async function loadLastPersistedFix(): Promise<LastPersistedFix | null> {
 export async function persistLocationFromSdk(
   location: Location,
   source: string,
-  options?: {dedupe?: boolean; allowRapidMotion?: boolean},
+  options?: { dedupe?: boolean; allowRapidMotion?: boolean },
 ): Promise<boolean> {
   const timestamp = locationTimestamp(location);
-  const {coords} = location;
+  const { coords } = location;
   const timestampMs = timestamp.getTime();
   const last = await loadLastPersistedFix();
 
@@ -100,7 +102,7 @@ export async function persistLocationFromSdk(
       source.startsWith('headless:motion')) &&
     shouldSkipMotionPersist(
       last,
-      {lat: coords.latitude, lng: coords.longitude},
+      { lat: coords.latitude, lng: coords.longitude },
       timestampMs,
     )
   ) {
@@ -119,7 +121,7 @@ export async function persistLocationFromSdk(
       speed: coords.speed != null && coords.speed >= 0 ? coords.speed : null,
       source,
     },
-    {dedupe: options?.dedupe},
+    { dedupe: options?.dedupe },
   );
   return true;
 }
@@ -130,9 +132,11 @@ export async function drainNativeLocationQueue(): Promise<number> {
   if (drainNativeLocationQueueInFlight != null) {
     return drainNativeLocationQueueInFlight;
   }
-  drainNativeLocationQueueInFlight = drainNativeLocationQueueImpl().finally(() => {
-    drainNativeLocationQueueInFlight = null;
-  });
+  drainNativeLocationQueueInFlight = drainNativeLocationQueueImpl().finally(
+    () => {
+      drainNativeLocationQueueInFlight = null;
+    },
+  );
   return drainNativeLocationQueueInFlight;
 }
 
@@ -140,13 +144,6 @@ async function drainNativeLocationQueueImpl(): Promise<number> {
   const nativeImported = await nativeDrainTransistorQueue();
   const pending = (await BackgroundGeolocation.getLocations()) as Location[];
   if (pending.length === 0) {
-    if (nativeImported > 0) {
-      await recordTrackingDiagnostic('native_queue_drained', {
-        queuedCount: 0,
-        importedCount: nativeImported,
-        nativeSwiftDrain: nativeImported,
-      });
-    }
     return nativeImported;
   }
 
@@ -157,47 +154,29 @@ async function drainNativeLocationQueueImpl(): Promise<number> {
     }
     const source = toLocationSource('native_queue', item.event);
     try {
-      const saved = await persistLocationFromSdk(item, source, {dedupe: true});
+      const saved = await persistLocationFromSdk(item, source, {
+        dedupe: true,
+      });
       if (saved) {
         imported += 1;
       }
-    } catch (error) {
-      await recordTrackingDiagnostic('native_queue_persist_error', {
-        source,
-        message: error instanceof Error ? error.message : 'unknown',
-      });
+    } catch {
+      // Best-effort — continue draining remaining queue items.
     }
   }
   await BackgroundGeolocation.destroyLocations();
-  await recordTrackingDiagnostic('native_queue_drained', {
-    queuedCount: pending.length,
-    importedCount: imported,
-    nativeSwiftDrain: nativeImported,
-  });
   return imported;
 }
 
-async function forceMovingMode(
-  reason: string,
-  details: Record<string, unknown>,
-): Promise<void> {
+async function forceMovingMode(): Promise<void> {
   if (!shouldApplyDepartureWake(departureWakeGuard)) {
     return;
   }
 
   try {
     await BackgroundGeolocation.changePace(true);
-    await recordTrackingDiagnostic('departure_force_moving', {
-      reason,
-      ...details,
-    });
-  } catch (error) {
+  } catch {
     resetDepartureWake(departureWakeGuard);
-    await recordTrackingDiagnostic('departure_force_moving_error', {
-      reason,
-      message: error instanceof Error ? error.message : 'unknown',
-      ...details,
-    });
   }
 }
 
@@ -217,7 +196,7 @@ export async function runLocationHeartbeat(
     : DEPARTURE_WATCHDOG_MIN_MS;
 
   if (sinceLastSaveMs >= departureWatchdogMinMs) {
-    await forceMovingMode('heartbeat_stale_wake', {sinceLastSaveMs, maxReliability});
+    await forceMovingMode();
   }
 
   try {
@@ -228,7 +207,7 @@ export async function runLocationHeartbeat(
       return null;
     }
 
-    const {coords} = location;
+    const { coords } = location;
     const evaluation = evaluateDepartureWatchdog({
       sinceLastSaveMs,
       lastSaved: last,
@@ -243,11 +222,7 @@ export async function runLocationHeartbeat(
     });
 
     if (evaluation.forceMoving) {
-      await forceMovingMode(evaluation.reason, {
-        distanceMeters: evaluation.distanceMeters,
-        sinceLastSaveMs,
-        speed: coords.speed != null && coords.speed >= 0 ? coords.speed : null,
-      });
+      await forceMovingMode();
     }
 
     if (evaluation.shouldPersist) {
@@ -256,31 +231,14 @@ export async function runLocationHeartbeat(
         allowRapidMotion: true,
       });
       if (saved) {
-        await recordTrackingDiagnostic(
-          evaluation.source === 'heartbeat_ping'
-            ? 'heartbeat_saved'
-            : 'heartbeat_departure_saved',
-          {
-            reason: evaluation.reason,
-            distanceMeters: evaluation.distanceMeters,
-            timestamp: locationTimestamp(location).toISOString(),
-            maxReliability,
-          },
-        );
         return locationTimestamp(location).getTime();
       }
       return null;
     }
 
     return null;
-  } catch (error) {
-    const imported = await drainNativeLocationQueue();
-    await recordTrackingDiagnostic('heartbeat_error', {
-      message: error instanceof Error ? error.message : 'unknown',
-      nativeQueueImported: imported,
-      sinceLastSaveMs,
-      maxReliability,
-    });
+  } catch {
+    await drainNativeLocationQueue();
     return null;
   }
 }
@@ -294,31 +252,18 @@ export async function handleMotionChangePersist(
   }
 
   if (isMoving) {
-    await forceMovingMode('motion_departure', {
-      speed: location.coords.speed,
-      accuracy: location.coords.accuracy,
-    });
-    const saved = await persistLocationFromSdk(location, 'motion_departure', {
+    await forceMovingMode();
+    await persistLocationFromSdk(location, 'motion_departure', {
       dedupe: true,
       allowRapidMotion: true,
     });
-    if (saved) {
-      await recordTrackingDiagnostic('motion_departure_saved', {
-        timestamp: locationTimestamp(location).toISOString(),
-      });
-    }
     return;
   }
 
   resetDepartureWake(departureWakeGuard);
 
-  const saved = await persistLocationFromSdk(location, 'motion_arrival', {
+  await persistLocationFromSdk(location, 'motion_arrival', {
     dedupe: true,
     allowRapidMotion: true,
   });
-  if (saved) {
-    await recordTrackingDiagnostic('motion_arrival_saved', {
-      timestamp: locationTimestamp(location).toISOString(),
-    });
-  }
 }

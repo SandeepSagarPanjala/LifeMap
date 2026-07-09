@@ -1,14 +1,14 @@
-import {useCallback, useEffect, useState} from 'react';
-import {useFocusEffect} from '@react-navigation/native';
+import { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 
-import {getMomentsForDay, type MomentRow} from '@/db/repositories/moments';
-import {getDayRange} from '@/lib/day-utils';
+import { getMomentsForDay, type MomentRow } from '@/db/repositories/moments';
+import { getDayRange } from '@/lib/day-utils';
 
 export function useDayMoments(dateKey: string) {
   const [dayMoments, setDayMoments] = useState<MomentRow[]>([]);
 
   const refresh = useCallback(async () => {
-    const {start, end} = getDayRange(dateKey);
+    const { start, end } = getDayRange(dateKey);
     const rows = await getMomentsForDay(start, end);
     setDayMoments(rows);
   }, [dateKey]);
@@ -24,5 +24,5 @@ export function useDayMoments(dateKey: string) {
     }, [refresh]),
   );
 
-  return {dayMoments, refreshDayMoments: refresh};
+  return { dayMoments, refreshDayMoments: refresh };
 }

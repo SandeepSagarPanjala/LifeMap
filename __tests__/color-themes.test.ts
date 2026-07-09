@@ -3,7 +3,7 @@ import {
   ACCENT_THEME_ORDER,
   DEFAULT_ACCENT_THEME,
 } from '@/lib/app-constants';
-import {themeTokensToColors, themeTokensToCssVars} from '@/lib/color-themes';
+import { themeTokensToColors, themeTokensToCssVars } from '@/lib/color-themes';
 
 describe('color-themes', () => {
   it('defaults to Verdant Path', () => {
@@ -27,9 +27,12 @@ describe('color-themes', () => {
     expect(colors.background).toBe('hsl(350 10% 8%)');
   });
 
-  it.each(ACCENT_THEME_ORDER)('%s theme has light and dark primary tokens', themeId => {
-    const theme = ACCENT_THEMES[themeId];
-    expect(theme.light.primary).toMatch(/^\d+ \d+% \d+%$/);
-    expect(theme.dark.primary).toMatch(/^\d+ \d+% \d+%$/);
-  });
+  it.each(ACCENT_THEME_ORDER)(
+    '%s theme has light and dark primary tokens',
+    themeId => {
+      const theme = ACCENT_THEMES[themeId];
+      expect(theme.light.primary).toMatch(/^\d+ \d+% \d+%$/);
+      expect(theme.dark.primary).toMatch(/^\d+ \d+% \d+%$/);
+    },
+  );
 });

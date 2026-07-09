@@ -1,6 +1,6 @@
-import {listPlaceLookupCacheRows} from '@/db/repositories/place-lookup-cache';
-import {listPlacePois} from '@/db/repositories/place-pois';
-import type {PlaceLookupRow, PlacePoiRow} from '@/lib/place-lookup-types';
+import { listPlaceLookupCacheRows } from '@/db/repositories/place-lookup-cache';
+import { listPlacePois } from '@/db/repositories/place-pois';
+import type { PlaceLookupRow, PlacePoiRow } from '@/lib/place-lookup-types';
 
 export type PlaceLookupContext = {
   placeLookupCache: PlaceLookupRow[];
@@ -12,5 +12,5 @@ export async function loadPlaceLookupContext(): Promise<PlaceLookupContext> {
     listPlaceLookupCacheRows(),
     listPlacePois(),
   ]);
-  return {placeLookupCache, placePois};
+  return { placeLookupCache, placePois };
 }

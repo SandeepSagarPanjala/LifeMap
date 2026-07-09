@@ -4,8 +4,7 @@ module.exports = {
   DISMISS_SHEET: 'Dismiss sheet',
   LIST_HEADING: 'Saved places',
   /** Shown above the list when at least one place is saved. */
-  LIST_HAS_ROWS_HINT:
-    'Long-press the map to add Home, Work, or a Favorite.',
+  LIST_HAS_ROWS_HINT: 'Long-press the map to add Home, Work, or a Favorite.',
   HOME_LABEL: 'Home',
   WORK_LABEL: 'Work',
   /** Visible link text at bottom of the list. */
@@ -27,8 +26,7 @@ module.exports = {
   ALERT_REMOVE: 'Remove',
   ALERT_CANCEL: 'Cancel',
   /** RN Alert.alert body when deleting a saved place. */
-  ALERT_REMOVE_MESSAGE:
-    'Visits here will show times only, without this label.',
+  ALERT_REMOVE_MESSAGE: 'Visits here will show times only, without this label.',
   /** Alert title — `Remove ${placeLabel}?` from SavedPlacesSheet.confirmDelete. */
   alertRemoveTitle: placeLabel => `Remove ${placeLabel}?`,
   /** Geocodes reliably on iOS simulator; requires network. */

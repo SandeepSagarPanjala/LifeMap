@@ -1,5 +1,5 @@
-import {parseWidgetDeepLink} from '@/lib/widget/widget-deep-link';
-import {WIDGET_CAPTURE_LINKS} from '@/lib/widget/types';
+import { parseWidgetDeepLink } from '@/lib/widget/widget-deep-link';
+import { WIDGET_CAPTURE_LINKS } from '@/lib/widget/types';
 
 describe('parseWidgetDeepLink', () => {
   it('parses diary capture link', () => {

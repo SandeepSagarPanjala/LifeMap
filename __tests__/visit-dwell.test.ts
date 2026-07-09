@@ -1,6 +1,6 @@
-import type {SavedPlaceRow} from '@/db/repositories/saved-places';
-import type {DetectedTrip} from '@/lib/trip-detection';
-import {buildTripDetectionConfig} from '@/lib/trip-settings';
+import type { SavedPlaceRow } from '@/db/repositories/saved-places';
+import type { DetectedTrip } from '@/lib/trip-detection';
+import { buildTripDetectionConfig } from '@/lib/trip-settings';
 import {
   minimumVisitDwellMinutes,
   stayMeetsMinimumVisitDwell,
@@ -58,9 +58,7 @@ function makeStay(
     endAt: new Date(startAt.getTime() + durationMs),
     distanceKm: 0,
     durationMs,
-    ...(placeId != null
-      ? {placeId, placeKind: 'saved' as const}
-      : {}),
+    ...(placeId != null ? { placeId, placeKind: 'saved' as const } : {}),
   };
 }
 

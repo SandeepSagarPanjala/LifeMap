@@ -1,7 +1,7 @@
-import type {TripRow} from '@/db/repositories/trips';
-import type {DetectedTrip, PlaceKind} from '@/lib/trip-detection';
+import type { TripRow } from '@/db/repositories/trips';
+import type { DetectedTrip, PlaceKind } from '@/lib/trip-detection';
 
-export type {PlaceKind};
+export type { PlaceKind };
 
 export type ResolvedPlaceFields = {
   placeLabel: string | null;
@@ -26,12 +26,7 @@ export function tripPlaceFieldsFromResolved(
 export function tripPlaceFieldsFromDetected(
   entry: Pick<
     DetectedTrip,
-    | 'kind'
-    | 'placeLabel'
-    | 'placeId'
-    | 'placeKind'
-    | 'poiId'
-    | 'poiLabel'
+    'kind' | 'placeLabel' | 'placeId' | 'placeKind' | 'poiId' | 'poiLabel'
   >,
 ): ResolvedPlaceFields {
   if (entry.kind !== 'stay') {

@@ -1,16 +1,16 @@
-import {makeMoment} from './helpers/fixtures';
+import { makeMoment } from './helpers/fixtures';
 import {
   countMomentsForEntry,
   filterMomentsForEntry,
 } from '@/lib/moments/moment-counts';
-import type {DetectedTrip} from '@/lib/trip-detection';
+import type { DetectedTrip } from '@/lib/trip-detection';
 
 function moment(
   id: number,
   iso: string,
   type: 'note' | 'photo' | 'voice' = 'note',
 ) {
-  return makeMoment({id, timestamp: new Date(iso), type});
+  return makeMoment({ id, timestamp: new Date(iso), type });
 }
 
 function materializedStay(): DetectedTrip {
@@ -24,8 +24,8 @@ function materializedStay(): DetectedTrip {
     distanceKm: 0,
     materializedTripId: 99,
     momentRefs: [
-      {momentId: 2, momentKind: 'photo'},
-      {momentId: 3, momentKind: 'voice'},
+      { momentId: 2, momentKind: 'photo' },
+      { momentId: 3, momentKind: 'voice' },
     ],
   };
 }
@@ -47,9 +47,9 @@ describe('materialized moment counts', () => {
       note: 0,
       activity: 0,
     });
-    expect(filterMomentsForEntry(dayMoments, entry).map(row => row.id)).toEqual([
-      2, 3,
-    ]);
+    expect(filterMomentsForEntry(dayMoments, entry).map(row => row.id)).toEqual(
+      [2, 3],
+    );
   });
 
   it('falls back to timestamp window for live tail entries', () => {
@@ -59,8 +59,8 @@ describe('materialized moment counts', () => {
       momentRefs: undefined,
     };
     expect(countMomentsForEntry(dayMoments, entry).photo).toBe(1);
-    expect(filterMomentsForEntry(dayMoments, entry).map(row => row.id)).toEqual([
-      2, 3,
-    ]);
+    expect(filterMomentsForEntry(dayMoments, entry).map(row => row.id)).toEqual(
+      [2, 3],
+    );
   });
 });

@@ -1,5 +1,5 @@
-import type {TripPointRow} from '@/db/repositories/trip-points';
-import type {TripRow} from '@/db/repositories/trips';
+import type { TripPointRow } from '@/db/repositories/trip-points';
+import type { TripRow } from '@/db/repositories/trips';
 import {
   buildExportTripView,
   driveRouteLabelsFromDayTrips,
@@ -67,8 +67,15 @@ describe('export-trip-view', () => {
 
   it('derives drive route labels from neighboring stays', () => {
     const dayTrips: TripRow[] = [
-      trip({id: 1, kind: 'stay', segmentOrder: 1, placeLabel: 'Home', placeKind: 'saved', placeId: 2}),
-      trip({id: 2, kind: 'travel', segmentOrder: 2}),
+      trip({
+        id: 1,
+        kind: 'stay',
+        segmentOrder: 1,
+        placeLabel: 'Home',
+        placeKind: 'saved',
+        placeId: 2,
+      }),
+      trip({ id: 2, kind: 'travel', segmentOrder: 2 }),
       trip({
         id: 3,
         kind: 'stay',

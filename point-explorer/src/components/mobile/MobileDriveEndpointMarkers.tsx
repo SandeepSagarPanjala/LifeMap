@@ -1,11 +1,14 @@
 import L from 'leaflet';
-import {Marker} from 'react-leaflet';
-import type {LatLngTuple} from 'leaflet';
+import { Marker } from 'react-leaflet';
+import type { LatLngTuple } from 'leaflet';
 
-import {formatTripClockTime, visitPlaceName} from '../../mobile/timeline-format';
-import type {DetectedTrip} from '../../mobile/types';
-import type {SavedPlaceRow} from '../../types';
-import {stayCoordinate} from './MobileStayCallout';
+import {
+  formatTripClockTime,
+  visitPlaceName,
+} from '../../mobile/timeline-format';
+import type { DetectedTrip } from '../../mobile/types';
+import type { SavedPlaceRow } from '../../types';
+import { stayCoordinate } from './MobileStayCallout';
 
 type MobileDriveEndpointMarkersProps = {
   entry: DetectedTrip;
@@ -48,9 +51,7 @@ function travelEndpointCoordinate(
     return null;
   }
   const point =
-    end === 'start'
-      ? entry.points[0]!
-      : entry.points[entry.points.length - 1]!;
+    end === 'start' ? entry.points[0]! : entry.points[entry.points.length - 1]!;
   return [point.lat, point.lng];
 }
 
@@ -89,7 +90,9 @@ function chipIcon(
   const emoji = savedPlace != null ? placeEmoji(savedPlace.kind) : '';
   const placeLine =
     label != null
-      ? `<div class="mobile-drive-chip-place">${emoji ? `${emoji} ` : ''}${label}</div>`
+      ? `<div class="mobile-drive-chip-place">${
+          emoji ? `${emoji} ` : ''
+        }${label}</div>`
       : '';
   const html = `
     <div class="mobile-drive-chip">
@@ -137,15 +140,19 @@ export function MobileDriveEndpointMarkers({
   const startLabel = entry.fromPlaceLabel ?? startPlace?.label ?? null;
   const endLabel =
     anchorEndStay != null
-      ? (visitPlaceName(anchorEndStay) ??
+      ? visitPlaceName(anchorEndStay) ??
         entry.toPlaceLabel ??
         endPlace?.label ??
-        null)
-      : (entry.toPlaceLabel ?? endPlace?.label ?? null);
+        null
+      : entry.toPlaceLabel ?? endPlace?.label ?? null;
 
   return (
     <>
-      <Marker position={startCoord} icon={dotIcon(startPlace)} zIndexOffset={400} />
+      <Marker
+        position={startCoord}
+        icon={dotIcon(startPlace)}
+        zIndexOffset={400}
+      />
       <Marker
         position={startCoord}
         icon={chipIcon('Start', entry.startAt, startLabel, startPlace, false)}

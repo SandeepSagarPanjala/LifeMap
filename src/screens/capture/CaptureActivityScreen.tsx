@@ -1,18 +1,18 @@
-import {useCallback, useEffect, useRef, useState} from 'react';
-import {StyleSheet, View} from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 
 import {
   ActivityFormSheet,
   type ActivityFormRequest,
 } from '@/components/map/ActivityFormSheet';
-import {ActivityLogSheet} from '@/components/map/ActivityLogSheet';
-import type {ActivityRow} from '@/db/repositories/activities';
-import {NativeHalfSheetShell} from '@/components/ui/NativeHalfSheetShell';
-import {useNativeHalfSheetClose} from '@/components/ui/native-half-sheet-context';
-import {useDayMoments} from '@/hooks/use-day-moments';
-import {getTodayDateKey} from '@/lib/day-utils';
-import {ACTIVITY_SHEET_HEIGHT_RATIO} from '@/navigation/activity-capture-screen-options';
-import {useSheetCaptureClose} from '@/screens/sheets/use-sheet-capture-close';
+import { ActivityLogSheet } from '@/components/map/ActivityLogSheet';
+import type { ActivityRow } from '@/db/repositories/activities';
+import { NativeHalfSheetShell } from '@/components/ui/NativeHalfSheetShell';
+import { useNativeHalfSheetClose } from '@/components/ui/native-half-sheet-context';
+import { useDayMoments } from '@/hooks/use-day-moments';
+import { getTodayDateKey } from '@/lib/day-utils';
+import { ACTIVITY_SHEET_HEIGHT_RATIO } from '@/navigation/activity-capture-screen-options';
+import { useSheetCaptureClose } from '@/screens/sheets/use-sheet-capture-close';
 
 function CaptureActivityPanel({
   onBeginCreateFirst,
@@ -28,7 +28,7 @@ function CaptureActivityPanel({
   onRegisterClose: (close: () => void) => void;
 }) {
   const closeSheet = useNativeHalfSheetClose();
-  const {refreshDayMoments} = useDayMoments(getTodayDateKey());
+  const { refreshDayMoments } = useDayMoments(getTodayDateKey());
 
   useEffect(() => {
     onRegisterClose(closeSheet);
@@ -53,9 +53,11 @@ function CaptureActivityPanel({
 
 export function CaptureActivityScreen() {
   const navigationClose = useSheetCaptureClose();
-  const {refreshDayMoments} = useDayMoments(getTodayDateKey());
+  const { refreshDayMoments } = useDayMoments(getTodayDateKey());
   const closeShellRef = useRef<(() => void) | null>(null);
-  const [formRequest, setFormRequest] = useState<ActivityFormRequest | null>(null);
+  const [formRequest, setFormRequest] = useState<ActivityFormRequest | null>(
+    null,
+  );
   const [formSheetOpen, setFormSheetOpen] = useState(false);
   const [reloadNonce, setReloadNonce] = useState(0);
 
@@ -92,16 +94,16 @@ export function CaptureActivityScreen() {
   }, [refreshDayMoments]);
 
   const handleBeginCreateFirst = useCallback(() => {
-    openForm({kind: 'create-first'});
+    openForm({ kind: 'create-first' });
   }, [openForm]);
 
   const handleBeginCreate = useCallback(() => {
-    openForm({kind: 'create'});
+    openForm({ kind: 'create' });
   }, [openForm]);
 
   const handleBeginEdit = useCallback(
     (activity: ActivityRow) => {
-      openForm({kind: 'edit', activity});
+      openForm({ kind: 'edit', activity });
     },
     [openForm],
   );
@@ -110,11 +112,13 @@ export function CaptureActivityScreen() {
     <View style={styles.root}>
       <View
         pointerEvents={formSheetOpen ? 'none' : 'auto'}
-        style={styles.shellHost}>
+        style={styles.shellHost}
+      >
         <NativeHalfSheetShell
           onClose={finishClose}
           backdropDismissEnabled={!formSheetOpen}
-          heightRatio={ACTIVITY_SHEET_HEIGHT_RATIO}>
+          heightRatio={ACTIVITY_SHEET_HEIGHT_RATIO}
+        >
           <CaptureActivityPanel
             reloadNonce={reloadNonce}
             onRegisterClose={registerClose}

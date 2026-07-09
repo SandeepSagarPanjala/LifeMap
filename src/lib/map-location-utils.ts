@@ -1,5 +1,5 @@
-import type {Region} from 'react-native-maps';
-import {MAP_USER_ZOOM_DELTA} from '@/lib/app-constants';
+import type { Region } from 'react-native-maps';
+import { MAP_USER_ZOOM_DELTA } from '@/lib/app-constants';
 
 export type MapCoordinate = {
   latitude: number;
@@ -71,8 +71,14 @@ export function animateRecenterToUser(
       latitude: (currentRegion.latitude + user.latitude) / 2,
       longitude: (currentRegion.longitude + user.longitude) / 2,
     },
-    Math.max(currentRegion.latitudeDelta * ZOOM_OUT_FACTOR, RECENTER_ZOOM_DELTA * 2),
-    Math.max(currentRegion.longitudeDelta * ZOOM_OUT_FACTOR, RECENTER_ZOOM_DELTA * 2),
+    Math.max(
+      currentRegion.latitudeDelta * ZOOM_OUT_FACTOR,
+      RECENTER_ZOOM_DELTA * 2,
+    ),
+    Math.max(
+      currentRegion.longitudeDelta * ZOOM_OUT_FACTOR,
+      RECENTER_ZOOM_DELTA * 2,
+    ),
   );
 
   map.animateToRegion(zoomedOut, ZOOM_OUT_MS);

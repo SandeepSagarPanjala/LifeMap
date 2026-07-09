@@ -24,7 +24,13 @@ import {
 } from '@lifemap/segmentation';
 
 const parsed = rawRowsToParsedPoints(locationRows);
-const { segments } = detectTripsForDay(dayKey, parsed, stopConfig, savedPlaces, placeLookupCache);
+const { segments } = detectTripsForDay(
+  dayKey,
+  parsed,
+  stopConfig,
+  savedPlaces,
+  placeLookupCache,
+);
 ```
 
 Mobile app code should prefer `@/lib/segmentation` (`buildSegmentationTimeline`) for timeline types and DB adapters.

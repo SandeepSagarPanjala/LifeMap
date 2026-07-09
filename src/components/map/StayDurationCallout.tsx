@@ -12,14 +12,11 @@ import type {
   MomentCounts,
 } from '@/lib/moments/moment-counts';
 import { hasMomentCounts } from '@/lib/moments/moment-counts';
-import {
-  formatStayVisitLabel,
-  isVisitOngoing,
-} from '@/lib/trip-format';
+import { formatStayVisitLabel, isVisitOngoing } from '@/lib/trip-format';
 import type { DetectedTrip } from '@/lib/trip-detection';
 import { stayMapMarkerCoordinate } from '@/lib/trip-detection';
 import { savedPlaceDisplayLabel } from '@/lib/saved-places';
-import {HISTORY_COLORS} from '@/lib/app-constants';
+import { HISTORY_COLORS } from '@/lib/app-constants';
 
 const DOT_SIZE = 18;
 const DOT_RING_SIZE = 28;
@@ -67,11 +64,7 @@ export function StayDurationCallout({
     bubbleHeight > 0
       ? {
           x: 0,
-          y: -(
-            DOT_RING_SIZE / 2 +
-            VISIT_BUBBLE_DOT_GAP +
-            bubbleHeight / 2
-          ),
+          y: -(DOT_RING_SIZE / 2 + VISIT_BUBBLE_DOT_GAP + bubbleHeight / 2),
         }
       : { x: 0, y: -100 };
 
@@ -88,7 +81,7 @@ export function StayDurationCallout({
     openThroughNow: trip.openThroughNow,
     now,
   });
-  const {tracksViewChanges, onLayout: onMarkerLayout} =
+  const { tracksViewChanges, onLayout: onMarkerLayout } =
     useMarkerTracksViewChanges(
       `${bubbleHeight}:${visit.title}:${visit.subtitle}:${livePuckLabel}`,
     );

@@ -1,9 +1,14 @@
-import {detectTripsForDay} from '@lifemap/segmentation';
+import { detectTripsForDay } from '@lifemap/segmentation';
 
-import type {MomentRow, ParsedPoint, PlaceLookupRow, SavedPlaceRow} from '../types';
+import type {
+  MomentRow,
+  ParsedPoint,
+  PlaceLookupRow,
+  SavedPlaceRow,
+} from '../types';
 
-import {segmentsToTimelineEntries} from './segments-to-entries';
-import type {MobileDayHistory} from './types';
+import { segmentsToTimelineEntries } from './segments-to-entries';
+import type { MobileDayHistory } from './types';
 
 export function buildMobileDayHistory(
   dateKey: string,

@@ -1,4 +1,4 @@
-import {Pressable, StyleSheet, View} from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 /** Same blue as the system map user-location puck and drive accents. */
 const MAP_USER_LOCATION_BLUE = '#007AFF';
@@ -17,13 +17,14 @@ function MapUserLocationIcon() {
   );
 }
 
-export function MapLocateButton({bottom, onPress}: MapLocateButtonProps) {
+export function MapLocateButton({ bottom, onPress }: MapLocateButtonProps) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel="Go to current location"
       onPress={onPress}
-      style={[styles.button, {bottom}]}>
+      style={[styles.button, { bottom }]}
+    >
       <MapUserLocationIcon />
     </Pressable>
   );
@@ -40,7 +41,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.12,
     shadowRadius: 6,
     elevation: 4,
@@ -53,7 +54,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 1},
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.22,
     shadowRadius: 2,
     elevation: 2,

@@ -1,9 +1,9 @@
-import {TZDate} from '@date-fns/tz';
-import {format} from 'date-fns';
+import { TZDate } from '@date-fns/tz';
+import { format } from 'date-fns';
 
-import type {DayTimelineEntry, DetectedTrip} from '@/lib/trip-detection';
-import {formatDistance, type DistanceUnit} from '@/lib/location-geo';
-import {APP_TIMEZONE} from '@/lib/timezone';
+import type { DayTimelineEntry, DetectedTrip } from '@/lib/trip-detection';
+import { formatDistance, type DistanceUnit } from '@/lib/location-geo';
+import { APP_TIMEZONE } from '@/lib/timezone';
 
 function formatAppTime(date: Date, pattern: string): string {
   return format(new TZDate(date, APP_TIMEZONE), pattern);
@@ -45,7 +45,7 @@ export function formatHereForDuration(durationMs: number): string {
 export function isVisitOngoing(
   _endAt: Date,
   _now = new Date(),
-  options?: {openThroughNow?: boolean},
+  options?: { openThroughNow?: boolean },
 ): boolean {
   return options?.openThroughNow === true;
 }
@@ -71,7 +71,7 @@ export function formatVisitDateLine(startAt: Date, now = new Date()): string {
 export function formatVisitTimeRange(
   startAt: Date,
   endAt: Date,
-  options?: {now?: Date},
+  options?: { now?: Date },
 ): string {
   const start = formatAppTime(startAt, 'h:mm a');
   const end = formatAppTime(options?.now ?? endAt, 'h:mm a');
@@ -83,9 +83,11 @@ export function formatVisitRange(
   startAt: Date,
   endAt: Date,
   durationMs: number,
-  options?: {ongoing?: boolean; now?: Date},
+  options?: { ongoing?: boolean; now?: Date },
 ): string {
-  return `${formatVisitTimeRange(startAt, endAt, {now: options?.now})} (${formatTripDuration(durationMs)})`;
+  return `${formatVisitTimeRange(startAt, endAt, {
+    now: options?.now,
+  })} (${formatTripDuration(durationMs)})`;
 }
 
 export type StayVisitLabel = {
@@ -98,7 +100,7 @@ export type StayVisitLabel = {
 function ongoingVisitDisplay(
   startAt: Date,
   now: Date,
-): {displayEndAt: Date; displayDurationMs: number} {
+): { displayEndAt: Date; displayDurationMs: number } {
   const elapsedMs = Math.max(0, now.getTime() - startAt.getTime());
   const elapsedMinutes = Math.floor(elapsedMs / 60_000);
   return {
@@ -117,14 +119,17 @@ export function formatDriveVisitLabel(
   startAt: Date,
   endAt: Date,
   durationMs: number,
-  options?: {openThroughNow?: boolean; now?: Date},
+  options?: { openThroughNow?: boolean; now?: Date },
 ): DriveVisitLabel {
   const now = options?.now ?? new Date();
   const ongoing = isVisitOngoing(endAt, now, {
     openThroughNow: options?.openThroughNow,
   });
   if (ongoing) {
-    const {displayEndAt, displayDurationMs} = ongoingVisitDisplay(startAt, now);
+    const { displayEndAt, displayDurationMs } = ongoingVisitDisplay(
+      startAt,
+      now,
+    );
     return {
       title: formatVisitTimeRange(startAt, displayEndAt),
       subtitle: formatTripDuration(displayDurationMs),
@@ -142,14 +147,17 @@ export function formatStayVisitLabel(
   startAt: Date,
   endAt: Date,
   durationMs: number,
-  options?: {openThroughNow?: boolean; now?: Date},
+  options?: { openThroughNow?: boolean; now?: Date },
 ): StayVisitLabel {
   const now = options?.now ?? new Date();
   const ongoing = isVisitOngoing(endAt, now, {
     openThroughNow: options?.openThroughNow,
   });
   if (ongoing) {
-    const {displayEndAt, displayDurationMs} = ongoingVisitDisplay(startAt, now);
+    const { displayEndAt, displayDurationMs } = ongoingVisitDisplay(
+      startAt,
+      now,
+    );
     return {
       title: formatVisitTimeRange(startAt, displayEndAt),
       subtitle: formatTripDuration(displayDurationMs),
@@ -200,12 +208,10 @@ export function formatTimelineTitle(
   now = new Date(),
 ): string {
   if (entry.kind === 'stay') {
-    return formatStayVisitLabel(
-      entry.startAt,
-      entry.endAt,
-      entry.durationMs,
-      {openThroughNow: entry.openThroughNow, now},
-    ).title;
+    return formatStayVisitLabel(entry.startAt, entry.endAt, entry.durationMs, {
+      openThroughNow: entry.openThroughNow,
+      now,
+    }).title;
   }
   return formatTripTimeRange(entry.startAt, entry.endAt);
 }
@@ -233,6 +239,9 @@ export function formatTimelineStats(
 }
 
 /** @deprecated */
-export function formatTripStats(trip: DetectedTrip, distanceUnit: DistanceUnit): string {
+export function formatTripStats(
+  trip: DetectedTrip,
+  distanceUnit: DistanceUnit,
+): string {
   return formatTimelineStats(trip, distanceUnit);
 }

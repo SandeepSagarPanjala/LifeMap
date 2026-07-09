@@ -15,7 +15,7 @@ export function createMomentFileId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 }
 
-export {getDocumentDirectory} from '@/lib/moments/moment-media-uri';
+export { getDocumentDirectory } from '@/lib/moments/moment-media-uri';
 
 export function momentsRootDirectory(documentDir: string): string {
   return `${documentDir}/${MOMENTS_DIRECTORY}`;
@@ -104,7 +104,7 @@ async function writeSourceToSandbox(
 export async function persistFileToMomentSandbox(
   sourceUri: string,
   extension: string,
-): Promise<{contentPath: string; contentBytes: number}> {
+): Promise<{ contentPath: string; contentBytes: number }> {
   await ensureMomentsDirectory();
   const sourcePath = await resolveExistingSourcePath(sourceUri);
   const absolutePath = momentSandboxPath(
@@ -125,7 +125,7 @@ export async function persistFileToMomentSandbox(
 export async function moveFileToMomentSandbox(
   sourceUri: string,
   extension: string,
-): Promise<{contentPath: string; contentBytes: number}> {
+): Promise<{ contentPath: string; contentBytes: number }> {
   await ensureMomentsDirectory();
   const sourcePath = await resolveExistingSourcePath(sourceUri);
   const absolutePath = momentSandboxPath(
@@ -155,12 +155,14 @@ export async function moveFileToMomentSandbox(
 export async function copyFileToMomentSandbox(
   sourceUri: string,
   extension: string,
-): Promise<{contentPath: string; contentBytes: number}> {
+): Promise<{ contentPath: string; contentBytes: number }> {
   return persistFileToMomentSandbox(sourceUri, extension);
 }
 
 export async function getFileSizeBytes(path: string): Promise<number> {
-  const stat = await ReactNativeBlobUtil.fs.stat(resolveMomentContentPath(path));
+  const stat = await ReactNativeBlobUtil.fs.stat(
+    resolveMomentContentPath(path),
+  );
   return stat.size;
 }
 

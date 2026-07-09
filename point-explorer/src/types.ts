@@ -15,7 +15,7 @@ import type {
   SavedPlaceRow,
 } from '@lifemap/segmentation';
 
-export type {ParsedPoint, PlaceLookupRow, SavedPlaceRow};
+export type { ParsedPoint, PlaceLookupRow, SavedPlaceRow };
 
 export type StoredTripExportRow = {
   id: number;

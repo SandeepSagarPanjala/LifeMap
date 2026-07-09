@@ -1,4 +1,4 @@
-import {Image} from 'react-native';
+import { Image } from 'react-native';
 import {
   getImageMetaData,
   Image as CompressorImage,
@@ -18,20 +18,20 @@ export function getOrientedDimensions(
   width: number,
   height: number,
   orientation: number,
-): {width: number; height: number} {
+): { width: number; height: number } {
   if (ROTATED_EXIF_ORIENTATIONS.has(orientation)) {
-    return {width: height, height: width};
+    return { width: height, height: width };
   }
-  return {width, height};
+  return { width, height };
 }
 
 export async function getImageDimensions(
   uri: string,
-): Promise<{width: number; height: number}> {
+): Promise<{ width: number; height: number }> {
   return new Promise((resolve, reject) => {
     Image.getSize(
       uri,
-      (width, height) => resolve({width, height}),
+      (width, height) => resolve({ width, height }),
       error => reject(error),
     );
   });
@@ -58,9 +58,11 @@ export async function normalizeCameraPhoto(sourceUri: string): Promise<{
 
   const measured = await getImageDimensions(normalizedUri);
   const measuredIsLandscape =
-    measured.width > measured.height && expectedDimensions.height > expectedDimensions.width;
+    measured.width > measured.height &&
+    expectedDimensions.height > expectedDimensions.width;
   const measuredIsPortrait =
-    measured.height > measured.width && expectedDimensions.width > expectedDimensions.height;
+    measured.height > measured.width &&
+    expectedDimensions.width > expectedDimensions.height;
 
   if (measuredIsLandscape || measuredIsPortrait) {
     return {

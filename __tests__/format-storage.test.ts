@@ -1,4 +1,4 @@
-import {formatStorageBytes} from '../src/lib/format-storage';
+import { formatStorageBytes } from '../src/lib/format-storage';
 
 describe('formatStorageBytes', () => {
   it('formats bytes, kilobytes, and megabytes', () => {

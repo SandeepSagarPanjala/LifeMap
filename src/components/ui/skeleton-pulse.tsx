@@ -1,11 +1,16 @@
-import {useEffect, useRef} from 'react';
-import {Animated, StyleSheet, type StyleProp, type ViewStyle} from 'react-native';
+import { useEffect, useRef } from 'react';
+import {
+  Animated,
+  StyleSheet,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 
 type SkeletonPulseProps = {
   style?: StyleProp<ViewStyle>;
 };
 
-export function SkeletonPulse({style}: SkeletonPulseProps) {
+export function SkeletonPulse({ style }: SkeletonPulseProps) {
   const opacity = useRef(new Animated.Value(0.45)).current;
 
   useEffect(() => {
@@ -27,7 +32,7 @@ export function SkeletonPulse({style}: SkeletonPulseProps) {
     return () => animation.stop();
   }, [opacity]);
 
-  return <Animated.View style={[styles.base, style, {opacity}]} />;
+  return <Animated.View style={[styles.base, style, { opacity }]} />;
 }
 
 const styles = StyleSheet.create({

@@ -1,5 +1,5 @@
-import {dateKeyForTimestamp, coerceTimestamp} from './day-bounds';
-import type {ParsedPoint, RawLocationPoint} from './types';
+import { dateKeyForTimestamp, coerceTimestamp } from './day-bounds';
+import type { ParsedPoint, RawLocationPoint } from './types';
 
 export function rawRowsToParsedPoints(
   rows: readonly RawLocationPoint[],

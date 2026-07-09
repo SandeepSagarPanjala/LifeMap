@@ -1,4 +1,11 @@
-import {useCallback, useEffect, useLayoutEffect, useMemo, useState, type ReactNode} from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -7,21 +14,17 @@ import {
   Share,
   View,
 } from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import {
-  ChevronLeft,
-  ChevronRight,
-  Share2,
-} from 'lucide-react-native';
-import {useNavigation, useRoute} from '@react-navigation/native';
-import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import type {RouteProp} from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { ChevronLeft, ChevronRight, Share2 } from 'lucide-react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RouteProp } from '@react-navigation/native';
 
-import {Icon} from '@/components/ui/icon';
-import {Text} from '@/components/ui/text';
-import {listTripPointsByTripIds} from '@/db/repositories/trip-points';
-import {listTripsForDay, type TripRow} from '@/db/repositories/trips';
-import {useAppStore} from '@/stores/app-store';
+import { Icon } from '@/components/ui/icon';
+import { Text } from '@/components/ui/text';
+import { listTripPointsByTripIds } from '@/db/repositories/trip-points';
+import { listTripsForDay, type TripRow } from '@/db/repositories/trips';
+import { useAppStore } from '@/stores/app-store';
 import {
   buildExportTripView,
   driveRouteLabelsFromDayTrips,
@@ -31,9 +34,9 @@ import {
   labelFromTripRow,
   type ExportTripView,
 } from '@/lib/export-trip-view';
-import type {RootStackParamList} from '@/navigation/types';
-import {useThemeColors} from '@/hooks/use-theme-colors';
-import {APP_TIMEZONE} from '@/lib/timezone';
+import type { RootStackParamList } from '@/navigation/types';
+import { useThemeColors } from '@/hooks/use-theme-colors';
+import { APP_TIMEZONE } from '@/lib/timezone';
 
 type Route = RouteProp<RootStackParamList, 'ExportTripDetail'>;
 
@@ -45,7 +48,7 @@ export function ExportTripDetailScreen() {
   const route = useRoute<Route>();
   const colors = useThemeColors();
   const distanceUnit = useAppStore(state => state.distanceUnit);
-  const {dateKey} = route.params;
+  const { dateKey } = route.params;
   const tripIndex = Math.max(0, route.params.tripIndex);
 
   const [trips, setTrips] = useState<TripRow[]>([]);
@@ -63,7 +66,7 @@ export function ExportTripDetailScreen() {
       }
       const safeIndex = Math.min(tripIndex, dayTrips.length - 1);
       if (safeIndex !== tripIndex) {
-        navigation.setParams({tripIndex: safeIndex});
+        navigation.setParams({ tripIndex: safeIndex });
       }
     } finally {
       setLoading(false);
@@ -180,14 +183,15 @@ export function ExportTripDetailScreen() {
               {currentTrip.kind === 'travel' && driveRoute?.routeTitle != null
                 ? ` · ${driveRoute.routeTitle}`
                 : currentTrip.placeLabel != null
-                  ? ` · ${labelFromTripRow(currentTrip)}`
-                  : ''}
+                ? ` · ${labelFromTripRow(currentTrip)}`
+                : ''}
             </Text>
           </View>
           <Pressable
             accessibilityRole="button"
             onPress={() => void shareTrip()}
-            className="border-border rounded-full border px-3 py-1.5">
+            className="border-border rounded-full border px-3 py-1.5"
+          >
             <View className="flex-row items-center gap-1.5">
               <Icon as={Share2} size={14} color={colors.primary} />
               <Text className="text-primary text-xs font-medium">Share</Text>
@@ -199,23 +203,26 @@ export function ExportTripDetailScreen() {
           horizontal
           showsHorizontalScrollIndicator={false}
           className="mt-3"
-          contentContainerClassName="gap-2 pr-2">
+          contentContainerClassName="gap-2 pr-2"
+        >
           {trips.map((trip, index) => {
             const active = index === tripIndex;
             return (
               <Pressable
                 key={trip.id}
                 accessibilityRole="button"
-                onPress={() => navigation.setParams({tripIndex: index})}
+                onPress={() => navigation.setParams({ tripIndex: index })}
                 className={`rounded-full border px-3 py-1.5 ${
                   active
                     ? 'border-primary bg-primary/10'
                     : 'border-border bg-card'
-                }`}>
+                }`}
+              >
                 <Text
                   className={`text-xs font-medium ${
                     active ? 'text-primary' : ''
-                  }`}>
+                  }`}
+                >
                   {index + 1}. {exportTripKindLabel(trip.kind)}
                 </Text>
               </Pressable>
@@ -232,7 +239,8 @@ export function ExportTripDetailScreen() {
         <ScrollView
           className="flex-1"
           contentContainerClassName="px-4 py-4"
-          showsVerticalScrollIndicator={false}>
+          showsVerticalScrollIndicator={false}
+        >
           <TripKindBadge kind={tripView.kind} />
           <DetailSection title="Timing">
             <TimeField label="Start" value={tripView.startAt} />
@@ -242,7 +250,10 @@ export function ExportTripDetailScreen() {
           </DetailSection>
 
           <DetailSection title="Segment">
-            <DetailRow label="Kind" value={exportTripKindLabel(tripView.kind)} />
+            <DetailRow
+              label="Kind"
+              value={exportTripKindLabel(tripView.kind)}
+            />
             <DetailRow
               label="Order"
               value={`#${tripView.segmentOrder} on ${tripView.dateKey}`}
@@ -250,9 +261,14 @@ export function ExportTripDetailScreen() {
             <DetailRow label="Distance" value={tripView.distance} />
             <DetailRow
               label="Centroid"
-              value={`${tripView.centroid.lat.toFixed(5)}, ${tripView.centroid.lng.toFixed(5)}`}
+              value={`${tripView.centroid.lat.toFixed(
+                5,
+              )}, ${tripView.centroid.lng.toFixed(5)}`}
             />
-            <DetailRow label="Inferred" value={tripView.inferred ? 'Yes' : 'No'} />
+            <DetailRow
+              label="Inferred"
+              value={tripView.inferred ? 'Yes' : 'No'}
+            />
             <DetailRow
               label="Detection version"
               value={String(tripView.detectionVersion)}
@@ -281,9 +297,14 @@ export function ExportTripDetailScreen() {
                 <DetailRow label="Label" value={tripView.placeLabel ?? '—'} />
                 <DetailRow
                   label="Place id"
-                  value={tripView.placeId != null ? String(tripView.placeId) : '—'}
+                  value={
+                    tripView.placeId != null ? String(tripView.placeId) : '—'
+                  }
                 />
-                <DetailRow label="Place kind" value={tripView.placeKind ?? '—'} />
+                <DetailRow
+                  label="Place kind"
+                  value={tripView.placeKind ?? '—'}
+                />
                 <DetailRow label="POI" value={tripView.poiLabel ?? '—'} />
                 <DetailRow
                   label="POI id"
@@ -308,7 +329,8 @@ export function ExportTripDetailScreen() {
           </DetailSection>
 
           <DetailSection
-            title={`Route points (${tripView.pointCount.toLocaleString()})`}>
+            title={`Route points (${tripView.pointCount.toLocaleString()})`}
+          >
             {tripView.pointCount === 0 ? (
               <Text variant="muted" className="text-xs leading-4">
                 No stored geometry for this segment.
@@ -318,19 +340,29 @@ export function ExportTripDetailScreen() {
                 {visiblePoints.map(point => (
                   <View
                     key={point.id}
-                    className="border-border mb-2 rounded-xl border px-3 py-2">
+                    className="border-border mb-2 rounded-xl border px-3 py-2"
+                  >
                     <Text className="text-xs font-medium">
-                      #{point.seq} · {point.lat.toFixed(5)}, {point.lng.toFixed(5)}
+                      #{point.seq} · {point.lat.toFixed(5)},{' '}
+                      {point.lng.toFixed(5)}
                     </Text>
                     {point.recordedAt != null ? (
-                      <Text variant="muted" className="mt-1 text-[11px] leading-4">
+                      <Text
+                        variant="muted"
+                        className="mt-1 text-[11px] leading-4"
+                      >
                         {point.recordedAt.local}
                       </Text>
                     ) : null}
-                    <Text variant="muted" className="mt-0.5 text-[11px] leading-4">
+                    <Text
+                      variant="muted"
+                      className="mt-0.5 text-[11px] leading-4"
+                    >
                       source {point.source ?? '—'} · gps #
                       {point.locationPointId ?? '—'}
-                      {point.momentId != null ? ` · moment ${point.momentId}` : ''}
+                      {point.momentId != null
+                        ? ` · moment ${point.momentId}`
+                        : ''}
                     </Text>
                   </View>
                 ))}
@@ -338,7 +370,8 @@ export function ExportTripDetailScreen() {
                   <Pressable
                     accessibilityRole="button"
                     onPress={() => setShowAllPoints(value => !value)}
-                    className="border-border self-start rounded-full border px-3 py-1.5">
+                    className="border-border self-start rounded-full border px-3 py-1.5"
+                  >
                     <Text className="text-xs font-medium">
                       {showAllPoints
                         ? 'Show fewer points'
@@ -353,7 +386,8 @@ export function ExportTripDetailScreen() {
           <Pressable
             accessibilityRole="button"
             onPress={() => setShowRawJson(value => !value)}
-            className="border-border mt-2 self-start rounded-full border px-3 py-1.5">
+            className="border-border mt-2 self-start rounded-full border px-3 py-1.5"
+          >
             <Text className="text-xs font-medium">
               {showRawJson ? 'Hide raw JSON' : 'Show raw JSON'}
             </Text>
@@ -361,9 +395,7 @@ export function ExportTripDetailScreen() {
 
           {showRawJson ? (
             <View className="bg-muted/40 border-border mt-3 rounded-xl border p-3">
-              <Text
-                className="font-mono text-[10px] leading-4"
-                selectable>
+              <Text className="font-mono text-[10px] leading-4" selectable>
                 {exportTripViewJson(tripView)}
               </Text>
             </View>
@@ -382,7 +414,7 @@ export function ExportTripDetailScreen() {
             icon={ChevronLeft}
             disabled={!canGoPrev}
             onPress={() =>
-              navigation.setParams({tripIndex: Math.max(0, tripIndex - 1)})
+              navigation.setParams({ tripIndex: Math.max(0, tripIndex - 1) })
             }
           />
           <View className="flex-1 items-center">
@@ -407,22 +439,24 @@ export function ExportTripDetailScreen() {
   );
 }
 
-function TripKindBadge({kind}: {kind: TripRow['kind']}) {
+function TripKindBadge({ kind }: { kind: TripRow['kind'] }) {
   const className =
     kind === 'stay'
       ? 'bg-primary/15 border-primary/30'
       : kind === 'travel'
-        ? 'bg-sky-500/15 border-sky-500/30'
-        : 'bg-amber-500/15 border-amber-500/30';
+      ? 'bg-sky-500/15 border-sky-500/30'
+      : 'bg-amber-500/15 border-amber-500/30';
   const textClass =
     kind === 'stay'
       ? 'text-primary'
       : kind === 'travel'
-        ? 'text-sky-700 dark:text-sky-300'
-        : 'text-amber-700 dark:text-amber-300';
+      ? 'text-sky-700 dark:text-sky-300'
+      : 'text-amber-700 dark:text-amber-300';
 
   return (
-    <View className={`mb-4 self-start rounded-full border px-3 py-1 ${className}`}>
+    <View
+      className={`mb-4 self-start rounded-full border px-3 py-1 ${className}`}
+    >
       <Text className={`text-xs font-semibold uppercase ${textClass}`}>
         {exportTripKindLabel(kind)}
       </Text>
@@ -463,7 +497,8 @@ function DetailRow({
       </Text>
       <Text
         className={`text-sm leading-5 ${mono ? 'font-mono text-xs' : ''}`}
-        selectable>
+        selectable
+      >
         {value}
       </Text>
     </View>
@@ -475,7 +510,7 @@ function TimeField({
   value,
 }: {
   label: string;
-  value: {local: string; utc: string};
+  value: { local: string; utc: string };
 }) {
   return (
     <View className="gap-0.5">
@@ -485,7 +520,11 @@ function TimeField({
       <Text className="text-sm leading-5" selectable>
         {value.local}
       </Text>
-      <Text variant="muted" className="font-mono text-[11px] leading-4" selectable>
+      <Text
+        variant="muted"
+        className="font-mono text-[11px] leading-4"
+        selectable
+      >
         UTC {value.utc}
       </Text>
     </View>
@@ -513,7 +552,8 @@ function NavButton({
       onPress={onPress}
       className={`border-border flex-1 flex-row items-center justify-center gap-1 rounded-xl border px-3 py-2.5 ${
         disabled ? 'opacity-40' : ''
-      }`}>
+      }`}
+    >
       {!iconAfter ? (
         <Icon as={icon} size={16} color={colors.foreground} />
       ) : null}

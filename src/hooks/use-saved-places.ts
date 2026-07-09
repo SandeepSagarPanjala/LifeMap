@@ -1,11 +1,11 @@
-import {useCallback, useEffect, useMemo, useState} from 'react';
-import {subscribeSavedPlaces} from '@/lib/saved-places-events';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { subscribeSavedPlaces } from '@/lib/saved-places-events';
 
 import {
   listSavedPlaces,
   type SavedPlaceRow,
 } from '@/db/repositories/saved-places';
-import {syncSavedPlaceGeofences} from '@/location/geofence-registry';
+import { syncSavedPlaceGeofences } from '@/location/geofence-registry';
 
 export function useSavedPlaces(): {
   places: SavedPlaceRow[];
@@ -28,9 +28,13 @@ export function useSavedPlaces(): {
     void refresh();
   }, [refresh]);
 
-  useEffect(() => subscribeSavedPlaces(() => {
-    void refresh();
-  }), [refresh]);
+  useEffect(
+    () =>
+      subscribeSavedPlaces(() => {
+        void refresh();
+      }),
+    [refresh],
+  );
 
   const hasHome = useMemo(
     () => places.some(place => place.kind === 'home'),
@@ -41,5 +45,5 @@ export function useSavedPlaces(): {
     [places],
   );
 
-  return {places, loading, hasHome, hasWork, refresh};
+  return { places, loading, hasHome, hasWork, refresh };
 }

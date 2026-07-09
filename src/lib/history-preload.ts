@@ -1,14 +1,14 @@
-import {getTodayDateKey} from '@/lib/day-utils';
+import { getTodayDateKey } from '@/lib/day-utils';
 import {
   historyCacheKey,
   historyDataCache,
   TODAY_LIVE_FINGERPRINT,
 } from '@/lib/history-data-cache';
-import {loadHistoryForDayCoalesced} from '@/lib/history-day-load';
-import {ensureHistoryCalendarBounds} from '@/lib/history-calendar-bounds';
-import {getCurrentTripDetectionConfig} from '@/lib/trip-detection-config';
+import { loadHistoryForDayCoalesced } from '@/lib/history-day-load';
+import { ensureHistoryCalendarBounds } from '@/lib/history-calendar-bounds';
+import { getCurrentTripDetectionConfig } from '@/lib/trip-detection-config';
 
-import {ensureDatabaseReady} from '@/location/bootstrap';
+import { ensureDatabaseReady } from '@/location/bootstrap';
 
 /** Warm today’s timeline once DB is ready so the map is not empty on first paint. */
 export async function preloadTodayHistory(): Promise<void> {

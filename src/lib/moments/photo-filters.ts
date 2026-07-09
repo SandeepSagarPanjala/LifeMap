@@ -1,4 +1,4 @@
-import type {ElementRef, RefObject} from 'react';
+import type { ElementRef, RefObject } from 'react';
 import {
   concatColorMatrices,
   contrast,
@@ -8,8 +8,8 @@ import {
   warm,
   type Matrix,
 } from 'react-native-color-matrix-image-filters';
-import {captureRef} from 'react-native-view-shot';
-import type {default as ViewShotComponent} from 'react-native-view-shot';
+import { captureRef } from 'react-native-view-shot';
+import type { default as ViewShotComponent } from 'react-native-view-shot';
 
 export type PhotoFilterId = 'original' | 'bw' | 'warm' | 'cool' | 'vivid';
 
@@ -19,11 +19,11 @@ export type PhotoFilterOption = {
 };
 
 export const PHOTO_FILTER_OPTIONS: PhotoFilterOption[] = [
-  {id: 'original', label: 'Original'},
-  {id: 'bw', label: 'B&W'},
-  {id: 'warm', label: 'Warm'},
-  {id: 'cool', label: 'Cool'},
-  {id: 'vivid', label: 'Vivid'},
+  { id: 'original', label: 'Original' },
+  { id: 'bw', label: 'B&W' },
+  { id: 'warm', label: 'Warm' },
+  { id: 'cool', label: 'Cool' },
+  { id: 'vivid', label: 'Vivid' },
 ];
 
 export function getPhotoFilterMatrix(filterId: PhotoFilterId): Matrix | null {

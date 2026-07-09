@@ -1,6 +1,6 @@
-import {DEFAULT_DRIVE_MAP_REFRESH_INTERVAL_MS} from '@/lib/app-constants';
-import {driveMapRefreshIntervalLabel} from '@/lib/app-copy';
-import {normalizeDriveMapRefreshIntervalMs} from '@/lib/drive-map-refresh-settings';
+import { DEFAULT_DRIVE_MAP_REFRESH_INTERVAL_MS } from '@/lib/app-constants';
+import { driveMapRefreshIntervalLabel } from '@/lib/app-copy';
+import { normalizeDriveMapRefreshIntervalMs } from '@/lib/drive-map-refresh-settings';
 
 describe('drive map refresh settings', () => {
   it('defaults to 30 seconds', () => {

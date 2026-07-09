@@ -1,11 +1,15 @@
-import type {LocationPointRow} from '@/db/repositories/location-days';
-import {distanceKm, type MapCoordinate, toMapCoordinates} from '@/lib/location-geo';
+import type { LocationPointRow } from '@/db/repositories/location-days';
+import {
+  distanceKm,
+  type MapCoordinate,
+  toMapCoordinates,
+} from '@/lib/location-geo';
 import {
   MAX_PLAUSIBLE_SPEED_MS,
   SAME_PLACE_LINE_BREAK_MS,
 } from '@/lib/app-constants';
-import type {TripDetectionConfig} from '@/lib/trip-settings';
-import {isStoredRoutePoints} from '@/lib/trip-geometry';
+import type { TripDetectionConfig } from '@/lib/trip-settings';
+import { isStoredRoutePoints } from '@/lib/trip-geometry';
 
 function shouldConnectPoints(
   a: LocationPointRow,

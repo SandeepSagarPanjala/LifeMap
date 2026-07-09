@@ -5,11 +5,14 @@ import {
   type RecordBackType,
 } from 'react-native-nitro-sound';
 
-import {APP_COPY} from '@/lib/app-copy';
+import { APP_COPY } from '@/lib/app-copy';
 
-import {VOICE_MAX_DURATION_MS} from '@/lib/app-constants';
-import {createTempVoiceRecordingPath, deleteMomentContentFile} from '@/lib/moments/moment-storage';
-import {ensureMicrophonePermission} from '@/lib/microphone-permission';
+import { VOICE_MAX_DURATION_MS } from '@/lib/app-constants';
+import {
+  createTempVoiceRecordingPath,
+  deleteMomentContentFile,
+} from '@/lib/moments/moment-storage';
+import { ensureMicrophonePermission } from '@/lib/microphone-permission';
 import {
   cancelNativeVoiceRecording,
   canPollNativeVoiceProgress,
@@ -65,7 +68,7 @@ export type VoiceRecorderCallbacks = {
 
 export type VoiceRecorderSession = {
   startRecording: () => Promise<void>;
-  stopRecording: () => Promise<{filePath: string; durationMs: number}>;
+  stopRecording: () => Promise<{ filePath: string; durationMs: number }>;
   startPreview: (filePath: string) => Promise<void>;
   pausePreview: () => Promise<void>;
   stopPreview: () => Promise<void>;
@@ -221,14 +224,20 @@ export function createVoiceRecorderSession(
     stoppingForCap = false;
   };
 
-  const handlePlaybackProgress = (event: {currentPosition: number; duration: number}) => {
+  const handlePlaybackProgress = (event: {
+    currentPosition: number;
+    duration: number;
+  }) => {
     if (disposed) {
       return;
     }
     callbacks.onPlaybackProgress?.(event.currentPosition, event.duration);
   };
 
-  const handlePlaybackEnded = (event: {duration: number; currentPosition: number}) => {
+  const handlePlaybackEnded = (event: {
+    duration: number;
+    currentPosition: number;
+  }) => {
     if (disposed) {
       return;
     }
@@ -245,7 +254,7 @@ export function createVoiceRecorderSession(
       }
       applyNativeProgress(progress);
     } else {
-      applyNativeProgress({currentPosition: 0, currentMetering: -160});
+      applyNativeProgress({ currentPosition: 0, currentMetering: -160 });
     }
     startNativeProgressPoll();
   };
@@ -253,7 +262,11 @@ export function createVoiceRecorderSession(
   const startNitroRecording = async (recordPath: string) => {
     attachRecordListener();
     let lastError: unknown;
-    for (let attempt = 0; attempt < START_RECORDING_MAX_ATTEMPTS; attempt += 1) {
+    for (
+      let attempt = 0;
+      attempt < START_RECORDING_MAX_ATTEMPTS;
+      attempt += 1
+    ) {
       if (disposed) {
         throw new Error('Voice recorder disposed.');
       }
@@ -320,14 +333,17 @@ export function createVoiceRecorderSession(
         stopNativeProgressPoll();
         stoppingForCap = false;
         activeRecordPath = null;
-        return {filePath: result.filePath, durationMs: result.durationMs || durationMs};
+        return {
+          filePath: result.filePath,
+          durationMs: result.durationMs || durationMs,
+        };
       }
       const filePath = await sound.stopRecorder();
       removeListenersSafely();
       stoppingForCap = false;
       const resolvedPath = filePath || activeRecordPath;
       activeRecordPath = null;
-      return {filePath: resolvedPath, durationMs};
+      return { filePath: resolvedPath, durationMs };
     },
 
     async startPreview(filePath: string) {

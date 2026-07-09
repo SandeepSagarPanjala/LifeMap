@@ -1,6 +1,6 @@
-import {Platform} from 'react-native';
+import { Platform } from 'react-native';
 
-import {useAppStore} from '@/stores/app-store';
+import { useAppStore } from '@/stores/app-store';
 
 describe('app-store', () => {
   beforeEach(() => {
@@ -41,12 +41,12 @@ describe('app-store', () => {
   });
 
   it('ignores dev onboarding toggle outside __DEV__', () => {
-    const originalDev = (global as {__DEV__?: boolean}).__DEV__;
-    (global as {__DEV__?: boolean}).__DEV__ = false;
+    const originalDev = (global as { __DEV__?: boolean }).__DEV__;
+    (global as { __DEV__?: boolean }).__DEV__ = false;
 
     useAppStore.getState().setDevShowOnboarding(true);
     expect(useAppStore.getState().devShowOnboarding).toBe(false);
 
-    (global as {__DEV__?: boolean}).__DEV__ = originalDev;
+    (global as { __DEV__?: boolean }).__DEV__ = originalDev;
   });
 });

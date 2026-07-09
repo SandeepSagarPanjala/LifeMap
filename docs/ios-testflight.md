@@ -96,23 +96,23 @@ Workflow: **iOS TestFlight (manual)** — Actions → run when API key secrets a
 
 Required repository secrets:
 
-| Secret | Value |
-|--------|--------|
-| `APP_STORE_CONNECT_API_KEY_ID` | Key ID |
-| `APP_STORE_CONNECT_ISSUER_ID` | Issuer ID |
+| Secret                             | Value                       |
+| ---------------------------------- | --------------------------- |
+| `APP_STORE_CONNECT_API_KEY_ID`     | Key ID                      |
+| `APP_STORE_CONNECT_ISSUER_ID`      | Issuer ID                   |
 | `APP_STORE_CONNECT_API_KEY_BASE64` | `base64 -i AuthKey_XXXX.p8` |
 
 Also needs distribution certificate + provisioning profile in CI (see workflow comments) or run `pnpm ios:beta` locally until certs are wired in CI.
 
 ## Dev vs QA vs production
 
-| | Dev (`pnpm ios`) | QA (TestFlight) |
-|--|------------------|-----------------|
-| Metro | Required | No |
-| JS bundle | From Mac | Embedded |
-| `__DEV__` | true | false |
-| Background GPS license | Not required | **Required** |
-| Who tests | Developers | You + QA |
+|                        | Dev (`pnpm ios`) | QA (TestFlight) |
+| ---------------------- | ---------------- | --------------- |
+| Metro                  | Required         | No              |
+| JS bundle              | From Mac         | Embedded        |
+| `__DEV__`              | true             | false           |
+| Background GPS license | Not required     | **Required**    |
+| Who tests              | Developers       | You + QA        |
 
 ## Android (later)
 

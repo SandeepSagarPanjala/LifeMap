@@ -1,33 +1,31 @@
-import {useCallback, useState} from 'react';
-import {ScrollView} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import {useFocusEffect, useNavigation} from '@react-navigation/native';
-import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import { useCallback, useState } from 'react';
+import { ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import {loadCachedPlacesCount} from '@/components/settings/cached-places-settings';
-import {AppVersionFooter} from '@/components/settings/app-version-footer';
+import { loadCachedPlacesCount } from '@/components/settings/cached-places-settings';
+import { AppVersionFooter } from '@/components/settings/app-version-footer';
 import {
   SettingsGroup,
   SettingsGroupDivider,
   SettingsGroupLabel,
   SettingsLinkRow,
 } from '@/components/settings/settings-group';
-import {TrackingSettings} from '@/components/settings/tracking-settings';
-import {backupScheduleLabel} from '@/lib/backup/backup-settings';
-import {getBackupStatus} from '@/lib/backup/backup-service';
-import {driveMapRefreshIntervalLabel} from '@/lib/app-copy';
-import {
-  getDriveMapRefreshIntervalMs,
-} from '@/lib/drive-map-refresh-settings';
-import {formatStorageBytes} from '@/lib/format-storage';
-import {loadCachedStorageBreakdown} from '@/lib/settings-stats';
-import type {RootStackParamList} from '@/navigation/types';
+import { TrackingSettings } from '@/components/settings/tracking-settings';
+import { backupScheduleLabel } from '@/lib/backup/backup-settings';
+import { getBackupStatus } from '@/lib/backup/backup-service';
+import { driveMapRefreshIntervalLabel } from '@/lib/app-copy';
+import { getDriveMapRefreshIntervalMs } from '@/lib/drive-map-refresh-settings';
+import { formatStorageBytes } from '@/lib/format-storage';
+import { loadCachedStorageBreakdown } from '@/lib/settings-stats';
+import type { RootStackParamList } from '@/navigation/types';
 import {
   DISTANCE_UNIT_LABELS,
   PREFERRED_MAP_APP_LABELS,
   accentThemeLabel,
 } from '@/navigation/settings-sub-screen-options';
-import {useAppStore} from '@/stores/app-store';
+import { useAppStore } from '@/stores/app-store';
 
 export function SettingsScreen() {
   const navigation =
@@ -118,7 +116,8 @@ export function SettingsScreen() {
       <ScrollView
         className="flex-1"
         contentContainerClassName="px-5 pb-8 pt-2"
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={false}
+      >
         <SettingsGroupLabel isFirst title="Appearance" />
         <SettingsGroup>
           <SettingsLinkRow

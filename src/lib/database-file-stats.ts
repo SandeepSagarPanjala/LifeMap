@@ -10,5 +10,5 @@ export function computeDatabaseFileStats(
   const totalBytes = pageCount * pageSize;
   const freeBytes = freelistCount * pageSize;
   const usedBytes = Math.max(0, totalBytes - freeBytes);
-  return {totalBytes, freeBytes, usedBytes};
+  return { totalBytes, freeBytes, usedBytes };
 }

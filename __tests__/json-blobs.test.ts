@@ -44,7 +44,7 @@ describe('json-blobs', () => {
     const raw =
       '[{"id":"poi-1","name":"Cafe","kind":"poi","distanceM":42,"lat":33.2,"lng":-97.1}]';
     expect(parsePlaceLookupCandidates(raw)).toEqual([
-      {id: 'poi-1', name: 'Cafe', kind: 'poi', distanceM: 42},
+      { id: 'poi-1', name: 'Cafe', kind: 'poi', distanceM: 42 },
     ]);
     expect(sanitizeCandidatesJson(raw)).toBe(
       '[{"id":"poi-1","name":"Cafe","kind":"poi","distanceM":42}]',

@@ -35,7 +35,7 @@ describe('getOrientedDimensions', () => {
 
 describe('normalizeCameraPhoto', () => {
   it('recompresses the capture and returns upright display dimensions', async () => {
-    const {Image} = require('react-native');
+    const { Image } = require('react-native');
     const getSizeSpy = jest
       .spyOn(Image, 'getSize')
       .mockImplementation((...args: unknown[]) => {

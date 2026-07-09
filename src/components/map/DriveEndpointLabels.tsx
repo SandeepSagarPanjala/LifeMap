@@ -1,16 +1,16 @@
-import {memo} from 'react';
-import {Marker} from 'react-native-maps';
-import {StyleSheet, Text, View} from 'react-native';
+import { memo } from 'react';
+import { Marker } from 'react-native-maps';
+import { StyleSheet, Text, View } from 'react-native';
 
-import {CheckeredFlagIcon} from '@/components/map/CheckeredFlagIcon';
-import {DriveEndpointPlaceRow} from '@/components/map/DriveEndpointPlaceRow';
-import {SavedPlaceIcon} from '@/components/map/SavedPlaceIcon';
-import type {DriveEndpointLabel} from '@/lib/drive-endpoint-label';
-import type {MapCoordinate} from '@/lib/location-geo';
-import {SAVED_PLACE_MAP_STYLE} from '@/lib/saved-places-map';
-import {formatTripClockTime} from '@/lib/trip-format';
+import { CheckeredFlagIcon } from '@/components/map/CheckeredFlagIcon';
+import { DriveEndpointPlaceRow } from '@/components/map/DriveEndpointPlaceRow';
+import { SavedPlaceIcon } from '@/components/map/SavedPlaceIcon';
+import type { DriveEndpointLabel } from '@/lib/drive-endpoint-label';
+import type { MapCoordinate } from '@/lib/location-geo';
+import { SAVED_PLACE_MAP_STYLE } from '@/lib/saved-places-map';
+import { formatTripClockTime } from '@/lib/trip-format';
 
-const MARKER_ANCHOR = {x: 0.5, y: 0.5} as const;
+const MARKER_ANCHOR = { x: 0.5, y: 0.5 } as const;
 const DOT_SIZE = 16;
 const DOT_RING_SIZE = 24;
 const FINISH_BADGE_SIZE = 24;
@@ -32,7 +32,7 @@ type EndpointChipProps = {
   label?: DriveEndpointLabel;
 };
 
-function EndpointChip({caption, time, label}: EndpointChipProps) {
+function EndpointChip({ caption, time, label }: EndpointChipProps) {
   return (
     <View style={styles.chip}>
       <Text style={styles.caption}>{caption}</Text>
@@ -55,7 +55,7 @@ type StartMarkerProps = {
   label?: DriveEndpointLabel;
 };
 
-function StartMarker({coordinate, time, label}: StartMarkerProps) {
+function StartMarker({ coordinate, time, label }: StartMarkerProps) {
   const savedPlace = label?.savedPlace ?? null;
   const placeAccent = savedPlace
     ? SAVED_PLACE_MAP_STYLE[savedPlace.kind]
@@ -67,7 +67,8 @@ function StartMarker({coordinate, time, label}: StartMarkerProps) {
         coordinate={coordinate}
         anchor={MARKER_ANCHOR}
         zIndex={14}
-        tracksViewChanges={false}>
+        tracksViewChanges={false}
+      >
         {savedPlace && placeAccent ? (
           <View
             style={[
@@ -76,7 +77,8 @@ function StartMarker({coordinate, time, label}: StartMarkerProps) {
                 backgroundColor: placeAccent.badgeBg,
                 borderColor: placeAccent.icon,
               },
-            ]}>
+            ]}
+          >
             <SavedPlaceIcon
               kind={savedPlace.kind}
               size={FLAG_SIZE}
@@ -93,9 +95,10 @@ function StartMarker({coordinate, time, label}: StartMarkerProps) {
       <Marker
         coordinate={coordinate}
         anchor={MARKER_ANCHOR}
-        centerOffset={{x: 0, y: -40}}
+        centerOffset={{ x: 0, y: -40 }}
         zIndex={13}
-        tracksViewChanges={false}>
+        tracksViewChanges={false}
+      >
         <EndpointChip caption="Start" time={time} label={label} />
       </Marker>
     </>
@@ -122,7 +125,8 @@ function FinishMarker({
         coordinate={coordinate}
         anchor={MARKER_ANCHOR}
         zIndex={14}
-        tracksViewChanges={false}>
+        tracksViewChanges={false}
+      >
         {savedPlace && placeAccent ? (
           <View
             style={[
@@ -131,7 +135,8 @@ function FinishMarker({
                 backgroundColor: placeAccent.badgeBg,
                 borderColor: placeAccent.icon,
               },
-            ]}>
+            ]}
+          >
             <SavedPlaceIcon
               kind={savedPlace.kind}
               size={FLAG_SIZE}
@@ -147,9 +152,10 @@ function FinishMarker({
       <Marker
         coordinate={coordinate}
         anchor={MARKER_ANCHOR}
-        centerOffset={{x: 0, y: 44}}
+        centerOffset={{ x: 0, y: 44 }}
         zIndex={13}
-        tracksViewChanges={false}>
+        tracksViewChanges={false}
+      >
         <EndpointChip caption="Finish" time={time} label={label} />
       </Marker>
     </>
@@ -171,11 +177,7 @@ export const DriveEndpointLabels = memo(function DriveEndpointLabels({
         time={startAt}
         label={startLabel}
       />
-      <FinishMarker
-        coordinate={endCoordinate}
-        time={endAt}
-        label={endLabel}
-      />
+      <FinishMarker coordinate={endCoordinate} time={endAt} label={endLabel} />
     </>
   );
 });
@@ -202,7 +204,7 @@ const styles = StyleSheet.create({
     borderWidth: 2.5,
     borderColor: '#FFFFFF',
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 1},
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 3,
     elevation: 4,
@@ -217,7 +219,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 1},
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 3,
     elevation: 4,
@@ -230,7 +232,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 1},
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 3,
     elevation: 4,
@@ -243,7 +245,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     maxWidth: 200,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 1},
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.14,
     shadowRadius: 4,
     elevation: 4,

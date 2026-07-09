@@ -1,5 +1,12 @@
-import {useCallback, useEffect, useRef, useState, type ComponentRef, type RefObject} from 'react';
-import {APP_COPY, errorMessageOr} from '@/lib/app-copy';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ComponentRef,
+  type RefObject,
+} from 'react';
+import { APP_COPY, errorMessageOr } from '@/lib/app-copy';
 import {
   ActivityIndicator,
   Alert,
@@ -11,28 +18,28 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import {BottomSheetTextInput} from '@gorhom/bottom-sheet';
+import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import DraggableFlatList, {
   ScaleDecorator,
   type RenderItemParams,
 } from 'react-native-draggable-flatlist';
-import {ChevronLeft, GripVertical, Pencil, Trash2} from 'lucide-react-native';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import { ChevronLeft, GripVertical, Pencil, Trash2 } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   SystemEmojiPicker,
   useEmojiKeyboard,
 } from 'react-native-system-emoji-picker';
 
-import {Text} from '@/components/ui/text';
-import {BOTTOM_SHEET_SURFACE} from '@/lib/app-constants';
-import {useThemeColors} from '@/hooks/use-theme-colors';
+import { Text } from '@/components/ui/text';
+import { BOTTOM_SHEET_SURFACE } from '@/lib/app-constants';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 import {
   archiveActivity,
   listActiveActivities,
   reorderActivities,
   type ActivityRow,
 } from '@/db/repositories/activities';
-import {saveActivityMoment} from '@/lib/moments/capture-activity';
+import { saveActivityMoment } from '@/lib/moments/capture-activity';
 
 const GRID_COLUMNS = 4;
 const GRID_GAP = 12;
@@ -67,15 +74,19 @@ function ActivityEmojiPicker({
     <View style={styles.emojiPickerWrap}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={emoji ? `Change emoji, currently ${emoji}` : 'Pick emoji'}
+        accessibilityLabel={
+          emoji ? `Change emoji, currently ${emoji}` : 'Pick emoji'
+        }
         onPress={openPicker}
-        style={styles.emojiOrbPressable}>
-        <View style={[styles.emojiOrb, {backgroundColor: ACTIVITY_TINT}]}>
+        style={styles.emojiOrbPressable}
+      >
+        <View style={[styles.emojiOrb, { backgroundColor: ACTIVITY_TINT }]}>
           <Text
             style={[
               styles.emojiOrbText,
               !emoji ? styles.emojiOrbPlaceholder : null,
-            ]}>
+            ]}
+          >
             {emoji || EMOJI_PLACEHOLDER}
           </Text>
         </View>
@@ -105,22 +116,26 @@ function ActivityManageList({
   onArchive: (activity: ActivityRow) => void;
 }) {
   const renderItem = useCallback(
-    ({item, drag, isActive}: RenderItemParams<ActivityRow>) => (
+    ({ item, drag, isActive }: RenderItemParams<ActivityRow>) => (
       <ScaleDecorator activeScale={1.02}>
         <View
-          style={[
-            styles.manageRow,
-            isActive ? styles.manageRowDragging : null,
-          ]}>
+          style={[styles.manageRow, isActive ? styles.manageRowDragging : null]}
+        >
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Reorder ${item.label}`}
             onPressIn={drag}
-            style={styles.dragHandle}>
+            style={styles.dragHandle}
+          >
             <GripVertical size={18} color="#8E8E93" strokeWidth={2.25} />
           </Pressable>
           <View style={styles.manageRowMain}>
-            <View style={[styles.manageEmojiOrb, {backgroundColor: ACTIVITY_TINT}]}>
+            <View
+              style={[
+                styles.manageEmojiOrb,
+                { backgroundColor: ACTIVITY_TINT },
+              ]}
+            >
               <Text style={styles.manageEmoji}>{item.emoji}</Text>
             </View>
             <Text style={styles.manageLabel} numberOfLines={1}>
@@ -132,14 +147,16 @@ function ActivityManageList({
               accessibilityRole="button"
               accessibilityLabel={`Edit ${item.label}`}
               onPress={() => onBeginEdit(item)}
-              style={styles.iconAction}>
+              style={styles.iconAction}
+            >
               <Pencil size={16} color="#3A3A3C" strokeWidth={2.25} />
             </Pressable>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={`Remove ${item.label}`}
               onPress={() => onArchive(item)}
-              style={styles.iconAction}>
+              style={styles.iconAction}
+            >
               <Trash2 size={16} color="#FF3B30" strokeWidth={2.25} />
             </Pressable>
           </View>
@@ -154,7 +171,8 @@ function ActivityManageList({
       accessibilityRole="button"
       accessibilityLabel="Add activity"
       onPress={onBeginCreate}
-      style={styles.addActivityButton}>
+      style={styles.addActivityButton}
+    >
       <Text style={styles.addActivityButtonLabel}>Add activity</Text>
     </Pressable>
   );
@@ -164,7 +182,7 @@ function ActivityManageList({
       data={activities}
       keyExtractor={item => String(item.id)}
       activationDistance={12}
-      onDragEnd={({data}) => onReorder(data)}
+      onDragEnd={({ data }) => onReorder(data)}
       renderItem={renderItem}
       containerStyle={styles.manageList}
       contentContainerStyle={styles.manageListContent}
@@ -196,9 +214,10 @@ function ActivityPickerCell({
       accessibilityRole="button"
       accessibilityLabel={`Log ${activity.label}`}
       onPress={onPress}
-      style={styles.tokenCell}>
+      style={styles.tokenCell}
+    >
       <View style={styles.tokenStickerWrap}>
-        <View style={[styles.tokenSticker, {backgroundColor: ACTIVITY_TINT}]}>
+        <View style={[styles.tokenSticker, { backgroundColor: ACTIVITY_TINT }]}>
           <Text style={styles.tokenEmoji}>{activity.emoji}</Text>
         </View>
       </View>
@@ -237,14 +256,17 @@ export function ActivityForm({
   const canSave = emoji.trim().length > 0 && label.trim().length > 0 && !saving;
 
   return (
-    <View style={[styles.formBody, compactFooter ? styles.formBodyCompact : null]}>
+    <View
+      style={[styles.formBody, compactFooter ? styles.formBodyCompact : null]}
+    >
       <View style={styles.formHeader}>
         {onBack ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Back"
             onPress={onBack}
-            style={styles.backRow}>
+            style={styles.backRow}
+          >
             <ChevronLeft size={20} color="#1C1C1E" strokeWidth={2.25} />
             <Text style={styles.backLabel}>Back</Text>
           </Pressable>
@@ -285,7 +307,8 @@ export function ActivityForm({
           styles.primaryButton,
           compactFooter ? styles.primaryButtonCompact : null,
           !canSave ? styles.primaryButtonDisabled : null,
-        ]}>
+        ]}
+      >
         {saving ? (
           <ActivityIndicator color="#FFFFFF" />
         ) : (
@@ -307,7 +330,7 @@ export function ActivityLogSheet({
 }: ActivityLogSheetProps) {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
-  const {width: windowWidth, height: windowHeight} = useWindowDimensions();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const cellWidth =
     (windowWidth - 40 - GRID_GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS;
   const logStepHeight =
@@ -395,7 +418,10 @@ export function ActivityLogSheet({
         await reorderActivities(data.map(row => row.id));
       } catch {
         await loadActivities();
-        Alert.alert(APP_COPY.common.couldNotReorder, APP_COPY.common.pleaseTryAgain);
+        Alert.alert(
+          APP_COPY.common.couldNotReorder,
+          APP_COPY.common.pleaseTryAgain,
+        );
       }
     },
     [loadActivities],
@@ -406,7 +432,7 @@ export function ActivityLogSheet({
       `Remove ${activity.label}?`,
       'Past logs keep their emoji and label. You can add it again later.',
       [
-        {text: 'Cancel', style: 'cancel'},
+        { text: 'Cancel', style: 'cancel' },
         {
           text: 'Remove',
           style: 'destructive',
@@ -435,12 +461,12 @@ export function ActivityLogSheet({
       style={[
         styles.sheetBodyEmbedded,
         {
-          paddingBottom:
-            mode === 'log' ? 0 : Math.max(insets.bottom, 16),
+          paddingBottom: mode === 'log' ? 0 : Math.max(insets.bottom, 16),
         },
-      ]}>
+      ]}
+    >
       {mode === 'log' ? (
-        <View style={[styles.stepBody, {height: logStepHeight}]}>
+        <View style={[styles.stepBody, { height: logStepHeight }]}>
           <View style={styles.stepHeader}>
             <Text variant="h4" className="border-0 pb-0">
               What did you do?
@@ -459,8 +485,8 @@ export function ActivityLogSheet({
               contentContainerStyle={styles.gridContent}
               showsVerticalScrollIndicator={false}
               style={styles.grid}
-              renderItem={({item}) => (
-                <View style={{width: cellWidth}}>
+              renderItem={({ item }) => (
+                <View style={{ width: cellWidth }}>
                   <ActivityPickerCell
                     activity={item}
                     onPress={() => {
@@ -476,8 +502,9 @@ export function ActivityLogSheet({
               accessibilityRole="button"
               accessibilityLabel="Manage activities"
               onPress={() => setMode('manage')}
-              style={styles.footerLink}>
-              <Text style={[styles.footerLinkLabel, {color: colors.primary}]}>
+              style={styles.footerLink}
+            >
+              <Text style={[styles.footerLinkLabel, { color: colors.primary }]}>
                 Manage activities
               </Text>
             </Pressable>
@@ -498,7 +525,8 @@ export function ActivityLogSheet({
                 }
                 setMode('log');
               }}
-              style={styles.backRow}>
+              style={styles.backRow}
+            >
               <ChevronLeft size={20} color="#1C1C1E" strokeWidth={2.25} />
               <Text style={styles.backLabel}>Back</Text>
             </Pressable>
@@ -584,7 +612,7 @@ const styles = StyleSheet.create({
     fontSize: 32,
     lineHeight: Platform.OS === 'android' ? 36 : 34,
     textAlign: 'center',
-    ...(Platform.OS === 'android' ? {includeFontPadding: false} : null),
+    ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
   },
   tokenLabel: {
     fontSize: 11,
@@ -627,7 +655,7 @@ const styles = StyleSheet.create({
     fontSize: 32,
     lineHeight: Platform.OS === 'android' ? 36 : 34,
     textAlign: 'center',
-    ...(Platform.OS === 'android' ? {includeFontPadding: false} : null),
+    ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
   },
   emojiOrbPlaceholder: {
     opacity: 0.45,
@@ -715,7 +743,7 @@ const styles = StyleSheet.create({
     shadowColor: '#000000',
     shadowOpacity: 0.12,
     shadowRadius: 8,
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     elevation: 4,
   },
   dragHandle: {
@@ -742,7 +770,7 @@ const styles = StyleSheet.create({
   manageEmoji: {
     fontSize: 22,
     lineHeight: Platform.OS === 'android' ? 26 : 24,
-    ...(Platform.OS === 'android' ? {includeFontPadding: false} : null),
+    ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
   },
   manageLabel: {
     fontSize: 16,

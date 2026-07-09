@@ -1,13 +1,13 @@
-import type {LocationPointRow} from '@/db/repositories/location-days';
+import type { LocationPointRow } from '@/db/repositories/location-days';
 import {
   getLocationPointsForDay,
   getLocationPointsInRange,
 } from '@/db/repositories/location-days';
-import type {SavedPlaceRow} from '@/db/repositories/saved-places';
-import {listSavedPlaces} from '@/db/repositories/saved-places';
-import {getDayRange, shiftDateKey} from '@/lib/day-utils';
-import {loadExplorerGpsWindow} from '@/lib/explorer-day-trips';
-import {locationRowsToParsedPoints} from '@/lib/segmentation/parse-points';
+import type { SavedPlaceRow } from '@/db/repositories/saved-places';
+import { listSavedPlaces } from '@/db/repositories/saved-places';
+import { getDayRange, shiftDateKey } from '@/lib/day-utils';
+import { loadExplorerGpsWindow } from '@/lib/explorer-day-trips';
+import { locationRowsToParsedPoints } from '@/lib/segmentation/parse-points';
 import {
   filterPointsBySources,
   TRIP_PLOT_SOURCES,
@@ -23,8 +23,8 @@ import {
   type TripResult,
   type TripSegment,
 } from '@/lib/segmentation/trips';
-import {getCurrentTripDetectionConfig} from '@/lib/trip-detection-config';
-import type {TripDetectionConfig} from '@/lib/trip-settings';
+import { getCurrentTripDetectionConfig } from '@/lib/trip-detection-config';
+import type { TripDetectionConfig } from '@/lib/trip-settings';
 
 export type BenchmarkMode = 'stops' | 'trips' | 'power';
 
@@ -127,8 +127,8 @@ export async function loadParsedTripTrackForDateKeys(
     return [];
   }
   const sorted = [...dateKeys].sort();
-  const {start} = getDayRange(sorted[0]!);
-  const {end} = getDayRange(sorted[sorted.length - 1]!);
+  const { start } = getDayRange(sorted[0]!);
+  const { end } = getDayRange(sorted[sorted.length - 1]!);
   const rows = await getLocationPointsInRange(start, end);
   const keySet = new Set(dateKeys);
   const parsed = locationRowsToParsedPoints(rows);
@@ -166,7 +166,7 @@ export async function runStopsBenchmark(
   const points = await loadParsedTripTrackForDateKeys(dateKeys);
   const parsed = locationRowsToParsedPoints(points);
   const stops = detectStops(parsed, stopConfig);
-  return {points, stops};
+  return { points, stops };
 }
 
 export async function runTripsBenchmark(
@@ -183,7 +183,9 @@ export async function runTripsBenchmark(
   const days: DayTripsBenchmarkResult[] = [];
 
   for (const dateKey of [...dateKeys].sort()) {
-    const {windowPoints, dayPointCount} = await loadExplorerGpsWindow(dateKey);
+    const { windowPoints, dayPointCount } = await loadExplorerGpsWindow(
+      dateKey,
+    );
     const parsed = locationRowsToParsedPoints(windowPoints);
     const tripTrack = filterPointsBySources(parsed, TRIP_SOURCES);
     const result = detectTripsForDay(
@@ -231,7 +233,7 @@ export async function runPowerBenchmark(
 
   for (const dateKey of [...dateKeys].sort()) {
     const fetchStartedPerf = performance.now();
-    const {windowPoints, prevPoints, dayPoints, nextPoints} =
+    const { windowPoints, prevPoints, dayPoints, nextPoints } =
       await loadExplorerGpsWindow(dateKey);
     const fetchElapsedMs = performance.now() - fetchStartedPerf;
 

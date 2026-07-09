@@ -1,14 +1,19 @@
-import {Pressable, View} from 'react-native';
-import {useNavigation} from '@react-navigation/native';
-import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {BookOpen, CloudDownload, FlaskConical, type LucideIcon} from 'lucide-react-native';
+import { Pressable, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import {
+  BookOpen,
+  CloudDownload,
+  FlaskConical,
+  type LucideIcon,
+} from 'lucide-react-native';
 
-import {Icon} from '@/components/ui/icon';
-import {Text} from '@/components/ui/text';
-import type {RootStackParamList} from '@/navigation/types';
-import {useThemeColors} from '@/hooks/use-theme-colors';
-import {useAppStore} from '@/stores/app-store';
-import {LocationPointsDedupeDevCard} from '@/components/settings/location-points-dedupe-dev-card';
+import { Icon } from '@/components/ui/icon';
+import { Text } from '@/components/ui/text';
+import type { RootStackParamList } from '@/navigation/types';
+import { useThemeColors } from '@/hooks/use-theme-colors';
+import { useAppStore } from '@/stores/app-store';
+import { LocationPointsDedupeDevCard } from '@/components/settings/location-points-dedupe-dev-card';
 
 function DevToggle({
   icon,
@@ -28,7 +33,8 @@ function DevToggle({
   return (
     <Pressable
       onPress={onToggle}
-      className="bg-card border-border rounded-2xl border p-4">
+      className="bg-card border-border rounded-2xl border p-4"
+    >
       <View className="flex-row items-center gap-3">
         <Icon as={icon} size={20} color={colors.primary} />
         <View className="flex-1">
@@ -40,7 +46,8 @@ function DevToggle({
         <View
           className={`h-6 w-11 rounded-full px-0.5 ${
             enabled ? 'bg-primary' : 'bg-muted'
-          }`}>
+          }`}
+        >
           <View
             className={`mt-0.5 h-5 w-5 rounded-full bg-white ${
               enabled ? 'ml-auto' : 'ml-0'
@@ -76,7 +83,8 @@ export function DevSettings() {
       <Pressable
         accessibilityRole="button"
         onPress={() => navigation.navigate('Benchmark')}
-        className="bg-card border-border rounded-2xl border p-4">
+        className="bg-card border-border rounded-2xl border p-4"
+      >
         <View className="flex-row items-center gap-3">
           <Icon as={FlaskConical} size={20} color={colors.primary} />
           <View className="flex-1">
@@ -91,9 +99,13 @@ export function DevSettings() {
       <Pressable
         accessibilityRole="button"
         onPress={() =>
-          navigation.navigate('RestoreBackup', {source: 'install', preview: true})
+          navigation.navigate('RestoreBackup', {
+            source: 'install',
+            preview: true,
+          })
         }
-        className="bg-card border-border rounded-2xl border p-4">
+        className="bg-card border-border rounded-2xl border p-4"
+      >
         <View className="flex-row items-center gap-3">
           <Icon as={CloudDownload} size={20} color={colors.primary} />
           <View className="flex-1">

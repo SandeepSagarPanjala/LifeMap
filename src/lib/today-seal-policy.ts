@@ -3,9 +3,9 @@ import {
   type DayTimelineEntry,
   type DetectedTrip,
 } from '@/lib/trip-detection';
-import type {TripDetectionConfig} from '@/lib/trip-settings';
+import type { TripDetectionConfig } from '@/lib/trip-settings';
 
-import {TODAY_LIVE_BUFFER_MAX_SEGMENTS} from '@/lib/app-constants';
+import { TODAY_LIVE_BUFFER_MAX_SEGMENTS } from '@/lib/app-constants';
 
 function shouldStayLive(
   entry: DetectedTrip,
@@ -61,11 +61,7 @@ export function getSealableTodayEntries(
   const playable = entries.filter((entry): entry is DetectedTrip =>
     isPlayableTimelineEntry(entry),
   );
-  const liveStart = getTodayLiveBufferStartIndex(
-    entries,
-    referenceNow,
-    config,
-  );
+  const liveStart = getTodayLiveBufferStartIndex(entries, referenceNow, config);
   return playable.slice(0, liveStart).filter(entry => {
     if (entry.kind === 'travel') {
       return true;

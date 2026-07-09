@@ -1,4 +1,7 @@
-import {isVideoRecordingTooShort, saveVideoMoment} from '@/lib/moments/capture-video';
+import {
+  isVideoRecordingTooShort,
+  saveVideoMoment,
+} from '@/lib/moments/capture-video';
 
 jest.mock('@/lib/moments/capture-photo', () => ({
   saveMomentToGallery: jest.fn().mockResolvedValue(undefined),

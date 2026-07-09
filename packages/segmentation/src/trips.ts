@@ -35,11 +35,8 @@ import {
   type PlaceKind,
   type ResolvedPlace,
 } from './resolved-place';
-import {matchCompletePlaceLookupAtAnchor} from './place-lookup';
-import {
-  closestPlacePoiToAnchor,
-  listPlacePoisForCache,
-} from './place-poi';
+import { matchCompletePlaceLookupAtAnchor } from './place-lookup';
+import { closestPlacePoiToAnchor, listPlacePoisForCache } from './place-poi';
 import {
   annotateSegmentMoments,
   type SegmentMomentCounts,
@@ -52,7 +49,7 @@ import type {
   SegmentationMoment,
 } from './types';
 
-export type {SegmentMomentCounts} from './segment-moments';
+export type { SegmentMomentCounts } from './segment-moments';
 
 /**
  * A drive must show real movement. Stationary residue around a stay (e.g. a
@@ -67,7 +64,7 @@ export {
   SAVED_PLACE_MIN_DWELL_MS,
 };
 
-export type {PlaceKind, ResolvedPlace} from './resolved-place';
+export type { PlaceKind, ResolvedPlace } from './resolved-place';
 
 export type StaySegment = {
   kind: 'stay';
@@ -143,8 +140,8 @@ export type TripResult = {
 const EARTH_RADIUS_M = 6_371_000;
 
 function haversineM(
-  a: {lat: number; lng: number},
-  b: {lat: number; lng: number},
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
 ): number {
   const toRad = (x: number) => (x * Math.PI) / 180;
   const dLat = toRad(b.lat - a.lat);
@@ -175,7 +172,7 @@ function makeStopFromPoints(
       lat: acc.lat + point.lat,
       lng: acc.lng + point.lng,
     }),
-    {lat: 0, lng: 0},
+    { lat: 0, lng: 0 },
   );
   const centre = {
     lat: sum.lat / points.length,
@@ -316,20 +313,20 @@ function makeDrive(
   };
 }
 
-function segmentStart(seg: TripSegment): {lat: number; lng: number} {
+function segmentStart(seg: TripSegment): { lat: number; lng: number } {
   if (seg.kind === 'missing') {
-    return {lat: seg.fromLat, lng: seg.fromLng};
+    return { lat: seg.fromLat, lng: seg.fromLng };
   }
   const p = seg.points[0]!;
-  return {lat: p.lat, lng: p.lng};
+  return { lat: p.lat, lng: p.lng };
 }
 
-function segmentEnd(seg: TripSegment): {lat: number; lng: number} {
+function segmentEnd(seg: TripSegment): { lat: number; lng: number } {
   if (seg.kind === 'missing') {
-    return {lat: seg.toLat, lng: seg.toLng};
+    return { lat: seg.toLat, lng: seg.toLng };
   }
   const p = seg.points[seg.points.length - 1]!;
-  return {lat: p.lat, lng: p.lng};
+  return { lat: p.lat, lng: p.lng };
 }
 
 function mergeStays(a: StaySegment, b: StaySegment): StaySegment {
@@ -403,10 +400,7 @@ function reconcileSegments(segments: TripSegment[]): TripSegment[] {
     for (let i = 0; i < list.length; i += 1) {
       const cur = list[i]!;
       const following = list[i + 1];
-      if (
-        cur.kind === 'stay' &&
-        following?.kind === 'stay'
-      ) {
+      if (cur.kind === 'stay' && following?.kind === 'stay') {
         const dist = haversineM(segmentEnd(cur), segmentStart(following));
         if (dist < MERGE_STAY_MAX_DISTANCE_M) {
           next.push(mergeStays(cur, following));
@@ -439,10 +433,7 @@ function reconcileSegments(segments: TripSegment[]): TripSegment[] {
 
     const gapMs = following.startAt.getTime() - cur.endAt.getTime();
     const dist = haversineM(segmentEnd(cur), segmentStart(following));
-    if (
-      dist >= MISSING_MIN_DISTANCE_M &&
-      gapMs >= MISSING_MIN_GAP_MS
-    ) {
+    if (dist >= MISSING_MIN_DISTANCE_M && gapMs >= MISSING_MIN_GAP_MS) {
       result.push(makeMissing(cur, following, gapMs, dist));
     }
   }
@@ -557,11 +548,11 @@ function resolvedPlaceFromStay(stay: StaySegment): ResolvedPlace | null {
 
 function resolvedPoiFromStay(
   stay: StaySegment,
-): {poiId: number; poiLabel: string} | null {
+): { poiId: number; poiLabel: string } | null {
   if (stay.poiId == null || stay.poiLabel == null) {
     return null;
   }
-  return {poiId: stay.poiId, poiLabel: stay.poiLabel};
+  return { poiId: stay.poiId, poiLabel: stay.poiLabel };
 }
 
 function annotateSegments(
@@ -588,7 +579,7 @@ function annotateSegments(
       applyResolvedPlace(updated, resolvedPlaceFromSaved(place));
     } else if (placeLookupCache.length > 0) {
       const cache = matchCompletePlaceLookupAtAnchor(
-        {lat: updated.stop.lat, lng: updated.stop.lng},
+        { lat: updated.stop.lat, lng: updated.stop.lng },
         placeLookupCache,
       );
       if (cache != null) {
@@ -597,7 +588,7 @@ function annotateSegments(
           applyResolvedPlace(updated, resolved);
           if (resolveClosestPoi) {
             const closest = closestPlacePoiToAnchor(
-              {lat: updated.stop.lat, lng: updated.stop.lng},
+              { lat: updated.stop.lat, lng: updated.stop.lng },
               listPlacePoisForCache(cache.id, placePois),
             );
             if (closest != null) {
@@ -630,26 +621,26 @@ function annotateSegments(
       fromPlace != null
         ? resolvedPlaceFromSaved(fromPlace)
         : previousStay != null
-          ? resolvedPlaceFromStay(previousStay)
-          : null;
+        ? resolvedPlaceFromStay(previousStay)
+        : null;
     const toResolved =
       toPlace != null
         ? resolvedPlaceFromSaved(toPlace)
         : nextStay != null
-          ? resolvedPlaceFromStay(nextStay)
-          : null;
+        ? resolvedPlaceFromStay(nextStay)
+        : null;
     const fromPoi =
       fromPlace != null
         ? null
         : previousStay != null
-          ? resolvedPoiFromStay(previousStay)
-          : null;
+        ? resolvedPoiFromStay(previousStay)
+        : null;
     const toPoi =
       toPlace != null
         ? null
         : nextStay != null
-          ? resolvedPoiFromStay(nextStay)
-          : null;
+        ? resolvedPoiFromStay(nextStay)
+        : null;
     if (fromResolved == null && toResolved == null) {
       return segment;
     }
@@ -673,19 +664,18 @@ function isHomeStay(
   segment: StaySegment,
   savedPlaces: SavedPlaceRow[],
 ): boolean {
-  if (
-    segment.placeKind === 'saved' &&
-    segment.placeId != null
-  ) {
+  if (segment.placeKind === 'saved' && segment.placeId != null) {
     return (
-      savedPlaces.find(place => place.id === segment.placeId)?.kind ===
-      'home'
+      savedPlaces.find(place => place.id === segment.placeId)?.kind === 'home'
     );
   }
   return false;
 }
 
-function segmentDateKeys(segment: TripSegment): {startKey: string; endKey: string} {
+function segmentDateKeys(segment: TripSegment): {
+  startKey: string;
+  endKey: string;
+} {
   return {
     startKey: dateKeyForTimestamp(segment.startAt),
     endKey: dateKeyForTimestamp(segment.endAt),
@@ -735,7 +725,7 @@ export function projectSegmentsForDay(
 ): TripSegment[] {
   const dayStartAt = dayStart(dayKey);
   const dayEndAt = dayEndExclusive(dayKey);
-  const projected: Array<{segment: TripSegment; sortKey: number}> = [];
+  const projected: Array<{ segment: TripSegment; sortKey: number }> = [];
 
   for (const segment of segments) {
     const overlapsDay =
@@ -744,7 +734,7 @@ export function projectSegmentsForDay(
       continue;
     }
 
-    const {startKey, endKey} = segmentDateKeys(segment);
+    const { startKey, endKey } = segmentDateKeys(segment);
     const crossesMidnight = startKey !== endKey;
 
     if (
@@ -755,17 +745,20 @@ export function projectSegmentsForDay(
       if (startKey === dayKey) {
         const clipped = clipStay(segment, segment.startAt, dayEndAt);
         if (clipped != null) {
-          projected.push({segment: clipped, sortKey: segment.startAt.getTime()});
+          projected.push({
+            segment: clipped,
+            sortKey: segment.startAt.getTime(),
+          });
         }
       } else if (endKey === dayKey) {
         const clipped = clipStay(segment, dayStartAt, segment.endAt);
         if (clipped != null) {
-          projected.push({segment: clipped, sortKey: dayStartAt.getTime()});
+          projected.push({ segment: clipped, sortKey: dayStartAt.getTime() });
         }
       } else if (dayKey > startKey && dayKey < endKey) {
         const clipped = clipStay(segment, dayStartAt, dayEndAt);
         if (clipped != null) {
-          projected.push({segment: clipped, sortKey: dayStartAt.getTime()});
+          projected.push({ segment: clipped, sortKey: dayStartAt.getTime() });
         }
       }
       continue;
@@ -785,13 +778,13 @@ export function projectSegmentsForDay(
         } else {
           sortKey = dayStartAt.getTime() - 1;
         }
-        projected.push({segment, sortKey});
+        projected.push({ segment, sortKey });
       }
       continue;
     }
 
     if (startKey === dayKey) {
-      projected.push({segment, sortKey: segment.startAt.getTime()});
+      projected.push({ segment, sortKey: segment.startAt.getTime() });
     }
   }
 
@@ -809,16 +802,18 @@ export function detectTrips(
   placeLookupCache: readonly PlaceLookupRow[] = [],
   placePois: readonly PlacePoiRow[] = [],
   moments: readonly SegmentationMoment[] = [],
-  options: {resolveClosestPoi?: boolean} = {},
+  options: { resolveClosestPoi?: boolean } = {},
 ): TripResult {
   const points = prepareTripPoints(rawPoints, config);
   const baseStops = detectStops(rawPoints, config);
   const occupiedPointIds = new Set<number>(
     baseStops.flatMap(stop => stop.pointIds),
   );
-  const savedPlaceStops = detectSavedPlaceStops(points, savedPlaces, config).filter(
-    stop => stop.pointIds.every(id => !occupiedPointIds.has(id)),
-  );
+  const savedPlaceStops = detectSavedPlaceStops(
+    points,
+    savedPlaces,
+    config,
+  ).filter(stop => stop.pointIds.every(id => !occupiedPointIds.has(id)));
   const stops = [...baseStops, ...savedPlaceStops].sort(
     (a, b) => a.arrivedAt.getTime() - b.arrivedAt.getTime(),
   );
@@ -832,7 +827,7 @@ export function detectTrips(
     ),
     moments,
   );
-  return {points, stops, segments};
+  return { points, stops, segments };
 }
 
 /** Build trips for one calendar day, including cross-midnight boundary rules. */
@@ -844,12 +839,14 @@ export function detectTripsForDay(
   placeLookupCache: readonly PlaceLookupRow[] = [],
   placePois: readonly PlacePoiRow[] = [],
   moments: readonly SegmentationMoment[] = [],
-  options: {resolveClosestPoi?: boolean} = {},
+  options: { resolveClosestPoi?: boolean } = {},
 ): TripResult {
   const prevKey = addDaysToDateKey(dayKey, -1);
   const nextKey = addDaysToDateKey(dayKey, 1);
   const windowKeys = new Set([prevKey, dayKey, nextKey]);
-  const windowPoints = allRawPoints.filter(point => windowKeys.has(point.dateKey));
+  const windowPoints = allRawPoints.filter(point =>
+    windowKeys.has(point.dateKey),
+  );
   const full = detectTrips(
     windowPoints,
     config,

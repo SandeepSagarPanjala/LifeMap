@@ -1,7 +1,7 @@
-import {asc, eq, isNull, sql} from 'drizzle-orm';
+import { asc, eq, isNull, sql } from 'drizzle-orm';
 
-import {getDatabase} from '../client';
-import {activities} from '../schema';
+import { getDatabase } from '../client';
+import { activities } from '../schema';
 
 export type ActivityRow = {
   id: number;
@@ -78,7 +78,7 @@ export async function archiveActivity(id: number): Promise<void> {
   const db = await getDatabase();
   await db
     .update(activities)
-    .set({archivedAt: new Date()})
+    .set({ archivedAt: new Date() })
     .where(eq(activities.id, id));
 }
 
@@ -91,7 +91,7 @@ export async function reorderActivities(orderedIds: number[]): Promise<void> {
     for (let index = 0; index < orderedIds.length; index++) {
       await tx
         .update(activities)
-        .set({sortOrder: index})
+        .set({ sortOrder: index })
         .where(eq(activities.id, orderedIds[index]!));
     }
   });

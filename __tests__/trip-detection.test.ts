@@ -10,16 +10,16 @@ import {
   firstPlayableTimelineIndex,
   lastPlayableTimelineIndex,
 } from '../src/lib/trip-detection';
-import {buildTripDetectionConfig} from '../src/lib/trip-settings';
-import type {LocationPointRow} from '../src/db/repositories/location-days';
-import type {DetectedTrip} from '../src/lib/trip-detection';
+import { buildTripDetectionConfig } from '../src/lib/trip-settings';
+import type { LocationPointRow } from '../src/db/repositories/location-days';
+import type { DetectedTrip } from '../src/lib/trip-detection';
 
 const config = buildTripDetectionConfig(10, 10, 150);
 
-const HOME = {lat: 33.21, lng: -97.13};
+const HOME = { lat: 33.21, lng: -97.13 };
 
 function makePoints(
-  specs: Array<{minutes: number; lat: number; lng: number}>,
+  specs: Array<{ minutes: number; lat: number; lng: number }>,
 ): LocationPointRow[] {
   const start = new Date('2026-06-03T08:00:00');
   return specs.map((spec, index) => ({
@@ -36,11 +36,11 @@ function makePoints(
 
 describe('trip-detection helpers', () => {
   it('dedupes same timestamp and place', () => {
-    const base = makePoints([{minutes: 0, ...HOME}]);
+    const base = makePoints([{ minutes: 0, ...HOME }]);
     const dupes: LocationPointRow[] = [
-      {...base[0]!, id: 1},
-      {...base[0]!, id: 2, source: 'motion'},
-      {...base[0]!, id: 3},
+      { ...base[0]!, id: 1 },
+      { ...base[0]!, id: 2, source: 'motion' },
+      { ...base[0]!, id: 3 },
     ];
     expect(dedupeLocationPoints(dupes)).toHaveLength(1);
   });
@@ -50,8 +50,8 @@ describe('trip-detection helpers', () => {
       id: 'stay-1',
       kind: 'stay',
       points: makePoints([
-        {minutes: 0, lat: 33.21, lng: -97.13},
-        {minutes: 15, lat: 33.21005, lng: -97.13005},
+        { minutes: 0, lat: 33.21, lng: -97.13 },
+        { minutes: 15, lat: 33.21005, lng: -97.13005 },
       ]),
       startAt: new Date('2026-06-03T08:00:00'),
       endAt: new Date('2026-06-03T08:15:00'),
@@ -60,10 +60,10 @@ describe('trip-detection helpers', () => {
       anchorLat: 33.210025,
       anchorLng: -97.130025,
     };
-    const pin = stayTripMarkerCoordinate(stay, {ongoing: false});
+    const pin = stayTripMarkerCoordinate(stay, { ongoing: false });
     expect(pin.latitude).toBe(33.210025);
     expect(pin.longitude).toBe(-97.130025);
-    expect(stayMapMarkerCoordinate(stay, {ongoing: false})).toEqual(pin);
+    expect(stayMapMarkerCoordinate(stay, { ongoing: false })).toEqual(pin);
   });
 
   it('uses latest GPS for ongoing map pin', () => {
@@ -71,8 +71,8 @@ describe('trip-detection helpers', () => {
       id: 'stay-1',
       kind: 'stay',
       points: makePoints([
-        {minutes: 0, lat: 33.21, lng: -97.13},
-        {minutes: 15, lat: 33.21005, lng: -97.13005},
+        { minutes: 0, lat: 33.21, lng: -97.13 },
+        { minutes: 15, lat: 33.21005, lng: -97.13005 },
       ]),
       startAt: new Date('2026-06-03T08:00:00'),
       endAt: new Date('2026-06-03T08:15:00'),
@@ -81,7 +81,7 @@ describe('trip-detection helpers', () => {
       anchorLat: 33.210025,
       anchorLng: -97.130025,
     };
-    const pin = stayMapMarkerCoordinate(stay, {ongoing: true});
+    const pin = stayMapMarkerCoordinate(stay, { ongoing: true });
     expect(pin.latitude).toBe(33.21005);
     expect(pin.longitude).toBe(-97.13005);
   });
@@ -119,7 +119,7 @@ describe('trip-detection helpers', () => {
     const travel: DetectedTrip = {
       id: 'travel-tesla',
       kind: 'travel',
-      points: [road, {...road, id: 3, lat: 33.05928, lng: -96.83279}],
+      points: [road, { ...road, id: 3, lat: 33.05928, lng: -96.83279 }],
       startAt: road.timestamp,
       endAt: new Date('2026-06-06T21:39:00.000Z'),
       distanceKm: 1,
@@ -249,10 +249,10 @@ describe('isUserStillAtStay', () => {
     };
 
     expect(
-      isUserStillAtStay({lat: HOME.lat, lng: HOME.lng}, stay, config),
+      isUserStillAtStay({ lat: HOME.lat, lng: HOME.lng }, stay, config),
     ).toBe(true);
-    expect(
-      isUserStillAtStay({lat: 33.3, lng: -97.2}, stay, config),
-    ).toBe(false);
+    expect(isUserStillAtStay({ lat: 33.3, lng: -97.2 }, stay, config)).toBe(
+      false,
+    );
   });
 });

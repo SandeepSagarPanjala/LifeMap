@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo, useState} from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   addMonths,
   eachDayOfInterval,
@@ -14,19 +14,15 @@ import {
   startOfWeek,
   subMonths,
 } from 'date-fns';
-import {ChevronLeft, ChevronRight} from 'lucide-react-native';
-import {Pressable, ScrollView, StyleSheet, View} from 'react-native';
+import { ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import {Text} from '@/components/ui/text';
-import {AppBottomSheet} from '@/components/ui/app-bottom-sheet';
-import {BOTTOM_SHEET_SURFACE} from '@/lib/app-constants';
-import {
-  getTodayDateKey,
-  parseDateKey,
-  toDateKey,
-} from '@/lib/day-utils';
-import {HISTORY_COLORS} from '@/lib/app-constants';
-import {useAppStore} from '@/stores/app-store';
+import { Text } from '@/components/ui/text';
+import { AppBottomSheet } from '@/components/ui/app-bottom-sheet';
+import { BOTTOM_SHEET_SURFACE } from '@/lib/app-constants';
+import { getTodayDateKey, parseDateKey, toDateKey } from '@/lib/day-utils';
+import { HISTORY_COLORS } from '@/lib/app-constants';
+import { useAppStore } from '@/stores/app-store';
 
 const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
@@ -52,10 +48,7 @@ export function HistoryDatePickerPanel({
         : today,
     [earliestDateKey, today],
   );
-  const earliestMonth = useMemo(
-    () => startOfMonth(earliestDay),
-    [earliestDay],
-  );
+  const earliestMonth = useMemo(() => startOfMonth(earliestDay), [earliestDay]);
   const todayMonth = useMemo(() => startOfMonth(today), [today]);
 
   const [visibleMonth, setVisibleMonth] = useState(() =>
@@ -68,8 +61,8 @@ export function HistoryDatePickerPanel({
       month < earliestMonth
         ? earliestMonth
         : month > todayMonth
-          ? todayMonth
-          : month,
+        ? todayMonth
+        : month,
     );
   }, [earliestMonth, selectedDateKey, todayMonth]);
 
@@ -84,9 +77,9 @@ export function HistoryDatePickerPanel({
   const calendarDays = useMemo(() => {
     const monthStart = startOfMonth(visibleMonth);
     const monthEnd = endOfMonth(visibleMonth);
-    const gridStart = startOfWeek(monthStart, {weekStartsOn: 0});
-    const gridEnd = endOfWeek(monthEnd, {weekStartsOn: 0});
-    return eachDayOfInterval({start: gridStart, end: gridEnd});
+    const gridStart = startOfWeek(monthStart, { weekStartsOn: 0 });
+    const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
+    return eachDayOfInterval({ start: gridStart, end: gridEnd });
   }, [visibleMonth]);
 
   const handleSelect = (day: Date) => {
@@ -109,12 +102,14 @@ export function HistoryDatePickerPanel({
         style={styles.scrollArea}
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled">
+        keyboardShouldPersistTaps="handled"
+      >
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Jump to today"
           onPress={goToToday}
-          style={styles.todayRow}>
+          style={styles.todayRow}
+        >
           <Text style={styles.todayLabel}>Today</Text>
           <Text style={styles.todayHint}>{format(today, 'EEEE, MMM d')}</Text>
         </Pressable>
@@ -130,7 +125,8 @@ export function HistoryDatePickerPanel({
             style={[
               styles.monthNavBtn,
               !canGoPrevMonth && styles.monthNavBtnDisabled,
-            ]}>
+            ]}
+          >
             <ChevronLeft
               size={22}
               color={HISTORY_COLORS.playhead}
@@ -148,7 +144,8 @@ export function HistoryDatePickerPanel({
             style={[
               styles.monthNavBtn,
               !canGoNextMonth && styles.monthNavBtnDisabled,
-            ]}>
+            ]}
+          >
             <ChevronRight
               size={22}
               color={HISTORY_COLORS.playhead}
@@ -183,20 +180,23 @@ export function HistoryDatePickerPanel({
                 accessibilityLabel={format(day, 'MMMM d, yyyy')}
                 disabled={isDisabled}
                 onPress={() => handleSelect(day)}
-                style={styles.dayCell}>
+                style={styles.dayCell}
+              >
                 <View
                   style={[
                     styles.dayInner,
                     isSelected && styles.dayInnerSelected,
                     isToday && !isSelected && styles.dayInnerToday,
-                  ]}>
+                  ]}
+                >
                   <Text
                     style={[
                       styles.dayText,
                       !inMonth && styles.dayTextOutside,
                       isDisabled && styles.dayTextDisabled,
                       isSelected && styles.dayTextSelected,
-                    ]}>
+                    ]}
+                  >
                     {format(day, 'd')}
                   </Text>
                 </View>

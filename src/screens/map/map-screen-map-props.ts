@@ -1,8 +1,8 @@
-import type {Region} from 'react-native-maps';
+import type { Region } from 'react-native-maps';
 
-import type {MapUserCoordinate} from '@/lib/user-coordinate-throttle';
+import type { MapUserCoordinate } from '@/lib/user-coordinate-throttle';
 
-import type {MapScreenController} from './use-map-screen-controller';
+import type { MapScreenController } from './use-map-screen-controller';
 
 function regionsEqual(previous: Region | null, next: Region | null): boolean {
   if (previous === next) {
@@ -30,8 +30,7 @@ function coordinatesEqual(
     return previous === next;
   }
   return (
-    previous.latitude === next.latitude &&
-    previous.longitude === next.longitude
+    previous.latitude === next.latitude && previous.longitude === next.longitude
   );
 }
 

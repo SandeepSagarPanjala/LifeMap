@@ -1,12 +1,12 @@
-import {useEffect, useState} from 'react';
-import {Pressable, StyleSheet, View} from 'react-native';
-import {Briefcase, Heart, Home} from 'lucide-react-native';
-import {BottomSheetTextInput} from '@gorhom/bottom-sheet';
+import { useEffect, useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Briefcase, Heart, Home } from 'lucide-react-native';
+import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 
-import {Text} from '@/components/ui/text';
-import {AppBottomSheet} from '@/components/ui/app-bottom-sheet';
-import {useThemeColors} from '@/hooks/use-theme-colors';
-import {MAX_SAVED_PLACE_LABEL_LENGTH} from '@/lib/app-constants';
+import { Text } from '@/components/ui/text';
+import { AppBottomSheet } from '@/components/ui/app-bottom-sheet';
+import { useThemeColors } from '@/hooks/use-theme-colors';
+import { MAX_SAVED_PLACE_LABEL_LENGTH } from '@/lib/app-constants';
 
 type SavePlaceCoordinate = {
   latitude: number;
@@ -87,10 +87,7 @@ export function SavePlaceSheet({
   }, [sheetVisible]);
 
   return (
-    <AppBottomSheet
-      visible={sheetVisible}
-      onClose={close}
-      enableDynamicSizing>
+    <AppBottomSheet visible={sheetVisible} onClose={close} enableDynamicSizing>
       {showFavoriteInput ? (
         <View style={styles.favoriteForm}>
           <Text variant="h4" className="border-0 pb-0">
@@ -111,9 +108,7 @@ export function SavePlaceSheet({
             accessibilityLabel="Map favorite name"
             onSubmitEditing={() => {
               if (favoriteName.trim().length > 0) {
-                runSave(() =>
-                  onSaveFavorite(coordinate!, favoriteName.trim()),
-                );
+                runSave(() => onSaveFavorite(coordinate!, favoriteName.trim()));
               }
             }}
           />
@@ -123,20 +118,20 @@ export function SavePlaceSheet({
             disabled={saving || favoriteName.trim().length === 0}
             style={[
               styles.saveFavoriteBtn,
-              {backgroundColor: colors.primary},
+              { backgroundColor: colors.primary },
             ]}
             onPress={() =>
-              runSave(() =>
-                onSaveFavorite(coordinate!, favoriteName.trim()),
-              )
-            }>
+              runSave(() => onSaveFavorite(coordinate!, favoriteName.trim()))
+            }
+          >
             <Text className="text-primary-foreground text-center font-medium">
               Save Favorite
             </Text>
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            onPress={() => setShowFavoriteInput(false)}>
+            onPress={() => setShowFavoriteInput(false)}
+          >
             <Text variant="muted" className="text-center text-sm">
               Back
             </Text>
@@ -154,7 +149,9 @@ export function SavePlaceSheet({
             <Text variant="muted" className="mt-2 text-sm">
               {hasHome && hasWork
                 ? `You have ${maxPlaces} saved places. Remove one from Places to add another.`
-                : `You have ${maxPlaces} saved places. Remove one to add ${!hasHome ? 'Home' : 'Work'} or a Favorite.`}
+                : `You have ${maxPlaces} saved places. Remove one to add ${
+                    !hasHome ? 'Home' : 'Work'
+                  } or a Favorite.`}
             </Text>
           ) : null}
           <View style={styles.actions}>
@@ -164,7 +161,8 @@ export function SavePlaceSheet({
                 accessibilityLabel="Mark as Home"
                 disabled={saving}
                 style={styles.actionRow}
-                onPress={() => runSave(() => onSaveHome(coordinate!))}>
+                onPress={() => runSave(() => onSaveHome(coordinate!))}
+              >
                 <Home size={20} color={colors.primary} strokeWidth={2.25} />
                 <Text className="font-medium">Mark as Home</Text>
               </Pressable>
@@ -175,7 +173,8 @@ export function SavePlaceSheet({
                 accessibilityLabel="Mark as Work"
                 disabled={saving}
                 style={styles.actionRow}
-                onPress={() => runSave(() => onSaveWork(coordinate!))}>
+                onPress={() => runSave(() => onSaveWork(coordinate!))}
+              >
                 <Briefcase
                   size={20}
                   color={colors.primary}
@@ -190,7 +189,8 @@ export function SavePlaceSheet({
                 accessibilityLabel="Add Favorite"
                 disabled={saving}
                 style={styles.actionRow}
-                onPress={() => setShowFavoriteInput(true)}>
+                onPress={() => setShowFavoriteInput(true)}
+              >
                 <Heart
                   size={20}
                   color={colors.primary}
@@ -205,7 +205,8 @@ export function SavePlaceSheet({
             accessibilityRole="button"
             accessibilityLabel="Cancel save place"
             onPress={close}
-            style={styles.cancelBtn}>
+            style={styles.cancelBtn}
+          >
             <Text variant="muted" className="text-center font-medium">
               Cancel
             </Text>

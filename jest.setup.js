@@ -10,7 +10,7 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
 }));
 
 jest.mock('react-native-reanimated', () => {
-  const {View} = require('react-native');
+  const { View } = require('react-native');
   const createAnimatableComponent = Component => Component;
   return {
     __esModule: true,
@@ -20,26 +20,26 @@ jest.mock('react-native-reanimated', () => {
       addWhitelistedUIProps: () => {},
       View,
     },
-    useSharedValue: initial => ({value: initial}),
+    useSharedValue: initial => ({ value: initial }),
     useAnimatedStyle: () => ({}),
-    useDerivedValue: fn => ({value: typeof fn === 'function' ? fn() : fn}),
+    useDerivedValue: fn => ({ value: typeof fn === 'function' ? fn() : fn }),
     useAnimatedScrollHandler: () => () => {},
-    useAnimatedRef: () => ({current: null}),
+    useAnimatedRef: () => ({ current: null }),
     withTiming: value => value,
     withSpring: value => value,
     runOnJS: fn => fn,
     runOnUI: fn => fn,
-    Easing: {linear: t => t},
-    FadeIn: {duration: () => ({})},
-    FadeOut: {duration: () => ({})},
-    Layout: {duration: () => ({})},
-    SlideInDown: {duration: () => ({})},
-    SlideOutDown: {duration: () => ({})},
+    Easing: { linear: t => t },
+    FadeIn: { duration: () => ({}) },
+    FadeOut: { duration: () => ({}) },
+    Layout: { duration: () => ({}) },
+    SlideInDown: { duration: () => ({}) },
+    SlideOutDown: { duration: () => ({}) },
   };
 });
 
 jest.mock('react-native-gesture-handler', () => {
-  const {View} = require('react-native');
+  const { View } = require('react-native');
   const gesture = () => ({
     minDistance: () => gesture(),
     runOnJS: () => gesture(),
@@ -50,7 +50,7 @@ jest.mock('react-native-gesture-handler', () => {
   return {
     GestureHandlerRootView: View,
     GestureDetector: View,
-    Gesture: {Pan: gesture},
+    Gesture: { Pan: gesture },
     Swipeable: View,
     DrawerLayout: View,
     State: {},
@@ -79,12 +79,12 @@ jest.mock('react-native-gesture-handler', () => {
 jest.mock('lottie-react-native', () => 'LottieView');
 
 jest.mock('@shopify/flash-list', () => {
-  const {FlatList} = require('react-native');
-  return {FlashList: FlatList};
+  const { FlatList } = require('react-native');
+  return { FlashList: FlatList };
 });
 
 jest.mock('react-native-maps', () => {
-  const {View} = require('react-native');
+  const { View } = require('react-native');
   return {
     __esModule: true,
     default: View,
@@ -103,8 +103,8 @@ jest.mock('react-native-background-geolocation', () => {
     WhenInUse: 4,
   };
 
-  const DesiredAccuracy = {High: -1};
-  const LogLevel = {Verbose: 5, Off: 0};
+  const DesiredAccuracy = { High: -1 };
+  const LogLevel = { Verbose: 5, Off: 0 };
 
   class BackgroundGeolocation {
     static AuthorizationStatus = AuthorizationStatus;
@@ -115,17 +115,17 @@ jest.mock('react-native-background-geolocation', () => {
     static AUTHORIZATION_STATUS_DENIED = AuthorizationStatus.Denied;
     static AUTHORIZATION_STATUS_RESTRICTED = AuthorizationStatus.Restricted;
 
-    static onLocation = jest.fn(() => ({remove: jest.fn()}));
-    static onMotionChange = jest.fn(() => ({remove: jest.fn()}));
-    static onHeartbeat = jest.fn(() => ({remove: jest.fn()}));
-    static onProviderChange = jest.fn(() => ({remove: jest.fn()}));
-    static onAuthorization = jest.fn(() => ({remove: jest.fn()}));
+    static onLocation = jest.fn(() => ({ remove: jest.fn() }));
+    static onMotionChange = jest.fn(() => ({ remove: jest.fn() }));
+    static onHeartbeat = jest.fn(() => ({ remove: jest.fn() }));
+    static onProviderChange = jest.fn(() => ({ remove: jest.fn() }));
+    static onAuthorization = jest.fn(() => ({ remove: jest.fn() }));
     static Event = {
       Location: 'location',
       Heartbeat: 'heartbeat',
       MotionChange: 'motionchange',
     };
-    static LocationRequest = {Always: 'Always'};
+    static LocationRequest = { Always: 'Always' };
     static getLocations = jest.fn().mockResolvedValue([]);
     static destroyLocations = jest.fn().mockResolvedValue(true);
     static getCurrentPosition = jest.fn().mockResolvedValue({
@@ -138,11 +138,15 @@ jest.mock('react-native-background-geolocation', () => {
         speed: 0,
       },
     });
-    static changePace = jest.fn().mockResolvedValue({enabled: true});
-    static ready = jest.fn().mockResolvedValue({enabled: false});
-    static requestPermission = jest.fn().mockResolvedValue(AuthorizationStatus.Always);
-    static getState = jest.fn().mockResolvedValue({enabled: false});
-    static getProviderState = jest.fn().mockResolvedValue({status: AuthorizationStatus.Always});
+    static changePace = jest.fn().mockResolvedValue({ enabled: true });
+    static ready = jest.fn().mockResolvedValue({ enabled: false });
+    static requestPermission = jest
+      .fn()
+      .mockResolvedValue(AuthorizationStatus.Always);
+    static getState = jest.fn().mockResolvedValue({ enabled: false });
+    static getProviderState = jest
+      .fn()
+      .mockResolvedValue({ status: AuthorizationStatus.Always });
     static start = jest.fn().mockResolvedValue(undefined);
     static stop = jest.fn().mockResolvedValue(undefined);
     static setConfig = jest.fn().mockResolvedValue(undefined);
@@ -155,7 +159,7 @@ jest.mock('react-native-background-geolocation', () => {
 });
 
 jest.mock('react-native-svg', () => {
-  const {View} = require('react-native');
+  const { View } = require('react-native');
   return {
     __esModule: true,
     default: View,
@@ -174,10 +178,14 @@ jest.mock('react-native-image-picker', () => ({
 
 jest.mock('react-native-vision-camera', () => {
   const React = require('react');
-  const {View} = require('react-native');
-  const Camera = React.forwardRef((props, ref) => <View ref={ref} {...props} />);
+  const { View } = require('react-native');
+  const Camera = React.forwardRef((props, ref) => (
+    <View ref={ref} {...props} />
+  ));
   const photoOutput = {
-    capturePhotoToFile: jest.fn().mockResolvedValue({filePath: '/tmp/photo.jpg'}),
+    capturePhotoToFile: jest
+      .fn()
+      .mockResolvedValue({ filePath: '/tmp/photo.jpg' }),
     capturePhoto: jest.fn(),
     prepareSettings: jest.fn(),
   };
@@ -190,7 +198,7 @@ jest.mock('react-native-vision-camera', () => {
   };
   return {
     Camera,
-    useCameraDevice: jest.fn(() => ({id: 'back', hasFlash: true})),
+    useCameraDevice: jest.fn(() => ({ id: 'back', hasFlash: true })),
     useCameraPermission: jest.fn(() => ({
       hasPermission: true,
       requestPermission: jest.fn().mockResolvedValue(true),
@@ -206,7 +214,7 @@ jest.mock('react-native-vision-camera', () => {
 
 jest.mock('react-native-video', () => {
   const React = require('react');
-  const {View} = require('react-native');
+  const { View } = require('react-native');
   return {
     __esModule: true,
     default: React.forwardRef((props, ref) => <View ref={ref} {...props} />),
@@ -216,8 +224,9 @@ jest.mock('react-native-video', () => {
 jest.mock('react-native-color-matrix-image-filters', () => {
   const matrix = () => Array(20).fill(0);
   return {
-    ColorMatrix: ({children}) => children,
-    concatColorMatrices: (...matrices) => matrices[matrices.length - 1] ?? matrix(),
+    ColorMatrix: ({ children }) => children,
+    concatColorMatrices: (...matrices) =>
+      matrices[matrices.length - 1] ?? matrix(),
     brightness: matrix,
     contrast: matrix,
     cool: matrix,
@@ -230,7 +239,7 @@ jest.mock('react-native-color-matrix-image-filters', () => {
 
 jest.mock('react-native-view-shot', () => {
   const React = require('react');
-  const {View} = require('react-native');
+  const { View } = require('react-native');
   return {
     __esModule: true,
     default: React.forwardRef((props, ref) => <View ref={ref} {...props} />),
@@ -266,11 +275,11 @@ jest.mock('react-native-blob-util', () => ({
   __esModule: true,
   default: {
     fs: {
-      dirs: {DocumentDir: '/documents'},
+      dirs: { DocumentDir: '/documents' },
       exists: jest.fn().mockResolvedValue(true),
       mkdir: jest.fn().mockResolvedValue(undefined),
       cp: jest.fn().mockResolvedValue(undefined),
-      stat: jest.fn().mockResolvedValue({size: 128}),
+      stat: jest.fn().mockResolvedValue({ size: 128 }),
       unlink: jest.fn().mockResolvedValue(undefined),
     },
   },
@@ -300,6 +309,6 @@ jest.mock('react-native-nitro-sound', () => {
     __esModule: true,
     default: sound,
     createSound: jest.fn(() => sound),
-    AVEncoderAudioQualityIOSType: {medium: 64},
+    AVEncoderAudioQualityIOSType: { medium: 64 },
   };
 });

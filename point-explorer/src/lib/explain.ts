@@ -1,12 +1,12 @@
-import {APP_COPY} from '@lifemap/copy';
-import {formatTimestamp} from './export';
+import { APP_COPY } from '@lifemap/copy';
+import { formatTimestamp } from './export';
 import {
   DEFAULT_STOP_CONFIG,
   formatDuration,
   isMovingPoint,
   type StopDetectionConfig,
 } from '@lifemap/segmentation';
-import {matchSavedPlaceForPoint} from '@lifemap/segmentation';
+import { matchSavedPlaceForPoint } from '@lifemap/segmentation';
 import {
   formatDistance,
   MERGE_STAY_MAX_DISTANCE_M,
@@ -16,7 +16,7 @@ import {
   SAVED_PLACE_MIN_DWELL_MS,
   type TripSegment,
 } from '@lifemap/segmentation';
-import type {ParsedPoint, SavedPlaceRow} from '../types';
+import type { ParsedPoint, SavedPlaceRow } from '../types';
 
 export type SegmentExplanation = {
   kind: 'stay' | 'drive' | 'missing';
@@ -36,8 +36,8 @@ export type PointExplanation = {
 const EARTH_RADIUS_M = 6_371_000;
 
 function haversineM(
-  a: {lat: number; lng: number},
-  b: {lat: number; lng: number},
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
 ): number {
   const toRad = (x: number) => (x * Math.PI) / 180;
   const dLat = toRad(b.lat - a.lat);
@@ -82,9 +82,15 @@ export function explainSegment(
       kind: 'missing',
       title: 'Missing GPS gap',
       reasons: [
-        `No GPS fixes recorded between ${formatTimestamp(segment.startAt.toISOString())} and ${formatTimestamp(segment.endAt.toISOString())}.`,
-        `Straight-line gap is ${formatDistance(segment.distanceM)} over ${formatDuration(segment.durationMs)}.`,
-        `Inserted because distance ≥ ${MISSING_MIN_DISTANCE_M} m and time ≥ ${Math.round(MISSING_MIN_GAP_MS / 60000)} min.`,
+        `No GPS fixes recorded between ${formatTimestamp(
+          segment.startAt.toISOString(),
+        )} and ${formatTimestamp(segment.endAt.toISOString())}.`,
+        `Straight-line gap is ${formatDistance(
+          segment.distanceM,
+        )} over ${formatDuration(segment.durationMs)}.`,
+        `Inserted because distance ≥ ${MISSING_MIN_DISTANCE_M} m and time ≥ ${Math.round(
+          MISSING_MIN_GAP_MS / 60000,
+        )} min.`,
       ],
       notes: [
         `Connects a ${segment.fromKind} segment to a ${segment.toKind} segment with no track in between.`,
@@ -105,7 +111,9 @@ export function explainSegment(
         'Inferred stay from sparse GPS: long time gap with small displacement between fixes.',
       );
       reasons.push(
-        `Gap ≥ ${Math.round(config.minDwellMs / 60000)} min and end displacement ≤ ${config.radiusM} m.`,
+        `Gap ≥ ${Math.round(
+          config.minDwellMs / 60000,
+        )} min and end displacement ≤ ${config.radiusM} m.`,
       );
     } else if (
       segment.placeKind === 'saved' &&
@@ -114,11 +122,15 @@ export function explainSegment(
       segment.durationMs < config.minDwellMs
     ) {
       reasons.push(
-        `Saved place rule: inside “${segment.placeLabel}” for at least ${Math.round(SAVED_PLACE_MIN_DWELL_MS / 60000)} min.`,
+        `Saved place rule: inside “${
+          segment.placeLabel
+        }” for at least ${Math.round(SAVED_PLACE_MIN_DWELL_MS / 60000)} min.`,
       );
     } else {
       reasons.push(
-        `Stationary cluster within ${config.radiusM} m for at least ${Math.round(config.minDwellMs / 60000)} min.`,
+        `Stationary cluster within ${
+          config.radiusM
+        } m for at least ${Math.round(config.minDwellMs / 60000)} min.`,
       );
       reasons.push(
         `Spread of member points is ${spreadM} m (limit ${config.radiusM} m).`,
@@ -130,7 +142,9 @@ export function explainSegment(
     }
 
     reasons.push(
-      `${segment.points.length} GPS points, ${formatDuration(segment.durationMs)} dwell.`,
+      `${segment.points.length} GPS points, ${formatDuration(
+        segment.durationMs,
+      )} dwell.`,
     );
 
     if (movingCount > 0) {
@@ -171,12 +185,20 @@ export function explainSegment(
     .join(' → ');
 
   const reasons = [
-    `Points between two stays (or trip start/end) from ${formatTimestamp(segment.startAt.toISOString())} to ${formatTimestamp(segment.endAt.toISOString())}.`,
-    `Start→end displacement ${formatDistance(displacementM)} (needs ≥ ${config.radiusM} m).`,
+    `Points between two stays (or trip start/end) from ${formatTimestamp(
+      segment.startAt.toISOString(),
+    )} to ${formatTimestamp(segment.endAt.toISOString())}.`,
+    `Start→end displacement ${formatDistance(displacementM)} (needs ≥ ${
+      config.radiusM
+    } m).`,
     movingCount > 0
       ? `${movingCount} moving point(s) at ≥ ${config.movingSpeedMps} m/s.`
-      : `Path length ${formatDistance(segment.distanceM)} (needs ≥ ${MIN_DRIVE_DISTANCE_M} m without moving points).`,
-    `${segment.points.length} points · ${formatDistance(segment.distanceM)} path · ${formatDuration(segment.durationMs)}.`,
+      : `Path length ${formatDistance(
+          segment.distanceM,
+        )} (needs ≥ ${MIN_DRIVE_DISTANCE_M} m without moving points).`,
+    `${segment.points.length} points · ${formatDistance(
+      segment.distanceM,
+    )} path · ${formatDuration(segment.durationMs)}.`,
   ];
 
   const notes: string[] = [];
@@ -216,7 +238,9 @@ export function explainPoint(
       segmentOrder: null,
       segmentLabel: null,
       reasons: [
-        `Point accuracy ${point.accuracy.toFixed(0)} m exceeds limit of ${config.maxAccuracyM} m.`,
+        `Point accuracy ${point.accuracy.toFixed(0)} m exceeds limit of ${
+          config.maxAccuracyM
+        } m.`,
         'Dropped before trip detection runs.',
       ],
       hints: ['This point never enters the merged trip track.'],
@@ -229,7 +253,9 @@ export function explainPoint(
     ];
     if (moving) {
       reasons.push(
-        `Speed ${speedMph(point.speed)} (≥ ${config.movingSpeedMps} m/s) — treated as driving, so it cannot belong to a stay cluster.`,
+        `Speed ${speedMph(point.speed)} (≥ ${
+          config.movingSpeedMps
+        } m/s) — treated as driving, so it cannot belong to a stay cluster.`,
       );
       hints.push(
         'May fall in a gap between detected stops, or in a slice that failed the drive displacement gate.',
@@ -239,12 +265,18 @@ export function explainPoint(
         `Inside saved place “${savedPlace.label}” but not in a qualifying stay run.`,
       );
       hints.push(
-        `Needs ≥ ${Math.round(config.minDwellMs / 60000)} min stationary cluster, or ≥ ${Math.round(SAVED_PLACE_MIN_DWELL_MS / 60000)} min saved-place dwell.`,
+        `Needs ≥ ${Math.round(
+          config.minDwellMs / 60000,
+        )} min stationary cluster, or ≥ ${Math.round(
+          SAVED_PLACE_MIN_DWELL_MS / 60000,
+        )} min saved-place dwell.`,
       );
     } else {
       reasons.push('May be a short dwell absorbed into a surrounding drive.');
       hints.push(
-        `Stays need ≥ ${Math.round(config.minDwellMs / 60000)} min within ${config.radiusM} m without moving points.`,
+        `Stays need ≥ ${Math.round(config.minDwellMs / 60000)} min within ${
+          config.radiusM
+        } m without moving points.`,
       );
     }
     return {
@@ -261,12 +293,20 @@ export function explainPoint(
     const reasons = [
       `Member of stay segment #${segment.order}.`,
       moving
-        ? `Speed ${speedMph(point.speed)} — marked moving, but kept in this stay slice.`
-        : `Speed ${speedMph(point.speed)} — stationary (≤ ${config.movingSpeedMps} m/s), counts toward stay.`,
-      `${Math.round(dist)} m from stay centre (spread limit ${config.radiusM} m).`,
+        ? `Speed ${speedMph(
+            point.speed,
+          )} — marked moving, but kept in this stay slice.`
+        : `Speed ${speedMph(point.speed)} — stationary (≤ ${
+            config.movingSpeedMps
+          } m/s), counts toward stay.`,
+      `${Math.round(dist)} m from stay centre (spread limit ${
+        config.radiusM
+      } m).`,
     ];
     if (segment.stop.inferred) {
-      reasons.push('Stay was inferred from a sparse GPS gap, not continuous fixes.');
+      reasons.push(
+        'Stay was inferred from a sparse GPS gap, not continuous fixes.',
+      );
     }
     if (segment.placeKind === 'saved' && segment.placeLabel) {
       reasons.push(`Stay matched saved place: ${segment.placeLabel}.`);
@@ -288,9 +328,15 @@ export function explainPoint(
     const reasons = [
       `Member of drive segment #${segment.order}.`,
       moving
-        ? `Speed ${speedMph(point.speed)} — moving (≥ ${config.movingSpeedMps} m/s), supports drive classification.`
-        : `Speed ${speedMph(point.speed)} — stationary fix on the drive path (common at lights or GPS lag).`,
-      `Drive connects ${segment.fromPlaceLabel ?? 'unknown'} → ${segment.toPlaceLabel ?? 'unknown'}.`,
+        ? `Speed ${speedMph(point.speed)} — moving (≥ ${
+            config.movingSpeedMps
+          } m/s), supports drive classification.`
+        : `Speed ${speedMph(
+            point.speed,
+          )} — stationary fix on the drive path (common at lights or GPS lag).`,
+      `Drive connects ${segment.fromPlaceLabel ?? 'unknown'} → ${
+        segment.toPlaceLabel ?? 'unknown'
+      }.`,
     ];
 
     if (savedPlace) {
@@ -302,9 +348,10 @@ export function explainPoint(
     return {
       assignment: 'drive',
       segmentOrder: segment.order,
-      segmentLabel: [segment.fromPlaceLabel, segment.toPlaceLabel]
-        .filter(Boolean)
-        .join(' → ') || APP_COPY.explorer.segmentDrive,
+      segmentLabel:
+        [segment.fromPlaceLabel, segment.toPlaceLabel]
+          .filter(Boolean)
+          .join(' → ') || APP_COPY.explorer.segmentDrive,
       reasons,
       hints,
     };

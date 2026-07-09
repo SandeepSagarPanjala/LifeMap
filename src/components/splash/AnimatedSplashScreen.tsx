@@ -1,20 +1,26 @@
-import {useEffect, useRef} from 'react';
-import {Animated, Easing, useColorScheme, useWindowDimensions, View} from 'react-native';
+import { useEffect, useRef } from 'react';
+import {
+  Animated,
+  Easing,
+  useColorScheme,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
-import {SplashBrandTitle} from '@/components/splash/SplashBrandTitle';
-import {SplashBackground} from '@/components/splash/SplashBackground';
-import {splashAnimationDurationMs} from '@/components/splash/splash-timing';
-import {Text} from '@/components/ui/text';
-import {ensureDatabaseReady} from '@/location/bootstrap';
+import { SplashBrandTitle } from '@/components/splash/SplashBrandTitle';
+import { SplashBackground } from '@/components/splash/SplashBackground';
+import { splashAnimationDurationMs } from '@/components/splash/splash-timing';
+import { Text } from '@/components/ui/text';
+import { ensureDatabaseReady } from '@/location/bootstrap';
 
 type AnimatedSplashScreenProps = {
   onFinish: () => void;
 };
 
-export function AnimatedSplashScreen({onFinish}: AnimatedSplashScreenProps) {
+export function AnimatedSplashScreen({ onFinish }: AnimatedSplashScreenProps) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
-  const {width, height} = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const underlineScale = useRef(new Animated.Value(0)).current;
   const subtitleOpacity = useRef(new Animated.Value(0)).current;
 
@@ -46,7 +52,7 @@ export function AnimatedSplashScreen({onFinish}: AnimatedSplashScreenProps) {
           duration,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
-        }).start(({finished}) => {
+        }).start(({ finished }) => {
           if (finished) {
             resolve();
           }
@@ -77,14 +83,15 @@ export function AnimatedSplashScreen({onFinish}: AnimatedSplashScreenProps) {
             className="bg-primary mt-1 h-1 rounded-full"
             style={{
               width: 148,
-              transform: [{scaleX: underlineScale}],
+              transform: [{ scaleX: underlineScale }],
             }}
           />
 
-          <Animated.View style={{opacity: subtitleOpacity}}>
+          <Animated.View style={{ opacity: subtitleOpacity }}>
             <Text
               variant="muted"
-              className="text-muted-foreground mt-4 text-center text-xl leading-8">
+              className="text-muted-foreground mt-4 text-center text-xl leading-8"
+            >
               Time moves. Memories stay.
             </Text>
           </Animated.View>

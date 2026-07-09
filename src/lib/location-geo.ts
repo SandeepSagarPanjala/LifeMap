@@ -1,5 +1,5 @@
-import type {Region} from 'react-native-maps';
-import {MAX_MAP_POLYLINE_POINTS} from '@/lib/app-constants';
+import type { Region } from 'react-native-maps';
+import { MAX_MAP_POLYLINE_POINTS } from '@/lib/app-constants';
 
 export type MapCoordinate = {
   latitude: number;
@@ -121,7 +121,7 @@ export function regionForCoordinates(
   const latitudeDelta = Math.max((maxLat - minLat) * paddingFactor, 0.01);
   const longitudeDelta = Math.max((maxLng - minLng) * paddingFactor, 0.01);
 
-  return {latitude, longitude, latitudeDelta, longitudeDelta};
+  return { latitude, longitude, latitudeDelta, longitudeDelta };
 }
 
 /** Map region that frames a circular venue around an anchor. */
@@ -144,7 +144,10 @@ export function regionForVenueRadius(
 }
 
 /** Bearing from a → b in degrees (0 = north, clockwise). */
-export function bearingDegrees(a: LocationPointLike, b: LocationPointLike): number {
+export function bearingDegrees(
+  a: LocationPointLike,
+  b: LocationPointLike,
+): number {
   const lat1 = toRad(a.lat);
   const lat2 = toRad(b.lat);
   const dLng = toRad(b.lng - a.lng);

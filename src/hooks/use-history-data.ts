@@ -1,31 +1,31 @@
-import {useCallback, useEffect, useRef, useState} from 'react';
-import {HISTORY_DAY_LOAD_DEBOUNCE_MS} from '@/lib/app-constants';
-import {APP_COPY} from '@/lib/app-copy';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { HISTORY_DAY_LOAD_DEBOUNCE_MS } from '@/lib/app-constants';
+import { APP_COPY } from '@/lib/app-copy';
 
-import type {HistoryData} from '@/lib/history-data-types';
+import type { HistoryData } from '@/lib/history-data-types';
 import {
   clearHistoryDataCache,
   historyCacheKey,
   historyDataCache,
   TODAY_LIVE_FINGERPRINT,
 } from '@/lib/history-data-cache';
-import {getDayHistoryFingerprint} from '@/lib/history-fingerprint';
+import { getDayHistoryFingerprint } from '@/lib/history-fingerprint';
 import {
   beginHistoryDayLoad,
   type CoalescedLoadOptions,
   isCurrentHistoryDayLoad,
 } from '@/lib/history-day-load';
-import {useTripDetectionConfig} from '@/hooks/use-trip-detection-config';
-import type {TripDetectionConfig} from '@/lib/trip-settings';
-import {getDayRange, getTodayDateKey} from '@/lib/day-utils';
-import {subscribeSavedPlaces} from '@/lib/saved-places-events';
-import {getCurrentOpenActivity} from '@/lib/today-history';
+import { useTripDetectionConfig } from '@/hooks/use-trip-detection-config';
+import type { TripDetectionConfig } from '@/lib/trip-settings';
+import { getDayRange, getTodayDateKey } from '@/lib/day-utils';
+import { subscribeSavedPlaces } from '@/lib/saved-places-events';
+import { getCurrentOpenActivity } from '@/lib/today-history';
 import {
   subscribeTodayHistoryRefresh,
   updateTodayRefreshAfterSync,
 } from '@/lib/today-refresh-scheduler';
 
-export type {HistoryData} from '@/lib/history-data-types';
+export type { HistoryData } from '@/lib/history-data-types';
 
 /** Wait for rapid calendar day taps to settle before hitting the database. */
 
@@ -37,12 +37,12 @@ export type UseHistoryForDayOptions = {
 };
 
 function emptyForDateKey(dateKey: string): HistoryData {
-  const {start: dayStart} = getDayRange(dateKey);
+  const { start: dayStart } = getDayRange(dateKey);
   return {
     dateKey,
     points: [],
     entries: [],
-    range: {startAt: dayStart, endAt: dayStart},
+    range: { startAt: dayStart, endAt: dayStart },
   };
 }
 
@@ -86,7 +86,7 @@ function syncTodayRefreshMode(
     return;
   }
   updateTodayRefreshAfterSync(
-    getCurrentOpenActivity(entries, {config: detectionConfig}),
+    getCurrentOpenActivity(entries, { config: detectionConfig }),
   );
 }
 
@@ -95,14 +95,14 @@ async function loadHistoryForDay(
   detectionConfig: TripDetectionConfig,
   options?: CoalescedLoadOptions,
 ): Promise<HistoryData> {
-  const {loadHistoryForDayCoalesced} = await import('@/lib/history-day-load');
+  const { loadHistoryForDayCoalesced } = await import('@/lib/history-day-load');
   return loadHistoryForDayCoalesced(dateKey, detectionConfig, options);
 }
 
 async function syncHistoryForDay(
   dateKey: string,
   detectionConfig: TripDetectionConfig,
-  options?: CoalescedLoadOptions & {loadGeneration?: number},
+  options?: CoalescedLoadOptions & { loadGeneration?: number },
 ): Promise<HistoryData> {
   const cacheKey = historyCacheKey(dateKey, detectionConfig);
   const isToday = dateKey === getTodayDateKey();
@@ -178,7 +178,7 @@ export function useHistoryForDay(
   error: string | null;
   refresh: () => void;
 } {
-  const {active = true, preferStored = false} = options;
+  const { active = true, preferStored = false } = options;
   const detectionConfig = useTripDetectionConfig();
   const initialCacheKey = historyCacheKey(dateKey, detectionConfig);
   const initialCached = historyDataCache.peek(initialCacheKey);
@@ -281,7 +281,9 @@ export function useHistoryForDay(
   );
 
   const refresh = useCallback(() => {
-    void runSync(dateKey, {force: true, showLoading: true}).catch(() => undefined);
+    void runSync(dateKey, { force: true, showLoading: true }).catch(
+      () => undefined,
+    );
   }, [dateKey, runSync]);
 
   const viewingToday = dateKey === getTodayDateKey();
@@ -343,16 +345,9 @@ export function useHistoryForDay(
     }, debounceMs);
 
     return () => clearTimeout(timer);
-  }, [
-    active,
-    dateKey,
-    detectionConfig,
-    preferStored,
-    runSync,
-    viewingToday,
-  ]);
+  }, [active, dateKey, detectionConfig, preferStored, runSync, viewingToday]);
 
-  return {data, loading, error, refresh};
+  return { data, loading, error, refresh };
 }
 
 /** @deprecated Use useHistoryForDay */

@@ -1,7 +1,7 @@
-import {useCallback, useEffect, useMemo, useState} from 'react';
-import {timezoneFieldLabel} from '@lifemap/copy';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { timezoneFieldLabel } from '@lifemap/copy';
 
-import {PointsMap} from './components/PointsMap';
+import { PointsMap } from './components/PointsMap';
 import {
   DEFAULT_EXPORT_NAME,
   DEFAULT_EXPORT_PATH,
@@ -53,7 +53,12 @@ import {
   downloadTripExportJson,
   type TripExportGeometry,
 } from './lib/trip-export';
-import {describeTripSegment, drivePointCountLabel, formatMomentCountChips, stayPointCountLabel} from './lib/segment-display';
+import {
+  describeTripSegment,
+  drivePointCountLabel,
+  formatMomentCountChips,
+  stayPointCountLabel,
+} from './lib/segment-display';
 import {
   explainPoint,
   explainSegment,
@@ -64,8 +69,14 @@ import {
   indexOfPointId,
   sortPointsByTime,
 } from './lib/point-nav';
-import type {MomentRow, ParsedPoint, PlaceLookupRow, SavedPlaceRow, UploadMode} from './types';
-import {MobileScreen} from './components/mobile/MobileScreen';
+import type {
+  MomentRow,
+  ParsedPoint,
+  PlaceLookupRow,
+  SavedPlaceRow,
+  UploadMode,
+} from './types';
+import { MobileScreen } from './components/mobile/MobileScreen';
 
 import './App.css';
 
@@ -106,19 +117,20 @@ function TripDayExportActions({
         <button
           type="button"
           className="secondary-btn"
-          onClick={onDownloadCanonical}>
+          onClick={onDownloadCanonical}
+        >
           Canonical JSON
         </button>
       </div>
       {showGeometryHint ? (
         <p className="source-filter-hint">
-          Raw keeps every GPS fix per segment. Canonical uses the geometry toggles
-          above.
+          Raw keeps every GPS fix per segment. Canonical uses the geometry
+          toggles above.
         </p>
       ) : (
         <p className="source-filter-hint">
-          Raw keeps every GPS fix per segment. Canonical simplifies stay and drive
-          paths for plotting.
+          Raw keeps every GPS fix per segment. Canonical simplifies stay and
+          drive paths for plotting.
         </p>
       )}
     </div>
@@ -162,7 +174,8 @@ function TripSegmentList({
           <button
             type="button"
             className="link-btn"
-            onClick={onDownloadCanonical}>
+            onClick={onDownloadCanonical}
+          >
             Export canonical
           </button>
         </div>
@@ -185,12 +198,12 @@ function TripSegmentList({
                     ),
                   ]
                 : segment.kind === 'drive'
-                  ? [
-                      formatDuration(segment.durationMs),
-                      display.stats[1] ?? '',
-                      drivePointCountLabel(segment, canonicalizeDriveGeometry),
-                    ]
-                  : display.stats;
+                ? [
+                    formatDuration(segment.durationMs),
+                    display.stats[1] ?? '',
+                    drivePointCountLabel(segment, canonicalizeDriveGeometry),
+                  ]
+                : display.stats;
             const momentChips =
               display.momentCounts != null
                 ? formatMomentCountChips(display.momentCounts)
@@ -202,17 +215,22 @@ function TripSegmentList({
                   className={
                     isActive ? 'segment-card is-active' : 'segment-card'
                   }
-                  onClick={() => onSelectSegment(segment)}>
+                  onClick={() => onSelectSegment(segment)}
+                >
                   <div className="segment-card-top">
                     <span className="segment-index">{index + 1}</span>
                     <span
-                      className={`segment-kind segment-kind-${display.variant}`}>
+                      className={`segment-kind segment-kind-${display.variant}`}
+                    >
                       {display.kind}
                     </span>
                     {display.subtitle ? (
-                      <span className="segment-subtitle">{display.subtitle}</span>
+                      <span className="segment-subtitle">
+                        {display.subtitle}
+                      </span>
                     ) : null}
-                    {display.placeKind === 'cache' && display.placeId != null ? (
+                    {display.placeKind === 'cache' &&
+                    display.placeId != null ? (
                       <span className="segment-meta">
                         cache #{display.placeId}
                       </span>
@@ -251,9 +269,8 @@ export function App() {
   const [placeLookupCache, setPlaceLookupCache] = useState<PlaceLookupRow[]>(
     [],
   );
-  const [storedTripExport, setStoredTripExport] = useState<StoredTripExport | null>(
-    null,
-  );
+  const [storedTripExport, setStoredTripExport] =
+    useState<StoredTripExport | null>(null);
   const [uploadMode, setUploadMode] = useState<UploadMode>('detect');
   const [fileName, setFileName] = useState<string | null>(null);
   const [dateKey, setDateKey] = useState<string>('all');
@@ -261,12 +278,18 @@ export function App() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [pointNavMode, setPointNavMode] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedSources, setSelectedSources] = useState<Set<string>>(new Set());
-  const [plottedPoints, setPlottedPoints] = useState<ParsedPoint[] | null>(null);
+  const [selectedSources, setSelectedSources] = useState<Set<string>>(
+    new Set(),
+  );
+  const [plottedPoints, setPlottedPoints] = useState<ParsedPoint[] | null>(
+    null,
+  );
   const [stops, setStops] = useState<Stop[] | null>(null);
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
   const [segments, setSegments] = useState<TripSegment[] | null>(null);
-  const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
+  const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(
+    null,
+  );
   const [tripPoints, setTripPoints] = useState<ParsedPoint[] | null>(null);
   const [tripStops, setTripStops] = useState<Stop[] | null>(null);
   const [powerResult, setPowerResult] = useState<PowerRunResult | null>(null);
@@ -475,7 +498,7 @@ export function App() {
   const applyTripResult = useCallback(
     (
       result: ReturnType<typeof detectTripsForDay>,
-      options?: {keepSelectedId?: boolean},
+      options?: { keepSelectedId?: boolean },
     ) => {
       setTripPoints(result.points);
       setTripStops(result.stops);
@@ -517,7 +540,9 @@ export function App() {
         if (effectiveMode === 'detect') {
           if (kind !== 'location_points') {
             throw new Error(
-              `Detect mode needs location_points inside tables (or rows). Found: ${describeExportPayload(raw)}.`,
+              `Detect mode needs location_points inside tables (or rows). Found: ${describeExportPayload(
+                raw,
+              )}.`,
             );
           }
           setUploadMode('detect');
@@ -545,7 +570,9 @@ export function App() {
 
         if (kind !== 'stored_trips') {
           throw new Error(
-            `Plot mode needs trips + trip_points inside tables. Found: ${describeExportPayload(raw)}.`,
+            `Plot mode needs trips + trip_points inside tables. Found: ${describeExportPayload(
+              raw,
+            )}.`,
           );
         }
         setUploadMode('plot');
@@ -712,7 +739,7 @@ export function App() {
     setTripsCutoffAt(selectedPoint.at);
     setTripsCutoffPointId(selectedPoint.id);
     setMode('trips');
-    applyTripResult(result, {keepSelectedId: true});
+    applyTripResult(result, { keepSelectedId: true });
   }, [
     allPoints,
     applyTripResult,
@@ -803,7 +830,14 @@ export function App() {
     setSelectedStopId(null);
     setSelectedId(null);
     setPointNavMode(false);
-  }, [canonicalizeDriveGeometry, canonicalizeStayGeometry, moments, segments, tripPoints, tripStops]);
+  }, [
+    canonicalizeDriveGeometry,
+    canonicalizeStayGeometry,
+    moments,
+    segments,
+    tripPoints,
+    tripStops,
+  ]);
 
   const onSelectSegment = useCallback(
     (segment: TripSegment) => {
@@ -855,7 +889,15 @@ export function App() {
         setSelectedStopId(null);
       }
     },
-    [canonicalizeDriveGeometry, canonicalizeStayGeometry, moments, segments, selectedSegmentId, tripPoints, tripStops],
+    [
+      canonicalizeDriveGeometry,
+      canonicalizeStayGeometry,
+      moments,
+      segments,
+      selectedSegmentId,
+      tripPoints,
+      tripStops,
+    ],
   );
 
   const handleSelectPoint = useCallback(
@@ -888,7 +930,13 @@ export function App() {
         setSelectedStopId(null);
       }
     },
-    [canonicalizeDriveGeometry, canonicalizeStayGeometry, mode, moments, segments],
+    [
+      canonicalizeDriveGeometry,
+      canonicalizeStayGeometry,
+      mode,
+      moments,
+      segments,
+    ],
   );
 
   useEffect(() => {
@@ -1032,10 +1080,7 @@ export function App() {
           <p className="subtitle">Internal tool — not part of LifeMap app</p>
         </header>
 
-        <div
-          className="upload-mode"
-          role="radiogroup"
-          aria-label="Upload mode">
+        <div className="upload-mode" role="radiogroup" aria-label="Upload mode">
           <label className="upload-mode-option">
             <input
               type="radio"
@@ -1046,7 +1091,9 @@ export function App() {
             />
             <span className="upload-mode-text">
               <strong>Detect</strong>
-              <span className="upload-mode-hint">location_points → run algorithm</span>
+              <span className="upload-mode-hint">
+                location_points → run algorithm
+              </span>
             </span>
           </label>
           <label className="upload-mode-option">
@@ -1059,7 +1106,9 @@ export function App() {
             />
             <span className="upload-mode-text">
               <strong>Plot</strong>
-              <span className="upload-mode-hint">trips + trip_points from mobile</span>
+              <span className="upload-mode-hint">
+                trips + trip_points from mobile
+              </span>
             </span>
           </label>
         </div>
@@ -1135,15 +1184,20 @@ export function App() {
                 {mode === 'trips'
                   ? timezoneFieldLabel('Trip date')
                   : mode === 'explain'
-                    ? timezoneFieldLabel('Explain date')
+                  ? timezoneFieldLabel('Explain date')
                   : mode === 'power'
-                    ? timezoneFieldLabel('Power test range')
-                    : mode === 'mobile'
-                      ? timezoneFieldLabel('Day')
-                      : timezoneFieldLabel('Date')}
+                  ? timezoneFieldLabel('Power test range')
+                  : mode === 'mobile'
+                  ? timezoneFieldLabel('Day')
+                  : timezoneFieldLabel('Date')}
               </span>
               <select
-                value={dateKey === 'all' && (mode === 'trips' || mode === 'explain' || mode === 'mobile') ? '' : dateKey}
+                value={
+                  dateKey === 'all' &&
+                  (mode === 'trips' || mode === 'explain' || mode === 'mobile')
+                    ? ''
+                    : dateKey
+                }
                 onChange={event => {
                   const nextDate = event.target.value;
                   setDateKey(nextDate);
@@ -1162,7 +1216,8 @@ export function App() {
                   setSelectedSegmentId(null);
                   setTripPoints(null);
                   setTripStops(null);
-                }}>
+                }}
+              >
                 {mode !== 'trips' && mode !== 'explain' && mode !== 'mobile' ? (
                   <option value="all">All dates ({dateKeys.length})</option>
                 ) : null}
@@ -1187,13 +1242,18 @@ export function App() {
               ) : null}
             </label>
 
-            <div className="mode-tabs" role="tablist" aria-label="Explorer mode">
+            <div
+              className="mode-tabs"
+              role="tablist"
+              aria-label="Explorer mode"
+            >
               <button
                 type="button"
                 role="tab"
                 aria-selected={mode === 'plot'}
                 className={mode === 'plot' ? 'mode-tab is-active' : 'mode-tab'}
-                onClick={() => changeMode('plot')}>
+                onClick={() => changeMode('plot')}
+              >
                 Plot
               </button>
               <button
@@ -1201,7 +1261,8 @@ export function App() {
                 role="tab"
                 aria-selected={mode === 'stops'}
                 className={mode === 'stops' ? 'mode-tab is-active' : 'mode-tab'}
-                onClick={() => changeMode('stops')}>
+                onClick={() => changeMode('stops')}
+              >
                 Stops
               </button>
               <button
@@ -1209,15 +1270,19 @@ export function App() {
                 role="tab"
                 aria-selected={mode === 'trips'}
                 className={mode === 'trips' ? 'mode-tab is-active' : 'mode-tab'}
-                onClick={() => changeMode('trips')}>
+                onClick={() => changeMode('trips')}
+              >
                 Trips
               </button>
               <button
                 type="button"
                 role="tab"
                 aria-selected={mode === 'explain'}
-                className={mode === 'explain' ? 'mode-tab is-active' : 'mode-tab'}
-                onClick={() => changeMode('explain')}>
+                className={
+                  mode === 'explain' ? 'mode-tab is-active' : 'mode-tab'
+                }
+                onClick={() => changeMode('explain')}
+              >
                 Explain
               </button>
               <button
@@ -1225,28 +1290,43 @@ export function App() {
                 role="tab"
                 aria-selected={mode === 'power'}
                 className={mode === 'power' ? 'mode-tab is-active' : 'mode-tab'}
-                onClick={() => changeMode('power')}>
+                onClick={() => changeMode('power')}
+              >
                 Power
               </button>
               <button
                 type="button"
                 role="tab"
                 aria-selected={mode === 'mobile'}
-                className={mode === 'mobile' ? 'mode-tab is-active' : 'mode-tab'}
-                onClick={() => changeMode('mobile')}>
+                className={
+                  mode === 'mobile' ? 'mode-tab is-active' : 'mode-tab'
+                }
+                onClick={() => changeMode('mobile')}
+              >
                 Mobile
               </button>
             </div>
 
             {mode === 'plot' ? (
-              <section className="source-filter" aria-label="Source types to plot">
+              <section
+                className="source-filter"
+                aria-label="Source types to plot"
+              >
                 <div className="source-filter-header">
                   <span className="field-label">Source types</span>
                   <div className="source-filter-actions">
-                    <button type="button" className="link-btn" onClick={selectAllSources}>
+                    <button
+                      type="button"
+                      className="link-btn"
+                      onClick={selectAllSources}
+                    >
                       All
                     </button>
-                    <button type="button" className="link-btn" onClick={clearAllSources}>
+                    <button
+                      type="button"
+                      className="link-btn"
+                      onClick={clearAllSources}
+                    >
                       None
                     </button>
                   </div>
@@ -1278,18 +1358,22 @@ export function App() {
                   type="button"
                   className="plot-btn"
                   disabled={selectedSources.size === 0 || plotCount === 0}
-                  onClick={handlePlot}>
-                  Plot {plotCount.toLocaleString()} point{plotCount === 1 ? '' : 's'}
+                  onClick={handlePlot}
+                >
+                  Plot {plotCount.toLocaleString()} point
+                  {plotCount === 1 ? '' : 's'}
                 </button>
                 <button
                   type="button"
                   className="trip-btn"
-                  onClick={handlePlotTrip}>
+                  onClick={handlePlotTrip}
+                >
                   Plot trip points (merged track)
                 </button>
                 <p className="source-filter-hint">
-                  Choose one or more sources, then click Plot. Merged track = gps
-                  + native_queue + motion_departure + native_queue:motionchange.
+                  Choose one or more sources, then click Plot. Merged track =
+                  gps + native_queue + motion_departure +
+                  native_queue:motionchange.
                 </p>
               </section>
             ) : mode === 'stops' ? (
@@ -1297,23 +1381,27 @@ export function App() {
                 <button
                   type="button"
                   className="stops-btn"
-                  onClick={handleDetectStops}>
+                  onClick={handleDetectStops}
+                >
                   Identify stops (circle them)
                 </button>
                 <p className="source-filter-hint">
-                  Uses the merged trip track. A stop = stayed ≥ 5 min within 75 m
-                  (driving points excluded by speed).
+                  Uses the merged trip track. A stop = stayed ≥ 5 min within 75
+                  m (driving points excluded by speed).
                 </p>
 
                 {stops != null ? (
                   <section className="stops-panel" aria-label="Detected stops">
                     <div className="stops-panel-header">
-                      <span className="field-label">Stops ({stops.length})</span>
+                      <span className="field-label">
+                        Stops ({stops.length})
+                      </span>
                       {selectedStopId != null ? (
                         <button
                           type="button"
                           className="link-btn"
-                          onClick={() => setSelectedStopId(null)}>
+                          onClick={() => setSelectedStopId(null)}
+                        >
                           Show all
                         </button>
                       ) : null}
@@ -1335,14 +1423,16 @@ export function App() {
                                     ? 'stops-list-item is-active'
                                     : 'stops-list-item'
                                 }
-                                onClick={() => toggleStop(stop.id)}>
+                                onClick={() => toggleStop(stop.id)}
+                              >
                                 <span className="stops-list-index">
                                   {index + 1}
                                 </span>
                                 <span className="stops-list-text">
                                   <span className="stops-list-time">
-                                    {formatTimestamp(stop.arrivedAt.toISOString())
-                                      .replace(/, \d{4}/, '')}
+                                    {formatTimestamp(
+                                      stop.arrivedAt.toISOString(),
+                                    ).replace(/, \d{4}/, '')}
                                   </span>
                                   <span className="stops-list-meta">
                                     {formatDuration(stop.durationMs)} ·{' '}
@@ -1366,23 +1456,36 @@ export function App() {
                     type="button"
                     className="stops-btn"
                     disabled={dateKey === 'all'}
-                    onClick={handleDetectTrips}>
+                    onClick={handleDetectTrips}
+                  >
                     Identify trips (stays + drives)
                   </button>
                 ) : (
                   <p className="source-filter-hint">
-                    Plotted from mobile trips export. Change date to view another
-                    day.
+                    Plotted from mobile trips export. Change date to view
+                    another day.
                   </p>
                 )}
                 <p className="source-filter-hint">
                   {dateKey === 'all'
                     ? 'Pick a date above, then identify trips.'
                     : isPlotUpload
-                      ? `${segments?.length ?? 0} segments · ${formatDateLabel(dateKey)}`
-                      : tripsCutoffAt != null
-                        ? `${segments?.length ?? 0} segments · GPS through ${formatTimestamp(tripsCutoffAt.toISOString()).replace(/, \d{4}/, '')}${tripsCutoffPointId != null ? ` · point #${tripsCutoffPointId}` : ''}`
-                        : `${filteredPoints.length.toLocaleString()} points · ${formatDateLabel(dateKey)}`}
+                    ? `${segments?.length ?? 0} segments · ${formatDateLabel(
+                        dateKey,
+                      )}`
+                    : tripsCutoffAt != null
+                    ? `${
+                        segments?.length ?? 0
+                      } segments · GPS through ${formatTimestamp(
+                        tripsCutoffAt.toISOString(),
+                      ).replace(/, \d{4}/, '')}${
+                        tripsCutoffPointId != null
+                          ? ` · point #${tripsCutoffPointId}`
+                          : ''
+                      }`
+                    : `${filteredPoints.length.toLocaleString()} points · ${formatDateLabel(
+                        dateKey,
+                      )}`}
                 </p>
                 {!isPlotUpload ? (
                   <div className="canonicalize-toggles">
@@ -1432,18 +1535,25 @@ export function App() {
                 <details className="meta-details">
                   <summary className="meta-summary">
                     <span>Trips algorithm info</span>
-                    <span className="meta-summary-value">Visit + drive rules</span>
+                    <span className="meta-summary-value">
+                      Visit + drive rules
+                    </span>
                   </summary>
                   <section className="meta">
                     <div>
                       <span className="label">Visit (stay) rule</span>
                       <span className="meta-value">
                         Stationary within {DEFAULT_STOP_CONFIG.radiusM} m for at
-                        least {Math.round(DEFAULT_STOP_CONFIG.minDwellMs / 60000)} min.
-                        Sparse gaps up to{' '}
-                        {Math.round(DEFAULT_STOP_CONFIG.sparseBridgeMaxDistanceM)} m
-                        can bridge when fixes are ≥{' '}
-                        {Math.round(DEFAULT_STOP_CONFIG.sparseBridgeMinGapMs / 60000)}{' '}
+                        least{' '}
+                        {Math.round(DEFAULT_STOP_CONFIG.minDwellMs / 60000)}{' '}
+                        min. Sparse gaps up to{' '}
+                        {Math.round(
+                          DEFAULT_STOP_CONFIG.sparseBridgeMaxDistanceM,
+                        )}{' '}
+                        m can bridge when fixes are ≥{' '}
+                        {Math.round(
+                          DEFAULT_STOP_CONFIG.sparseBridgeMinGapMs / 60000,
+                        )}{' '}
                         min apart.
                       </span>
                     </div>
@@ -1458,25 +1568,25 @@ export function App() {
                       <span className="label">Sparse GPS inferred visit</span>
                       <span className="meta-value">
                         High time gap + low distance: gap ≥{' '}
-                        {Math.round(DEFAULT_STOP_CONFIG.minDwellMs / 60000)} min and
-                        displacement ≤ {DEFAULT_STOP_CONFIG.radiusM} m.
+                        {Math.round(DEFAULT_STOP_CONFIG.minDwellMs / 60000)} min
+                        and displacement ≤ {DEFAULT_STOP_CONFIG.radiusM} m.
                       </span>
                     </div>
                     <div>
                       <span className="label">Saved place special visit</span>
                       <span className="meta-value">
                         Inside the same saved place for at least{' '}
-                        {Math.round(SAVED_PLACE_MIN_DWELL_MS / 60000)} min counts as
-                        a stay.
+                        {Math.round(SAVED_PLACE_MIN_DWELL_MS / 60000)} min
+                        counts as a stay.
                       </span>
                     </div>
                     <div>
                       <span className="label">Real drive rule</span>
                       <span className="meta-value">
-                        Moving points with path ≥ {MIN_DRIVE_DISTANCE_M} m always
-                        count (loop-back drives). Otherwise displacement must be ≥
-                        {DEFAULT_STOP_CONFIG.radiusM} m, then either moving points
-                        exist or path ≥ {MIN_DRIVE_DISTANCE_M} m.
+                        Moving points with path ≥ {MIN_DRIVE_DISTANCE_M} m
+                        always count (loop-back drives). Otherwise displacement
+                        must be ≥{DEFAULT_STOP_CONFIG.radiusM} m, then either
+                        moving points exist or path ≥ {MIN_DRIVE_DISTANCE_M} m.
                       </span>
                     </div>
                     <div>
@@ -1489,8 +1599,9 @@ export function App() {
                     <div>
                       <span className="label">Missing segment rule</span>
                       <span className="meta-value">
-                        Inserted only when gap distance ≥ {MISSING_MIN_DISTANCE_M} m
-                        and gap time ≥ {Math.round(MISSING_MIN_GAP_MS / 60000)} min.
+                        Inserted only when gap distance ≥{' '}
+                        {MISSING_MIN_DISTANCE_M} m and gap time ≥{' '}
+                        {Math.round(MISSING_MIN_GAP_MS / 60000)} min.
                       </span>
                     </div>
                     <div>
@@ -1531,7 +1642,8 @@ export function App() {
                   type="button"
                   className="stops-btn"
                   disabled={dateKey === 'all'}
-                  onClick={handleDetectTrips}>
+                  onClick={handleDetectTrips}
+                >
                   Build trips &amp; explanations
                 </button>
                 <p className="source-filter-hint">
@@ -1582,17 +1694,26 @@ export function App() {
                       onSelectSegment={onSelectSegment}
                       onShowFullTrip={showFullTrip}
                       onDownload={() => handleDownloadTrips('raw')}
-                    onDownloadCanonical={() => handleDownloadTrips('canonical')}
+                      onDownloadCanonical={() =>
+                        handleDownloadTrips('canonical')
+                      }
                       canonicalizeStayGeometry={canonicalizeStayGeometry}
                       canonicalizeDriveGeometry={canonicalizeDriveGeometry}
                       moments={moments}
                     />
                     {segmentExplanation != null ? (
-                      <section className="explain-panel" aria-label="Segment explanation">
-                        <h3 className="explain-title">{segmentExplanation.title}</h3>
+                      <section
+                        className="explain-panel"
+                        aria-label="Segment explanation"
+                      >
+                        <h3 className="explain-title">
+                          {segmentExplanation.title}
+                        </h3>
                         <p className="explain-kind">
                           Classified as{' '}
-                          <strong>{segmentExplanation.kind.toUpperCase()}</strong>
+                          <strong>
+                            {segmentExplanation.kind.toUpperCase()}
+                          </strong>
                         </p>
                         <ul className="explain-list">
                           {segmentExplanation.reasons.map(reason => (
@@ -1625,7 +1746,9 @@ export function App() {
                 <p className="source-filter-hint">
                   {mobileDateKey === 'all'
                     ? 'Pick a day above to build the timeline.'
-                    : `${formatDateLabel(mobileDateKey)} · timeline builds automatically from imported GPS.`}
+                    : `${formatDateLabel(
+                        mobileDateKey,
+                      )} · timeline builds automatically from imported GPS.`}
                 </p>
               </section>
             ) : (
@@ -1633,7 +1756,8 @@ export function App() {
                 <button
                   type="button"
                   className="stops-btn"
-                  onClick={handlePowerTest}>
+                  onClick={handlePowerTest}
+                >
                   Run trip detection benchmark
                 </button>
                 <p className="source-filter-hint">
@@ -1641,7 +1765,10 @@ export function App() {
                   sources.
                 </p>
                 {powerResult ? (
-                  <section className="power-panel" aria-label="Benchmark result">
+                  <section
+                    className="power-panel"
+                    aria-label="Benchmark result"
+                  >
                     <div>
                       <span className="label">Run start</span>
                       <span className="meta-value">
@@ -1670,7 +1797,11 @@ export function App() {
                       <span className="label">Input range</span>
                       <span className="meta-value">
                         {powerResult.inputStartAt && powerResult.inputEndAt
-                          ? `${formatTimestamp(powerResult.inputStartAt.toISOString())} → ${formatTimestamp(powerResult.inputEndAt.toISOString())}`
+                          ? `${formatTimestamp(
+                              powerResult.inputStartAt.toISOString(),
+                            )} → ${formatTimestamp(
+                              powerResult.inputEndAt.toISOString(),
+                            )}`
                           : 'No input points'}
                       </span>
                     </div>
@@ -1686,13 +1817,17 @@ export function App() {
             )}
 
             {pointNavMode ? (
-              <section className="point-nav" aria-label="Point-to-point navigation">
+              <section
+                className="point-nav"
+                aria-label="Point-to-point navigation"
+              >
                 <div className="point-nav-header">
                   <span className="point-nav-badge">Point-to-point</span>
                   <button
                     type="button"
                     className="point-nav-exit"
-                    onClick={exitPointNav}>
+                    onClick={exitPointNav}
+                  >
                     Exit
                   </button>
                 </div>
@@ -1706,7 +1841,8 @@ export function App() {
                         : 'Previous point'
                     }
                     disabled={!canGoPrev}
-                    onClick={goPrevPoint}>
+                    onClick={goPrevPoint}
+                  >
                     ←
                   </button>
                   <span className="point-nav-position">
@@ -1721,13 +1857,15 @@ export function App() {
                         : 'Next point'
                     }
                     disabled={!canGoNext}
-                    onClick={goNextPoint}>
+                    onClick={goNextPoint}
+                  >
                     →
                   </button>
                 </div>
                 {selectedIdIndex >= 0 ? (
                   <p className="point-nav-sub">
-                    {selectedIdIndex + 1} of {pointsById.length.toLocaleString()}{' '}
+                    {selectedIdIndex + 1} of{' '}
+                    {pointsById.length.toLocaleString()}{' '}
                     {selectedStopId != null ? 'in this stop' : 'on this date'} ·
                     by time
                   </p>
@@ -1739,15 +1877,14 @@ export function App() {
                     {nextPointId != null ? `→ #${nextPointId}` : ''}
                   </p>
                 ) : null}
-                <p className="point-nav-hint">
-                  ← → arrow keys · Esc to exit
-                </p>
+                <p className="point-nav-hint">← → arrow keys · Esc to exit</p>
               </section>
             ) : plottedPoints != null && plottedPoints.length > 0 ? (
               <button
                 type="button"
                 className="secondary-btn"
-                onClick={enterPointNav}>
+                onClick={enterPointNav}
+              >
                 Point-to-point navigation
               </button>
             ) : null}
@@ -1756,14 +1893,21 @@ export function App() {
               <section
                 className={
                   mode === 'explain' ? 'detail explain-detail' : 'detail'
-                }>
+                }
+              >
                 <h2>Point #{selectedPoint.id}</h2>
                 {mode === 'explain' && pointExplanation != null ? (
                   <>
                     <p className="explain-kind">
                       {pointExplanation.assignment === 'unassigned'
                         ? 'Not in any segment'
-                        : `${pointExplanation.assignment.toUpperCase()} · segment #${pointExplanation.segmentOrder}${pointExplanation.segmentLabel ? ` · ${pointExplanation.segmentLabel}` : ''}`}
+                        : `${pointExplanation.assignment.toUpperCase()} · segment #${
+                            pointExplanation.segmentOrder
+                          }${
+                            pointExplanation.segmentLabel
+                              ? ` · ${pointExplanation.segmentLabel}`
+                              : ''
+                          }`}
                     </p>
                     <ul className="explain-list">
                       {pointExplanation.reasons.map(reason => (
@@ -1784,7 +1928,8 @@ export function App() {
                   <dd>{formatTimestamp(selectedPoint.timestamp)}</dd>
                   <dt>Coordinates</dt>
                   <dd>
-                    {selectedPoint.lat.toFixed(6)}, {selectedPoint.lng.toFixed(6)}
+                    {selectedPoint.lat.toFixed(6)},{' '}
+                    {selectedPoint.lng.toFixed(6)}
                   </dd>
                   <dt>Accuracy</dt>
                   <dd>
@@ -1799,7 +1944,8 @@ export function App() {
                   <button
                     type="button"
                     className="stops-btn detail-trips-btn"
-                    onClick={handleDetectTripsUpToPoint}>
+                    onClick={handleDetectTripsUpToPoint}
+                  >
                     Trips up to this point
                   </button>
                 ) : null}
@@ -1809,10 +1955,10 @@ export function App() {
                 {mode === 'mobile'
                   ? 'Map and history panel are in the main area →'
                   : pointNavMode
-                    ? 'Select a point on the map or use the arrows.'
-                    : mode === 'explain'
-                      ? 'Click a map point to see why it belongs to a stay or drive.'
-                      : 'Click a point on the map for details.'}
+                  ? 'Select a point on the map or use the arrows.'
+                  : mode === 'explain'
+                  ? 'Click a map point to see why it belongs to a stay or drive.'
+                  : 'Click a point on the map for details.'}
               </p>
             )}
           </>
@@ -1826,7 +1972,8 @@ export function App() {
       <main
         className="map-panel"
         onDragOver={event => event.preventDefault()}
-        onDrop={onDrop}>
+        onDrop={onDrop}
+      >
         {allPoints.length > 0 ? (
           mode === 'mobile' ? (
             mobileDateKey !== 'all' ? (
@@ -1842,7 +1989,9 @@ export function App() {
             ) : (
               <div className="map-placeholder">
                 <p>Mobile preview</p>
-                <p className="muted">Pick a day in the sidebar date dropdown.</p>
+                <p className="muted">
+                  Pick a day in the sidebar date dropdown.
+                </p>
               </div>
             )
           ) : plottedPoints != null ? (
@@ -1852,7 +2001,8 @@ export function App() {
                   <button
                     type="button"
                     className="map-nav-exit"
-                    onClick={exitPointNav}>
+                    onClick={exitPointNav}
+                  >
                     Exit point-to-point
                   </button>
                 </div>
@@ -1864,7 +2014,9 @@ export function App() {
                 onSelectStop={toggleStop}
                 highlightedPointIds={highlightedPointIds}
                 selectedId={selectedId}
-                onSelectId={mode === 'explain' ? handleSelectPoint : setSelectedId}
+                onSelectId={
+                  mode === 'explain' ? handleSelectPoint : setSelectedId
+                }
                 focusSelected={pointNavMode}
               />
             </>
@@ -1889,14 +2041,14 @@ export function App() {
                 <>
                   <p>Ready to build trips</p>
                   <p className="muted">
-                    {dateKey === 'all'
-                      ? 'Select a date in the sidebar, then click Identify trips'
-                      : (
-                          <>
-                            Click <strong>Identify trips</strong> for{' '}
-                            {formatDateLabel(dateKey)}
-                          </>
-                        )}
+                    {dateKey === 'all' ? (
+                      'Select a date in the sidebar, then click Identify trips'
+                    ) : (
+                      <>
+                        Click <strong>Identify trips</strong> for{' '}
+                        {formatDateLabel(dateKey)}
+                      </>
+                    )}
                   </p>
                 </>
               ) : mode === 'explain' ? (
@@ -1921,7 +2073,9 @@ export function App() {
         ) : (
           <div className="map-placeholder">
             <p>Map preview</p>
-            <p className="muted">Load a JSON export using Detect or Plot mode</p>
+            <p className="muted">
+              Load a JSON export using Detect or Plot mode
+            </p>
           </div>
         )}
       </main>

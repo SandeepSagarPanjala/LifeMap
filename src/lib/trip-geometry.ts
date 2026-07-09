@@ -1,11 +1,11 @@
-import type {LocationPointRow} from '@/db/repositories/location-days';
-import type {TripPointRow} from '@/db/repositories/trip-points';
-import type {TripRow} from '@/db/repositories/trips';
+import type { LocationPointRow } from '@/db/repositories/location-days';
+import type { TripPointRow } from '@/db/repositories/trip-points';
+import type { TripRow } from '@/db/repositories/trips';
 import {
   routeMomentAnchorsFromTripPoints,
   type TripMomentRef,
 } from '@/lib/moment-refs';
-import {resolvedPlaceFromTripRow} from '@/lib/resolved-place';
+import { resolvedPlaceFromTripRow } from '@/lib/resolved-place';
 import {
   isPlayableTimelineEntry,
   type DayTimelineEntry,
@@ -53,9 +53,7 @@ export function storedTripPointsToLocationRows(
   const spanMs = Math.max(1, endMs - startMs);
 
   return route.map((point, index) => ({
-    id:
-      point.locationPointId ??
-      -(trip.id * 10_000 + point.seq),
+    id: point.locationPointId ?? -(trip.id * 10_000 + point.seq),
     timestamp:
       point.recordedAt ??
       new Date(startMs + (spanMs * index) / Math.max(1, route.length - 1)),
@@ -90,16 +88,14 @@ export function flattenTimelinePoints(
       points.push(...entry.points);
     }
   }
-  return points.sort(
-    (a, b) => a.timestamp.getTime() - b.timestamp.getTime(),
-  );
+  return points.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
 }
 
 export function travelCentroidFromRoute(
-  route: readonly {lat: number; lng: number}[],
-): {lat: number; lng: number} {
+  route: readonly { lat: number; lng: number }[],
+): { lat: number; lng: number } {
   if (route.length === 0) {
-    return {lat: 0, lng: 0};
+    return { lat: 0, lng: 0 };
   }
   const first = route[0]!;
   const last = route[route.length - 1]!;

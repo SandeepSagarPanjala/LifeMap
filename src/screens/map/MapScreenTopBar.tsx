@@ -1,21 +1,22 @@
-import {useNavigation} from '@react-navigation/native';
-import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {Settings} from 'lucide-react-native';
-import {Pressable, StyleSheet, View} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Settings } from 'lucide-react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
-import {MapDateLabel} from '@/components/map/MapDateLabel';
-import {useThemeColors} from '@/hooks/use-theme-colors';
-import type {RootStackParamList} from '@/navigation/types';
+import { MapDateLabel } from '@/components/map/MapDateLabel';
+import { useThemeColors } from '@/hooks/use-theme-colors';
+import type { RootStackParamList } from '@/navigation/types';
 
-import {MAP_SETTINGS_SIZE, MAP_SETTINGS_TOP_GAP} from '@/lib/app-constants';
-import type {MapScreenController} from './use-map-screen-controller';
+import { MAP_SETTINGS_SIZE, MAP_SETTINGS_TOP_GAP } from '@/lib/app-constants';
+import type { MapScreenController } from './use-map-screen-controller';
 
 type MapScreenTopBarProps = {
   controller: MapScreenController;
 };
 
-export function MapScreenTopBar({controller}: MapScreenTopBarProps) {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+export function MapScreenTopBar({ controller }: MapScreenTopBarProps) {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const colors = useThemeColors();
   const {
     insets,
@@ -54,7 +55,8 @@ export function MapScreenTopBar({controller}: MapScreenTopBarProps) {
         accessibilityRole="button"
         accessibilityLabel="Settings"
         onPress={() => navigation.navigate('Settings')}
-        style={[styles.settingsButton, {top: settingsTop}]}>
+        style={[styles.settingsButton, { top: settingsTop }]}
+      >
         <Settings size={22} color={colors.primary} strokeWidth={2.25} />
       </Pressable>
     </View>
@@ -81,7 +83,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.12,
     shadowRadius: 6,
     elevation: 4,

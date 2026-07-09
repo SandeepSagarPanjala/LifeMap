@@ -1,15 +1,15 @@
-import {useCallback, useRef, useState} from 'react';
-import {APP_COPY, errorMessageOr} from '@/lib/app-copy';
-import {Alert, StyleSheet, View} from 'react-native';
-import {useNavigation} from '@react-navigation/native';
-import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import { useCallback, useRef, useState } from 'react';
+import { APP_COPY, errorMessageOr } from '@/lib/app-copy';
+import { Alert, StyleSheet, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import {SavedPlacesEditSheet} from '@/components/map/SavedPlacesEditSheet';
-import {AddSavedPlaceByAddressSheet} from '@/components/map/AddSavedPlaceByAddressSheet';
-import type {AddSavedPlaceByAddressRequest} from '@/components/map/AddSavedPlaceByAddressSheet';
-import {SavedPlacesSheet} from '@/components/map/SavedPlacesSheet';
-import {NativeHalfSheetShell} from '@/components/ui/NativeHalfSheetShell';
-import {useNativeHalfSheetClose} from '@/components/ui/native-half-sheet-context';
+import { SavedPlacesEditSheet } from '@/components/map/SavedPlacesEditSheet';
+import { AddSavedPlaceByAddressSheet } from '@/components/map/AddSavedPlaceByAddressSheet';
+import type { AddSavedPlaceByAddressRequest } from '@/components/map/AddSavedPlaceByAddressSheet';
+import { SavedPlacesSheet } from '@/components/map/SavedPlacesSheet';
+import { NativeHalfSheetShell } from '@/components/ui/NativeHalfSheetShell';
+import { useNativeHalfSheetClose } from '@/components/ui/native-half-sheet-context';
 import {
   addFavoritePlace,
   deleteSavedPlace,
@@ -18,15 +18,15 @@ import {
   upsertHomePlace,
   upsertWorkPlace,
 } from '@/db/repositories/saved-places';
-import {useSavedPlaces} from '@/hooks/use-saved-places';
-import {MAX_SAVED_PLACES} from '@/lib/app-constants';
+import { useSavedPlaces } from '@/hooks/use-saved-places';
+import { MAX_SAVED_PLACES } from '@/lib/app-constants';
 import {
   SavedPlaceLimitError,
   savedPlaceAddByAddressOptions,
 } from '@/lib/saved-places';
-import type {RootStackParamList} from '@/navigation/types';
-import {NATIVE_HALF_SHEET_HEIGHT_RATIO} from '@/lib/app-constants';
-import {useSheetCaptureClose} from '@/screens/sheets/use-sheet-capture-close';
+import type { RootStackParamList } from '@/navigation/types';
+import { NATIVE_HALF_SHEET_HEIGHT_RATIO } from '@/lib/app-constants';
+import { useSheetCaptureClose } from '@/screens/sheets/use-sheet-capture-close';
 
 function SavedPlacesPanel({
   onSelectPlace,
@@ -38,7 +38,7 @@ function SavedPlacesPanel({
   onAddByAddress: () => void;
 }) {
   const closeSheet = useNativeHalfSheetClose();
-  const {places, refresh: refreshSavedPlaces} = useSavedPlaces();
+  const { places, refresh: refreshSavedPlaces } = useSavedPlaces();
   const addOptions = savedPlaceAddByAddressOptions(places);
 
   const handleDelete = async (place: SavedPlaceRow) => {
@@ -77,7 +77,7 @@ export function SavedPlacesScreen() {
   const [editingPlace, setEditingPlace] = useState<SavedPlaceRow | null>(null);
   const [editSheetOpen, setEditSheetOpen] = useState(false);
   const [addressSheetOpen, setAddressSheetOpen] = useState(false);
-  const {places, refresh: refreshSavedPlaces} = useSavedPlaces();
+  const { places, refresh: refreshSavedPlaces } = useSavedPlaces();
   const addByAddressOptions = savedPlaceAddByAddressOptions(places);
 
   const openEdit = useCallback((place: SavedPlaceRow) => {
@@ -100,7 +100,7 @@ export function SavedPlacesScreen() {
     if (focusPlaceId != null) {
       navigation.navigate({
         name: 'Map',
-        params: {focusPlaceId},
+        params: { focusPlaceId },
         merge: true,
       });
     }
@@ -182,11 +182,13 @@ export function SavedPlacesScreen() {
     <View style={styles.root}>
       <View
         pointerEvents={overlayOpen ? 'none' : 'auto'}
-        style={styles.shellHost}>
+        style={styles.shellHost}
+      >
         <NativeHalfSheetShell
           onClose={finishClose}
           backdropDismissEnabled={!overlayOpen}
-          heightRatio={NATIVE_HALF_SHEET_HEIGHT_RATIO}>
+          heightRatio={NATIVE_HALF_SHEET_HEIGHT_RATIO}
+        >
           <SavedPlacesPanel
             onSelectPlace={handleSelectPlace}
             onBeginEdit={openEdit}

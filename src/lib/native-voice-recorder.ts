@@ -1,12 +1,14 @@
-import {NativeEventEmitter, NativeModules, Platform} from 'react-native';
+import { NativeEventEmitter, NativeModules, Platform } from 'react-native';
 
 type NativeVoiceRecorderModule = {
   requestPermission: () => Promise<boolean>;
   startRecording: (filePath: string) => Promise<string>;
-  stopRecording: () => Promise<{filePath: string; durationMs: number}>;
+  stopRecording: () => Promise<{ filePath: string; durationMs: number }>;
   cancelRecording: () => Promise<boolean>;
   releaseSession: () => Promise<boolean>;
-  getRecordingProgress?: () => Promise<NativeVoiceRecorderProgress & {isRecording: boolean}>;
+  getRecordingProgress?: () => Promise<
+    NativeVoiceRecorderProgress & { isRecording: boolean }
+  >;
 };
 
 export type NativeVoiceRecorderProgress = {
@@ -47,7 +49,9 @@ export async function requestNativeVoiceRecorderPermission(): Promise<boolean> {
   return nativeModule!.requestPermission();
 }
 
-export async function startNativeVoiceRecording(filePath: string): Promise<void> {
+export async function startNativeVoiceRecording(
+  filePath: string,
+): Promise<void> {
   if (!isNativeMethodAvailable('startRecording')) {
     throw new Error('Native voice recorder is not available.');
   }
@@ -79,10 +83,10 @@ export async function releaseNativeVoiceRecordingSession(): Promise<void> {
 }
 
 export async function getNativeVoiceRecordingProgress(): Promise<
-  NativeVoiceRecorderProgress & {isRecording: boolean}
+  NativeVoiceRecorderProgress & { isRecording: boolean }
 > {
   if (!canPollNativeVoiceProgress()) {
-    return {currentPosition: 0, currentMetering: -160, isRecording: false};
+    return { currentPosition: 0, currentMetering: -160, isRecording: false };
   }
   return nativeModule!.getRecordingProgress!();
 }

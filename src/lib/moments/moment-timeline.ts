@@ -1,7 +1,7 @@
-import type {LocationPointRow} from '@/db/repositories/location-days';
-import type {DayTimelineEntry, DetectedTrip} from '@/lib/trip-detection';
-import {resolveStayAnchor} from '@/lib/trip-detection';
-import {isMaterializedEntry} from '@/lib/moment-refs';
+import type { LocationPointRow } from '@/db/repositories/location-days';
+import type { DayTimelineEntry, DetectedTrip } from '@/lib/trip-detection';
+import { resolveStayAnchor } from '@/lib/trip-detection';
+import { isMaterializedEntry } from '@/lib/moment-refs';
 
 export type MomentTimelineMoment = {
   id: number;
@@ -89,14 +89,14 @@ export function attachMomentsToTimeline(
 export function nearestPointCoordinateAtTime(
   points: readonly LocationPointRow[],
   momentTimestamp: Date,
-): {lat: number; lng: number} | null {
+): { lat: number; lng: number } | null {
   const sorted = getSortedLocationPointsByTime(points);
   if (sorted.length === 0) {
     return null;
   }
   if (sorted.length === 1) {
     const only = sorted[0]!;
-    return {lat: only.lat, lng: only.lng};
+    return { lat: only.lat, lng: only.lng };
   }
 
   const timestampMs = momentTimestamp.getTime();
@@ -110,13 +110,13 @@ export function nearestPointCoordinateAtTime(
       bestDelta = delta;
     }
   }
-  return {lat: best.lat, lng: best.lng};
+  return { lat: best.lat, lng: best.lng };
 }
 
 function resolveStayMomentCoordinate(
   stay: DetectedTrip,
   momentTimestamp: Date,
-): {lat: number; lng: number} {
+): { lat: number; lng: number } {
   const fromStayPoints = nearestPointCoordinateAtTime(
     stay.points,
     momentTimestamp,
@@ -125,7 +125,7 @@ function resolveStayMomentCoordinate(
     return fromStayPoints;
   }
   const anchor = resolveStayAnchor(stay);
-  return {lat: anchor.lat, lng: anchor.lng};
+  return { lat: anchor.lat, lng: anchor.lng };
 }
 
 function findSegmentStartIndex(
@@ -160,16 +160,16 @@ function resolveFromSortedPoints(
   momentTimestamp: Date,
   sorted: ReadonlyArray<LocationPointRow>,
   containingEntry: DayTimelineEntry | null,
-): {lat: number; lng: number} | null {
+): { lat: number; lng: number } | null {
   const timestampMs = momentTimestamp.getTime();
   const first = sorted[0]!;
   const last = sorted[sorted.length - 1]!;
 
   if (timestampMs <= first.timestamp.getTime()) {
-    return {lat: first.lat, lng: first.lng};
+    return { lat: first.lat, lng: first.lng };
   }
   if (timestampMs >= last.timestamp.getTime()) {
-    return {lat: last.lat, lng: last.lng};
+    return { lat: last.lat, lng: last.lng };
   }
 
   const index = findSegmentStartIndex(sorted, timestampMs);
@@ -186,7 +186,7 @@ function resolveFromSortedPoints(
   }
 
   if (endMs === startMs) {
-    return {lat: start.lat, lng: start.lng};
+    return { lat: start.lat, lng: start.lng };
   }
 
   const progress = (timestampMs - startMs) / (endMs - startMs);
@@ -200,7 +200,7 @@ export function resolveMomentCoordinate(
   momentTimestamp: Date,
   points: LocationPointRow[],
   containingEntry: DayTimelineEntry | null,
-): {lat: number; lng: number} | null {
+): { lat: number; lng: number } | null {
   if (points.length === 0) {
     if (containingEntry?.kind === 'stay') {
       return resolveStayMomentCoordinate(containingEntry, momentTimestamp);
@@ -214,10 +214,10 @@ export function resolveMomentCoordinate(
 
 /** Prefer materialized trip_points anchors; fall back to GPS interpolation. */
 export function resolveMomentPinCoordinate(
-  moment: {id: number; timestamp: Date},
+  moment: { id: number; timestamp: Date },
   points: LocationPointRow[],
   containingEntry: DayTimelineEntry | null,
-): {lat: number; lng: number} | null {
+): { lat: number; lng: number } | null {
   if (
     containingEntry != null &&
     containingEntry.kind !== 'gap' &&
@@ -227,7 +227,7 @@ export function resolveMomentPinCoordinate(
       row => row.momentId === moment.id,
     );
     if (anchor != null) {
-      return {lat: anchor.lat, lng: anchor.lng};
+      return { lat: anchor.lat, lng: anchor.lng };
     }
   }
   return resolveMomentCoordinate(moment.timestamp, points, containingEntry);

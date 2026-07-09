@@ -1,14 +1,16 @@
-import {and, asc, gt, gte, lte, sql} from 'drizzle-orm';
+import { and, asc, gt, gte, lte, sql } from 'drizzle-orm';
 
-import {getDayRange, shiftDateKey, toDateKey} from '@/lib/day-utils';
+import { getDayRange, shiftDateKey, toDateKey } from '@/lib/day-utils';
 
-import {getDatabase} from '../client';
-import {locationPoints} from '../schema';
+import { getDatabase } from '../client';
+import { locationPoints } from '../schema';
 
 export type LocationPointRow = typeof locationPoints.$inferSelect;
 
-export async function getLocationPointsForDay(dateKey: string): Promise<LocationPointRow[]> {
-  const {start, end} = getDayRange(dateKey);
+export async function getLocationPointsForDay(
+  dateKey: string,
+): Promise<LocationPointRow[]> {
+  const { start, end } = getDayRange(dateKey);
   return getLocationPointsInRange(start, end);
 }
 
@@ -35,7 +37,7 @@ export async function getLocationPointsAfterInDay(
   dateKey: string,
   after: Date,
 ): Promise<LocationPointRow[]> {
-  const {start, end} = getDayRange(dateKey);
+  const { start, end } = getDayRange(dateKey);
   const db = await getDatabase();
 
   return db
@@ -63,7 +65,7 @@ export async function listDateKeysWithLocationDataBefore(
   const keys: string[] = [];
   let cursor = earliest;
   while (cursor < beforeDateKey) {
-    const {start, end} = getDayRange(cursor);
+    const { start, end } = getDayRange(cursor);
     const fingerprint = await getLocationPointsFingerprintInRange(start, end);
     const pointCount = Number(fingerprint.split(':')[0] ?? 0);
     if (pointCount > 0) {
@@ -77,7 +79,7 @@ export async function listDateKeysWithLocationDataBefore(
 export async function getEarliestLocationDateKey(): Promise<string | null> {
   const db = await getDatabase();
   const [row] = await db
-    .select({timestamp: sql<Date>`min(${locationPoints.timestamp})`})
+    .select({ timestamp: sql<Date>`min(${locationPoints.timestamp})` })
     .from(locationPoints);
   if (row?.timestamp == null) {
     return null;
@@ -88,7 +90,7 @@ export async function getEarliestLocationDateKey(): Promise<string | null> {
 export async function getLocationDayFingerprint(
   dateKey: string,
 ): Promise<string> {
-  const {start, end} = getDayRange(dateKey);
+  const { start, end } = getDayRange(dateKey);
   return getLocationPointsFingerprintInRange(start, end);
 }
 

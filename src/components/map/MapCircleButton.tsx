@@ -1,4 +1,4 @@
-import type {ReactNode} from 'react';
+import type { ReactNode } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -7,8 +7,8 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import {MAP_STACK_BUTTON_SIZE} from '@/lib/app-constants';
-import {CAPTURE_BUTTON_THEMES} from '@/components/map/map-capture-button-theme';
+import { MAP_STACK_BUTTON_SIZE } from '@/lib/app-constants';
+import { CAPTURE_BUTTON_THEMES } from '@/components/map/map-capture-button-theme';
 
 const MAP_SOFT_RED_CLOSE_BG = '#FFE8E6';
 const MAP_SOFT_RED_CLOSE_PRESSED = '#FFD4CF';
@@ -43,8 +43,9 @@ export function MapCircleButton({
       accessibilityLabel={accessibilityLabel}
       disabled={disabled}
       onPress={onPress}
-      hitSlop={6}>
-      {({pressed}) => (
+      hitSlop={6}
+    >
+      {({ pressed }) => (
         <View
           style={[
             styles.circle,
@@ -58,21 +59,22 @@ export function MapCircleButton({
                   ? MAP_SOFT_RED_CLOSE_PRESSED
                   : MAP_SOFT_RED_CLOSE_BG
                 : isCapture
-                  ? pressed
-                    ? CAPTURE_PRESSED_BG
-                    : CAPTURE_THEME.badgeBg
-                  : pressed
-                    ? '#F2F2F7'
-                    : '#FFFFFF',
+                ? pressed
+                  ? CAPTURE_PRESSED_BG
+                  : CAPTURE_THEME.badgeBg
+                : pressed
+                ? '#F2F2F7'
+                : '#FFFFFF',
               borderColor: isSoftRed
                 ? '#FFCCC7'
                 : isCapture
-                  ? CAPTURE_THEME.badgeBg
-                  : '#E5E5EA',
+                ? CAPTURE_THEME.badgeBg
+                : '#E5E5EA',
               opacity: disabled ? 0.5 : 1,
             },
             style,
-          ]}>
+          ]}
+        >
           {children}
         </View>
       )}
@@ -86,7 +88,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: StyleSheet.hairlineWidth,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.12,
     shadowRadius: 6,
     elevation: 4,

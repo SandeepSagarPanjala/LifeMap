@@ -1,4 +1,4 @@
-import {formatMapDateLabel} from '../../mobile/timeline-format';
+import { formatMapDateLabel } from '../../mobile/timeline-format';
 
 type MobileDateNavProps = {
   dateKey: string;
@@ -30,13 +30,18 @@ export function MobileDateNav({
     anchor === 'map' ? 'mobile-map-date-nav' : 'mobile-panel-date-nav-wrap';
 
   return (
-    <div className={wrapClass} role="toolbar" aria-label={`Map showing ${label}`}>
+    <div
+      className={wrapClass}
+      role="toolbar"
+      aria-label={`Map showing ${label}`}
+    >
       {showCloseButton ? (
         <button
           type="button"
           className="mobile-panel-close mobile-panel-close-red mobile-map-date-close"
           aria-label={closeLabel}
-          onClick={() => onClose?.()}>
+          onClick={() => onClose?.()}
+        >
           ×
         </button>
       ) : null}
@@ -45,13 +50,15 @@ export function MobileDateNav({
           showCloseButton
             ? 'mobile-panel-date-row mobile-map-date-row-spaced'
             : 'mobile-panel-date-row'
-        }>
+        }
+      >
         <button
           type="button"
           className="mobile-panel-date-circle"
           disabled={!canGoPrev}
           aria-label="Previous day"
-          onClick={onPrev}>
+          onClick={onPrev}
+        >
           ‹
         </button>
         <span className="mobile-panel-date-pill">{label}</span>
@@ -60,7 +67,8 @@ export function MobileDateNav({
           className="mobile-panel-date-circle"
           disabled={!canGoNext}
           aria-label="Next day"
-          onClick={onNext}>
+          onClick={onNext}
+        >
           ›
         </button>
       </div>

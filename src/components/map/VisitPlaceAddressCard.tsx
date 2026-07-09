@@ -1,13 +1,13 @@
-import {type ReactNode} from 'react';
-import {ActivityIndicator, Pressable, StyleSheet, View} from 'react-native';
-import {Check, Maximize2, Type} from 'lucide-react-native';
+import { type ReactNode } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { Check, Maximize2, Type } from 'lucide-react-native';
 
-import {Text} from '@/components/ui/text';
-import {VisitPlaceLabelPager} from '@/components/map/VisitPlaceLabelPager';
-import {useThemeColors} from '@/hooks/use-theme-colors';
-import type {VisitPlaceDisplay} from '@/lib/place-lookup-types';
-import {PLACE_LOOKUP_MAX_RADIUS_M} from '@/lib/app-constants';
-import {nextPlaceLookupRadiusM} from '@/lib/place-lookup-venue';
+import { Text } from '@/components/ui/text';
+import { VisitPlaceLabelPager } from '@/components/map/VisitPlaceLabelPager';
+import { useThemeColors } from '@/hooks/use-theme-colors';
+import type { VisitPlaceDisplay } from '@/lib/place-lookup-types';
+import { PLACE_LOOKUP_MAX_RADIUS_M } from '@/lib/app-constants';
+import { nextPlaceLookupRadiusM } from '@/lib/place-lookup-venue';
 
 type VisitPlaceAddressCardProps = {
   display: VisitPlaceDisplay;
@@ -115,7 +115,8 @@ function LabelActionButton({
       accessibilityLabel={accessibilityLabel}
       disabled={disabled}
       onPress={onPress}
-      style={[styles.labelButton, disabled && styles.buttonDisabled]}>
+      style={[styles.labelButton, disabled && styles.buttonDisabled]}
+    >
       {icon}
       <Text style={styles.labelButtonText} numberOfLines={1}>
         {label}
@@ -124,13 +125,14 @@ function LabelActionButton({
   );
 }
 
-function DoneActionButton({onPress}: {onPress: () => void}) {
+function DoneActionButton({ onPress }: { onPress: () => void }) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel="Done"
       onPress={onPress}
-      style={styles.doneButton}>
+      style={styles.doneButton}
+    >
       <Check size={16} color="#FFFFFF" strokeWidth={2.5} />
     </Pressable>
   );
@@ -146,7 +148,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 8,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,

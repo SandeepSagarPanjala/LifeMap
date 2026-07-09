@@ -1,14 +1,14 @@
-import type {LocationPointRow} from '@/db/repositories/location-days';
-import type {SavedPlaceRow} from '@/db/repositories/saved-places';
-import {distanceKm, type LocationPointLike} from '@/lib/location-geo';
-import {matchSavedPlaceForPoint} from '@/lib/saved-places';
+import type { LocationPointRow } from '@/db/repositories/location-days';
+import type { SavedPlaceRow } from '@/db/repositories/saved-places';
+import { distanceKm, type LocationPointLike } from '@/lib/location-geo';
+import { matchSavedPlaceForPoint } from '@/lib/saved-places';
 
 /** Point from the cluster that minimizes total distance to all others. */
 export function geographicMedoid(
   points: readonly LocationPointLike[],
 ): LocationPointLike {
   if (points.length === 0) {
-    return {lat: 0, lng: 0};
+    return { lat: 0, lng: 0 };
   }
   if (points.length === 1) {
     return points[0]!;
@@ -33,9 +33,9 @@ export function geographicMedoid(
 export function resolveVisitAnchor(
   points: readonly LocationPointRow[],
   savedPlaces: readonly SavedPlaceRow[],
-): {lat: number; lng: number} {
+): { lat: number; lng: number } {
   if (points.length === 0) {
-    return {lat: 0, lng: 0};
+    return { lat: 0, lng: 0 };
   }
 
   if (savedPlaces.length > 0) {
@@ -43,17 +43,17 @@ export function resolveVisitAnchor(
     const medoid = geographicMedoid(points);
     const medoidMatch = matchSavedPlaceForPoint(medoid, places);
     if (medoidMatch != null) {
-      return {lat: medoidMatch.lat, lng: medoidMatch.lng};
+      return { lat: medoidMatch.lat, lng: medoidMatch.lng };
     }
 
     for (const point of points) {
       const match = matchSavedPlaceForPoint(point, places);
       if (match != null) {
-        return {lat: match.lat, lng: match.lng};
+        return { lat: match.lat, lng: match.lng };
       }
     }
   }
 
   const medoid = geographicMedoid(points);
-  return {lat: medoid.lat, lng: medoid.lng};
+  return { lat: medoid.lat, lng: medoid.lng };
 }

@@ -1,4 +1,4 @@
-import {isVoiceRecordingTooShort} from '../src/lib/moments/capture-voice';
+import { isVoiceRecordingTooShort } from '../src/lib/moments/capture-voice';
 
 describe('isVoiceRecordingTooShort', () => {
   it('requires at least half a second', () => {

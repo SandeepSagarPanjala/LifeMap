@@ -1,7 +1,7 @@
-import {ensureHistoryCalendarBounds} from '@/lib/history-calendar-bounds';
-import {getTodayDateKey, shiftDateKey} from '@/lib/day-utils';
+import { ensureHistoryCalendarBounds } from '@/lib/history-calendar-bounds';
+import { getTodayDateKey, shiftDateKey } from '@/lib/day-utils';
 
-let cachedDateKeys: {today: string; keys: string[]} | null = null;
+let cachedDateKeys: { today: string; keys: string[] } | null = null;
 
 /** Clear in-memory cache (tests / day rollover). */
 export function clearBenchmarkDateKeysCache(): void {
@@ -29,6 +29,6 @@ export async function listBenchmarkDateKeys(): Promise<string[]> {
     cursor = shiftDateKey(cursor, 1);
   }
 
-  cachedDateKeys = {today, keys};
+  cachedDateKeys = { today, keys };
   return keys;
 }

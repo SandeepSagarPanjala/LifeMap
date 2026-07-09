@@ -9,9 +9,9 @@
 
 ## Preset labels (two numbers)
 
-| Part | Meaning |
-|------|--------|
-| **25 m** | SDK `distanceFilter` — when the OS/plugin may emit an update while moving |
+| Part                  | Meaning                                                                   |
+| --------------------- | ------------------------------------------------------------------------- |
+| **25 m**              | SDK `distanceFilter` — when the OS/plugin may emit an update while moving |
 | **max 1 save / 30 s** | App cap — at most one row per 30s window (latest fix in that window wins) |
 
 **Important:** The save cap is not “every 25 m.” A fast drive can move hundreds of meters in 30s while only one row is saved → straight lines on the map.
@@ -24,7 +24,7 @@ With a time cap preset, LifeMap also saves **immediately** when you have moved *
 
 Saves when you move ≥ preset distance or on motion start/stop. Still sparse when stationary; heartbeat still runs the 30 min stationary ping.
 
-## What we do *not* save today
+## What we do _not_ save today
 
 - Interpolated points between saves
 - Activity type (walking/driving)
@@ -44,12 +44,12 @@ In the app: **Settings → Export location data**
 
 ## Why 19 minutes with “no location saved” is possible
 
-| Cause | What happens |
-|--------|----------------|
-| **Save cap** | Only one row per 30 s while moving; if SDK did not fire, nothing saved |
-| **Stationary** | Very few saves when not moving 25 m |
-| **Tracking off** | Toggle off or OS killed background work |
-| **GPS / tunnel** | No fix → no row |
-| **Preset gap rule** | Trip detection uses 10 min between *points*; export gaps use 2 min between *saves* |
+| Cause               | What happens                                                                       |
+| ------------------- | ---------------------------------------------------------------------------------- |
+| **Save cap**        | Only one row per 30 s while moving; if SDK did not fire, nothing saved             |
+| **Stationary**      | Very few saves when not moving 25 m                                                |
+| **Tracking off**    | Toggle off or OS killed background work                                            |
+| **GPS / tunnel**    | No fix → no row                                                                    |
+| **Preset gap rule** | Trip detection uses 10 min between _points_; export gaps use 2 min between _saves_ |
 
 A 19 min gap means: last row at T₁, next row at T₂, and **T₂ − T₁ = 19 min** — not that the app “lost” data it had, but that **nothing was written** in between.

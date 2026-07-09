@@ -1,7 +1,7 @@
 import { differenceInMilliseconds, endOfDay, subDays } from 'date-fns';
 
-import {extractTripLabelOverrides} from '@/lib/backup/backup-export';
-import {applyTripLabelOverrides} from '@/lib/backup/backup-import';
+import { extractTripLabelOverrides } from '@/lib/backup/backup-export';
+import { applyTripLabelOverrides } from '@/lib/backup/backup-import';
 import {
   listDateKeysWithLocationDataBefore,
   type LocationPointRow,
@@ -65,11 +65,9 @@ import {
 import { canonicalizeTravelGeometryForPersist } from '@/lib/travel-geometry';
 import type { PersistTripPointInput } from '@/db/repositories/trip-points';
 import { buildMomentRefsForSegment } from '@/lib/moment-refs';
-import {
-  sealedThroughMs,
-} from '@/lib/today-sealed-history';
+import { sealedThroughMs } from '@/lib/today-sealed-history';
 import { getSealableTodayEntries } from '@/lib/today-seal-policy';
-import {syncTodayDisplay, syncTodayTrips} from '@/lib/today-sync';
+import { syncTodayDisplay, syncTodayTrips } from '@/lib/today-sync';
 import {
   isPlayableTimelineEntry,
   type DayTimelineEntry,
@@ -82,7 +80,10 @@ import {
   HISTORY_SAME_PLACE_RADIUS_METERS,
   TRIP_DETECTION_VERSION,
 } from '@/lib/app-constants';
-import {buildTripDetectionConfig, type TripDetectionConfig} from '@/lib/trip-settings';
+import {
+  buildTripDetectionConfig,
+  type TripDetectionConfig,
+} from '@/lib/trip-settings';
 const MIN_IMPLAUSIBLE_DRIVE_HOURS = 2;
 const MIN_IMPLAUSIBLE_DRIVE_AVG_KMH = 8;
 
@@ -125,14 +126,16 @@ export function tripEventKey(
 
 /** Whether today's incremental seal should upsert or prune stale rows. */
 export function todaySealNeedsPersist(
-  existingTrips: readonly {eventKey: string}[],
+  existingTrips: readonly { eventKey: string }[],
   closedEntries: ReadonlyArray<
     Pick<DetectedTrip, 'kind' | 'startAt' | 'endAt'> | TimelineGap
   >,
 ): boolean {
   const existingKeys = new Set(existingTrips.map(row => row.eventKey));
   const sealableKeys = new Set(closedEntries.map(tripEventKey));
-  const hasObsolete = existingTrips.some(row => !sealableKeys.has(row.eventKey));
+  const hasObsolete = existingTrips.some(
+    row => !sealableKeys.has(row.eventKey),
+  );
   const hasNewClosed = closedEntries.some(
     entry => !existingKeys.has(tripEventKey(entry)),
   );
@@ -174,9 +177,7 @@ export function existingTripLabelsByEventKey(
   for (const row of rows) {
     const label = persistedLabelFromTripRow(row);
     const hasLabel =
-      label.poiId != null ||
-      label.placeLabel != null ||
-      label.placeId != null;
+      label.poiId != null || label.placeLabel != null || label.placeId != null;
     if (!hasLabel) {
       continue;
     }
@@ -413,9 +414,7 @@ export async function loadHistoryFromStoredTrips(
     }
     const hasTravelAfterLastStay =
       lastStayIdx >= 0 &&
-      entries
-        .slice(lastStayIdx + 1)
-        .some(entry => entry.kind === 'travel');
+      entries.slice(lastStayIdx + 1).some(entry => entry.kind === 'travel');
     if (lastStayIdx >= 0 && !hasTravelAfterLastStay) {
       const stay = entries[lastStayIdx] as DetectedTrip;
       entries = [
@@ -460,7 +459,11 @@ export async function persistTodaySealableSegments(
     dateKey,
     detectionConfig,
   );
-  const sealable = getSealableTodayEntries(entries, referenceNow, detectionConfig);
+  const sealable = getSealableTodayEntries(
+    entries,
+    referenceNow,
+    detectionConfig,
+  );
   if (sealable.length === 0) {
     return 0;
   }
@@ -475,7 +478,7 @@ export async function loadTodayHistoryMerged(
   referenceNow: Date = new Date(),
   onPartial?: (data: HistoryData) => void,
 ): Promise<HistoryData> {
-  return syncTodayTrips(detectionConfig, referenceNow, {onPartial});
+  return syncTodayTrips(detectionConfig, referenceNow, { onPartial });
 }
 
 export type LoadHistoryOptions = {
@@ -815,7 +818,7 @@ export async function ensureTripForClosedStay(
     labels.placeKind != null
   ) {
     await applyTripPersistedLabel(trip.id, labels);
-    trip = {...trip, ...labels};
+    trip = { ...trip, ...labels };
   }
 
   return trip;
@@ -893,7 +896,7 @@ export async function rebuildTodayTrips(
   referenceNow: Date = new Date(),
 ): Promise<number> {
   const dateKey = getTodayDateKey();
-  const {entries, dayPointCount} = await buildExplorerDayTimelineFromGps(
+  const { entries, dayPointCount } = await buildExplorerDayTimelineFromGps(
     dateKey,
     detectionConfig,
   );
@@ -912,10 +915,15 @@ export async function rebuildTodayTrips(
     return 0;
   }
 
-  const tripsSaved = await persistClosedTripsIncremental(dateKey, detectionConfig, sealable, {
-    fullReplace: true,
-    pointCount: dayPointCount,
-  });
+  const tripsSaved = await persistClosedTripsIncremental(
+    dateKey,
+    detectionConfig,
+    sealable,
+    {
+      fullReplace: true,
+      pointCount: dayPointCount,
+    },
+  );
   return tripsSaved;
 }
 
@@ -934,7 +942,7 @@ export async function rebuildAllTrips(
   detectionConfig: TripDetectionConfig = getDefaultTripDetectionConfig(),
   onProgress?: (progress: RebuildPastTripsProgress) => void,
   referenceNow: Date = new Date(),
-  options: {includeToday?: boolean} = {},
+  options: { includeToday?: boolean } = {},
 ): Promise<RebuildPastTripsResult> {
   const includeToday = options.includeToday ?? true;
   const existingTrips = await listAllTrips();
@@ -974,10 +982,7 @@ export async function rebuildAllTrips(
       total: totalSteps,
       dateKey: getTodayDateKey(),
     });
-    todayTripsSaved = await rebuildTodayTrips(
-      detectionConfig,
-      referenceNow,
-    );
+    todayTripsSaved = await rebuildTodayTrips(detectionConfig, referenceNow);
     tripsSaved += todayTripsSaved;
   }
 
@@ -992,7 +997,9 @@ export async function rebuildAllTrips(
     phase: includeToday ? 'today' : 'past',
     completed: totalSteps,
     total: totalSteps,
-    dateKey: includeToday ? getTodayDateKey() : (dateKeys[dateKeys.length - 1] ?? ''),
+    dateKey: includeToday
+      ? getTodayDateKey()
+      : dateKeys[dateKeys.length - 1] ?? '',
   });
 
   return {

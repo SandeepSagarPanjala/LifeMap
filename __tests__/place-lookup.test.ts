@@ -5,15 +5,15 @@ import {
   shouldSkipPlaceLookupForStay,
   stayQualifiesForPlaceLookup,
 } from '@/lib/place-lookup-service';
-import {PLACE_LOOKUP_VENUE_RADIUS_M} from '@/lib/app-constants';
+import { PLACE_LOOKUP_VENUE_RADIUS_M } from '@/lib/app-constants';
 import {
   findNearestPlaceLookupMatch,
   isWithinPlaceLookupVenue,
 } from '@/lib/place-lookup-venue';
-import {resolveVisitPlaceDisplay} from '@/lib/place-lookup-display';
-import {isVisitPlaceLabelConfirmed} from '@/lib/place-lookup-types';
-import type {PlaceLookupRow, PlacePoiRow} from '@/lib/place-lookup-types';
-import type {DetectedTrip} from '@/lib/trip-detection';
+import { resolveVisitPlaceDisplay } from '@/lib/place-lookup-display';
+import { isVisitPlaceLabelConfirmed } from '@/lib/place-lookup-types';
+import type { PlaceLookupRow, PlacePoiRow } from '@/lib/place-lookup-types';
+import type { DetectedTrip } from '@/lib/trip-detection';
 
 function placeRow(
   lat: number,
@@ -55,7 +55,7 @@ function poisForCache(cacheId: number): PlacePoiRow[] {
   ];
 }
 
-function stay(points: {lat: number; lng: number}[]): DetectedTrip {
+function stay(points: { lat: number; lng: number }[]): DetectedTrip {
   const now = new Date('2026-06-08T12:00:00.000Z');
   return {
     id: 'stay-1',
@@ -79,17 +79,19 @@ function stay(points: {lat: number; lng: number}[]): DetectedTrip {
 
 describe('place lookup venue matching', () => {
   it('matches anchors within the visit venue radius', () => {
-    const anchor = {lat: 33.21, lng: -97.13};
+    const anchor = { lat: 33.21, lng: -97.13 };
     const cached = placeRow(33.2102, -97.1302);
-    expect(isWithinPlaceLookupVenue(anchor, {
-      lat: cached.anchorLat,
-      lng: cached.anchorLng,
-    })).toBe(true);
+    expect(
+      isWithinPlaceLookupVenue(anchor, {
+        lat: cached.anchorLat,
+        lng: cached.anchorLng,
+      }),
+    ).toBe(true);
     expect(findNearestPlaceLookupMatch(anchor, [cached])?.id).toBe(1);
   });
 
   it('does not match anchors outside the venue radius', () => {
-    const anchor = {lat: 33.21, lng: -97.13};
+    const anchor = { lat: 33.21, lng: -97.13 };
     const cached = placeRow(33.22, -97.15);
     expect(findNearestPlaceLookupMatch(anchor, [cached])).toBeNull();
   });
@@ -147,7 +149,7 @@ describe('place lookup service guards', () => {
   });
 
   it('requires dwell minutes before lookup qualifies', () => {
-    const shortStay = stay([{lat: 33.21, lng: -97.13}]);
+    const shortStay = stay([{ lat: 33.21, lng: -97.13 }]);
     shortStay.durationMs = 2 * 60_000;
     expect(
       stayQualifiesForPlaceLookup(shortStay, {
@@ -159,7 +161,7 @@ describe('place lookup service guards', () => {
   });
 
   it('skips saved places', () => {
-    const visit = stay([{lat: 33.21, lng: -97.13}]);
+    const visit = stay([{ lat: 33.21, lng: -97.13 }]);
     visit.durationMs = 30 * 60_000;
     visit.placeId = 1;
     visit.placeLabel = 'Home';
@@ -203,7 +205,7 @@ describe('place lookup enqueue', () => {
   });
 
   it('does not throw when native lookup succeeds', async () => {
-    const visit = stay([{lat: 33.21, lng: -97.13}]);
+    const visit = stay([{ lat: 33.21, lng: -97.13 }]);
     visit.durationMs = 30 * 60_000;
     await expect(
       enqueuePlaceLookupForStay(visit, [], {

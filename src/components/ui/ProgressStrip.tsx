@@ -1,23 +1,24 @@
-import {Pressable, StyleSheet, View} from 'react-native';
-import {X} from 'lucide-react-native';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { X } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import {Text} from '@/components/ui/text';
-import {useThemeColors} from '@/hooks/use-theme-colors';
+import { Text } from '@/components/ui/text';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 
 type ProgressStripProps = {
   message: string;
   onDismiss?: () => void;
 };
 
-export function ProgressStrip({message, onDismiss}: ProgressStripProps) {
+export function ProgressStrip({ message, onDismiss }: ProgressStripProps) {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
 
   return (
     <View
       pointerEvents="box-none"
-      style={[styles.host, {paddingBottom: Math.max(insets.bottom, 8)}]}>
+      style={[styles.host, { paddingBottom: Math.max(insets.bottom, 8) }]}
+    >
       <View
         style={[
           styles.strip,
@@ -25,7 +26,8 @@ export function ProgressStrip({message, onDismiss}: ProgressStripProps) {
             backgroundColor: colors.card,
             borderColor: colors.border,
           },
-        ]}>
+        ]}
+      >
         <Text className="flex-1 text-sm" numberOfLines={1}>
           {message}
         </Text>
@@ -35,7 +37,8 @@ export function ProgressStrip({message, onDismiss}: ProgressStripProps) {
             accessibilityLabel="Stop"
             hitSlop={8}
             onPress={onDismiss}
-            style={styles.dismiss}>
+            style={styles.dismiss}
+          >
             <X size={16} color={colors.mutedForeground} strokeWidth={2.25} />
           </Pressable>
         ) : null}
@@ -64,7 +67,7 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0.08,
     shadowRadius: 8,
-    shadowOffset: {width: 0, height: -2},
+    shadowOffset: { width: 0, height: -2 },
     elevation: 4,
   },
   dismiss: {

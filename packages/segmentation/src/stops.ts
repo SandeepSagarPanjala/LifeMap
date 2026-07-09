@@ -1,6 +1,6 @@
-import {DEFAULT_STOP_DETECTION_CONFIG} from '@lifemap/constants';
-import {TRIP_PLOT_SOURCES} from './sources';
-import type {ParsedPoint} from './types';
+import { DEFAULT_STOP_DETECTION_CONFIG } from '@lifemap/constants';
+import { TRIP_PLOT_SOURCES } from './sources';
+import type { ParsedPoint } from './types';
 
 export type Stop = {
   id: string;
@@ -50,7 +50,7 @@ export const DEFAULT_STOP_CONFIG: StopDetectionConfig = {
 };
 
 function canSparseBridge(
-  centre: {lat: number; lng: number},
+  centre: { lat: number; lng: number },
   anchor: ParsedPoint,
   next: ParsedPoint,
   config: StopDetectionConfig,
@@ -74,7 +74,7 @@ function canSparseBridge(
 function findMovingBurstReturnIndex(
   points: ParsedPoint[],
   startIdx: number,
-  centre: {lat: number; lng: number},
+  centre: { lat: number; lng: number },
   config: StopDetectionConfig,
   spreadLimitM: number,
 ): number | null {
@@ -103,7 +103,7 @@ function findMovingBurstReturnIndex(
 function pushStop(
   stops: Stop[],
   cluster: ParsedPoint[],
-  centre: {lat: number; lng: number},
+  centre: { lat: number; lng: number },
   leftAt: Date,
   config: StopDetectionConfig,
   inferred = false,
@@ -175,8 +175,8 @@ export function isMovingPoint(
 const EARTH_RADIUS_M = 6_371_000;
 
 function haversineM(
-  a: {lat: number; lng: number},
-  b: {lat: number; lng: number},
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
 ): number {
   const toRad = (x: number) => (x * Math.PI) / 180;
   const dLat = toRad(b.lat - a.lat);
@@ -229,7 +229,7 @@ export function prepareTripPoints(
 
 function maxSpreadM(
   points: ParsedPoint[],
-  centre: {lat: number; lng: number},
+  centre: { lat: number; lng: number },
 ): number {
   let max = 0;
   for (const point of points) {
@@ -272,7 +272,7 @@ export function detectStops(
     let sumLat = points[i]!.lat;
     let sumLng = points[i]!.lng;
     let count = 1;
-    let centre = {lat: points[i]!.lat, lng: points[i]!.lng};
+    let centre = { lat: points[i]!.lat, lng: points[i]!.lng };
     let maxBound = 0;
     let sparseAnchored = false;
     let j = i + 1;
@@ -316,7 +316,10 @@ export function detectStops(
           break;
         }
         sparseAnchored = true;
-      } else if (!sparseAnchored && haversineM(centre, candidate) > config.radiusM) {
+      } else if (
+        !sparseAnchored &&
+        haversineM(centre, candidate) > config.radiusM
+      ) {
         break;
       }
 

@@ -1,8 +1,8 @@
-import {Circle} from 'react-native-maps';
+import { Circle } from 'react-native-maps';
 
-import type {SavedPlaceRow} from '@/db/repositories/saved-places';
-import {buildStayMapCircles} from '@/lib/stay-map';
-import type {DetectedTrip} from '@/lib/trip-detection';
+import type { SavedPlaceRow } from '@/db/repositories/saved-places';
+import { buildStayMapCircles } from '@/lib/stay-map';
+import type { DetectedTrip } from '@/lib/trip-detection';
 import {
   HISTORY_FUTURE_STAY_FILL,
   HISTORY_FUTURE_STAY_STROKE,
@@ -14,7 +14,7 @@ import {
   STAY_AREA_STROKE_EMPHASIS,
   STAY_AREA_STROKE_WIDTH,
 } from '@/lib/app-constants';
-import type {TripDetectionConfig} from '@/lib/trip-settings';
+import type { TripDetectionConfig } from '@/lib/trip-settings';
 
 export type StayAreasTone = 'default' | 'emphasized' | 'past' | 'future';
 
@@ -29,7 +29,7 @@ type StayAreasOverlayProps = {
 
 const STAY_TONE_COLORS: Record<
   StayAreasTone,
-  {fill: string; stroke: string; zIndex: number}
+  { fill: string; stroke: string; zIndex: number }
 > = {
   default: {
     fill: STAY_AREA_FILL,
@@ -67,8 +67,11 @@ export function StayAreasOverlay({
     savedPlaces,
   );
   const resolvedTone = tone ?? (emphasized ? 'emphasized' : 'default');
-  const {fill: fillColor, stroke: strokeColor, zIndex} =
-    STAY_TONE_COLORS[resolvedTone];
+  const {
+    fill: fillColor,
+    stroke: strokeColor,
+    zIndex,
+  } = STAY_TONE_COLORS[resolvedTone];
 
   if (circles.length === 0) {
     return null;

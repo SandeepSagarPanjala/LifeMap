@@ -1,7 +1,7 @@
-import type {SegmentMomentCounts} from '@lifemap/segmentation';
+import type { SegmentMomentCounts } from '@lifemap/segmentation';
 
-import {MobileMomentIcon} from './MobileMomentIcon';
-import {mobileMomentIconSvg} from './mobile-moment-icon-svg';
+import { MobileMomentIcon } from './MobileMomentIcon';
+import { mobileMomentIconSvg } from './mobile-moment-icon-svg';
 import {
   hasMobileMomentCounts,
   MOBILE_MOMENT_CHIP_ORDER,
@@ -28,7 +28,8 @@ export function MobileMomentCountsRow({
         dense
           ? 'mobile-moment-counts-row mobile-moment-counts-row-dense'
           : 'mobile-moment-counts-row'
-      }>
+      }
+    >
       {MOBILE_MOMENT_CHIP_ORDER.map(definition => {
         const count = counts[definition.type];
         if (count <= 0) {
@@ -39,10 +40,12 @@ export function MobileMomentCountsRow({
           <div
             key={definition.type}
             className="mobile-moment-count-chip"
-            aria-label={`${definition.label}: ${count}`}>
+            aria-label={`${definition.label}: ${count}`}
+          >
             <span
               className="mobile-moment-count-orb"
-              style={{backgroundColor: theme.badgeBg}}>
+              style={{ backgroundColor: theme.badgeBg }}
+            >
               <MobileMomentIcon
                 type={definition.type}
                 size={dense ? 12 : 14}
@@ -72,7 +75,9 @@ export function mobileMomentCountsHtml(
     }
     const theme = MOBILE_MOMENT_THEMES[definition.themeKey];
     return [
-      `<div class="mobile-moment-count-chip${dense ? ' mobile-moment-count-chip-dense' : ''}">` +
+      `<div class="mobile-moment-count-chip${
+        dense ? ' mobile-moment-count-chip-dense' : ''
+      }">` +
         `<span class="mobile-moment-count-orb" style="background:${theme.badgeBg}">` +
         mobileMomentIconSvg(definition.type, theme.icon, dense ? 12 : 14) +
         `</span>` +
@@ -82,7 +87,8 @@ export function mobileMomentCountsHtml(
   }).join('');
 
   return (
-    `<div class="mobile-moment-counts-row${dense ? ' mobile-moment-counts-row-dense' : ''}">${chips}</div>` +
-    `<div class="mobile-stay-bubble-moment-divider"></div>`
+    `<div class="mobile-moment-counts-row${
+      dense ? ' mobile-moment-counts-row-dense' : ''
+    }">${chips}</div>` + `<div class="mobile-stay-bubble-moment-divider"></div>`
   );
 }

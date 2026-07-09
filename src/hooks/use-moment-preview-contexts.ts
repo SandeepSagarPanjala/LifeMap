@@ -1,7 +1,7 @@
-import {useEffect, useMemo, useState} from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
-import type {MomentRow} from '@/db/repositories/moments';
-import type {SavedPlaceRow} from '@/db/repositories/saved-places';
+import type { MomentRow } from '@/db/repositories/moments';
+import type { SavedPlaceRow } from '@/db/repositories/saved-places';
 import {
   buildMomentPreviewContextForEntry,
   findStayForMomentPreviewContext,
@@ -9,13 +9,13 @@ import {
   resolveMomentPreviewContext,
   type MomentPreviewContext,
 } from '@/lib/moments/moment-preview-context';
-import type {DistanceUnit} from '@/lib/location-geo';
-import type {DayTimelineEntry, DetectedTrip} from '@/lib/trip-detection';
+import type { DistanceUnit } from '@/lib/location-geo';
+import type { DayTimelineEntry, DetectedTrip } from '@/lib/trip-detection';
 import {
   driveEndpointLabelFromVisitDisplay,
   resolveDriveEndpointLabelFromStaySync,
 } from '@/lib/drive-endpoint-label';
-import {loadVisitPlaceDisplayForStay} from '@/lib/visit-place-label';
+import { loadVisitPlaceDisplayForStay } from '@/lib/visit-place-label';
 
 const EMPTY_LOOKUP_LABELS: Record<string, string> = {};
 
@@ -88,9 +88,8 @@ export function useMomentPreviewContexts(
     return map;
   }, [distanceUnit, entries, moments, savedPlaces]);
 
-  const [lookupLabelsByEntryId, setLookupLabelsByEntryId] = useState(
-    EMPTY_LOOKUP_LABELS,
-  );
+  const [lookupLabelsByEntryId, setLookupLabelsByEntryId] =
+    useState(EMPTY_LOOKUP_LABELS);
 
   const lookupEntryIdsKey = useMemo(
     () => staysNeedingLookupKey(syncContexts, entries),
@@ -143,9 +142,7 @@ export function useMomentPreviewContexts(
       const lookupLabel = lookupLabelsByEntryId[context.entryId];
       enriched.set(
         momentId,
-        lookupLabel
-          ? {...context, placeLabel: lookupLabel}
-          : context,
+        lookupLabel ? { ...context, placeLabel: lookupLabel } : context,
       );
     }
     return enriched;
@@ -160,4 +157,4 @@ export function resolveEntryPreviewContext(
   return buildMomentPreviewContextForEntry(entry, savedPlaces, distanceUnit);
 }
 
-export {findTimelineEntryById};
+export { findTimelineEntryById };

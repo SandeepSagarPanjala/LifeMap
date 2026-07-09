@@ -62,6 +62,10 @@ function App() {
 
   useEffect(() => startWidgetDeepLinkListening(), []);
 
+  console.log('App.tsx');
+  console.log('App.tsx', 'activeScreen', activeScreen);
+  console.log('App.tsx', 'enableHistoryPreload', enableHistoryPreload);
+
   return (
     <AppErrorBoundary>
       <GestureHandlerRootView style={styles.root}>

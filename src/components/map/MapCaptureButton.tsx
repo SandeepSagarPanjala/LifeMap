@@ -1,5 +1,5 @@
-import type {LucideIcon} from 'lucide-react-native';
-import {Pressable, StyleSheet, View} from 'react-native';
+import type { LucideIcon } from 'lucide-react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import {
   CAPTURE_BUTTON_THEMES,
@@ -7,8 +7,8 @@ import {
   CAPTURE_ICON_SIZE,
   type CaptureButtonVariant,
 } from './map-capture-button-theme';
-import {MAP_STACK_BUTTON_RIGHT} from '@/lib/app-constants';
-import {mapStackButtonStyles} from './map-stack-button-styles';
+import { MAP_STACK_BUTTON_RIGHT } from '@/lib/app-constants';
+import { mapStackButtonStyles } from './map-stack-button-styles';
 
 type MapCaptureButtonProps = {
   bottom: number;
@@ -39,8 +39,9 @@ export function MapCaptureButton({
           bottom,
           right: MAP_STACK_BUTTON_RIGHT,
         },
-      ]}>
-      <View style={[styles.iconOrb, {backgroundColor: theme.badgeBg}]}>
+      ]}
+    >
+      <View style={[styles.iconOrb, { backgroundColor: theme.badgeBg }]}>
         <Icon size={CAPTURE_ICON_SIZE} color={theme.icon} strokeWidth={2.25} />
       </View>
     </Pressable>

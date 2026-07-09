@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useState, useSyncExternalStore} from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 
 import {
   driveEndpointLabelFromVisitDisplay,
@@ -6,13 +6,13 @@ import {
   resolveDriveEndpointLabelFromStaySync,
   type DriveEndpointLabel,
 } from '@/lib/drive-endpoint-label';
-import type {SavedPlaceRow} from '@/db/repositories/saved-places';
+import type { SavedPlaceRow } from '@/db/repositories/saved-places';
 import {
   getMaterializationRevision,
   subscribeMaterialization,
 } from '@/lib/trip-materialization-events';
-import type {DetectedTrip} from '@/lib/trip-detection';
-import {loadVisitPlaceDisplayForStay} from '@/lib/visit-place-label';
+import type { DetectedTrip } from '@/lib/trip-detection';
+import { loadVisitPlaceDisplayForStay } from '@/lib/visit-place-label';
 
 async function enrichDriveEndpointLabel(
   stay: DetectedTrip,
@@ -95,11 +95,13 @@ export function useDriveEndpointLabels(
     }
 
     let cancelled = false;
-    void enrichDriveEndpointLabel(nextStay, savedPlaces, endSync).then(label => {
-      if (!cancelled) {
-        setEnd(label);
-      }
-    });
+    void enrichDriveEndpointLabel(nextStay, savedPlaces, endSync).then(
+      label => {
+        if (!cancelled) {
+          setEnd(label);
+        }
+      },
+    );
 
     return () => {
       cancelled = true;

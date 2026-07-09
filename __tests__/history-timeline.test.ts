@@ -9,7 +9,7 @@ import {
   selectionAtAnchorPx,
   type HistoryRulerTick,
 } from '../src/lib/history-timeline';
-import type {DayTimelineEntry} from '../src/lib/trip-detection';
+import type { DayTimelineEntry } from '../src/lib/trip-detection';
 
 const BAR_WIDTH = 300;
 
@@ -77,9 +77,9 @@ describe('history day rulers', () => {
 
   it('hides overlapping major tick labels on compressed bars', () => {
     const ticks: HistoryRulerTick[] = [
-      {hour: 0, leftPx: 0, label: '12 AM', kind: 'major'},
-      {hour: 24, leftPx: 2, label: '12 AM', kind: 'major'},
-      {hour: 12, leftPx: 150, label: '12 PM', kind: 'major'},
+      { hour: 0, leftPx: 0, label: '12 AM', kind: 'major' },
+      { hour: 24, leftPx: 2, label: '12 AM', kind: 'major' },
+      { hour: 12, leftPx: 150, label: '12 PM', kind: 'major' },
     ];
     const deduped = dedupeMajorTickLabels(ticks, 40);
     const labels = deduped.filter(t => t.label).map(t => t.hour);

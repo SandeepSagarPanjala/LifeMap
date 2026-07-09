@@ -1,23 +1,29 @@
-import {useCallback, useEffect, useRef, useState, type ComponentRef} from 'react';
-import {APP_COPY, errorMessageOr} from '@/lib/app-copy';
-import {Alert, Keyboard, StyleSheet, View} from 'react-native';
-import {BottomSheetModalProvider} from '@gorhom/bottom-sheet';
-import type {BottomSheetModal} from '@gorhom/bottom-sheet';
-import type {BottomSheetTextInput} from '@gorhom/bottom-sheet';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ComponentRef,
+} from 'react';
+import { APP_COPY, errorMessageOr } from '@/lib/app-copy';
+import { Alert, Keyboard, StyleSheet, View } from 'react-native';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import type { BottomSheetModal } from '@gorhom/bottom-sheet';
+import type { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 
-import {ActivityForm} from '@/components/map/ActivityLogSheet';
-import {AppBottomSheet} from '@/components/ui/app-bottom-sheet';
+import { ActivityForm } from '@/components/map/ActivityLogSheet';
+import { AppBottomSheet } from '@/components/ui/app-bottom-sheet';
 import {
   createActivity,
   updateActivity,
   type ActivityRow,
 } from '@/db/repositories/activities';
-import {saveActivityMoment} from '@/lib/moments/capture-activity';
+import { saveActivityMoment } from '@/lib/moments/capture-activity';
 
 export type ActivityFormRequest =
-  | {kind: 'create-first'}
-  | {kind: 'create'}
-  | {kind: 'edit'; activity: ActivityRow};
+  | { kind: 'create-first' }
+  | { kind: 'create' }
+  | { kind: 'edit'; activity: ActivityRow };
 
 type ActivityFormSheetProps = {
   request: ActivityFormRequest | null;
@@ -97,19 +103,19 @@ export function ActivityFormSheet({
     setSaving(true);
     try {
       if (request.kind === 'create-first') {
-        const created = await createActivity({emoji, label});
+        const created = await createActivity({ emoji, label });
         await saveActivityMoment(created);
         onSaved();
         onLoggedAndClose();
         return;
       }
       if (request.kind === 'create') {
-        await createActivity({emoji, label});
+        await createActivity({ emoji, label });
         onSaved();
         requestClose();
         return;
       }
-      await updateActivity(request.activity.id, {emoji, label});
+      await updateActivity(request.activity.id, { emoji, label });
       onSaved();
       requestClose();
     } catch (error) {
@@ -120,33 +126,25 @@ export function ActivityFormSheet({
     } finally {
       setSaving(false);
     }
-  }, [
-    emoji,
-    label,
-    onLoggedAndClose,
-    onSaved,
-    request,
-    requestClose,
-    saving,
-  ]);
+  }, [emoji, label, onLoggedAndClose, onSaved, request, requestClose, saving]);
 
   const title =
     request?.kind === 'create-first'
       ? 'Add your first activity'
       : request?.kind === 'create'
-        ? 'New activity'
-        : request?.kind === 'edit'
-          ? 'Edit activity'
-          : '';
+      ? 'New activity'
+      : request?.kind === 'edit'
+      ? 'Edit activity'
+      : '';
 
   const submitLabel = request?.kind === 'create-first' ? 'Save & log' : 'Save';
-  const showBack =
-    request?.kind === 'create' || request?.kind === 'edit';
+  const showBack = request?.kind === 'create' || request?.kind === 'edit';
 
   return (
     <View
       style={styles.host}
-      pointerEvents={request != null ? 'box-none' : 'none'}>
+      pointerEvents={request != null ? 'box-none' : 'none'}
+    >
       <BottomSheetModalProvider>
         <AppBottomSheet
           name="activity-form"
@@ -161,7 +159,8 @@ export function ActivityFormSheet({
           keyboardBehavior="interactive"
           keyboardBlurBehavior="restore"
           dismissKeyboardOnClose
-          footerPadding={12}>
+          footerPadding={12}
+        >
           {request != null ? (
             <ActivityForm
               key={

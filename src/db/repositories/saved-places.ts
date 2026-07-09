@@ -1,10 +1,10 @@
-import {and, desc, eq} from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 
-import {getDatabase} from '../client';
-import {savedPlaces} from '../schema';
-import {DEFAULT_SAVED_PLACE_RADIUS_METERS} from '@/lib/app-constants';
-import {lookupSavedPlaceAddress} from '@/lib/saved-place-address';
-import {notifySavedPlacesUpdated} from '@/lib/saved-places-events';
+import { getDatabase } from '../client';
+import { savedPlaces } from '../schema';
+import { DEFAULT_SAVED_PLACE_RADIUS_METERS } from '@/lib/app-constants';
+import { lookupSavedPlaceAddress } from '@/lib/saved-place-address';
+import { notifySavedPlacesUpdated } from '@/lib/saved-places-events';
 import {
   canAddSavedPlace,
   normalizeSavedPlaceLabel,
@@ -63,7 +63,7 @@ export async function getSavedPlaceById(
 
 async function deactivateSavedPlace(id: number): Promise<void> {
   const db = await getDatabase();
-  await db.update(savedPlaces).set({active: 0}).where(eq(savedPlaces.id, id));
+  await db.update(savedPlaces).set({ active: 0 }).where(eq(savedPlaces.id, id));
 }
 
 async function deactivateSavedPlacesByKind(
@@ -72,7 +72,7 @@ async function deactivateSavedPlacesByKind(
   const db = await getDatabase();
   await db
     .update(savedPlaces)
-    .set({active: 0})
+    .set({ active: 0 })
     .where(and(eq(savedPlaces.kind, kind), eq(savedPlaces.active, 1)));
 }
 
@@ -206,10 +206,10 @@ export async function updateSavedPlaceAddressLine(
   }
   await db
     .update(savedPlaces)
-    .set({addressLine: trimmed})
+    .set({ addressLine: trimmed })
     .where(eq(savedPlaces.id, id));
   notifySavedPlacesUpdated();
-  return mapRow({...existing, addressLine: trimmed});
+  return mapRow({ ...existing, addressLine: trimmed });
 }
 
 export async function updateFavoritePlaceLabel(
@@ -232,10 +232,10 @@ export async function updateFavoritePlaceLabel(
   }
   await db
     .update(savedPlaces)
-    .set({label: trimmed})
+    .set({ label: trimmed })
     .where(eq(savedPlaces.id, id));
   notifySavedPlacesUpdated();
-  return mapRow({...existing, label: trimmed});
+  return mapRow({ ...existing, label: trimmed });
 }
 
 export async function deleteSavedPlace(id: number): Promise<void> {

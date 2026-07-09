@@ -27,7 +27,7 @@ module.exports = {
       testBinaryPath:
         'android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk',
       build:
-        'bash -c \'source scripts/android-env.sh && cd android && ./gradlew assembleDebug assembleAndroidTest -DtestBuildType=debug\'',
+        "bash -c 'source scripts/android-env.sh && cd android && ./gradlew assembleDebug assembleAndroidTest -DtestBuildType=debug'",
       reversePorts: [8081],
     },
     'android.release': {
@@ -36,7 +36,7 @@ module.exports = {
       testBinaryPath:
         'android/app/build/outputs/apk/androidTest/release/app-release-androidTest.apk',
       build:
-        'bash -c \'source scripts/android-env.sh && cd android && ./gradlew assembleRelease assembleAndroidTest -DtestBuildType=release\'',
+        "bash -c 'source scripts/android-env.sh && cd android && ./gradlew assembleRelease assembleAndroidTest -DtestBuildType=release'",
     },
   },
   devices: {

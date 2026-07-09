@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -7,9 +7,9 @@ import {
   View,
 } from 'react-native';
 
-import {VisitPlaceLabelWithPin} from '@/components/map/VisitPlaceLabelWithPin';
-import {Text} from '@/components/ui/text';
-import type {VisitPlaceDisplay} from '@/lib/place-lookup-types';
+import { VisitPlaceLabelWithPin } from '@/components/map/VisitPlaceLabelWithPin';
+import { Text } from '@/components/ui/text';
+import type { VisitPlaceDisplay } from '@/lib/place-lookup-types';
 
 type VisitPlaceLabelPagerProps = {
   display: VisitPlaceDisplay;
@@ -78,20 +78,25 @@ export function VisitPlaceLabelPager({
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        contentOffset={{x: selectedIndex * pageWidth, y: 0}}
+        contentOffset={{ x: selectedIndex * pageWidth, y: 0 }}
         snapToInterval={pageWidth}
         decelerationRate="fast"
         onMomentumScrollEnd={handleMomentumEnd}
-        style={styles.scroll}>
+        style={styles.scroll}
+      >
         {candidates.map(candidate => (
           <View
             key={`${candidate.id}-${candidate.name}`}
-            style={[styles.page, {width: pageWidth}]}>
+            style={[styles.page, { width: pageWidth }]}
+          >
             <VisitPlaceLabelWithPin
               name={candidate.name}
               showPin={showUserPin && candidate.id === display.selectedPoiId}
             />
-            <Text variant="muted" className="text-[10px] uppercase tracking-wide">
+            <Text
+              variant="muted"
+              className="text-[10px] uppercase tracking-wide"
+            >
               {candidate.source === 'user' ? 'Custom' : 'Nearby'}
             </Text>
           </View>

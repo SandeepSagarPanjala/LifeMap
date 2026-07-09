@@ -1,21 +1,21 @@
-import {useCallback, useState} from 'react';
-import {View} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import {useFocusEffect} from '@react-navigation/native';
+import { useCallback, useState } from 'react';
+import { View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 
 import {
   SettingsCheckRow,
   SettingsGroup,
   SettingsGroupDivider,
 } from '@/components/settings/settings-group';
-import {Text} from '@/components/ui/text';
-import type {DriveMapRefreshIntervalMs} from '@/lib/app-constants';
+import { Text } from '@/components/ui/text';
+import type { DriveMapRefreshIntervalMs } from '@/lib/app-constants';
 import {
   DRIVE_MAP_REFRESH_INTERVAL_OPTIONS,
   getDriveMapRefreshIntervalMs,
   setDriveMapRefreshIntervalMs,
 } from '@/lib/drive-map-refresh-settings';
-import {notifyDriveMapRefreshIntervalChanged} from '@/lib/today-refresh-scheduler';
+import { notifyDriveMapRefreshIntervalChanged } from '@/lib/today-refresh-scheduler';
 
 export function DriveMapRefreshSettingsScreen() {
   const [intervalMs, setIntervalMs] = useState<DriveMapRefreshIntervalMs>(

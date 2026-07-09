@@ -1,4 +1,4 @@
-import {evaluateDepartureWatchdog} from '../src/lib/departure-watchdog';
+import { evaluateDepartureWatchdog } from '../src/lib/departure-watchdog';
 import {
   DEPARTURE_WATCHDOG_MIN_MS,
   DEPARTURE_WATCHDOG_MIN_MS_MAX_RELIABILITY,
@@ -7,8 +7,8 @@ import {
   STATIONARY_PING_MIN_MS_MAX_RELIABILITY,
 } from '@/lib/app-constants';
 
-const theater = {lat: 33.217236, lng: -96.822545};
-const friend = {lat: 33.229244, lng: -96.901663};
+const theater = { lat: 33.217236, lng: -96.822545 };
+const friend = { lat: 33.229244, lng: -96.901663 };
 
 describe('evaluateDepartureWatchdog', () => {
   it('forces moving when drift exceeds 100 m', () => {
@@ -26,7 +26,9 @@ describe('evaluateDepartureWatchdog', () => {
     expect(result.shouldPersist).toBe(true);
     expect(result.source).toBe('heartbeat_departure');
     expect(result.reason).toBe('distance_threshold');
-    expect(result.distanceMeters).toBeGreaterThan(HEARTBEAT_DEPARTURE_DISTANCE_METERS);
+    expect(result.distanceMeters).toBeGreaterThan(
+      HEARTBEAT_DEPARTURE_DISTANCE_METERS,
+    );
   });
 
   it('forces moving on speed watchdog after 5 minutes', () => {

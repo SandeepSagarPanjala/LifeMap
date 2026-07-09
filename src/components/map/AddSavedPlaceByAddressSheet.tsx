@@ -7,7 +7,7 @@ import {
   type ComponentRef,
   type RefObject,
 } from 'react';
-import {APP_COPY} from '@/lib/app-copy';
+import { APP_COPY } from '@/lib/app-copy';
 import {
   ActivityIndicator,
   Keyboard,
@@ -16,19 +16,19 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import {BottomSheetModalProvider} from '@gorhom/bottom-sheet';
-import type {BottomSheetModal} from '@gorhom/bottom-sheet';
-import {BottomSheetTextInput} from '@gorhom/bottom-sheet';
-import {Briefcase, Heart, Home} from 'lucide-react-native';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import type { BottomSheetModal } from '@gorhom/bottom-sheet';
+import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
+import { Briefcase, Heart, Home } from 'lucide-react-native';
 
-import {AppBottomSheet} from '@/components/ui/app-bottom-sheet';
-import {Text} from '@/components/ui/text';
-import type {SavedPlaceKind} from '@/db/repositories/saved-places';
-import {useThemeColors} from '@/hooks/use-theme-colors';
-import type {AddressGeocodeResult} from '@/lib/place-lookup-types';
-import {fetchAddressGeocode} from '@/lib/place-lookup-native';
-import {MAX_SAVED_PLACE_LABEL_LENGTH} from '@/lib/app-constants';
-import type {SavedPlaceAddByAddressOptions} from '@/lib/saved-places';
+import { AppBottomSheet } from '@/components/ui/app-bottom-sheet';
+import { Text } from '@/components/ui/text';
+import type { SavedPlaceKind } from '@/db/repositories/saved-places';
+import { useThemeColors } from '@/hooks/use-theme-colors';
+import type { AddressGeocodeResult } from '@/lib/place-lookup-types';
+import { fetchAddressGeocode } from '@/lib/place-lookup-native';
+import { MAX_SAVED_PLACE_LABEL_LENGTH } from '@/lib/app-constants';
+import type { SavedPlaceAddByAddressOptions } from '@/lib/saved-places';
 
 const MIN_ADDRESS_LENGTH = 5;
 
@@ -154,8 +154,7 @@ function AddSavedPlaceByAddressPanel({
         lat: selectedResult.lat,
         lng: selectedResult.lng,
         addressLine: selectedResult.addressLine,
-        favoriteLabel:
-          kind === 'favorite' ? trimmedFavoriteLabel : undefined,
+        favoriteLabel: kind === 'favorite' ? trimmedFavoriteLabel : undefined,
       });
     } finally {
       setSaving(false);
@@ -209,7 +208,8 @@ function AddSavedPlaceByAddressPanel({
               accessibilityLabel="Cancel add by address"
               onPress={onClose}
               disabled={lookingUp || saving}
-              style={[styles.button, styles.cancelButton]}>
+              style={[styles.button, styles.cancelButton]}
+            >
               <Text className="font-medium">Cancel</Text>
             </Pressable>
             <Pressable
@@ -221,7 +221,8 @@ function AddSavedPlaceByAddressPanel({
                 styles.button,
                 styles.saveButton,
                 !canLookup && styles.saveButtonDisabled,
-              ]}>
+              ]}
+            >
               {lookingUp ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
@@ -254,7 +255,8 @@ function AddSavedPlaceByAddressPanel({
                   style={[
                     styles.resultRow,
                     selected && styles.resultRowSelected,
-                  ]}>
+                  ]}
+                >
                   <Text className={selected ? 'font-medium' : undefined}>
                     {label}
                   </Text>
@@ -267,7 +269,8 @@ function AddSavedPlaceByAddressPanel({
               accessibilityRole="button"
               accessibilityLabel="Back to address"
               onPress={goBack}
-              style={[styles.button, styles.cancelButton]}>
+              style={[styles.button, styles.cancelButton]}
+            >
               <Text className="font-medium">Back</Text>
             </Pressable>
             <Pressable
@@ -279,7 +282,8 @@ function AddSavedPlaceByAddressPanel({
                 styles.button,
                 styles.saveButton,
                 selectedResult == null && styles.saveButtonDisabled,
-              ]}>
+              ]}
+            >
               <Text className="font-semibold text-white">Continue</Text>
             </Pressable>
           </View>
@@ -307,7 +311,8 @@ function AddSavedPlaceByAddressPanel({
                     styles.kindRow,
                     kind === 'home' && styles.kindRowSelected,
                   ]}
-                  onPress={() => setKind('home')}>
+                  onPress={() => setKind('home')}
+                >
                   <Home size={20} color={colors.primary} strokeWidth={2.25} />
                   <Text className="font-medium">Home</Text>
                 </Pressable>
@@ -321,7 +326,8 @@ function AddSavedPlaceByAddressPanel({
                     styles.kindRow,
                     kind === 'work' && styles.kindRowSelected,
                   ]}
-                  onPress={() => setKind('work')}>
+                  onPress={() => setKind('work')}
+                >
                   <Briefcase
                     size={20}
                     color={colors.primary}
@@ -339,7 +345,8 @@ function AddSavedPlaceByAddressPanel({
                     styles.kindRow,
                     kind === 'favorite' && styles.kindRowSelected,
                   ]}
-                  onPress={() => setKind('favorite')}>
+                  onPress={() => setKind('favorite')}
+                >
                   <Heart
                     size={20}
                     color={colors.primary}
@@ -377,7 +384,8 @@ function AddSavedPlaceByAddressPanel({
               accessibilityLabel="Back"
               onPress={goBack}
               disabled={saving}
-              style={[styles.button, styles.cancelButton]}>
+              style={[styles.button, styles.cancelButton]}
+            >
               <Text className="font-medium">Back</Text>
             </Pressable>
             <Pressable
@@ -389,7 +397,8 @@ function AddSavedPlaceByAddressPanel({
                 styles.button,
                 styles.saveButton,
                 !canSave && styles.saveButtonDisabled,
-              ]}>
+              ]}
+            >
               {saving ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
@@ -418,7 +427,8 @@ export function AddSavedPlaceByAddressSheet({
   onSave,
 }: AddSavedPlaceByAddressSheetProps) {
   const sheetRef = useRef<BottomSheetModal>(null);
-  const addressInputRef = useRef<ComponentRef<typeof BottomSheetTextInput>>(null);
+  const addressInputRef =
+    useRef<ComponentRef<typeof BottomSheetTextInput>>(null);
   const focusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Gorhom needs the sheet presented before focus() works — same as SavedPlacesEditSheet.
@@ -497,7 +507,8 @@ export function AddSavedPlaceByAddressSheet({
           keyboardBehavior="interactive"
           keyboardBlurBehavior="restore"
           dismissKeyboardOnClose
-          releaseTouchesWhileClosing>
+          releaseTouchesWhileClosing
+        >
           {visible ? (
             <AddSavedPlaceByAddressPanel
               key={`add-by-address-${options.hasHome}-${options.hasWork}`}

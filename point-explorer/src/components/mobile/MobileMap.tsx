@@ -1,4 +1,4 @@
-import {useEffect, useMemo} from 'react';
+import { useEffect, useMemo } from 'react';
 import {
   Circle,
   MapContainer,
@@ -6,14 +6,14 @@ import {
   TileLayer,
   useMap,
 } from 'react-leaflet';
-import type {LatLngBoundsExpression, LatLngTuple} from 'leaflet';
+import type { LatLngBoundsExpression, LatLngTuple } from 'leaflet';
 
-import {HISTORY_COLORS} from '../../mobile/history-ruler';
-import {buildMobileHistoryMapPlan} from '../../mobile/history-map-routes';
-import type {DayTimelineEntry} from '../../mobile/types';
-import type {ParsedPoint, SavedPlaceRow} from '../../types';
-import {MobileDriveEndpointMarkers} from './MobileDriveEndpointMarkers';
-import {MobileSavedPlacesOverlay} from './MobileSavedPlacesOverlay';
+import { HISTORY_COLORS } from '../../mobile/history-ruler';
+import { buildMobileHistoryMapPlan } from '../../mobile/history-map-routes';
+import type { DayTimelineEntry } from '../../mobile/types';
+import type { ParsedPoint, SavedPlaceRow } from '../../types';
+import { MobileDriveEndpointMarkers } from './MobileDriveEndpointMarkers';
+import { MobileSavedPlacesOverlay } from './MobileSavedPlacesOverlay';
 import {
   MobileStayCallout,
   STAY_DWELL_RADIUS_METERS,
@@ -22,13 +22,13 @@ import {
 
 type MobileMapProps = {
   entries: readonly DayTimelineEntry[];
-  dayPoints: readonly {lat: number; lng: number}[];
+  dayPoints: readonly { lat: number; lng: number }[];
   savedPlaces: readonly SavedPlaceRow[];
   selectedIndex: number;
   showSavedPlaceMarkersOnMap: boolean;
 };
 
-function FitBounds({positions}: {positions: LatLngTuple[]}) {
+function FitBounds({ positions }: { positions: LatLngTuple[] }) {
   const map = useMap();
   useEffect(() => {
     if (positions.length === 0) return;
@@ -37,7 +37,7 @@ function FitBounds({positions}: {positions: LatLngTuple[]}) {
       return;
     }
     const bounds: LatLngBoundsExpression = positions;
-    map.fitBounds(bounds, {padding: [48, 48], maxZoom: 16});
+    map.fitBounds(bounds, { padding: [48, 48], maxZoom: 16 });
   }, [map, positions]);
   return null;
 }
@@ -62,7 +62,11 @@ function hideSavedPlaceMarkerId(
   if (selected == null) {
     return null;
   }
-  if (selected.kind === 'stay' && selected.placeKind === 'saved' && selected.placeId != null) {
+  if (
+    selected.kind === 'stay' &&
+    selected.placeKind === 'saved' &&
+    selected.placeId != null
+  ) {
     return selected.placeId;
   }
   if (selected.kind === 'travel') {
@@ -70,8 +74,8 @@ function hideSavedPlaceMarkerId(
       selected.toPlaceKind === 'saved'
         ? selected.toPlaceId
         : selected.fromPlaceKind === 'saved'
-          ? selected.fromPlaceId
-          : null;
+        ? selected.fromPlaceId
+        : null;
     return savedEndId ?? null;
   }
   return null;
@@ -130,7 +134,8 @@ export function MobileMap({
       className="mobile-map-leaflet"
       center={[33.2, -97.1]}
       zoom={12}
-      scrollWheelZoom>
+      scrollWheelZoom
+    >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -155,7 +160,11 @@ export function MobileMap({
       {emphasizedRoute != null ? (
         <Polyline
           positions={emphasizedRoute}
-          pathOptions={{color: HISTORY_COLORS.travel, weight: 5, opacity: 0.95}}
+          pathOptions={{
+            color: HISTORY_COLORS.travel,
+            weight: 5,
+            opacity: 0.95,
+          }}
         />
       ) : null}
 

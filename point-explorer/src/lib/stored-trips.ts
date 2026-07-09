@@ -1,6 +1,6 @@
-import {dateKeyForTimestamp, coerceTimestamp} from '@lifemap/segmentation';
-import type {Stop, TripResult, TripSegment} from '@lifemap/segmentation';
-import type {ParsedPoint, SavedPlaceRow} from '../types';
+import { dateKeyForTimestamp, coerceTimestamp } from '@lifemap/segmentation';
+import type { Stop, TripResult, TripSegment } from '@lifemap/segmentation';
+import type { ParsedPoint, SavedPlaceRow } from '../types';
 
 export type StoredTripRow = {
   id: number;
@@ -50,13 +50,13 @@ type ExplorerSegmentJson = {
   placeId?: number | null;
   placeKind?: 'saved' | 'cache' | null;
   stopId?: string;
-  center?: {lat: number; lng: number};
+  center?: { lat: number; lng: number };
   spreadM?: number;
   pointCount?: number;
   fromKind?: 'stay' | 'drive';
   toKind?: 'stay' | 'drive';
-  from?: {lat: number; lng: number};
-  to?: {lat: number; lng: number};
+  from?: { lat: number; lng: number };
+  to?: { lat: number; lng: number };
   path?: Array<{
     id: number;
     timestamp: string;
@@ -102,8 +102,8 @@ function resolvedPlaceFromStoredRow(trip: {
 }
 
 function haversineM(
-  a: {lat: number; lng: number},
-  b: {lat: number; lng: number},
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
 ): number {
   const toRad = (x: number) => (x * Math.PI) / 180;
   const dLat = toRad(b.lat - a.lat);
@@ -124,7 +124,10 @@ function pathLengthM(points: ParsedPoint[]): number {
   return total;
 }
 
-function spreadM(points: ParsedPoint[], center: {lat: number; lng: number}): number {
+function spreadM(
+  points: ParsedPoint[],
+  center: { lat: number; lng: number },
+): number {
   let max = 0;
   for (const point of points) {
     max = Math.max(max, haversineM(center, point));
@@ -189,7 +192,9 @@ function makeStopFromStay(
   };
 }
 
-function normalizeStoredTripRow(raw: Record<string, unknown>): StoredTripRow | null {
+function normalizeStoredTripRow(
+  raw: Record<string, unknown>,
+): StoredTripRow | null {
   const id = raw.id;
   const kind = raw.kind;
   const dateKey = raw.dateKey ?? raw.date_key;
@@ -255,7 +260,8 @@ function normalizeTripPointRow(
     lat,
     lng,
     recordedAt: typeof recordedAt === 'string' ? recordedAt : null,
-    locationPointId: typeof locationPointId === 'number' ? locationPointId : null,
+    locationPointId:
+      typeof locationPointId === 'number' ? locationPointId : null,
     source: typeof source === 'string' ? source : null,
   };
 }
@@ -269,8 +275,8 @@ export function parseStoredTripExport(raw: unknown): StoredTripExport | null {
   const tripRows = Array.isArray(tables?.trips)
     ? tables!.trips
     : Array.isArray(root.trips)
-      ? root.trips
-      : null;
+    ? root.trips
+    : null;
   if (tripRows == null) {
     return null;
   }
@@ -293,8 +299,8 @@ export function parseStoredTripExport(raw: unknown): StoredTripExport | null {
   const pointRows = Array.isArray(tables?.trip_points)
     ? tables!.trip_points
     : Array.isArray(root.trip_points)
-      ? root.trip_points
-      : [];
+    ? root.trip_points
+    : [];
   for (const row of pointRows) {
     if (!row || typeof row !== 'object') {
       continue;
@@ -318,7 +324,7 @@ export function parseStoredTripExport(raw: unknown): StoredTripExport | null {
     ? (tables!.saved_places as SavedPlaceRow[])
     : [];
 
-  return {trips, tripPointsByTripId, savedPlaces};
+  return { trips, tripPointsByTripId, savedPlaces };
 }
 
 function parseExplorerSegmentsExport(
@@ -348,15 +354,15 @@ function parseExplorerSegmentsExport(
     if (!startAt || !endAt) {
       return;
     }
-    const center = segment.center ?? segment.from ?? {lat: 0, lng: 0};
+    const center = segment.center ?? segment.from ?? { lat: 0, lng: 0 };
     trips.push({
       id: tripId,
       kind:
         segment.kind === 'drive'
           ? 'travel'
           : segment.kind === 'missing'
-            ? 'missing'
-            : 'stay',
+          ? 'missing'
+          : 'stay',
       dateKey: dateFilter,
       startAt,
       endAt,
@@ -392,7 +398,7 @@ function parseExplorerSegmentsExport(
   if (trips.length === 0) {
     return null;
   }
-  return {trips, tripPointsByTripId, savedPlaces: []};
+  return { trips, tripPointsByTripId, savedPlaces: [] };
 }
 
 export function buildTripResultForDay(
@@ -469,12 +475,9 @@ export function buildTripResultForDay(
     const prevStay = [...segments]
       .reverse()
       .find(segment => segment.kind === 'stay');
-    const nextStay = dayTrips
-      .slice(index + 1)
-      .find(row => row.kind === 'stay');
-    const nextResolved = nextStay != null
-      ? resolvedPlaceFromStoredRow(nextStay)
-      : null;
+    const nextStay = dayTrips.slice(index + 1).find(row => row.kind === 'stay');
+    const nextResolved =
+      nextStay != null ? resolvedPlaceFromStoredRow(nextStay) : null;
     segments.push({
       kind: 'drive',
       id: `drive-${trip.id}`,
@@ -487,10 +490,7 @@ export function buildTripResultForDay(
           ? pathLengthM(routePoints)
           : trip.distanceKm * 1000,
       points: routePoints,
-      fromStop:
-        prevStay?.kind === 'stay'
-          ? prevStay.stop
-          : null,
+      fromStop: prevStay?.kind === 'stay' ? prevStay.stop : null,
       toStop:
         nextStay != null
           ? makeStopFromStay(
@@ -502,7 +502,8 @@ export function buildTripResultForDay(
               `stop-${nextStay.id}`,
             )
           : null,
-      fromPlaceLabel: prevStay?.kind === 'stay' ? prevStay.placeLabel : undefined,
+      fromPlaceLabel:
+        prevStay?.kind === 'stay' ? prevStay.placeLabel : undefined,
       fromPlaceId: prevStay?.kind === 'stay' ? prevStay.placeId : undefined,
       fromPlaceKind: prevStay?.kind === 'stay' ? prevStay.placeKind : undefined,
       toPlaceLabel: nextResolved?.placeLabel ?? undefined,
@@ -529,7 +530,9 @@ export function uniqueTripDateKeys(stored: StoredTripExport): string[] {
   return [...new Set(stored.trips.map(trip => trip.dateKey))].sort();
 }
 
-export function collectAllStoredTripPoints(stored: StoredTripExport): ParsedPoint[] {
+export function collectAllStoredTripPoints(
+  stored: StoredTripExport,
+): ParsedPoint[] {
   const byId = new Map<number, ParsedPoint>();
   for (const dateKey of uniqueTripDateKeys(stored)) {
     for (const point of buildTripResultForDay(stored, dateKey).points) {
@@ -545,7 +548,9 @@ export function loadStoredTripExport(raw: unknown): StoredTripExport {
     return fromTables;
   }
   if (raw && typeof raw === 'object') {
-    const fromSegments = parseExplorerSegmentsExport(raw as Record<string, unknown>);
+    const fromSegments = parseExplorerSegmentsExport(
+      raw as Record<string, unknown>,
+    );
     if (fromSegments != null) {
       return fromSegments;
     }

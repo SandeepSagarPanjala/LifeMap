@@ -1,4 +1,4 @@
-import {TZDate} from '@date-fns/tz';
+import { TZDate } from '@date-fns/tz';
 import {
   addDays,
   endOfDay,
@@ -8,7 +8,7 @@ import {
   subYears,
 } from 'date-fns';
 
-import {APP_TIMEZONE} from '@/lib/timezone';
+import { APP_TIMEZONE } from '@/lib/timezone';
 
 function toZonedDate(date: Date): TZDate {
   return new TZDate(date, APP_TIMEZONE);
@@ -24,9 +24,9 @@ export function parseDateKey(dateKey: string): Date {
   return startOfDay(new TZDate(year, month - 1, day, APP_TIMEZONE));
 }
 
-export function getDayRange(dateKey: string): {start: Date; end: Date} {
+export function getDayRange(dateKey: string): { start: Date; end: Date } {
   const day = parseDateKey(dateKey);
-  return {start: day, end: endOfDay(day)};
+  return { start: day, end: endOfDay(day) };
 }
 
 export function getTodayDateKey(): string {
@@ -41,7 +41,10 @@ export function shiftDateKey(dateKey: string, deltaDays: number): string {
   return toDateKey(addDays(parseDateKey(dateKey), deltaDays));
 }
 
-export function isDateKeyAfterToday(dateKey: string, now: Date = new Date()): boolean {
+export function isDateKeyAfterToday(
+  dateKey: string,
+  now: Date = new Date(),
+): boolean {
   return isAfter(parseDateKey(dateKey), startOfDay(toZonedDate(now)));
 }
 

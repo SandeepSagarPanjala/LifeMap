@@ -1,12 +1,12 @@
 import LottieView from 'lottie-react-native';
-import {StyleSheet, useWindowDimensions, View} from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
-import {Text} from '@/components/ui/text';
+import { Text } from '@/components/ui/text';
 
 const FAVORITE_LOTTIE = require('../../../assets/lottie/favorite-location.json');
 
 export function SavedPlacesEmptyState() {
-  const {width, height} = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const lottieSize = Math.min(width * 0.42, height * 0.18, 180);
 
   return (
@@ -16,7 +16,7 @@ export function SavedPlacesEmptyState() {
           source={FAVORITE_LOTTIE}
           autoPlay
           loop
-          style={{width: lottieSize, height: lottieSize}}
+          style={{ width: lottieSize, height: lottieSize }}
         />
       </View>
       <Text className="mt-2 text-center text-sm leading-6">

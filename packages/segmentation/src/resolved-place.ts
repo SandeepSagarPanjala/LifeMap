@@ -1,4 +1,4 @@
-import type {PlaceLookupRow} from './types';
+import type { PlaceLookupRow } from './types';
 
 export type PlaceKind = 'saved' | 'cache';
 
@@ -68,8 +68,8 @@ export function clearResolvedPlace(target: {
 }
 
 export function applyResolvedPoi(
-  target: {poiId?: number; poiLabel?: string},
-  poi: {id: number; name: string},
+  target: { poiId?: number; poiLabel?: string },
+  poi: { id: number; name: string },
 ): void {
   target.poiId = poi.id;
   target.poiLabel = poi.name;

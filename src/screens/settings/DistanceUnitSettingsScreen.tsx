@@ -1,14 +1,14 @@
-import {View} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import { View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
   SettingsCheckRow,
   SettingsGroup,
   SettingsGroupDivider,
 } from '@/components/settings/settings-group';
-import {Text} from '@/components/ui/text';
-import {DISTANCE_UNIT_LABELS} from '@/navigation/settings-sub-screen-options';
-import {useAppStore} from '@/stores/app-store';
+import { Text } from '@/components/ui/text';
+import { DISTANCE_UNIT_LABELS } from '@/navigation/settings-sub-screen-options';
+import { useAppStore } from '@/stores/app-store';
 
 export function DistanceUnitSettingsScreen() {
   const distanceUnit = useAppStore(state => state.distanceUnit);

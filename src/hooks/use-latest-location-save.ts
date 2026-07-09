@@ -1,7 +1,7 @@
-import {useEffect, useState} from 'react';
-import {AppState} from 'react-native';
+import { useEffect, useState } from 'react';
+import { AppState } from 'react-native';
 
-import {getLatestLocationPoint} from '@/db/repositories/location-points';
+import { getLatestLocationPoint } from '@/db/repositories/location-points';
 
 /** Last GPS save time for gap warnings — no per-save map rerenders. */
 export function useLatestLocationSave(): Date | null {

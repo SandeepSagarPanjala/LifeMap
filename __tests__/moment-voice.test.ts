@@ -1,5 +1,5 @@
-import {makeMoment} from './helpers/fixtures';
-import {getMomentVoiceDurationMs} from '../src/lib/moments/moment-voice';
+import { makeMoment } from './helpers/fixtures';
+import { getMomentVoiceDurationMs } from '../src/lib/moments/moment-voice';
 
 describe('getMomentVoiceDurationMs', () => {
   it('reads voice moment duration from caption', () => {

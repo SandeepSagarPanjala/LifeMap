@@ -1,4 +1,4 @@
-import {momentTypeLabel} from '../src/lib/app-storage-breakdown';
+import { momentTypeLabel } from '../src/lib/app-storage-breakdown';
 
 describe('momentTypeLabel', () => {
   it('labels grouped moment storage rows', () => {

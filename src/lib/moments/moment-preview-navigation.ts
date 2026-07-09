@@ -1,5 +1,5 @@
-import type {MomentRow} from '@/db/repositories/moments';
-import type {DayTimelineEntry} from '@/lib/trip-detection';
+import type { MomentRow } from '@/db/repositories/moments';
+import type { DayTimelineEntry } from '@/lib/trip-detection';
 
 export type MomentPreviewPayload = {
   moments: MomentRow[];

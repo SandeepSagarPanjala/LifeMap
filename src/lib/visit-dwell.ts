@@ -1,10 +1,10 @@
-import type {SavedPlaceRow} from '@/db/repositories/saved-places';
-import type {DetectedTrip} from '@/lib/trip-detection';
+import type { SavedPlaceRow } from '@/db/repositories/saved-places';
+import type { DetectedTrip } from '@/lib/trip-detection';
 import {
   DEFAULT_TRIP_DWELL_MINUTES,
   SAVED_PLACE_MIN_DWELL_MINUTES,
 } from '@/lib/app-constants';
-import type {TripDetectionConfig} from '@/lib/trip-settings';
+import type { TripDetectionConfig } from '@/lib/trip-settings';
 
 export function isSavedPlaceVisit(stay: DetectedTrip): boolean {
   return stay.placeKind === 'saved' && stay.placeId != null;

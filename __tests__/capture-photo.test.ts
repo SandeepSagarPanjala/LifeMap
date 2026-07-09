@@ -1,8 +1,10 @@
-import {getCameraLaunchErrorMessage} from '../src/lib/moments/capture-photo';
+import { getCameraLaunchErrorMessage } from '../src/lib/moments/capture-photo';
 
 describe('capture photo', () => {
   it('returns null when the user cancels the camera', () => {
-    expect(getCameraLaunchErrorMessage({didCancel: true, assets: []})).toBeNull();
+    expect(
+      getCameraLaunchErrorMessage({ didCancel: true, assets: [] }),
+    ).toBeNull();
   });
 
   it('maps permission errors to a friendly message', () => {

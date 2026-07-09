@@ -1,16 +1,16 @@
-import {View} from 'react-native';
+import { View } from 'react-native';
 
-import {Text} from '@/components/ui/text';
-import {cn} from '@/lib/utils';
+import { Text } from '@/components/ui/text';
+import { cn } from '@/lib/utils';
 
 const BRAND_LETTERS = [
-  {char: 'L', accent: false},
-  {char: 'i', accent: false},
-  {char: 'f', accent: false},
-  {char: 'e', accent: false},
-  {char: 'M', accent: true},
-  {char: 'a', accent: true},
-  {char: 'p', accent: true},
+  { char: 'L', accent: false },
+  { char: 'i', accent: false },
+  { char: 'f', accent: false },
+  { char: 'e', accent: false },
+  { char: 'M', accent: true },
+  { char: 'a', accent: true },
+  { char: 'p', accent: true },
 ] as const;
 
 export function SplashBrandTitle() {
@@ -27,11 +27,12 @@ export function SplashBrandTitle() {
             letter.accent
               ? {
                   textShadowColor: 'rgba(0,0,0,0.15)',
-                  textShadowOffset: {width: 0, height: 1},
+                  textShadowOffset: { width: 0, height: 1 },
                   textShadowRadius: 2,
                 }
               : undefined
-          }>
+          }
+        >
           {letter.char}
         </Text>
       ))}

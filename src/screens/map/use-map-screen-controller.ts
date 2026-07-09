@@ -1,10 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
@@ -13,32 +7,41 @@ import {
   Platform,
   useColorScheme,
 } from 'react-native';
-import {useNavigation, useRoute, useFocusEffect, type RouteProp} from '@react-navigation/native';
-import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {
+  useNavigation,
+  useRoute,
+  useFocusEffect,
+  type RouteProp,
+} from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type MapView from 'react-native-maps';
-import {PROVIDER_DEFAULT, PROVIDER_GOOGLE, type Region} from 'react-native-maps';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {
+  PROVIDER_DEFAULT,
+  PROVIDER_GOOGLE,
+  type Region,
+} from 'react-native-maps';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import type {MomentRow, MomentType} from '@/db/repositories/moments';
+import type { MomentRow, MomentType } from '@/db/repositories/moments';
 import {
   addFavoritePlace,
   type SavedPlaceRow,
   upsertHomePlace,
   upsertWorkPlace,
 } from '@/db/repositories/saved-places';
-import {historyPanelChromeHeight} from '@/components/map/HistoryPanelChrome';
-import {useHistoryForDay} from '@/hooks/use-history-data';
-import {useLatestLocationSave} from '@/hooks/use-latest-location-save';
-import {useSavedPlaces} from '@/hooks/use-saved-places';
-import {useStaySavedPlace} from '@/hooks/use-stay-saved-place';
-import {useDriveEndpointLabels} from '@/hooks/use-drive-endpoint-labels';
-import {useDayMoments} from '@/hooks/use-day-moments';
+import { historyPanelChromeHeight } from '@/components/map/HistoryPanelChrome';
+import { useHistoryForDay } from '@/hooks/use-history-data';
+import { useLatestLocationSave } from '@/hooks/use-latest-location-save';
+import { useSavedPlaces } from '@/hooks/use-saved-places';
+import { useStaySavedPlace } from '@/hooks/use-stay-saved-place';
+import { useDriveEndpointLabels } from '@/hooks/use-drive-endpoint-labels';
+import { useDayMoments } from '@/hooks/use-day-moments';
 import {
   buildHistoryMomentMapPins,
   buildMomentMapPins,
   type MomentMapPin,
 } from '@/components/map/MomentMapOverlay';
-import type {SavedPlaceMomentClusterOnMap} from '@/components/map/SavedPlacesMapOverlay';
+import type { SavedPlaceMomentClusterOnMap } from '@/components/map/SavedPlacesMapOverlay';
 import {
   countMomentsForEntry,
   countMomentsForStayEntry,
@@ -50,7 +53,7 @@ import {
   type MomentCountType,
   type MomentCounts,
 } from '@/lib/moments/moment-counts';
-import {queueMomentPreview} from '@/lib/moments/moment-preview-navigation';
+import { queueMomentPreview } from '@/lib/moments/moment-preview-navigation';
 import {
   coalesceMomentMapPins,
   partitionMomentMapPins,
@@ -62,10 +65,10 @@ import {
   useSetCustomVisitPlaceLabel,
   useVisitPlaceDisplay,
 } from '@/hooks/use-visit-place-display';
-import {useResolvePlaceOnStaySelect} from '@/hooks/use-resolve-place-on-stay-select';
-import {useTripDetectionConfig} from '@/hooks/use-trip-detection-config';
-import {useTripPlayback} from '@/hooks/use-trip-playback';
-import {buildHistoryMapPlan} from '@/lib/history-map-plan';
+import { useResolvePlaceOnStaySelect } from '@/hooks/use-resolve-place-on-stay-select';
+import { useTripDetectionConfig } from '@/hooks/use-trip-detection-config';
+import { useTripPlayback } from '@/hooks/use-trip-playback';
+import { buildHistoryMapPlan } from '@/lib/history-map-plan';
 import {
   countHistoryTimelineEvents,
   formatMapDateLabel,
@@ -75,28 +78,28 @@ import {
   getTodayDateKey,
   shiftDateKey,
 } from '@/lib/day-utils';
-import {clampDateKeyToHistoryBounds} from '@/lib/history-calendar-bounds';
+import { clampDateKeyToHistoryBounds } from '@/lib/history-calendar-bounds';
 import {
   consumeHistoryDatePickerResult,
   queueHistoryDatePickerOpen,
 } from '@/lib/history-date-picker-navigation';
-import {useAppStore} from '@/stores/app-store';
-import {regionForCoordinates, toMapCoordinates} from '@/lib/location-geo';
-import {MAP_USER_ZOOM_DELTA, VISIT_MAX_ZOOM_DELTA} from '@/lib/app-constants';
+import { useAppStore } from '@/stores/app-store';
+import { regionForCoordinates, toMapCoordinates } from '@/lib/location-geo';
+import { MAP_USER_ZOOM_DELTA, VISIT_MAX_ZOOM_DELTA } from '@/lib/app-constants';
 import {
   animateRecenterToUser,
   centerMapOnUser,
   regionAroundCoordinate,
 } from '@/lib/map-location-utils';
-import {getTripPlaybackDurationMs} from '@/lib/trip-playback';
-import {isVisitOngoing} from '@/lib/trip-format';
-import {MAX_SAVED_PLACES} from '@/lib/app-constants';
+import { getTripPlaybackDurationMs } from '@/lib/trip-playback';
+import { isVisitOngoing } from '@/lib/trip-format';
+import { MAX_SAVED_PLACES } from '@/lib/app-constants';
 import {
   canAddSavedPlace,
   matchSavedPlaceForStay,
   SavedPlaceLimitError,
 } from '@/lib/saved-places';
-import {getCurrentOpenActivity} from '@/lib/today-history';
+import { getCurrentOpenActivity } from '@/lib/today-history';
 import {
   isPlayableTimelineEntry,
   firstPlayableTimelineIndex,
@@ -113,11 +116,14 @@ import {
   isVisitPlaceLabelConfirmed,
   visitPlaceDefaultLabel,
 } from '@/lib/place-lookup-types';
-import {buildMapAttributionInsets} from '@/lib/map-attribution-insets';
-import type {RootStackParamList} from '@/navigation/types';
-import {refreshWidgetSnapshot, refreshWidgetSnapshotIfStale} from '@/lib/widget/sync-widget-snapshot';
-import {registerWidgetSheetHandlers} from '@/lib/widget/widget-deep-link';
-import {preloadTodayHistory} from '@/lib/history-preload';
+import { buildMapAttributionInsets } from '@/lib/map-attribution-insets';
+import type { RootStackParamList } from '@/navigation/types';
+import {
+  refreshWidgetSnapshot,
+  refreshWidgetSnapshotIfStale,
+} from '@/lib/widget/sync-widget-snapshot';
+import { registerWidgetSheetHandlers } from '@/lib/widget/widget-deep-link';
+import { preloadTodayHistory } from '@/lib/history-preload';
 import {
   coordinateFromRegion,
   isWorldFallbackRegion,
@@ -143,7 +149,8 @@ import {
 } from './map-screen-constants';
 
 export function useMapScreenController() {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'Map'>>();
   const tripDetectionConfig = useTripDetectionConfig();
   const insets = useSafeAreaInsets();
@@ -155,16 +162,19 @@ export function useMapScreenController() {
 
   const [selectedDateKey, setSelectedDateKey] = useState(todayKey);
 
-  const syncSelectedDateKeyForTodayRoll = useCallback((nextTodayKey: string) => {
-    const priorTodayKey = lastKnownTodayRef.current;
-    if (priorTodayKey === nextTodayKey) {
-      return;
-    }
-    lastKnownTodayRef.current = nextTodayKey;
-    setSelectedDateKey(current =>
-      followTodayDateKeyRoll(current, priorTodayKey, nextTodayKey),
-    );
-  }, []);
+  const syncSelectedDateKeyForTodayRoll = useCallback(
+    (nextTodayKey: string) => {
+      const priorTodayKey = lastKnownTodayRef.current;
+      if (priorTodayKey === nextTodayKey) {
+        return;
+      }
+      lastKnownTodayRef.current = nextTodayKey;
+      setSelectedDateKey(current =>
+        followTodayDateKeyRoll(current, priorTodayKey, nextTodayKey),
+      );
+    },
+    [],
+  );
 
   useEffect(() => {
     syncSelectedDateKeyForTodayRoll(todayKey);
@@ -173,17 +183,15 @@ export function useMapScreenController() {
   const [historyPanelOpen, setHistoryPanelOpen] = useState(false);
   const [historyPanelChromeVisible, setHistoryPanelChromeVisible] =
     useState(false);
-  const [placeLabelEditStay, setPlaceLabelEditStay] = useState<DetectedTrip | null>(
-    null,
-  );
+  const [placeLabelEditStay, setPlaceLabelEditStay] =
+    useState<DetectedTrip | null>(null);
   const [historyPanelContentHeight, setHistoryPanelContentHeight] = useState<
     number | null
   >(null);
   const [expandingVisitPlaceArea, setExpandingVisitPlaceArea] = useState(false);
   const [selectedHistoryIndex, setSelectedHistoryIndex] = useState(-1);
-  const [userCoordinate, setUserCoordinate] = useState<MapUserCoordinate | null>(
-    null,
-  );
+  const [userCoordinate, setUserCoordinate] =
+    useState<MapUserCoordinate | null>(null);
   const [mapInitialRegion, setMapInitialRegion] = useState<Region | null>(null);
   const [savePlaceCoordinate, setSavePlaceCoordinate] = useState<{
     latitude: number;
@@ -191,12 +199,18 @@ export function useMapScreenController() {
   } | null>(null);
   const [clusterMomentsOnMap, setClusterMomentsOnMap] = useState(false);
 
-  const {places: savedPlaces, hasHome, hasWork, refresh: refreshSavedPlaces} =
-    useSavedPlaces();
-  const {dayMoments} = useDayMoments(selectedDateKey);
+  const {
+    places: savedPlaces,
+    hasHome,
+    hasWork,
+    refresh: refreshSavedPlaces,
+  } = useSavedPlaces();
+  const { dayMoments } = useDayMoments(selectedDateKey);
   const viewingToday = selectedDateKey === todayKey;
-  const {data: historyData, loading: historyLoading} =
-    useHistoryForDay(selectedDateKey, {active: true});
+  const { data: historyData, loading: historyLoading } = useHistoryForDay(
+    selectedDateKey,
+    { active: true },
+  );
   const latestLocationSaveAt = useLatestLocationSave();
   const earliestDateKey = useAppStore(state => state.historyEarliestDateKey);
   const canGoPrevDay =
@@ -300,12 +314,7 @@ export function useMapScreenController() {
       return null;
     }
     return 'No saved location data for this day.';
-  }, [
-    historyDayLoaded,
-    historyHasGpsData,
-    historyPanelOpen,
-    viewingToday,
-  ]);
+  }, [historyDayLoaded, historyHasGpsData, historyPanelOpen, viewingToday]);
 
   const trackingGapWarning = useMemo(() => {
     if (!viewingToday) {
@@ -370,8 +379,7 @@ export function useMapScreenController() {
     ],
   );
 
-  const showHistoryPanelContent =
-    historyPanelChromeVisible && historyDayLoaded;
+  const showHistoryPanelContent = historyPanelChromeVisible && historyDayLoaded;
 
   const currentOpenActivity = useMemo(
     () =>
@@ -407,13 +415,13 @@ export function useMapScreenController() {
 
   const currentOpenDriveAdjacentStays = useMemo(() => {
     if (currentOpenDrive == null) {
-      return {previousStay: null, nextStay: null};
+      return { previousStay: null, nextStay: null };
     }
     const index = historyEntries.findIndex(
       entry => entry.id === currentOpenDrive.id,
     );
     if (index < 0) {
-      return {previousStay: null, nextStay: null};
+      return { previousStay: null, nextStay: null };
     }
     return adjacentStaysForTravelIndex(historyEntries, index);
   }, [currentOpenDrive, historyEntries]);
@@ -431,7 +439,7 @@ export function useMapScreenController() {
 
   const selectedTravelAdjacentStays = useMemo(() => {
     if (selectedPlayable?.kind !== 'travel' || selectedHistoryIndex < 0) {
-      return {previousStay: null, nextStay: null};
+      return { previousStay: null, nextStay: null };
     }
     return adjacentStaysForTravelIndex(historyEntries, selectedHistoryIndex);
   }, [historyEntries, selectedHistoryIndex, selectedPlayable]);
@@ -450,8 +458,7 @@ export function useMapScreenController() {
     selectedHistoryIndex >= 0 &&
     selectedEntry != null;
 
-  const showPlaceLabelCard =
-    historyScrubOnEvent && placeLabelEditStay != null;
+  const showPlaceLabelCard = historyScrubOnEvent && placeLabelEditStay != null;
 
   const selectedEntryMomentCounts = useMemo((): MomentCounts | undefined => {
     if (!selectedEntry) {
@@ -473,7 +480,7 @@ export function useMapScreenController() {
     historyPanelContentHeight ?? estimatedHistoryPanelContentHeight;
 
   const handleHistoryPanelContentLayout = useCallback(
-    (event: {nativeEvent: {layout: {height: number}}}) => {
+    (event: { nativeEvent: { layout: { height: number } } }) => {
       const nextHeight = Math.ceil(event.nativeEvent.layout.height);
       setHistoryPanelContentHeight(current =>
         current === nextHeight ? current : nextHeight,
@@ -769,14 +776,10 @@ export function useMapScreenController() {
       return;
     }
     setExpandingVisitPlaceArea(true);
-    void expandVisitPlaceLookupArea(placeLabelEditCacheId).finally(
-      () => setExpandingVisitPlaceArea(false),
+    void expandVisitPlaceLookupArea(placeLabelEditCacheId).finally(() =>
+      setExpandingVisitPlaceArea(false),
     );
-  }, [
-    expandVisitPlaceLookupArea,
-    placeLabelEditCacheId,
-    placeLabelEditStay,
-  ]);
+  }, [expandVisitPlaceLookupArea, placeLabelEditCacheId, placeLabelEditStay]);
 
   const handleSaveCustomVisitPlaceLabel = useCallback(
     (label: string) => {
@@ -817,11 +820,7 @@ export function useMapScreenController() {
       return [];
     }
     return coalesceMomentMapPins(
-      buildMomentMapPins(
-        dayMoments,
-        historyData.points,
-        historyEntries,
-      ),
+      buildMomentMapPins(dayMoments, historyData.points, historyEntries),
     );
   }, [
     currentOpenVisit,
@@ -898,59 +897,60 @@ export function useMapScreenController() {
     [navigation, selectedDateKey],
   );
 
-  const savedPlaceMomentClusters = useMemo((): SavedPlaceMomentClusterOnMap[] => {
-    const raw = showDayJourney
-      ? dayMomentMapPinsRaw
-      : showHistoryMap
+  const savedPlaceMomentClusters =
+    useMemo((): SavedPlaceMomentClusterOnMap[] => {
+      const raw = showDayJourney
+        ? dayMomentMapPinsRaw
+        : showHistoryMap
         ? historyMomentMapPinsRaw
         : [];
-    if (raw.length === 0 || !clusterMomentsOnMap) {
-      return [];
-    }
+      if (raw.length === 0 || !clusterMomentsOnMap) {
+        return [];
+      }
 
-    const calloutSavedPlaceId = showDayJourney
-      ? currentOpenVisitSavedPlace?.id
-      : selectedSavedPlace?.id;
-    const calloutMomentCounts = showDayJourney
-      ? currentVisitMomentCounts
-      : selectedEntryMomentCounts;
+      const calloutSavedPlaceId = showDayJourney
+        ? currentOpenVisitSavedPlace?.id
+        : selectedSavedPlace?.id;
+      const calloutMomentCounts = showDayJourney
+        ? currentVisitMomentCounts
+        : selectedEntryMomentCounts;
 
-    return partitionMomentMapPins(raw, savedPlaces, true).savedPlaceClusters
-      .filter(
-        cluster =>
-          !shouldHideSavedPlaceMomentCluster(
-            cluster.place.id,
-            calloutSavedPlaceId,
-            calloutMomentCounts,
-          ),
-      )
-      .map(cluster => {
-        const initialMomentId = cluster.momentIds[0];
-        return {
-          placeId: cluster.place.id,
-          counts: cluster.counts,
-          onPress: () => {
-            openMomentPreview({
-              moments: dayMoments,
-              initialMomentId,
-            });
-          },
-        };
-      });
-  }, [
-    clusterMomentsOnMap,
-    currentOpenVisitSavedPlace?.id,
-    currentVisitMomentCounts,
-    dayMomentMapPinsRaw,
-    dayMoments,
-    historyMomentMapPinsRaw,
-    openMomentPreview,
-    savedPlaces,
-    selectedEntryMomentCounts,
-    selectedSavedPlace?.id,
-    showDayJourney,
-    showHistoryMap,
-  ]);
+      return partitionMomentMapPins(raw, savedPlaces, true)
+        .savedPlaceClusters.filter(
+          cluster =>
+            !shouldHideSavedPlaceMomentCluster(
+              cluster.place.id,
+              calloutSavedPlaceId,
+              calloutMomentCounts,
+            ),
+        )
+        .map(cluster => {
+          const initialMomentId = cluster.momentIds[0];
+          return {
+            placeId: cluster.place.id,
+            counts: cluster.counts,
+            onPress: () => {
+              openMomentPreview({
+                moments: dayMoments,
+                initialMomentId,
+              });
+            },
+          };
+        });
+    }, [
+      clusterMomentsOnMap,
+      currentOpenVisitSavedPlace?.id,
+      currentVisitMomentCounts,
+      dayMomentMapPinsRaw,
+      dayMoments,
+      historyMomentMapPinsRaw,
+      openMomentPreview,
+      savedPlaces,
+      selectedEntryMomentCounts,
+      selectedSavedPlace?.id,
+      showDayJourney,
+      showHistoryMap,
+    ]);
 
   const openCurrentVisitMomentsPreview = useCallback(
     (initialType?: MomentCountType) => {
@@ -1018,7 +1018,7 @@ export function useMapScreenController() {
 
   const handleUserLocation = useCallback(
     (event: {
-      nativeEvent: {coordinate?: {latitude: number; longitude: number}};
+      nativeEvent: { coordinate?: { latitude: number; longitude: number } };
     }) => {
       const coordinate = event.nativeEvent.coordinate;
       if (!coordinate) {
@@ -1054,10 +1054,10 @@ export function useMapScreenController() {
     const selectedMap = historyMapPlan.selected;
     const routePoints =
       selectedPlayable.kind === 'travel'
-        ? (selectedMap?.travelPoints ?? selectedPlayable.points)
+        ? selectedMap?.travelPoints ?? selectedPlayable.points
         : selectedMap?.inboundPoints != null
-          ? [...selectedMap.inboundPoints, ...selectedPlayable.points]
-          : selectedPlayable.points;
+        ? [...selectedMap.inboundPoints, ...selectedPlayable.points]
+        : selectedPlayable.points;
     const region = regionForCoordinates(toMapCoordinates(routePoints));
     mapRef.current.animateToRegion(region, 400);
     mapRegionRef.current = region;
@@ -1094,7 +1094,7 @@ export function useMapScreenController() {
   );
 
   const openHistoryDatePicker = useCallback(() => {
-    queueHistoryDatePickerOpen({selectedDateKey});
+    queueHistoryDatePickerOpen({ selectedDateKey });
     navigation.navigate('HistoryDatePicker');
   }, [navigation, selectedDateKey]);
 
@@ -1193,7 +1193,9 @@ export function useMapScreenController() {
   }, [playback, scheduleFitSelectedHistory, selectedPlayable]);
 
   const handleMapLongPress = useCallback(
-    (event: {nativeEvent: {coordinate: {latitude: number; longitude: number}}}) => {
+    (event: {
+      nativeEvent: { coordinate: { latitude: number; longitude: number } };
+    }) => {
       if (historyPanelOpen || playback.isPlaying) {
         return;
       }
@@ -1214,7 +1216,7 @@ export function useMapScreenController() {
   }, []);
 
   const handleSaveHomePlace = useCallback(
-    async (coordinate: {latitude: number; longitude: number}) => {
+    async (coordinate: { latitude: number; longitude: number }) => {
       try {
         await upsertHomePlace(coordinate.latitude, coordinate.longitude);
         await refreshSavedPlaces();
@@ -1230,7 +1232,7 @@ export function useMapScreenController() {
   );
 
   const handleSaveWorkPlace = useCallback(
-    async (coordinate: {latitude: number; longitude: number}) => {
+    async (coordinate: { latitude: number; longitude: number }) => {
       try {
         await upsertWorkPlace(coordinate.latitude, coordinate.longitude);
         await refreshSavedPlaces();
@@ -1247,7 +1249,7 @@ export function useMapScreenController() {
 
   const handleSaveFavoritePlace = useCallback(
     async (
-      coordinate: {latitude: number; longitude: number},
+      coordinate: { latitude: number; longitude: number },
       name: string,
     ) => {
       try {
@@ -1281,7 +1283,7 @@ export function useMapScreenController() {
       return;
     }
     const region = regionAroundCoordinate(
-      {latitude: place.lat, longitude: place.lng},
+      { latitude: place.lat, longitude: place.lng },
       VISIT_MAX_ZOOM_DELTA,
       VISIT_MAX_ZOOM_DELTA,
     );
@@ -1299,7 +1301,7 @@ export function useMapScreenController() {
     if (place != null) {
       handleSelectSavedPlace(place);
     }
-    navigation.setParams({focusPlaceId: undefined});
+    navigation.setParams({ focusPlaceId: undefined });
   }, [
     handleSelectSavedPlace,
     navigation,
@@ -1308,13 +1310,17 @@ export function useMapScreenController() {
   ]);
 
   const handleZoomVisit = useCallback(() => {
-    if (!mapRef.current || !selectedPlayable || selectedPlayable.kind !== 'stay') {
+    if (
+      !mapRef.current ||
+      !selectedPlayable ||
+      selectedPlayable.kind !== 'stay'
+    ) {
       return;
     }
     const ongoing = isVisitOngoing(selectedPlayable.endAt, new Date(), {
       openThroughNow: selectedPlayable.openThroughNow,
     });
-    const coordinate = stayMapMarkerCoordinate(selectedPlayable, {ongoing});
+    const coordinate = stayMapMarkerCoordinate(selectedPlayable, { ongoing });
     const region = regionAroundCoordinate(
       coordinate,
       VISIT_MAX_ZOOM_DELTA,
@@ -1350,7 +1356,7 @@ export function useMapScreenController() {
           useNativeDriver: true,
         });
 
-    animation.start(({finished}) => {
+    animation.start(({ finished }) => {
       if (finished && !historyPanelOpen) {
         setHistoryPanelChromeVisible(false);
         setSelectedHistoryIndex(-1);
@@ -1402,7 +1408,7 @@ export function useMapScreenController() {
         userCoordinate ??
         bootstrapCoordinateRef.current ??
         (lastHistoryPoint != null
-          ? {latitude: lastHistoryPoint.lat, longitude: lastHistoryPoint.lng}
+          ? { latitude: lastHistoryPoint.lat, longitude: lastHistoryPoint.lng }
           : null);
       if (coordinate == null) {
         return;
@@ -1454,12 +1460,7 @@ export function useMapScreenController() {
       return;
     }
     setSelectedHistoryIndex(firstPlayableTimelineIndex(historyEntries));
-  }, [
-    historyEntries,
-    historyLoading,
-    historyPanelOpen,
-    selectedHistoryIndex,
-  ]);
+  }, [historyEntries, historyLoading, historyPanelOpen, selectedHistoryIndex]);
 
   useEffect(() => {
     if (

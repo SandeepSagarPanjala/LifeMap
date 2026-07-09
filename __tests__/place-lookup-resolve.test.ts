@@ -1,14 +1,9 @@
-import {closestPlacePoiToAnchor} from '@/db/repositories/place-pois';
-import {stayNeedsLazyPlaceLookup} from '@/lib/place-lookup-resolve';
-import type {PlacePoiRow} from '@/lib/place-lookup-types';
-import type {DetectedTrip} from '@/lib/trip-detection';
+import { closestPlacePoiToAnchor } from '@/db/repositories/place-pois';
+import { stayNeedsLazyPlaceLookup } from '@/lib/place-lookup-resolve';
+import type { PlacePoiRow } from '@/lib/place-lookup-types';
+import type { DetectedTrip } from '@/lib/trip-detection';
 
-function poi(
-  id: number,
-  lat: number,
-  lng: number,
-  name = 'POI',
-): PlacePoiRow {
+function poi(id: number, lat: number, lng: number, name = 'POI'): PlacePoiRow {
   return {
     id,
     cacheId: 1,
@@ -35,7 +30,7 @@ function stay(overrides: Partial<DetectedTrip> = {}): DetectedTrip {
 
 describe('closestPlacePoiToAnchor', () => {
   it('picks the nearest POI to the anchor', () => {
-    const anchor = {lat: 37.7749, lng: -122.4194};
+    const anchor = { lat: 37.7749, lng: -122.4194 };
     const closest = closestPlacePoiToAnchor(anchor, [
       poi(1, 37.7755, -122.4194, 'Far'),
       poi(2, 37.77491, -122.41941, 'Near'),
@@ -51,18 +46,15 @@ describe('stayNeedsLazyPlaceLookup', () => {
 
   it('returns false when cache or POI is already linked', () => {
     expect(
-      stayNeedsLazyPlaceLookup(
-        stay({placeKind: 'cache', placeId: 3}),
-        [],
-      ),
+      stayNeedsLazyPlaceLookup(stay({ placeKind: 'cache', placeId: 3 }), []),
     ).toBe(false);
     expect(
-      stayNeedsLazyPlaceLookup(stay({poiId: 4, poiLabel: 'Cafe'}), []),
+      stayNeedsLazyPlaceLookup(stay({ poiId: 4, poiLabel: 'Cafe' }), []),
     ).toBe(false);
   });
 
   it('returns false for open visits', () => {
-    expect(stayNeedsLazyPlaceLookup(stay({openThroughNow: true}), [])).toBe(
+    expect(stayNeedsLazyPlaceLookup(stay({ openThroughNow: true }), [])).toBe(
       false,
     );
   });

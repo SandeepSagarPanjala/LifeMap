@@ -7,4 +7,3 @@ export const ACCESSIBLE = {
 } as const;
 
 export const STORAGE_TYPE = {} as const;
-

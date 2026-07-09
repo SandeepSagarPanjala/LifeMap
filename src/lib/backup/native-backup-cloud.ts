@@ -1,8 +1,8 @@
-import {NativeModules, Platform} from 'react-native';
+import { NativeModules, Platform } from 'react-native';
 import ReactNativeBlobUtil from 'react-native-blob-util';
 
-import type {CloudBackupMetadata} from './backup-types';
-import {removeDirectoryRecursive} from './backup-fs';
+import type { CloudBackupMetadata } from './backup-types';
+import { removeDirectoryRecursive } from './backup-fs';
 
 type BackupCloudNativeModule = {
   isCloudAvailable(): Promise<boolean>;
@@ -33,7 +33,7 @@ function withTimeout<T>(
   ]);
 }
 
-export {withTimeout};
+export { withTimeout };
 
 function getAndroidBackupDirectory(slot: string): string {
   return `${ReactNativeBlobUtil.fs.dirs.DocumentDir}/${ANDROID_BACKUP_ROOT}/${slot}`;
@@ -95,7 +95,11 @@ async function resolveAndroidBackupMetadata(): Promise<CloudBackupMetadata | nul
 }
 
 async function resolveAndroidBackupDirectory(): Promise<string | null> {
-  const slots = [BACKUP_SLOT, LEGACY_CURRENT_SLOT, LEGACY_PREVIOUS_SLOT] as const;
+  const slots = [
+    BACKUP_SLOT,
+    LEGACY_CURRENT_SLOT,
+    LEGACY_PREVIOUS_SLOT,
+  ] as const;
   const manifests = await Promise.all(slots.map(readAndroidManifest));
   let bestSlot: (typeof slots)[number] | null = null;
   let bestMetadata: CloudBackupMetadata | null = null;
@@ -242,9 +246,13 @@ export function getCloudProviderLabel(): string {
 }
 
 export function getCloudBackupButtonLabel(): string {
-  return Platform.OS === 'ios' ? 'Backup to iCloud' : 'Backup to device storage';
+  return Platform.OS === 'ios'
+    ? 'Backup to iCloud'
+    : 'Backup to device storage';
 }
 
 export function getCloudRestoreButtonLabel(): string {
-  return Platform.OS === 'ios' ? 'Restore from iCloud' : 'Restore from device storage';
+  return Platform.OS === 'ios'
+    ? 'Restore from iCloud'
+    : 'Restore from device storage';
 }

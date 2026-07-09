@@ -1,6 +1,6 @@
-import type {SavedPlaceRow} from '@/db/repositories/saved-places';
-import type {MomentMapPin} from '@/components/map/MomentMapOverlay';
-import {matchSavedPlaceForPoint} from '@/lib/saved-places';
+import type { SavedPlaceRow } from '@/db/repositories/saved-places';
+import type { MomentMapPin } from '@/components/map/MomentMapOverlay';
+import { matchSavedPlaceForPoint } from '@/lib/saved-places';
 
 import {
   addToCounts,
@@ -77,7 +77,7 @@ export function partitionMomentMapPins(
   clusterWhenZoomedOut: boolean,
 ): PartitionedMomentMapPins {
   if (!clusterWhenZoomedOut || pins.length === 0 || places.length === 0) {
-    return {savedPlaceClusters: [], individualPins: pins};
+    return { savedPlaceClusters: [], individualPins: pins };
   }
 
   const clusteredIds = new Set<number>();
@@ -86,7 +86,7 @@ export function partitionMomentMapPins(
   for (const place of places) {
     const atPlace = pins.filter(pin => {
       const match = matchSavedPlaceForPoint(
-        {lat: pin.coordinate.latitude, lng: pin.coordinate.longitude},
+        { lat: pin.coordinate.latitude, lng: pin.coordinate.longitude },
         places,
       );
       return match?.id === place.id;
@@ -110,7 +110,7 @@ export function partitionMomentMapPins(
     }
 
     if (hasMomentCounts(counts)) {
-      savedPlaceClusters.push({place, counts, momentIds});
+      savedPlaceClusters.push({ place, counts, momentIds });
     }
   }
 

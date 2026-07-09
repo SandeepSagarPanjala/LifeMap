@@ -1,11 +1,14 @@
-import type {SavedPlaceKind, SavedPlaceRow} from '@/db/repositories/saved-places';
-import {APP_COPY} from '@/lib/app-copy';
+import type {
+  SavedPlaceKind,
+  SavedPlaceRow,
+} from '@/db/repositories/saved-places';
+import { APP_COPY } from '@/lib/app-copy';
 import {
   MAX_SAVED_PLACE_LABEL_LENGTH,
   MAX_SAVED_PLACES,
 } from '@/lib/app-constants';
-import {distanceKm, type LocationPointLike} from '@/lib/location-geo';
-import type {DetectedTrip} from '@/lib/trip-detection';
+import { distanceKm, type LocationPointLike } from '@/lib/location-geo';
+import type { DetectedTrip } from '@/lib/trip-detection';
 
 const KIND_PRIORITY: Record<SavedPlaceRow['kind'], number> = {
   home: 0,

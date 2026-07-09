@@ -1,16 +1,16 @@
 import L from 'leaflet';
-import {Marker} from 'react-leaflet';
-import type {LatLngTuple} from 'leaflet';
+import { Marker } from 'react-leaflet';
+import type { LatLngTuple } from 'leaflet';
 
-import {formatStayVisitLabel, visitPlaceName} from '../../mobile/timeline-format';
-import type {DetectedTrip} from '../../mobile/types';
-import type {SavedPlaceRow} from '../../types';
-import {hasMobileMomentCounts} from './mobile-moment-theme';
-import {mobileMomentCountsHtml} from './MobileMomentCountsRow';
 import {
-  savedPlaceIconHtml,
-  SAVED_PLACE_VISIT_COLOR,
-} from './SavedPlaceIcon';
+  formatStayVisitLabel,
+  visitPlaceName,
+} from '../../mobile/timeline-format';
+import type { DetectedTrip } from '../../mobile/types';
+import type { SavedPlaceRow } from '../../types';
+import { hasMobileMomentCounts } from './mobile-moment-theme';
+import { mobileMomentCountsHtml } from './MobileMomentCountsRow';
+import { savedPlaceIconHtml, SAVED_PLACE_VISIT_COLOR } from './SavedPlaceIcon';
 
 const DOT_RING_SIZE = 28;
 const BUBBLE_DOT_GAP = 4;
@@ -121,11 +121,7 @@ export function MobileStayCallout({
 
   return (
     <>
-      <Marker
-        position={coordinate}
-        icon={stayDotIcon()}
-        zIndexOffset={400}
-      />
+      <Marker position={coordinate} icon={stayDotIcon()} zIndexOffset={400} />
       <Marker
         position={coordinate}
         icon={stayBubbleIcon(placeLineHtml, visit.title, visit.subtitle, entry)}
@@ -135,7 +131,4 @@ export function MobileStayCallout({
   );
 }
 
-export {
-  STAY_DWELL_RADIUS_METERS,
-  stayCoordinate,
-};
+export { STAY_DWELL_RADIUS_METERS, stayCoordinate };

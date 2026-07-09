@@ -3,7 +3,7 @@
  *
  * Edge cases and flows not covered by happy/deep paths yet.
  */
-const {launchToMap} = require('../helpers/launch-to-map');
+const { launchToMap } = require('../helpers/launch-to-map');
 const {
   assertSavedPlacesListEmpty,
   closeSavedPlacesList,

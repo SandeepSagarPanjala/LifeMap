@@ -1,7 +1,7 @@
-import {useEffect, useState} from 'react';
-import {Text} from 'react-native';
+import { useEffect, useState } from 'react';
+import { Text } from 'react-native';
 
-import {getAppVersionLabel} from '@/lib/app-version';
+import { getAppVersionLabel } from '@/lib/app-version';
 
 export function AppVersionFooter() {
   const [label, setLabel] = useState('');

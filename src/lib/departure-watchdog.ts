@@ -1,4 +1,4 @@
-import {distanceKm, type LocationPointLike} from '@/lib/location-geo';
+import { distanceKm, type LocationPointLike } from '@/lib/location-geo';
 import {
   DEPARTURE_WATCHDOG_MIN_MS,
   HEARTBEAT_DEPARTURE_DISTANCE_METERS,
@@ -44,7 +44,10 @@ function suggestsMovement(fresh: FreshLocationSample): boolean {
   if (fresh.speed == null || fresh.speed < MIN_DEPARTURE_SPEED_MS) {
     return false;
   }
-  if (fresh.accuracy != null && fresh.accuracy > MAX_DEPARTURE_ACCURACY_METERS) {
+  if (
+    fresh.accuracy != null &&
+    fresh.accuracy > MAX_DEPARTURE_ACCURACY_METERS
+  ) {
     return false;
   }
   return true;
@@ -54,7 +57,7 @@ function suggestsMovement(fresh: FreshLocationSample): boolean {
 export function evaluateDepartureWatchdog(
   input: DepartureWatchdogInput,
 ): DepartureWatchdogResult {
-  const {sinceLastSaveMs, lastSaved, fresh} = input;
+  const { sinceLastSaveMs, lastSaved, fresh } = input;
   const stationaryPingMinMs =
     input.stationaryPingMinMs ?? STATIONARY_PING_MIN_MS;
   const departureWatchdogMinMs =

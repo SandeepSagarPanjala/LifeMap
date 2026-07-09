@@ -1,12 +1,12 @@
-import {and, asc, desc, eq, gte, lte, sql} from 'drizzle-orm';
+import { and, asc, desc, eq, gte, lte, sql } from 'drizzle-orm';
 
-import {deleteMomentContentFile} from '@/lib/moments/moment-storage';
-import {parseNotePhotoAttachments} from '@/lib/moments/note-photo-attachments';
-import {sanitizePhotoAttachmentsJson} from '@/lib/db/json-blobs';
-import {getDayRange} from '@/lib/day-utils';
+import { deleteMomentContentFile } from '@/lib/moments/moment-storage';
+import { parseNotePhotoAttachments } from '@/lib/moments/note-photo-attachments';
+import { sanitizePhotoAttachmentsJson } from '@/lib/db/json-blobs';
+import { getDayRange } from '@/lib/day-utils';
 
-import {getDatabase} from '../client';
-import {moments} from '../schema';
+import { getDatabase } from '../client';
+import { moments } from '../schema';
 
 export type MomentType = 'photo' | 'note' | 'video' | 'voice' | 'activity';
 
@@ -69,7 +69,9 @@ function mapRow(row: typeof moments.$inferSelect): MomentRow {
     voiceAttachmentPath: row.voiceAttachmentPath ?? null,
     voiceAttachmentBytes: row.voiceAttachmentBytes ?? null,
     voiceDurationSec: row.voiceDurationSec ?? null,
-    photoAttachmentsJson: sanitizePhotoAttachmentsJson(row.photoAttachmentsJson),
+    photoAttachmentsJson: sanitizePhotoAttachmentsJson(
+      row.photoAttachmentsJson,
+    ),
     textBody: row.textBody ?? null,
     caption: row.caption ?? null,
     title: row.title ?? null,
@@ -124,11 +126,18 @@ export async function insertMoment(input: NewMoment): Promise<MomentRow> {
 
 export async function getMomentById(id: number): Promise<MomentRow | null> {
   const db = await getDatabase();
-  const rows = await db.select().from(moments).where(eq(moments.id, id)).limit(1);
+  const rows = await db
+    .select()
+    .from(moments)
+    .where(eq(moments.id, id))
+    .limit(1);
   return rows[0] ? mapRow(rows[0]) : null;
 }
 
-export async function getMomentsForDay(start: Date, end: Date): Promise<MomentRow[]> {
+export async function getMomentsForDay(
+  start: Date,
+  end: Date,
+): Promise<MomentRow[]> {
   const db = await getDatabase();
   const rows = await db
     .select()
@@ -138,8 +147,10 @@ export async function getMomentsForDay(start: Date, end: Date): Promise<MomentRo
   return rows.map(mapRow);
 }
 
-export async function getMomentsDayFingerprint(dateKey: string): Promise<string> {
-  const {start, end} = getDayRange(dateKey);
+export async function getMomentsDayFingerprint(
+  dateKey: string,
+): Promise<string> {
+  const { start, end } = getDayRange(dateKey);
   const db = await getDatabase();
   const [row] = await db
     .select({
@@ -199,7 +210,9 @@ export async function deleteMoment(id: number): Promise<void> {
   await db.delete(moments).where(eq(moments.id, id));
   await deleteMomentContentFile(existing.contentPath);
   await deleteMomentContentFile(existing.voiceAttachmentPath);
-  for (const attachment of parseNotePhotoAttachments(existing.photoAttachmentsJson)) {
+  for (const attachment of parseNotePhotoAttachments(
+    existing.photoAttachmentsJson,
+  )) {
     await deleteMomentContentFile(attachment.path);
   }
   notifyMomentChange(existing.timestamp);

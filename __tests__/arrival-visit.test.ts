@@ -1,7 +1,7 @@
-import type {LocationPointRow} from '@/db/repositories/location-days';
-import {isArrivalVisitAfterDrive} from '@/lib/arrival-visit';
-import {buildTripDetectionConfig} from '@/lib/trip-settings';
-import type {DetectedTrip} from '@/lib/trip-detection';
+import type { LocationPointRow } from '@/db/repositories/location-days';
+import { isArrivalVisitAfterDrive } from '@/lib/arrival-visit';
+import { buildTripDetectionConfig } from '@/lib/trip-settings';
+import type { DetectedTrip } from '@/lib/trip-detection';
 
 function point(
   lat: number,

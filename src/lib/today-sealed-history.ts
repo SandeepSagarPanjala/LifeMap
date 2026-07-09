@@ -1,6 +1,6 @@
-import {differenceInMilliseconds} from 'date-fns';
+import { differenceInMilliseconds } from 'date-fns';
 
-import type {TripRow} from '@/db/repositories/trips';
+import type { TripRow } from '@/db/repositories/trips';
 import {
   isPlayableTimelineEntry,
   type DayTimelineEntry,
@@ -85,19 +85,16 @@ function firstPlayable(
 export function trimSealedAtBoundary(
   sealed: readonly DayTimelineEntry[],
   liveTail: readonly DayTimelineEntry[],
-): {trimmed: DayTimelineEntry[]; continuedFrom: DetectedTrip | null} {
+): { trimmed: DayTimelineEntry[]; continuedFrom: DetectedTrip | null } {
   const firstTail = firstPlayable(liveTail);
   const lastSealed = lastPlayable(sealed);
   if (firstTail == null || lastSealed == null) {
-    return {trimmed: [...sealed], continuedFrom: null};
+    return { trimmed: [...sealed], continuedFrom: null };
   }
 
   const gapMs = firstTail.startAt.getTime() - lastSealed.endAt.getTime();
-  if (
-    lastSealed.kind !== firstTail.kind ||
-    gapMs > BOUNDARY_CONTIGUOUS_MS
-  ) {
-    return {trimmed: [...sealed], continuedFrom: null};
+  if (lastSealed.kind !== firstTail.kind || gapMs > BOUNDARY_CONTIGUOUS_MS) {
+    return { trimmed: [...sealed], continuedFrom: null };
   }
 
   const trimmed: DayTimelineEntry[] = [];
@@ -116,7 +113,7 @@ export function trimSealedAtBoundary(
     }
     trimmed.unshift(entry);
   }
-  return {trimmed, continuedFrom: lastSealed};
+  return { trimmed, continuedFrom: lastSealed };
 }
 
 /** Keep the original start when tail detection continues a sealed segment. */
@@ -162,7 +159,7 @@ export function mergeSealedAndLiveTimeline(
   sealedThrough: number,
 ): DayTimelineEntry[] {
   const tail = filterLiveTailEntries(live, sealedThrough);
-  const {trimmed: trimmedSealed, continuedFrom} = trimSealedAtBoundary(
+  const { trimmed: trimmedSealed, continuedFrom } = trimSealedAtBoundary(
     sealed,
     tail,
   );
@@ -174,10 +171,7 @@ export function mergeSealedAndLiveTimeline(
   const lastSealed = lastPlayable(trimmedSealed);
   const firstTail = firstPlayable(tail);
   if (lastSealed != null && firstTail != null) {
-    const gapMs = differenceInMilliseconds(
-      firstTail.startAt,
-      lastSealed.endAt,
-    );
+    const gapMs = differenceInMilliseconds(firstTail.startAt, lastSealed.endAt);
     if (gapMs >= MIN_TIMELINE_GAP_MS) {
       merged.push(makeGap(lastSealed.endAt, firstTail.startAt, merged.length));
     }

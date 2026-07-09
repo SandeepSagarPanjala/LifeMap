@@ -1,4 +1,4 @@
-import {estimateExportTableStorageBytes} from '../src/lib/export-table-storage';
+import { estimateExportTableStorageBytes } from '../src/lib/export-table-storage';
 
 describe('estimateExportTableStorageBytes', () => {
   it('allocates DB bytes proportionally by row count', () => {

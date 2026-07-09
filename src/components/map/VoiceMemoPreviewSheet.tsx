@@ -1,19 +1,25 @@
-import {useCallback, useEffect, useRef, useState, type ComponentRef} from 'react';
-import {APP_COPY, errorMessageOr} from '@/lib/app-copy';
-import {Alert, Keyboard, Pressable, StyleSheet, View} from 'react-native';
-import {AudioLines, Pause, Play} from 'lucide-react-native';
-import {BottomSheetModalProvider} from '@gorhom/bottom-sheet';
-import {BottomSheetTextInput} from '@gorhom/bottom-sheet';
-import type {BottomSheetModal} from '@gorhom/bottom-sheet';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ComponentRef,
+} from 'react';
+import { APP_COPY, errorMessageOr } from '@/lib/app-copy';
+import { Alert, Keyboard, Pressable, StyleSheet, View } from 'react-native';
+import { AudioLines, Pause, Play } from 'lucide-react-native';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
+import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 
-import {CAPTURE_BUTTON_THEMES} from '@/components/map/map-capture-button-theme';
-import {VoicePlaybackMeter} from '@/components/voice/VoiceMeter';
-import {Text} from '@/components/ui/text';
-import {AppBottomSheet} from '@/components/ui/app-bottom-sheet';
-import {useThemeColors} from '@/hooks/use-theme-colors';
-import {saveVoiceMoment} from '@/lib/moments/capture-voice';
-import {formatVoiceDurationMs} from '@/lib/moments/format-voice-duration';
-import {throttleVoiceUi} from '@/lib/moments/voice-waveform';
+import { CAPTURE_BUTTON_THEMES } from '@/components/map/map-capture-button-theme';
+import { VoicePlaybackMeter } from '@/components/voice/VoiceMeter';
+import { Text } from '@/components/ui/text';
+import { AppBottomSheet } from '@/components/ui/app-bottom-sheet';
+import { useThemeColors } from '@/hooks/use-theme-colors';
+import { saveVoiceMoment } from '@/lib/moments/capture-voice';
+import { formatVoiceDurationMs } from '@/lib/moments/format-voice-duration';
+import { throttleVoiceUi } from '@/lib/moments/voice-waveform';
 import {
   createVoiceRecorderSession,
   getVoiceRecordingErrorMessage,
@@ -46,7 +52,9 @@ export function VoiceMemoPreviewSheet({
   const [playbackPositionMs, setPlaybackPositionMs] = useState(0);
   const [saving, setSaving] = useState(false);
 
-  const recorderRef = useRef<ReturnType<typeof createVoiceRecorderSession> | null>(null);
+  const recorderRef = useRef<ReturnType<
+    typeof createVoiceRecorderSession
+  > | null>(null);
   const draftRef = useRef(draft);
   const paintPlaybackRef = useRef<(ms: number) => void>(() => {});
 
@@ -125,7 +133,7 @@ export function VoiceMemoPreviewSheet({
 
   const promptDiscardOnClose = useCallback(() => {
     Alert.alert('Discard voice memo?', 'This recording will be deleted.', [
-      {text: 'Keep editing', style: 'cancel'},
+      { text: 'Keep editing', style: 'cancel' },
       {
         text: 'Discard',
         style: 'destructive',
@@ -161,7 +169,10 @@ export function VoiceMemoPreviewSheet({
       await recorderRef.current.startPreview(current.path);
       setIsPlayingPreview(true);
     } catch (error) {
-      Alert.alert(APP_COPY.alerts.couldNotPlayRecording, getVoiceRecordingErrorMessage(error));
+      Alert.alert(
+        APP_COPY.alerts.couldNotPlayRecording,
+        getVoiceRecordingErrorMessage(error),
+      );
     }
   };
 
@@ -178,10 +189,7 @@ export function VoiceMemoPreviewSheet({
       await onSaved();
       requestClose();
     } catch (error) {
-      Alert.alert(
-        APP_COPY.alerts.couldNotSaveVoiceMemo,
-        errorMessageOr(error),
-      );
+      Alert.alert(APP_COPY.alerts.couldNotSaveVoiceMemo, errorMessageOr(error));
     } finally {
       setSaving(false);
     }
@@ -189,14 +197,17 @@ export function VoiceMemoPreviewSheet({
 
   const durationMs = draft?.durationMs ?? 0;
   const timerMs =
-    isPlayingPreview || playbackPositionMs > 0 ? playbackPositionMs : durationMs;
+    isPlayingPreview || playbackPositionMs > 0
+      ? playbackPositionMs
+      : durationMs;
   const playbackProgress =
     durationMs > 0 ? Math.min(1, playbackPositionMs / durationMs) : 0;
 
   return (
     <View
       style={styles.host}
-      pointerEvents={draft != null ? 'box-none' : 'none'}>
+      pointerEvents={draft != null ? 'box-none' : 'none'}
+    >
       <BottomSheetModalProvider>
         <AppBottomSheet
           name="voice-memo-preview"
@@ -213,7 +224,8 @@ export function VoiceMemoPreviewSheet({
           keyboardBlurBehavior="none"
           enableBlurKeyboardOnGesture={false}
           dismissKeyboardOnClose
-          enablePanDownToClose={false}>
+          enablePanDownToClose={false}
+        >
           {draft != null ? (
             <View style={styles.body}>
               <Text variant="h4" className="border-0 pb-0">
@@ -248,19 +260,32 @@ export function VoiceMemoPreviewSheet({
                       onPress={() => void handleTogglePreview()}
                       style={[
                         styles.secondaryCircle,
-                        {backgroundColor: voiceTheme.badgeBg},
-                      ]}>
+                        { backgroundColor: voiceTheme.badgeBg },
+                      ]}
+                    >
                       {isPlayingPreview ? (
-                        <Pause size={22} color={voiceTheme.icon} strokeWidth={2.25} />
+                        <Pause
+                          size={22}
+                          color={voiceTheme.icon}
+                          strokeWidth={2.25}
+                        />
                       ) : (
-                        <Play size={22} color={voiceTheme.icon} strokeWidth={2.25} />
+                        <Play
+                          size={22}
+                          color={voiceTheme.icon}
+                          strokeWidth={2.25}
+                        />
                       )}
                     </Pressable>
                     <Pressable
                       accessibilityRole="button"
                       accessibilityLabel="Save voice memo"
                       onPress={() => void handleSave()}
-                      style={[styles.saveButton, {backgroundColor: colors.primary}]}>
+                      style={[
+                        styles.saveButton,
+                        { backgroundColor: colors.primary },
+                      ]}
+                    >
                       <AudioLines
                         size={18}
                         color={colors.primaryForeground}

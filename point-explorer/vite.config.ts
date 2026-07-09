@@ -1,9 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import {fileURLToPath} from 'node:url';
+import { fileURLToPath } from 'node:url';
 
 import react from '@vitejs/plugin-react';
-import {defineConfig, type Plugin} from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
 const personalDataRoot = path.resolve(rootDir, '../__personal__');

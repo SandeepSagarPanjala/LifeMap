@@ -1,4 +1,4 @@
-import {VisionCamera} from 'react-native-vision-camera';
+import { VisionCamera } from 'react-native-vision-camera';
 
 import {
   isNativeIosVoiceRecorderAvailable,

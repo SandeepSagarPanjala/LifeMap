@@ -1,11 +1,11 @@
-import {useEffect, useMemo, useState} from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import {
   getSavedPlaceById,
   type SavedPlaceRow,
 } from '@/db/repositories/saved-places';
-import {lookupSavedPlaceById} from '@/lib/saved-places';
-import type {DetectedTrip} from '@/lib/trip-detection';
+import { lookupSavedPlaceById } from '@/lib/saved-places';
+import type { DetectedTrip } from '@/lib/trip-detection';
 
 /** Active geofence match, or a trip-linked place that may be soft-deleted. */
 export function useStaySavedPlace(
@@ -26,8 +26,7 @@ export function useStaySavedPlace(
       setLinkedPlace(null);
       return;
     }
-    const savedPlaceId =
-      stay?.placeKind === 'saved' ? stay.placeId : undefined;
+    const savedPlaceId = stay?.placeKind === 'saved' ? stay.placeId : undefined;
     if (savedPlaceId == null) {
       setLinkedPlace(null);
       return;

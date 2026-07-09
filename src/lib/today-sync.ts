@@ -2,11 +2,11 @@ import {
   getLocationPointsForDay,
   type LocationPointRow,
 } from '@/db/repositories/location-days';
-import {listTripsForDay, type TripRow} from '@/db/repositories/trips';
-import {getDayRange, getTodayDateKey} from '@/lib/day-utils';
-import type {HistoryData} from '@/lib/history-data-types';
-import {buildExplorerDayTimelineFromGps} from '@/lib/explorer-day-trips';
-import {getSealableTodayEntries} from '@/lib/today-seal-policy';
+import { listTripsForDay, type TripRow } from '@/db/repositories/trips';
+import { getDayRange, getTodayDateKey } from '@/lib/day-utils';
+import type { HistoryData } from '@/lib/history-data-types';
+import { buildExplorerDayTimelineFromGps } from '@/lib/explorer-day-trips';
+import { getSealableTodayEntries } from '@/lib/today-seal-policy';
 import {
   buildTodayTailDisplayHistory,
   historyDataFromEntries,
@@ -22,8 +22,8 @@ import {
   type DayTimelineEntry,
   type DetectedTrip,
 } from '@/lib/trip-detection';
-import {TODAY_LIVE_BUFFER_MAX_SEGMENTS} from '@/lib/app-constants';
-import type {TripDetectionConfig} from '@/lib/trip-settings';
+import { TODAY_LIVE_BUFFER_MAX_SEGMENTS } from '@/lib/app-constants';
+import type { TripDetectionConfig } from '@/lib/trip-settings';
 
 /** Withholds last 2 live segments — need ≥3 tail segments before seal can persist anything. */
 export const TODAY_OPEN_SILENT_SEAL_MIN_TAIL_SEGMENTS =
@@ -65,13 +65,15 @@ async function loadHistoryFromStoredTripsToday(
   detectionConfig: TripDetectionConfig,
   referenceNow: Date,
 ): Promise<HistoryData> {
-  const {loadHistoryFromStoredTrips} = await import('@/lib/trip-materialization');
+  const { loadHistoryFromStoredTrips } = await import(
+    '@/lib/trip-materialization'
+  );
   return loadHistoryFromStoredTrips(
     dateKey,
     tripRows,
     referenceNow,
     detectionConfig,
-    {markLastStayOpen: true},
+    { markLastStayOpen: true },
   );
 }
 
@@ -97,9 +99,9 @@ export function canExtendOpenStayWithNewPoints(
   if (newPoints.length === 0) {
     return true;
   }
-  const anchor = {lat: lastStay.centroidLat, lng: lastStay.centroidLng};
+  const anchor = { lat: lastStay.centroidLat, lng: lastStay.centroidLng };
   return newPoints.every(point =>
-    arePointsSamePlace({lat: point.lat, lng: point.lng}, anchor, config),
+    arePointsSamePlace({ lat: point.lat, lng: point.lng }, anchor, config),
   );
 }
 
@@ -117,9 +119,9 @@ export async function canClockExtendOpenStayAtLastGps(
   if (lastPoint == null) {
     return true;
   }
-  const anchor = {lat: lastStay.centroidLat, lng: lastStay.centroidLng};
+  const anchor = { lat: lastStay.centroidLat, lng: lastStay.centroidLng };
   return arePointsSamePlace(
-    {lat: lastPoint.lat, lng: lastPoint.lng},
+    { lat: lastPoint.lat, lng: lastPoint.lng },
     anchor,
     config,
   );
@@ -147,7 +149,7 @@ async function mergeTodayDisplayFromDbAndTail(
   referenceNow: Date,
   onPartial?: (data: HistoryData) => void,
 ): Promise<HistoryData> {
-  const {start: dayStart} = getDayRange(dateKey);
+  const { start: dayStart } = getDayRange(dateKey);
   const dayStartMs = dayStart.getTime();
   const sealedMs = sealedThroughMs(tripRows) ?? dayStartMs;
   const tailStart = new Date(tailGpsStartMs(sealedMs, dayStartMs));
@@ -219,7 +221,7 @@ export async function silentTripSealToday(
   referenceNow: Date = new Date(),
 ): Promise<number> {
   const dateKey = getTodayDateKey();
-  const {entries, dayPointCount} = await buildExplorerDayTimelineFromGps(
+  const { entries, dayPointCount } = await buildExplorerDayTimelineFromGps(
     dateKey,
     detectionConfig,
   );
@@ -233,7 +235,7 @@ export async function silentTripSealToday(
     return 0;
   }
 
-  const {todaySealNeedsPersist, persistClosedTripsIncremental} = await import(
+  const { todaySealNeedsPersist, persistClosedTripsIncremental } = await import(
     '@/lib/trip-materialization'
   );
   const existingTrips = await listTripsForDay(dateKey);

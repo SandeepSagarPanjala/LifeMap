@@ -1,6 +1,6 @@
-import type {DB} from '@op-engineering/op-sqlite';
+import type { DB } from '@op-engineering/op-sqlite';
 
-import {getSqlite} from './client';
+import { getSqlite } from './client';
 import {
   CREATE_LOCATION_POINTS_DEDUPE_UNIQUE_INDEX_SQL,
   CREATE_LOCATION_POINTS_NO_DELETE_TRIGGER_SQL,
@@ -18,8 +18,8 @@ export type LocationPointDuplicateStats = {
 
 type SqlExecutor = Pick<DB, 'execute'>;
 
-function readCount(result: {rows?: unknown[]}): number {
-  const row = result.rows?.[0] as {count?: number | string} | undefined;
+function readCount(result: { rows?: unknown[] }): number {
+  const row = result.rows?.[0] as { count?: number | string } | undefined;
   return Number(row?.count ?? 0);
 }
 
@@ -77,14 +77,19 @@ export async function countLocationPointDuplicateGroups(
 
 export async function getLocationPointDuplicateStats(): Promise<LocationPointDuplicateStats> {
   const sqlite = await getSqlite();
-  const [totalResult, extraRows, duplicateGroups, hasUniqueIndex, hasNoDeleteTrigger] =
-    await Promise.all([
-      sqlite.execute(`SELECT COUNT(*) AS count FROM location_points`),
-      countLocationPointDuplicateExtraRows(sqlite),
-      countLocationPointDuplicateGroups(sqlite),
-      indexExists(sqlite, LOCATION_POINTS_DEDUPE_UNIQUE_INDEX),
-      triggerExists(sqlite, LOCATION_POINTS_NO_DELETE_TRIGGER),
-    ]);
+  const [
+    totalResult,
+    extraRows,
+    duplicateGroups,
+    hasUniqueIndex,
+    hasNoDeleteTrigger,
+  ] = await Promise.all([
+    sqlite.execute(`SELECT COUNT(*) AS count FROM location_points`),
+    countLocationPointDuplicateExtraRows(sqlite),
+    countLocationPointDuplicateGroups(sqlite),
+    indexExists(sqlite, LOCATION_POINTS_DEDUPE_UNIQUE_INDEX),
+    triggerExists(sqlite, LOCATION_POINTS_NO_DELETE_TRIGGER),
+  ]);
 
   return {
     totalRows: readCount(totalResult),
@@ -121,7 +126,10 @@ export async function deleteLocationPointDuplicatesAndCreateUniqueIndex(): Promi
 }> {
   const sqlite = await getSqlite();
   const extraRows = await countLocationPointDuplicateExtraRows(sqlite);
-  const hadTrigger = await triggerExists(sqlite, LOCATION_POINTS_NO_DELETE_TRIGGER);
+  const hadTrigger = await triggerExists(
+    sqlite,
+    LOCATION_POINTS_NO_DELETE_TRIGGER,
+  );
   let deletedRows = 0;
   let indexCreated = false;
 
@@ -158,5 +166,5 @@ export async function deleteLocationPointDuplicatesAndCreateUniqueIndex(): Promi
     }
   });
 
-  return {deletedRows, indexCreated};
+  return { deletedRows, indexCreated };
 }

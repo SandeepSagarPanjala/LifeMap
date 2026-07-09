@@ -1,8 +1,8 @@
-import {format} from 'date-fns';
-import {Pressable, View} from 'react-native';
+import { format } from 'date-fns';
+import { Pressable, View } from 'react-native';
 
-import type {LocationPointRow} from '@/db/repositories/location-days';
-import {Text} from '@/components/ui/text';
+import type { LocationPointRow } from '@/db/repositories/location-days';
+import { Text } from '@/components/ui/text';
 
 type LocationPointListProps = {
   points: LocationPointRow[];
@@ -33,9 +33,14 @@ export function LocationPointList({
             accessibilityRole="button"
             onPress={() => onSelectPoint(point)}
             className={`rounded-xl border px-3 py-3 ${
-              selected ? 'border-primary bg-primary/10' : 'border-border bg-card'
-            }`}>
-            <Text className={selected ? 'text-primary font-medium' : 'font-medium'}>
+              selected
+                ? 'border-primary bg-primary/10'
+                : 'border-border bg-card'
+            }`}
+          >
+            <Text
+              className={selected ? 'text-primary font-medium' : 'font-medium'}
+            >
               {format(point.timestamp, 'h:mm a')}
             </Text>
             <Text variant="muted" className="mt-1 text-sm">

@@ -1,4 +1,4 @@
-import {getDayRange, getTodayDateKey} from '@/lib/day-utils';
+import { getDayRange, getTodayDateKey } from '@/lib/day-utils';
 
 export type ExportPeriodScope = 'today' | 'all' | 'day';
 
@@ -26,7 +26,7 @@ export function resolveExportPeriod(
     throw new Error('dateKey is required for day export scope');
   }
 
-  const {start, end} = getDayRange(key);
+  const { start, end } = getDayRange(key);
   return {
     scope,
     dateKey: key,

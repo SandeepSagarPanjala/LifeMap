@@ -1,4 +1,4 @@
-import {Platform} from 'react-native';
+import { Platform } from 'react-native';
 import ReactNativeBlobUtil from 'react-native-blob-util';
 
 /** Strip any file:// prefix and decode URI-encoded path segments. */

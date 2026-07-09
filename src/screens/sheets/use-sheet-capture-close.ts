@@ -1,8 +1,8 @@
-import {useCallback, useEffect, useRef} from 'react';
-import {useFocusEffect, useNavigation} from '@react-navigation/native';
-import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import { useCallback, useEffect, useRef } from 'react';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import type {RootStackParamList} from '@/navigation/types';
+import type { RootStackParamList } from '@/navigation/types';
 
 /** Pop the capture screen when the sheet closes (or starts closing with closeOnAnimateOut). */
 export function useSheetCaptureClose() {

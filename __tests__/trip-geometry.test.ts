@@ -1,12 +1,8 @@
-import type {LocationPointRow} from '@/db/repositories/location-days';
-import {bearingDegrees} from '@/lib/location-geo';
-import {geographicMedoid, resolveVisitAnchor} from '@/lib/visit-anchor';
+import type { LocationPointRow } from '@/db/repositories/location-days';
+import { bearingDegrees } from '@/lib/location-geo';
+import { geographicMedoid, resolveVisitAnchor } from '@/lib/visit-anchor';
 
-function point(
-  lat: number,
-  lng: number,
-  timestampMs = 0,
-): LocationPointRow {
+function point(lat: number, lng: number, timestampMs = 0): LocationPointRow {
   return {
     id: timestampMs,
     timestamp: new Date(timestampMs),
@@ -63,17 +59,21 @@ describe('resolveVisitAnchor', () => {
 describe('bearingDegrees', () => {
   it('faces north along a northbound segment', () => {
     expect(
-      bearingDegrees({lat: 33.0, lng: -97.0}, {lat: 33.01, lng: -97.0}),
+      bearingDegrees({ lat: 33.0, lng: -97.0 }, { lat: 33.01, lng: -97.0 }),
     ).toBeCloseTo(0, 0);
   });
 });
 
 describe('buildDrawableRouteSegments', () => {
   it('keeps stored trip routes as one polyline despite synthetic timestamps', () => {
-    const {buildDrawableRouteSegments} = require('@/lib/route-segments');
-    const {HISTORY_SAME_PLACE_RADIUS_METERS} = require('@/lib/app-constants');
-    const {buildTripDetectionConfig} = require('@/lib/trip-settings');
-    const config = buildTripDetectionConfig(10, 5, HISTORY_SAME_PLACE_RADIUS_METERS);
+    const { buildDrawableRouteSegments } = require('@/lib/route-segments');
+    const { HISTORY_SAME_PLACE_RADIUS_METERS } = require('@/lib/app-constants');
+    const { buildTripDetectionConfig } = require('@/lib/trip-settings');
+    const config = buildTripDetectionConfig(
+      10,
+      5,
+      HISTORY_SAME_PLACE_RADIUS_METERS,
+    );
 
     const storedRoute: LocationPointRow[] = [
       {

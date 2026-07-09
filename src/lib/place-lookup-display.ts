@@ -1,6 +1,6 @@
-import type {SavedPlaceRow} from '@/db/repositories/saved-places';
-import type {PlacePoiRow} from '@/lib/place-lookup-types';
-import {PLACE_LOOKUP_VENUE_RADIUS_M} from '@/lib/app-constants';
+import type { SavedPlaceRow } from '@/db/repositories/saved-places';
+import type { PlacePoiRow } from '@/lib/place-lookup-types';
+import { PLACE_LOOKUP_VENUE_RADIUS_M } from '@/lib/app-constants';
 import {
   visitDisplayLabel,
   type VisitPlaceDisplay,
@@ -43,8 +43,7 @@ export function resolveVisitPlaceDisplay(input: {
       cacheId: null,
       materializedTripId: input.materializedTripId ?? null,
       loading: false,
-      venueRadiusMeters:
-        input.venueRadiusMeters ?? PLACE_LOOKUP_VENUE_RADIUS_M,
+      venueRadiusMeters: input.venueRadiusMeters ?? PLACE_LOOKUP_VENUE_RADIUS_M,
     };
   }
 
@@ -69,8 +68,7 @@ export function resolveVisitPlaceDisplay(input: {
       cacheId: input.cacheId ?? null,
       materializedTripId: input.materializedTripId ?? null,
       loading: input.loading ?? false,
-      venueRadiusMeters:
-        input.venueRadiusMeters ?? PLACE_LOOKUP_VENUE_RADIUS_M,
+      venueRadiusMeters: input.venueRadiusMeters ?? PLACE_LOOKUP_VENUE_RADIUS_M,
     };
   }
 

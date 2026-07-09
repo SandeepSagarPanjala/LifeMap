@@ -1,13 +1,13 @@
-import {TZDate} from '@date-fns/tz';
-import {format} from 'date-fns';
+import { TZDate } from '@date-fns/tz';
+import { format } from 'date-fns';
 
-import type {TripPointRow} from '@/db/repositories/trip-points';
-import type {TripRow} from '@/db/repositories/trips';
-import {parseDateKey} from '@/lib/day-utils';
-import {formatDistance, type DistanceUnit} from '@/lib/location-geo';
-import {visitDisplayLabel} from '@/lib/place-lookup-types';
-import {APP_TIMEZONE} from '@/lib/timezone';
-import {formatTripDuration} from '@/lib/trip-format';
+import type { TripPointRow } from '@/db/repositories/trip-points';
+import type { TripRow } from '@/db/repositories/trips';
+import { parseDateKey } from '@/lib/day-utils';
+import { formatDistance, type DistanceUnit } from '@/lib/location-geo';
+import { visitDisplayLabel } from '@/lib/place-lookup-types';
+import { APP_TIMEZONE } from '@/lib/timezone';
+import { formatTripDuration } from '@/lib/trip-format';
 
 export type ExportTripTimeField = {
   iso: string;
@@ -39,7 +39,7 @@ export type ExportTripView = {
   durationMs: number;
   distance: string;
   distanceKm: number;
-  centroid: {lat: number; lng: number};
+  centroid: { lat: number; lng: number };
   placeLabel: string | null;
   placeId: number | null;
   placeKind: TripRow['placeKind'];
@@ -83,7 +83,7 @@ export function buildExportTripView(
     durationMs: trip.durationMs,
     distance: formatDistance(trip.distanceKm, distanceUnit),
     distanceKm: trip.distanceKm,
-    centroid: {lat: trip.centroidLat, lng: trip.centroidLng},
+    centroid: { lat: trip.centroidLat, lng: trip.centroidLng },
     placeLabel: trip.placeLabel,
     placeId: trip.placeId,
     placeKind: trip.placeKind,
@@ -155,7 +155,7 @@ export function labelFromTripRow(
 export function adjacentStaysForTrip(
   trips: readonly TripRow[],
   tripIndex: number,
-): {from: TripRow | null; to: TripRow | null} {
+): { from: TripRow | null; to: TripRow | null } {
   let from: TripRow | null = null;
   for (let index = tripIndex - 1; index >= 0; index -= 1) {
     const candidate = trips[index];
@@ -172,19 +172,23 @@ export function adjacentStaysForTrip(
       break;
     }
   }
-  return {from, to};
+  return { from, to };
 }
 
 /** Drive titles come from neighboring stays — not the travel row's place columns. */
 export function driveRouteLabelsFromDayTrips(
   trips: readonly TripRow[],
   tripIndex: number,
-): {fromLabel: string | null; toLabel: string | null; routeTitle: string | null} {
-  const {from, to} = adjacentStaysForTrip(trips, tripIndex);
+): {
+  fromLabel: string | null;
+  toLabel: string | null;
+  routeTitle: string | null;
+} {
+  const { from, to } = adjacentStaysForTrip(trips, tripIndex);
   const fromLabel = from != null ? labelFromTripRow(from) : null;
   const toLabel = to != null ? labelFromTripRow(to) : null;
   if (fromLabel && toLabel) {
-    return {fromLabel, toLabel, routeTitle: `${fromLabel} → ${toLabel}`};
+    return { fromLabel, toLabel, routeTitle: `${fromLabel} → ${toLabel}` };
   }
   return {
     fromLabel,

@@ -1,5 +1,5 @@
-import {useEffect, useMemo, useRef} from 'react';
-import {Platform, StyleSheet, View} from 'react-native';
+import { useEffect, useMemo, useRef } from 'react';
+import { Platform, StyleSheet, View } from 'react-native';
 import MapView, {
   Circle,
   Polyline,
@@ -8,10 +8,10 @@ import MapView, {
   type Region,
 } from 'react-native-maps';
 
-import type {LocationPointRow} from '@/db/repositories/location-days';
-import {regionForCoordinates, toMapCoordinates} from '@/lib/location-geo';
-import {DEFAULT_STOP_CONFIG, type Stop} from '@/lib/segmentation/stops';
-import {useAppStore} from '@/stores/app-store';
+import type { LocationPointRow } from '@/db/repositories/location-days';
+import { regionForCoordinates, toMapCoordinates } from '@/lib/location-geo';
+import { DEFAULT_STOP_CONFIG, type Stop } from '@/lib/segmentation/stops';
+import { useAppStore } from '@/stores/app-store';
 
 const STOP_COLOR = '#ff3b30';
 const TRAVEL_COLOR = '#007aff';
@@ -49,8 +49,8 @@ function buildTrackSegments(
   points: LocationPointRow[],
   stops: Stop[],
 ): {
-  travel: {latitude: number; longitude: number}[][];
-  inStop: {latitude: number; longitude: number}[][];
+  travel: { latitude: number; longitude: number }[][];
+  inStop: { latitude: number; longitude: number }[][];
 } {
   const windows = stops
     .map(stop => ({
@@ -72,15 +72,15 @@ function buildTrackSegments(
   const sorted = [...points].sort(
     (a, b) => a.timestamp.getTime() - b.timestamp.getTime() || a.id - b.id,
   );
-  const travel: {latitude: number; longitude: number}[][] = [];
-  const inStop: {latitude: number; longitude: number}[][] = [];
+  const travel: { latitude: number; longitude: number }[][] = [];
+  const inStop: { latitude: number; longitude: number }[][] = [];
 
   for (let index = 0; index < sorted.length - 1; index += 1) {
     const a = sorted[index]!;
     const b = sorted[index + 1]!;
     const segment = [
-      {latitude: a.lat, longitude: a.lng},
-      {latitude: b.lat, longitude: b.lng},
+      { latitude: a.lat, longitude: a.lng },
+      { latitude: b.lat, longitude: b.lng },
     ];
     const stopA = stopIdForTime(a.timestamp.getTime());
     const stopB = stopIdForTime(b.timestamp.getTime());
@@ -91,22 +91,22 @@ function buildTrackSegments(
     }
   }
 
-  return {travel, inStop};
+  return { travel, inStop };
 }
 
 function buildInStopPolyline(
   points: LocationPointRow[],
-): {latitude: number; longitude: number}[][] {
+): { latitude: number; longitude: number }[][] {
   const sorted = [...points].sort(
     (a, b) => a.timestamp.getTime() - b.timestamp.getTime() || a.id - b.id,
   );
-  const segments: {latitude: number; longitude: number}[][] = [];
+  const segments: { latitude: number; longitude: number }[][] = [];
   for (let index = 0; index < sorted.length - 1; index += 1) {
     const a = sorted[index]!;
     const b = sorted[index + 1]!;
     segments.push([
-      {latitude: a.lat, longitude: a.lng},
-      {latitude: b.lat, longitude: b.lng},
+      { latitude: a.lat, longitude: a.lng },
+      { latitude: b.lat, longitude: b.lng },
     ]);
   }
   return segments;
@@ -177,12 +177,12 @@ export function BenchmarkMapView({
     return samplePoints(points, MAX_POINT_CIRCLES);
   }, [highlightedPointIds, points]);
 
-  const {travel, inStop} = useMemo(() => {
+  const { travel, inStop } = useMemo(() => {
     if (variant === 'stops') {
       if (highlightedPointIds != null) {
-        return {travel: [], inStop: buildInStopPolyline(displayPoints)};
+        return { travel: [], inStop: buildInStopPolyline(displayPoints) };
       }
-      return {travel: [], inStop: []};
+      return { travel: [], inStop: [] };
     }
     return buildTrackSegments(points, visibleStops);
   }, [displayPoints, highlightedPointIds, points, variant, visibleStops]);
@@ -209,7 +209,9 @@ export function BenchmarkMapView({
   if (points.length === 0) {
     return (
       <View
-        className={`bg-muted items-center justify-center rounded-2xl ${className ?? ''}`}
+        className={`bg-muted items-center justify-center rounded-2xl ${
+          className ?? ''
+        }`}
         style={styles.empty}
       />
     );
@@ -218,7 +220,8 @@ export function BenchmarkMapView({
   return (
     <View
       className={`overflow-hidden rounded-2xl ${className ?? ''}`}
-      style={styles.mapWrap}>
+      style={styles.mapWrap}
+    >
       <MapView
         key={mapKey}
         ref={mapRef}
@@ -226,7 +229,8 @@ export function BenchmarkMapView({
         style={StyleSheet.absoluteFill}
         initialRegion={initialRegion}
         showsUserLocation={false}
-        showsMyLocationButton={false}>
+        showsMyLocationButton={false}
+      >
         {variant === 'trips'
           ? travel.map((segment, index) => (
               <Polyline
@@ -256,7 +260,7 @@ export function BenchmarkMapView({
         {visibleStops.map(stop => (
           <Circle
             key={stop.id}
-            center={{latitude: stop.lat, longitude: stop.lng}}
+            center={{ latitude: stop.lat, longitude: stop.lng }}
             radius={Math.max(stop.spreadM, DEFAULT_STOP_CONFIG.radiusM / 2)}
             fillColor={
               stop.id === selectedStopId
@@ -276,16 +280,16 @@ export function BenchmarkMapView({
           const fillColor = isStopStart
             ? STOP_START_COLOR
             : isStopEnd
-              ? STOP_END_COLOR
-              : isHighlighted || highlightedPointIds != null
-                ? HIGHLIGHT_COLOR
-                : POINT_COLOR;
+            ? STOP_END_COLOR
+            : isHighlighted || highlightedPointIds != null
+            ? HIGHLIGHT_COLOR
+            : POINT_COLOR;
           const radius = isStopStart || isStopEnd ? 10 : isHighlighted ? 8 : 6;
 
           return (
             <Circle
               key={point.id}
-              center={{latitude: point.lat, longitude: point.lng}}
+              center={{ latitude: point.lat, longitude: point.lng }}
               radius={radius}
               fillColor={fillColor}
               strokeColor="#ffffff"

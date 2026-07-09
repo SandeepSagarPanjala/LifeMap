@@ -1,1 +1,1 @@
-export {APP_TIMEZONE} from '@lifemap/constants';
+export { APP_TIMEZONE } from '@lifemap/constants';

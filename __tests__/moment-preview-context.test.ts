@@ -3,8 +3,8 @@ import {
   formatMomentsPreviewSheetTitle,
   resolveMomentPreviewContext,
 } from '../src/lib/moments/moment-preview-context';
-import type {SavedPlaceRow} from '../src/db/repositories/saved-places';
-import type {DayTimelineEntry} from '../src/lib/trip-detection';
+import type { SavedPlaceRow } from '../src/db/repositories/saved-places';
+import type { DayTimelineEntry } from '../src/lib/trip-detection';
 
 describe('moment preview context', () => {
   const now = new Date('2026-06-09T18:00:00.000Z');
@@ -96,8 +96,8 @@ describe('moment preview context', () => {
 
   it('titles a single map-pin preview with the visit place name', () => {
     const title = formatMomentsPreviewSheetTitle(
-      {kind: 'moment-ids', title: 'Moment'},
-      [{timestamp: new Date('2026-06-09T14:10:00.000Z')}],
+      { kind: 'moment-ids', title: 'Moment' },
+      [{ timestamp: new Date('2026-06-09T14:10:00.000Z') }],
       [drive, krogerStay],
       [kroger],
       'Tue, Jun 9',
@@ -110,8 +110,8 @@ describe('moment preview context', () => {
 
   it('titles an entry-scoped visit preview with the saved place name', () => {
     const title = formatMomentsPreviewSheetTitle(
-      {kind: 'entry', entry: krogerStay},
-      [{timestamp: new Date('2026-06-09T14:10:00.000Z')}],
+      { kind: 'entry', entry: krogerStay },
+      [{ timestamp: new Date('2026-06-09T14:10:00.000Z') }],
       [krogerStay],
       [kroger],
       'Tue, Jun 9',
@@ -130,12 +130,17 @@ describe('moment preview context', () => {
       placeLabel: undefined,
       placeKind: undefined,
     };
-    const context = buildMomentPreviewContextForEntry(unlabeledStay, [], 'mi', now);
+    const context = buildMomentPreviewContextForEntry(
+      unlabeledStay,
+      [],
+      'mi',
+      now,
+    );
     expect(context.placeLabel).toBeNull();
 
     const title = formatMomentsPreviewSheetTitle(
-      {kind: 'entry', entry: unlabeledStay},
-      [{timestamp: new Date('2026-06-09T14:10:00.000Z')}],
+      { kind: 'entry', entry: unlabeledStay },
+      [{ timestamp: new Date('2026-06-09T14:10:00.000Z') }],
       [unlabeledStay],
       [],
       'Tue, Jun 9',

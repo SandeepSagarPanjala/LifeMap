@@ -1,4 +1,4 @@
-import {MAX_NOTE_PHOTO_ATTACHMENTS} from '@/lib/app-constants';
+import { MAX_NOTE_PHOTO_ATTACHMENTS } from '@/lib/app-constants';
 import {
   notePhotoAttachmentPaths,
   parseNotePhotoAttachments,
@@ -12,12 +12,12 @@ describe('note photo attachments', () => {
 
   it('serializes and parses photo attachment paths', () => {
     const attachments = [
-      {path: 'moments/a.jpg', bytes: 100},
-      {path: 'moments/b.jpg', bytes: 200},
+      { path: 'moments/a.jpg', bytes: 100 },
+      { path: 'moments/b.jpg', bytes: 200 },
     ];
-    expect(parseNotePhotoAttachments(serializeNotePhotoAttachments(attachments))).toEqual(
-      attachments,
-    );
+    expect(
+      parseNotePhotoAttachments(serializeNotePhotoAttachments(attachments)),
+    ).toEqual(attachments);
   });
 
   it('falls back to contentPath for legacy notes', () => {

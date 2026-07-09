@@ -1,5 +1,8 @@
-import {insertMoment, type MomentRow} from '@/db/repositories/moments';
-import {IMAGE_COMPRESS_FORMAT, VOICE_CONTENT_FORMAT} from '@/lib/app-constants';
+import { insertMoment, type MomentRow } from '@/db/repositories/moments';
+import {
+  IMAGE_COMPRESS_FORMAT,
+  VOICE_CONTENT_FORMAT,
+} from '@/lib/app-constants';
 import {
   serializeNotePhotoAttachments,
   type NotePhotoAttachment,
@@ -48,7 +51,9 @@ export function isCaptureNoteDraftDirty(input: {
   );
 }
 
-export async function saveNoteMoment(input: CaptureNoteInput): Promise<MomentRow> {
+export async function saveNoteMoment(
+  input: CaptureNoteInput,
+): Promise<MomentRow> {
   if (!canSaveNoteDraft(input.title, input.textBody)) {
     throw new Error('Add a title or note before saving.');
   }
@@ -79,7 +84,9 @@ export async function saveNoteMoment(input: CaptureNoteInput): Promise<MomentRow
       if (savedPhotos.length > 0) {
         contentPath = savedPhotos[0]!.path;
         contentBytes = savedPhotos[0]!.bytes;
-        sourceBytes = input.photoAttachments.some(photo => photo.sourceBytes != null)
+        sourceBytes = input.photoAttachments.some(
+          photo => photo.sourceBytes != null,
+        )
           ? input.photoAttachments.reduce(
               (total, photo) => total + (photo.sourceBytes ?? 0),
               0,
@@ -100,7 +107,10 @@ export async function saveNoteMoment(input: CaptureNoteInput): Promise<MomentRow
       throw new Error('Voice attachment is too short to save.');
     }
     try {
-      const sandboxFile = await moveFileToMomentSandbox(input.voiceAttachmentUri, 'm4a');
+      const sandboxFile = await moveFileToMomentSandbox(
+        input.voiceAttachmentUri,
+        'm4a',
+      );
       voiceAttachmentPath = sandboxFile.contentPath;
       voiceAttachmentBytes = sandboxFile.contentBytes;
       voiceCaption = String(Math.round(durationMs / 1000));
@@ -130,7 +140,7 @@ export async function saveNoteMoment(input: CaptureNoteInput): Promise<MomentRow
       contentPath != null
         ? IMAGE_COMPRESS_FORMAT
         : voiceAttachmentPath
-          ? VOICE_CONTENT_FORMAT
-          : 'text',
+        ? VOICE_CONTENT_FORMAT
+        : 'text',
   });
 }

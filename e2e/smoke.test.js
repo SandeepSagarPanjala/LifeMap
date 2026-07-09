@@ -1,4 +1,4 @@
-const {launchToMap} = require('./helpers/launch-to-map');
+const { launchToMap } = require('./helpers/launch-to-map');
 
 describe('Smoke', () => {
   beforeAll(async () => {

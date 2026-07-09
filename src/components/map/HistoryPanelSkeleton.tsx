@@ -1,6 +1,6 @@
-import {StyleSheet, View} from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
-import {SkeletonPulse} from '@/components/ui/skeleton-pulse';
+import { SkeletonPulse } from '@/components/ui/skeleton-pulse';
 
 /** Placeholder while history data / map layers prepare — panel opens instantly. */
 export function HistoryPanelSkeleton() {
@@ -43,7 +43,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,

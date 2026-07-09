@@ -1,10 +1,10 @@
-import {differenceInMilliseconds} from 'date-fns';
+import { differenceInMilliseconds } from 'date-fns';
 
-import type {LocationPointRow} from '@/db/repositories/location-days';
-import type {MaterializedDayRow} from '@/db/repositories/materialized-days';
-import type {TripPointRow} from '@/db/repositories/trip-points';
-import type {TripRow} from '@/db/repositories/trips';
-import {tripPlaceFieldsFromDetected} from '@/lib/resolved-place';
+import type { LocationPointRow } from '@/db/repositories/location-days';
+import type { MaterializedDayRow } from '@/db/repositories/materialized-days';
+import type { TripPointRow } from '@/db/repositories/trip-points';
+import type { TripRow } from '@/db/repositories/trips';
+import { tripPlaceFieldsFromDetected } from '@/lib/resolved-place';
 import {
   locationPointsForTripRow,
   tripRowToDetectedTripWithGeometry,
@@ -42,7 +42,7 @@ function tripPointBounds(
     next?.kind === 'travel' &&
     next.startAt.getTime() - row.endAt.getTime() <= CONTIGUOUS_TRIP_MS
   ) {
-    return {startMs, endMs: next.startAt.getTime(), endExclusive: true};
+    return { startMs, endMs: next.startAt.getTime(), endExclusive: true };
   }
 
   if (
@@ -50,7 +50,7 @@ function tripPointBounds(
     next?.kind === 'stay' &&
     next.startAt.getTime() - row.endAt.getTime() <= CONTIGUOUS_TRIP_MS
   ) {
-    return {startMs, endMs: next.startAt.getTime(), endExclusive: true};
+    return { startMs, endMs: next.startAt.getTime(), endExclusive: true };
   }
 
   if (
@@ -69,15 +69,15 @@ function tripPointBounds(
     startMs = Math.max(startMs, previous.endAt.getTime());
   }
 
-  return {startMs, endMs, endExclusive};
+  return { startMs, endMs, endExclusive };
 }
 
 function collectPointsForBounds(
   sortedPoints: LocationPointRow[],
   bounds: TripPointBounds,
   startIndex: number,
-): {points: LocationPointRow[]; nextIndex: number} {
-  const {startMs, endMs, endExclusive} = bounds;
+): { points: LocationPointRow[]; nextIndex: number } {
+  const { startMs, endMs, endExclusive } = bounds;
   let index = startIndex;
   while (
     index < sortedPoints.length &&
@@ -96,7 +96,7 @@ function collectPointsForBounds(
     index += 1;
   }
 
-  return {points, nextIndex: index};
+  return { points, nextIndex: index };
 }
 
 function makeGap(startAt: Date, endAt: Date, index: number): TimelineGap {
@@ -155,7 +155,11 @@ export function buildTimelineFromStoredTrips(
     }
     const route = pointsByTripId.get(row.id) ?? [];
     return {
-      ...tripRowToDetectedTrip(row, locationPointsForTripRow(row, route), route),
+      ...tripRowToDetectedTrip(
+        row,
+        locationPointsForTripRow(row, route),
+        route,
+      ),
       materializedTripId: row.id,
       segmentOrder: row.segmentOrder,
     };
@@ -193,7 +197,7 @@ export function canReadDayFromMaterializedTrips(
 export function buildTimelineFromTrips(
   tripRows: TripRow[],
   routePoints: LocationPointRow[],
-  options?: {includeRoutePoints?: boolean},
+  options?: { includeRoutePoints?: boolean },
 ): DayTimelineEntry[] {
   const includeRoutePoints = options?.includeRoutePoints !== false;
   const sorted = [...tripRows].sort(
@@ -210,7 +214,7 @@ export function buildTimelineFromTrips(
       return tripRowToDetectedTrip(row, []);
     }
     const bounds = tripPointBounds(row, index, sorted);
-    const {points, nextIndex} = collectPointsForBounds(
+    const { points, nextIndex } = collectPointsForBounds(
       sortedPoints,
       bounds,
       pointCursor,
@@ -289,15 +293,13 @@ export function hydrateTravelRoutesFromDayPoints(
     if (!isPlayableTimelineEntry(entry) || entry.kind !== 'travel') {
       return entry;
     }
-    const resolved = resolveRoutePointsForPlayableTrip(
-      entry,
-      playable,
-      [...dayPoints],
-    );
+    const resolved = resolveRoutePointsForPlayableTrip(entry, playable, [
+      ...dayPoints,
+    ]);
     if (resolved.length === 0) {
       return entry;
     }
-    return {...entry, points: resolved};
+    return { ...entry, points: resolved };
   });
 }
 

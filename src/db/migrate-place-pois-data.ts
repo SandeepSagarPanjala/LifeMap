@@ -1,4 +1,4 @@
-import {parsePlaceLookupCandidates} from '@/lib/db/json-blobs';
+import { parsePlaceLookupCandidates } from '@/lib/db/json-blobs';
 import {
   clearLegacyCandidatesJson,
   listLegacyPlaceLookupCacheRows,
@@ -7,7 +7,7 @@ import {
   listPlacePoisForCache,
   syncMapkitPlacePoisForCache,
 } from '@/db/repositories/place-pois';
-import {notifyPlaceLookupUpdated} from '@/lib/place-lookup-events';
+import { notifyPlaceLookupUpdated } from '@/lib/place-lookup-events';
 
 export type LegacyPlacePoiMigrationResult = {
   migratedCaches: number;
@@ -69,5 +69,5 @@ export async function migrateLegacyPlaceLookupCandidatesToPois(): Promise<Legacy
     notifyPlaceLookupUpdated();
   }
 
-  return {migratedCaches, insertedPois};
+  return { migratedCaches, insertedPois };
 }

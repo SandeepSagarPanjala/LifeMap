@@ -1,5 +1,5 @@
-import type {HistoryData} from '@/lib/history-data-types';
-import type {TripDetectionConfig} from '@/lib/trip-settings';
+import type { HistoryData } from '@/lib/history-data-types';
+import type { TripDetectionConfig } from '@/lib/trip-settings';
 
 export type LoadHistoryCallbacks = {
   onPartial?: (data: HistoryData) => void;
@@ -49,7 +49,9 @@ export async function loadHistoryForDayCoalesced(
   detectionConfig: TripDetectionConfig,
   options?: CoalescedLoadOptions,
 ): Promise<HistoryData> {
-  const {loadHistoryForSelectedDay} = await import('@/lib/trip-materialization');
+  const { loadHistoryForSelectedDay } = await import(
+    '@/lib/trip-materialization'
+  );
 
   if (!options?.force) {
     const existing = inflightByDateKey.get(dateKey);

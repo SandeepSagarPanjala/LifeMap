@@ -1,5 +1,5 @@
-import type {TripPointRow} from '@/db/repositories/trip-points';
-import {makeMoment} from './helpers/fixtures';
+import type { TripPointRow } from '@/db/repositories/trip-points';
+import { makeMoment } from './helpers/fixtures';
 import {
   buildMomentRefsForSegment,
   momentCountsFromRefs,
@@ -14,7 +14,7 @@ function moment(
   iso: string,
   type: 'note' | 'photo' | 'voice' = 'note',
 ) {
-  return makeMoment({id, timestamp: new Date(iso), type});
+  return makeMoment({ id, timestamp: new Date(iso), type });
 }
 
 describe('moment refs', () => {
@@ -32,24 +32,24 @@ describe('moment refs', () => {
       endAt,
     );
     expect(refs).toEqual([
-      {momentId: 2, momentKind: 'photo'},
-      {momentId: 3, momentKind: 'voice'},
+      { momentId: 2, momentKind: 'photo' },
+      { momentId: 3, momentKind: 'voice' },
     ]);
   });
 
   it('round-trips serialized refs', () => {
     const refs = [
-      {momentId: 10, momentKind: 'note' as const},
-      {momentId: 11, momentKind: 'activity' as const},
+      { momentId: 10, momentKind: 'note' as const },
+      { momentId: 11, momentKind: 'activity' as const },
     ];
     expect(parseMomentRefs(serializeMomentRefs(refs))).toEqual(refs);
   });
 
   it('counts refs by kind', () => {
     const counts = momentCountsFromRefs([
-      {momentId: 1, momentKind: 'photo'},
-      {momentId: 2, momentKind: 'photo'},
-      {momentId: 3, momentKind: 'voice'},
+      { momentId: 1, momentKind: 'photo' },
+      { momentId: 2, momentKind: 'photo' },
+      { momentId: 3, momentKind: 'voice' },
     ]);
     expect(counts).toEqual({
       photo: 2,
@@ -67,8 +67,8 @@ describe('moment refs', () => {
     ];
     expect(
       momentsForTripRefs(dayMoments, [
-        {momentId: 2, momentKind: 'photo'},
-        {momentId: 99, momentKind: 'note'},
+        { momentId: 2, momentKind: 'photo' },
+        { momentId: 99, momentKind: 'note' },
       ]).map(row => row.id),
     ).toEqual([2]);
   });
@@ -99,7 +99,7 @@ describe('moment refs', () => {
       },
     ];
     expect(routeMomentAnchorsFromTripPoints(route)).toEqual([
-      {momentId: 42, lat: 33.21, lng: -97.11},
+      { momentId: 42, lat: 33.21, lng: -97.11 },
     ]);
   });
 });

@@ -2,7 +2,7 @@ import {
   isExactDuplicatePersist,
   shouldSkipMotionPersist,
 } from '../src/lib/location-save-guard';
-import {isMotionLocationPointSource} from '../src/db/repositories/location-points';
+import { isMotionLocationPointSource } from '../src/db/repositories/location-points';
 
 describe('location-save-guard', () => {
   const last = {
@@ -18,13 +18,13 @@ describe('location-save-guard', () => {
 
   it('throttles motion saves that arrive faster than GPS', () => {
     expect(
-      shouldSkipMotionPersist(last, {lat: 33.25001, lng: -97.15001}, 3_000),
+      shouldSkipMotionPersist(last, { lat: 33.25001, lng: -97.15001 }, 3_000),
     ).toBe(true);
     expect(
-      shouldSkipMotionPersist(last, {lat: 33.26, lng: -97.16}, 3_000),
+      shouldSkipMotionPersist(last, { lat: 33.26, lng: -97.16 }, 3_000),
     ).toBe(false);
     expect(
-      shouldSkipMotionPersist(last, {lat: 33.25001, lng: -97.15001}, 8_000),
+      shouldSkipMotionPersist(last, { lat: 33.25001, lng: -97.15001 }, 8_000),
     ).toBe(false);
   });
 

@@ -1,5 +1,5 @@
 import Lottie from 'lottie-react';
-import type {CSSProperties} from 'react';
+import type { CSSProperties } from 'react';
 
 type MobileLottieProps = {
   animationData: object;

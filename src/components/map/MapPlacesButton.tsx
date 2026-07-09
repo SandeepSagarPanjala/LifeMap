@@ -1,14 +1,14 @@
-import {MapPin} from 'lucide-react-native';
-import {Pressable, StyleSheet} from 'react-native';
+import { MapPin } from 'lucide-react-native';
+import { Pressable, StyleSheet } from 'react-native';
 
-import {useThemeColors} from '@/hooks/use-theme-colors';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 
 type MapPlacesButtonProps = {
   bottom: number;
   onPress: () => void;
 };
 
-export function MapPlacesButton({bottom, onPress}: MapPlacesButtonProps) {
+export function MapPlacesButton({ bottom, onPress }: MapPlacesButtonProps) {
   const colors = useThemeColors();
 
   return (
@@ -16,7 +16,8 @@ export function MapPlacesButton({bottom, onPress}: MapPlacesButtonProps) {
       accessibilityRole="button"
       accessibilityLabel="Open saved places"
       onPress={onPress}
-      style={[styles.button, {bottom}]}>
+      style={[styles.button, { bottom }]}
+    >
       <MapPin size={22} color={colors.primary} strokeWidth={2.25} />
     </Pressable>
   );
@@ -33,7 +34,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.12,
     shadowRadius: 6,
     elevation: 4,

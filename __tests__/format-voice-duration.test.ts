@@ -3,7 +3,7 @@ import {
   formatVoiceDurationMs,
   isVoiceDurationAtCap,
 } from '../src/lib/moments/format-voice-duration';
-import {VOICE_MAX_DURATION_MS} from '@/lib/app-constants';
+import { VOICE_MAX_DURATION_MS } from '@/lib/app-constants';
 
 describe('formatVoiceDurationMs', () => {
   it('formats seconds as m:ss', () => {

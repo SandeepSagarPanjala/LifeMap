@@ -1,15 +1,18 @@
-import {memo} from 'react';
+import { memo } from 'react';
 
-import {HistoryRoutePath} from '@/components/map/HistoryRoutePath';
-import {StayAreasOverlay} from '@/components/map/StayAreasOverlay';
-import {StayDurationCallout} from '@/components/map/StayDurationCallout';
-import {TripRouteOverlay} from '@/components/map/TripRouteOverlay';
-import type {SavedPlaceRow} from '@/db/repositories/saved-places';
-import type {DriveEndpointLabel} from '@/lib/drive-endpoint-label';
-import type {HistoryMapPlan} from '@/lib/history-map-plan';
-import type {MomentCountType, MomentCounts} from '@/lib/moments/moment-counts';
-import {matchSavedPlaceForStay} from '@/lib/saved-places';
-import type {TripDetectionConfig} from '@/lib/trip-settings';
+import { HistoryRoutePath } from '@/components/map/HistoryRoutePath';
+import { StayAreasOverlay } from '@/components/map/StayAreasOverlay';
+import { StayDurationCallout } from '@/components/map/StayDurationCallout';
+import { TripRouteOverlay } from '@/components/map/TripRouteOverlay';
+import type { SavedPlaceRow } from '@/db/repositories/saved-places';
+import type { DriveEndpointLabel } from '@/lib/drive-endpoint-label';
+import type { HistoryMapPlan } from '@/lib/history-map-plan';
+import type {
+  MomentCountType,
+  MomentCounts,
+} from '@/lib/moments/moment-counts';
+import { matchSavedPlaceForStay } from '@/lib/saved-places';
+import type { TripDetectionConfig } from '@/lib/trip-settings';
 
 type HistoryDayMapOverlayProps = {
   plan: HistoryMapPlan;
@@ -48,8 +51,7 @@ export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
 
   return (
     <>
-      {plan.nextDrive != null &&
-      selected?.departureDrivePoints == null ? (
+      {plan.nextDrive != null && selected?.departureDrivePoints == null ? (
         <HistoryRoutePath
           key="next-drive"
           pathKey="next-drive"
@@ -57,7 +59,8 @@ export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
           tone="future"
         />
       ) : null}
-      {plan.nextStay != null && plan.nextStay !== plan.selected?.arrivalVisit ? (
+      {plan.nextStay != null &&
+      plan.nextStay !== plan.selected?.arrivalVisit ? (
         <StayAreasOverlay
           stays={[plan.nextStay]}
           tripConfig={tripConfig}
@@ -78,10 +81,9 @@ export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
           />
           <StayDurationCallout
             trip={selected.arrivalVisit}
-            savedPlace={matchSavedPlaceForStay(
-              selected.arrivalVisit,
-              [...savedPlaces],
-            )}
+            savedPlace={matchSavedPlaceForStay(selected.arrivalVisit, [
+              ...savedPlaces,
+            ])}
           />
         </>
       ) : null}
@@ -89,10 +91,7 @@ export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
       {selected?.departureDrivePoints != null &&
       selected.departureDrivePoints.length > 0 &&
       !isPlaying ? (
-        <TripRouteOverlay
-          points={selected.departureDrivePoints}
-          emphasized
-        />
+        <TripRouteOverlay points={selected.departureDrivePoints} emphasized />
       ) : null}
 
       {selected?.entry.kind === 'travel' &&
@@ -136,7 +135,9 @@ export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
         />
       ) : null}
 
-      {selected?.entry.kind === 'stay' && !isPlaying && !selectedIsSavedPlace ? (
+      {selected?.entry.kind === 'stay' &&
+      !isPlaying &&
+      !selectedIsSavedPlace ? (
         <>
           <StayAreasOverlay
             stays={[selected.entry]}
@@ -154,9 +155,7 @@ export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
           nearbyPlaceLabel={
             selectedSavedPlace ? null : selectedNearbyPlaceLabel
           }
-          nearbyPlacePinned={
-            !selectedSavedPlace && selectedNearbyPlacePinned
-          }
+          nearbyPlacePinned={!selectedSavedPlace && selectedNearbyPlacePinned}
           momentCounts={selectedEntryMomentCounts}
           onPressMomentType={onPressSelectedEntryMoments}
         />

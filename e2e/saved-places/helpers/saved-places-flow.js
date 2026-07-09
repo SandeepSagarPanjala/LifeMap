@@ -53,13 +53,13 @@ async function closeSavedPlacesList() {
   await device.disableSynchronization();
   try {
     const dismiss = element(by.label(M.DISMISS_SHEET));
-    await dismiss.tap({x: 24, y: 120});
+    await dismiss.tap({ x: 24, y: 120 });
     try {
       await waitFor(element(by.text(M.LIST_HEADING)))
         .not.toBeVisible()
         .withTimeout(8000);
     } catch {
-      await dismiss.tap({x: 24, y: 120});
+      await dismiss.tap({ x: 24, y: 120 });
       await waitFor(element(by.text(M.LIST_HEADING)))
         .not.toBeVisible()
         .withTimeout(10000);
@@ -132,7 +132,9 @@ async function openAddByAddressForm() {
 async function advancePastAddressLookup(kind) {
   await device.disableSynchronization();
   try {
-    if (await isVisible(element(by.label('Continue with selected address')), 2000)) {
+    if (
+      await isVisible(element(by.label('Continue with selected address')), 2000)
+    ) {
       await element(by.label(/^Select /))
         .atIndex(0)
         .tap();
@@ -225,14 +227,14 @@ async function savePlaceKind(kind, favoriteLabel) {
  * Add Home, Work, or Favorite via add-by-address.
  * @param {'home'|'work'|'favorite'} kind
  */
-async function addPlaceByAddress(kind, {address, favoriteLabel} = {}) {
+async function addPlaceByAddress(kind, { address, favoriteLabel } = {}) {
   const resolvedAddress =
     address ??
     (kind === 'home'
       ? M.GEOCODE_HOME
       : kind === 'work'
-        ? M.GEOCODE_WORK
-        : M.GEOCODE_FAVORITE);
+      ? M.GEOCODE_WORK
+      : M.GEOCODE_FAVORITE);
 
   if (kind === 'favorite' && !favoriteLabel) {
     throw new Error('favoriteLabel is required when kind is favorite');
@@ -246,8 +248,8 @@ async function addPlaceByAddress(kind, {address, favoriteLabel} = {}) {
     kind === 'home'
       ? M.HOME_LABEL
       : kind === 'work'
-        ? M.WORK_LABEL
-        : favoriteLabel;
+      ? M.WORK_LABEL
+      : favoriteLabel;
   await waitFor(element(by.label(`Show ${expectedLabel} on map`)))
     .toBeVisible()
     .withTimeout(10000);
@@ -255,7 +257,7 @@ async function addPlaceByAddress(kind, {address, favoriteLabel} = {}) {
 
 /** Full add-favorite-by-address flow; leaves the list showing `label`. */
 async function addFavoriteByAddress(label, address = M.GEOCODE_FAVORITE) {
-  await addPlaceByAddress('favorite', {address, favoriteLabel: label});
+  await addPlaceByAddress('favorite', { address, favoriteLabel: label });
 }
 
 async function hasSavedPlaceRows() {
@@ -275,7 +277,7 @@ async function findVisibleRowLabelFromShowButton(maxIndex = 12) {
   for (let i = 0; i < maxIndex; i += 1) {
     const showButton = element(by.label(/^Show .+ on map$/)).atIndex(i);
     if (await isVisible(showButton, 300)) {
-      const {label: showLabel} = await showButton.getAttributes();
+      const { label: showLabel } = await showButton.getAttributes();
       return showLabel.replace(/^Show /, '').replace(/ on map$/, '');
     }
   }
@@ -301,7 +303,7 @@ async function hasVisibleRemoveButton() {
 }
 
 async function placeLabelFromRemoveButton(removeButton) {
-  const {label: removeLabel} = await removeButton.getAttributes();
+  const { label: removeLabel } = await removeButton.getAttributes();
   return removeLabel.replace(/^Remove /, '');
 }
 
@@ -446,7 +448,9 @@ async function deleteAllSavedPlaces() {
     const deleted = await deleteFirstSavedPlaceIfVisible();
     if (!deleted) {
       if (await isOnSavedPlacesList()) {
-        throw new Error('Could not find a delete button on the saved places list');
+        throw new Error(
+          'Could not find a delete button on the saved places list',
+        );
       }
       return;
     }

@@ -1,12 +1,12 @@
-import {useSyncExternalStore} from 'react';
+import { useSyncExternalStore } from 'react';
 
-import {ProgressStrip} from '@/components/ui/ProgressStrip';
+import { ProgressStrip } from '@/components/ui/ProgressStrip';
 import {
   getPlaceLookupCatchUpProgress,
   getPlaceLookupCatchUpRevision,
   subscribePlaceLookupCatchUp,
 } from '@/lib/place-lookup-catch-up-events';
-import {abortPlaceLookupCatchUp} from '@/lib/place-lookup-catch-up';
+import { abortPlaceLookupCatchUp } from '@/lib/place-lookup-catch-up';
 
 export function PlaceLookupCatchUpRunner() {
   const progress = useSyncExternalStore(

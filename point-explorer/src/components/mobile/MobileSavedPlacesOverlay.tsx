@@ -1,8 +1,8 @@
 import L from 'leaflet';
-import {Marker} from 'react-leaflet';
+import { Marker } from 'react-leaflet';
 
-import type {SavedPlaceRow} from '../../types';
-import {savedPlaceIconHtml} from './SavedPlaceIcon';
+import type { SavedPlaceRow } from '../../types';
+import { savedPlaceIconHtml } from './SavedPlaceIcon';
 import {
   savedPlaceDisplayLabel,
   SAVED_PLACE_MAP_STYLE,
@@ -26,10 +26,14 @@ function savedPlaceMarkerIcon(place: SavedPlaceRow): L.DivIcon {
   const label = escapeHtml(savedPlaceDisplayLabel(place));
   const html = `
     <div class="mobile-saved-place-marker-column">
-      <div class="mobile-saved-place-marker-badge" style="background:${style.badgeBg};border-color:${style.stroke}">
+      <div class="mobile-saved-place-marker-badge" style="background:${
+        style.badgeBg
+      };border-color:${style.stroke}">
         ${savedPlaceIconHtml(place.kind, 16, style.icon)}
       </div>
-      <div class="mobile-saved-place-marker-label" style="border-color:${style.stroke}">
+      <div class="mobile-saved-place-marker-label" style="border-color:${
+        style.stroke
+      }">
         ${label}
       </div>
     </div>

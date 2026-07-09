@@ -1,8 +1,13 @@
-import {addHours, differenceInMilliseconds, endOfDay, subHours} from 'date-fns';
+import {
+  addHours,
+  differenceInMilliseconds,
+  endOfDay,
+  subHours,
+} from 'date-fns';
 
-import type {LocationPointRow} from '@/db/repositories/location-days';
-import {getDayRange, toDateKey} from '@/lib/day-utils';
-import {calculatePathDistanceKm} from '@/lib/location-geo';
+import type { LocationPointRow } from '@/db/repositories/location-days';
+import { getDayRange, toDateKey } from '@/lib/day-utils';
+import { calculatePathDistanceKm } from '@/lib/location-geo';
 import {
   arePointsSamePlace,
   isUserStillAtStay,
@@ -11,11 +16,11 @@ import {
   type DetectedTrip,
   type TripTimelineOptions,
 } from '@/lib/trip-detection';
-import type {TripDetectionConfig} from '@/lib/trip-settings';
-import {buildSegmentationTimeline} from '@/lib/segmentation';
-import {shouldSplitStayAtMidnight} from '@/lib/saved-places';
-import type {SavedPlaceRow} from '@/db/repositories/saved-places';
-import {stayMeetsMinimumVisitDwell} from '@/lib/visit-dwell';
+import type { TripDetectionConfig } from '@/lib/trip-settings';
+import { buildSegmentationTimeline } from '@/lib/segmentation';
+import { shouldSplitStayAtMidnight } from '@/lib/saved-places';
+import type { SavedPlaceRow } from '@/db/repositories/saved-places';
+import { stayMeetsMinimumVisitDwell } from '@/lib/visit-dwell';
 
 const LOOKBACK_HOURS = 48;
 const LOOKAHEAD_HOURS = 48;
@@ -73,22 +78,27 @@ function overlapsDayWindow(
   const end =
     entry.kind === 'stay' && entry.openThroughNow ? rangeEnd : entry.endAt;
   return (
-    end.getTime() > dayStart.getTime() && entry.startAt.getTime() < rangeEnd.getTime()
+    end.getTime() > dayStart.getTime() &&
+    entry.startAt.getTime() < rangeEnd.getTime()
   );
 }
 
 function adjustStay(
   stay: DetectedTrip,
-  updates: Partial<Pick<DetectedTrip, 'startAt' | 'endAt' | 'durationMs' | 'openThroughNow'>>,
+  updates: Partial<
+    Pick<DetectedTrip, 'startAt' | 'endAt' | 'durationMs' | 'openThroughNow'>
+  >,
 ): DetectedTrip {
-  return {...stay, ...updates};
+  return { ...stay, ...updates };
 }
 
 function adjustTravel(
   travel: DetectedTrip,
-  updates: Partial<Pick<DetectedTrip, 'startAt' | 'endAt' | 'durationMs' | 'openThroughNow'>>,
+  updates: Partial<
+    Pick<DetectedTrip, 'startAt' | 'endAt' | 'durationMs' | 'openThroughNow'>
+  >,
 ): DetectedTrip {
-  return {...travel, ...updates};
+  return { ...travel, ...updates };
 }
 
 function clipTimelineEntryToDay(
@@ -181,7 +191,9 @@ function isCrossDayDriveTailStay(
     return false;
   }
 
-  const fullIndex = fullTimeline.findIndex(candidate => candidate.id === stay.id);
+  const fullIndex = fullTimeline.findIndex(
+    candidate => candidate.id === stay.id,
+  );
   const previous = fullIndex > 0 ? fullTimeline[fullIndex - 1] : null;
   if (previous?.kind !== 'travel') {
     return false;
@@ -219,7 +231,9 @@ function isMidDriveNoiseStay(
     return false;
   }
 
-  const fullIndex = fullTimeline.findIndex(candidate => candidate.id === entry.id);
+  const fullIndex = fullTimeline.findIndex(
+    candidate => candidate.id === entry.id,
+  );
   if (fullIndex < 0) {
     return false;
   }
@@ -229,7 +243,10 @@ function isMidDriveNoiseStay(
   if (previous?.kind === 'travel' && next?.kind === 'travel') {
     return true;
   }
-  if (previous?.kind === 'travel' && isTrailingDriveArrivalStay(entry, previous, config, savedPlaces)) {
+  if (
+    previous?.kind === 'travel' &&
+    isTrailingDriveArrivalStay(entry, previous, config, savedPlaces)
+  ) {
     return true;
   }
   if (isCrossDayDriveTailStay(entry, fullTimeline, config, savedPlaces)) {
@@ -326,7 +343,7 @@ export function prepareDayHistoryTimeline(
   timelineOptions: TripTimelineOptions = {},
   forDisplay = true,
 ): DayTimelineEntry[] {
-  const {start: dayStart} = getDayRange(dateKey);
+  const { start: dayStart } = getDayRange(dateKey);
   const isToday = dateKey === toDateKey(referenceNow);
   const rangeEnd = isToday ? referenceNow : endOfDay(dayStart);
 
@@ -347,7 +364,9 @@ export function prepareDayHistoryTimeline(
   const filtered = dropMidDriveNoiseStays(
     raw
       .filter(entry => overlapsDayWindow(entry, dayStart, rangeEnd))
-      .map(entry => clipTimelineEntryToDay(entry, dayStart, rangeEnd, savedPlaces))
+      .map(entry =>
+        clipTimelineEntryToDay(entry, dayStart, rangeEnd, savedPlaces),
+      )
       .filter((entry): entry is DayTimelineEntry => entry != null),
     raw,
     config,
@@ -476,7 +495,7 @@ export function getTodayHistoryLookbackStart(dayStart: Date): Date {
 export function getCurrentOpenActivity(
   entries: DayTimelineEntry[],
   options?: {
-    userCoordinate?: {latitude: number; longitude: number} | null;
+    userCoordinate?: { latitude: number; longitude: number } | null;
     config?: TripDetectionConfig;
   },
 ): DetectedTrip | null {
@@ -496,10 +515,10 @@ export function getCurrentOpenActivity(
     return last;
   }
 
-  const {userCoordinate, config} = options ?? {};
+  const { userCoordinate, config } = options ?? {};
   if (userCoordinate != null && config != null) {
     const stillHere = isUserStillAtStay(
-      {lat: userCoordinate.latitude, lng: userCoordinate.longitude},
+      { lat: userCoordinate.latitude, lng: userCoordinate.longitude },
       last,
       config,
     );
@@ -515,7 +534,7 @@ export function getCurrentOpenActivity(
 export function getCurrentOpenVisit(
   entries: DayTimelineEntry[],
   options?: {
-    userCoordinate?: {latitude: number; longitude: number} | null;
+    userCoordinate?: { latitude: number; longitude: number } | null;
     config?: TripDetectionConfig;
   },
 ): DetectedTrip | null {

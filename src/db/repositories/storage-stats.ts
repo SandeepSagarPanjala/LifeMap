@@ -11,15 +11,13 @@ import {
   momentStorageRelativePath,
   resolveMomentContentPath,
 } from '@/lib/moments/moment-media-uri';
-import {
-  MOMENTS_TMP_DIRECTORY,
-} from '@/lib/moments/moment-storage';
-import {notePhotoAttachmentPaths} from '@/lib/moments/note-photo-attachments';
+import { MOMENTS_TMP_DIRECTORY } from '@/lib/moments/moment-storage';
+import { notePhotoAttachmentPaths } from '@/lib/moments/note-photo-attachments';
 
-import {computeDatabaseFileStats} from '@/lib/database-file-stats';
+import { computeDatabaseFileStats } from '@/lib/database-file-stats';
 
-import {getSqlite} from '../client';
-import {getAllMoments, type MomentRow, type MomentType} from './moments';
+import { getSqlite } from '../client';
+import { getAllMoments, type MomentRow, type MomentType } from './moments';
 
 export type AppStorageBreakdown = {
   items: StorageBreakdownItem[];
@@ -166,13 +164,13 @@ function referencedMomentPaths(moments: MomentRow[]): Set<string> {
 async function groupMomentStorageByType(
   allMoments: MomentRow[],
 ): Promise<StorageBreakdownItem[]> {
-  const grouped = new Map<MomentType, {count: number; bytes: number}>();
+  const grouped = new Map<MomentType, { count: number; bytes: number }>();
   for (const type of MOMENT_STORAGE_TYPE_ORDER) {
-    grouped.set(type, {count: 0, bytes: 0});
+    grouped.set(type, { count: 0, bytes: 0 });
   }
 
   for (const moment of allMoments) {
-    const entry = grouped.get(moment.type) ?? {count: 0, bytes: 0};
+    const entry = grouped.get(moment.type) ?? { count: 0, bytes: 0 };
     entry.count += 1;
     entry.bytes += await resolveMomentFileBytes(moment);
     grouped.set(moment.type, entry);
@@ -221,7 +219,9 @@ export async function getAppStorageBreakdown(): Promise<AppStorageBreakdown> {
     orphanFiles = momentFiles.filter(
       file => !referencedPaths.has(file.relativePath),
     );
-    tempFiles = await listMomentDirectoryFiles(`moments/${MOMENTS_TMP_DIRECTORY}`);
+    tempFiles = await listMomentDirectoryFiles(
+      `moments/${MOMENTS_TMP_DIRECTORY}`,
+    );
   } catch {
     if (allMoments.length > 0) {
       momentItems = MOMENT_STORAGE_TYPE_ORDER.flatMap(type => {
@@ -271,10 +271,7 @@ export async function getAppStorageBreakdown(): Promise<AppStorageBreakdown> {
   }
 
   const totalBytes =
-    databaseBytes +
-    sumBreakdownBytes(momentItems) +
-    orphanBytes +
-    tempBytes;
+    databaseBytes + sumBreakdownBytes(momentItems) + orphanBytes + tempBytes;
   const totalCount =
     momentItems.reduce((sum, item) => sum + (item.count ?? 0), 0) +
     orphanFiles.length +

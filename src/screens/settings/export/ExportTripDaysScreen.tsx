@@ -1,17 +1,12 @@
-import {useCallback, useEffect, useState} from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  View,
-} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import {ChevronRight} from 'lucide-react-native';
-import {useNavigation} from '@react-navigation/native';
-import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, Pressable, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { ChevronRight } from 'lucide-react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import {Icon} from '@/components/ui/icon';
-import {Text} from '@/components/ui/text';
+import { Icon } from '@/components/ui/icon';
+import { Text } from '@/components/ui/text';
 import {
   listTripDaySummaries,
   type TripDaySummary,
@@ -20,8 +15,8 @@ import {
   exportTripKindSummary,
   formatExportDateKeyLabel,
 } from '@/lib/export-trip-view';
-import type {RootStackParamList} from '@/navigation/types';
-import {useThemeColors} from '@/hooks/use-theme-colors';
+import type { RootStackParamList } from '@/navigation/types';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 
 export function ExportTripDaysScreen() {
   const navigation =
@@ -61,8 +56,8 @@ export function ExportTripDaysScreen() {
       ) : days.length === 0 ? (
         <View className="flex-1 items-center justify-center px-8">
           <Text variant="muted" className="text-center text-sm leading-5">
-            No trips stored yet. Run trip detection or open the map to materialize
-            visits and drives.
+            No trips stored yet. Run trip detection or open the map to
+            materialize visits and drives.
           </Text>
         </View>
       ) : (
@@ -70,7 +65,7 @@ export function ExportTripDaysScreen() {
           data={days}
           keyExtractor={item => item.dateKey}
           contentContainerClassName="px-5 py-4 gap-2"
-          renderItem={({item}) => (
+          renderItem={({ item }) => (
             <Pressable
               accessibilityRole="button"
               onPress={() =>
@@ -79,7 +74,8 @@ export function ExportTripDaysScreen() {
                   tripIndex: 0,
                 })
               }
-              className="border-border bg-card flex-row items-center rounded-2xl border px-4 py-3">
+              className="border-border bg-card flex-row items-center rounded-2xl border px-4 py-3"
+            >
               <View className="min-w-0 flex-1">
                 <Text className="text-sm font-semibold">
                   {formatExportDateKeyLabel(item.dateKey)}
@@ -97,7 +93,11 @@ export function ExportTripDaysScreen() {
                   {item.dateKey}
                 </Text>
               </View>
-              <Icon as={ChevronRight} size={18} color={colors.mutedForeground} />
+              <Icon
+                as={ChevronRight}
+                size={18}
+                color={colors.mutedForeground}
+              />
             </Pressable>
           )}
         />

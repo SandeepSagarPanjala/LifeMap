@@ -11,7 +11,7 @@ describe('formatStayVisitLabel', () => {
   const now = new Date('2026-06-04T10:28:00.000Z'); // 5:28 AM CDT
 
   it('shows actual end time for finished visits', () => {
-    const label = formatStayVisitLabel(start, end, 7 * 60_000, {now});
+    const label = formatStayVisitLabel(start, end, 7 * 60_000, { now });
     expect(label.title).toBe('4:11 AM to 4:18 AM');
     expect(label.subtitle).toBe('7 min');
     expect(label.statusLine).toBeUndefined();

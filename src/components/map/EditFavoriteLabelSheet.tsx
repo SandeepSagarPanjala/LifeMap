@@ -1,9 +1,9 @@
-import {useEffect, useState, type ComponentRef, type RefObject} from 'react';
-import {Pressable, StyleSheet, View} from 'react-native';
-import {BottomSheetTextInput} from '@gorhom/bottom-sheet';
+import { useEffect, useState, type ComponentRef, type RefObject } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 
-import {Text} from '@/components/ui/text';
-import {MAX_SAVED_PLACE_LABEL_LENGTH} from '@/lib/app-constants';
+import { Text } from '@/components/ui/text';
+import { MAX_SAVED_PLACE_LABEL_LENGTH } from '@/lib/app-constants';
 
 type EditFavoriteLabelPanelProps = {
   initialValue?: string;
@@ -57,7 +57,8 @@ export function EditFavoriteLabelPanel({
           accessibilityRole="button"
           accessibilityLabel="Cancel rename"
           onPress={onClose}
-          style={[styles.button, styles.cancelButton]}>
+          style={[styles.button, styles.cancelButton]}
+        >
           <Text className="font-medium">Cancel</Text>
         </Pressable>
         <Pressable
@@ -69,7 +70,8 @@ export function EditFavoriteLabelPanel({
             styles.button,
             styles.saveButton,
             !canSave && styles.saveButtonDisabled,
-          ]}>
+          ]}
+        >
           <Text className="font-semibold text-white">Save</Text>
         </Pressable>
       </View>

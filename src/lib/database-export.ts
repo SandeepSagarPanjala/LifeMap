@@ -1,5 +1,5 @@
-import type {ExportPeriod} from '@/lib/export-period';
-import {exportPeriodLabel} from '@/lib/export-period';
+import type { ExportPeriod } from '@/lib/export-period';
+import { exportPeriodLabel } from '@/lib/export-period';
 
 export type DatabaseExportTables = {
   location_points: unknown[];
@@ -139,7 +139,10 @@ export function pickOriginalDataExportTables(
   };
 }
 
-export function emptyExportTableCounts(): Record<DatabaseExportTableName, number> {
+export function emptyExportTableCounts(): Record<
+  DatabaseExportTableName,
+  number
+> {
   return Object.fromEntries(
     DATABASE_EXPORT_TABLE_NAMES.map(tableName => [tableName, 0]),
   ) as Record<DatabaseExportTableName, number>;

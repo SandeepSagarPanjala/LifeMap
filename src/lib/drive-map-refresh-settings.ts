@@ -1,11 +1,11 @@
-import {getSetting, setSetting} from '@/db/repositories/settings';
+import { getSetting, setSetting } from '@/db/repositories/settings';
 import {
   DEFAULT_DRIVE_MAP_REFRESH_INTERVAL_MS,
   DRIVE_MAP_REFRESH_INTERVAL_MS_OPTIONS,
   SETTINGS_KEY_DRIVE_MAP_REFRESH_INTERVAL_MS,
   type DriveMapRefreshIntervalMs,
 } from '@/lib/app-constants';
-import {driveMapRefreshIntervalLabel} from '@/lib/app-copy';
+import { driveMapRefreshIntervalLabel } from '@/lib/app-copy';
 
 export const DRIVE_MAP_REFRESH_INTERVAL_OPTIONS: ReadonlyArray<{
   ms: DriveMapRefreshIntervalMs;
@@ -20,7 +20,9 @@ export function normalizeDriveMapRefreshIntervalMs(
 ): DriveMapRefreshIntervalMs {
   const parsed = Number(raw);
   if (
-    (DRIVE_MAP_REFRESH_INTERVAL_MS_OPTIONS as readonly number[]).includes(parsed)
+    (DRIVE_MAP_REFRESH_INTERVAL_MS_OPTIONS as readonly number[]).includes(
+      parsed,
+    )
   ) {
     return parsed as DriveMapRefreshIntervalMs;
   }

@@ -15,11 +15,16 @@ import {
   type BottomSheetBackdropProps,
   type BottomSheetModalProps,
 } from '@gorhom/bottom-sheet';
-import type {BottomSheetModal as BottomSheetModalType} from '@gorhom/bottom-sheet';
-import {Gesture, GestureDetector} from 'react-native-gesture-handler';
-import {Keyboard, Platform, StyleSheet, type KeyboardEvent} from 'react-native';
-import {runOnJS} from 'react-native-reanimated';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import type { BottomSheetModal as BottomSheetModalType } from '@gorhom/bottom-sheet';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import {
+  Keyboard,
+  Platform,
+  StyleSheet,
+  type KeyboardEvent,
+} from 'react-native';
+import { runOnJS } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const DEFAULT_SNAP_POINTS = ['50%'];
 
@@ -27,7 +32,10 @@ type InterceptableBackdropProps = BottomSheetBackdropProps & {
   onPress: () => void;
 };
 
-function InterceptableBackdrop({onPress, ...props}: InterceptableBackdropProps) {
+function InterceptableBackdrop({
+  onPress,
+  ...props
+}: InterceptableBackdropProps) {
   const tap = Gesture.Tap().onEnd(() => {
     runOnJS(onPress)();
   });
@@ -53,7 +61,9 @@ type AppBottomSheetProps = {
   keyboardBlurBehavior?: BottomSheetModalProps['keyboardBlurBehavior'];
   dismissKeyboardOnClose?: boolean;
   keyboardAware?: boolean;
-  scrollRef?: React.RefObject<ComponentRef<typeof BottomSheetScrollView> | null>;
+  scrollRef?: React.RefObject<ComponentRef<
+    typeof BottomSheetScrollView
+  > | null>;
   onAnimate?: (fromIndex: number, toIndex: number) => void;
   /** Return true to keep the sheet open (e.g. dismiss keyboard first). */
   onBackdropPress?: () => boolean;
@@ -100,7 +110,8 @@ export function AppBottomSheet({
   enableBlurKeyboardOnGesture = true,
 }: AppBottomSheetProps) {
   const ref = useRef<BottomSheetModalType>(null);
-  const internalScrollRef = useRef<ComponentRef<typeof BottomSheetScrollView>>(null);
+  const internalScrollRef =
+    useRef<ComponentRef<typeof BottomSheetScrollView>>(null);
   const insets = useSafeAreaInsets();
   const isOpenRef = useRef(false);
   const suppressDismissRef = useRef(false);
@@ -157,8 +168,10 @@ export function AppBottomSheet({
       return;
     }
 
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showEvent =
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent =
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
     const onShow = (event: KeyboardEvent) => {
       setKeyboardInset(event.endCoordinates.height);
     };
@@ -252,13 +265,21 @@ export function AppBottomSheet({
 
       if (onBackdropPress) {
         return (
-          <InterceptableBackdrop {...sharedProps} onPress={handleBackdropPress} />
+          <InterceptableBackdrop
+            {...sharedProps}
+            onPress={handleBackdropPress}
+          />
         );
       }
 
       return <BottomSheetBackdrop {...sharedProps} pressBehavior="close" />;
     },
-    [handleBackdropPress, isClosing, onBackdropPress, releaseTouchesWhileClosing],
+    [
+      handleBackdropPress,
+      isClosing,
+      onBackdropPress,
+      releaseTouchesWhileClosing,
+    ],
   );
 
   const contentStyle = useMemo(
@@ -266,7 +287,8 @@ export function AppBottomSheet({
       paddingHorizontal: 20,
       paddingTop: 4,
       paddingBottom:
-        footerPadding ?? Math.max(insets.bottom, 16) + (keyboardAware ? keyboardInset : 0),
+        footerPadding ??
+        Math.max(insets.bottom, 16) + (keyboardAware ? keyboardInset : 0),
     }),
     [footerPadding, insets.bottom, keyboardAware, keyboardInset],
   );
@@ -308,7 +330,8 @@ export function AppBottomSheet({
       stackBehavior={stackBehavior}
       containerStyle={modalContainerStyle}
       handleIndicatorStyle={styles.handle}
-      backgroundStyle={styles.background}>
+      backgroundStyle={styles.background}
+    >
       {rawChildren ? (
         children
       ) : scrollable ? (
@@ -316,12 +339,14 @@ export function AppBottomSheet({
           ref={mergedScrollRef}
           contentContainerStyle={contentStyle}
           keyboardShouldPersistTaps="handled"
-          automaticallyAdjustKeyboardInsets={keyboardAware}>
+          automaticallyAdjustKeyboardInsets={keyboardAware}
+        >
           {children}
         </BottomSheetScrollView>
       ) : (
         <BottomSheetView
-          style={[contentStyle, enableDynamicSizing ? null : styles.fill]}>
+          style={[contentStyle, enableDynamicSizing ? null : styles.fill]}
+        >
           {children}
         </BottomSheetView>
       )}

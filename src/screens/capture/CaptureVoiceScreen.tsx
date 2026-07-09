@@ -1,17 +1,17 @@
-import {useCallback, useEffect, useRef, useState} from 'react';
-import {StyleSheet, View} from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 
 import {
   VoiceMemoPreviewSheet,
   type VoiceMemoPreviewDraft,
 } from '@/components/map/VoiceMemoPreviewSheet';
-import {VoiceMemoSheet} from '@/components/map/VoiceMemoSheet';
-import {NativeHalfSheetShell} from '@/components/ui/NativeHalfSheetShell';
-import {useNativeHalfSheetClose} from '@/components/ui/native-half-sheet-context';
-import {useDayMoments} from '@/hooks/use-day-moments';
-import {getTodayDateKey} from '@/lib/day-utils';
-import {VOICE_SHEET_HEIGHT_RATIO} from '@/navigation/voice-capture-screen-options';
-import {useSheetCaptureClose} from '@/screens/sheets/use-sheet-capture-close';
+import { VoiceMemoSheet } from '@/components/map/VoiceMemoSheet';
+import { NativeHalfSheetShell } from '@/components/ui/NativeHalfSheetShell';
+import { useNativeHalfSheetClose } from '@/components/ui/native-half-sheet-context';
+import { useDayMoments } from '@/hooks/use-day-moments';
+import { getTodayDateKey } from '@/lib/day-utils';
+import { VOICE_SHEET_HEIGHT_RATIO } from '@/navigation/voice-capture-screen-options';
+import { useSheetCaptureClose } from '@/screens/sheets/use-sheet-capture-close';
 
 function CaptureVoicePanel({
   onBeginPreview,
@@ -43,10 +43,11 @@ function CaptureVoicePanel({
 
 export function CaptureVoiceScreen() {
   const navigationClose = useSheetCaptureClose();
-  const {refreshDayMoments} = useDayMoments(getTodayDateKey());
+  const { refreshDayMoments } = useDayMoments(getTodayDateKey());
   const closeShellRef = useRef<(() => void) | null>(null);
   const savedAndClosingRef = useRef(false);
-  const [previewDraft, setPreviewDraft] = useState<VoiceMemoPreviewDraft | null>(null);
+  const [previewDraft, setPreviewDraft] =
+    useState<VoiceMemoPreviewDraft | null>(null);
   const [previewSheetOpen, setPreviewSheetOpen] = useState(false);
   const [recordingRestartNonce, setRecordingRestartNonce] = useState(0);
 
@@ -86,11 +87,13 @@ export function CaptureVoiceScreen() {
     <View style={styles.root} pointerEvents="box-none">
       <View
         pointerEvents={previewSheetOpen ? 'none' : 'auto'}
-        style={styles.shellHost}>
+        style={styles.shellHost}
+      >
         <NativeHalfSheetShell
           onClose={finishClose}
           backdropDismissEnabled={!previewSheetOpen}
-          heightRatio={VOICE_SHEET_HEIGHT_RATIO}>
+          heightRatio={VOICE_SHEET_HEIGHT_RATIO}
+        >
           <CaptureVoicePanel
             onRegisterClose={registerClose}
             onBeginPreview={handleBeginPreview}

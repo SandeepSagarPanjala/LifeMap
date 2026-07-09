@@ -1,21 +1,19 @@
-import {format, parseISO} from 'date-fns';
-import {BoxSelect, ListOrdered, type LucideIcon} from 'lucide-react-native';
-import {useCallback, useEffect, useMemo, useState} from 'react';
+import { format, parseISO } from 'date-fns';
+import { BoxSelect, ListOrdered, type LucideIcon } from 'lucide-react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  View,
-} from 'react-native';
-import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 
-import {BenchmarkMapView} from '@/components/benchmark/BenchmarkMapView';
-import {HistoryDatePickerSheet} from '@/components/map/HistoryDatePickerSheet';
-import {HistoryDayNav} from '@/components/map/HistoryDayNav';
-import {Icon} from '@/components/ui/icon';
-import {Text} from '@/components/ui/text';
-import type {LocationPointRow} from '@/db/repositories/location-days';
-import {useThemeColors} from '@/hooks/use-theme-colors';
+import { BenchmarkMapView } from '@/components/benchmark/BenchmarkMapView';
+import { HistoryDatePickerSheet } from '@/components/map/HistoryDatePickerSheet';
+import { HistoryDayNav } from '@/components/map/HistoryDayNav';
+import { Icon } from '@/components/ui/icon';
+import { Text } from '@/components/ui/text';
+import type { LocationPointRow } from '@/db/repositories/location-days';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 import {
   runPowerBenchmark,
   runStopsBenchmark,
@@ -26,31 +24,31 @@ import {
   type StopsBenchmarkResult,
   type TripsBenchmarkResult,
 } from '@/lib/benchmark/benchmark-engine';
-import {getTodayDateKey} from '@/lib/day-utils';
-import {ensureHistoryCalendarBounds} from '@/lib/history-calendar-bounds';
-import {listBenchmarkDateKeys} from '@/lib/benchmark/list-benchmark-dates';
+import { getTodayDateKey } from '@/lib/day-utils';
+import { ensureHistoryCalendarBounds } from '@/lib/history-calendar-bounds';
+import { listBenchmarkDateKeys } from '@/lib/benchmark/list-benchmark-dates';
 import {
   segmentToLocationRows,
   segmentsToLocationRows,
   sortLocationPointsByTime,
   stopToLocationRows,
 } from '@/lib/benchmark/map-points';
-import {describeTripSegment} from '@/lib/benchmark/segment-display';
-import {formatDuration} from '@/lib/segmentation/stops';
-import type {Stop} from '@/lib/segmentation/stops';
-import type {TripSegment} from '@/lib/segmentation/trips';
+import { describeTripSegment } from '@/lib/benchmark/segment-display';
+import { formatDuration } from '@/lib/segmentation/stops';
+import type { Stop } from '@/lib/segmentation/stops';
+import type { TripSegment } from '@/lib/segmentation/trips';
 
 type BenchmarkPanel = 'geometry' | 'results';
 
-const MODES: {id: BenchmarkMode; label: string}[] = [
-  {id: 'stops', label: 'Stops'},
-  {id: 'trips', label: 'Trips'},
-  {id: 'power', label: 'Power'},
+const MODES: { id: BenchmarkMode; label: string }[] = [
+  { id: 'stops', label: 'Stops' },
+  { id: 'trips', label: 'Trips' },
+  { id: 'power', label: 'Power' },
 ];
 
-const RAIL_PANELS: {id: BenchmarkPanel; icon: LucideIcon}[] = [
-  {id: 'geometry', icon: BoxSelect},
-  {id: 'results', icon: ListOrdered},
+const RAIL_PANELS: { id: BenchmarkPanel; icon: LucideIcon }[] = [
+  { id: 'geometry', icon: BoxSelect },
+  { id: 'results', icon: ListOrdered },
 ];
 
 function formatDateLabel(dateKey: string): string {
@@ -61,9 +59,7 @@ function formatRailGeometrySummary(
   canonicalizeStay: boolean,
   canonicalizeDrive: boolean,
 ): string {
-  return String(
-    (canonicalizeStay ? 1 : 0) + (canonicalizeDrive ? 1 : 0),
-  );
+  return String((canonicalizeStay ? 1 : 0) + (canonicalizeDrive ? 1 : 0));
 }
 
 function formatRailResultsSummary(
@@ -110,11 +106,14 @@ function BenchmarkRail({
           <Pressable
             key={item.id}
             accessibilityRole="tab"
-            accessibilityState={{selected}}
+            accessibilityState={{ selected }}
             onPress={() => onSelect(item.id)}
             className={`items-center justify-center gap-1 border-b px-1 py-3 ${
-              selected ? 'bg-primary/10 border-l-2 border-l-primary' : 'border-border'
-            }`}>
+              selected
+                ? 'bg-primary/10 border-l-2 border-l-primary'
+                : 'border-border'
+            }`}
+          >
             <Icon
               as={item.icon}
               size={20}
@@ -124,7 +123,8 @@ function BenchmarkRail({
               numberOfLines={2}
               className={`text-center text-[10px] font-semibold leading-tight ${
                 selected ? 'text-primary' : 'text-muted-foreground'
-              }`}>
+              }`}
+            >
               {summaries[item.id]}
             </Text>
           </Pressable>
@@ -149,17 +149,17 @@ function BenchmarkModeBar({
           <Pressable
             key={entry.id}
             accessibilityRole="radio"
-            accessibilityState={{selected: active}}
+            accessibilityState={{ selected: active }}
             onPress={() => onSelectMode(entry.id)}
             className={`flex-1 items-center rounded-xl border py-2.5 ${
-              active
-                ? 'border-primary bg-primary/10'
-                : 'border-border bg-card'
-            }`}>
+              active ? 'border-primary bg-primary/10' : 'border-border bg-card'
+            }`}
+          >
             <Text
               className={`text-sm font-semibold ${
                 active ? 'text-primary' : 'text-muted-foreground'
-              }`}>
+              }`}
+            >
               {entry.label}
             </Text>
           </Pressable>
@@ -183,9 +183,10 @@ function GeometryToggle({
   return (
     <Pressable
       accessibilityRole="switch"
-      accessibilityState={{checked: enabled}}
+      accessibilityState={{ checked: enabled }}
       onPress={onToggle}
-      className="bg-card border-border rounded-2xl border p-3">
+      className="bg-card border-border rounded-2xl border p-3"
+    >
       <View className="flex-row items-center gap-3">
         <View className="flex-1">
           <Text className="text-sm font-medium">{title}</Text>
@@ -196,7 +197,8 @@ function GeometryToggle({
         <View
           className={`h-6 w-11 rounded-full px-0.5 ${
             enabled ? 'bg-primary' : 'bg-muted'
-          }`}>
+          }`}
+        >
           <View
             className={`mt-0.5 h-5 w-5 rounded-full bg-white ${
               enabled ? 'ml-auto' : 'ml-0'
@@ -225,7 +227,8 @@ function StopRow({
       onPress={onPress}
       className={`rounded-2xl border p-3 ${
         active ? 'border-primary bg-primary/10' : 'border-border bg-card'
-      }`}>
+      }`}
+    >
       <View className="flex-row items-center gap-2">
         <View className="bg-muted h-6 w-6 items-center justify-center rounded-full">
           <Text className="text-xs font-semibold">{index + 1}</Text>
@@ -322,8 +325,9 @@ function TripsResults({
       {result.days.map(day => (
         <View key={day.dateKey} className="gap-2">
           <Text variant="small" className="text-muted-foreground">
-            {formatDateLabel(day.dateKey)} · {day.dayPointCount.toLocaleString()}{' '}
-            day pts · {day.windowPointCount.toLocaleString()} window pts ·{' '}
+            {formatDateLabel(day.dateKey)} ·{' '}
+            {day.dayPointCount.toLocaleString()} day pts ·{' '}
+            {day.windowPointCount.toLocaleString()} window pts ·{' '}
             {day.result.segments.length} segments
           </Text>
           {day.result.segments.map((segment, index) => {
@@ -335,8 +339,11 @@ function TripsResults({
                 accessibilityRole="button"
                 onPress={() => onSelectSegment(segment)}
                 className={`rounded-2xl border p-3 ${
-                  active ? 'border-primary bg-primary/10' : 'border-border bg-card'
-                }`}>
+                  active
+                    ? 'border-primary bg-primary/10'
+                    : 'border-border bg-card'
+                }`}
+              >
                 <View className="flex-row items-center gap-2">
                   <View className="bg-muted h-6 w-6 items-center justify-center rounded-full">
                     <Text className="text-xs font-semibold">{index + 1}</Text>
@@ -453,7 +460,9 @@ function PowerResults({
               {day != null ? day.segmentCount : result.segmentCount} segments
             </Text>
             <Text className="font-semibold tabular-nums">
-              {(day?.algorithmElapsedMs ?? result.algorithmElapsedMs).toFixed(2)}{' '}
+              {(day?.algorithmElapsedMs ?? result.algorithmElapsedMs).toFixed(
+                2,
+              )}{' '}
               ms
             </Text>
           </View>
@@ -482,7 +491,8 @@ export function BenchmarkScreen() {
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
   const [mode, setMode] = useState<BenchmarkMode>('power');
   const [running, setRunning] = useState(false);
-  const [canonicalizeStayGeometry, setCanonicalizeStayGeometry] = useState(true);
+  const [canonicalizeStayGeometry, setCanonicalizeStayGeometry] =
+    useState(true);
   const [canonicalizeDriveGeometry, setCanonicalizeDriveGeometry] =
     useState(true);
   const [plottedPoints, setPlottedPoints] = useState<LocationPointRow[]>([]);
@@ -524,8 +534,8 @@ export function BenchmarkScreen() {
           const defaultKey = keys.includes(today)
             ? today
             : keys.length > 0
-              ? keys[keys.length - 1]!
-              : null;
+            ? keys[keys.length - 1]!
+            : null;
           if (defaultKey != null) {
             setSelectedDateKey(defaultKey);
           }
@@ -548,7 +558,7 @@ export function BenchmarkScreen() {
     const today = getTodayDateKey();
     return availableDateKeys.includes(today)
       ? today
-      : (availableDateKeys.at(-1) ?? today);
+      : availableDateKeys.at(-1) ?? today;
   }, [availableDateKeys, selectedDateKey]);
 
   const canRun = !running && activeDateKey != null;
@@ -593,7 +603,7 @@ export function BenchmarkScreen() {
           setStopsResult(result);
           setPlottedPoints(result.points);
           setMapStops(result.stops);
-          setStopsBaseline({points: result.points, stops: result.stops});
+          setStopsBaseline({ points: result.points, stops: result.stops });
         } else if (benchmarkMode === 'trips') {
           const result = await runTripsBenchmark([dateKey]);
           setTripsResult(result);
@@ -607,7 +617,7 @@ export function BenchmarkScreen() {
           const stops = [...stopsById.values()];
           setPlottedPoints(plotted);
           setMapStops(stops);
-          setTripBaseline({points: plotted, stops});
+          setTripBaseline({ points: plotted, stops });
         } else {
           const result = await runPowerBenchmark([dateKey]);
           setPowerResult(result);
@@ -664,13 +674,7 @@ export function BenchmarkScreen() {
     }
     const stop = mapStops.find(item => item.id === selectedStopId);
     return stop ? new Set(stop.pointIds) : null;
-  }, [
-    canonicalizeStayGeometry,
-    mapStops,
-    mode,
-    selectedStopId,
-    stopsBaseline,
-  ]);
+  }, [canonicalizeStayGeometry, mapStops, mode, selectedStopId, stopsBaseline]);
 
   const toggleStop = useCallback((stopId: string) => {
     setSelectedStopId(previous => (previous === stopId ? null : stopId));
@@ -738,7 +742,7 @@ export function BenchmarkScreen() {
     const stops = [...stopsById.values()];
     setPlottedPoints(plotted);
     setMapStops(stops);
-    setTripBaseline({points: plotted, stops});
+    setTripBaseline({ points: plotted, stops });
   }, [
     buildTripPlot,
     canonicalizeDriveGeometry,
@@ -758,8 +762,8 @@ export function BenchmarkScreen() {
     mode === 'stops'
       ? 'Identify stops'
       : mode === 'trips'
-        ? 'Identify trips'
-        : 'Run power benchmark';
+      ? 'Identify trips'
+      : 'Run power benchmark';
 
   const panelTitle = activePanel === 'geometry' ? 'Geometry' : 'Results';
 
@@ -804,10 +808,11 @@ export function BenchmarkScreen() {
         <ScrollView
           className="min-h-0 flex-1"
           contentContainerClassName="gap-4 p-4"
-          contentContainerStyle={{paddingBottom: insets.bottom + 24}}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
           showsVerticalScrollIndicator
           nestedScrollEnabled
-          keyboardShouldPersistTaps="handled">
+          keyboardShouldPersistTaps="handled"
+        >
           <Text className="text-base font-semibold">{panelTitle}</Text>
 
           {activePanel === 'geometry' ? (
@@ -848,14 +853,10 @@ export function BenchmarkScreen() {
               {error ? <Text className="text-destructive">{error}</Text> : null}
 
               {!hasResults && error == null && !running ? (
-                <Text variant="muted">
-                  Pick a mode below and tap Identify.
-                </Text>
+                <Text variant="muted">Pick a mode below and tap Identify.</Text>
               ) : null}
 
-              {running ? (
-                <ActivityIndicator color={colors.primary} />
-              ) : null}
+              {running ? <ActivityIndicator color={colors.primary} /> : null}
 
               {mode === 'stops' && stopsResult ? (
                 <StopsResults
@@ -891,7 +892,8 @@ export function BenchmarkScreen() {
                 onPress={handleRun}
                 className={`items-center rounded-2xl px-4 py-3.5 ${
                   canRun ? 'bg-primary' : 'bg-muted'
-                }`}>
+                }`}
+              >
                 {running ? (
                   <ActivityIndicator color={colors.primaryForeground} />
                 ) : (
@@ -900,7 +902,8 @@ export function BenchmarkScreen() {
                       canRun
                         ? 'text-primary-foreground'
                         : 'text-muted-foreground'
-                    }`}>
+                    }`}
+                  >
                     {actionLabel}
                   </Text>
                 )}

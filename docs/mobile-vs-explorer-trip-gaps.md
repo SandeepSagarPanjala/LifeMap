@@ -11,10 +11,10 @@ Two issues appear on **mobile only**, not in Points Explorer when fed the same `
 
 ## Same input, different output
 
-| Source | Trip/segment count | Natural Groceries stay (8:09–8:19 PM) | Phantom 11:37 AM drive |
-|--------|-------------------|----------------------------------------|-------------------------|
-| Points Explorer (fresh `detectTripsForDay`) | **13** | ✅ Present | ✅ Visible (Home→Home micro-drive) |
-| Mobile DB (`mobile-trips.json` export) | **11** | ❌ Missing | ✅ Persisted as `travel` #2 |
+| Source                                      | Trip/segment count | Natural Groceries stay (8:09–8:19 PM) | Phantom 11:37 AM drive             |
+| ------------------------------------------- | ------------------ | ------------------------------------- | ---------------------------------- |
+| Points Explorer (fresh `detectTripsForDay`) | **13**             | ✅ Present                            | ✅ Visible (Home→Home micro-drive) |
+| Mobile DB (`mobile-trips.json` export)      | **11**             | ❌ Missing                            | ✅ Persisted as `travel` #2        |
 
 Mobile stored timeline (from `__personal__/mobile-trips.json`):
 

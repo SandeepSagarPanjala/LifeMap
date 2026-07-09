@@ -41,7 +41,8 @@ export function SavedPlaceIcon({
       height={size}
       viewBox="0 0 24 24"
       aria-hidden
-      className="mobile-saved-place-icon">
+      className="mobile-saved-place-icon"
+    >
       <path d={ICON_PATHS[kind]} fill={color} />
     </svg>
   );

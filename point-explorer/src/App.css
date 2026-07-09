@@ -12,14 +12,8 @@ body,
 }
 
 body {
-  font-family:
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    Roboto,
-    Helvetica,
-    Arial,
-    sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
+    Arial, sans-serif;
   color: #1c1c1e;
   background: #f2f2f7;
 }
@@ -151,10 +145,7 @@ body {
   font-weight: 600;
   font-size: 0.78rem;
   cursor: pointer;
-  transition:
-    background 0.15s ease,
-    color 0.15s ease,
-    box-shadow 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .mode-tab:hover {
@@ -765,9 +756,7 @@ body {
   background: #fff;
   text-align: left;
   cursor: pointer;
-  transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .segment-card:hover {

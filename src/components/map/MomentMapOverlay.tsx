@@ -1,38 +1,33 @@
-import {AudioLines, Camera, NotebookPen} from 'lucide-react-native';
-import {Marker} from 'react-native-maps';
-import {StyleSheet, Text, View} from 'react-native';
+import { AudioLines, Camera, NotebookPen } from 'lucide-react-native';
+import { Marker } from 'react-native-maps';
+import { StyleSheet, Text, View } from 'react-native';
 
-import type {MomentRow} from '@/db/repositories/moments';
-import type {LocationPointRow} from '@/db/repositories/location-days';
+import type { MomentRow } from '@/db/repositories/moments';
+import type { LocationPointRow } from '@/db/repositories/location-days';
 import {
   CAPTURE_BUTTON_THEMES,
   CAPTURE_ICON_SIZE,
   type CaptureButtonVariant,
 } from '@/components/map/map-capture-button-theme';
-import {MomentCountsRow} from '@/components/moments/MomentCountsRow';
-import {
-  countMoments,
-  type MomentCounts,
-} from '@/lib/moments/moment-counts';
+import { MomentCountsRow } from '@/components/moments/MomentCountsRow';
+import { countMoments, type MomentCounts } from '@/lib/moments/moment-counts';
 import {
   findContainingTimelineEntry,
   resolveMomentPinCoordinate,
 } from '@/lib/moments/moment-timeline';
-import type {DayTimelineEntry} from '@/lib/trip-detection';
-import {isMaterializedEntry, momentsForTripRefs} from '@/lib/moment-refs';
+import type { DayTimelineEntry } from '@/lib/trip-detection';
+import { isMaterializedEntry, momentsForTripRefs } from '@/lib/moment-refs';
 
-const MARKER_ANCHOR = {x: 0.5, y: 0.5} as const;
+const MARKER_ANCHOR = { x: 0.5, y: 0.5 } as const;
 
 export type MomentMapPin = {
   moment: MomentRow;
-  coordinate: {latitude: number; longitude: number};
+  coordinate: { latitude: number; longitude: number };
   /** Co-located moments merged for day-journey map display. */
   groupedMoments?: MomentRow[];
 };
 
-function momentCaptureVariant(
-  type: MomentRow['type'],
-): CaptureButtonVariant {
+function momentCaptureVariant(type: MomentRow['type']): CaptureButtonVariant {
   if (type === 'voice') {
     return 'voice';
   }
@@ -78,17 +73,20 @@ export function buildMomentMapPins(
       }
       return {
         moment,
-        coordinate: {latitude: coordinate.lat, longitude: coordinate.lng},
+        coordinate: { latitude: coordinate.lat, longitude: coordinate.lng },
       };
     })
     .filter((pin): pin is MomentMapPin => pin != null);
 }
 
 function materializedMomentMapPins(
-  entry: Extract<DayTimelineEntry, {kind: 'stay' | 'travel'}>,
+  entry: Extract<DayTimelineEntry, { kind: 'stay' | 'travel' }>,
   materializedMoments: MomentRow[],
 ): MomentMapPin[] {
-  if (entry.routeMomentAnchors == null || entry.routeMomentAnchors.length === 0) {
+  if (
+    entry.routeMomentAnchors == null ||
+    entry.routeMomentAnchors.length === 0
+  ) {
     return [];
   }
   const byId = new Map(materializedMoments.map(moment => [moment.id, moment]));
@@ -100,7 +98,7 @@ function materializedMomentMapPins(
       }
       return {
         moment,
-        coordinate: {latitude: anchor.lat, longitude: anchor.lng},
+        coordinate: { latitude: anchor.lat, longitude: anchor.lng },
       };
     })
     .filter((pin): pin is MomentMapPin => pin != null);
@@ -133,7 +131,7 @@ export function buildHistoryMomentMapPins(
 
 function filterMomentsForTimelineEntry(
   moments: MomentRow[],
-  entry: Extract<DayTimelineEntry, {kind: 'stay' | 'travel'}>,
+  entry: Extract<DayTimelineEntry, { kind: 'stay' | 'travel' }>,
   now: Date,
 ): MomentRow[] {
   return moments.filter(moment => {
@@ -149,7 +147,7 @@ type MomentMapOverlayProps = {
   onPressPin?: (pin: MomentMapPin) => void;
 };
 
-export function MomentMapOverlay({pins, onPressPin}: MomentMapOverlayProps) {
+export function MomentMapOverlay({ pins, onPressPin }: MomentMapOverlayProps) {
   if (pins.length === 0) {
     return null;
   }
@@ -157,7 +155,7 @@ export function MomentMapOverlay({pins, onPressPin}: MomentMapOverlayProps) {
   return (
     <>
       {pins.map(pin => {
-        const {moment, coordinate, groupedMoments} = pin;
+        const { moment, coordinate, groupedMoments } = pin;
         const grouped = groupedMoments != null && groupedMoments.length > 0;
         const variant = momentCaptureVariant(moment.type);
         const theme = CAPTURE_BUTTON_THEMES[variant];
@@ -165,13 +163,16 @@ export function MomentMapOverlay({pins, onPressPin}: MomentMapOverlayProps) {
           variant === 'voice'
             ? AudioLines
             : variant === 'note'
-              ? NotebookPen
-              : Camera;
+            ? NotebookPen
+            : Camera;
         const tappable = onPressPin != null;
         const activityEmoji =
           moment.type === 'activity' ? moment.activityEmoji?.trim() : null;
         const pinKey = grouped
-          ? `moment-cluster-${[moment.id, ...groupedMoments.map(row => row.id)].join('-')}`
+          ? `moment-cluster-${[
+              moment.id,
+              ...groupedMoments.map(row => row.id),
+            ].join('-')}`
           : `moment-${moment.id}`;
 
         return (
@@ -181,7 +182,8 @@ export function MomentMapOverlay({pins, onPressPin}: MomentMapOverlayProps) {
             anchor={MARKER_ANCHOR}
             zIndex={7}
             tracksViewChanges={false}
-            onPress={tappable ? () => onPressPin(pin) : undefined}>
+            onPress={tappable ? () => onPressPin(pin) : undefined}
+          >
             {grouped ? (
               <View style={styles.clusterColumn}>
                 <View style={styles.clusterBubble}>
@@ -193,7 +195,7 @@ export function MomentMapOverlay({pins, onPressPin}: MomentMapOverlayProps) {
                 </View>
               </View>
             ) : (
-              <View style={[styles.badge, {backgroundColor: theme.badgeBg}]}>
+              <View style={[styles.badge, { backgroundColor: theme.badgeBg }]}>
                 {activityEmoji ? (
                   <Text style={styles.activityEmoji}>{activityEmoji}</Text>
                 ) : (
@@ -220,7 +222,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.14,
     shadowRadius: 4,
     elevation: 4,
@@ -234,7 +236,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 6,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.14,
     shadowRadius: 4,
     elevation: 4,
