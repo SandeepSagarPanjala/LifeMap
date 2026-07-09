@@ -1,14 +1,14 @@
-import type {LocationPointRow} from '@/db/repositories/location-days';
-import type {MomentRow} from '@/db/repositories/moments';
-import {locationRowsToParsedPoints} from '@/lib/segmentation/parse-points';
+import type { LocationPointRow } from '@/db/repositories/location-days';
+import type { MomentRow } from '@/db/repositories/moments';
+import { locationRowsToParsedPoints } from '@/lib/segmentation/parse-points';
 import {
   canonicalizeStaySegmentPoints,
   displayPointsForSegment,
   plotPointsFromSegments,
 } from '@/lib/segmentation/stay-geometry';
-import type {ParsedPoint} from '@/lib/segmentation/types';
-import type {Stop} from '@/lib/segmentation/stops';
-import type {StaySegment, TripSegment} from '@/lib/segmentation/trips';
+import type { ParsedPoint } from '@/lib/segmentation/types';
+import type { Stop } from '@/lib/segmentation/stops';
+import type { StaySegment, TripSegment } from '@/lib/segmentation/trips';
 
 export function parsedPointsToLocationRows(
   points: readonly ParsedPoint[],
@@ -76,7 +76,10 @@ export function segmentsToLocationRows(
   );
 }
 
-function stopToStaySegment(stop: Stop, points: readonly ParsedPoint[]): StaySegment {
+function stopToStaySegment(
+  stop: Stop,
+  points: readonly ParsedPoint[],
+): StaySegment {
   return {
     kind: 'stay',
     id: stop.id,

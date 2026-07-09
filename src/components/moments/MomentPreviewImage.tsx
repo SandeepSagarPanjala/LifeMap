@@ -1,4 +1,4 @@
-import {useEffect, useState} from 'react';
+import { useEffect, useState } from 'react';
 import {
   Image,
   Pressable,
@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import ReactNativeBlobUtil from 'react-native-blob-util';
 
-import {Text} from '@/components/ui/text';
+import { Text } from '@/components/ui/text';
 import {
   momentImageUri,
   resolveExistingMomentContentPath,
@@ -65,7 +65,10 @@ export function MomentPreviewImage({
         setFailed(true);
         return;
       }
-      const data = await ReactNativeBlobUtil.fs.readFile(existingPath, 'base64');
+      const data = await ReactNativeBlobUtil.fs.readFile(
+        existingPath,
+        'base64',
+      );
       setUri(`data:image/jpeg;base64,${data}`);
       setFailed(false);
     } catch {
@@ -93,7 +96,7 @@ export function MomentPreviewImage({
 
   const image = (
     <Image
-      source={{uri}}
+      source={{ uri }}
       style={style}
       resizeMode={resizeMode}
       accessibilityIgnoresInvertColors
@@ -112,7 +115,8 @@ export function MomentPreviewImage({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? 'View full photo'}
       onPress={onPress}
-      style={({pressed}) => [pressed ? styles.pressed : null]}>
+      style={({ pressed }) => [pressed ? styles.pressed : null]}
+    >
       {image}
     </Pressable>
   );

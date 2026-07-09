@@ -1,14 +1,14 @@
-import type {LocationPointRow} from '@/db/repositories/location-days';
-import type {SavedPlaceRow} from '@/db/repositories/saved-places';
-import {toDateKey} from '@/lib/day-utils';
+import type { LocationPointRow } from '@/db/repositories/location-days';
+import type { SavedPlaceRow } from '@/db/repositories/saved-places';
+import { toDateKey } from '@/lib/day-utils';
 import {
   type DayTimelineEntry,
   type DetectedTrip,
   type TimelineGap,
   type TripTimelineOptions,
 } from '@/lib/trip-detection';
-import {HISTORY_SAME_PLACE_RADIUS_METERS} from '@/lib/app-constants';
-import type {TripDetectionConfig} from '@/lib/trip-settings';
+import { HISTORY_SAME_PLACE_RADIUS_METERS } from '@/lib/app-constants';
+import type { TripDetectionConfig } from '@/lib/trip-settings';
 
 import {
   detectTripsForDay,
@@ -21,14 +21,14 @@ import {
   type StopDetectionConfig,
   type TripSegment,
 } from '@lifemap/segmentation';
-import {platformResolvesClosestPoi} from '@/lib/place-lookup-native';
+import { platformResolvesClosestPoi } from '@/lib/place-lookup-native';
 
 export {
   detectTripsForDay,
   detectTrips as detectSegmentTrips,
 } from '@lifemap/segmentation';
-export {DEFAULT_STOP_CONFIG} from '@lifemap/segmentation';
-export {TRIP_PLOT_SOURCES} from '@lifemap/segmentation';
+export { DEFAULT_STOP_CONFIG } from '@lifemap/segmentation';
+export { TRIP_PLOT_SOURCES } from '@lifemap/segmentation';
 
 function stopConfigFromTripConfig(
   config: TripDetectionConfig,
@@ -163,7 +163,7 @@ export function detectSegmentsForDay(
     [...(options.placeLookupCache ?? [])],
     [...(options.placePois ?? [])],
     [],
-    {resolveClosestPoi},
+    { resolveClosestPoi },
   ).segments;
 }
 
@@ -259,7 +259,10 @@ export function tripEventKeyFromSegment(segment: TripSegment): string {
   return `${kind}:${segment.startAt.getTime()}:${segment.endAt.getTime()}`;
 }
 
-export function segmentCentroid(segment: TripSegment): {lat: number; lng: number} {
+export function segmentCentroid(segment: TripSegment): {
+  lat: number;
+  lng: number;
+} {
   if (segment.kind === 'missing') {
     return {
       lat: (segment.fromLat + segment.toLat) / 2,
@@ -267,14 +270,14 @@ export function segmentCentroid(segment: TripSegment): {lat: number; lng: number
     };
   }
   if (segment.kind === 'stay') {
-    return {lat: segment.stop.lat, lng: segment.stop.lng};
+    return { lat: segment.stop.lat, lng: segment.stop.lng };
   }
   if (segment.points.length === 0) {
-    return {lat: 0, lng: 0};
+    return { lat: 0, lng: 0 };
   }
   const first = segment.points[0]!;
   const last = segment.points[segment.points.length - 1]!;
-  return {lat: (first.lat + last.lat) / 2, lng: (first.lng + last.lng) / 2};
+  return { lat: (first.lat + last.lat) / 2, lng: (first.lng + last.lng) / 2 };
 }
 
 export function segmentDistanceKm(segment: TripSegment): number {

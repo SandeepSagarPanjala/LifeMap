@@ -1,5 +1,5 @@
-import type {MomentRow} from '@/db/repositories/moments';
-import type {TripPointRow} from '@/db/repositories/trip-points';
+import type { MomentRow } from '@/db/repositories/moments';
+import type { TripPointRow } from '@/db/repositories/trip-points';
 import {
   emptyMomentCounts,
   type MomentCounts,
@@ -41,7 +41,9 @@ export function buildMomentRefsForSegment(
     }));
 }
 
-export function parseMomentRefs(raw: string | null | undefined): TripMomentRef[] {
+export function parseMomentRefs(
+  raw: string | null | undefined,
+): TripMomentRef[] {
   if (raw == null || raw.trim().length === 0) {
     return [];
   }
@@ -69,7 +71,7 @@ export function parseMomentRefs(raw: string | null | undefined): TripMomentRef[]
       ) {
         continue;
       }
-      refs.push({momentId, momentKind});
+      refs.push({ momentId, momentKind });
     }
     return refs;
   } catch {
@@ -77,7 +79,9 @@ export function parseMomentRefs(raw: string | null | undefined): TripMomentRef[]
   }
 }
 
-export function serializeMomentRefs(refs: readonly TripMomentRef[]): string | null {
+export function serializeMomentRefs(
+  refs: readonly TripMomentRef[],
+): string | null {
   if (refs.length === 0) {
     return null;
   }
@@ -136,8 +140,9 @@ export function momentKindForRef(
   return refs.find(ref => ref.momentId === momentId)?.momentKind ?? null;
 }
 
-export function isMaterializedEntry(
-  entry: {kind: string; materializedTripId?: number},
-): boolean {
+export function isMaterializedEntry(entry: {
+  kind: string;
+  materializedTripId?: number;
+}): boolean {
   return entry.kind !== 'gap' && entry.materializedTripId != null;
 }

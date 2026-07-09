@@ -4,8 +4,8 @@ import {
   updateActivity,
   archiveActivity,
 } from '@/db/repositories/activities';
-import {saveActivityMoment} from '@/lib/moments/capture-activity';
-import {getMomentById} from '@/db/repositories/moments';
+import { saveActivityMoment } from '@/lib/moments/capture-activity';
+import { getMomentById } from '@/db/repositories/moments';
 
 jest.mock('@/db/client', () => ({
   getDatabase: jest.fn(),

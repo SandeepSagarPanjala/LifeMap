@@ -1,5 +1,5 @@
-import {StyleSheet} from 'react-native';
-import {MAP_SOFT_BLUE_BUTTON_BG} from '@/lib/app-constants';
+import { StyleSheet } from 'react-native';
+import { MAP_SOFT_BLUE_BUTTON_BG } from '@/lib/app-constants';
 
 export const mapStackButtonStyles = StyleSheet.create({
   button: {
@@ -11,7 +11,7 @@ export const mapStackButtonStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.12,
     shadowRadius: 6,
     elevation: 4,

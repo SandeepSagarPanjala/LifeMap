@@ -1,5 +1,5 @@
-import {buildStayMapCircles} from '../src/lib/stay-map';
-import type {DetectedTrip} from '../src/lib/trip-detection';
+import { buildStayMapCircles } from '../src/lib/stay-map';
+import type { DetectedTrip } from '../src/lib/trip-detection';
 
 function stay(
   id: string,
@@ -27,16 +27,14 @@ function stay(
     endAt: timestamp,
     distanceKm: 0,
     durationMs: 0,
-    ...(placeId != null
-      ? {placeId, placeKind: 'saved' as const}
-      : {}),
+    ...(placeId != null ? { placeId, placeKind: 'saved' as const } : {}),
   };
 }
 
 describe('buildStayMapCircles', () => {
   it('places a circle at the stay anchor with dwell radius', () => {
     const circles = buildStayMapCircles(
-      [{...stay('a', 33.23, -97.16), anchorLat: 33.23, anchorLng: -97.16}],
+      [{ ...stay('a', 33.23, -97.16), anchorLat: 33.23, anchorLng: -97.16 }],
       150,
     );
     expect(circles).toHaveLength(1);

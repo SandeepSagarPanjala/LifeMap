@@ -1,12 +1,12 @@
-import type {HistoryData} from '../src/lib/history-data-types';
-import {getTodayDateKey} from '../src/lib/day-utils';
-import {HISTORY_DATA_CACHE_MAX_ENTRIES} from '@/lib/app-constants';
+import type { HistoryData } from '../src/lib/history-data-types';
+import { getTodayDateKey } from '../src/lib/day-utils';
+import { HISTORY_DATA_CACHE_MAX_ENTRIES } from '@/lib/app-constants';
 import {
   historyCacheKey,
   historyDataCache,
   resetHistoryDataCacheForTests,
 } from '../src/lib/history-data-cache';
-import {buildTripDetectionConfig} from '../src/lib/trip-settings';
+import { buildTripDetectionConfig } from '../src/lib/trip-settings';
 
 const config = buildTripDetectionConfig(10, 10, 25);
 
@@ -15,7 +15,7 @@ function sampleData(dateKey: string): HistoryData {
     dateKey,
     points: [],
     entries: [],
-    range: {startAt: new Date(), endAt: new Date()},
+    range: { startAt: new Date(), endAt: new Date() },
   };
 }
 

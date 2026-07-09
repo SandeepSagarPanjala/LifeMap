@@ -1,15 +1,20 @@
-import {useCallback, useEffect, useMemo, useState} from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import {dateKeyForTimestamp} from '../../lib/export';
-import {buildMobileDayHistory} from '../../mobile/build-mobile-day';
-import {countHistoryTimelineEvents} from '../../mobile/history-ruler';
-import {firstPlayableTimelineIndex} from '../../mobile/timeline-nav';
-import type {MomentRow, ParsedPoint, PlaceLookupRow, SavedPlaceRow} from '../../types';
-import {MobileDateNav} from './MobileDateNav';
-import {MobileEventCard} from './MobileEventCard';
-import {MobileHistoryButton} from './MobileHistoryButton';
-import {MobileMap} from './MobileMap';
-import {MobileTimelineBar} from './MobileTimelineBar';
+import { dateKeyForTimestamp } from '../../lib/export';
+import { buildMobileDayHistory } from '../../mobile/build-mobile-day';
+import { countHistoryTimelineEvents } from '../../mobile/history-ruler';
+import { firstPlayableTimelineIndex } from '../../mobile/timeline-nav';
+import type {
+  MomentRow,
+  ParsedPoint,
+  PlaceLookupRow,
+  SavedPlaceRow,
+} from '../../types';
+import { MobileDateNav } from './MobileDateNav';
+import { MobileEventCard } from './MobileEventCard';
+import { MobileHistoryButton } from './MobileHistoryButton';
+import { MobileMap } from './MobileMap';
+import { MobileTimelineBar } from './MobileTimelineBar';
 
 import './mobile.css';
 
@@ -56,7 +61,8 @@ export function MobileScreen({
   );
   const viewingToday = dateKey === todayKey;
   const canGoPrevDay = dayIndex > 0;
-  const canGoNextDay = !viewingToday && dayIndex >= 0 && dayIndex < dateKeys.length - 1;
+  const canGoNextDay =
+    !viewingToday && dayIndex >= 0 && dayIndex < dateKeys.length - 1;
 
   const goPrevDay = () => {
     if (canGoPrevDay) {
@@ -163,9 +169,7 @@ export function MobileScreen({
               entry={selectedEntry}
               savedPlaces={savedPlaces}
               scrubOnEmpty={
-                !emptyDay &&
-                history.entries.length > 0 &&
-                selectedIndex < 0
+                !emptyDay && history.entries.length > 0 && selectedIndex < 0
               }
               emptyDayWithoutData={emptyDay}
             />

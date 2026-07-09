@@ -1,17 +1,17 @@
-import {getPlaceLookupById} from '@/db/repositories/place-lookup-cache';
-import {listPlacePoisForCache} from '@/db/repositories/place-pois';
-import {getTripByEventKey, getTripById} from '@/db/repositories/trips';
-import {getSavedPlaceById} from '@/db/repositories/saved-places';
-import type {SavedPlaceRow} from '@/db/repositories/saved-places';
+import { getPlaceLookupById } from '@/db/repositories/place-lookup-cache';
+import { listPlacePoisForCache } from '@/db/repositories/place-pois';
+import { getTripByEventKey, getTripById } from '@/db/repositories/trips';
+import { getSavedPlaceById } from '@/db/repositories/saved-places';
+import type { SavedPlaceRow } from '@/db/repositories/saved-places';
 import {
   resolveVisitPlaceDisplay,
   savedPlaceVisitDisplay,
 } from '@/lib/place-lookup-display';
-import type {VisitPlaceDisplay} from '@/lib/place-lookup-types';
-import {resolvedPlaceFromTripRow} from '@/lib/resolved-place';
-import {matchSavedPlaceForStay} from '@/lib/saved-places';
-import type {DetectedTrip} from '@/lib/trip-detection';
-import {tripEventKey} from '@/lib/trip-materialization';
+import type { VisitPlaceDisplay } from '@/lib/place-lookup-types';
+import { resolvedPlaceFromTripRow } from '@/lib/resolved-place';
+import { matchSavedPlaceForStay } from '@/lib/saved-places';
+import type { DetectedTrip } from '@/lib/trip-detection';
+import { tripEventKey } from '@/lib/trip-materialization';
 
 /** Saved place or cache address + optional POI for a visit. */
 export async function loadVisitPlaceDisplayForStay(

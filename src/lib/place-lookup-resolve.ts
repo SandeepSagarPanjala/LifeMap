@@ -2,11 +2,11 @@ import {
   closestPlacePoiToAnchor,
   listPlacePoisForCache,
 } from '@/db/repositories/place-pois';
-import {listSavedPlaces, type SavedPlaceRow} from '@/db/repositories/saved-places';
 import {
-  applyTripPersistedLabel,
-  type TripRow,
-} from '@/db/repositories/trips';
+  listSavedPlaces,
+  type SavedPlaceRow,
+} from '@/db/repositories/saved-places';
+import { applyTripPersistedLabel, type TripRow } from '@/db/repositories/trips';
 import {
   mergeTripPlaceLabelAfterLookup,
   tripLookupAnchorFromRow,
@@ -19,17 +19,17 @@ import {
   shouldSkipPlaceLookupForStay,
   stayQualifiesForPlaceLookup,
 } from '@/lib/place-lookup-service';
-import {notifyPlaceLookupUpdated} from '@/lib/place-lookup-events';
-import {matchSavedPlaceForStay} from '@/lib/saved-places';
-import type {DetectedTrip} from '@/lib/trip-detection';
+import { notifyPlaceLookupUpdated } from '@/lib/place-lookup-events';
+import { matchSavedPlaceForStay } from '@/lib/saved-places';
+import type { DetectedTrip } from '@/lib/trip-detection';
 import {
   ensureTripForClosedStay,
   existingTripLabelsByEventKey,
   getDefaultTripDetectionConfig,
   type PersistedTripLabel,
 } from '@/lib/trip-materialization';
-import {notifyMaterializationUpdated} from '@/lib/trip-materialization-events';
-import type {TripDetectionConfig} from '@/lib/trip-settings';
+import { notifyMaterializationUpdated } from '@/lib/trip-materialization-events';
+import type { TripDetectionConfig } from '@/lib/trip-settings';
 
 export function stayNeedsLazyPlaceLookup(
   stay: DetectedTrip,
@@ -58,8 +58,8 @@ export function stayNeedsLazyPlaceLookup(
 
 async function resolveClosestPoiForCache(
   cacheId: number,
-  anchor: {lat: number; lng: number},
-): Promise<{poiId: number; poiLabel: string} | null> {
+  anchor: { lat: number; lng: number },
+): Promise<{ poiId: number; poiLabel: string } | null> {
   if (!platformResolvesClosestPoi()) {
     return null;
   }
@@ -68,7 +68,7 @@ async function resolveClosestPoiForCache(
   if (closest == null) {
     return null;
   }
-  return {poiId: closest.id, poiLabel: closest.name};
+  return { poiId: closest.id, poiLabel: closest.name };
 }
 
 export type ResolvePlaceLabelResult =
@@ -117,8 +117,7 @@ export async function resolveAndPersistPlaceLabelForTripRow(
   notifyMaterializationUpdated();
   notifyPlaceLookupUpdated();
 
-  const hadCache =
-    trip.placeKind === 'cache' && trip.placeId === cache.id;
+  const hadCache = trip.placeKind === 'cache' && trip.placeId === cache.id;
   return hadCache ? 'linked_cache' : 'fetched';
 }
 
@@ -151,8 +150,7 @@ export async function resolveAndPersistPlaceLabelForStay(
   }
 
   const existingByEventKey =
-    options?.existingByEventKey ??
-    existingTripLabelsByEventKey([trip]);
+    options?.existingByEventKey ?? existingTripLabelsByEventKey([trip]);
 
   const result = await resolveAndPersistPlaceLabelForTripRow(trip, {
     config,

@@ -1,4 +1,4 @@
-import type {ParsedPoint} from '../types';
+import type { ParsedPoint } from '../types';
 
 /** Points ordered by the actual GPS fix time (chronological path order). */
 export function sortPointsByTime(points: ParsedPoint[]): ParsedPoint[] {

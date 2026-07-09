@@ -1,4 +1,4 @@
-import type {Region} from 'react-native-maps';
+import type { Region } from 'react-native-maps';
 
 import {
   MAP_FALLBACK_REGION as MAP_FALLBACK_REGION_VALUES,
@@ -18,13 +18,21 @@ export const MAP_FALLBACK_REGION: Region = {
 };
 
 /** Index 0 = bottom-most button in a vertical stack. */
-export function mapStackButtonBottom(baseBottom: number, indexFromBottom: number): number {
+export function mapStackButtonBottom(
+  baseBottom: number,
+  indexFromBottom: number,
+): number {
   return (
-    baseBottom + indexFromBottom * (MAP_STACK_BUTTON_SIZE + MAP_STACK_BUTTON_GAP)
+    baseBottom +
+    indexFromBottom * (MAP_STACK_BUTTON_SIZE + MAP_STACK_BUTTON_GAP)
   );
 }
 
-export function mapStackTotalHeight(buttonCount: number, buttonSize: number, gap: number): number {
+export function mapStackTotalHeight(
+  buttonCount: number,
+  buttonSize: number,
+  gap: number,
+): number {
   if (buttonCount <= 0) {
     return 0;
   }

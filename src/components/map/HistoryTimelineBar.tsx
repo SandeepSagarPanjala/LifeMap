@@ -1,4 +1,4 @@
-import {useCallback, useMemo, useState} from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   type LayoutChangeEvent,
   Pressable,
@@ -6,17 +6,17 @@ import {
   Text,
   View,
 } from 'react-native';
-import {ChevronLeft, ChevronRight} from 'lucide-react-native';
+import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 
-import type {DayTimelineEntry} from '@/lib/trip-detection';
-import {CAPTURE_BUTTON_THEMES} from '@/components/map/map-capture-button-theme';
+import type { DayTimelineEntry } from '@/lib/trip-detection';
+import { CAPTURE_BUTTON_THEMES } from '@/components/map/map-capture-button-theme';
 import {
   findNextPlayableTimelineIndex,
   findPrevPlayableTimelineIndex,
   firstPlayableTimelineIndex,
   lastPlayableTimelineIndex,
 } from '@/lib/trip-detection';
-import {HISTORY_COLORS} from '@/lib/app-constants';
+import { HISTORY_COLORS } from '@/lib/app-constants';
 import {
   buildHistoryDayRuler,
   historySegmentColor,
@@ -61,7 +61,7 @@ export function HistoryTimelineBar({
   const barHeight = trackTop + TRACK_HEIGHT;
 
   const handleTrackLayout = useCallback((event: LayoutChangeEvent) => {
-    const {width} = event.nativeEvent.layout;
+    const { width } = event.nativeEvent.layout;
     if (width > 0) {
       setBarWidth(width);
     }
@@ -108,7 +108,7 @@ export function HistoryTimelineBar({
 
   return (
     <View style={styles.wrap}>
-      <View style={[styles.barRow, {height: barHeight}]}>
+      <View style={[styles.barRow, { height: barHeight }]}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Previous event"
@@ -116,9 +116,10 @@ export function HistoryTimelineBar({
           onPress={goPrevEvent}
           style={[
             styles.eventNavBtn,
-            {height: barHeight},
+            { height: barHeight },
             !canGoPrevEvent && styles.eventNavBtnDisabled,
-          ]}>
+          ]}
+        >
           <View style={styles.eventNavCircle}>
             <ChevronLeft
               size={EVENT_NAV_ICON_SIZE}
@@ -131,16 +132,23 @@ export function HistoryTimelineBar({
         <View
           collapsable={false}
           onLayout={handleTrackLayout}
-          style={[styles.trackArea, {height: barHeight}]}>
+          style={[styles.trackArea, { height: barHeight }]}
+        >
           <View
             pointerEvents="none"
-            style={[styles.labelRow, styles.fullWidth, {height: LABEL_HEIGHT}]}>
+            style={[
+              styles.labelRow,
+              styles.fullWidth,
+              { height: LABEL_HEIGHT },
+            ]}
+          >
             {ruler.ticks
               .filter(tick => tick.label != null)
               .map(tick => (
                 <Text
                   key={`label-${tick.hour}`}
-                  style={[styles.majorLabel, {left: tick.leftPx - 18}]}>
+                  style={[styles.majorLabel, { left: tick.leftPx - 18 }]}
+                >
                   {tick.label}
                 </Text>
               ))}
@@ -151,14 +159,15 @@ export function HistoryTimelineBar({
             style={[
               styles.tickBand,
               styles.fullWidth,
-              {height: TICK_BAND_HEIGHT, top: LABEL_HEIGHT},
-            ]}>
+              { height: TICK_BAND_HEIGHT, top: LABEL_HEIGHT },
+            ]}
+          >
             {ruler.ticks.map(tick => (
               <View
                 key={`tick-${tick.hour}`}
                 style={[
                   tick.kind === 'major' ? styles.tickMajor : styles.tickMinor,
-                  {left: tick.leftPx},
+                  { left: tick.leftPx },
                 ]}
               />
             ))}
@@ -168,9 +177,13 @@ export function HistoryTimelineBar({
             style={[
               styles.trackRow,
               styles.fullWidth,
-              {height: TRACK_HEIGHT, top: trackTop},
-            ]}>
-            <View pointerEvents="none" style={[styles.track, styles.fullWidth]} />
+              { height: TRACK_HEIGHT, top: trackTop },
+            ]}
+          >
+            <View
+              pointerEvents="none"
+              style={[styles.track, styles.fullWidth]}
+            />
             {ruler.segments.map((segment, segmentIndex) => {
               const selected = segment.entryIndex === selectedIndex;
               const color = historySegmentColor(segment.kind, selected);
@@ -185,7 +198,7 @@ export function HistoryTimelineBar({
                 <Pressable
                   key={`${segment.entryIndex}-${segment.startAt.getTime()}`}
                   accessibilityRole="button"
-                  accessibilityState={{selected}}
+                  accessibilityState={{ selected }}
                   onPress={() => onSelectIndex(segment.entryIndex)}
                   style={[
                     styles.fill,
@@ -219,9 +232,10 @@ export function HistoryTimelineBar({
           onPress={goNextEvent}
           style={[
             styles.eventNavBtn,
-            {height: barHeight},
+            { height: barHeight },
             !canGoNextEvent && styles.eventNavBtnDisabled,
-          ]}>
+          ]}
+        >
           <View style={styles.eventNavCircle}>
             <ChevronRight
               size={EVENT_NAV_ICON_SIZE}
@@ -258,7 +272,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 1},
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 2,
@@ -327,7 +341,7 @@ const styles = StyleSheet.create({
   fillSelected: {
     zIndex: 2,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 1},
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.16,
     shadowRadius: 2,
     elevation: 2,

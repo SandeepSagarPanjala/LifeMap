@@ -1,10 +1,10 @@
-import {History} from 'lucide-react-native';
-import {Pressable, Text, View} from 'react-native';
+import { History } from 'lucide-react-native';
+import { Pressable, Text, View } from 'react-native';
 
-import {useThemeColors} from '@/hooks/use-theme-colors';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 
-import {MAP_STACK_BUTTON_LEFT} from '@/lib/app-constants';
-import {mapStackButtonStyles} from './map-stack-button-styles';
+import { MAP_STACK_BUTTON_LEFT } from '@/lib/app-constants';
+import { mapStackButtonStyles } from './map-stack-button-styles';
 
 type MapHistoryButtonProps = {
   bottom: number;
@@ -31,9 +31,10 @@ export function MapHistoryButton({
       onPress={onPress}
       style={[
         mapStackButtonStyles.button,
-        {bottom, left: MAP_STACK_BUTTON_LEFT},
+        { bottom, left: MAP_STACK_BUTTON_LEFT },
         active && mapStackButtonStyles.buttonSoftBlue,
-      ]}>
+      ]}
+    >
       <History size={22} color={colors.primary} strokeWidth={2.25} />
       {eventCount > 0 ? (
         <View style={mapStackButtonStyles.badge}>

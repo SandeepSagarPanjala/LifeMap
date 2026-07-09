@@ -1,7 +1,7 @@
-import {Platform} from 'react-native';
-import {NativeModules} from 'react-native';
+import { Platform } from 'react-native';
+import { NativeModules } from 'react-native';
 
-import type {Location} from 'react-native-background-geolocation';
+import type { Location } from 'react-native-background-geolocation';
 
 function locationTimestamp(location: Location): Date {
   const value = location.timestamp as string | number | Date;
@@ -16,7 +16,7 @@ type NativeGeofenceSpec = {
 };
 
 type LocationPersistNativeModule = {
-  startNativeTracking(): Promise<{started: boolean; databasePath: string}>;
+  startNativeTracking(): Promise<{ started: boolean; databasePath: string }>;
   stopNativeTracking(): Promise<boolean>;
   insertLocation(
     timestampMs: number,
@@ -59,7 +59,7 @@ export async function nativePersistLocation(
   }
 
   const timestamp = locationTimestamp(location);
-  const {coords} = location;
+  const { coords } = location;
   return nativeModule!.insertLocation(
     timestamp.getTime(),
     coords.latitude,
@@ -87,4 +87,4 @@ export async function nativeSyncGeofences(
   return nativeModule!.syncGeofences(specs);
 }
 
-export type {NativeGeofenceSpec};
+export type { NativeGeofenceSpec };

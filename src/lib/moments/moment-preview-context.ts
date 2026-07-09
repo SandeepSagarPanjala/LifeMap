@@ -1,11 +1,11 @@
-import type {SavedPlaceRow} from '@/db/repositories/saved-places';
-import {findContainingTimelineEntry} from '@/lib/moments/moment-timeline';
+import type { SavedPlaceRow } from '@/db/repositories/saved-places';
+import { findContainingTimelineEntry } from '@/lib/moments/moment-timeline';
+import { formatDistance, type DistanceUnit } from '@/lib/location-geo';
 import {
-  formatDistance,
-  type DistanceUnit,
-} from '@/lib/location-geo';
-import {matchSavedPlaceForStay, savedPlaceDisplayLabel} from '@/lib/saved-places';
-import type {DayTimelineEntry, DetectedTrip} from '@/lib/trip-detection';
+  matchSavedPlaceForStay,
+  savedPlaceDisplayLabel,
+} from '@/lib/saved-places';
+import type { DayTimelineEntry, DetectedTrip } from '@/lib/trip-detection';
 import {
   formatStayVisitLabel,
   formatTimelineKindLabel,
@@ -48,7 +48,12 @@ export function resolveMomentPreviewContext(
   if (!entry) {
     return null;
   }
-  return buildMomentPreviewContextForEntry(entry, savedPlaces, distanceUnit, now);
+  return buildMomentPreviewContextForEntry(
+    entry,
+    savedPlaces,
+    distanceUnit,
+    now,
+  );
 }
 
 export function buildMomentPreviewContextForEntry(
@@ -63,7 +68,7 @@ export function buildMomentPreviewContextForEntry(
       entry.startAt,
       entry.endAt,
       entry.durationMs,
-      {openThroughNow: entry.openThroughNow, now},
+      { openThroughNow: entry.openThroughNow, now },
     );
     return {
       entryKind: 'stay',
@@ -106,7 +111,9 @@ export function findStayForMomentPreviewContext(
   return entry?.kind === 'stay' ? entry : null;
 }
 
-export function formatMomentPreviewContextLine(context: MomentPreviewContext): string {
+export function formatMomentPreviewContextLine(
+  context: MomentPreviewContext,
+): string {
   const place = context.placeLabel?.trim();
   if (context.entryKind === 'stay' && place) {
     return `Visit · ${place}`;
@@ -122,11 +129,11 @@ export function formatMomentPreviewContextLine(context: MomentPreviewContext): s
 
 export function formatMomentsPreviewSheetTitle(
   scope:
-    | {kind: 'day'}
-    | {kind: 'entry'; entry: DayTimelineEntry}
-    | {kind: 'moment-ids'; title: string}
+    | { kind: 'day' }
+    | { kind: 'entry'; entry: DayTimelineEntry }
+    | { kind: 'moment-ids'; title: string }
     | null,
-  moments: {timestamp: Date}[],
+  moments: { timestamp: Date }[],
   entries: DayTimelineEntry[],
   savedPlaces: readonly SavedPlaceRow[],
   dayNavLabel: string,

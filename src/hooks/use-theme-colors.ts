@@ -1,8 +1,11 @@
-import {useColorScheme} from 'react-native';
+import { useColorScheme } from 'react-native';
 
-import {ACCENT_THEMES} from '@/lib/app-constants';
-import {themeTokensToColors, type ResolvedThemeColors} from '@/lib/color-themes';
-import {useAppStore} from '@/stores/app-store';
+import { ACCENT_THEMES } from '@/lib/app-constants';
+import {
+  themeTokensToColors,
+  type ResolvedThemeColors,
+} from '@/lib/color-themes';
+import { useAppStore } from '@/stores/app-store';
 
 export function useThemeColors(): ResolvedThemeColors {
   const colorScheme = useColorScheme();

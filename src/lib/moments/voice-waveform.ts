@@ -8,9 +8,12 @@ export function normalizeVoiceMetering(db: number | undefined): number {
 }
 
 /** Lightweight fixed-shape bars for playback (no sample history needed). */
-export function generateStaticWaveformBars(count: number, seed: number): number[] {
+export function generateStaticWaveformBars(
+  count: number,
+  seed: number,
+): number[] {
   let state = Math.max(1, Math.floor(seed)) ^ 0x9e3779b9;
-  return Array.from({length: count}, (_, index) => {
+  return Array.from({ length: count }, (_, index) => {
     state = (state * 1_664_525 + 1_013_904_223 + index) >>> 0;
     const wave = 0.55 + 0.45 * Math.sin(index * 0.65 + state * 0.00001);
     const noise = (state % 1000) / 1000;

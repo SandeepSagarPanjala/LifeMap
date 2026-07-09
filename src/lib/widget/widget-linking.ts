@@ -1,8 +1,8 @@
-import type {LinkingOptions} from '@react-navigation/native';
+import type { LinkingOptions } from '@react-navigation/native';
 
-import type {RootStackParamList} from '@/navigation/types';
+import type { RootStackParamList } from '@/navigation/types';
 
-import {WIDGET_DEEP_LINK_PREFIX} from './types';
+import { WIDGET_DEEP_LINK_PREFIX } from './types';
 
 export const widgetLinking: LinkingOptions<RootStackParamList> = {
   prefixes: [WIDGET_DEEP_LINK_PREFIX],

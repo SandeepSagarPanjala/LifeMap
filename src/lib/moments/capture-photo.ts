@@ -1,22 +1,22 @@
-import {CameraRoll} from '@react-native-camera-roll/camera-roll';
-import {APP_COPY, errorMessageOr} from '@/lib/app-copy';
-import {Alert, Platform} from 'react-native';
+import { CameraRoll } from '@react-native-camera-roll/camera-roll';
+import { APP_COPY, errorMessageOr } from '@/lib/app-copy';
+import { Alert, Platform } from 'react-native';
 import {
   launchCamera,
   type CameraOptions,
   type ImagePickerResponse,
 } from 'react-native-image-picker';
 
-import {insertMoment, type MomentRow} from '@/db/repositories/moments';
-import {compressMomentImage} from '@/lib/moments/compress-image';
-import {IMAGE_COMPRESS_FORMAT} from '@/lib/app-constants';
+import { insertMoment, type MomentRow } from '@/db/repositories/moments';
+import { compressMomentImage } from '@/lib/moments/compress-image';
+import { IMAGE_COMPRESS_FORMAT } from '@/lib/app-constants';
 import {
   MOMENT_IMAGE_FILE_EXTENSION,
   deleteMomentContentFile,
   moveFileToMomentSandbox,
   persistFileToMomentSandbox,
 } from '@/lib/moments/moment-storage';
-import {normalizeCameraPhoto} from '@/lib/moments/normalize-camera-photo';
+import { normalizeCameraPhoto } from '@/lib/moments/normalize-camera-photo';
 
 const CAMERA_OPTIONS: CameraOptions = {
   mediaType: 'photo',
@@ -33,7 +33,9 @@ export type CameraPhotoDraft = {
   sourceBytes: number | null;
 };
 
-export function getCameraLaunchErrorMessage(response: ImagePickerResponse): string | null {
+export function getCameraLaunchErrorMessage(
+  response: ImagePickerResponse,
+): string | null {
   if (response.didCancel) {
     return null;
   }
@@ -55,13 +57,15 @@ export async function saveMomentToGallery(
   type: 'photo' | 'video',
 ): Promise<void> {
   if (Platform.OS === 'ios') {
-    await CameraRoll.saveAsset(sourceUri, {type});
+    await CameraRoll.saveAsset(sourceUri, { type });
     return;
   }
-  await CameraRoll.save(sourceUri, {type});
+  await CameraRoll.save(sourceUri, { type });
 }
 
-export async function saveCaptureToPhotoLibrary(sourceUri: string): Promise<void> {
+export async function saveCaptureToPhotoLibrary(
+  sourceUri: string,
+): Promise<void> {
   await saveMomentToGallery(sourceUri, 'photo');
 }
 
@@ -78,7 +82,10 @@ export async function launchCameraPhotoDraft(): Promise<CameraPhotoDraft | null>
 
   const asset = response.assets?.[0];
   if (!asset?.uri) {
-    Alert.alert(APP_COPY.alerts.couldNotSavePhoto, APP_COPY.alerts.noImageFromCamera);
+    Alert.alert(
+      APP_COPY.alerts.couldNotSavePhoto,
+      APP_COPY.alerts.noImageFromCamera,
+    );
     return null;
   }
 
@@ -86,7 +93,10 @@ export async function launchCameraPhotoDraft(): Promise<CameraPhotoDraft | null>
   try {
     normalized = await normalizeCameraPhoto(asset.uri);
   } catch {
-    Alert.alert(APP_COPY.alerts.couldNotPreparePhoto, APP_COPY.alerts.failedOrientPhoto);
+    Alert.alert(
+      APP_COPY.alerts.couldNotPreparePhoto,
+      APP_COPY.alerts.failedOrientPhoto,
+    );
     return null;
   }
 
@@ -102,7 +112,7 @@ export async function savePhotoMoment(
   sourceUri: string,
   sourceBytes: number | null,
   caption?: string | null,
-  voiceAttachment?: {uri: string; durationMs: number} | null,
+  voiceAttachment?: { uri: string; durationMs: number } | null,
 ): Promise<MomentRow> {
   try {
     await saveCaptureToPhotoLibrary(sourceUri);
@@ -134,7 +144,10 @@ export async function savePhotoMoment(
       throw new Error('Voice attachment is too short to save.');
     }
     try {
-      const voiceFile = await moveFileToMomentSandbox(voiceAttachment.uri, 'm4a');
+      const voiceFile = await moveFileToMomentSandbox(
+        voiceAttachment.uri,
+        'm4a',
+      );
       voiceAttachmentPath = voiceFile.contentPath;
       voiceAttachmentBytes = voiceFile.contentBytes;
       voiceDurationSec = Math.round(voiceAttachment.durationMs / 1000);
@@ -157,7 +170,9 @@ export async function savePhotoMoment(
       voiceDurationSec,
     });
   } catch (error) {
-    await deleteMomentContentFile(sandboxFile.contentPath).catch(() => undefined);
+    await deleteMomentContentFile(sandboxFile.contentPath).catch(
+      () => undefined,
+    );
     throw error;
   }
 }
@@ -171,10 +186,7 @@ export async function capturePhotoFromCamera(): Promise<MomentRow | null> {
   try {
     return await savePhotoMoment(draft.sourceUri, draft.sourceBytes);
   } catch (error) {
-    Alert.alert(
-      APP_COPY.alerts.couldNotSavePhoto,
-      errorMessageOr(error),
-    );
+    Alert.alert(APP_COPY.alerts.couldNotSavePhoto, errorMessageOr(error));
     return null;
   }
 }

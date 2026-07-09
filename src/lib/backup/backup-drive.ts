@@ -1,6 +1,6 @@
-import {format} from 'date-fns';
-import {APP_COPY} from '@/lib/app-copy';
-import {InteractionManager, Platform, Share} from 'react-native';
+import { format } from 'date-fns';
+import { APP_COPY } from '@/lib/app-copy';
+import { InteractionManager, Platform, Share } from 'react-native';
 import ReactNativeBlobUtil from 'react-native-blob-util';
 import {
   errorCodes,
@@ -9,19 +9,23 @@ import {
   pick,
   types,
 } from '@react-native-documents/picker';
-import {unzip, zip} from 'react-native-zip-archive';
+import { unzip, zip } from 'react-native-zip-archive';
 
-import {getAppVersionLabel} from '@/lib/app-version';
-import {formatStorageBytes} from '@/lib/format-storage';
+import { getAppVersionLabel } from '@/lib/app-version';
+import { formatStorageBytes } from '@/lib/format-storage';
 
 import {
   prepareBackupBundle,
   readBackupBundleFromDirectory,
   writeBackupBundleToDirectory,
 } from './backup-export';
-import {computeDirectoryBytes, prepareEmptyDirectory, removeDirectoryRecursive} from './backup-fs';
-import {getBackupStagingDirectory} from './native-backup-cloud';
-import type {BackupProgress, CloudBackupMetadata} from './backup-types';
+import {
+  computeDirectoryBytes,
+  prepareEmptyDirectory,
+  removeDirectoryRecursive,
+} from './backup-fs';
+import { getBackupStagingDirectory } from './native-backup-cloud';
+import type { BackupProgress, CloudBackupMetadata } from './backup-types';
 
 const DRIVE_ZIP_PREFIX = 'lifemap-backup';
 const DRIVE_RESTORE_STAGING = 'lifemap-drive-restore-staging';
@@ -62,13 +66,13 @@ function getDriveRestoreStagingPath(): string {
 
 export async function exportBackupToDrive(
   onProgress?: (progress: BackupProgress | null) => void,
-): Promise<{totalBytes: number}> {
-  onProgress?.({phase: 'exporting', message: 'Exporting your data…'});
+): Promise<{ totalBytes: number }> {
+  onProgress?.({ phase: 'exporting', message: 'Exporting your data…' });
   const bundle = await prepareBackupBundle(await getAppVersionLabel());
   const stagingPath = getBackupStagingDirectory();
   await prepareEmptyDirectory(stagingPath);
 
-  onProgress?.({phase: 'copying_media', message: 'Copying memories…'});
+  onProgress?.({ phase: 'copying_media', message: 'Copying memories…' });
   await writeBackupBundleToDirectory(bundle, stagingPath);
   const totalBytes = await computeDirectoryBytes(stagingPath);
   bundle.manifest.totalBytes = totalBytes;
@@ -83,7 +87,7 @@ export async function exportBackupToDrive(
   const zipPath = `${ReactNativeBlobUtil.fs.dirs.CacheDir}/${filename}`;
 
   try {
-    onProgress?.({phase: 'uploading', message: 'Creating backup file…'});
+    onProgress?.({ phase: 'uploading', message: 'Creating backup file…' });
     if (await ReactNativeBlobUtil.fs.exists(zipPath)) {
       await ReactNativeBlobUtil.fs.unlink(zipPath);
     }
@@ -97,7 +101,7 @@ export async function exportBackupToDrive(
       url: shareUrl,
     });
 
-    return {totalBytes};
+    return { totalBytes };
   } finally {
     await removeDirectoryRecursive(stagingPath);
   }
@@ -122,7 +126,7 @@ export async function pickAndStageDriveBackup(
   try {
     const picked = await pickBackupZipFile();
 
-    onProgress?.({phase: 'downloading', message: 'Copying backup file…'});
+    onProgress?.({ phase: 'downloading', message: 'Copying backup file…' });
     const [localCopy] = await keepLocalCopy({
       files: [
         {
@@ -142,10 +146,10 @@ export async function pickAndStageDriveBackup(
     const stagingPath = getDriveRestoreStagingPath();
     await prepareEmptyDirectory(stagingPath);
 
-    onProgress?.({phase: 'downloading', message: 'Extracting backup…'});
+    onProgress?.({ phase: 'downloading', message: 'Extracting backup…' });
     await unzip(localCopy.localUri, stagingPath);
 
-    const {manifest} = await readBackupBundleFromDirectory(stagingPath);
+    const { manifest } = await readBackupBundleFromDirectory(stagingPath);
     const metadata: CloudBackupMetadata = {
       exportedAt: manifest.exportedAt,
       totalBytes: manifest.totalBytes,
@@ -155,9 +159,12 @@ export async function pickAndStageDriveBackup(
     pendingDriveRestoreStagingPath = stagingPath;
     pendingDriveRestoreMetadata = metadata;
 
-    return {stagingPath, metadata};
+    return { stagingPath, metadata };
   } catch (error) {
-    if (isErrorWithCode(error) && error.code === errorCodes.OPERATION_CANCELED) {
+    if (
+      isErrorWithCode(error) &&
+      error.code === errorCodes.OPERATION_CANCELED
+    ) {
       return null;
     }
     throw error;

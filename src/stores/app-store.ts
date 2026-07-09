@@ -9,7 +9,7 @@ import {
   DEFAULT_TRIP_DWELL_RADIUS_METERS,
   type AccentThemeId,
 } from '@/lib/app-constants';
-import type {TripDwellMinutes, TripRadiusMeters} from '@/lib/trip-settings';
+import type { TripDwellMinutes, TripRadiusMeters } from '@/lib/trip-settings';
 
 export type DistanceUnit = 'km' | 'mi';
 export type PreferredMapApp = 'google' | 'apple';

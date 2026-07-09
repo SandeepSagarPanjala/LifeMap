@@ -1,5 +1,8 @@
-import type {SavedPlaceRow} from '../src/db/repositories/saved-places';
-import {MAX_SAVED_PLACE_LABEL_LENGTH, MAX_SAVED_PLACES} from '../src/lib/app-constants';
+import type { SavedPlaceRow } from '../src/db/repositories/saved-places';
+import {
+  MAX_SAVED_PLACE_LABEL_LENGTH,
+  MAX_SAVED_PLACES,
+} from '../src/lib/app-constants';
 import {
   canAddSavedPlace,
   lookupSavedPlaceById,
@@ -10,8 +13,8 @@ import {
   matchSavedPlaceForTripEndpoint,
   normalizeSavedPlaceLabel,
 } from '../src/lib/saved-places';
-import {shouldShowSavedPlaceCircles} from '../src/lib/saved-places-map';
-import type {DetectedTrip} from '../src/lib/trip-detection';
+import { shouldShowSavedPlaceCircles } from '../src/lib/saved-places-map';
+import type { DetectedTrip } from '../src/lib/trip-detection';
 
 function place(
   kind: SavedPlaceRow['kind'],
@@ -36,7 +39,7 @@ function place(
 
 describe('saved places matching', () => {
   it('matches home before work when both overlap', () => {
-    const anchor = {lat: 33.21, lng: -97.13};
+    const anchor = { lat: 33.21, lng: -97.13 };
     const match = matchSavedPlaceForPoint(anchor, [
       place('work', 'Work', 33.21, -97.13, 150, 2),
       place('home', 'Home', 33.21, -97.13, 150, 1),
@@ -45,10 +48,9 @@ describe('saved places matching', () => {
   });
 
   it('matches favorite by name within radius', () => {
-    const match = matchSavedPlaceForPoint(
-      {lat: 33.2105, lng: -97.1305},
-      [place('favorite', "Mom's", 33.21, -97.13)],
-    );
+    const match = matchSavedPlaceForPoint({ lat: 33.2105, lng: -97.1305 }, [
+      place('favorite', "Mom's", 33.21, -97.13),
+    ]);
     expect(match?.label).toBe("Mom's");
   });
 
@@ -90,7 +92,9 @@ describe('saved places matching', () => {
       distanceKm: 0,
       durationMs: 0,
     };
-    expect(matchSavedPlaceForStay(stay, [place('home', 'Home', 33.21, -97.13)])).toBeNull();
+    expect(
+      matchSavedPlaceForStay(stay, [place('home', 'Home', 33.21, -97.13)]),
+    ).toBeNull();
   });
 
   it('matches drive endpoints from trip ids', () => {
@@ -178,14 +182,23 @@ describe('saved places matching', () => {
   });
 
   it('lookupSavedPlaceById returns null for unknown ids', () => {
-    expect(lookupSavedPlaceById(99, [place('home', 'Home', 33.21, -97.13)])).toBeNull();
+    expect(
+      lookupSavedPlaceById(99, [place('home', 'Home', 33.21, -97.13)]),
+    ).toBeNull();
   });
 });
 
 describe('saved places limits', () => {
   function makePlaces(count: number): SavedPlaceRow[] {
-    return Array.from({length: count}, (_, index) =>
-      place('favorite', `Spot ${index + 1}`, 33.21, -97.13 + index * 0.001, 150, index + 1),
+    return Array.from({ length: count }, (_, index) =>
+      place(
+        'favorite',
+        `Spot ${index + 1}`,
+        33.21,
+        -97.13 + index * 0.001,
+        150,
+        index + 1,
+      ),
     );
   }
 
@@ -216,7 +229,9 @@ describe('saved places label validation', () => {
   });
 
   it('rejects empty labels', () => {
-    expect(() => normalizeSavedPlaceLabel('   ')).toThrow('Place name is required');
+    expect(() => normalizeSavedPlaceLabel('   ')).toThrow(
+      'Place name is required',
+    );
   });
 
   it('rejects labels over the max length', () => {

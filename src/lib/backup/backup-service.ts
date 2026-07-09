@@ -1,14 +1,14 @@
 import ReactNativeBlobUtil from 'react-native-blob-util';
-import {Platform} from 'react-native';
+import { Platform } from 'react-native';
 
-import {getAppVersionLabel} from '@/lib/app-version';
+import { getAppVersionLabel } from '@/lib/app-version';
 
 import {
   prepareBackupBundle,
   writeBackupBundleToDirectory,
   estimateLocalBackupBytes,
 } from './backup-export';
-import {hasLocalUserData} from './backup-clear';
+import { hasLocalUserData } from './backup-clear';
 import {
   getBackupStagingDirectory,
   getCloudBackupMetadataForOperation,
@@ -27,7 +27,7 @@ import {
   getBackupLastAt,
   recordBackupCompletion,
 } from './backup-settings';
-import type {BackupProgress, CloudBackupMetadata} from './backup-types';
+import type { BackupProgress, CloudBackupMetadata } from './backup-types';
 
 export type BackupStatus = {
   cloudAvailable: boolean;
@@ -110,19 +110,19 @@ export async function shouldPromptBeforeCloudBackupReplace(): Promise<{
     return null;
   }
 
-  return {cloudBackup, localEstimateBytes: localBaselineBytes};
+  return { cloudBackup, localEstimateBytes: localBaselineBytes };
 }
 
 export async function runBackupNow(
   onProgress?: (progress: BackupProgress) => void,
-): Promise<{totalBytes: number}> {
-  onProgress?.({phase: 'exporting', message: 'Exporting your data…'});
+): Promise<{ totalBytes: number }> {
+  onProgress?.({ phase: 'exporting', message: 'Exporting your data…' });
   const bundle = await prepareBackupBundle(await getAppVersionLabel());
   const stagingPath = getBackupStagingDirectory();
   try {
     await prepareEmptyDirectory(stagingPath);
 
-    onProgress?.({phase: 'copying_media', message: 'Copying memories…'});
+    onProgress?.({ phase: 'copying_media', message: 'Copying memories…' });
     await writeBackupBundleToDirectory(bundle, stagingPath);
     const totalBytes = await computeDirectoryBytes(stagingPath);
     bundle.manifest.totalBytes = totalBytes;
@@ -139,13 +139,13 @@ export async function runBackupNow(
     });
     await uploadBackupDirectory(stagingPath);
     await recordBackupCompletion(totalBytes);
-    const {hasLocalUserData} = await import('./backup-clear');
-    const {markRestoreCompleted} = await import('./backup-install-state');
+    const { hasLocalUserData } = await import('./backup-clear');
+    const { markRestoreCompleted } = await import('./backup-install-state');
     if (await hasLocalUserData()) {
       await markRestoreCompleted();
     }
 
-    return {totalBytes};
+    return { totalBytes };
   } finally {
     await removeDirectoryRecursive(stagingPath).catch(() => undefined);
   }
@@ -169,7 +169,7 @@ export async function maybeRunScheduledBackup(
     return false;
   }
 
-  onProgress?.({phase: 'exporting', message: 'Starting automatic backup…'});
+  onProgress?.({ phase: 'exporting', message: 'Starting automatic backup…' });
   await runBackupNow(onProgress);
   return true;
 }

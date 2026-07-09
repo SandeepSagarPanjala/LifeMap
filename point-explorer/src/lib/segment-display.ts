@@ -1,16 +1,16 @@
-import {formatDuration} from '@lifemap/segmentation';
+import { formatDuration } from '@lifemap/segmentation';
 import {
   formatDistance,
   type SegmentMomentCounts,
   type StaySegment,
   type TripSegment,
 } from '@lifemap/segmentation';
-import {canonicalizeStaySegmentPoints} from '@lifemap/segmentation';
-import {canonicalizeTravelSegmentPoints} from '@lifemap/segmentation';
-import type {SegmentationMoment} from '@lifemap/segmentation';
-import type {DriveSegment} from '@lifemap/segmentation';
-import {APP_TIMEZONE} from '@lifemap/constants';
-import {APP_COPY} from '@lifemap/copy';
+import { canonicalizeStaySegmentPoints } from '@lifemap/segmentation';
+import { canonicalizeTravelSegmentPoints } from '@lifemap/segmentation';
+import type { SegmentationMoment } from '@lifemap/segmentation';
+import type { DriveSegment } from '@lifemap/segmentation';
+import { APP_TIMEZONE } from '@lifemap/constants';
+import { APP_COPY } from '@lifemap/copy';
 
 const timeFmt = new Intl.DateTimeFormat('en-US', {
   timeZone: APP_TIMEZONE,
@@ -37,7 +37,10 @@ export function formatTimeRange(startAt: Date, endAt: Date): string {
 }
 
 export type SegmentDisplay = {
-  kind: typeof APP_COPY.explorer.segmentStay | typeof APP_COPY.explorer.segmentDrive | typeof APP_COPY.explorer.segmentMissing;
+  kind:
+    | typeof APP_COPY.explorer.segmentStay
+    | typeof APP_COPY.explorer.segmentDrive
+    | typeof APP_COPY.explorer.segmentMissing;
   variant: 'stay' | 'drive' | 'missing';
   subtitle?: string;
   placeId?: number;
@@ -158,6 +161,8 @@ export function formatMomentCountChips(counts: SegmentMomentCounts): string[] {
     .filter(key => counts[key] > 0)
     .map(
       key =>
-        `${counts[key]} ${MOMENT_TYPE_LABELS[key]}${counts[key] === 1 ? '' : 's'}`,
+        `${counts[key]} ${MOMENT_TYPE_LABELS[key]}${
+          counts[key] === 1 ? '' : 's'
+        }`,
     );
 }

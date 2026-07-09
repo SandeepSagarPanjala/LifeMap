@@ -13,12 +13,20 @@ describe('map location utils', () => {
   };
 
   it('detects when a coordinate is inside the visible region', () => {
-    expect(isCoordinateInMapView({latitude: 33.21, longitude: -97.13}, region)).toBe(true);
-    expect(isCoordinateInMapView({latitude: 33.35, longitude: -97.13}, region)).toBe(false);
+    expect(
+      isCoordinateInMapView({ latitude: 33.21, longitude: -97.13 }, region),
+    ).toBe(true);
+    expect(
+      isCoordinateInMapView({ latitude: 33.35, longitude: -97.13 }, region),
+    ).toBe(false);
   });
 
   it('builds a region centered on a coordinate', () => {
-    const next = regionAroundCoordinate({latitude: 33.5, longitude: -97.2}, 0.08, 0.08);
+    const next = regionAroundCoordinate(
+      { latitude: 33.5, longitude: -97.2 },
+      0.08,
+      0.08,
+    );
     expect(next.latitude).toBe(33.5);
     expect(next.longitude).toBe(-97.2);
     expect(next.latitudeDelta).toBe(0.08);
@@ -27,8 +35,8 @@ describe('map location utils', () => {
   it('centers the map on the user', () => {
     const animateToRegion = jest.fn();
     const centeredRegion = centerMapOnUser(
-      {animateToRegion},
-      {latitude: 33.5, longitude: -97.2},
+      { animateToRegion },
+      { latitude: 33.5, longitude: -97.2 },
       true,
     );
     expect(animateToRegion).toHaveBeenCalled();

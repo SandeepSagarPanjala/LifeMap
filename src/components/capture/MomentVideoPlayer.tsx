@@ -1,6 +1,6 @@
-import {forwardRef} from 'react';
-import type {StyleProp, ViewStyle} from 'react-native';
-import Video, {ResizeMode, type VideoRef} from 'react-native-video';
+import { forwardRef } from 'react';
+import type { StyleProp, ViewStyle } from 'react-native';
+import Video, { ResizeMode, type VideoRef } from 'react-native-video';
 
 type MomentVideoPlayerProps = {
   uri: string;
@@ -26,7 +26,7 @@ export const MomentVideoPlayer = forwardRef<VideoRef, MomentVideoPlayerProps>(
     return (
       <Video
         ref={ref}
-        source={{uri}}
+        source={{ uri }}
         style={style}
         resizeMode={resizeMode}
         paused={paused}

@@ -1,7 +1,7 @@
-import {MapPin} from 'lucide-react-native';
-import {StyleSheet, View} from 'react-native';
+import { MapPin } from 'lucide-react-native';
+import { StyleSheet, View } from 'react-native';
 
-import {Text} from '@/components/ui/text';
+import { Text } from '@/components/ui/text';
 
 type VisitPlaceLabelWithPinProps = {
   name: string;
@@ -17,7 +17,11 @@ export function VisitPlaceLabelWithPin({
       {showPin ? (
         <MapPin size={13} color="#8E8E93" fill="#C7C7CC" strokeWidth={2} />
       ) : null}
-      <Text className="text-base font-semibold" numberOfLines={1} style={styles.name}>
+      <Text
+        className="text-base font-semibold"
+        numberOfLines={1}
+        style={styles.name}
+      >
         {name}
       </Text>
     </View>

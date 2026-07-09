@@ -1,10 +1,10 @@
-import {memo, useMemo} from 'react';
-import {Polyline} from 'react-native-maps';
+import { memo, useMemo } from 'react';
+import { Polyline } from 'react-native-maps';
 
-import {DriveEndpointLabels} from '@/components/map/DriveEndpointLabels';
-import {TripPlaybackHead} from '@/components/map/TripPlaybackHead';
-import type {LocationPointRow} from '@/db/repositories/location-days';
-import type {DriveEndpointLabel} from '@/lib/drive-endpoint-label';
+import { DriveEndpointLabels } from '@/components/map/DriveEndpointLabels';
+import { TripPlaybackHead } from '@/components/map/TripPlaybackHead';
+import type { LocationPointRow } from '@/db/repositories/location-days';
+import type { DriveEndpointLabel } from '@/lib/drive-endpoint-label';
 import {
   MAX_EMPHASIZED_TRIP_POLYLINE_POINTS,
   MAX_MAP_POLYLINE_POINTS,
@@ -15,8 +15,11 @@ import {
   type MapCoordinate,
   toDisplayMapCoordinates,
 } from '@/lib/location-geo';
-import type {DetectedTrip} from '@/lib/trip-detection';
-import {isSparseTravelRoute, stayMapMarkerCoordinate} from '@/lib/trip-detection';
+import type { DetectedTrip } from '@/lib/trip-detection';
+import {
+  isSparseTravelRoute,
+  stayMapMarkerCoordinate,
+} from '@/lib/trip-detection';
 import {
   buildDensePlaybackSamples,
   getTripPlaybackFrame,
@@ -95,7 +98,7 @@ export const TripRouteOverlay = memo(function TripRouteOverlay({
     if (anchorStartStay) {
       return stayMapMarkerCoordinate(anchorStartStay);
     }
-    return coordinates[0] ?? {latitude: 0, longitude: 0};
+    return coordinates[0] ?? { latitude: 0, longitude: 0 };
   }, [anchorStartStay, coordinates, startLabel]);
 
   const routeEnd = useMemo((): MapCoordinate => {
@@ -108,7 +111,7 @@ export const TripRouteOverlay = memo(function TripRouteOverlay({
     if (anchorEndStay) {
       return stayMapMarkerCoordinate(anchorEndStay);
     }
-    return coordinates[coordinates.length - 1] ?? {latitude: 0, longitude: 0};
+    return coordinates[coordinates.length - 1] ?? { latitude: 0, longitude: 0 };
   }, [anchorEndStay, coordinates, endLabel]);
 
   const routeLineCoordinates = useMemo(() => {
@@ -118,16 +121,24 @@ export const TripRouteOverlay = memo(function TripRouteOverlay({
     const line = [...coordinates];
     const first = line[0]!;
     const last = line[line.length - 1]!;
-    if (distanceKm(
-      {lat: first.latitude, lng: first.longitude},
-      {lat: routeStart.latitude, lng: routeStart.longitude},
-    ) * 1000 > 8) {
+    if (
+      distanceKm(
+        { lat: first.latitude, lng: first.longitude },
+        { lat: routeStart.latitude, lng: routeStart.longitude },
+      ) *
+        1000 >
+      8
+    ) {
       line.unshift(routeStart);
     }
-    if (distanceKm(
-      {lat: last.latitude, lng: last.longitude},
-      {lat: routeEnd.latitude, lng: routeEnd.longitude},
-    ) * 1000 > 8) {
+    if (
+      distanceKm(
+        { lat: last.latitude, lng: last.longitude },
+        { lat: routeEnd.latitude, lng: routeEnd.longitude },
+      ) *
+        1000 >
+      8
+    ) {
       line.push(routeEnd);
     }
     return downsampleMapCoordinates(line, polylineCap);

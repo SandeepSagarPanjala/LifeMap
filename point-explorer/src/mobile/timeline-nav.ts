@@ -1,4 +1,4 @@
-import type {DayTimelineEntry, DetectedTrip} from './types';
+import type { DayTimelineEntry, DetectedTrip } from './types';
 
 export function isPlayableTimelineEntry(
   entry: DayTimelineEntry,

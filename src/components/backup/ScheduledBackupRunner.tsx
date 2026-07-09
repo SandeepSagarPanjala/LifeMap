@@ -1,9 +1,9 @@
-import {useEffect, useRef, useState} from 'react';
-import {AppState} from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 
-import {BackupProgressModal} from '@/components/backup/BackupProgressModal';
-import {maybeRunScheduledBackup} from '@/lib/backup/backup-service';
-import type {BackupProgress} from '@/lib/backup/backup-types';
+import { BackupProgressModal } from '@/components/backup/BackupProgressModal';
+import { maybeRunScheduledBackup } from '@/lib/backup/backup-service';
+import type { BackupProgress } from '@/lib/backup/backup-types';
 
 /**
  * Runs daily/weekly auto backup when the app returns to foreground (not on cold start).

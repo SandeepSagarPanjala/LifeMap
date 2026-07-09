@@ -1,5 +1,9 @@
 import * as Keychain from 'react-native-keychain';
-import {getDatabase, getSqlite, resetDatabaseClientForTests} from '../src/db/client';
+import {
+  getDatabase,
+  getSqlite,
+  resetDatabaseClientForTests,
+} from '../src/db/client';
 import * as schema from '../src/db/schema';
 
 jest.mock('@op-engineering/op-sqlite');
@@ -47,8 +51,8 @@ describe('database layer (Phase 1)', () => {
   });
 
   it('applies migrations idempotently on app launch', async () => {
-    const {runMigrations} = jest.requireMock('../src/db/migrate');
-    const {open} = jest.requireMock('@op-engineering/op-sqlite');
+    const { runMigrations } = jest.requireMock('../src/db/migrate');
+    const { open } = jest.requireMock('@op-engineering/op-sqlite');
 
     await getDatabase();
     await getDatabase();
@@ -64,4 +68,3 @@ describe('database layer (Phase 1)', () => {
     expect(schema.settings).toBeDefined();
   });
 });
-

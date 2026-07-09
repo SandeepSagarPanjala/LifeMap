@@ -7,7 +7,7 @@ import {
   sumExportTableRowCounts,
   sumOriginalDataExportRowCounts,
 } from '../src/lib/database-export';
-import {resolveExportPeriod} from '../src/lib/export-period';
+import { resolveExportPeriod } from '../src/lib/export-period';
 
 describe('export period', () => {
   it('resolves today and day scopes with date keys', () => {
@@ -30,16 +30,16 @@ describe('database export', () => {
   it('builds JSON payload with table row counts', () => {
     const period = resolveExportPeriod('day', '2026-06-06');
     const tables = {
-      location_points: [{id: 1}],
+      location_points: [{ id: 1 }],
       trips: [],
       trip_points: [],
       materialized_days: [],
       tracking_events: [],
-      saved_places: [{id: 1}],
+      saved_places: [{ id: 1 }],
       place_lookup_cache: [],
       place_pois: [],
       moments: [],
-      settings: [{key: 'distance_unit', value: 'mi'}],
+      settings: [{ key: 'distance_unit', value: 'mi' }],
     };
 
     const payload = JSON.parse(buildDatabaseExportJson(period, tables));
@@ -67,7 +67,7 @@ describe('database export', () => {
   it('builds single-table JSON and sums row counts', () => {
     const period = resolveExportPeriod('day', '2026-06-06');
     const payload = JSON.parse(
-      buildSingleTableExportJson('trips', period, [{id: 1}]),
+      buildSingleTableExportJson('trips', period, [{ id: 1 }]),
     );
     expect(payload.rowCounts.trips).toBe(1);
     expect(payload.rowCounts.location_points).toBe(0);
@@ -103,11 +103,11 @@ describe('database export', () => {
     const period = resolveExportPeriod('all');
     const payload = JSON.parse(
       buildOriginalDataExportJson(period, {
-        location_points: [{id: 1}],
-        saved_places: [{id: 1}],
+        location_points: [{ id: 1 }],
+        saved_places: [{ id: 1 }],
         moments: [],
-        settings: [{key: 'distance_unit', value: 'mi'}],
-        place_lookup_cache: [{id: 1}],
+        settings: [{ key: 'distance_unit', value: 'mi' }],
+        place_lookup_cache: [{ id: 1 }],
         place_pois: [],
       }),
     );

@@ -9,12 +9,14 @@ import {
   shouldHideSavedPlaceMomentCluster,
   firstMomentIndexOfType,
 } from '../src/lib/moments/moment-counts';
-import type {MomentRow} from '../src/db/repositories/moments';
-import type {SavedPlaceRow} from '../src/db/repositories/saved-places';
-import type {DayTimelineEntry} from '../src/lib/trip-detection';
-import {makeLocationPoint, makeMoment} from './helpers/fixtures';
+import type { MomentRow } from '../src/db/repositories/moments';
+import type { SavedPlaceRow } from '../src/db/repositories/saved-places';
+import type { DayTimelineEntry } from '../src/lib/trip-detection';
+import { makeLocationPoint, makeMoment } from './helpers/fixtures';
 
-function moment(partial: Partial<MomentRow> & Pick<MomentRow, 'id' | 'type' | 'timestamp'>): MomentRow {
+function moment(
+  partial: Partial<MomentRow> & Pick<MomentRow, 'id' | 'type' | 'timestamp'>,
+): MomentRow {
   return makeMoment(partial);
 }
 
@@ -45,29 +47,65 @@ describe('moment counts', () => {
   it('counts all moment types for a day', () => {
     expect(
       countMoments([
-        moment({id: 1, type: 'photo', timestamp: new Date('2026-06-08T14:00:00.000Z')}),
-        moment({id: 2, type: 'voice', timestamp: new Date('2026-06-08T14:30:00.000Z')}),
-        moment({id: 3, type: 'note', timestamp: new Date('2026-06-08T15:00:00.000Z')}),
-        moment({id: 4, type: 'photo', timestamp: new Date('2026-06-08T15:30:00.000Z')}),
+        moment({
+          id: 1,
+          type: 'photo',
+          timestamp: new Date('2026-06-08T14:00:00.000Z'),
+        }),
+        moment({
+          id: 2,
+          type: 'voice',
+          timestamp: new Date('2026-06-08T14:30:00.000Z'),
+        }),
+        moment({
+          id: 3,
+          type: 'note',
+          timestamp: new Date('2026-06-08T15:00:00.000Z'),
+        }),
+        moment({
+          id: 4,
+          type: 'photo',
+          timestamp: new Date('2026-06-08T15:30:00.000Z'),
+        }),
       ]),
-    ).toEqual({photo: 2, video: 0, voice: 1, note: 1, activity: 0});
+    ).toEqual({ photo: 2, video: 0, voice: 1, note: 1, activity: 0 });
   });
 
   it('counts moments inside a visit entry', () => {
     const counts = countMomentsForEntry(
       [
-        moment({id: 1, type: 'photo', timestamp: new Date('2026-06-08T14:00:00.000Z')}),
-        moment({id: 2, type: 'voice', timestamp: new Date('2026-06-08T11:30:00.000Z')}),
+        moment({
+          id: 1,
+          type: 'photo',
+          timestamp: new Date('2026-06-08T14:00:00.000Z'),
+        }),
+        moment({
+          id: 2,
+          type: 'voice',
+          timestamp: new Date('2026-06-08T11:30:00.000Z'),
+        }),
       ],
       stay,
       now,
     );
-    expect(counts).toEqual({photo: 1, video: 0, voice: 0, note: 0, activity: 0});
+    expect(counts).toEqual({
+      photo: 1,
+      video: 0,
+      voice: 0,
+      note: 0,
+      activity: 0,
+    });
   });
 
   it('builds travel markers at interpolated GPS points', () => {
     const markers = buildTravelMomentMarkers(
-      [moment({id: 1, type: 'photo', timestamp: new Date('2026-06-08T11:30:00.000Z')})],
+      [
+        moment({
+          id: 1,
+          type: 'photo',
+          timestamp: new Date('2026-06-08T11:30:00.000Z'),
+        }),
+      ],
       [travel, stay],
       [
         {
@@ -95,25 +133,40 @@ describe('moment counts', () => {
     );
 
     expect(markers).toHaveLength(1);
-    expect(markers[0]?.counts).toEqual({...emptyMomentCounts(), photo: 1});
+    expect(markers[0]?.counts).toEqual({ ...emptyMomentCounts(), photo: 1 });
     expect(markers[0]?.momentIds).toEqual([1]);
-    expect(markers[0]?.coordinate).toEqual({latitude: 33.5, longitude: -96.5});
+    expect(markers[0]?.coordinate).toEqual({
+      latitude: 33.5,
+      longitude: -96.5,
+    });
   });
 
   it('filters moments for a timeline entry', () => {
     const moments = [
-      moment({id: 1, type: 'photo', timestamp: new Date('2026-06-08T14:00:00.000Z')}),
-      moment({id: 2, type: 'voice', timestamp: new Date('2026-06-08T10:00:00.000Z')}),
-      moment({id: 3, type: 'note', timestamp: new Date('2026-06-08T15:00:00.000Z')}),
+      moment({
+        id: 1,
+        type: 'photo',
+        timestamp: new Date('2026-06-08T14:00:00.000Z'),
+      }),
+      moment({
+        id: 2,
+        type: 'voice',
+        timestamp: new Date('2026-06-08T10:00:00.000Z'),
+      }),
+      moment({
+        id: 3,
+        type: 'note',
+        timestamp: new Date('2026-06-08T15:00:00.000Z'),
+      }),
     ];
 
-    expect(filterMomentsForEntry(moments, stay, now).map(item => item.id)).toEqual([
-      1, 3,
-    ]);
+    expect(
+      filterMomentsForEntry(moments, stay, now).map(item => item.id),
+    ).toEqual([1, 3]);
   });
 
   it('hides the saved-place cluster when the stay callout already shows moments', () => {
-    const counts = {photo: 3, video: 0, voice: 1, note: 1, activity: 0};
+    const counts = { photo: 3, video: 0, voice: 1, note: 1, activity: 0 };
     expect(shouldHideSavedPlaceMomentCluster(7, 7, counts)).toBe(true);
     expect(shouldHideSavedPlaceMomentCluster(7, 8, counts)).toBe(false);
     expect(shouldHideSavedPlaceMomentCluster(7, 7, emptyMomentCounts())).toBe(
@@ -235,13 +288,15 @@ describe('moment counts', () => {
       note: 0,
       activity: 0,
     });
-    expect(countMomentsForStayEntry(moments, eveningStay, stayOptions)).toEqual({
-      photo: 1,
-      video: 0,
-      voice: 1,
-      note: 1,
-      activity: 0,
-    });
+    expect(countMomentsForStayEntry(moments, eveningStay, stayOptions)).toEqual(
+      {
+        photo: 1,
+        video: 0,
+        voice: 1,
+        note: 1,
+        activity: 0,
+      },
+    );
     expect(
       filterMomentsForStayEntry(moments, eveningStay, stayOptions).map(
         item => item.id,
@@ -324,14 +379,18 @@ describe('moment counts', () => {
       now,
     };
 
-    expect(countMomentsForStayEntry(moments, afternoonStay, visitOptions)).toEqual({
+    expect(
+      countMomentsForStayEntry(moments, afternoonStay, visitOptions),
+    ).toEqual({
       photo: 3,
       video: 0,
       voice: 1,
       note: 1,
       activity: 0,
     });
-    expect(countMomentsForStayEntry(moments, eveningStay, visitOptions)).toEqual({
+    expect(
+      countMomentsForStayEntry(moments, eveningStay, visitOptions),
+    ).toEqual({
       photo: 1,
       video: 0,
       voice: 0,
@@ -344,9 +403,21 @@ describe('moment counts', () => {
 describe('firstMomentIndexOfType', () => {
   it('returns the index of the first moment matching the type', () => {
     const moments = [
-      moment({id: 1, type: 'photo', timestamp: new Date('2026-06-21T08:00:00Z')}),
-      moment({id: 2, type: 'voice', timestamp: new Date('2026-06-21T09:00:00Z')}),
-      moment({id: 3, type: 'note', timestamp: new Date('2026-06-21T10:00:00Z')}),
+      moment({
+        id: 1,
+        type: 'photo',
+        timestamp: new Date('2026-06-21T08:00:00Z'),
+      }),
+      moment({
+        id: 2,
+        type: 'voice',
+        timestamp: new Date('2026-06-21T09:00:00Z'),
+      }),
+      moment({
+        id: 3,
+        type: 'note',
+        timestamp: new Date('2026-06-21T10:00:00Z'),
+      }),
     ];
 
     expect(firstMomentIndexOfType(moments, 'note')).toBe(2);

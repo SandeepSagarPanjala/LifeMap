@@ -1,7 +1,7 @@
-import {format} from 'date-fns';
-import {ActivityIndicator, Pressable, View} from 'react-native';
+import { format } from 'date-fns';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 
-import {Text} from '@/components/ui/text';
+import { Text } from '@/components/ui/text';
 
 type SettingsStatsRefreshBarProps = {
   calculatedAt: Date | null;
@@ -33,7 +33,8 @@ export function SettingsStatsRefreshBar({
         onPress={onCalculate}
         className={`border-border rounded-full border px-3 py-2 ${
           calculating ? 'opacity-50' : ''
-        }`}>
+        }`}
+      >
         {calculating ? (
           <ActivityIndicator />
         ) : (

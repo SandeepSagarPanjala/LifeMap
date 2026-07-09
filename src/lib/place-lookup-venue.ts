@@ -1,5 +1,8 @@
-import {distanceKm, type LocationPointLike} from '@/lib/location-geo';
-import {PLACE_LOOKUP_RADIUS_STEPS, PLACE_LOOKUP_VENUE_RADIUS_M} from '@/lib/app-constants';
+import { distanceKm, type LocationPointLike } from '@/lib/location-geo';
+import {
+  PLACE_LOOKUP_RADIUS_STEPS,
+  PLACE_LOOKUP_VENUE_RADIUS_M,
+} from '@/lib/app-constants';
 
 export function nextPlaceLookupRadiusM(current: number): number | null {
   for (const step of PLACE_LOOKUP_RADIUS_STEPS) {
@@ -30,13 +33,13 @@ export function isWithinPlaceLookupVenue(
 }
 
 export function findNearestPlaceLookupMatch<
-  T extends {anchorLat: number; anchorLng: number; venueRadiusMeters: number},
+  T extends { anchorLat: number; anchorLng: number; venueRadiusMeters: number },
 >(anchor: LocationPointLike, rows: T[]): T | null {
   let best: T | null = null;
   let bestDistanceM = Number.POSITIVE_INFINITY;
 
   for (const row of rows) {
-    const cachedAnchor = {lat: row.anchorLat, lng: row.anchorLng};
+    const cachedAnchor = { lat: row.anchorLat, lng: row.anchorLng };
     const limitM = Math.max(row.venueRadiusMeters, PLACE_LOOKUP_VENUE_RADIUS_M);
     const distanceM = distanceMeters(anchor, cachedAnchor);
     if (distanceM <= limitM && distanceM < bestDistanceM) {

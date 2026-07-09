@@ -1,5 +1,5 @@
-import {useCallback, useEffect, useRef, useState} from 'react';
-import {APP_COPY, errorMessageOr} from '@/lib/app-copy';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { APP_COPY, errorMessageOr } from '@/lib/app-copy';
 import {
   ActivityIndicator,
   Alert,
@@ -13,8 +13,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import {useNavigation} from '@react-navigation/native';
-import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   AudioLines,
   Camera,
@@ -26,47 +26,46 @@ import {
   Sparkles,
   X,
 } from 'lucide-react-native';
-import {BottomSheetModalProvider} from '@gorhom/bottom-sheet';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import {EmotionTokenPickerSheet} from '@/components/capture/EmotionTokenPickerSheet';
-import {CAPTURE_BUTTON_THEMES} from '@/components/map/map-capture-button-theme';
-import {VoiceMemoSheet} from '@/components/map/VoiceMemoSheet';
-import {useThemeColors} from '@/hooks/use-theme-colors';
+import { EmotionTokenPickerSheet } from '@/components/capture/EmotionTokenPickerSheet';
+import { CAPTURE_BUTTON_THEMES } from '@/components/map/map-capture-button-theme';
+import { VoiceMemoSheet } from '@/components/map/VoiceMemoSheet';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 import {
   canSaveNoteDraft,
   isCaptureNoteDraftDirty,
   saveNoteMoment,
 } from '@/lib/moments/capture-note';
-import type {EmotionContextTokenId} from '@/lib/moments/emotion-context-tokens';
-import {getEmotionContextToken} from '@/lib/moments/emotion-context-tokens';
+import type { EmotionContextTokenId } from '@/lib/moments/emotion-context-tokens';
+import { getEmotionContextToken } from '@/lib/moments/emotion-context-tokens';
 import {
   formatEmotionMoodLabel,
   getEmotionToken,
   type EmotionTokenId,
 } from '@/lib/moments/emotion-tokens';
-import {formatVoiceDurationMs} from '@/lib/moments/format-voice-duration';
-import {deleteMomentContentFile} from '@/lib/moments/moment-storage';
+import { formatVoiceDurationMs } from '@/lib/moments/format-voice-duration';
+import { deleteMomentContentFile } from '@/lib/moments/moment-storage';
 import {
   createVoiceRecorderSession,
   getVoiceRecordingErrorMessage,
 } from '@/lib/moments/voice-recorder';
-import {MAX_NOTE_PHOTO_ATTACHMENTS} from '@/lib/app-constants';
-import {
-  type DraftNotePhoto,
-} from '@/lib/moments/note-photo-attachments';
+import { MAX_NOTE_PHOTO_ATTACHMENTS } from '@/lib/app-constants';
+import { type DraftNotePhoto } from '@/lib/moments/note-photo-attachments';
 import {
   captureAndCompressNotePhoto,
   pickAndCompressNotePhotos,
 } from '@/lib/moments/pick-note-photo';
-import type {RootStackParamList} from '@/navigation/types';
+import type { RootStackParamList } from '@/navigation/types';
 
 const KEYBOARD_TOOLBAR_GAP = 8;
 
 type DiaryFocusField = 'title' | 'body';
 
 export function CaptureNoteScreen() {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const [voiceUri, setVoiceUri] = useState<string | null>(null);
@@ -80,12 +79,10 @@ export function CaptureNoteScreen() {
 
   const [title, setTitle] = useState('');
   const [textBody, setTextBody] = useState('');
-  const [selectedEmotionId, setSelectedEmotionId] = useState<EmotionTokenId | null>(
-    null,
-  );
-  const [selectedContextId, setSelectedContextId] = useState<EmotionContextTokenId | null>(
-    null,
-  );
+  const [selectedEmotionId, setSelectedEmotionId] =
+    useState<EmotionTokenId | null>(null);
+  const [selectedContextId, setSelectedContextId] =
+    useState<EmotionContextTokenId | null>(null);
   const [emotionSheetOpen, setEmotionSheetOpen] = useState(false);
   const [voiceSheetOpen, setVoiceSheetOpen] = useState(false);
   const [photos, setPhotos] = useState<DraftNotePhoto[]>([]);
@@ -106,7 +103,9 @@ export function CaptureNoteScreen() {
   const selectedEmotion =
     selectedEmotionId != null ? getEmotionToken(selectedEmotionId) : null;
   const selectedContext =
-    selectedContextId != null ? getEmotionContextToken(selectedContextId) : null;
+    selectedContextId != null
+      ? getEmotionContextToken(selectedContextId)
+      : null;
 
   const restoreDiaryFocus = useCallback(() => {
     if (lastFocusedFieldRef.current === 'body') {
@@ -129,8 +128,10 @@ export function CaptureNoteScreen() {
   }, []);
 
   useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showEvent =
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent =
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
     const showSub = Keyboard.addListener(showEvent, event => {
       setKeyboardHeight(event.endCoordinates.height);
     });
@@ -166,7 +167,10 @@ export function CaptureNoteScreen() {
       await voicePlayerRef.current.startPreview(voiceUri);
       setVoicePlaying(true);
     } catch (error) {
-      Alert.alert(APP_COPY.alerts.couldNotPlayRecording, getVoiceRecordingErrorMessage(error));
+      Alert.alert(
+        APP_COPY.alerts.couldNotPlayRecording,
+        getVoiceRecordingErrorMessage(error),
+      );
     }
   };
 
@@ -196,12 +200,14 @@ export function CaptureNoteScreen() {
     }
 
     Alert.alert('Discard this entry?', 'Your draft will be lost.', [
-      {text: 'Keep writing', style: 'cancel'},
+      { text: 'Keep writing', style: 'cancel' },
       {
         text: 'Discard',
         style: 'destructive',
         onPress: () => {
-          void Promise.all([clearPhotos(), clearVoice()]).finally(() => navigation.goBack());
+          void Promise.all([clearPhotos(), clearVoice()]).finally(() =>
+            navigation.goBack(),
+          );
         },
       },
     ]);
@@ -286,7 +292,10 @@ export function CaptureNoteScreen() {
         textBody,
         moodLabel:
           selectedEmotion && selectedContext
-            ? formatEmotionMoodLabel(selectedEmotion.label, selectedContext.label)
+            ? formatEmotionMoodLabel(
+                selectedEmotion.label,
+                selectedContext.label,
+              )
             : null,
         photoAttachments: photos.map(photo => ({
           uri: photo.uri,
@@ -310,255 +319,307 @@ export function CaptureNoteScreen() {
 
   return (
     <BottomSheetModalProvider>
-    <View style={styles.root}>
-      <View style={styles.mainColumn}>
-        <View style={[styles.topBar, {paddingTop: insets.top + 6}]}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Go back"
-            onPress={handleBack}
-            style={styles.topBarButton}>
-            <ChevronLeft size={22} color="#1C1C1E" strokeWidth={2.25} />
-          </Pressable>
-          <View style={styles.topBarSpacer} />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Save diary entry"
-            disabled={!canSave || saving}
-            onPress={() => void handleSave()}
-            style={[
-              styles.saveIconButton,
-              {
-                backgroundColor: canSave ? colors.primary : '#E5E7EB',
-                opacity: saving ? 0.7 : 1,
-              },
-            ]}>
-            {saving ? (
-              <ActivityIndicator color={colors.primaryForeground} size="small" />
-            ) : (
-              <Check size={20} color={colors.primaryForeground} strokeWidth={2.5} />
-            )}
-          </Pressable>
+      <View style={styles.root}>
+        <View style={styles.mainColumn}>
+          <View style={[styles.topBar, { paddingTop: insets.top + 6 }]}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
+              onPress={handleBack}
+              style={styles.topBarButton}
+            >
+              <ChevronLeft size={22} color="#1C1C1E" strokeWidth={2.25} />
+            </Pressable>
+            <View style={styles.topBarSpacer} />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Save diary entry"
+              disabled={!canSave || saving}
+              onPress={() => void handleSave()}
+              style={[
+                styles.saveIconButton,
+                {
+                  backgroundColor: canSave ? colors.primary : '#E5E7EB',
+                  opacity: saving ? 0.7 : 1,
+                },
+              ]}
+            >
+              {saving ? (
+                <ActivityIndicator
+                  color={colors.primaryForeground}
+                  size="small"
+                />
+              ) : (
+                <Check
+                  size={20}
+                  color={colors.primaryForeground}
+                  strokeWidth={2.5}
+                />
+              )}
+            </Pressable>
+          </View>
+
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={[
+              styles.scrollContent,
+              { paddingBottom: bottomDockHeight + 12 },
+            ]}
+            showsVerticalScrollIndicator={false}
+            style={styles.scroll}
+          >
+            <TextInput
+              ref={titleInputRef}
+              autoFocus
+              placeholder="Title"
+              placeholderTextColor="#C7C7CC"
+              value={title}
+              onChangeText={setTitle}
+              onFocus={() => {
+                lastFocusedFieldRef.current = 'title';
+              }}
+              style={styles.titleInput}
+              selectionColor={colors.primary}
+              cursorColor={colors.primary}
+              returnKeyType="next"
+            />
+            <TextInput
+              ref={bodyInputRef}
+              placeholder="Start writing…"
+              placeholderTextColor="#C7C7CC"
+              value={textBody}
+              onChangeText={setTextBody}
+              onFocus={() => {
+                lastFocusedFieldRef.current = 'body';
+              }}
+              multiline
+              textAlignVertical="top"
+              style={styles.bodyInput}
+              selectionColor={colors.primary}
+              cursorColor={colors.primary}
+            />
+          </ScrollView>
         </View>
 
-        <ScrollView
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={[
-            styles.scrollContent,
-            {paddingBottom: bottomDockHeight + 12},
+        <View
+          onLayout={event =>
+            setBottomDockHeight(event.nativeEvent.layout.height)
+          }
+          style={[
+            styles.bottomDock,
+            {
+              bottom:
+                keyboardHeight > 0
+                  ? keyboardHeight + KEYBOARD_TOOLBAR_GAP
+                  : Math.max(insets.bottom, KEYBOARD_TOOLBAR_GAP),
+            },
           ]}
-          showsVerticalScrollIndicator={false}
-          style={styles.scroll}>
-          <TextInput
-            ref={titleInputRef}
-            autoFocus
-            placeholder="Title"
-            placeholderTextColor="#C7C7CC"
-            value={title}
-            onChangeText={setTitle}
-            onFocus={() => {
-              lastFocusedFieldRef.current = 'title';
-            }}
-            style={styles.titleInput}
-            selectionColor={colors.primary}
-            cursorColor={colors.primary}
-            returnKeyType="next"
-          />
-          <TextInput
-            ref={bodyInputRef}
-            placeholder="Start writing…"
-            placeholderTextColor="#C7C7CC"
-            value={textBody}
-            onChangeText={setTextBody}
-            onFocus={() => {
-              lastFocusedFieldRef.current = 'body';
-            }}
-            multiline
-            textAlignVertical="top"
-            style={styles.bodyInput}
-            selectionColor={colors.primary}
-            cursorColor={colors.primary}
-          />
-
-        </ScrollView>
-      </View>
-
-      <View
-        onLayout={event => setBottomDockHeight(event.nativeEvent.layout.height)}
-        style={[
-          styles.bottomDock,
-          {
-            bottom:
-              keyboardHeight > 0
-                ? keyboardHeight + KEYBOARD_TOOLBAR_GAP
-                : Math.max(insets.bottom, KEYBOARD_TOOLBAR_GAP),
-          },
-        ]}>
-        {photos.length > 0 ? (
-          <View style={styles.photoPreviewDock}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.photoPreviewScroll}>
-              {photos.map(photo => (
-                <View key={photo.id} style={styles.photoPreviewItem}>
-                  <Image source={{uri: photo.uri}} style={styles.photoPreview} />
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Remove photo"
-                    onPress={() => void removePhoto(photo.id)}
-                    style={styles.removePhotoButton}>
-                    <X size={14} color="#FFFFFF" strokeWidth={2.5} />
-                  </Pressable>
-                </View>
-              ))}
-            </ScrollView>
-          </View>
-        ) : null}
-
-        {voiceUri ? (
-          <View style={styles.voicePreviewDock}>
-            <View style={styles.voicePreviewRow}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={voicePlaying ? 'Pause voice attachment' : 'Play voice attachment'}
-                onPress={() => void toggleVoicePreview()}
-                style={[
-                  styles.voicePreviewPlay,
-                  {backgroundColor: CAPTURE_BUTTON_THEMES.voice.badgeBg},
-                ]}>
-                {voicePlaying ? (
-                  <Pause size={18} color={CAPTURE_BUTTON_THEMES.voice.icon} strokeWidth={2.25} />
-                ) : (
-                  <Play size={18} color={CAPTURE_BUTTON_THEMES.voice.icon} strokeWidth={2.25} />
-                )}
-              </Pressable>
-              <View style={styles.voicePreviewCopy}>
-                <Text style={styles.voicePreviewLabel}>Voice message</Text>
-                <Text style={styles.voicePreviewDuration}>
-                  {formatVoiceDurationMs(voiceDurationMs)}
-                </Text>
-              </View>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Remove voice message"
-                onPress={() => void clearVoice()}
-                style={styles.voicePreviewRemove}>
-                <X size={16} color="#8E8E93" strokeWidth={2.5} />
-              </Pressable>
+        >
+          {photos.length > 0 ? (
+            <View style={styles.photoPreviewDock}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.photoPreviewScroll}
+              >
+                {photos.map(photo => (
+                  <View key={photo.id} style={styles.photoPreviewItem}>
+                    <Image
+                      source={{ uri: photo.uri }}
+                      style={styles.photoPreview}
+                    />
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Remove photo"
+                      onPress={() => void removePhoto(photo.id)}
+                      style={styles.removePhotoButton}
+                    >
+                      <X size={14} color="#FFFFFF" strokeWidth={2.5} />
+                    </Pressable>
+                  </View>
+                ))}
+              </ScrollView>
             </View>
-          </View>
-        ) : null}
+          ) : null}
 
-        {selectedEmotion && selectedContext ? (
-          <View style={styles.moodPreviewDock}>
-            <View style={styles.selectedEmotionRow}>
-              <View
-                style={[
-                  styles.selectedEmotionSticker,
-                  {backgroundColor: selectedEmotion.tint},
-                ]}>
-                <Text style={styles.selectedEmotionEmoji}>{selectedEmotion.sticker}</Text>
-              </View>
-              <View style={styles.selectedEmotionCopy}>
-                <Text style={styles.selectedEmotionLabel}>{selectedEmotion.label}</Text>
-                <View style={styles.selectedContextRow}>
-                  <Text style={styles.selectedContextSticker}>{selectedContext.sticker}</Text>
-                  <Text style={styles.selectedContextLabel}>{selectedContext.label}</Text>
+          {voiceUri ? (
+            <View style={styles.voicePreviewDock}>
+              <View style={styles.voicePreviewRow}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    voicePlaying
+                      ? 'Pause voice attachment'
+                      : 'Play voice attachment'
+                  }
+                  onPress={() => void toggleVoicePreview()}
+                  style={[
+                    styles.voicePreviewPlay,
+                    { backgroundColor: CAPTURE_BUTTON_THEMES.voice.badgeBg },
+                  ]}
+                >
+                  {voicePlaying ? (
+                    <Pause
+                      size={18}
+                      color={CAPTURE_BUTTON_THEMES.voice.icon}
+                      strokeWidth={2.25}
+                    />
+                  ) : (
+                    <Play
+                      size={18}
+                      color={CAPTURE_BUTTON_THEMES.voice.icon}
+                      strokeWidth={2.25}
+                    />
+                  )}
+                </Pressable>
+                <View style={styles.voicePreviewCopy}>
+                  <Text style={styles.voicePreviewLabel}>Voice message</Text>
+                  <Text style={styles.voicePreviewDuration}>
+                    {formatVoiceDurationMs(voiceDurationMs)}
+                  </Text>
                 </View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Remove voice message"
+                  onPress={() => void clearVoice()}
+                  style={styles.voicePreviewRemove}
+                >
+                  <X size={16} color="#8E8E93" strokeWidth={2.5} />
+                </Pressable>
               </View>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Remove mood"
-                onPress={clearEmotion}
-                style={styles.moodPreviewRemove}>
-                <X size={16} color="#8E8E93" strokeWidth={2.5} />
-              </Pressable>
             </View>
-          </View>
-        ) : null}
+          ) : null}
 
-        <View style={styles.toolbarWrap}>
-          <View style={styles.toolbar}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Attach photo from library"
-              disabled={pickingPhoto || photos.length >= MAX_NOTE_PHOTO_ATTACHMENTS}
-              onPress={() => void attachPhotosFromLibrary()}
-              style={styles.toolbarButton}>
-              {pickingPhoto ? (
-                <ActivityIndicator color="#8E8E93" size="small" />
-              ) : (
-                <ImageIcon size={22} color="#8E8E93" strokeWidth={2} />
-              )}
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Take photo"
-              disabled={pickingPhoto || photos.length >= MAX_NOTE_PHOTO_ATTACHMENTS}
-              onPress={() => void attachPhotoFromCamera()}
-              style={styles.toolbarButton}>
-              <Camera size={22} color="#8E8E93" strokeWidth={2} />
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Record voice memo"
-              onPress={() => {
-                Keyboard.dismiss();
-                setVoiceSheetOpen(true);
-              }}
-              style={styles.toolbarButton}>
-              <AudioLines size={22} color="#8E8E93" strokeWidth={2} />
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Pick emotion"
-              onPress={() => {
-                Keyboard.dismiss();
-                setEmotionSheetOpen(true);
-              }}
-              style={styles.toolbarButton}>
-              {selectedEmotion && selectedContext ? (
+          {selectedEmotion && selectedContext ? (
+            <View style={styles.moodPreviewDock}>
+              <View style={styles.selectedEmotionRow}>
                 <View
                   style={[
-                    styles.toolbarEmotionSticker,
-                    {backgroundColor: selectedEmotion.tint},
-                  ]}>
-                  <Text style={styles.toolbarEmotionEmoji}>{selectedEmotion.sticker}</Text>
+                    styles.selectedEmotionSticker,
+                    { backgroundColor: selectedEmotion.tint },
+                  ]}
+                >
+                  <Text style={styles.selectedEmotionEmoji}>
+                    {selectedEmotion.sticker}
+                  </Text>
                 </View>
-              ) : (
-                <Sparkles size={22} color="#8E8E93" strokeWidth={2} />
-              )}
-            </Pressable>
+                <View style={styles.selectedEmotionCopy}>
+                  <Text style={styles.selectedEmotionLabel}>
+                    {selectedEmotion.label}
+                  </Text>
+                  <View style={styles.selectedContextRow}>
+                    <Text style={styles.selectedContextSticker}>
+                      {selectedContext.sticker}
+                    </Text>
+                    <Text style={styles.selectedContextLabel}>
+                      {selectedContext.label}
+                    </Text>
+                  </View>
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Remove mood"
+                  onPress={clearEmotion}
+                  style={styles.moodPreviewRemove}
+                >
+                  <X size={16} color="#8E8E93" strokeWidth={2.5} />
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
+
+          <View style={styles.toolbarWrap}>
+            <View style={styles.toolbar}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Attach photo from library"
+                disabled={
+                  pickingPhoto || photos.length >= MAX_NOTE_PHOTO_ATTACHMENTS
+                }
+                onPress={() => void attachPhotosFromLibrary()}
+                style={styles.toolbarButton}
+              >
+                {pickingPhoto ? (
+                  <ActivityIndicator color="#8E8E93" size="small" />
+                ) : (
+                  <ImageIcon size={22} color="#8E8E93" strokeWidth={2} />
+                )}
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Take photo"
+                disabled={
+                  pickingPhoto || photos.length >= MAX_NOTE_PHOTO_ATTACHMENTS
+                }
+                onPress={() => void attachPhotoFromCamera()}
+                style={styles.toolbarButton}
+              >
+                <Camera size={22} color="#8E8E93" strokeWidth={2} />
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Record voice memo"
+                onPress={() => {
+                  Keyboard.dismiss();
+                  setVoiceSheetOpen(true);
+                }}
+                style={styles.toolbarButton}
+              >
+                <AudioLines size={22} color="#8E8E93" strokeWidth={2} />
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Pick emotion"
+                onPress={() => {
+                  Keyboard.dismiss();
+                  setEmotionSheetOpen(true);
+                }}
+                style={styles.toolbarButton}
+              >
+                {selectedEmotion && selectedContext ? (
+                  <View
+                    style={[
+                      styles.toolbarEmotionSticker,
+                      { backgroundColor: selectedEmotion.tint },
+                    ]}
+                  >
+                    <Text style={styles.toolbarEmotionEmoji}>
+                      {selectedEmotion.sticker}
+                    </Text>
+                  </View>
+                ) : (
+                  <Sparkles size={22} color="#8E8E93" strokeWidth={2} />
+                )}
+              </Pressable>
             </View>
           </View>
-      </View>
+        </View>
 
-      <EmotionTokenPickerSheet
-        visible={emotionSheetOpen}
-        selectedEmotionId={selectedEmotionId}
-        selectedContextId={selectedContextId}
-        onSelect={selection => {
-          setSelectedEmotionId(selection.emotion.id);
-          setSelectedContextId(selection.context.id);
-        }}
-        onClose={() => setEmotionSheetOpen(false)}
-        onWillClose={restoreDiaryFocus}
-      />
-      <VoiceMemoSheet
-        visible={voiceSheetOpen}
-        saveTarget="diary"
-        onDiaryAttach={attachment => {
-          void clearVoice().then(() => {
-            setVoiceUri(attachment.uri);
-            setVoiceDurationMs(attachment.durationMs);
-          });
-        }}
-        onClose={() => setVoiceSheetOpen(false)}
-        onWillClose={restoreDiaryFocus}
-        onSaved={async () => {}}
-      />
-    </View>
+        <EmotionTokenPickerSheet
+          visible={emotionSheetOpen}
+          selectedEmotionId={selectedEmotionId}
+          selectedContextId={selectedContextId}
+          onSelect={selection => {
+            setSelectedEmotionId(selection.emotion.id);
+            setSelectedContextId(selection.context.id);
+          }}
+          onClose={() => setEmotionSheetOpen(false)}
+          onWillClose={restoreDiaryFocus}
+        />
+        <VoiceMemoSheet
+          visible={voiceSheetOpen}
+          saveTarget="diary"
+          onDiaryAttach={attachment => {
+            void clearVoice().then(() => {
+              setVoiceUri(attachment.uri);
+              setVoiceDurationMs(attachment.durationMs);
+            });
+          }}
+          onClose={() => setVoiceSheetOpen(false)}
+          onWillClose={restoreDiaryFocus}
+          onSaved={async () => {}}
+        />
+      </View>
     </BottomSheetModalProvider>
   );
 }
@@ -601,7 +662,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
     shadowColor: '#000000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 2,
@@ -613,7 +674,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 2,
@@ -776,7 +837,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     backgroundColor: '#FFFFFF',
     shadowColor: '#000000',
-    shadowOffset: {width: 0, height: 4},
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 16,
     elevation: 4,

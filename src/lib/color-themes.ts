@@ -7,7 +7,9 @@ export type AccentThemeId = import('@lifemap/constants').AccentThemeId;
 export type ThemeTokens = import('@lifemap/constants').ThemeTokens;
 export type AccentTheme = import('@lifemap/constants').AccentTheme;
 
-export function themeTokensToCssVars(tokens: ThemeTokens): Record<string, string> {
+export function themeTokensToCssVars(
+  tokens: ThemeTokens,
+): Record<string, string> {
   return {
     '--background': tokens.background,
     '--foreground': tokens.foreground,

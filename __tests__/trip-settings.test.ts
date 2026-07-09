@@ -3,7 +3,7 @@ import {
   normalizeTripDwellMinutes,
   normalizeTripRadiusMeters,
 } from '../src/lib/trip-settings';
-import {formatTripDwellLabel} from '../src/lib/app-copy';
+import { formatTripDwellLabel } from '../src/lib/app-copy';
 
 describe('trip-settings', () => {
   it('normalizes dwell minutes to allowed choices', () => {

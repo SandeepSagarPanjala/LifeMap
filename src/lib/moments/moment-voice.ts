@@ -1,7 +1,9 @@
-import type {MomentRow} from '@/db/repositories/moments';
-import {formatVoiceDurationMs} from '@/lib/moments/format-voice-duration';
+import type { MomentRow } from '@/db/repositories/moments';
+import { formatVoiceDurationMs } from '@/lib/moments/format-voice-duration';
 
-export function resolveMomentVoiceContentPath(moment: MomentRow): string | null {
+export function resolveMomentVoiceContentPath(
+  moment: MomentRow,
+): string | null {
   if (moment.type === 'voice') {
     return moment.contentPath;
   }

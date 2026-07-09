@@ -1,4 +1,4 @@
-import type {LocationPointRow} from '@/db/repositories/location-days';
+import type { LocationPointRow } from '@/db/repositories/location-days';
 import {
   getTravelDisplayPoints,
   getVisitInboundTravelPoints,
@@ -12,7 +12,7 @@ import {
   isRawGpsDayPoints,
   resolveRoutePointsForPlayableTrip,
 } from '@/lib/timeline-from-trips';
-import type {TripDetectionConfig} from '@/lib/trip-settings';
+import type { TripDetectionConfig } from '@/lib/trip-settings';
 
 export type HistoryMapSelected = {
   entry: DetectedTrip;

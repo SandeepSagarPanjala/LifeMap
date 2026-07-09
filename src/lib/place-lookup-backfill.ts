@@ -2,28 +2,25 @@
  * Background place-lookup backfill for sealed stays with no label.
  */
 
-import {DEFAULT_PLACE_LOOKUP_BACKFILL_BATCH_SIZE} from '@/lib/app-constants';
-import {findPlaceLookupNearAnchor} from '@/db/repositories/place-lookup-cache';
-import type {SavedPlaceRow} from '@/db/repositories/saved-places';
-import {
-  listUnlabeledStayTrips,
-  type TripRow,
-} from '@/db/repositories/trips';
+import { DEFAULT_PLACE_LOOKUP_BACKFILL_BATCH_SIZE } from '@/lib/app-constants';
+import { findPlaceLookupNearAnchor } from '@/db/repositories/place-lookup-cache';
+import type { SavedPlaceRow } from '@/db/repositories/saved-places';
+import { listUnlabeledStayTrips, type TripRow } from '@/db/repositories/trips';
 import {
   shouldSkipPlaceLookupForStay,
   stayQualifiesForPlaceLookup,
 } from '@/lib/place-lookup-service';
-import {resolveAndPersistPlaceLabelForTripRow} from '@/lib/place-lookup-resolve';
-import type {PlaceLookupRow} from '@/lib/place-lookup-types';
+import { resolveAndPersistPlaceLabelForTripRow } from '@/lib/place-lookup-resolve';
+import type { PlaceLookupRow } from '@/lib/place-lookup-types';
 import {
   existingTripLabelsByEventKey,
   getDefaultTripDetectionConfig,
   tripLabelForPersist,
   type PersistedTripLabel,
 } from '@/lib/trip-materialization';
-import {resolvedPlaceFromTripRow} from '@/lib/resolved-place';
-import type {DetectedTrip} from '@/lib/trip-detection';
-import type {TripDetectionConfig} from '@/lib/trip-settings';
+import { resolvedPlaceFromTripRow } from '@/lib/resolved-place';
+import type { DetectedTrip } from '@/lib/trip-detection';
+import type { TripDetectionConfig } from '@/lib/trip-settings';
 
 export type PlaceLookupBackfillOptions = {
   /** Max stays to process this batch (default 10). */
@@ -56,10 +53,11 @@ export type PlaceLookupBackfillBatchResult = {
 };
 
 /** Stay anchor for lookup — sealed trip centroid, not raw GPS rescan. */
-export function tripLookupAnchorFromRow(
-  trip: TripRow,
-): {lat: number; lng: number} {
-  return {lat: trip.centroidLat, lng: trip.centroidLng};
+export function tripLookupAnchorFromRow(trip: TripRow): {
+  lat: number;
+  lng: number;
+} {
+  return { lat: trip.centroidLat, lng: trip.centroidLng };
 }
 
 export function isStayMissingPlaceLabel(trip: TripRow): boolean {
@@ -185,10 +183,10 @@ export async function backfillPlaceLookupForStay(
   });
 
   if (result === 'skipped') {
-    return {...base, status: 'skipped'};
+    return { ...base, status: 'skipped' };
   }
   if (result === 'failed') {
-    return {...base, status: 'still_pending', placeId: null};
+    return { ...base, status: 'still_pending', placeId: null };
   }
 
   const cache = await findPlaceLookupNearAnchor(tripLookupAnchorFromRow(trip));
@@ -223,8 +221,7 @@ export async function runPlaceLookupBackfillBatch(
     config,
     savedPlaces,
   );
-  const maxTrips =
-    options.maxTrips ?? DEFAULT_PLACE_LOOKUP_BACKFILL_BATCH_SIZE;
+  const maxTrips = options.maxTrips ?? DEFAULT_PLACE_LOOKUP_BACKFILL_BATCH_SIZE;
   const batch = candidates.slice(0, maxTrips);
 
   const results: PlaceLookupBackfillTripResult[] = [];

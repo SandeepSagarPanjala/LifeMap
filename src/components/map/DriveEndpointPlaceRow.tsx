@@ -1,10 +1,10 @@
-import {Armchair, MapPin} from 'lucide-react-native';
-import {StyleSheet, Text, View} from 'react-native';
+import { Armchair, MapPin } from 'lucide-react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-import {SavedPlaceIcon} from '@/components/map/SavedPlaceIcon';
-import type {DriveEndpointLabel} from '@/lib/drive-endpoint-label';
-import {HISTORY_COLORS} from '@/lib/app-constants';
-import {SAVED_PLACE_MAP_STYLE} from '@/lib/saved-places-map';
+import { SavedPlaceIcon } from '@/components/map/SavedPlaceIcon';
+import type { DriveEndpointLabel } from '@/lib/drive-endpoint-label';
+import { HISTORY_COLORS } from '@/lib/app-constants';
+import { SAVED_PLACE_MAP_STYLE } from '@/lib/saved-places-map';
 
 type DriveEndpointPlaceRowProps = {
   label: DriveEndpointLabel;
@@ -46,7 +46,8 @@ export function DriveEndpointPlaceRow({
         <Text
           style={[styles.text, textStyle, textAlignStyle]}
           numberOfLines={numberOfLines}
-          ellipsizeMode={ellipsizeMode}>
+          ellipsizeMode={ellipsizeMode}
+        >
           {label.text}
         </Text>
       </View>
@@ -65,7 +66,8 @@ export function DriveEndpointPlaceRow({
         <Text
           style={[styles.text, textStyle, textAlignStyle]}
           numberOfLines={numberOfLines}
-          ellipsizeMode={ellipsizeMode}>
+          ellipsizeMode={ellipsizeMode}
+        >
           {label.text}
         </Text>
       </View>
@@ -74,11 +76,16 @@ export function DriveEndpointPlaceRow({
 
   return (
     <View style={rowStyle}>
-      <Armchair size={iconSize} color={HISTORY_COLORS.stay} strokeWidth={2.25} />
+      <Armchair
+        size={iconSize}
+        color={HISTORY_COLORS.stay}
+        strokeWidth={2.25}
+      />
       <Text
         style={[styles.text, textStyle, textAlignStyle]}
         numberOfLines={numberOfLines}
-        ellipsizeMode={ellipsizeMode}>
+        ellipsizeMode={ellipsizeMode}
+      >
         {label.text}
       </Text>
     </View>

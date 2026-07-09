@@ -20,6 +20,9 @@ export function distanceKm(a: LocationPointLike, b: LocationPointLike): number {
   return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(h));
 }
 
-export function distanceMeters(a: LocationPointLike, b: LocationPointLike): number {
+export function distanceMeters(
+  a: LocationPointLike,
+  b: LocationPointLike,
+): number {
   return distanceKm(a, b) * 1000;
 }

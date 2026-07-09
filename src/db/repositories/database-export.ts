@@ -1,6 +1,6 @@
-import {and, asc, eq, gte, lte, sql} from 'drizzle-orm';
+import { and, asc, eq, gte, lte, sql } from 'drizzle-orm';
 
-import {getDatabase} from '../client';
+import { getDatabase } from '../client';
 import {
   locationPoints,
   materializedDays,
@@ -13,15 +13,15 @@ import {
   tripPoints,
   trips,
 } from '../schema';
-import type {ExportPeriod} from '@/lib/export-period';
+import type { ExportPeriod } from '@/lib/export-period';
 import type {
   DatabaseExportTableName,
   DatabaseExportTables,
 } from '@/lib/database-export';
-import {estimateExportTableStorageBytes} from '@/lib/export-table-storage';
-import {getDatabaseFileStats} from './storage-stats';
-import {toDateKey} from '@/lib/day-utils';
-import {parseMomentRefs} from '@/lib/moment-refs';
+import { estimateExportTableStorageBytes } from '@/lib/export-table-storage';
+import { getDatabaseFileStats } from './storage-stats';
+import { toDateKey } from '@/lib/day-utils';
+import { parseMomentRefs } from '@/lib/moment-refs';
 
 function iso(value: Date | null | undefined): string | null {
   return value ? value.toISOString() : null;
@@ -43,16 +43,16 @@ export async function countExportTableRows(): Promise<
     momentCount,
     settingCount,
   ] = await Promise.all([
-    db.select({count: sql<number>`count(*)`}).from(locationPoints),
-    db.select({count: sql<number>`count(*)`}).from(trips),
-    db.select({count: sql<number>`count(*)`}).from(tripPoints),
-    db.select({count: sql<number>`count(*)`}).from(materializedDays),
-    db.select({count: sql<number>`count(*)`}).from(trackingEvents),
-    db.select({count: sql<number>`count(*)`}).from(savedPlaces),
-    db.select({count: sql<number>`count(*)`}).from(placeLookupCache),
-    db.select({count: sql<number>`count(*)`}).from(placePois),
-    db.select({count: sql<number>`count(*)`}).from(moments),
-    db.select({count: sql<number>`count(*)`}).from(settings),
+    db.select({ count: sql<number>`count(*)` }).from(locationPoints),
+    db.select({ count: sql<number>`count(*)` }).from(trips),
+    db.select({ count: sql<number>`count(*)` }).from(tripPoints),
+    db.select({ count: sql<number>`count(*)` }).from(materializedDays),
+    db.select({ count: sql<number>`count(*)` }).from(trackingEvents),
+    db.select({ count: sql<number>`count(*)` }).from(savedPlaces),
+    db.select({ count: sql<number>`count(*)` }).from(placeLookupCache),
+    db.select({ count: sql<number>`count(*)` }).from(placePois),
+    db.select({ count: sql<number>`count(*)` }).from(moments),
+    db.select({ count: sql<number>`count(*)` }).from(settings),
   ]);
 
   return {
@@ -104,7 +104,7 @@ export async function fetchDatabaseExportTables(
   period: ExportPeriod,
 ): Promise<DatabaseExportTables> {
   const db = await getDatabase();
-  const {startAt, endAt} = period;
+  const { startAt, endAt } = period;
   const dateKey = period.dateKey;
 
   const [
@@ -132,14 +132,12 @@ export async function fetchDatabaseExportTables(
     dateKey
       ? db.select().from(trips).where(eq(trips.dateKey, dateKey))
       : period.scope === 'all'
-        ? db.select().from(trips).orderBy(asc(trips.startAt))
-        : db
-            .select()
-            .from(trips)
-            .where(
-              and(gte(trips.startAt, startAt), lte(trips.startAt, endAt)),
-            )
-            .orderBy(asc(trips.startAt)),
+      ? db.select().from(trips).orderBy(asc(trips.startAt))
+      : db
+          .select()
+          .from(trips)
+          .where(and(gte(trips.startAt, startAt), lte(trips.startAt, endAt)))
+          .orderBy(asc(trips.startAt)),
     dateKey
       ? db
           .select({
@@ -158,54 +156,52 @@ export async function fetchDatabaseExportTables(
           .where(eq(trips.dateKey, dateKey))
           .orderBy(asc(tripPoints.tripId), asc(tripPoints.seq))
       : period.scope === 'all'
-        ? db
-            .select({
-              id: tripPoints.id,
-              tripId: tripPoints.tripId,
-              seq: tripPoints.seq,
-              lat: tripPoints.lat,
-              lng: tripPoints.lng,
-              recordedAt: tripPoints.recordedAt,
-              locationPointId: tripPoints.locationPointId,
-              source: tripPoints.source,
-              momentId: tripPoints.momentId,
-            })
-            .from(tripPoints)
-            .orderBy(asc(tripPoints.tripId), asc(tripPoints.seq))
-        : db
-            .select({
-              id: tripPoints.id,
-              tripId: tripPoints.tripId,
-              seq: tripPoints.seq,
-              lat: tripPoints.lat,
-              lng: tripPoints.lng,
-              recordedAt: tripPoints.recordedAt,
-              locationPointId: tripPoints.locationPointId,
-              source: tripPoints.source,
-              momentId: tripPoints.momentId,
-            })
-            .from(tripPoints)
-            .innerJoin(trips, eq(tripPoints.tripId, trips.id))
-            .where(
-              and(gte(trips.startAt, startAt), lte(trips.startAt, endAt)),
-            )
-            .orderBy(asc(tripPoints.tripId), asc(tripPoints.seq)),
+      ? db
+          .select({
+            id: tripPoints.id,
+            tripId: tripPoints.tripId,
+            seq: tripPoints.seq,
+            lat: tripPoints.lat,
+            lng: tripPoints.lng,
+            recordedAt: tripPoints.recordedAt,
+            locationPointId: tripPoints.locationPointId,
+            source: tripPoints.source,
+            momentId: tripPoints.momentId,
+          })
+          .from(tripPoints)
+          .orderBy(asc(tripPoints.tripId), asc(tripPoints.seq))
+      : db
+          .select({
+            id: tripPoints.id,
+            tripId: tripPoints.tripId,
+            seq: tripPoints.seq,
+            lat: tripPoints.lat,
+            lng: tripPoints.lng,
+            recordedAt: tripPoints.recordedAt,
+            locationPointId: tripPoints.locationPointId,
+            source: tripPoints.source,
+            momentId: tripPoints.momentId,
+          })
+          .from(tripPoints)
+          .innerJoin(trips, eq(tripPoints.tripId, trips.id))
+          .where(and(gte(trips.startAt, startAt), lte(trips.startAt, endAt)))
+          .orderBy(asc(tripPoints.tripId), asc(tripPoints.seq)),
     dateKey
       ? db
           .select()
           .from(materializedDays)
           .where(eq(materializedDays.dateKey, dateKey))
       : period.scope === 'all'
-        ? db.select().from(materializedDays)
-        : db
-            .select()
-            .from(materializedDays)
-            .where(
-              and(
-                gte(materializedDays.dateKey, toDateKey(startAt)),
-                lte(materializedDays.dateKey, toDateKey(endAt)),
-              ),
+      ? db.select().from(materializedDays)
+      : db
+          .select()
+          .from(materializedDays)
+          .where(
+            and(
+              gte(materializedDays.dateKey, toDateKey(startAt)),
+              lte(materializedDays.dateKey, toDateKey(endAt)),
             ),
+          ),
     db
       .select()
       .from(trackingEvents)

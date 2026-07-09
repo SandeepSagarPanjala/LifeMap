@@ -1,9 +1,9 @@
-import {useEffect, useState} from 'react';
-import {Pressable, StyleSheet, View} from 'react-native';
-import {BottomSheetTextInput} from '@gorhom/bottom-sheet';
+import { useEffect, useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 
-import {Text} from '@/components/ui/text';
-import {AppBottomSheet} from '@/components/ui/app-bottom-sheet';
+import { Text } from '@/components/ui/text';
+import { AppBottomSheet } from '@/components/ui/app-bottom-sheet';
 
 type VisitPlaceCustomLabelSheetProps = {
   visible: boolean;
@@ -52,7 +52,8 @@ export function VisitPlaceCustomLabelSheet({
           accessibilityRole="button"
           accessibilityLabel="Cancel custom label"
           onPress={onClose}
-          style={[styles.button, styles.cancelButton]}>
+          style={[styles.button, styles.cancelButton]}
+        >
           <Text className="font-medium">Cancel</Text>
         </Pressable>
         <Pressable
@@ -64,7 +65,8 @@ export function VisitPlaceCustomLabelSheet({
             styles.button,
             styles.saveButton,
             !value.trim() && styles.saveButtonDisabled,
-          ]}>
+          ]}
+        >
           <Text className="font-semibold text-white">Save</Text>
         </Pressable>
       </View>

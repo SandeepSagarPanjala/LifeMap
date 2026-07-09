@@ -1,6 +1,6 @@
-import type {ReactNode} from 'react';
-import {StyleSheet, View} from 'react-native';
-import {BottomSheetModalProvider} from '@gorhom/bottom-sheet';
+import type { ReactNode } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 
 /**
  * Transparent stack screen + local gorhom provider.
@@ -17,7 +17,8 @@ export function SheetCaptureScreen({
   return (
     <View
       style={styles.root}
-      pointerEvents={touchPassthrough ? 'none' : 'box-none'}>
+      pointerEvents={touchPassthrough ? 'none' : 'box-none'}
+    >
       <BottomSheetModalProvider>{children}</BottomSheetModalProvider>
     </View>
   );

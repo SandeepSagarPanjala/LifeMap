@@ -2,7 +2,12 @@
  * Single source of truth for user-facing static text (mobile + web).
  */
 
-import {APP_TIMEZONE, DRIVE_MAP_REFRESH_INTERVAL_MS_OPTIONS, MAX_SAVED_PLACE_LABEL_LENGTH, MAX_SAVED_PLACES} from '@lifemap/constants';
+import {
+  APP_TIMEZONE,
+  DRIVE_MAP_REFRESH_INTERVAL_MS_OPTIONS,
+  MAX_SAVED_PLACE_LABEL_LENGTH,
+  MAX_SAVED_PLACES,
+} from '@lifemap/constants';
 
 export const APP_NAME = 'LifeMap';
 
@@ -75,7 +80,8 @@ export const APP_COPY = {
 
   voiceRecorder: {
     couldNotStart: 'Could not start voice recording.',
-    couldNotStartRecorder: 'Could not start the recorder. Tap the mic to try again.',
+    couldNotStartRecorder:
+      'Could not start the recorder. Tap the mic to try again.',
     couldNotRecord: 'Could not record voice memo.',
   },
 

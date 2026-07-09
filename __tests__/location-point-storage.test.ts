@@ -1,4 +1,4 @@
-import {locationPointTimestampToStorageValue} from '@/lib/location-point-storage';
+import { locationPointTimestampToStorageValue } from '@/lib/location-point-storage';
 
 describe('locationPointTimestampToStorageValue', () => {
   it('stores unix seconds like drizzle timestamp mode', () => {

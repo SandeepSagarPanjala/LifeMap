@@ -1,10 +1,10 @@
-import type {SavedPlaceRow} from '@/db/repositories/saved-places';
-import type {DetectedTrip} from '@/lib/trip-detection';
-import {stayMapCentroid} from '@/lib/trip-detection';
+import type { SavedPlaceRow } from '@/db/repositories/saved-places';
+import type { DetectedTrip } from '@/lib/trip-detection';
+import { stayMapCentroid } from '@/lib/trip-detection';
 
 export type StayMapCircle = {
   key: string;
-  center: {latitude: number; longitude: number};
+  center: { latitude: number; longitude: number };
   radiusMeters: number;
 };
 

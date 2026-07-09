@@ -1,6 +1,4 @@
-import {
-  extractTripLabelOverrides,
-} from '../src/lib/backup/backup-export';
+import { extractTripLabelOverrides } from '../src/lib/backup/backup-export';
 import {
   parseIsoDate,
   parseRequiredNumber,
@@ -49,7 +47,7 @@ describe('backup serialize', () => {
 
 describe('backup settings', () => {
   it('detects due schedules', () => {
-    const {isBackupDue} = require('../src/lib/backup/backup-settings');
+    const { isBackupDue } = require('../src/lib/backup/backup-settings');
     const now = new Date('2026-06-21T12:00:00.000Z');
     const yesterday = new Date('2026-06-20T11:00:00.000Z');
     expect(isBackupDue('off', yesterday, now)).toBe(false);

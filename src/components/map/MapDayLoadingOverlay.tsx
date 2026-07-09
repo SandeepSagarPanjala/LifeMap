@@ -1,6 +1,6 @@
-import {ActivityIndicator, StyleSheet, View} from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
-import {Text} from '@/components/ui/text';
+import { Text } from '@/components/ui/text';
 
 type MapDayLoadingOverlayProps = {
   visible: boolean;
@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.12,
     shadowRadius: 8,
     elevation: 4,

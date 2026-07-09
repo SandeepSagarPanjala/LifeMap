@@ -1,7 +1,7 @@
-import type {NativeStackScreenProps} from '@react-navigation/native-stack';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 export type RootStackParamList = {
-  Map: {widgetAction?: string; focusPlaceId?: number} | undefined;
+  Map: { widgetAction?: string; focusPlaceId?: number } | undefined;
   Settings: undefined;
   ThemeSettings: undefined;
   DistanceUnitSettings: undefined;
@@ -9,11 +9,13 @@ export type RootStackParamList = {
   DriveMapRefreshSettings: undefined;
   StorageSettings: undefined;
   CachedPlacesSettings: undefined;
-  CachedPlaceMap: {cacheId: number};
+  CachedPlaceMap: { cacheId: number };
   BackupSettings: undefined;
   DeveloperSettings: undefined;
+  ExportTripDays: undefined;
+  ExportTripDetail: { dateKey: string; tripIndex: number };
   RestoreBackup:
-    | {source?: 'install' | 'settings' | 'drive'; preview?: boolean}
+    | { source?: 'install' | 'settings' | 'drive'; preview?: boolean }
     | undefined;
   CaptureNote: undefined;
   CapturePhoto: undefined;
@@ -25,7 +27,5 @@ export type RootStackParamList = {
   Benchmark: undefined;
 };
 
-export type RootStackScreenProps<T extends keyof RootStackParamList> = NativeStackScreenProps<
-  RootStackParamList,
-  T
->;
+export type RootStackScreenProps<T extends keyof RootStackParamList> =
+  NativeStackScreenProps<RootStackParamList, T>;

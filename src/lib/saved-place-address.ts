@@ -2,11 +2,13 @@ import {
   listSavedPlaces,
   updateSavedPlaceAddressLine,
 } from '@/db/repositories/saved-places';
-import {listPlaceLookupCacheRows} from '@/db/repositories/place-lookup-cache';
-import {fetchNearbyPlaceLookup} from '@/lib/place-lookup-native';
-import {findNearestPlaceLookupMatch} from '@/lib/place-lookup-venue';
+import { listPlaceLookupCacheRows } from '@/db/repositories/place-lookup-cache';
+import { fetchNearbyPlaceLookup } from '@/lib/place-lookup-native';
+import { findNearestPlaceLookupMatch } from '@/lib/place-lookup-venue';
 
-function addressFromLookup(addressLine: string | null | undefined): string | null {
+function addressFromLookup(
+  addressLine: string | null | undefined,
+): string | null {
   const trimmed = addressLine?.trim();
   return trimmed ? trimmed : null;
 }
@@ -16,7 +18,7 @@ async function resolveAddressForCoordinate(
   lng: number,
   cacheRows: Awaited<ReturnType<typeof listPlaceLookupCacheRows>>,
 ): Promise<string | null> {
-  const cached = findNearestPlaceLookupMatch({lat, lng}, cacheRows);
+  const cached = findNearestPlaceLookupMatch({ lat, lng }, cacheRows);
   const cachedAddress = addressFromLookup(cached?.addressLine);
   if (cachedAddress != null) {
     return cachedAddress;

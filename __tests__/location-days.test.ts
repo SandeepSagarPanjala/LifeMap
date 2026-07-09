@@ -1,9 +1,9 @@
-import {getDatabase} from '@/db/client';
+import { getDatabase } from '@/db/client';
 import {
   getEarliestLocationDateKey,
   listDateKeysWithLocationDataBefore,
 } from '@/db/repositories/location-days';
-import {parseDateKey} from '@/lib/day-utils';
+import { parseDateKey } from '@/lib/day-utils';
 
 jest.mock('@/db/client', () => ({
   getDatabase: jest.fn(),
@@ -29,7 +29,7 @@ function installMockDatabase({
           where: () => {
             const count = pointCountsInWalkOrder[fingerprintCall] ?? 0;
             fingerprintCall += 1;
-            return Promise.resolve([{count, maxId: count > 0 ? 1 : 0}]);
+            return Promise.resolve([{ count, maxId: count > 0 ? 1 : 0 }]);
           },
         }),
       };
@@ -40,16 +40,14 @@ function installMockDatabase({
         Promise.resolve([
           {
             timestamp:
-              earliestDateKey != null
-                ? parseDateKey(earliestDateKey)
-                : null,
+              earliestDateKey != null ? parseDateKey(earliestDateKey) : null,
           },
         ]),
     };
   });
 
-  mockedGetDatabase.mockResolvedValue({select} as never);
-  return {select, getFingerprintCallCount: () => fingerprintCall};
+  mockedGetDatabase.mockResolvedValue({ select } as never);
+  return { select, getFingerprintCallCount: () => fingerprintCall };
 }
 
 describe('listDateKeysWithLocationDataBefore', () => {
@@ -58,7 +56,7 @@ describe('listDateKeysWithLocationDataBefore', () => {
   });
 
   it('returns past days that have GPS, in chronological order', async () => {
-    const {select} = installMockDatabase({
+    const { select } = installMockDatabase({
       earliestDateKey: '2026-06-10',
       pointCountsInWalkOrder: [5, 0, 3],
     });
@@ -70,7 +68,7 @@ describe('listDateKeysWithLocationDataBefore', () => {
   });
 
   it('returns empty when there is no GPS history', async () => {
-    installMockDatabase({earliestDateKey: null});
+    installMockDatabase({ earliestDateKey: null });
 
     await expect(
       listDateKeysWithLocationDataBefore('2026-06-13'),
@@ -78,7 +76,7 @@ describe('listDateKeysWithLocationDataBefore', () => {
   });
 
   it('returns empty when earliest is not before the cutoff', async () => {
-    installMockDatabase({earliestDateKey: '2026-06-13'});
+    installMockDatabase({ earliestDateKey: '2026-06-13' });
 
     await expect(
       listDateKeysWithLocationDataBefore('2026-06-13'),
@@ -86,7 +84,7 @@ describe('listDateKeysWithLocationDataBefore', () => {
   });
 
   it('uses one indexed day query per calendar day, not a full-table timestamp scan', async () => {
-    const {select, getFingerprintCallCount} = installMockDatabase({
+    const { select, getFingerprintCallCount } = installMockDatabase({
       earliestDateKey: '2026-06-10',
       pointCountsInWalkOrder: [1, 2, 0],
     });
@@ -107,7 +105,7 @@ describe('getEarliestLocationDateKey', () => {
   });
 
   it('maps the min timestamp to an app date key', async () => {
-    installMockDatabase({earliestDateKey: '2026-06-10'});
+    installMockDatabase({ earliestDateKey: '2026-06-10' });
 
     await expect(getEarliestLocationDateKey()).resolves.toBe('2026-06-10');
   });

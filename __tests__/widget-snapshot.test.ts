@@ -1,4 +1,4 @@
-import {WIDGET_CAPTURE_LINKS} from '@/lib/widget/types';
+import { WIDGET_CAPTURE_LINKS } from '@/lib/widget/types';
 
 describe('widget deep links', () => {
   it('defines capture and refresh links', () => {
@@ -6,6 +6,8 @@ describe('widget deep links', () => {
     expect(WIDGET_CAPTURE_LINKS.photo).toBe('lifemap://capture/photo');
     expect(WIDGET_CAPTURE_LINKS.voice).toBe('lifemap://capture/voice');
     expect(WIDGET_CAPTURE_LINKS.activity).toBe('lifemap://capture/activity');
-    expect(WIDGET_CAPTURE_LINKS.refresh).toBe('lifemap://map?widgetAction=refresh');
+    expect(WIDGET_CAPTURE_LINKS.refresh).toBe(
+      'lifemap://map?widgetAction=refresh',
+    );
   });
 });

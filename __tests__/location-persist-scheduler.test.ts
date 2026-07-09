@@ -1,4 +1,4 @@
-import {LocationPersistScheduler} from '../src/lib/location-persist-scheduler';
+import { LocationPersistScheduler } from '../src/lib/location-persist-scheduler';
 
 describe('LocationPersistScheduler', () => {
   beforeEach(() => {
@@ -11,9 +11,12 @@ describe('LocationPersistScheduler', () => {
 
   it('saves immediately on first point', async () => {
     const flushes: number[] = [];
-    const scheduler = new LocationPersistScheduler(30_000, ({timestampMs}) => {
-      flushes.push(timestampMs);
-    });
+    const scheduler = new LocationPersistScheduler(
+      30_000,
+      ({ timestampMs }) => {
+        flushes.push(timestampMs);
+      },
+    );
 
     scheduler.enqueue(1_000);
     await Promise.resolve();
@@ -23,9 +26,12 @@ describe('LocationPersistScheduler', () => {
 
   it('keeps only the latest fix in a burst window', async () => {
     const flushes: number[] = [];
-    const scheduler = new LocationPersistScheduler(30_000, ({timestampMs}) => {
-      flushes.push(timestampMs);
-    });
+    const scheduler = new LocationPersistScheduler(
+      30_000,
+      ({ timestampMs }) => {
+        flushes.push(timestampMs);
+      },
+    );
 
     scheduler.enqueue(1_000);
     await Promise.resolve();
@@ -47,9 +53,12 @@ describe('LocationPersistScheduler', () => {
 
   it('saves immediately after the window has elapsed', async () => {
     const flushes: number[] = [];
-    const scheduler = new LocationPersistScheduler(30_000, ({timestampMs}) => {
-      flushes.push(timestampMs);
-    });
+    const scheduler = new LocationPersistScheduler(
+      30_000,
+      ({ timestampMs }) => {
+        flushes.push(timestampMs);
+      },
+    );
 
     scheduler.enqueue(0);
     await Promise.resolve();

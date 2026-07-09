@@ -1,18 +1,24 @@
-import {useCallback, useEffect, useMemo, useState} from 'react';
-import {ActivityIndicator, Alert, Platform, Pressable, View} from 'react-native';
-import {useNavigation} from '@react-navigation/native';
-import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {Map as MapIcon} from 'lucide-react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Platform,
+  Pressable,
+  View,
+} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Map as MapIcon } from 'lucide-react-native';
 
-import {SettingsGroupDivider} from '@/components/settings/settings-group';
-import {Text} from '@/components/ui/text';
+import { SettingsGroupDivider } from '@/components/settings/settings-group';
+import { Text } from '@/components/ui/text';
 import {
   countLegacyPlaceLookupCandidatesPending,
   migrateLegacyPlaceLookupCandidatesToPois,
 } from '@/db/migrate-place-pois-data';
-import {listPlaceLookupCacheRows} from '@/db/repositories/place-lookup-cache';
-import {listPlacePois} from '@/db/repositories/place-pois';
-import {useThemeColors} from '@/hooks/use-theme-colors';
+import { listPlaceLookupCacheRows } from '@/db/repositories/place-lookup-cache';
+import { listPlacePois } from '@/db/repositories/place-pois';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 import {
   getPlaceLookupRevision,
   subscribePlaceLookup,
@@ -27,9 +33,9 @@ import {
   refreshAllPlacePoiCoordinates,
   type PlacePoiCoordinateRefreshProgress,
 } from '@/lib/place-poi-coordinate-refresh';
-import {distanceMeters} from '@/lib/place-lookup-venue';
-import type {RootStackParamList} from '@/navigation/types';
-import {cn} from '@/lib/utils';
+import { distanceMeters } from '@/lib/place-lookup-venue';
+import type { RootStackParamList } from '@/navigation/types';
+import { cn } from '@/lib/utils';
 
 function sortCachedPlaces(rows: PlaceLookupRow[]): PlaceLookupRow[] {
   return [...rows].sort((a, b) => {
@@ -108,7 +114,7 @@ function formatDistanceMeters(distanceM: number): string {
 }
 
 function poiDistanceLabel(
-  anchor: {lat: number; lng: number},
+  anchor: { lat: number; lng: number },
   poi: PlacePoiRow,
 ): string {
   const sameLat = Math.abs(poi.lat - anchor.lat) < 1e-5;
@@ -126,10 +132,15 @@ type CachedPlaceCardProps = {
   onOpenMap: (cacheId: number) => void;
 };
 
-function CachedPlaceCard({row, pois, showDivider, onOpenMap}: CachedPlaceCardProps) {
+function CachedPlaceCard({
+  row,
+  pois,
+  showDivider,
+  onOpenMap,
+}: CachedPlaceCardProps) {
   const colors = useThemeColors();
   const fetchedLabel = formatFetchedAt(row.fetchedAt);
-  const anchor = {lat: row.anchorLat, lng: row.anchorLng};
+  const anchor = { lat: row.anchorLat, lng: row.anchorLng };
 
   return (
     <>
@@ -145,10 +156,16 @@ function CachedPlaceCard({row, pois, showDivider, onOpenMap}: CachedPlaceCardPro
               accessibilityLabel={`Show map for ${primaryAddress(row)}`}
               onPress={() => onOpenMap(row.id)}
               hitSlop={8}
-              className="h-8 w-8 items-center justify-center rounded-full bg-secondary active:opacity-70">
+              className="h-8 w-8 items-center justify-center rounded-full bg-secondary active:opacity-70"
+            >
               <MapIcon size={16} color={colors.primary} strokeWidth={2.25} />
             </Pressable>
-            <Text className={cn('text-xs font-medium', statusTone(row.lookupStatus))}>
+            <Text
+              className={cn(
+                'text-xs font-medium',
+                statusTone(row.lookupStatus),
+              )}
+            >
               {statusLabel(row.lookupStatus)}
             </Text>
           </View>
@@ -213,9 +230,9 @@ export function CachedPlacesSettings() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [rows, setRows] = useState<PlaceLookupRow[]>([]);
-  const [poisByCacheId, setPoisByCacheId] = useState<Map<number, PlacePoiRow[]>>(
-    new Map(),
-  );
+  const [poisByCacheId, setPoisByCacheId] = useState<
+    Map<number, PlacePoiRow[]>
+  >(new Map());
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [legacyPendingCount, setLegacyPendingCount] = useState(0);
@@ -229,18 +246,21 @@ export function CachedPlacesSettings() {
   const canRefreshPoiCoordinates =
     Platform.OS === 'ios' && coordinateRefreshPendingCount > 0;
 
-  useEffect(() => subscribePlaceLookup(() => setRevision(getPlaceLookupRevision())), []);
+  useEffect(
+    () => subscribePlaceLookup(() => setRevision(getPlaceLookupRevision())),
+    [],
+  );
 
   const loadRows = useCallback(async () => {
     setErrorMessage(null);
     try {
       const [next, allPois, pendingLegacy, pendingCoordinateRefresh] =
         await Promise.all([
-        listPlaceLookupCacheRows(),
-        listPlacePois(),
-        countLegacyPlaceLookupCandidatesPending(),
-        countCachesNeedingPoiCoordinateRefresh(),
-      ]);
+          listPlaceLookupCacheRows(),
+          listPlacePois(),
+          countLegacyPlaceLookupCandidatesPending(),
+          countCachesNeedingPoiCoordinateRefresh(),
+        ]);
       const grouped = new Map<number, PlacePoiRow[]>();
       for (const poi of allPois) {
         const list = grouped.get(poi.cacheId) ?? [];
@@ -257,7 +277,9 @@ export function CachedPlacesSettings() {
       setLegacyPendingCount(0);
       setCoordinateRefreshPendingCount(0);
       setErrorMessage(
-        error instanceof Error ? error.message : 'Could not load cached places.',
+        error instanceof Error
+          ? error.message
+          : 'Could not load cached places.',
       );
     } finally {
       setLoading(false);
@@ -282,7 +304,9 @@ export function CachedPlacesSettings() {
     } catch (error) {
       Alert.alert(
         'Migration failed',
-        error instanceof Error ? error.message : 'Could not migrate cached POIs.',
+        error instanceof Error
+          ? error.message
+          : 'Could not migrate cached POIs.',
       );
     } finally {
       setMigrating(false);
@@ -292,9 +316,11 @@ export function CachedPlacesSettings() {
   const confirmLegacyMigration = useCallback(() => {
     Alert.alert(
       'Migrate cached POIs?',
-      `This moves POI names from the old storage format into the new place_pois table for ${legacyPendingCount.toLocaleString()} cached address${legacyPendingCount === 1 ? '' : 'es'}. POIs without coordinates use the cache anchor as a fallback.`,
+      `This moves POI names from the old storage format into the new place_pois table for ${legacyPendingCount.toLocaleString()} cached address${
+        legacyPendingCount === 1 ? '' : 'es'
+      }. POIs without coordinates use the cache anchor as a fallback.`,
       [
-        {text: 'Cancel', style: 'cancel'},
+        { text: 'Cancel', style: 'cancel' },
         {
           text: 'Migrate',
           onPress: () => {
@@ -307,7 +333,12 @@ export function CachedPlacesSettings() {
 
   const runCoordinateRefresh = useCallback(async () => {
     setRefreshingCoordinates(true);
-    setCoordinateRefreshProgress({completed: 0, total: coordinateRefreshPendingCount, cacheId: 0, addressLine: null});
+    setCoordinateRefreshProgress({
+      completed: 0,
+      total: coordinateRefreshPendingCount,
+      cacheId: 0,
+      addressLine: null,
+    });
     try {
       const result = await refreshAllPlacePoiCoordinates({
         onProgress: setCoordinateRefreshProgress,
@@ -334,7 +365,9 @@ export function CachedPlacesSettings() {
     } catch (error) {
       Alert.alert(
         'Refresh failed',
-        error instanceof Error ? error.message : 'Could not refresh POI coordinates.',
+        error instanceof Error
+          ? error.message
+          : 'Could not refresh POI coordinates.',
       );
     } finally {
       setRefreshingCoordinates(false);
@@ -345,9 +378,11 @@ export function CachedPlacesSettings() {
   const confirmCoordinateRefresh = useCallback(() => {
     Alert.alert(
       'Refresh POI coordinates?',
-      `This fetches MapKit POI locations for ${coordinateRefreshPendingCount.toLocaleString()} cached address${coordinateRefreshPendingCount === 1 ? '' : 'es'}. Existing POIs are updated in place — nothing is deleted. Custom POIs are kept.`,
+      `This fetches MapKit POI locations for ${coordinateRefreshPendingCount.toLocaleString()} cached address${
+        coordinateRefreshPendingCount === 1 ? '' : 'es'
+      }. Existing POIs are updated in place — nothing is deleted. Custom POIs are kept.`,
       [
-        {text: 'Cancel', style: 'cancel'},
+        { text: 'Cancel', style: 'cancel' },
         {
           text: 'Refresh',
           onPress: () => {
@@ -360,7 +395,7 @@ export function CachedPlacesSettings() {
 
   const openCachedPlaceMap = useCallback(
     (cacheId: number) => {
-      navigation.navigate('CachedPlaceMap', {cacheId});
+      navigation.navigate('CachedPlaceMap', { cacheId });
     },
     [navigation],
   );
@@ -388,7 +423,8 @@ export function CachedPlacesSettings() {
             accessibilityLabel="Migrate cached POIs"
             disabled={migrating}
             onPress={confirmLegacyMigration}
-            className="bg-primary mt-3 min-h-[44px] items-center justify-center rounded-xl px-4 py-3 active:opacity-80 disabled:opacity-50">
+            className="bg-primary mt-3 min-h-[44px] items-center justify-center rounded-xl px-4 py-3 active:opacity-80 disabled:opacity-50"
+          >
             {migrating ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
@@ -427,7 +463,8 @@ export function CachedPlacesSettings() {
             accessibilityLabel="Refresh POI coordinates"
             disabled={refreshingCoordinates || migrating}
             onPress={confirmCoordinateRefresh}
-            className="bg-primary mt-3 min-h-[44px] items-center justify-center rounded-xl px-4 py-3 active:opacity-80 disabled:opacity-50">
+            className="bg-primary mt-3 min-h-[44px] items-center justify-center rounded-xl px-4 py-3 active:opacity-80 disabled:opacity-50"
+          >
             {refreshingCoordinates ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
@@ -457,8 +494,8 @@ export function CachedPlacesSettings() {
         </Text>
       ) : rows.length === 0 ? (
         <Text variant="muted" className="mt-4 text-sm leading-5">
-          No cached places yet. Reverse-geocode and nearby POI results will appear
-          here after lookups run.
+          No cached places yet. Reverse-geocode and nearby POI results will
+          appear here after lookups run.
         </Text>
       ) : (
         <View className="border-border mt-4 overflow-hidden rounded-xl border">

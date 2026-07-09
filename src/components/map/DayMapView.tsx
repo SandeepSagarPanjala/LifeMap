@@ -1,11 +1,16 @@
-import {useMemo} from 'react';
-import {Platform, StyleSheet, View} from 'react-native';
-import MapView, {Marker, Polyline, PROVIDER_DEFAULT, PROVIDER_GOOGLE} from 'react-native-maps';
+import { useMemo } from 'react';
+import { Platform, StyleSheet, View } from 'react-native';
+import MapView, {
+  Marker,
+  Polyline,
+  PROVIDER_DEFAULT,
+  PROVIDER_GOOGLE,
+} from 'react-native-maps';
 
-import type {LocationPointRow} from '@/db/repositories/location-days';
-import {regionForCoordinates, toMapCoordinates} from '@/lib/location-geo';
-import {useAppStore} from '@/stores/app-store';
-import {useThemeColors} from '@/hooks/use-theme-colors';
+import type { LocationPointRow } from '@/db/repositories/location-days';
+import { regionForCoordinates, toMapCoordinates } from '@/lib/location-geo';
+import { useAppStore } from '@/stores/app-store';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 
 type DayMapViewProps = {
   points: LocationPointRow[];
@@ -27,7 +32,10 @@ export function DayMapView({
   const colors = useThemeColors();
   const preferredMapApp = useAppStore(state => state.preferredMapApp);
   const coordinates = useMemo(() => toMapCoordinates(points), [points]);
-  const initialRegion = useMemo(() => regionForCoordinates(coordinates), [coordinates]);
+  const initialRegion = useMemo(
+    () => regionForCoordinates(coordinates),
+    [coordinates],
+  );
   const provider = useMemo(() => {
     // iOS needs additional Google Maps native setup; fallback to Apple provider
     // to avoid runtime crashes when Google provider is selected in Settings.
@@ -54,7 +62,11 @@ export function DayMapView({
     const last = points[points.length - 1]!;
     const step = Math.ceil((points.length - 2) / (MAX_MARKERS - 2));
     const sampled = points.filter((_, index) => index % step === 0);
-    return [first, ...sampled.filter(p => p.id !== first.id && p.id !== last.id), last];
+    return [
+      first,
+      ...sampled.filter(p => p.id !== first.id && p.id !== last.id),
+      last,
+    ];
   }, [points]);
 
   const playbackCoordinates = useMemo(() => {
@@ -66,25 +78,38 @@ export function DayMapView({
   }, [coordinates, playbackIndex]);
 
   const playbackPoint = useMemo(() => {
-    if (playbackIndex == null || playbackIndex < 0 || playbackIndex >= points.length) {
+    if (
+      playbackIndex == null ||
+      playbackIndex < 0 ||
+      playbackIndex >= points.length
+    ) {
       return null;
     }
     return points[playbackIndex] ?? null;
   }, [points, playbackIndex]);
 
   if (points.length === 0) {
-    return <View className={`bg-muted rounded-2xl ${className ?? ''}`} style={styles.empty} />;
+    return (
+      <View
+        className={`bg-muted rounded-2xl ${className ?? ''}`}
+        style={styles.empty}
+      />
+    );
   }
 
   return (
-    <View className={`overflow-hidden rounded-2xl ${className ?? ''}`} style={styles.mapWrap}>
+    <View
+      className={`overflow-hidden rounded-2xl ${className ?? ''}`}
+      style={styles.mapWrap}
+    >
       <MapView
         key={mapKey}
         provider={provider}
         style={StyleSheet.absoluteFill}
         initialRegion={initialRegion}
         showsUserLocation
-        showsMyLocationButton={Platform.OS === 'android'}>
+        showsMyLocationButton={Platform.OS === 'android'}
+      >
         {playbackCoordinates.length > 1 ? (
           <Polyline
             coordinates={playbackCoordinates}
@@ -95,7 +120,10 @@ export function DayMapView({
 
         {playbackPoint ? (
           <Marker
-            coordinate={{latitude: playbackPoint.lat, longitude: playbackPoint.lng}}
+            coordinate={{
+              latitude: playbackPoint.lat,
+              longitude: playbackPoint.lng,
+            }}
             pinColor={colors.primary}
           />
         ) : null}
@@ -103,7 +131,7 @@ export function DayMapView({
         {markerPoints.map(point => (
           <Marker
             key={point.id}
-            coordinate={{latitude: point.lat, longitude: point.lng}}
+            coordinate={{ latitude: point.lat, longitude: point.lng }}
             pinColor={selectedPointId === point.id ? colors.primary : undefined}
             opacity={
               playbackPoint
@@ -111,8 +139,8 @@ export function DayMapView({
                   ? 1
                   : 0
                 : selectedPointId == null || selectedPointId === point.id
-                  ? 1
-                  : 0.5
+                ? 1
+                : 0.5
             }
             onPress={() => onSelectPoint?.(point)}
           />

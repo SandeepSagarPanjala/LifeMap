@@ -1,4 +1,4 @@
-import {Platform} from 'react-native';
+import { Platform } from 'react-native';
 
 import {
   getDocumentDirectory,
@@ -19,7 +19,9 @@ describe('moment media uri', () => {
 
   it('extracts moments-relative storage paths', () => {
     expect(momentStorageRelativePath(absolute)).toBe('moments/abc.jpg');
-    expect(momentStorageRelativePath('moments/abc.jpg')).toBe('moments/abc.jpg');
+    expect(momentStorageRelativePath('moments/abc.jpg')).toBe(
+      'moments/abc.jpg',
+    );
   });
 
   it('resolves relative paths against Documents', () => {
@@ -28,7 +30,8 @@ describe('moment media uri', () => {
   });
 
   it('rebases legacy absolute paths to the current Documents dir', () => {
-    const legacy = '/var/mobile/Containers/Data/Application/OLD/Documents/moments/abc.jpg';
+    const legacy =
+      '/var/mobile/Containers/Data/Application/OLD/Documents/moments/abc.jpg';
     expect(resolveMomentContentPath(legacy)).toBe(absolute);
   });
 

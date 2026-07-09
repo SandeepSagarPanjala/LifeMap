@@ -1,6 +1,6 @@
-import {useCallback, useEffect, useMemo, useState} from 'react';
-import {APP_COPY, errorMessageOr} from '@/lib/app-copy';
-import {format} from 'date-fns';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { APP_COPY, errorMessageOr } from '@/lib/app-copy';
+import { format } from 'date-fns';
 import {
   ActivityIndicator,
   Pressable,
@@ -10,14 +10,17 @@ import {
   View,
 } from 'react-native';
 import LottieView from 'lottie-react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import {SplashBackground} from '@/components/splash/SplashBackground';
-import {Button} from '@/components/ui/button';
-import {Text} from '@/components/ui/text';
-import type {RootStackScreenProps} from '@/navigation/types';
-import type {RestoreConflict, RestoreConflictChoice} from '@/lib/backup/backup-conflicts';
-import type {CloudBackupMetadata} from '@/lib/backup/backup-types';
+import { SplashBackground } from '@/components/splash/SplashBackground';
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
+import type { RootStackScreenProps } from '@/navigation/types';
+import type {
+  RestoreConflict,
+  RestoreConflictChoice,
+} from '@/lib/backup/backup-conflicts';
+import type { CloudBackupMetadata } from '@/lib/backup/backup-types';
 import {
   dismissInstallRestoreOffer,
   loadRestoreOfferMetadata,
@@ -39,10 +42,10 @@ import {
   getCloudProviderLabel,
   getCloudRestoreButtonLabel,
 } from '@/lib/backup/native-backup-cloud';
-import type {BackupProgress} from '@/lib/backup/backup-types';
-import {formatStorageBytes} from '@/lib/format-storage';
-import {useThemeColors} from '@/hooks/use-theme-colors';
-import {clearHistoryDataCache} from '@/lib/history-data-cache';
+import type { BackupProgress } from '@/lib/backup/backup-types';
+import { formatStorageBytes } from '@/lib/format-storage';
+import { useThemeColors } from '@/hooks/use-theme-colors';
+import { clearHistoryDataCache } from '@/lib/history-data-cache';
 
 type ScreenPhase = 'loading' | 'offer' | 'conflicts' | 'restoring' | 'error';
 
@@ -52,7 +55,7 @@ export function RestoreBackupScreen({
   navigation,
   route,
 }: RootStackScreenProps<'RestoreBackup'>) {
-  const {width, height} = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const source = route.params?.source ?? 'install';
@@ -113,13 +116,17 @@ export function RestoreBackupScreen({
   const backupLabel = useMemo(() => {
     const exportedAt = metadata?.exportedAt ?? plan?.manifestExportedAt;
     if (!exportedAt) {
-      return isDriveRestore ? 'your Drive backup' : `your ${getCloudProviderLabel()} backup`;
+      return isDriveRestore
+        ? 'your Drive backup'
+        : `your ${getCloudProviderLabel()} backup`;
     }
     return format(new Date(exportedAt), "MMM d, yyyy 'at' h:mm a");
   }, [isDriveRestore, metadata?.exportedAt, plan?.manifestExportedAt]);
 
   const backupSize = metadata?.totalBytes ?? 0;
-  const conflictBackupLabel = isDriveRestore ? 'Drive backup' : getCloudProviderLabel();
+  const conflictBackupLabel = isDriveRestore
+    ? 'Drive backup'
+    : getCloudProviderLabel();
 
   const handleCancel = useCallback(() => {
     if (isDriveRestore) {
@@ -143,7 +150,12 @@ export function RestoreBackupScreen({
         if (!offer?.stagingPath) {
           throw new Error('No Drive backup selected.');
         }
-        setProgress({phase: 'downloading', message: 'Reading backup…', completed: 0, total: 100});
+        setProgress({
+          phase: 'downloading',
+          message: 'Reading backup…',
+          completed: 0,
+          total: 100,
+        });
         mergePlan = await prepareMergeRestoreFromDirectory(
           offer.stagingPath,
           setProgress,
@@ -214,38 +226,38 @@ export function RestoreBackupScreen({
   }, [choices, downloadPlan, isDevPreview, isDriveRestore, navigation, plan]);
 
   const setChoice = (conflictId: string, choice: RestoreConflictChoice) => {
-    setChoices(current => ({...current, [conflictId]: choice}));
+    setChoices(current => ({ ...current, [conflictId]: choice }));
   };
 
   const title =
     phase === 'conflicts'
       ? 'Merge your data'
       : phase === 'error'
-        ? APP_COPY.alerts.couldNotRestore
-        : phase === 'loading' || phase === 'restoring'
-          ? phase === 'loading'
-            ? 'Finding your backup'
-            : 'Restoring LifeMap'
-          : source === 'drive'
-            ? 'Import from Drive'
-            : source === 'install'
-              ? isDevPreview
-                ? 'Restore preview'
-                : 'Welcome back'
-              : getCloudRestoreButtonLabel();
+      ? APP_COPY.alerts.couldNotRestore
+      : phase === 'loading' || phase === 'restoring'
+      ? phase === 'loading'
+        ? 'Finding your backup'
+        : 'Restoring LifeMap'
+      : source === 'drive'
+      ? 'Import from Drive'
+      : source === 'install'
+      ? isDevPreview
+        ? 'Restore preview'
+        : 'Welcome back'
+      : getCloudRestoreButtonLabel();
 
   const subtitle =
     phase === 'conflicts'
       ? `LifeMap found a backup from ${backupLabel} and new data on this device. Choose what to keep for overlaps.`
       : phase === 'error'
-        ? (errorMessage ?? APP_COPY.common.somethingWentWrong)
-        : phase === 'loading' || phase === 'restoring'
-          ? (progress?.message ?? 'Working…')
-          : isDevPreview
-            ? 'Design preview only. Open Settings → Restore to see your real backup size and date.'
-            : `We found your LifeMap backup from ${backupLabel}${
-                backupSize > 0 ? ` (${formatStorageBytes(backupSize)})` : ''
-              }. Your map, visits, and memories can be brought back to this phone.`;
+      ? errorMessage ?? APP_COPY.common.somethingWentWrong
+      : phase === 'loading' || phase === 'restoring'
+      ? progress?.message ?? 'Working…'
+      : isDevPreview
+      ? 'Design preview only. Open Settings → Restore to see your real backup size and date.'
+      : `We found your LifeMap backup from ${backupLabel}${
+          backupSize > 0 ? ` (${formatStorageBytes(backupSize)})` : ''
+        }. Your map, visits, and memories can be brought back to this phone.`;
 
   return (
     <View className="flex-1">
@@ -253,11 +265,13 @@ export function RestoreBackupScreen({
 
       <SafeAreaView className="flex-1">
         <View className="flex-row items-center justify-end px-6 pt-2">
-          {source === 'install' && (phase === 'offer' || phase === 'conflicts') ? (
+          {source === 'install' &&
+          (phase === 'offer' || phase === 'conflicts') ? (
             <Pressable
               accessibilityRole="button"
               onPress={() => void handleStartFresh()}
-              hitSlop={12}>
+              hitSlop={12}
+            >
               <Text className="text-muted-foreground text-sm font-medium">
                 Start fresh
               </Text>
@@ -268,7 +282,8 @@ export function RestoreBackupScreen({
             <Pressable
               accessibilityRole="button"
               onPress={() => handleCancel()}
-              hitSlop={12}>
+              hitSlop={12}
+            >
               <Text className="text-muted-foreground text-sm font-medium">
                 Cancel
               </Text>
@@ -284,17 +299,21 @@ export function RestoreBackupScreen({
               source={TREE_LOTTIE}
               autoPlay
               loop
-              style={{width: lottieSize, height: lottieSize}}
+              style={{ width: lottieSize, height: lottieSize }}
             />
           </View>
 
           <View className="mt-5">
-            <Text variant="h2" className="text-foreground border-0 pb-0 text-center">
+            <Text
+              variant="h2"
+              className="text-foreground border-0 pb-0 text-center"
+            >
               {title}
             </Text>
             <Text
               variant="muted"
-              className="text-muted-foreground mt-3 text-center text-lg leading-7">
+              className="text-muted-foreground mt-3 text-center text-lg leading-7"
+            >
               {subtitle}
             </Text>
           </View>
@@ -306,7 +325,8 @@ export function RestoreBackupScreen({
           {phase === 'conflicts' && plan ? (
             <ScrollView
               className="mt-6 max-h-56"
-              showsVerticalScrollIndicator={false}>
+              showsVerticalScrollIndicator={false}
+            >
               <View className="gap-3">
                 {plan.conflicts.map(conflict => (
                   <ConflictCard
@@ -326,7 +346,9 @@ export function RestoreBackupScreen({
           {phase === 'offer' || phase === 'conflicts' ? (
             <Button className="w-full" onPress={() => void runRestore()}>
               <Text>
-                {phase === 'conflicts' ? 'Merge and restore' : 'Restore my Life'}
+                {phase === 'conflicts'
+                  ? 'Merge and restore'
+                  : 'Restore my Life'}
               </Text>
             </Button>
           ) : null}
@@ -339,7 +361,8 @@ export function RestoreBackupScreen({
               <Pressable
                 accessibilityRole="button"
                 onPress={() => void handleStartFresh()}
-                className="py-2">
+                className="py-2"
+              >
                 <Text className="text-muted-foreground text-center text-sm font-medium">
                   Continue without restore
                 </Text>
@@ -352,12 +375,14 @@ export function RestoreBackupScreen({
   );
 }
 
-function RestoreProgressView({progress}: {progress: BackupProgress | null}) {
+function RestoreProgressView({
+  progress,
+}: {
+  progress: BackupProgress | null;
+}) {
   const colors = useThemeColors();
   const percent =
-    progress?.total != null &&
-    progress.total > 0 &&
-    progress.completed != null
+    progress?.total != null && progress.total > 0 && progress.completed != null
       ? Math.min(100, Math.round((progress.completed / progress.total) * 100))
       : 0;
 
@@ -366,7 +391,7 @@ function RestoreProgressView({progress}: {progress: BackupProgress | null}) {
       <View className="bg-muted h-2.5 w-full overflow-hidden rounded-full">
         <View
           className="bg-primary h-full rounded-full"
-          style={{width: `${Math.max(percent, progress ? 4 : 0)}%`}}
+          style={{ width: `${Math.max(percent, progress ? 4 : 0)}%` }}
         />
       </View>
       <Text className="mt-3 text-center text-base font-semibold">
@@ -393,10 +418,16 @@ function ConflictCard({
   return (
     <View className="bg-card/80 border-border rounded-2xl border p-4">
       <Text className="font-medium">{conflict.title}</Text>
-      <Text variant="muted" className="text-muted-foreground mt-2 text-xs leading-4">
+      <Text
+        variant="muted"
+        className="text-muted-foreground mt-2 text-xs leading-4"
+      >
         {backupSourceLabel}: {conflict.backupDetail}
       </Text>
-      <Text variant="muted" className="text-muted-foreground mt-1 text-xs leading-4">
+      <Text
+        variant="muted"
+        className="text-muted-foreground mt-1 text-xs leading-4"
+      >
         This device: {conflict.localDetail}
       </Text>
       <View className="mt-3 flex-row gap-2">
@@ -430,11 +461,13 @@ function ChoiceButton({
       onPress={onPress}
       className={`flex-1 rounded-xl border px-3 py-2 ${
         selected ? 'bg-primary border-primary' : 'border-border bg-card/60'
-      }`}>
+      }`}
+    >
       <Text
         className={`text-center text-sm font-medium ${
           selected ? 'text-primary-foreground' : 'text-foreground'
-        }`}>
+        }`}
+      >
         {label}
       </Text>
     </Pressable>

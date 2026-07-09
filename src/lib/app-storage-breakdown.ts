@@ -1,6 +1,10 @@
-import type {MomentType} from '@/db/repositories/moments';
+import type { MomentType } from '@/db/repositories/moments';
 
-export type StorageBreakdownCategory = 'database' | 'moment' | 'other' | 'total';
+export type StorageBreakdownCategory =
+  | 'database'
+  | 'moment'
+  | 'other'
+  | 'total';
 
 export type StorageBreakdownItem = {
   key: string;

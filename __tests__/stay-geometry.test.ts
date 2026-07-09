@@ -1,11 +1,11 @@
-import type {MomentRow} from '@/db/repositories/moments';
-import type {LocationPointRow} from '@/db/repositories/location-days';
+import type { MomentRow } from '@/db/repositories/moments';
+import type { LocationPointRow } from '@/db/repositories/location-days';
 import {
   canonicalizeStayGeometry,
   canonicalizeStayGeometryForPersist,
 } from '@/lib/stay-geometry';
-import type {DetectedTrip} from '@/lib/trip-detection';
-import {makeMoment} from './helpers/fixtures';
+import type { DetectedTrip } from '@/lib/trip-detection';
+import { makeMoment } from './helpers/fixtures';
 
 function point(
   id: number,
@@ -52,7 +52,10 @@ describe('canonicalizeStayGeometry', () => {
       point(4, '2026-06-17T22:00:00.000Z', 33.2503, -97.1503),
     ]);
 
-    const canonical = canonicalizeStayGeometry(stay, {lat: 33.25, lng: -97.15});
+    const canonical = canonicalizeStayGeometry(stay, {
+      lat: 33.25,
+      lng: -97.15,
+    });
 
     expect(canonical.map(row => row.id)).toEqual([1, 4]);
   });
@@ -74,7 +77,7 @@ describe('canonicalizeStayGeometry', () => {
 
     const canonical = canonicalizeStayGeometry(
       stay,
-      {lat: 33.25, lng: -97.15},
+      { lat: 33.25, lng: -97.15 },
       moments,
     );
 
@@ -103,7 +106,7 @@ describe('canonicalizeStayGeometry', () => {
 
     const persisted = canonicalizeStayGeometryForPersist(
       stay,
-      {lat: 33.25, lng: -97.15},
+      { lat: 33.25, lng: -97.15 },
       moments,
     );
 

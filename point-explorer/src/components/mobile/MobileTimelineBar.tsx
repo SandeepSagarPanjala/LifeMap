@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   buildHistoryDayRuler,
@@ -11,7 +11,7 @@ import {
   firstPlayableTimelineIndex,
   lastPlayableTimelineIndex,
 } from '../../mobile/timeline-nav';
-import type {DayTimelineEntry} from '../../mobile/types';
+import type { DayTimelineEntry } from '../../mobile/types';
 
 type MobileTimelineBarProps = {
   dateKey: string;
@@ -93,30 +93,34 @@ export function MobileTimelineBar({
       : findNextPlayableTimelineIndex(entries, selectedIndex) >= 0);
 
   return (
-    <div className="mobile-timeline-bar" style={{height: barHeight}}>
+    <div className="mobile-timeline-bar" style={{ height: barHeight }}>
       <button
         type="button"
         className="mobile-timeline-nav"
         disabled={!canGoPrev}
         aria-label="Previous event"
-        onClick={goPrev}>
+        onClick={goPrev}
+      >
         <span className="mobile-timeline-nav-circle">‹</span>
       </button>
 
       <div
         className="mobile-timeline-track-area"
         ref={trackRef}
-        style={{height: barHeight}}>
+        style={{ height: barHeight }}
+      >
         <div
           className="mobile-timeline-label-row"
-          style={{height: LABEL_HEIGHT}}>
+          style={{ height: LABEL_HEIGHT }}
+        >
           {ruler.ticks
             .filter(tick => tick.label != null)
             .map(tick => (
               <span
                 key={`label-${tick.hour}`}
                 className="mobile-timeline-major-label"
-                style={{left: tick.leftPx - 18}}>
+                style={{ left: tick.leftPx - 18 }}
+              >
                 {tick.label}
               </span>
             ))}
@@ -124,7 +128,8 @@ export function MobileTimelineBar({
 
         <div
           className="mobile-timeline-tick-band"
-          style={{height: TICK_BAND_HEIGHT, top: LABEL_HEIGHT}}>
+          style={{ height: TICK_BAND_HEIGHT, top: LABEL_HEIGHT }}
+        >
           {ruler.ticks.map(tick => (
             <span
               key={`tick-${tick.hour}`}
@@ -133,14 +138,15 @@ export function MobileTimelineBar({
                   ? 'mobile-timeline-tick-major'
                   : 'mobile-timeline-tick-minor'
               }
-              style={{left: tick.leftPx}}
+              style={{ left: tick.leftPx }}
             />
           ))}
         </div>
 
         <div
           className="mobile-timeline-track-row"
-          style={{height: TRACK_HEIGHT, top: trackTop}}>
+          style={{ height: TRACK_HEIGHT, top: trackTop }}
+        >
           <div className="mobile-timeline-track-bg" />
           {ruler.segments.map((segment, segmentIndex) => {
             const selected = segment.entryIndex === selectedIndex;
@@ -183,11 +189,12 @@ export function MobileTimelineBar({
         className="mobile-timeline-nav"
         disabled={!canGoNext}
         aria-label="Next event"
-        onClick={goNext}>
+        onClick={goNext}
+      >
         <span className="mobile-timeline-nav-circle">›</span>
       </button>
     </div>
   );
 }
 
-export {HISTORY_COLORS, EVENT_NAV_BTN_WIDTH};
+export { HISTORY_COLORS, EVENT_NAV_BTN_WIDTH };

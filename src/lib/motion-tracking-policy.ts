@@ -1,4 +1,4 @@
-import {HEARTBEAT_DESIRED_ACCURACY_METERS} from '@/lib/app-constants';
+import { HEARTBEAT_DESIRED_ACCURACY_METERS } from '@/lib/app-constants';
 
 /** Stopping threshold for heartbeat getCurrentPosition — see CurrentPositionRequest. */
 export const HEARTBEAT_CURRENT_POSITION_REQUEST = {

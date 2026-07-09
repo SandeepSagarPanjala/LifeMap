@@ -11,7 +11,7 @@ export const locationPoints = sqliteTable(
   'location_points',
   {
     id: integer('id').primaryKey({ autoIncrement: true }),
-    timestamp: integer('timestamp', {mode: 'timestamp'}).notNull(),
+    timestamp: integer('timestamp', { mode: 'timestamp' }).notNull(),
     lat: real('lat').notNull(),
     lng: real('lng').notNull(),
     accuracy: real('accuracy'),
@@ -32,8 +32,8 @@ export const activities = sqliteTable('activities', {
   emoji: text('emoji').notNull(),
   label: text('label').notNull(),
   sortOrder: integer('sort_order').notNull().default(0),
-  createdAt: integer('created_at', {mode: 'timestamp'}).notNull(),
-  archivedAt: integer('archived_at', {mode: 'timestamp'}),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  archivedAt: integer('archived_at', { mode: 'timestamp' }),
 });
 
 export const moments = sqliteTable(
@@ -43,7 +43,7 @@ export const moments = sqliteTable(
     type: text('type', {
       enum: ['photo', 'note', 'video', 'voice', 'activity'],
     }).notNull(),
-    timestamp: integer('timestamp', {mode: 'timestamp'}).notNull(),
+    timestamp: integer('timestamp', { mode: 'timestamp' }).notNull(),
     contentPath: text('content_path'),
     voiceAttachmentPath: text('voice_attachment_path'),
     voiceAttachmentBytes: integer('voice_attachment_bytes'),
@@ -55,7 +55,7 @@ export const moments = sqliteTable(
     title: text('title'),
     moodScore: real('mood_score'),
     moodLabel: text('mood_label'),
-    finishedAt: integer('finished_at', {mode: 'timestamp'}),
+    finishedAt: integer('finished_at', { mode: 'timestamp' }),
     contentBytes: integer('content_bytes'),
     sourceBytes: integer('source_bytes'),
     contentFormat: text('content_format'),
@@ -86,7 +86,7 @@ export const trackingEvents = sqliteTable(
   'tracking_events',
   {
     id: integer('id').primaryKey({ autoIncrement: true }),
-    timestamp: integer('timestamp', {mode: 'timestamp'}).notNull(),
+    timestamp: integer('timestamp', { mode: 'timestamp' }).notNull(),
     event: text('event').notNull(),
     details: text('details'),
   },
@@ -98,15 +98,15 @@ export const trackingEvents = sqliteTable(
 export const savedPlaces = sqliteTable(
   'saved_places',
   {
-    id: integer('id').primaryKey({autoIncrement: true}),
-    kind: text('kind', {enum: ['home', 'work', 'favorite']}).notNull(),
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    kind: text('kind', { enum: ['home', 'work', 'favorite'] }).notNull(),
     label: text('label').notNull(),
     lat: real('lat').notNull(),
     lng: real('lng').notNull(),
     radiusMeters: integer('radius_meters').notNull().default(150),
     addressLine: text('address_line'),
     active: integer('active').notNull().default(1),
-    createdAt: integer('created_at', {mode: 'timestamp'}).notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
   },
   table => ({
     kindIdx: index('saved_places_kind_idx').on(table.kind),
@@ -116,7 +116,7 @@ export const savedPlaces = sqliteTable(
 export const placeLookupCache = sqliteTable(
   'place_lookup_cache',
   {
-    id: integer('id').primaryKey({autoIncrement: true}),
+    id: integer('id').primaryKey({ autoIncrement: true }),
     anchorLat: real('anchor_lat').notNull(),
     anchorLng: real('anchor_lng').notNull(),
     venueRadiusMeters: integer('venue_radius_meters').notNull().default(100),
@@ -126,7 +126,7 @@ export const placeLookupCache = sqliteTable(
     /** @deprecated Replaced by per-trip poi_id. */
     selectedCandidateIndex: integer('selected_candidate_index'),
     lookupStatus: text('lookup_status').notNull().default('pending'),
-    fetchedAt: integer('fetched_at', {mode: 'timestamp'}),
+    fetchedAt: integer('fetched_at', { mode: 'timestamp' }),
   },
   table => ({
     anchorLatIdx: index('place_lookup_cache_anchor_lat_idx').on(
@@ -141,17 +141,17 @@ export const placeLookupCache = sqliteTable(
 export const placePois = sqliteTable(
   'place_pois',
   {
-    id: integer('id').primaryKey({autoIncrement: true}),
+    id: integer('id').primaryKey({ autoIncrement: true }),
     cacheId: integer('cache_id')
       .notNull()
-      .references(() => placeLookupCache.id, {onDelete: 'cascade'}),
+      .references(() => placeLookupCache.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     lat: real('lat').notNull(),
     lng: real('lng').notNull(),
-    source: text('source', {enum: ['mapkit', 'user']})
+    source: text('source', { enum: ['mapkit', 'user'] })
       .notNull()
       .default('mapkit'),
-    createdAt: integer('created_at', {mode: 'timestamp'}).notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
   },
   table => ({
     cacheIdIdx: index('place_pois_cache_id_idx').on(table.cacheId),
@@ -161,12 +161,12 @@ export const placePois = sqliteTable(
 export const trips = sqliteTable(
   'trips',
   {
-    id: integer('id').primaryKey({autoIncrement: true}),
+    id: integer('id').primaryKey({ autoIncrement: true }),
     eventKey: text('event_key').notNull().unique(),
-    kind: text('kind', {enum: ['stay', 'travel', 'missing']}).notNull(),
+    kind: text('kind', { enum: ['stay', 'travel', 'missing'] }).notNull(),
     dateKey: text('date_key').notNull(),
-    startAt: integer('start_at', {mode: 'timestamp'}).notNull(),
-    endAt: integer('end_at', {mode: 'timestamp'}).notNull(),
+    startAt: integer('start_at', { mode: 'timestamp' }).notNull(),
+    endAt: integer('end_at', { mode: 'timestamp' }).notNull(),
     durationMs: integer('duration_ms').notNull(),
     distanceKm: real('distance_km').notNull(),
     centroidLat: real('centroid_lat').notNull(),
@@ -176,7 +176,7 @@ export const trips = sqliteTable(
     placeLabel: text('place_label'),
     /** Saved place id or place_lookup_cache id (see placeKind). */
     placeId: integer('place_id'),
-    placeKind: text('place_kind', {enum: ['saved', 'cache']}),
+    placeKind: text('place_kind', { enum: ['saved', 'cache'] }),
     /** POI row when placeKind is cache (MapKit or user-created). */
     poiId: integer('poi_id'),
     /** Denormalized POI display name. */
@@ -187,7 +187,7 @@ export const trips = sqliteTable(
     /** @deprecated Replaced by poi_id. */
     selectedCandidateIndex: integer('selected_candidate_index'),
     detectionVersion: integer('detection_version').notNull(),
-    closedAt: integer('closed_at', {mode: 'timestamp'}).notNull(),
+    closedAt: integer('closed_at', { mode: 'timestamp' }).notNull(),
   },
   table => ({
     dateKeyIdx: index('trips_date_key_idx').on(table.dateKey),
@@ -198,14 +198,14 @@ export const trips = sqliteTable(
 export const tripPoints = sqliteTable(
   'trip_points',
   {
-    id: integer('id').primaryKey({autoIncrement: true}),
+    id: integer('id').primaryKey({ autoIncrement: true }),
     tripId: integer('trip_id')
       .notNull()
-      .references(() => trips.id, {onDelete: 'cascade'}),
+      .references(() => trips.id, { onDelete: 'cascade' }),
     seq: integer('seq').notNull(),
     lat: real('lat').notNull(),
     lng: real('lng').notNull(),
-    recordedAt: integer('recorded_at', {mode: 'timestamp'}),
+    recordedAt: integer('recorded_at', { mode: 'timestamp' }),
     locationPointId: integer('location_point_id'),
     source: text('source').default('gps'),
     momentId: integer('moment_id').references(() => moments.id),
@@ -225,13 +225,12 @@ export const materializedDays = sqliteTable('materialized_days', {
   tripCount: integer('trip_count').notNull().default(0),
   pointCount: integer('point_count').notNull().default(0),
   geometryFingerprint: text('geometry_fingerprint'),
-  sealedAt: integer('sealed_at', {mode: 'timestamp'}),
-  updatedAt: integer('updated_at', {mode: 'timestamp'}).notNull(),
+  sealedAt: integer('sealed_at', { mode: 'timestamp' }),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 });
 
 export const settingsStatsCache = sqliteTable('settings_stats_cache', {
   key: text('key').primaryKey(),
   payloadJson: text('payload_json').notNull(),
-  calculatedAt: integer('calculated_at', {mode: 'timestamp'}).notNull(),
+  calculatedAt: integer('calculated_at', { mode: 'timestamp' }).notNull(),
 });
-

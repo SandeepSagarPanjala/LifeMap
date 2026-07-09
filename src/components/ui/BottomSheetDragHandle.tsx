@@ -1,8 +1,6 @@
-import {StyleSheet, View} from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
-import {
-  BOTTOM_SHEET_HANDLE,
-} from '@/lib/app-constants';
+import { BOTTOM_SHEET_HANDLE } from '@/lib/app-constants';
 
 /** Drag handle matching gorhom AppBottomSheet. */
 export function BottomSheetDragHandle() {
@@ -26,4 +24,3 @@ const styles = StyleSheet.create({
     backgroundColor: BOTTOM_SHEET_HANDLE.color,
   },
 });
-

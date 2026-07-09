@@ -1,10 +1,10 @@
-import type {DB} from '@op-engineering/op-sqlite';
+import type { DB } from '@op-engineering/op-sqlite';
 
 import {
   countLocationPointDuplicateExtraRows,
   ensureLocationPointsDedupeUniqueIndex,
 } from './location-points-dedupe';
-import {LOCATION_POINTS_DEDUPE_UNIQUE_INDEX} from './location-points-policy';
+import { LOCATION_POINTS_DEDUPE_UNIQUE_INDEX } from './location-points-policy';
 import migrations from '../../drizzle/migrations';
 
 const MIGRATIONS_TABLE = '__drizzle_migrations';
@@ -17,7 +17,7 @@ type MigrationJournalEntry = {
 };
 
 type MigrationBundle = {
-  journal: {entries: MigrationJournalEntry[]};
+  journal: { entries: MigrationJournalEntry[] };
   migrations: Record<string, string>;
 };
 
@@ -66,8 +66,7 @@ async function columnExists(
   const result = await sqlite.execute(`PRAGMA table_info("${tableName}")`);
   return (
     result.rows?.some(
-      (row: Record<string, unknown>) =>
-        String(row.name ?? '') === columnName,
+      (row: Record<string, unknown>) => String(row.name ?? '') === columnName,
     ) ?? false
   );
 }
@@ -157,7 +156,9 @@ export async function migrationAlreadyApplied(
 }
 
 /** Repair columns when the journal is behind the bundled schema. */
-export async function ensureTripSegmentMetadataColumns(sqlite: DB): Promise<void> {
+export async function ensureTripSegmentMetadataColumns(
+  sqlite: DB,
+): Promise<void> {
   if (!(await tableExists(sqlite, 'trips'))) {
     return;
   }
@@ -211,7 +212,9 @@ export async function ensureTripSegmentMetadataColumns(sqlite: DB): Promise<void
   }
 }
 
-export async function ensureTripPointMetadataColumns(sqlite: DB): Promise<void> {
+export async function ensureTripPointMetadataColumns(
+  sqlite: DB,
+): Promise<void> {
   if (!(await tableExists(sqlite, 'trip_points'))) {
     return;
   }
@@ -248,7 +251,9 @@ export async function ensureMaterializedDayGeometryColumn(
   if (!(await tableExists(sqlite, 'materialized_days'))) {
     return;
   }
-  if (!(await columnExists(sqlite, 'materialized_days', 'geometry_fingerprint'))) {
+  if (
+    !(await columnExists(sqlite, 'materialized_days', 'geometry_fingerprint'))
+  ) {
     await executeMigrationStatement(
       sqlite,
       `ALTER TABLE materialized_days ADD COLUMN geometry_fingerprint text`,
@@ -261,14 +266,32 @@ export async function ensureMomentsMoodColumns(sqlite: DB): Promise<void> {
   if (!(await tableExists(sqlite, 'moments'))) {
     return;
   }
-  const columns: Array<{name: string; ddl: string}> = [
-    {name: 'title', ddl: 'ALTER TABLE moments ADD COLUMN title text'},
-    {name: 'mood_score', ddl: 'ALTER TABLE moments ADD COLUMN mood_score real'},
-    {name: 'mood_label', ddl: 'ALTER TABLE moments ADD COLUMN mood_label text'},
-    {name: 'finished_at', ddl: 'ALTER TABLE moments ADD COLUMN finished_at integer'},
-    {name: 'content_bytes', ddl: 'ALTER TABLE moments ADD COLUMN content_bytes integer'},
-    {name: 'source_bytes', ddl: 'ALTER TABLE moments ADD COLUMN source_bytes integer'},
-    {name: 'content_format', ddl: 'ALTER TABLE moments ADD COLUMN content_format text'},
+  const columns: Array<{ name: string; ddl: string }> = [
+    { name: 'title', ddl: 'ALTER TABLE moments ADD COLUMN title text' },
+    {
+      name: 'mood_score',
+      ddl: 'ALTER TABLE moments ADD COLUMN mood_score real',
+    },
+    {
+      name: 'mood_label',
+      ddl: 'ALTER TABLE moments ADD COLUMN mood_label text',
+    },
+    {
+      name: 'finished_at',
+      ddl: 'ALTER TABLE moments ADD COLUMN finished_at integer',
+    },
+    {
+      name: 'content_bytes',
+      ddl: 'ALTER TABLE moments ADD COLUMN content_bytes integer',
+    },
+    {
+      name: 'source_bytes',
+      ddl: 'ALTER TABLE moments ADD COLUMN source_bytes integer',
+    },
+    {
+      name: 'content_format',
+      ddl: 'ALTER TABLE moments ADD COLUMN content_format text',
+    },
     {
       name: 'voice_attachment_path',
       ddl: 'ALTER TABLE moments ADD COLUMN voice_attachment_path text',
@@ -333,8 +356,7 @@ async function columnExistsOn(
   const result = await executor.execute(`PRAGMA table_info("${tableName}")`);
   return (
     result.rows?.some(
-      (row: Record<string, unknown>) =>
-        String(row.name ?? '') === columnName,
+      (row: Record<string, unknown>) => String(row.name ?? '') === columnName,
     ) ?? false
   );
 }
@@ -445,7 +467,10 @@ export async function ensureMomentsWithoutLocationColumns(
 ): Promise<void> {
   const rebuilt = await rebuildMomentsTableWithoutLocationColumns(sqlite);
   if (rebuilt) {
-    await markMigrationAppliedByTag(sqlite, '0024_drop_moment_location_columns');
+    await markMigrationAppliedByTag(
+      sqlite,
+      '0024_drop_moment_location_columns',
+    );
   }
 }
 
@@ -466,7 +491,7 @@ async function migrationRecorded(
   const result = (await executor.execute(
     `SELECT id FROM "${MIGRATIONS_TABLE}" WHERE hash = ? LIMIT 1`,
     [hash],
-  )) as {rows?: unknown[]};
+  )) as { rows?: unknown[] };
   return (result.rows?.length ?? 0) > 0;
 }
 
@@ -533,8 +558,8 @@ export async function runMigrations(sqlite: DB): Promise<void> {
     `SELECT COUNT(*) AS count FROM "${MIGRATIONS_TABLE}"`,
   );
   const appliedCount = Number(
-    (migrationCount.rows?.[0] as {count?: number | string} | undefined)?.count ??
-      0,
+    (migrationCount.rows?.[0] as { count?: number | string } | undefined)
+      ?.count ?? 0,
   );
 
   if (appliedCount === 0 && (await tableExists(sqlite, 'location_points'))) {

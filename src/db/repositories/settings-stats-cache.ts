@@ -1,7 +1,7 @@
-import {eq} from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 
-import {getDatabase} from '../client';
-import {settingsStatsCache} from '../schema';
+import { getDatabase } from '../client';
+import { settingsStatsCache } from '../schema';
 
 export const SETTINGS_STATS_CACHE_KEYS = {
   storageBreakdown: 'storage_breakdown',
@@ -56,7 +56,7 @@ export async function writeSettingsStatsCache(
   if (existing[0]) {
     await db
       .update(settingsStatsCache)
-      .set({payloadJson, calculatedAt})
+      .set({ payloadJson, calculatedAt })
       .where(eq(settingsStatsCache.key, key));
   } else {
     await db.insert(settingsStatsCache).values({
@@ -66,7 +66,7 @@ export async function writeSettingsStatsCache(
     });
   }
 
-  return {payload, calculatedAt};
+  return { payload, calculatedAt };
 }
 
 export async function deleteSettingsStatsCache(

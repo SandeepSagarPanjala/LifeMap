@@ -2,8 +2,8 @@ import {
   DEFAULT_DRIVE_MAP_REFRESH_INTERVAL_MS,
   type DriveMapRefreshIntervalMs,
 } from '@/lib/app-constants';
-import {getDriveMapRefreshIntervalMs} from '@/lib/drive-map-refresh-settings';
-import type {DetectedTrip} from '@/lib/trip-detection';
+import { getDriveMapRefreshIntervalMs } from '@/lib/drive-map-refresh-settings';
+import type { DetectedTrip } from '@/lib/trip-detection';
 
 let todayRefreshRevision = 0;
 

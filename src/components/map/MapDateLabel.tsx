@@ -1,8 +1,15 @@
-import {ChevronLeft, ChevronRight, X} from 'lucide-react-native';
-import {Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle} from 'react-native';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react-native';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 
-import {MapCircleButton} from '@/components/map/MapCircleButton';
-import {useThemeColors} from '@/hooks/use-theme-colors';
+import { MapCircleButton } from '@/components/map/MapCircleButton';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 import {
   MAP_SETTINGS_SIZE,
   MAP_SETTINGS_TOP_GAP,
@@ -58,12 +65,14 @@ export function MapDateLabel({
         pointerEvents="box-none"
         accessibilityRole="text"
         accessibilityLabel={`Map showing ${label}`}
-        style={[styles.wrap, {top, height: MAP_SETTINGS_SIZE}]}>
+        style={[styles.wrap, { top, height: MAP_SETTINGS_SIZE }]}
+      >
         {onPressLabel ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Choose date"
-            onPress={onPressLabel}>
+            onPress={onPressLabel}
+          >
             {pill}
           </Pressable>
         ) : (
@@ -74,33 +83,34 @@ export function MapDateLabel({
   }
 
   const positionStyle: StyleProp<ViewStyle> =
-    anchorBottom != null ? {bottom: anchorBottom} : {top};
+    anchorBottom != null ? { bottom: anchorBottom } : { top };
 
   return (
     <View
       pointerEvents="box-none"
       accessibilityRole="toolbar"
       accessibilityLabel={`Map showing ${label}`}
-      style={[styles.navWrap, positionStyle]}>
+      style={[styles.navWrap, positionStyle]}
+    >
       {showCloseButton ? (
         <MapCircleButton
           accessibilityLabel="Return to today"
           variant="softRed"
-          onPress={() => onClose?.()}>
+          onPress={() => onClose?.()}
+        >
           <X size={20} color={MAP_CLOSE_ICON_COLOR} strokeWidth={2.5} />
         </MapCircleButton>
       ) : null}
 
       <View
-        style={[
-          styles.dateRow,
-          !showCloseButton && styles.dateRowWithoutClose,
-        ]}
-        pointerEvents="box-none">
+        style={[styles.dateRow, !showCloseButton && styles.dateRowWithoutClose]}
+        pointerEvents="box-none"
+      >
         <MapCircleButton
           accessibilityLabel="Previous day"
           disabled={!canGoPrev}
-          onPress={() => onPrev?.()}>
+          onPress={() => onPrev?.()}
+        >
           <ChevronLeft
             size={22}
             color={colors.primary}
@@ -112,7 +122,8 @@ export function MapDateLabel({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Choose date"
-          onPress={onPressLabel}>
+          onPress={onPressLabel}
+        >
           <View style={styles.pill}>
             <Text style={styles.label} numberOfLines={1}>
               {label}
@@ -123,7 +134,8 @@ export function MapDateLabel({
         <MapCircleButton
           accessibilityLabel="Next day"
           disabled={!canGoNext}
-          onPress={() => onNext?.()}>
+          onPress={() => onNext?.()}
+        >
           <ChevronRight
             size={22}
             color={colors.primary}
@@ -171,7 +183,7 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: '#E5E5EA',
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.12,
     shadowRadius: 6,
     elevation: 4,

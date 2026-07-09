@@ -1,5 +1,10 @@
-import {ColorMatrix} from 'react-native-color-matrix-image-filters';
-import {Image, type ImageResizeMode, type ImageStyle, type StyleProp} from 'react-native';
+import { ColorMatrix } from 'react-native-color-matrix-image-filters';
+import {
+  Image,
+  type ImageResizeMode,
+  type ImageStyle,
+  type StyleProp,
+} from 'react-native';
 
 import {
   getPhotoFilterMatrix,
@@ -25,16 +30,12 @@ export function FilteredCaptureImage({
 }: FilteredCaptureImageProps) {
   const matrix = getPhotoFilterMatrix(filterId);
   const imageStyle = [
-    width != null && height != null ? {width, height} : null,
+    width != null && height != null ? { width, height } : null,
     style,
   ];
 
   const image = (
-    <Image
-      source={{uri}}
-      style={imageStyle}
-      resizeMode={resizeMode}
-    />
+    <Image source={{ uri }} style={imageStyle} resizeMode={resizeMode} />
   );
 
   if (matrix == null) {
@@ -44,7 +45,8 @@ export function FilteredCaptureImage({
   return (
     <ColorMatrix
       matrix={matrix}
-      style={width != null && height != null ? {width, height} : style}>
+      style={width != null && height != null ? { width, height } : style}
+    >
       {image}
     </ColorMatrix>
   );

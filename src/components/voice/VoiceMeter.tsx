@@ -1,5 +1,5 @@
-import {useEffect, useRef} from 'react';
-import {Animated, Easing, StyleSheet, View} from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Animated, Easing, StyleSheet, View } from 'react-native';
 
 const LIVE_BAR_COUNT = 5;
 const BAR_WIDTH = 4;
@@ -11,9 +11,12 @@ type VoiceLiveMeterProps = {
 };
 
 /** Recording: 5 bars driven by current mic level only. */
-export function VoiceLiveMeter({level, accentColor = '#FF9500'}: VoiceLiveMeterProps) {
+export function VoiceLiveMeter({
+  level,
+  accentColor = '#FF9500',
+}: VoiceLiveMeterProps) {
   const scales = useRef(
-    Array.from({length: LIVE_BAR_COUNT}, () => new Animated.Value(0.2)),
+    Array.from({ length: LIVE_BAR_COUNT }, () => new Animated.Value(0.2)),
   ).current;
 
   useEffect(() => {
@@ -39,7 +42,7 @@ export function VoiceLiveMeter({level, accentColor = '#FF9500'}: VoiceLiveMeterP
               styles.liveBar,
               {
                 backgroundColor: accentColor,
-                transform: [{scaleY: scale}],
+                transform: [{ scaleY: scale }],
               },
             ]}
           />
@@ -93,7 +96,7 @@ export function VoicePlaybackMeter({
 
   return (
     <View style={styles.playbackWrap}>
-      <View style={[styles.track, {backgroundColor: trackColor}]}>
+      <View style={[styles.track, { backgroundColor: trackColor }]}>
         <View
           style={[
             styles.fill,
@@ -108,7 +111,7 @@ export function VoicePlaybackMeter({
         <Animated.View
           style={[
             styles.playPulse,
-            {backgroundColor: accentColor, opacity: pulse},
+            { backgroundColor: accentColor, opacity: pulse },
           ]}
         />
       ) : null}

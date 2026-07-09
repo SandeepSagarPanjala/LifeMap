@@ -9,8 +9,8 @@ describe('trip playback', () => {
   it('places label top/bottom for horizontal segments', () => {
     expect(
       getPlaybackLabelPlacement(
-        {lat: 33.21, lng: -97.15},
-        {lat: 33.21, lng: -97.1},
+        { lat: 33.21, lng: -97.15 },
+        { lat: 33.21, lng: -97.1 },
       ),
     ).toMatch(/top|bottom/);
   });
@@ -18,8 +18,8 @@ describe('trip playback', () => {
   it('places label left/right for vertical segments', () => {
     expect(
       getPlaybackLabelPlacement(
-        {lat: 33.2, lng: -97.13},
-        {lat: 33.25, lng: -97.13},
+        { lat: 33.2, lng: -97.13 },
+        { lat: 33.25, lng: -97.13 },
       ),
     ).toMatch(/left|right/);
   });

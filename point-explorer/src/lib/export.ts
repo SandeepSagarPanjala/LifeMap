@@ -11,8 +11,8 @@ import type {
   PlaceLookupCandidate,
   PlaceLookupStatus,
 } from '@lifemap/segmentation';
-import {rawRowsToParsedPoints} from '@lifemap/segmentation';
-import {APP_TIMEZONE} from '@lifemap/constants';
+import { rawRowsToParsedPoints } from '@lifemap/segmentation';
+import { APP_TIMEZONE } from '@lifemap/constants';
 
 const DATE_KEY_FORMATTER = new Intl.DateTimeFormat('en-CA', {
   timeZone: APP_TIMEZONE,
@@ -311,8 +311,7 @@ export function parsePlaceLookupCache(raw: unknown): PlaceLookupRow[] {
           ? entry.selectedCandidateIndex
           : null,
       lookupStatus: parsePlaceLookupStatus(entry.lookupStatus),
-      fetchedAt:
-        typeof entry.fetchedAt === 'string' ? entry.fetchedAt : null,
+      fetchedAt: typeof entry.fetchedAt === 'string' ? entry.fetchedAt : null,
     });
   }
   return cache;
@@ -376,7 +375,10 @@ function hasLocationPointRows(raw: Record<string, unknown>): boolean {
   const rowCounts = getExportRowCounts(raw);
   const count = rowCounts?.location_points;
   if (typeof count === 'number' && count > 0) {
-    return Array.isArray(tables?.location_points) || Array.isArray(raw.location_points);
+    return (
+      Array.isArray(tables?.location_points) ||
+      Array.isArray(raw.location_points)
+    );
   }
 
   if (raw.exportKind === 'original_data') {

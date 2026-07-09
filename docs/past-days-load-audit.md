@@ -132,13 +132,13 @@ Code: `src/lib/history-data-cache.ts`.
 
 ## What we did **not** find on past days
 
-| Concern | Past days |
-|--------|-----------|
-| Incremental tail / seal merge | No |
-| `openThroughNow` live extension | No (today only) |
-| Background today sync | No |
-| Full `prepareDayHistoryTimeline` every open | No |
-| `detectTripsForDay` every open | No (unless rematerialize fallback) |
+| Concern                                     | Past days                          |
+| ------------------------------------------- | ---------------------------------- |
+| Incremental tail / seal merge               | No                                 |
+| `openThroughNow` live extension             | No (today only)                    |
+| Background today sync                       | No                                 |
+| Full `prepareDayHistoryTimeline` every open | No                                 |
+| `detectTripsForDay` every open              | No (unless rematerialize fallback) |
 
 Today's path (`syncTodayTrips`, `buildTodayDisplayHistory`, incremental materialization) is intentionally different and is **out of scope** for this doc.
 

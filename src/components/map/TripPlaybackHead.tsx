@@ -1,11 +1,11 @@
-import {useEffect, useRef} from 'react';
-import {Marker} from 'react-native-maps';
-import type {MapMarker} from 'react-native-maps';
-import {StyleSheet, Text, View} from 'react-native';
-import {format} from 'date-fns';
+import { useEffect, useRef } from 'react';
+import { Marker } from 'react-native-maps';
+import type { MapMarker } from 'react-native-maps';
+import { StyleSheet, Text, View } from 'react-native';
+import { format } from 'date-fns';
 
-import type {MapCoordinate} from '@/lib/location-geo';
-import {PLAYBACK_MARKER_FRAME_MS} from '@/lib/app-constants';
+import type { MapCoordinate } from '@/lib/location-geo';
+import { PLAYBACK_MARKER_FRAME_MS } from '@/lib/app-constants';
 import {
   getPlaybackLabelCenterOffset,
   type PlaybackLabelPlacement,
@@ -17,7 +17,7 @@ type TripPlaybackHeadProps = {
   labelPlacement: PlaybackLabelPlacement;
 };
 
-const MARKER_ANCHOR = {x: 0.5, y: 0.5} as const;
+const MARKER_ANCHOR = { x: 0.5, y: 0.5 } as const;
 
 export function TripPlaybackHead({
   coordinate,
@@ -52,7 +52,8 @@ export function TripPlaybackHead({
         coordinate={coordinate}
         anchor={MARKER_ANCHOR}
         zIndex={11}
-        tracksViewChanges={false}>
+        tracksViewChanges={false}
+      >
         <View style={styles.dot}>
           <View style={styles.ring} />
           <View style={styles.core} />
@@ -65,7 +66,8 @@ export function TripPlaybackHead({
         anchor={MARKER_ANCHOR}
         centerOffset={labelOffset}
         zIndex={10}
-        tracksViewChanges={false}>
+        tracksViewChanges={false}
+      >
         <View style={styles.timeChip}>
           <Text style={styles.timeText}>{format(timestamp, 'h:mm:ss a')}</Text>
         </View>
@@ -102,7 +104,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 1},
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.15,
     shadowRadius: 3,
     elevation: 3,

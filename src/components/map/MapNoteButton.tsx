@@ -1,13 +1,13 @@
-import {NotebookPen} from 'lucide-react-native';
+import { NotebookPen } from 'lucide-react-native';
 
-import {MapCaptureButton} from './MapCaptureButton';
+import { MapCaptureButton } from './MapCaptureButton';
 
 type MapNoteButtonProps = {
   bottom: number;
   onPress: () => void;
 };
 
-export function MapNoteButton({bottom, onPress}: MapNoteButtonProps) {
+export function MapNoteButton({ bottom, onPress }: MapNoteButtonProps) {
   return (
     <MapCaptureButton
       bottom={bottom}

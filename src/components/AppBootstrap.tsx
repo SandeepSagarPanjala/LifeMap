@@ -1,25 +1,26 @@
-import {useCallback, useEffect, useRef} from 'react';
-import {AppState} from 'react-native';
+import { useCallback, useEffect, useRef } from 'react';
+import { AppState } from 'react-native';
 
-import {ensureDatabaseReady, bootstrapLocationTracking} from '@/location/bootstrap';
-import {getLocationService} from '@/location/transistorsoft-location-service';
 import {
-  initializeTrackingDiagnosticsEnabled,
-  recordTrackingDiagnostic,
-} from '@/lib/tracking-diagnostics';
-import {ensureHistoryCalendarBounds} from '@/lib/history-calendar-bounds';
-import {preloadTodayHistory} from '@/lib/history-preload';
-import {sealYesterdayIfNeeded} from '@/lib/trip-materialization';
-import {startPlaceLookupCatchUp} from '@/lib/place-lookup-catch-up';
+  ensureDatabaseReady,
+  bootstrapLocationTracking,
+} from '@/location/bootstrap';
+import { getLocationService } from '@/location/transistorsoft-location-service';
+import { ensureHistoryCalendarBounds } from '@/lib/history-calendar-bounds';
+import { preloadTodayHistory } from '@/lib/history-preload';
+import { sealYesterdayIfNeeded } from '@/lib/trip-materialization';
+import { startPlaceLookupCatchUp } from '@/lib/place-lookup-catch-up';
 import {
   beginTodayOpenCycle,
   scheduleTodayOpenSilentSeal,
 } from '@/lib/today-sync';
-import {getCurrentTripDetectionConfig} from '@/lib/trip-detection-config';
-import {refreshTodayOnForeground, setTodayRefreshAppForeground} from '@/lib/today-refresh-scheduler';
-import {warmCanonicalTravelGeometrySetting} from '@/lib/trip-geometry-settings';
-import {runWhenIdle, yieldToEventLoop} from '@/lib/run-when-idle';
-import {useAppStore} from '@/stores/app-store';
+import { getCurrentTripDetectionConfig } from '@/lib/trip-detection-config';
+import {
+  refreshTodayOnForeground,
+  setTodayRefreshAppForeground,
+} from '@/lib/today-refresh-scheduler';
+import { runWhenIdle, yieldToEventLoop } from '@/lib/run-when-idle';
+import { useAppStore } from '@/stores/app-store';
 
 /** Defer timeline preload and yesterday seal — not location tracking. */
 const DEFER_SECONDARY_LAUNCH_WORK_MS = 2_000;
@@ -37,10 +38,6 @@ function logBootstrapFailure(scope: string, error: unknown): void {
   if (__DEV__) {
     console.error(`[LifeMap] ${scope} failed`, error);
   }
-  void recordTrackingDiagnostic('bootstrap_failed', {
-    scope,
-    message: error instanceof Error ? error.message : 'unknown',
-  });
 }
 
 export function AppBootstrap({
@@ -64,7 +61,6 @@ export function AppBootstrap({
 
     const promise = ensureDatabaseReady()
       .then(async () => {
-        await warmCanonicalTravelGeometrySetting();
         await bootstrapLocationTracking();
         trackingBootstrapSucceededRef.current = true;
       })
@@ -79,10 +75,12 @@ export function AppBootstrap({
   }, []);
 
   /**
+   * COLD START:
    * Start location as soon as the DB is open — overlaps splash for returning users.
    * Retries on foreground only when a prior bootstrap attempt failed.
    */
   useEffect(() => {
+    console.log('AppBootstrap.tsx', 'useEffect', 'COLD START');
     if (!hasCompletedPrivacyOnboarding) {
       return;
     }
@@ -91,12 +89,49 @@ export function AppBootstrap({
 
     void runTrackingBootstrap()
       .then(() => {
+        console.log(
+          'AppBootstrap.tsx',
+          'useEffect',
+          'runTrackingBootstrap',
+          'success',
+        );
         const sealWork = runWhenIdle(() => {
+          console.log(
+            'AppBootstrap.tsx',
+            'useEffect',
+            'runWhenIdle',
+            'success',
+          );
           void (async () => {
+            console.log(
+              'AppBootstrap.tsx',
+              'useEffect',
+              'yieldToEventLoop',
+              'success',
+            );
             await yieldToEventLoop();
+            console.log(
+              'AppBootstrap.tsx',
+              'useEffect',
+              'sealYesterdayIfNeeded',
+              'success',
+            );
             await sealYesterdayIfNeeded();
+            console.log(
+              'AppBootstrap.tsx',
+              'useEffect',
+              'yieldToEventLoop',
+              'success',
+            );
             await yieldToEventLoop();
+            console.log(
+              'AppBootstrap.tsx',
+              'useEffect',
+              'startPlaceLookupCatchUp',
+              'success',
+            );
             startPlaceLookupCatchUp();
+            console.log('AppBootstrap.tsx', 'useEffect', 'success');
           })();
         }, DEFER_SECONDARY_LAUNCH_WORK_MS);
         cancelSeal = sealWork.cancel;
@@ -110,13 +145,33 @@ export function AppBootstrap({
     if (!enableHistoryPreload || !hasCompletedPrivacyOnboarding) {
       return;
     }
-
+    console.log('AppBootstrap.tsx', 'useEffect', 'BEGIN TODAY OPEN CYCLE');
     beginTodayOpenCycle();
 
     const preload = runWhenIdle(() => {
+      console.log(
+        'AppBootstrap.tsx',
+        'useEffect',
+        'ensureHistoryCalendarBounds',
+        'success',
+      );
       void ensureHistoryCalendarBounds()
-        .then(() => preloadTodayHistory())
         .then(() => {
+          console.log(
+            'AppBootstrap.tsx',
+            'useEffect',
+            'preloadTodayHistory',
+            'success',
+          );
+          preloadTodayHistory();
+        })
+        .then(() => {
+          console.log(
+            'AppBootstrap.tsx',
+            'useEffect',
+            'scheduleTodayOpenSilentSeal',
+            'success',
+          );
           scheduleTodayOpenSilentSeal(getCurrentTripDetectionConfig());
         })
         .catch(error => {
@@ -128,7 +183,6 @@ export function AppBootstrap({
   }, [enableHistoryPreload, hasCompletedPrivacyOnboarding]);
 
   useEffect(() => {
-    initializeTrackingDiagnosticsEnabled();
     setTodayRefreshAppForeground(AppState.currentState === 'active');
   }, []);
 
@@ -138,13 +192,8 @@ export function AppBootstrap({
       if (nextState === currentState) {
         return;
       }
-      const previous = currentState;
       currentState = nextState;
       setTodayRefreshAppForeground(nextState === 'active');
-      void recordTrackingDiagnostic('app_state_change', {
-        previous,
-        next: nextState,
-      });
 
       if (hasCompletedPrivacyOnboarding) {
         const service = getLocationService();
@@ -158,7 +207,6 @@ export function AppBootstrap({
             void (async () => {
               await yieldToEventLoop();
               try {
-                await warmCanonicalTravelGeometrySetting();
                 await sealYesterdayIfNeeded();
               } catch {
                 // Best-effort — map still shows cached today until sync runs.

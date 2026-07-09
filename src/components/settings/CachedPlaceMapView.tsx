@@ -1,19 +1,24 @@
-import {useMemo} from 'react';
-import {Platform, StyleSheet, View} from 'react-native';
-import MapView, {Circle, Marker, PROVIDER_DEFAULT, PROVIDER_GOOGLE} from 'react-native-maps';
+import { useMemo } from 'react';
+import { Platform, StyleSheet, View } from 'react-native';
+import MapView, {
+  Circle,
+  Marker,
+  PROVIDER_DEFAULT,
+  PROVIDER_GOOGLE,
+} from 'react-native-maps';
 
-import {Text} from '@/components/ui/text';
-import {useThemeColors} from '@/hooks/use-theme-colors';
-import type {PlacePoiRow} from '@/lib/place-lookup-types';
-import {regionForVenueRadius} from '@/lib/location-geo';
-import {useAppStore} from '@/stores/app-store';
+import { Text } from '@/components/ui/text';
+import { useThemeColors } from '@/hooks/use-theme-colors';
+import type { PlacePoiRow } from '@/lib/place-lookup-types';
+import { regionForVenueRadius } from '@/lib/location-geo';
+import { useAppStore } from '@/stores/app-store';
 
 const ANCHOR_PIN_COLOR = '#007AFF';
 const POI_PIN_COLOR = '#34C759';
 const USER_POI_PIN_COLOR = '#FF9500';
 
 type CachedPlaceMapViewProps = {
-  anchor: {lat: number; lng: number};
+  anchor: { lat: number; lng: number };
   addressLabel: string | null;
   venueRadiusMeters: number;
   pois: readonly PlacePoiRow[];
@@ -52,9 +57,10 @@ export function CachedPlaceMapView({
         showsMyLocationButton={false}
         showsCompass={false}
         pitchEnabled={false}
-        rotateEnabled={false}>
+        rotateEnabled={false}
+      >
         <Circle
-          center={{latitude: anchor.lat, longitude: anchor.lng}}
+          center={{ latitude: anchor.lat, longitude: anchor.lng }}
           radius={venueRadiusMeters}
           fillColor="rgba(0, 122, 255, 0.08)"
           strokeColor="rgba(0, 122, 255, 0.35)"
@@ -62,7 +68,7 @@ export function CachedPlaceMapView({
           zIndex={0}
         />
         <Marker
-          coordinate={{latitude: anchor.lat, longitude: anchor.lng}}
+          coordinate={{ latitude: anchor.lat, longitude: anchor.lng }}
           pinColor={ANCHOR_PIN_COLOR}
           title={anchorTitle}
           description="Geocoded address"
@@ -71,8 +77,10 @@ export function CachedPlaceMapView({
         {pois.map(poi => (
           <Marker
             key={poi.id}
-            coordinate={{latitude: poi.lat, longitude: poi.lng}}
-            pinColor={poi.source === 'user' ? USER_POI_PIN_COLOR : POI_PIN_COLOR}
+            coordinate={{ latitude: poi.lat, longitude: poi.lng }}
+            pinColor={
+              poi.source === 'user' ? USER_POI_PIN_COLOR : POI_PIN_COLOR
+            }
             title={poi.name}
             description={
               poi.source === 'user'
@@ -85,7 +93,11 @@ export function CachedPlaceMapView({
       </MapView>
 
       <View
-        style={[styles.legend, {backgroundColor: colors.card, borderColor: colors.border}]}>
+        style={[
+          styles.legend,
+          { backgroundColor: colors.card, borderColor: colors.border },
+        ]}
+      >
         <LegendRow color={ANCHOR_PIN_COLOR} label="Address (geocode)" />
         <LegendRow color={POI_PIN_COLOR} label="Nearby POI" />
         <LegendRow color={USER_POI_PIN_COLOR} label="Custom POI" />
@@ -94,10 +106,10 @@ export function CachedPlaceMapView({
   );
 }
 
-function LegendRow({color, label}: {color: string; label: string}) {
+function LegendRow({ color, label }: { color: string; label: string }) {
   return (
     <View style={styles.legendRow}>
-      <View style={[styles.legendDot, {backgroundColor: color}]} />
+      <View style={[styles.legendDot, { backgroundColor: color }]} />
       <Text className="text-xs">{label}</Text>
     </View>
   );

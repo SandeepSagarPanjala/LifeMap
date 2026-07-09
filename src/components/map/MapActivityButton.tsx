@@ -1,13 +1,13 @@
-import {Activity} from 'lucide-react-native';
+import { Activity } from 'lucide-react-native';
 
-import {MapCaptureButton} from './MapCaptureButton';
+import { MapCaptureButton } from './MapCaptureButton';
 
 type MapActivityButtonProps = {
   bottom: number;
   onPress: () => void;
 };
 
-export function MapActivityButton({bottom, onPress}: MapActivityButtonProps) {
+export function MapActivityButton({ bottom, onPress }: MapActivityButtonProps) {
   return (
     <MapCaptureButton
       bottom={bottom}

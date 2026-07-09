@@ -1,0 +1,35 @@
+# Dependencies and toolchains
+node_modules/
+.jdk/
+.pnpm-store/
+vendor/
+
+# Build outputs
+build/
+dist/
+ios/build/
+ios/Pods/
+android/build/
+android/.gradle/
+coverage/
+
+# Local / secrets / personal data
+__personal__/
+.env
+.env.local
+src/config/env.local.ts
+**/sentry.properties
+ios/Config/Secrets.xcconfig
+android/transistor-license.properties
+
+# Lockfiles (formatting can cause noisy diffs)
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Generated / large artifacts
+*.jsbundle
+ios/build/
+
+# Editor / agent metadata
+.cursor/

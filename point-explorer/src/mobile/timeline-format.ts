@@ -1,8 +1,8 @@
-import {formatDuration, formatDistance} from '@lifemap/segmentation';
-import {APP_TIMEZONE} from '@lifemap/constants';
-import {APP_COPY} from '@lifemap/copy';
+import { formatDuration, formatDistance } from '@lifemap/segmentation';
+import { APP_TIMEZONE } from '@lifemap/constants';
+import { APP_COPY } from '@lifemap/copy';
 
-import type {DayTimelineEntry, DetectedTrip} from './types';
+import type { DayTimelineEntry, DetectedTrip } from './types';
 
 const timeFmt = new Intl.DateTimeFormat('en-US', {
   timeZone: APP_TIMEZONE,
@@ -14,7 +14,9 @@ const timeFmt = new Intl.DateTimeFormat('en-US', {
 export function formatMobileDayPillLabel(dateKey: string): string {
   const [year, month, day] = dateKey.split('-');
   const date = new Date(Number(year), Number(month) - 1, Number(day));
-  const weekday = new Intl.DateTimeFormat('en-US', {weekday: 'short'}).format(date);
+  const weekday = new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(
+    date,
+  );
   const monthDay = new Intl.DateTimeFormat('en-US', {
     month: 'short',
     day: 'numeric',
@@ -34,14 +36,16 @@ export function formatMapDateLabel(
   const monthDay = new Intl.DateTimeFormat('en-US', {
     month: 'short',
     day: 'numeric',
-    ...(sameYear ? {} : {year: 'numeric'}),
+    ...(sameYear ? {} : { year: 'numeric' }),
   }).format(date);
 
   if (dateKey === todayKey) {
     return `Today · ${monthDay}`;
   }
 
-  const weekday = new Intl.DateTimeFormat('en-US', {weekday: 'short'}).format(date);
+  const weekday = new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(
+    date,
+  );
   return `${weekday} · ${monthDay}`;
 }
 
@@ -67,7 +71,7 @@ export function formatStayVisitLabel(
   startAt: Date,
   endAt: Date,
   durationMs: number,
-): {title: string; subtitle: string} {
+): { title: string; subtitle: string } {
   return {
     title: formatVisitTimeRange(startAt, endAt),
     subtitle: formatTripDuration(durationMs),
@@ -76,7 +80,8 @@ export function formatStayVisitLabel(
 
 export function formatTimelineTitle(entry: DayTimelineEntry): string {
   if (entry.kind === 'stay') {
-    return formatStayVisitLabel(entry.startAt, entry.endAt, entry.durationMs).title;
+    return formatStayVisitLabel(entry.startAt, entry.endAt, entry.durationMs)
+      .title;
   }
   return formatVisitTimeRange(entry.startAt, entry.endAt);
 }
@@ -90,7 +95,9 @@ export function formatTimelineStats(entry: DayTimelineEntry): string {
   }
   const distance =
     entry.distanceKm > 0 ? formatDistance(entry.distanceKm * 1000) : '0 m';
-  return `${APP_COPY.explorer.segmentDrive} · ${distance} · ${formatTripDuration(entry.durationMs)}`;
+  return `${
+    APP_COPY.explorer.segmentDrive
+  } · ${distance} · ${formatTripDuration(entry.durationMs)}`;
 }
 
 export function visitPlaceName(entry: DetectedTrip): string | null {
@@ -104,9 +111,7 @@ export function savedPlaceIcon(kind: DetectedTrip['savedPlaceKind']): string {
   return '';
 }
 
-export function driveEndpointLabel(
-  label: string | undefined,
-): string | null {
+export function driveEndpointLabel(label: string | undefined): string | null {
   return label?.trim() ? label : null;
 }
 

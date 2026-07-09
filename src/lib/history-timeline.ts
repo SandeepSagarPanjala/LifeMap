@@ -6,9 +6,14 @@ import {
   isYesterday,
 } from 'date-fns';
 
-import {parseDateKey, getDayRange, shiftDateKey, toDateKey} from '@/lib/day-utils';
-import type {DayTimelineEntry} from '@/lib/trip-detection';
-import {isVisitOngoing} from '@/lib/trip-format';
+import {
+  parseDateKey,
+  getDayRange,
+  shiftDateKey,
+  toDateKey,
+} from '@/lib/day-utils';
+import type { DayTimelineEntry } from '@/lib/trip-detection';
+import { isVisitOngoing } from '@/lib/trip-format';
 
 import {
   HISTORY_ANCHOR_SIZE_PX,
@@ -76,7 +81,7 @@ export type HistoryDayRuler = {
   barWidthPx: number;
 };
 
-type TimeBreakpoint = {timeMs: number; px: number};
+type TimeBreakpoint = { timeMs: number; px: number };
 
 function segmentEndAt(entry: DayTimelineEntry, now: Date): Date {
   if (
@@ -144,15 +149,11 @@ export function layoutSegmentsOnFixedBar(
   return sorted.map(segment => {
     const minW = minWidthForKind(segment.kind);
     let extra = 0;
-    if (
-      segment.kind !== 'gap' &&
-      totalDurationMs > 0 &&
-      flexWidth > 0
-    ) {
+    if (segment.kind !== 'gap' && totalDurationMs > 0 && flexWidth > 0) {
       extra = (segmentDurationMs(segment) / totalDurationMs) * flexWidth;
     }
     const widthPx = minW + extra;
-    const laid = {...segment, leftPx: left, widthPx};
+    const laid = { ...segment, leftPx: left, widthPx };
     left += widthPx;
     return laid;
   });
@@ -166,21 +167,21 @@ function buildTimeBreakpoints(
 ): TimeBreakpoint[] {
   const dayEnd = endOfDay(dayStart);
   const endMs = Math.min(now.getTime(), dayEnd.getTime());
-  const points: TimeBreakpoint[] = [{timeMs: dayStart.getTime(), px: 0}];
+  const points: TimeBreakpoint[] = [{ timeMs: dayStart.getTime(), px: 0 }];
 
   const sorted = [...segments].sort(
     (a, b) => a.startAt.getTime() - b.startAt.getTime(),
   );
 
   for (const segment of sorted) {
-    points.push({timeMs: segment.startAt.getTime(), px: segment.leftPx});
+    points.push({ timeMs: segment.startAt.getTime(), px: segment.leftPx });
     points.push({
       timeMs: segment.endAt.getTime(),
       px: segment.leftPx + segment.widthPx,
     });
   }
 
-  points.push({timeMs: endMs, px: barWidthPx});
+  points.push({ timeMs: endMs, px: barWidthPx });
 
   points.sort((a, b) => a.timeMs - b.timeMs);
 
@@ -197,10 +198,7 @@ function buildTimeBreakpoints(
   return deduped;
 }
 
-export function timeToBarPx(
-  time: Date,
-  breakpoints: TimeBreakpoint[],
-): number {
+export function timeToBarPx(time: Date, breakpoints: TimeBreakpoint[]): number {
   const t = time.getTime();
   if (breakpoints.length === 0) {
     return 0;
@@ -230,10 +228,7 @@ export function timeToBarPx(
   return last.px;
 }
 
-export function barPxToTime(
-  px: number,
-  breakpoints: TimeBreakpoint[],
-): Date {
+export function barPxToTime(px: number, breakpoints: TimeBreakpoint[]): Date {
   if (breakpoints.length === 0) {
     return new Date();
   }
@@ -404,7 +399,7 @@ export function dedupeMajorTickLabels(
   }
 
   return ticks.map(tick =>
-    hideHours.has(tick.hour) ? {...tick, label: null} : tick,
+    hideHours.has(tick.hour) ? { ...tick, label: null } : tick,
   );
 }
 
@@ -458,7 +453,7 @@ export function buildHistoryDayRuler(
   barWidthPx: number,
   now: Date = new Date(),
 ): HistoryDayRuler {
-  const {start: dayStart, end: dayEnd} = getDayRange(dateKey);
+  const { start: dayStart, end: dayEnd } = getDayRange(dateKey);
   const raw: HistoryDaySegment[] = [];
 
   for (let index = 0; index < entries.length; index += 1) {
@@ -477,12 +472,7 @@ export function buildHistoryDayRuler(
   }
 
   const segments = layoutSegmentsOnFixedBar(raw, barWidthPx);
-  const breakpoints = buildTimeBreakpoints(
-    dayStart,
-    segments,
-    barWidthPx,
-    now,
-  );
+  const breakpoints = buildTimeBreakpoints(dayStart, segments, barWidthPx, now);
 
   return {
     dateKey,

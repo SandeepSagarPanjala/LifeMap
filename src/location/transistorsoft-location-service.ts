@@ -17,7 +17,6 @@ import {
   toLocationSource,
 } from '@/location/location-persist-pipeline';
 import { DRIVE_GPS_WAKE_SPEED_MS } from '@/lib/app-constants';
-import { recordTrackingDiagnostic } from '@/lib/tracking-diagnostics';
 import {
   createTrackingMotionGuardState,
   resetDepartureWake,
@@ -26,13 +25,8 @@ import {
   shouldLogMotionChange,
   type TrackingMotionGuardState,
 } from '@/lib/tracking-diagnostic-guards';
-import {
-  getTrackingConfig,
-} from '@/lib/tracking-presets';
-import {
-  SETTINGS_KEY_TRACKING_ENABLED,
-  TRACKING_DISTANCE_FILTER_METERS,
-} from '@/lib/app-constants';
+import { getTrackingConfig } from '@/lib/tracking-presets';
+import { SETTINGS_KEY_TRACKING_ENABLED } from '@/lib/app-constants';
 
 import type {
   LocationAuthorizationStatus,
@@ -90,10 +84,6 @@ export class TransistorSoftLocationService implements LocationService {
       return;
     }
     await BackgroundGeolocation.setConfig(getTrackingConfig(enabled));
-    await recordTrackingDiagnostic('tracking_profile_applied', {
-      maxReliability: enabled,
-      distanceFilterMeters: TRACKING_DISTANCE_FILTER_METERS,
-    });
   }
 
   private async onHeartbeat(): Promise<number | null> {
@@ -120,10 +110,6 @@ export class TransistorSoftLocationService implements LocationService {
     }
     try {
       await BackgroundGeolocation.changePace(true);
-      await recordTrackingDiagnostic('gps_speed_wake', {
-        speed,
-        accuracy: accuracy >= 0 ? accuracy : null,
-      });
     } catch (error) {
       resetDepartureWake(this.motionGuard);
       if (__DEV__) {
@@ -143,12 +129,7 @@ export class TransistorSoftLocationService implements LocationService {
   }
 
   private async runMotionChange(event: MotionChangeEvent): Promise<void> {
-    if (shouldLogMotionChange(this.motionGuard, event.isMoving)) {
-      await recordTrackingDiagnostic('motion_change', {
-        isMoving: event.isMoving,
-        hasLocation: event.location != null,
-      });
-    }
+    shouldLogMotionChange(this.motionGuard, event.isMoving);
     await handleMotionChangePersist(event.isMoving, event.location);
   }
 
@@ -159,10 +140,6 @@ export class TransistorSoftLocationService implements LocationService {
 
     const maxReliability = await readMaxReliability();
     const config = getTrackingConfig(maxReliability);
-    await recordTrackingDiagnostic('tracking_configure', {
-      distanceFilterMeters: TRACKING_DISTANCE_FILTER_METERS,
-      maxReliability,
-    });
 
     try {
       await BackgroundGeolocation.ready(config);
@@ -206,19 +183,6 @@ export class TransistorSoftLocationService implements LocationService {
             return;
           }
           this.lastProviderSignature = signature;
-          void recordTrackingDiagnostic('provider_change', {
-            enabled: provider.enabled,
-            status: provider.status,
-            gps: provider.gps,
-            network: provider.network,
-          });
-        }),
-        BackgroundGeolocation.onAuthorization(event => {
-          void recordTrackingDiagnostic('authorization_event', {
-            status: event.status,
-            success: event.success,
-            error: event.error,
-          });
         }),
       );
 
@@ -232,9 +196,6 @@ export class TransistorSoftLocationService implements LocationService {
 
   async requestPermission(): Promise<LocationAuthorizationStatus> {
     const status = await BackgroundGeolocation.requestPermission();
-    await recordTrackingDiagnostic('permission_requested', {
-      status: mapAuthorizationStatus(status),
-    });
     return mapAuthorizationStatus(status);
   }
 
@@ -249,7 +210,7 @@ export class TransistorSoftLocationService implements LocationService {
   }
 
   /** After start(), the SDK defaults to STATIONARY — force MOVING when max reliability is on. */
-  private async forceMovingAfterStart(reason: string): Promise<void> {
+  private async forceMovingAfterStart(): Promise<void> {
     if (!(await readMaxReliability())) {
       return;
     }
@@ -257,13 +218,8 @@ export class TransistorSoftLocationService implements LocationService {
     try {
       await BackgroundGeolocation.changePace(true);
       shouldApplyDepartureWake(this.motionGuard);
-      await recordTrackingDiagnostic('start_force_moving', { reason });
     } catch (error) {
       resetDepartureWake(this.motionGuard);
-      await recordTrackingDiagnostic('start_force_moving_error', {
-        reason,
-        message: error instanceof Error ? error.message : 'unknown',
-      });
       if (__DEV__) {
         console.warn('[LifeMap] changePace(true) after start failed', error);
       }
@@ -273,15 +229,13 @@ export class TransistorSoftLocationService implements LocationService {
   async start(): Promise<void> {
     await BackgroundGeolocation.start();
     await drainNativeLocationQueue();
-    await this.forceMovingAfterStart('user_start');
+    await this.forceMovingAfterStart();
     await setSetting(SETTINGS_KEY_TRACKING_ENABLED, 'true');
-    await recordTrackingDiagnostic('tracking_enabled', { enabled: true });
   }
 
   async stop(): Promise<void> {
     await BackgroundGeolocation.stop();
     await setSetting(SETTINGS_KEY_TRACKING_ENABLED, 'false');
-    await recordTrackingDiagnostic('tracking_enabled', { enabled: false });
   }
 
   async setEnabled(enabled: boolean): Promise<void> {
@@ -299,16 +253,10 @@ export class TransistorSoftLocationService implements LocationService {
     if (enabled && !state.enabled) {
       await BackgroundGeolocation.start();
       await drainNativeLocationQueue();
-      await recordTrackingDiagnostic('tracking_sync_started', {
-        enabledFromSettings: true,
-      });
     }
 
     if (!enabled && state.enabled) {
       await BackgroundGeolocation.stop();
-      await recordTrackingDiagnostic('tracking_sync_stopped', {
-        enabledFromSettings: false,
-      });
     }
 
     await this.applyTrackingProfile();
@@ -316,7 +264,7 @@ export class TransistorSoftLocationService implements LocationService {
     if (enabled) {
       const current = await BackgroundGeolocation.getState();
       if (current.enabled) {
-        await this.forceMovingAfterStart('bootstrap');
+        await this.forceMovingAfterStart();
       }
     }
   }
@@ -368,17 +316,11 @@ export async function handleHeadlessLocationEvent(
       if (!isLocationLike(location) || isSampleLocation(location)) {
         return;
       }
-      const saved = await persistLocationFromSdk(
+      await persistLocationFromSdk(
         location,
         toLocationSource('headless', location.event),
         { dedupe: true },
       );
-      if (saved) {
-        await recordTrackingDiagnostic('headless_location_saved', {
-          event: event.name,
-          timestamp: locationTimestamp(location).toISOString(),
-        });
-      }
       return;
     }
     case BackgroundGeolocation.Event.Heartbeat: {

@@ -147,6 +147,10 @@ export const ACCENT_THEMES: Record<AccentThemeId, AccentTheme> = {
   },
 };
 
-export const ACCENT_THEME_ORDER: AccentThemeId[] = ['verdant', 'rose', 'amethyst'];
+export const ACCENT_THEME_ORDER: AccentThemeId[] = [
+  'verdant',
+  'rose',
+  'amethyst',
+];
 
 export const DEFAULT_ACCENT_THEME: AccentThemeId = 'verdant';

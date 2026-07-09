@@ -2,8 +2,8 @@ import {
   buildHistoryMomentMapPins,
   buildMomentMapPins,
 } from '../src/components/map/MomentMapOverlay';
-import {makeMoment} from './helpers/fixtures';
-import type {DayTimelineEntry} from '@/lib/trip-detection';
+import { makeMoment } from './helpers/fixtures';
+import type { DayTimelineEntry } from '@/lib/trip-detection';
 
 describe('buildMomentMapPins', () => {
   it('places photo moments on the GPS trail at capture time', () => {
@@ -45,7 +45,7 @@ describe('buildMomentMapPins', () => {
     );
 
     expect(pins).toHaveLength(1);
-    expect(pins[0]?.coordinate).toEqual({latitude: 33.5, longitude: -96.5});
+    expect(pins[0]?.coordinate).toEqual({ latitude: 33.5, longitude: -96.5 });
   });
 
   it('uses materialized route anchors when available', () => {
@@ -58,8 +58,8 @@ describe('buildMomentMapPins', () => {
       durationMs: 7_200_000,
       distanceKm: 0,
       materializedTripId: 5,
-      momentRefs: [{momentId: 1, momentKind: 'photo'}],
-      routeMomentAnchors: [{momentId: 1, lat: 33.21, lng: -97.14}],
+      momentRefs: [{ momentId: 1, momentKind: 'photo' }],
+      routeMomentAnchors: [{ momentId: 1, lat: 33.21, lng: -97.14 }],
     };
     const pins = buildMomentMapPins(
       [
@@ -74,7 +74,7 @@ describe('buildMomentMapPins', () => {
     );
 
     expect(pins).toHaveLength(1);
-    expect(pins[0]?.coordinate).toEqual({latitude: 33.21, longitude: -97.14});
+    expect(pins[0]?.coordinate).toEqual({ latitude: 33.21, longitude: -97.14 });
   });
 });
 
@@ -89,8 +89,8 @@ describe('buildHistoryMomentMapPins', () => {
       durationMs: 7_200_000,
       distanceKm: 0,
       materializedTripId: 5,
-      momentRefs: [{momentId: 1, momentKind: 'photo'}],
-      routeMomentAnchors: [{momentId: 1, lat: 33.21, lng: -97.14}],
+      momentRefs: [{ momentId: 1, momentKind: 'photo' }],
+      routeMomentAnchors: [{ momentId: 1, lat: 33.21, lng: -97.14 }],
     };
     const pins = buildHistoryMomentMapPins(
       entry,

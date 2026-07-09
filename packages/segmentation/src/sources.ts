@@ -1,4 +1,4 @@
-import type {ParsedPoint} from './types';
+import type { ParsedPoint } from './types';
 
 /** Common LifeMap location point sources (shown first in the UI). */
 export const PLOT_SOURCE_ORDER = [
@@ -38,7 +38,12 @@ export function sortSourcesForUi(sources: Iterable<string>): string[] {
   const set = new Set(sources);
   const ordered = PLOT_SOURCE_ORDER.filter(source => set.has(source));
   const rest = [...set]
-    .filter(source => !PLOT_SOURCE_ORDER.includes(source as (typeof PLOT_SOURCE_ORDER)[number]))
+    .filter(
+      source =>
+        !PLOT_SOURCE_ORDER.includes(
+          source as (typeof PLOT_SOURCE_ORDER)[number],
+        ),
+    )
     .sort();
   return [...ordered, ...rest];
 }
@@ -63,5 +68,7 @@ export function filterPointsBySources(
   if (selectedSources.size === 0) {
     return [];
   }
-  return points.filter(point => selectedSources.has(normalizeSource(point.source)));
+  return points.filter(point =>
+    selectedSources.has(normalizeSource(point.source)),
+  );
 }

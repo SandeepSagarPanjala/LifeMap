@@ -9,7 +9,9 @@ export type DraftNotePhoto = {
   sourceBytes: number | null;
 };
 
-export function parseNotePhotoAttachments(json: string | null | undefined): NotePhotoAttachment[] {
+export function parseNotePhotoAttachments(
+  json: string | null | undefined,
+): NotePhotoAttachment[] {
   if (!json?.trim()) {
     return [];
   }
@@ -23,13 +25,16 @@ export function parseNotePhotoAttachments(json: string | null | undefined): Note
         if (typeof item !== 'object' || item == null) {
           return null;
         }
-        const path = 'path' in item && typeof item.path === 'string' ? item.path.trim() : '';
+        const path =
+          'path' in item && typeof item.path === 'string'
+            ? item.path.trim()
+            : '';
         if (!path) {
           return null;
         }
         const bytes =
           'bytes' in item && typeof item.bytes === 'number' ? item.bytes : null;
-        return {path, bytes};
+        return { path, bytes };
       })
       .filter((item): item is NotePhotoAttachment => item != null);
   } catch {
@@ -37,7 +42,9 @@ export function parseNotePhotoAttachments(json: string | null | undefined): Note
   }
 }
 
-export function serializeNotePhotoAttachments(attachments: NotePhotoAttachment[]): string {
+export function serializeNotePhotoAttachments(
+  attachments: NotePhotoAttachment[],
+): string {
   return JSON.stringify(attachments);
 }
 
@@ -45,7 +52,9 @@ export function notePhotoAttachmentPaths(moment: {
   contentPath: string | null;
   photoAttachmentsJson?: string | null;
 }): string[] {
-  const fromJson = parseNotePhotoAttachments(moment.photoAttachmentsJson).map(item => item.path);
+  const fromJson = parseNotePhotoAttachments(moment.photoAttachmentsJson).map(
+    item => item.path,
+  );
   if (fromJson.length > 0) {
     return fromJson;
   }

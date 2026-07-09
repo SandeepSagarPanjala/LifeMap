@@ -1,4 +1,4 @@
-import type {MobileMomentCountType} from './mobile-moment-theme';
+import type { MobileMomentCountType } from './mobile-moment-theme';
 
 export function mobileMomentIconSvg(
   type: MobileMomentCountType,

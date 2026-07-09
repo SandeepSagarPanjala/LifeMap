@@ -1,7 +1,7 @@
-import type {SavedPlaceRow} from '@/db/repositories/saved-places';
-import {arePointsSamePlace, type DetectedTrip} from '@/lib/trip-detection';
-import type {TripDetectionConfig} from '@/lib/trip-settings';
-import {stayMeetsMinimumVisitDwell} from '@/lib/visit-dwell';
+import type { SavedPlaceRow } from '@/db/repositories/saved-places';
+import { arePointsSamePlace, type DetectedTrip } from '@/lib/trip-detection';
+import type { TripDetectionConfig } from '@/lib/trip-settings';
+import { stayMeetsMinimumVisitDwell } from '@/lib/visit-dwell';
 
 /** Drive ended and the next timeline row is a real visit at the same place (e.g. Whataburger). */
 export function isArrivalVisitAfterDrive(

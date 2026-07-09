@@ -1,8 +1,8 @@
-import type {LocationPointRow} from '@/db/repositories/location-days';
-import type {MomentRow} from '@/db/repositories/moments';
-import type {PersistTripPointInput} from '@/db/repositories/trip-points';
-import {momentTimestampInSegment} from '@/lib/moment-refs';
-import {distanceKm} from '@/lib/location-geo';
+import type { LocationPointRow } from '@/db/repositories/location-days';
+import type { MomentRow } from '@/db/repositories/moments';
+import type { PersistTripPointInput } from '@/db/repositories/trip-points';
+import { momentTimestampInSegment } from '@/lib/moment-refs';
+import { distanceKm } from '@/lib/location-geo';
 
 /** Perpendicular distance threshold for straight / gentle curve segments. */
 export const DRIVE_DOUGLAS_PEUCKER_EPSILON_M = 15;
@@ -20,8 +20,8 @@ function sortedPoints(points: LocationPointRow[]): LocationPointRow[] {
 }
 
 function bearingDegrees(
-  a: {lat: number; lng: number},
-  b: {lat: number; lng: number},
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
 ): number {
   const toRad = (deg: number) => (deg * Math.PI) / 180;
   const toDeg = (rad: number) => (rad * 180) / Math.PI;
@@ -226,7 +226,9 @@ export function canonicalizeTravelGeometryForPersist(
     }
     const locationPointId = nearest.id > 0 ? nearest.id : null;
     const existing =
-      locationPointId != null ? byLocationPointId.get(locationPointId) : undefined;
+      locationPointId != null
+        ? byLocationPointId.get(locationPointId)
+        : undefined;
     if (existing != null) {
       if (existing.momentId == null) {
         existing.momentId = moment.id;

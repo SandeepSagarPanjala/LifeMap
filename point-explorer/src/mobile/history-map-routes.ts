@@ -1,8 +1,8 @@
-import {distanceKm} from '@lifemap/segmentation';
+import { distanceKm } from '@lifemap/segmentation';
 
-import type {ParsedPoint} from '../types';
-import {isPlayableTimelineEntry} from './timeline-nav';
-import type {DayTimelineEntry, DetectedTrip} from './types';
+import type { ParsedPoint } from '../types';
+import { isPlayableTimelineEntry } from './timeline-nav';
+import type { DayTimelineEntry, DetectedTrip } from './types';
 
 type TripDetectionConfig = {
   dwellRadiusMeters: number;
@@ -57,15 +57,18 @@ function findVisitDepartureEndIndex(points: ParsedPoint[]): number {
   return points.length - 1;
 }
 
-function stayMapMarkerCoordinate(stay: DetectedTrip): {lat: number; lng: number} {
+function stayMapMarkerCoordinate(stay: DetectedTrip): {
+  lat: number;
+  lng: number;
+} {
   if (stay.anchorLat != null && stay.anchorLng != null) {
-    return {lat: stay.anchorLat, lng: stay.anchorLng};
+    return { lat: stay.anchorLat, lng: stay.anchorLng };
   }
   if (stay.points.length === 0) {
-    return {lat: 0, lng: 0};
+    return { lat: 0, lng: 0 };
   }
   const last = stay.points[stay.points.length - 1]!;
-  return {lat: last.lat, lng: last.lng};
+  return { lat: last.lat, lng: last.lng };
 }
 
 function previousStayDepartureAnchor(stay: DetectedTrip): ParsedPoint | null {
@@ -75,9 +78,9 @@ function previousStayDepartureAnchor(stay: DetectedTrip): ParsedPoint | null {
   const last = stay.points[stay.points.length - 1]!;
   const marker = stayMapMarkerCoordinate(stay);
   const markerDistM =
-    distanceKm({lat: last.lat, lng: last.lng}, marker) * 1000;
+    distanceKm({ lat: last.lat, lng: last.lng }, marker) * 1000;
   if (markerDistM > DEPARTURE_BRIDGE_M) {
-    return {...last, lat: marker.lat, lng: marker.lng};
+    return { ...last, lat: marker.lat, lng: marker.lng };
   }
   return last;
 }
@@ -93,7 +96,7 @@ function shouldBridgeDeparture(
 }
 
 function minDistanceToStayM(
-  point: {lat: number; lng: number},
+  point: { lat: number; lng: number },
   stay: DetectedTrip,
 ): number {
   let minM = Number.POSITIVE_INFINITY;

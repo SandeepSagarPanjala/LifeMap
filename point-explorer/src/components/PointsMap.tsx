@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useRef} from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import {
   Circle,
   CircleMarker,
@@ -9,23 +9,23 @@ import {
   Tooltip,
   useMap,
 } from 'react-leaflet';
-import type {CircleMarker as LeafletCircleMarker} from 'leaflet';
-import type {LatLngBoundsExpression, LatLngTuple} from 'leaflet';
+import type { CircleMarker as LeafletCircleMarker } from 'leaflet';
+import type { LatLngBoundsExpression, LatLngTuple } from 'leaflet';
 
-import {formatTimestamp} from '../lib/export';
+import { formatTimestamp } from '../lib/export';
 import {
   DEFAULT_STOP_CONFIG,
   formatDuration,
   isMovingPoint,
   type Stop,
 } from '@lifemap/segmentation';
-import type {ParsedPoint} from '../types';
+import type { ParsedPoint } from '../types';
 
 const EARTH_RADIUS_M = 6_371_000;
 
 function distanceM(
-  a: {lat: number; lng: number},
-  b: {lat: number; lng: number},
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
 ): number {
   const toRad = (x: number) => (x * Math.PI) / 180;
   const dLat = toRad(b.lat - a.lat);
@@ -48,7 +48,7 @@ type PointsMapProps = {
   focusSelected?: boolean;
 };
 
-function FitBounds({positions}: {positions: LatLngTuple[]}) {
+function FitBounds({ positions }: { positions: LatLngTuple[] }) {
   const map = useMap();
 
   useEffect(() => {
@@ -60,7 +60,7 @@ function FitBounds({positions}: {positions: LatLngTuple[]}) {
       return;
     }
     const bounds: LatLngBoundsExpression = positions;
-    map.fitBounds(bounds, {padding: [48, 48], maxZoom: 16});
+    map.fitBounds(bounds, { padding: [48, 48], maxZoom: 16 });
   }, [map, positions]);
 
   return null;
@@ -80,13 +80,13 @@ function FlyToSelected({
       return;
     }
     const zoom = Math.max(map.getZoom(), 19);
-    map.flyTo([point.lat, point.lng], zoom, {duration: 0.35});
+    map.flyTo([point.lat, point.lng], zoom, { duration: 0.35 });
   }, [enabled, map, point]);
 
   return null;
 }
 
-function FlyToStop({stop}: {stop: Stop | null}) {
+function FlyToStop({ stop }: { stop: Stop | null }) {
   const map = useMap();
 
   useEffect(() => {
@@ -102,7 +102,7 @@ function FlyToStop({stop}: {stop: Stop | null}) {
       [stop.lat - latPad, stop.lng - lngPad],
       [stop.lat + latPad, stop.lng + lngPad],
     ];
-    map.flyToBounds(flyBounds, {duration: 0.4, maxZoom: 19});
+    map.flyToBounds(flyBounds, { duration: 0.4, maxZoom: 19 });
   }, [map, stop]);
 
   return null;
@@ -182,7 +182,7 @@ export function PointsMap({
   // Split the chronological track into solid (travel) and dashed (in-stop)
   // segments. A segment is dashed only when both of its endpoints fall inside
   // the SAME stop's time window — i.e. it is GPS scatter inside a stay.
-  const {travelSegments, inStopSegments} = useMemo(() => {
+  const { travelSegments, inStopSegments } = useMemo(() => {
     const sorted = [...points].sort(
       (a, b) => a.at.getTime() - b.at.getTime() || a.id - b.id,
     );
@@ -203,7 +203,7 @@ export function PointsMap({
         travel.push(segment);
       }
     }
-    return {travelSegments: travel, inStopSegments: inStop};
+    return { travelSegments: travel, inStopSegments: inStop };
   }, [points, stopIdForTime]);
 
   const selectedPoint = useMemo(
@@ -245,7 +245,8 @@ export function PointsMap({
       zoomSnap={0.25}
       zoomDelta={0.5}
       scrollWheelZoom
-      wheelPxPerZoomLevel={80}>
+      wheelPxPerZoomLevel={80}
+    >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -259,7 +260,7 @@ export function PointsMap({
       {travelSegments.length > 0 ? (
         <Polyline
           positions={travelSegments}
-          pathOptions={{color: '#007aff', weight: 3, opacity: 0.55}}
+          pathOptions={{ color: '#007aff', weight: 3, opacity: 0.55 }}
         />
       ) : null}
       {inStopSegments.length > 0 ? (
@@ -286,7 +287,8 @@ export function PointsMap({
           }}
           eventHandlers={{
             click: () => onSelectStop?.(stop.id),
-          }}>
+          }}
+        >
           <Popup>
             <div className="popup">
               <strong>Stop #{index + 1}</strong>
@@ -314,14 +316,14 @@ export function PointsMap({
         const fillColor = isStopStart
           ? '#af52de'
           : isStopEnd
-            ? '#000000'
-            : isSelected
-              ? '#ff9500'
-              : isStopMember
-                ? '#ff3b30'
-                : isMotionDeparture
-                  ? '#ff9500'
-                  : '#007aff';
+          ? '#000000'
+          : isSelected
+          ? '#ff9500'
+          : isStopMember
+          ? '#ff3b30'
+          : isMotionDeparture
+          ? '#ff9500'
+          : '#007aff';
         return (
           <CircleMarker
             key={point.id}
@@ -330,32 +332,33 @@ export function PointsMap({
               isStopStart || isStopEnd
                 ? 8
                 : isSelected
-                  ? 8
-                  : isStopMember
-                    ? 6
-                    : 5
+                ? 8
+                : isStopMember
+                ? 6
+                : 5
             }
             pathOptions={{
               color:
                 isStopStart || isStopEnd
                   ? '#ffffff'
                   : isSelected
-                    ? '#1c1c1e'
-                    : '#ffffff',
+                  ? '#1c1c1e'
+                  : '#ffffff',
               weight: isStopStart || isStopEnd ? 2.5 : isSelected ? 2.5 : 1.5,
               fillColor,
               fillOpacity:
                 isStopStart || isStopEnd
                   ? 1
                   : isSelected
-                    ? 1
-                    : dimmed
-                      ? 0.25
-                      : 0.85,
+                  ? 1
+                  : dimmed
+                  ? 0.25
+                  : 0.85,
             }}
             eventHandlers={{
               click: () => onSelectId(point.id),
-            }}>
+            }}
+          >
             <Tooltip
               permanent={isStopStart || isStopEnd}
               direction="top"
@@ -365,22 +368,22 @@ export function PointsMap({
                 isStopStart
                   ? 'stop-edge-label start'
                   : isStopEnd
-                    ? 'stop-edge-label end'
-                    : undefined
-              }>
+                  ? 'stop-edge-label end'
+                  : undefined
+              }
+            >
               <div className="popup">
                 {isStopStart ? (
-                  <strong style={{color: '#af52de'}}>Stay Started</strong>
+                  <strong style={{ color: '#af52de' }}>Stay Started</strong>
                 ) : null}
                 {isStopEnd ? (
-                  <strong style={{color: '#000000'}}>Stop ended</strong>
+                  <strong style={{ color: '#000000' }}>Stop ended</strong>
                 ) : null}
                 <strong>#{point.id}</strong>
                 <div>{formatTimestamp(point.timestamp)}</div>
                 <div>
-                  speed:{' '}
-                  {mph == null ? 'n/a' : `${mph.toFixed(1)} mph`}{' '}
-                  <strong style={{color: moving ? '#ff3b30' : '#34c759'}}>
+                  speed: {mph == null ? 'n/a' : `${mph.toFixed(1)} mph`}{' '}
+                  <strong style={{ color: moving ? '#ff3b30' : '#34c759' }}>
                     {moving ? 'DRIVING' : 'stationary'}
                   </strong>
                 </div>
@@ -413,7 +416,9 @@ export function PointsMap({
                   {point.accuracy != null ? (
                     <div>±{point.accuracy.toFixed(0)} m</div>
                   ) : null}
-                  {point.source ? <div className="muted">{point.source}</div> : null}
+                  {point.source ? (
+                    <div className="muted">{point.source}</div>
+                  ) : null}
                 </div>
               </Popup>
             ) : null}

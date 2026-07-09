@@ -1,12 +1,16 @@
-import {getDatabase} from '@/db/client';
+import { getDatabase } from '@/db/client';
 
-import {syncSavedPlaceGeofences} from '@/location/geofence-registry';
-import {startNativeLocationTracking} from '@/location/native-location-persist';
-import {getLocationService, resetLocationService} from './transistorsoft-location-service';
-import type {LocationAuthorizationStatus} from './types';
+import { syncSavedPlaceGeofences } from '@/location/geofence-registry';
+import { startNativeLocationTracking } from '@/location/native-location-persist';
+import {
+  getLocationService,
+  resetLocationService,
+} from './transistorsoft-location-service';
+import type { LocationAuthorizationStatus } from './types';
 
 let databaseReady: Promise<void> | null = null;
-let locationBootstrap: Promise<LocationAuthorizationStatus | null> | null = null;
+let locationBootstrap: Promise<LocationAuthorizationStatus | null> | null =
+  null;
 
 export function ensureDatabaseReady(): Promise<void> {
   if (!databaseReady) {

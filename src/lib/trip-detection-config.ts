@@ -3,7 +3,10 @@ import {
   DEFAULT_TRIP_GAP_MINUTES,
   HISTORY_SAME_PLACE_RADIUS_METERS,
 } from '@/lib/app-constants';
-import {buildTripDetectionConfig, type TripDetectionConfig} from '@/lib/trip-settings';
+import {
+  buildTripDetectionConfig,
+  type TripDetectionConfig,
+} from '@/lib/trip-settings';
 
 /** Trip detection config (safe outside React — matches useTripDetectionConfig). */
 export function getCurrentTripDetectionConfig(): TripDetectionConfig {

@@ -1,18 +1,18 @@
-import {useCallback, useState} from 'react';
-import {errorMessageOr} from '@/lib/app-copy';
-import {ActivityIndicator, Alert, Pressable, View} from 'react-native';
-import {MapPin} from 'lucide-react-native';
+import { useCallback, useState } from 'react';
+import { errorMessageOr } from '@/lib/app-copy';
+import { ActivityIndicator, Alert, Pressable, View } from 'react-native';
+import { MapPin } from 'lucide-react-native';
 
-import {Icon} from '@/components/ui/icon';
-import {Text} from '@/components/ui/text';
+import { Icon } from '@/components/ui/icon';
+import { Text } from '@/components/ui/text';
 import {
   deleteLocationPointDuplicatesAndCreateUniqueIndex,
   getLocationPointDuplicateStats,
   type LocationPointDuplicateStats,
 } from '@/db/location-points-dedupe';
-import {markMigrationAppliedByTag} from '@/db/migrate';
-import {getSqlite} from '@/db/client';
-import {useThemeColors} from '@/hooks/use-theme-colors';
+import { markMigrationAppliedByTag } from '@/db/migrate';
+import { getSqlite } from '@/db/client';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 
 function formatStats(stats: LocationPointDuplicateStats): string {
   const lines = [
@@ -40,10 +40,7 @@ export function LocationPointsDedupeDevCard() {
     try {
       setStats(await getLocationPointDuplicateStats());
     } catch (error) {
-      Alert.alert(
-        'Scan failed',
-        errorMessageOr(error),
-      );
+      Alert.alert('Scan failed', errorMessageOr(error));
     } finally {
       setScanning(false);
     }
@@ -58,14 +55,14 @@ export function LocationPointsDedupeDevCard() {
       stats.extraRows > 0
         ? `Remove ${stats.extraRows.toLocaleString()} duplicate GPS rows (keeps the oldest row per timestamp + coordinates), then install the unique index so INSERT OR IGNORE works.`
         : stats.hasUniqueIndex
-          ? 'Unique index is already installed.'
-          : 'No duplicate rows found. Install the unique index now?';
+        ? 'Unique index is already installed.'
+        : 'No duplicate rows found. Install the unique index now?';
 
     Alert.alert(
       stats.extraRows > 0 ? 'Delete duplicates?' : 'Create unique index?',
       message,
       [
-        {text: 'Cancel', style: 'cancel'},
+        { text: 'Cancel', style: 'cancel' },
         {
           text: stats.extraRows > 0 ? 'Delete & index' : 'Create index',
           style: stats.extraRows > 0 ? 'destructive' : 'default',
@@ -97,10 +94,7 @@ export function LocationPointsDedupeDevCard() {
                     .join('\n'),
                 );
               } catch (error) {
-                Alert.alert(
-                  'Cleanup failed',
-                  errorMessageOr(error),
-                );
+                Alert.alert('Cleanup failed', errorMessageOr(error));
               } finally {
                 setWorking(false);
               }
@@ -113,9 +107,7 @@ export function LocationPointsDedupeDevCard() {
 
   const busy = scanning || working;
   const canCleanup =
-    stats != null &&
-    !busy &&
-    (stats.extraRows > 0 || !stats.hasUniqueIndex);
+    stats != null && !busy && (stats.extraRows > 0 || !stats.hasUniqueIndex);
 
   return (
     <View className="bg-card border-border rounded-2xl border p-4">
@@ -132,7 +124,10 @@ export function LocationPointsDedupeDevCard() {
       </View>
 
       {stats != null ? (
-        <Text variant="muted" className="mt-3 whitespace-pre-line text-xs leading-5">
+        <Text
+          variant="muted"
+          className="mt-3 whitespace-pre-line text-xs leading-5"
+        >
           {formatStats(stats)}
         </Text>
       ) : null}
@@ -144,7 +139,8 @@ export function LocationPointsDedupeDevCard() {
           onPress={() => void scan()}
           className={`border-border flex-1 rounded-full border px-3 py-2 ${
             busy ? 'opacity-50' : ''
-          }`}>
+          }`}
+        >
           {scanning ? (
             <ActivityIndicator />
           ) : (
@@ -159,7 +155,8 @@ export function LocationPointsDedupeDevCard() {
           onPress={() => void runCleanup()}
           className={`flex-1 rounded-full px-3 py-2 ${
             canCleanup ? 'bg-primary' : 'bg-muted opacity-50'
-          }`}>
+          }`}
+        >
           {working ? (
             <ActivityIndicator color="#fff" />
           ) : (

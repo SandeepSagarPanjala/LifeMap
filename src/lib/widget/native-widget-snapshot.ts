@@ -1,6 +1,6 @@
-import {NativeModules, Platform} from 'react-native';
+import { NativeModules, Platform } from 'react-native';
 
-import type {WidgetSnapshot} from './types';
+import type { WidgetSnapshot } from './types';
 
 type WidgetSnapshotNativeModule = {
   writeSnapshot: (json: string) => Promise<void>;
@@ -12,7 +12,9 @@ const nativeModule = NativeModules.WidgetSnapshotModule as
   | WidgetSnapshotNativeModule
   | undefined;
 
-export async function writeWidgetSnapshot(snapshot: WidgetSnapshot): Promise<void> {
+export async function writeWidgetSnapshot(
+  snapshot: WidgetSnapshot,
+): Promise<void> {
   if (Platform.OS !== 'ios' || nativeModule?.writeSnapshot == null) {
     return;
   }

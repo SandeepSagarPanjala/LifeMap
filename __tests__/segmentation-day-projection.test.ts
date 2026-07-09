@@ -1,6 +1,13 @@
-import {projectSegmentsForDay, type StaySegment} from '../src/lib/segmentation/trips';
-import {dateKeyForTimestamp, dayEndExclusive, dayStart} from '../src/lib/segmentation/day-bounds';
-import type {ParsedPoint, SavedPlaceRow} from '../src/lib/segmentation/types';
+import {
+  projectSegmentsForDay,
+  type StaySegment,
+} from '../src/lib/segmentation/trips';
+import {
+  dateKeyForTimestamp,
+  dayEndExclusive,
+  dayStart,
+} from '../src/lib/segmentation/day-bounds';
+import type { ParsedPoint, SavedPlaceRow } from '../src/lib/segmentation/types';
 
 function parsedPoint(id: number, iso: string): ParsedPoint {
   const at = new Date(iso);

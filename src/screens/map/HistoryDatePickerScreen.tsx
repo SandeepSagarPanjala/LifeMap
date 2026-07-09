@@ -1,26 +1,27 @@
-import {useCallback, useState} from 'react';
-import {StyleSheet, View} from 'react-native';
+import { useCallback, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 
-import {HistoryDatePickerPanel} from '@/components/map/HistoryDatePickerSheet';
-import {NativeHalfSheetShell} from '@/components/ui/NativeHalfSheetShell';
-import {useNativeHalfSheetClose} from '@/components/ui/native-half-sheet-context';
+import { HistoryDatePickerPanel } from '@/components/map/HistoryDatePickerSheet';
+import { NativeHalfSheetShell } from '@/components/ui/NativeHalfSheetShell';
+import { useNativeHalfSheetClose } from '@/components/ui/native-half-sheet-context';
 import {
   consumeHistoryDatePickerOpen,
   queueHistoryDatePickerResult,
 } from '@/lib/history-date-picker-navigation';
-import {getTodayDateKey} from '@/lib/day-utils';
-import {HISTORY_DATE_PICKER_HEIGHT_RATIO} from '@/lib/app-constants';
-import {useSheetCaptureClose} from '@/screens/sheets/use-sheet-capture-close';
+import { getTodayDateKey } from '@/lib/day-utils';
+import { HISTORY_DATE_PICKER_HEIGHT_RATIO } from '@/lib/app-constants';
+import { useSheetCaptureClose } from '@/screens/sheets/use-sheet-capture-close';
 
-function HistoryDatePickerPanelHost({selectedDateKey}: {selectedDateKey: string}) {
+function HistoryDatePickerPanelHost({
+  selectedDateKey,
+}: {
+  selectedDateKey: string;
+}) {
   const closeSheet = useNativeHalfSheetClose();
 
-  const handleSelectDate = useCallback(
-    (dateKey: string) => {
-      queueHistoryDatePickerResult(dateKey);
-    },
-    [],
-  );
+  const handleSelectDate = useCallback((dateKey: string) => {
+    queueHistoryDatePickerResult(dateKey);
+  }, []);
 
   return (
     <HistoryDatePickerPanel
@@ -40,7 +41,8 @@ export function HistoryDatePickerScreen() {
     <View style={styles.root}>
       <NativeHalfSheetShell
         onClose={navigationClose}
-        heightRatio={HISTORY_DATE_PICKER_HEIGHT_RATIO}>
+        heightRatio={HISTORY_DATE_PICKER_HEIGHT_RATIO}
+      >
         <HistoryDatePickerPanelHost selectedDateKey={selectedDateKey} />
       </NativeHalfSheetShell>
     </View>

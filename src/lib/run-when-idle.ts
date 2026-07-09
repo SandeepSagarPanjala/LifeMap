@@ -1,11 +1,11 @@
-import {DEFAULT_IDLE_TIMEOUT_MS} from '@/lib/app-constants';
+import { DEFAULT_IDLE_TIMEOUT_MS } from '@/lib/app-constants';
 
-type IdleTask = {cancel: () => void};
+type IdleTask = { cancel: () => void };
 
 type IdleGlobal = typeof globalThis & {
   requestIdleCallback?: (
     callback: () => void,
-    options?: {timeout?: number},
+    options?: { timeout?: number },
   ) => number;
   cancelIdleCallback?: (handle: number) => void;
 };
@@ -20,14 +20,13 @@ export function runWhenIdle(
   callback: () => void,
   timeout = DEFAULT_IDLE_TIMEOUT_MS,
 ): IdleTask {
-  const {requestIdleCallback, cancelIdleCallback} =
-    globalThis as IdleGlobal;
+  const { requestIdleCallback, cancelIdleCallback } = globalThis as IdleGlobal;
 
   if (requestIdleCallback && cancelIdleCallback) {
-    const handle = requestIdleCallback(callback, {timeout});
-    return {cancel: () => cancelIdleCallback(handle)};
+    const handle = requestIdleCallback(callback, { timeout });
+    return { cancel: () => cancelIdleCallback(handle) };
   }
 
   const timeoutId = setTimeout(callback, 0);
-  return {cancel: () => clearTimeout(timeoutId)};
+  return { cancel: () => clearTimeout(timeoutId) };
 }

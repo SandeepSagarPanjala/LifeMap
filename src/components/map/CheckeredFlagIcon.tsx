@@ -1,4 +1,4 @@
-import Svg, {Rect} from 'react-native-svg';
+import Svg, { Rect } from 'react-native-svg';
 
 type CheckeredFlagIconProps = {
   size?: number;

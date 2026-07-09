@@ -1,14 +1,14 @@
-import {StyleSheet, Text, View} from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-import {MapCameraButton} from '@/components/map/MapCameraButton';
-import {MapHistoryButton} from '@/components/map/MapHistoryButton';
-import {MapLocateButton} from '@/components/map/MapLocateButton';
-import {MapNoteButton} from '@/components/map/MapNoteButton';
-import {MapPlacesButton} from '@/components/map/MapPlacesButton';
-import {MapActivityButton} from '@/components/map/MapActivityButton';
-import {MapVoiceButton} from '@/components/map/MapVoiceButton';
+import { MapCameraButton } from '@/components/map/MapCameraButton';
+import { MapHistoryButton } from '@/components/map/MapHistoryButton';
+import { MapLocateButton } from '@/components/map/MapLocateButton';
+import { MapNoteButton } from '@/components/map/MapNoteButton';
+import { MapPlacesButton } from '@/components/map/MapPlacesButton';
+import { MapActivityButton } from '@/components/map/MapActivityButton';
+import { MapVoiceButton } from '@/components/map/MapVoiceButton';
 
-import type {MapScreenController} from './use-map-screen-controller';
+import type { MapScreenController } from './use-map-screen-controller';
 
 type MapScreenFloatingControlsProps = {
   controller: MapScreenController;
@@ -49,7 +49,10 @@ export function MapScreenFloatingControls({
   return (
     <View pointerEvents="box-none" style={styles.overlay}>
       {showTodayControls ? (
-        <MapLocateButton bottom={locateButtonBottom} onPress={goToCurrentLocation} />
+        <MapLocateButton
+          bottom={locateButtonBottom}
+          onPress={goToCurrentLocation}
+        />
       ) : null}
       {showHistoryButton ? (
         <MapHistoryButton
@@ -60,14 +63,26 @@ export function MapScreenFloatingControls({
         />
       ) : null}
       {showTodayControls ? (
-        <MapPlacesButton bottom={placesButtonBottom} onPress={openSavedPlaces} />
+        <MapPlacesButton
+          bottom={placesButtonBottom}
+          onPress={openSavedPlaces}
+        />
       ) : null}
 
       {showTodayControls ? (
         <>
-          <MapCameraButton bottom={cameraButtonBottom} onPress={handleCaptureCamera} />
-          <MapVoiceButton bottom={voiceButtonBottom} onPress={openCaptureVoice} />
-          <MapNoteButton bottom={noteButtonBottom} onPress={handleCaptureNote} />
+          <MapCameraButton
+            bottom={cameraButtonBottom}
+            onPress={handleCaptureCamera}
+          />
+          <MapVoiceButton
+            bottom={voiceButtonBottom}
+            onPress={openCaptureVoice}
+          />
+          <MapNoteButton
+            bottom={noteButtonBottom}
+            onPress={handleCaptureNote}
+          />
           <MapActivityButton
             bottom={activityButtonBottom}
             onPress={openCaptureActivity}
@@ -86,8 +101,9 @@ export function MapScreenFloatingControls({
             borderRadius: 12,
             paddingHorizontal: 12,
             paddingVertical: 10,
-          }}>
-          <Text style={{color: '#FFFFFF', fontSize: 13, textAlign: 'center'}}>
+          }}
+        >
+          <Text style={{ color: '#FFFFFF', fontSize: 13, textAlign: 'center' }}>
             {emptySelectedDayMessage}
           </Text>
         </View>
@@ -107,8 +123,9 @@ export function MapScreenFloatingControls({
             borderRadius: 12,
             paddingHorizontal: 12,
             paddingVertical: 10,
-          }}>
-          <Text style={{color: '#FFFFFF', fontSize: 13}}>
+          }}
+        >
+          <Text style={{ color: '#FFFFFF', fontSize: 13 }}>
             {trackingGapWarning}. Tracking may have paused.
           </Text>
         </View>

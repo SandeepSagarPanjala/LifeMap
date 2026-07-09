@@ -1,10 +1,10 @@
-import {Check, ChevronRight} from 'lucide-react-native';
-import type {ReactNode} from 'react';
-import {Pressable, Switch, View} from 'react-native';
+import { Check, ChevronRight } from 'lucide-react-native';
+import type { ReactNode } from 'react';
+import { Pressable, Switch, View } from 'react-native';
 
-import {Text} from '@/components/ui/text';
-import {useThemeColors} from '@/hooks/use-theme-colors';
-import {cn} from '@/lib/utils';
+import { Text } from '@/components/ui/text';
+import { useThemeColors } from '@/hooks/use-theme-colors';
+import { cn } from '@/lib/utils';
 
 type SettingsGroupLabelProps = {
   title: string;
@@ -36,13 +36,14 @@ type SettingsGroupProps = {
   className?: string;
 };
 
-export function SettingsGroup({children, className}: SettingsGroupProps) {
+export function SettingsGroup({ children, className }: SettingsGroupProps) {
   return (
     <View
       className={cn(
         'bg-card border-border mt-2 overflow-hidden rounded-xl border',
         className,
-      )}>
+      )}
+    >
       {children}
     </View>
   );
@@ -72,7 +73,8 @@ export function SettingsLinkRow({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       onPress={onPress}
-      className="min-h-[44px] flex-row items-center px-4 py-3 active:opacity-70">
+      className="min-h-[44px] flex-row items-center px-4 py-3 active:opacity-70"
+    >
       <Text className="flex-1 text-base">{label}</Text>
       <View className="max-w-[55%] flex-row items-center gap-1">
         {value ? (
@@ -80,7 +82,11 @@ export function SettingsLinkRow({
             {value}
           </Text>
         ) : null}
-        <ChevronRight size={18} color={colors.mutedForeground} strokeWidth={2.25} />
+        <ChevronRight
+          size={18}
+          color={colors.mutedForeground}
+          strokeWidth={2.25}
+        />
       </View>
     </Pressable>
   );
@@ -117,7 +123,7 @@ export function SettingsIosToggle({
           value={value}
           disabled={disabled || loading}
           onValueChange={onValueChange}
-          trackColor={{false: '#E5E5EA', true: colors.primary}}
+          trackColor={{ false: '#E5E5EA', true: colors.primary }}
           thumbColor="#FFFFFF"
           ios_backgroundColor="#E5E5EA"
         />
@@ -164,7 +170,7 @@ export function SettingsToggleRow({
           value={value}
           disabled={disabled || loading}
           onValueChange={onValueChange}
-          trackColor={{false: '#E5E5EA', true: colors.primary}}
+          trackColor={{ false: '#E5E5EA', true: colors.primary }}
           thumbColor="#FFFFFF"
           ios_backgroundColor="#E5E5EA"
         />
@@ -199,9 +205,10 @@ export function SettingsCheckRow({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{selected}}
+      accessibilityState={{ selected }}
       onPress={onPress}
-      className="min-h-[44px] flex-row items-center px-4 py-3 active:opacity-70">
+      className="min-h-[44px] flex-row items-center px-4 py-3 active:opacity-70"
+    >
       <View className="flex-1">
         <Text className="text-base">{label}</Text>
         {hint ? (

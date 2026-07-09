@@ -1,5 +1,5 @@
-import type {LocationPointRow} from '@/db/repositories/location-days';
-import type {DetectedTrip} from '@/lib/trip-detection';
+import type { LocationPointRow } from '@/db/repositories/location-days';
+import type { DetectedTrip } from '@/lib/trip-detection';
 import {
   hydrateTravelRoutesFromDayPoints,
   isRawGpsDayPoints,
@@ -24,10 +24,7 @@ function gpsPoint(
   };
 }
 
-function sparseStoredTravel(
-  startMs: number,
-  endMs: number,
-): DetectedTrip {
+function sparseStoredTravel(startMs: number, endMs: number): DetectedTrip {
   return {
     id: 'materialized-1',
     kind: 'travel',

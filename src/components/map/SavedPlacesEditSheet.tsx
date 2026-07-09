@@ -1,14 +1,14 @@
-import {useCallback, useEffect, useRef, type ComponentRef} from 'react';
-import {Keyboard, StyleSheet, View} from 'react-native';
+import { useCallback, useEffect, useRef, type ComponentRef } from 'react';
+import { Keyboard, StyleSheet, View } from 'react-native';
 import {
   BottomSheetModalProvider,
   BottomSheetTextInput,
 } from '@gorhom/bottom-sheet';
-import type {BottomSheetModal} from '@gorhom/bottom-sheet';
+import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 
-import {EditFavoriteLabelPanel} from '@/components/map/EditFavoriteLabelSheet';
-import {AppBottomSheet} from '@/components/ui/app-bottom-sheet';
-import type {SavedPlaceRow} from '@/db/repositories/saved-places';
+import { EditFavoriteLabelPanel } from '@/components/map/EditFavoriteLabelSheet';
+import { AppBottomSheet } from '@/components/ui/app-bottom-sheet';
+import type { SavedPlaceRow } from '@/db/repositories/saved-places';
 
 type SavedPlacesEditSheetProps = {
   place: SavedPlaceRow | null;
@@ -93,7 +93,8 @@ export function SavedPlacesEditSheet({
   return (
     <View
       style={styles.host}
-      pointerEvents={place != null ? 'box-none' : 'none'}>
+      pointerEvents={place != null ? 'box-none' : 'none'}
+    >
       <BottomSheetModalProvider>
         <AppBottomSheet
           name="saved-places-edit"
@@ -108,7 +109,8 @@ export function SavedPlacesEditSheet({
           keyboardBehavior="interactive"
           keyboardBlurBehavior="restore"
           dismissKeyboardOnClose
-          releaseTouchesWhileClosing>
+          releaseTouchesWhileClosing
+        >
           {place != null ? (
             <EditFavoriteLabelPanel
               key={place.id}

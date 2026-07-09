@@ -1,4 +1,4 @@
-import {VOICE_MAX_DURATION_MS} from '@/lib/app-constants';
+import { VOICE_MAX_DURATION_MS } from '@/lib/app-constants';
 
 export function formatVoiceDurationMs(ms: number): string {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));

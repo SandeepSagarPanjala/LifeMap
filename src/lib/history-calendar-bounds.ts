@@ -1,7 +1,7 @@
-import {getEarliestLocationDateKey} from '@/db/repositories/location-days';
-import {getSetting, setSetting} from '@/db/repositories/settings';
-import {getTodayDateKey} from '@/lib/day-utils';
-import {useAppStore} from '@/stores/app-store';
+import { getEarliestLocationDateKey } from '@/db/repositories/location-days';
+import { getSetting, setSetting } from '@/db/repositories/settings';
+import { getTodayDateKey } from '@/lib/day-utils';
+import { useAppStore } from '@/stores/app-store';
 
 const SETTINGS_KEY_HISTORY_EARLIEST_DATE = 'history_earliest_date_key';
 

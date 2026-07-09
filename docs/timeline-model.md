@@ -11,8 +11,8 @@ Implementation lives in `src/lib/trip-detection.ts`. Bump `TRIP_DETECTION_VERSIO
 
 The day timeline must **alternate** drive and visit. You cannot stack the same kind twice.
 
-| Valid | Invalid |
-|-------|---------|
+| Valid                         | Invalid           |
+| ----------------------------- | ----------------- |
 | drive → visit → drive → visit | drive → **drive** |
 | visit → drive → visit → drive | visit → **visit** |
 
@@ -37,11 +37,11 @@ Signals (use several, not one):
 
 Thresholds in code today:
 
-| Signal | Constant | Notes |
-|--------|----------|-------|
-| Parked / arrival | `VISIT_ARRIVAL_SPEED_MS` = **2 m/s** | At or below → visit boundary, not drive |
-| Meaningful drive (long) | `MIN_MEANINGFUL_DRIVE_IMPLIED_KMH` = **8 km/h** | Long hops slower than this are tracking gaps, not drives |
-| Departure hop | `MIN_DEPARTURE_SPEED_KMH` – `MAX_DEPARTURE_SPEED_KMH` | 2.5–80 km/h, 80–800 m in ≤ 5 min |
+| Signal                  | Constant                                              | Notes                                                    |
+| ----------------------- | ----------------------------------------------------- | -------------------------------------------------------- |
+| Parked / arrival        | `VISIT_ARRIVAL_SPEED_MS` = **2 m/s**                  | At or below → visit boundary, not drive                  |
+| Meaningful drive (long) | `MIN_MEANINGFUL_DRIVE_IMPLIED_KMH` = **8 km/h**       | Long hops slower than this are tracking gaps, not drives |
+| Departure hop           | `MIN_DEPARTURE_SPEED_KMH` – `MAX_DEPARTURE_SPEED_KMH` | 2.5–80 km/h, 80–800 m in ≤ 5 min                         |
 
 Jitter at one address is **not** a drive.
 

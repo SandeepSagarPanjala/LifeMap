@@ -1,7 +1,7 @@
-import {sql} from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import ReactNativeBlobUtil from 'react-native-blob-util';
 
-import {getDatabase, getSqlite} from '@/db/client';
+import { getDatabase, getSqlite } from '@/db/client';
 import {
   activities,
   locationPoints,
@@ -15,14 +15,14 @@ import {
   tripPoints,
   trips,
 } from '@/db/schema';
-import {getDocumentDirectory} from '@/lib/moments/moment-media-uri';
+import { getDocumentDirectory } from '@/lib/moments/moment-media-uri';
 import {
   ensureMomentsDirectory,
   ensureMomentsTempDirectory,
 } from '@/lib/moments/moment-storage';
 
-import {ensureDirectory, yieldToUi} from './backup-fs';
-import type {BackupProgress} from './backup-types';
+import { ensureDirectory, yieldToUi } from './backup-fs';
+import type { BackupProgress } from './backup-types';
 
 export async function clearAllUserData(): Promise<void> {
   const db = await getDatabase();
@@ -63,8 +63,8 @@ async function clearMomentMediaFiles(): Promise<void> {
 export async function hasLocalUserData(): Promise<boolean> {
   const db = await getDatabase();
   const [locationCount, momentCount] = await Promise.all([
-    db.select({count: sql<number>`count(*)`}).from(locationPoints),
-    db.select({count: sql<number>`count(*)`}).from(moments),
+    db.select({ count: sql<number>`count(*)` }).from(locationPoints),
+    db.select({ count: sql<number>`count(*)` }).from(moments),
   ]);
   return (
     Number(locationCount[0]?.count ?? 0) > 0 ||

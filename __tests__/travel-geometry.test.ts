@@ -1,11 +1,11 @@
-import type {LocationPointRow} from '@/db/repositories/location-days';
+import type { LocationPointRow } from '@/db/repositories/location-days';
 import {
   canonicalizeTravelGeometry,
   canonicalizeTravelGeometryForPersist,
   DRIVE_MIN_POINTS_TO_SIMPLIFY,
   findTurnAnchorIndices,
 } from '@/lib/travel-geometry';
-import {makeMoment} from './helpers/fixtures';
+import { makeMoment } from './helpers/fixtures';
 
 function point(
   id: number,
@@ -27,8 +27,13 @@ function point(
 
 describe('canonicalizeTravelGeometry', () => {
   it('keeps short drives unchanged', () => {
-    const points = Array.from({length: 10}, (_, index) =>
-      point(index + 1, `2026-06-17T10:0${index}:00.000Z`, 33.2 + index * 0.0001, -97.13),
+    const points = Array.from({ length: 10 }, (_, index) =>
+      point(
+        index + 1,
+        `2026-06-17T10:0${index}:00.000Z`,
+        33.2 + index * 0.0001,
+        -97.13,
+      ),
     );
     expect(canonicalizeTravelGeometry(points).length).toBe(10);
   });
@@ -55,7 +60,12 @@ describe('canonicalizeTravelGeometry', () => {
     const straight: LocationPointRow[] = [];
     for (let i = 0; i < DRIVE_MIN_POINTS_TO_SIMPLIFY; i += 1) {
       straight.push(
-        point(i + 1, `2026-06-17T10:00:${String(i).padStart(2, '0')}.000Z`, 33.2, -97.13 + i * 0.0001),
+        point(
+          i + 1,
+          `2026-06-17T10:00:${String(i).padStart(2, '0')}.000Z`,
+          33.2,
+          -97.13 + i * 0.0001,
+        ),
       );
     }
     const turn = point(40, '2026-06-17T10:01:00.000Z', 33.205, -97.12);
@@ -78,11 +88,8 @@ describe('canonicalizeTravelGeometry', () => {
   });
 });
 
-function momentRow(
-  id: number,
-  iso: string,
-) {
-  return makeMoment({id, timestamp: new Date(iso), type: 'note'});
+function momentRow(id: number, iso: string) {
+  return makeMoment({ id, timestamp: new Date(iso), type: 'note' });
 }
 
 describe('canonicalizeTravelGeometryForPersist', () => {
@@ -94,7 +101,9 @@ describe('canonicalizeTravelGeometryForPersist', () => {
       points.push(
         point(
           i + 1,
-          `2026-06-17T10:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.000Z`,
+          `2026-06-17T10:${String(minutes).padStart(2, '0')}:${String(
+            seconds,
+          ).padStart(2, '0')}.000Z`,
           33.2 + i * 0.001,
           -97.13,
         ),

@@ -1,25 +1,28 @@
 import LottieView from 'lottie-react-native';
-import {ActivityIndicator, Pressable, StyleSheet, View} from 'react-native';
-import {Pencil, Play} from 'lucide-react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { Pencil, Play } from 'lucide-react-native';
 
-import {DriveRouteStrip} from '@/components/map/DriveRouteStrip';
-import {SavedPlaceIcon} from '@/components/map/SavedPlaceIcon';
-import {MomentCountsRow} from '@/components/moments/MomentCountsRow';
-import {Text} from '@/components/ui/text';
-import type {SavedPlaceRow} from '@/db/repositories/saved-places';
-import {HISTORY_COLORS} from '@/lib/app-constants';
-import type {MomentCountType, MomentCounts} from '@/lib/moments/moment-counts';
-import {hasMomentCounts} from '@/lib/moments/moment-counts';
-import type {DriveEndpointLabel} from '@/lib/drive-endpoint-label';
-import {savedPlaceDisplayLabel} from '@/lib/saved-places';
-import type {DayTimelineEntry} from '@/lib/trip-detection';
+import { DriveRouteStrip } from '@/components/map/DriveRouteStrip';
+import { SavedPlaceIcon } from '@/components/map/SavedPlaceIcon';
+import { MomentCountsRow } from '@/components/moments/MomentCountsRow';
+import { Text } from '@/components/ui/text';
+import type { SavedPlaceRow } from '@/db/repositories/saved-places';
+import { HISTORY_COLORS } from '@/lib/app-constants';
+import type {
+  MomentCountType,
+  MomentCounts,
+} from '@/lib/moments/moment-counts';
+import { hasMomentCounts } from '@/lib/moments/moment-counts';
+import type { DriveEndpointLabel } from '@/lib/drive-endpoint-label';
+import { savedPlaceDisplayLabel } from '@/lib/saved-places';
+import type { DayTimelineEntry } from '@/lib/trip-detection';
 import {
   formatStayVisitLabel,
   formatTimelineStats,
   formatTimelineTitle,
 } from '@/lib/trip-format';
-import type {DistanceUnit} from '@/lib/location-geo';
-import {useThemeColors} from '@/hooks/use-theme-colors';
+import type { DistanceUnit } from '@/lib/location-geo';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 
 const VISIT_LOTTIE = require('../../../assets/lottie/visit-relax.json');
 
@@ -110,15 +113,15 @@ export function HistoryEventCard({
     const title = scrubOnEmpty
       ? 'Select an event'
       : emptyDayWithoutData
-        ? 'No location data'
-        : 'No history yet';
+      ? 'No location data'
+      : 'No history yet';
     const subtitle = scrubOnEmpty
       ? 'Tap a visit or drive on the bar, or use the arrows.'
       : emptyDayWithoutData
-        ? 'LifeMap has no saved points for this day. Try another date.'
-        : viewingToday
-          ? 'Your timeline fills in from install to now as LifeMap saves locations.'
-          : 'Your timeline fills in as LifeMap saves locations.';
+      ? 'LifeMap has no saved points for this day. Try another date.'
+      : viewingToday
+      ? 'Your timeline fills in from install to now as LifeMap saves locations.'
+      : 'Your timeline fills in as LifeMap saves locations.';
     return (
       <View style={styles.card}>
         <Text className="font-medium">{title}</Text>
@@ -141,7 +144,8 @@ export function HistoryEventCard({
     : null;
   const title = isStay ? visitLabel!.title : formatTimelineTitle(entry);
   const stats = formatTimelineStats(entry, distanceUnit);
-  const showMomentCounts = momentCounts != null && hasMomentCounts(momentCounts);
+  const showMomentCounts =
+    momentCounts != null && hasMomentCounts(momentCounts);
 
   return (
     <View style={[styles.card, isGap && styles.cardGap]}>
@@ -182,7 +186,8 @@ export function HistoryEventCard({
                   <Text
                     className="text-base font-semibold"
                     numberOfLines={1}
-                    variant={visitPlaceResolving ? 'muted' : undefined}>
+                    variant={visitPlaceResolving ? 'muted' : undefined}
+                  >
                     {visitPlaceLabel}
                   </Text>
                 ) : null}
@@ -192,8 +197,13 @@ export function HistoryEventCard({
                     accessibilityLabel="Edit place label"
                     onPress={onEditVisitPlaceLabel}
                     hitSlop={8}
-                    style={styles.visitEditButton}>
-                    <Pencil size={14} color={colors.primary} strokeWidth={2.25} />
+                    style={styles.visitEditButton}
+                  >
+                    <Pencil
+                      size={14}
+                      color={colors.primary}
+                      strokeWidth={2.25}
+                    />
                   </Pressable>
                 ) : null}
               </View>
@@ -205,7 +215,8 @@ export function HistoryEventCard({
               styles.eventTitleRow,
               showZoom && styles.eventTitleRowWithRightAction,
               styles.visitTitleRow,
-            ]}>
+            ]}
+          >
             <View className="flex-1">
               <Text className="text-lg font-semibold">{visitLabel.title}</Text>
               <Text variant="muted" className="mt-0.5 text-sm">
@@ -245,8 +256,9 @@ export function HistoryEventCard({
           onPress={onZoomVisit}
           style={[
             styles.actionButton,
-            {backgroundColor: HISTORY_COLORS.stay},
-          ]}>
+            { backgroundColor: HISTORY_COLORS.stay },
+          ]}
+        >
           <Play size={20} color="#FFFFFF" fill="#FFFFFF" />
         </Pressable>
       ) : null}
@@ -264,7 +276,7 @@ const styles = StyleSheet.create({
     minHeight: 88,
     overflow: 'visible',
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
@@ -332,7 +344,7 @@ const styles = StyleSheet.create({
     width: VISIT_LOTTIE_RENDER_WIDTH,
     height: VISIT_LOTTIE_RENDER_HEIGHT,
     marginTop: -96,
-    transform: [{scaleX: -1}],
+    transform: [{ scaleX: -1 }],
   },
   actionButton: {
     position: 'absolute',

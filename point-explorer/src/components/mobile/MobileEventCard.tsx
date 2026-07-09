@@ -1,4 +1,4 @@
-import type {DayTimelineEntry, DetectedTrip} from '../../mobile/types';
+import type { DayTimelineEntry, DetectedTrip } from '../../mobile/types';
 import {
   driveEndpointLabel,
   driveStatsLine,
@@ -8,11 +8,11 @@ import {
   formatTripTimeRange,
   visitPlaceName,
 } from '../../mobile/timeline-format';
-import type {SavedPlaceRow} from '../../types';
-import {DRIVE_CAR_LOTTIE, VISIT_RELAX_LOTTIE} from './lottie-sources';
-import {MobileLottie} from './MobileLottie';
-import {MobileMomentCountsRow} from './MobileMomentCountsRow';
-import {hasMobileMomentCounts} from './mobile-moment-theme';
+import type { SavedPlaceRow } from '../../types';
+import { DRIVE_CAR_LOTTIE, VISIT_RELAX_LOTTIE } from './lottie-sources';
+import { MobileLottie } from './MobileLottie';
+import { MobileMomentCountsRow } from './MobileMomentCountsRow';
+import { hasMobileMomentCounts } from './mobile-moment-theme';
 import {
   SavedPlaceIcon,
   SAVED_PLACE_ICON_COLOR,
@@ -26,7 +26,7 @@ type MobileEventCardProps = {
   emptyDayWithoutData?: boolean;
 };
 
-function MomentSection({entry}: {entry: DayTimelineEntry}) {
+function MomentSection({ entry }: { entry: DayTimelineEntry }) {
   if (!hasMobileMomentCounts(entry.momentCounts)) {
     return null;
   }
@@ -82,13 +82,13 @@ export function MobileEventCard({
     const title = scrubOnEmpty
       ? 'Select an event'
       : emptyDayWithoutData
-        ? 'No location data'
-        : 'No history yet';
+      ? 'No location data'
+      : 'No history yet';
     const subtitle = scrubOnEmpty
       ? 'Tap a visit or drive on the bar, or use the arrows.'
       : emptyDayWithoutData
-        ? 'This export has no GPS points for this day.'
-        : 'Load a JSON export with location points to preview the mobile timeline.';
+      ? 'This export has no GPS points for this day.'
+      : 'Load a JSON export with location points to preview the mobile timeline.';
     return (
       <div className="mobile-event-card mobile-event-card-empty">
         <div className="mobile-event-title">{title}</div>
@@ -102,7 +102,9 @@ export function MobileEventCard({
       <div className="mobile-event-card mobile-event-card-gap">
         <div className="mobile-event-kind">Gap</div>
         <div className="mobile-event-title">{formatTimelineTitle(entry)}</div>
-        <div className="mobile-event-subtitle">{formatTimelineStats(entry)}</div>
+        <div className="mobile-event-subtitle">
+          {formatTimelineStats(entry)}
+        </div>
       </div>
     );
   }
@@ -149,7 +151,8 @@ export function MobileEventCard({
         <button
           type="button"
           className="mobile-event-action mobile-event-action-stay"
-          aria-label="Zoom to visit on map">
+          aria-label="Zoom to visit on map"
+        >
           <span className="mobile-play-icon" aria-hidden>
             ▶
           </span>
@@ -214,7 +217,8 @@ function MobileDriveCard({
         <button
           type="button"
           className="mobile-event-action mobile-event-action-drive"
-          aria-label="Play on map">
+          aria-label="Play on map"
+        >
           <span className="mobile-play-icon" aria-hidden>
             ▶
           </span>
@@ -224,4 +228,4 @@ function MobileDriveCard({
   );
 }
 
-export {SAVED_PLACE_ICON_COLOR, SAVED_PLACE_VISIT_COLOR};
+export { SAVED_PLACE_ICON_COLOR, SAVED_PLACE_VISIT_COLOR };

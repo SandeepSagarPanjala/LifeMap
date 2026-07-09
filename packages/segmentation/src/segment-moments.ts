@@ -1,5 +1,5 @@
-import type {TripSegment} from './trips';
-import type {SegmentationMoment, SegmentationMomentType} from './types';
+import type { TripSegment } from './trips';
+import type { SegmentationMoment, SegmentationMomentType } from './types';
 
 export type SegmentMomentCounts = {
   photo: number;
@@ -10,7 +10,7 @@ export type SegmentMomentCounts = {
 };
 
 export function emptySegmentMomentCounts(): SegmentMomentCounts {
-  return {photo: 0, video: 0, voice: 0, note: 0, activity: 0};
+  return { photo: 0, video: 0, voice: 0, note: 0, activity: 0 };
 }
 
 export function hasSegmentMomentCounts(counts: SegmentMomentCounts): boolean {
@@ -69,6 +69,6 @@ export function annotateSegmentMoments(
     if (!hasSegmentMomentCounts(momentCounts)) {
       return segment;
     }
-    return {...segment, momentCounts};
+    return { ...segment, momentCounts };
   });
 }

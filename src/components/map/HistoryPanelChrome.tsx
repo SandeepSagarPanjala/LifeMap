@@ -1,8 +1,8 @@
-import {ChevronLeft, ChevronRight, X} from 'lucide-react-native';
-import {Pressable, StyleSheet, Text, View} from 'react-native';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import {MapCircleButton} from '@/components/map/MapCircleButton';
-import {CAPTURE_BUTTON_THEMES} from '@/components/map/map-capture-button-theme';
+import { MapCircleButton } from '@/components/map/MapCircleButton';
+import { CAPTURE_BUTTON_THEMES } from '@/components/map/map-capture-button-theme';
 import {
   MAP_DATE_NAV_ROW_GAP,
   MAP_SETTINGS_SIZE,
@@ -40,11 +40,13 @@ export function HistoryPanelChrome({
       accessibilityLabel={
         viewingToday ? 'History controls' : `Map showing ${label}`
       }
-      style={styles.wrap}>
+      style={styles.wrap}
+    >
       <MapCircleButton
         accessibilityLabel={viewingToday ? 'Close history' : 'Return to today'}
         variant="softRed"
-        onPress={onClose}>
+        onPress={onClose}
+      >
         <X size={20} color={MAP_CLOSE_ICON_COLOR} strokeWidth={2.5} />
       </MapCircleButton>
 
@@ -53,7 +55,8 @@ export function HistoryPanelChrome({
           accessibilityLabel="Previous day"
           disabled={!canGoPrev}
           variant="capture"
-          onPress={() => onPrev?.()}>
+          onPress={() => onPrev?.()}
+        >
           <ChevronLeft
             size={22}
             color={HISTORY_NAV_ICON_COLOR}
@@ -65,7 +68,8 @@ export function HistoryPanelChrome({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Choose date"
-          onPress={onPressLabel}>
+          onPress={onPressLabel}
+        >
           <View style={styles.pill}>
             <Text style={styles.label} numberOfLines={1}>
               {label}
@@ -77,7 +81,8 @@ export function HistoryPanelChrome({
           accessibilityLabel="Next day"
           disabled={!canGoNext}
           variant="capture"
-          onPress={() => onNext?.()}>
+          onPress={() => onNext?.()}
+        >
           <ChevronRight
             size={22}
             color={HISTORY_NAV_ICON_COLOR}
@@ -111,7 +116,7 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: '#E5E5EA',
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.12,
     shadowRadius: 6,
     elevation: 4,

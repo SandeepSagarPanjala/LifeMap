@@ -1,5 +1,5 @@
-import {useCallback, useEffect, useRef, useState} from 'react';
-import {APP_COPY} from '@/lib/app-copy';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { APP_COPY } from '@/lib/app-copy';
 import {
   Alert,
   Dimensions,
@@ -13,32 +13,48 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native';
-import {Activity, AudioLines, Camera, NotebookPen, Pause, Play, Trash2, Video, X} from 'lucide-react-native';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {
+  Activity,
+  AudioLines,
+  Camera,
+  NotebookPen,
+  Pause,
+  Play,
+  Trash2,
+  Video,
+  X,
+} from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import {MomentVideoPlayer} from '@/components/capture/MomentVideoPlayer';
-import {ResizeMode} from 'react-native-video';
-import {SavedPlaceIcon} from '@/components/map/SavedPlaceIcon';
-import {CAPTURE_BUTTON_THEMES} from '@/components/map/map-capture-button-theme';
-import {MomentPreviewImage} from '@/components/moments/MomentPreviewImage';
-import {Text} from '@/components/ui/text';
-import type {MomentRow} from '@/db/repositories/moments';
-import type {SavedPlaceRow} from '@/db/repositories/saved-places';
-import type {MomentPreviewContext} from '@/lib/moments/moment-preview-context';
+import { MomentVideoPlayer } from '@/components/capture/MomentVideoPlayer';
+import { ResizeMode } from 'react-native-video';
+import { SavedPlaceIcon } from '@/components/map/SavedPlaceIcon';
+import { CAPTURE_BUTTON_THEMES } from '@/components/map/map-capture-button-theme';
+import { MomentPreviewImage } from '@/components/moments/MomentPreviewImage';
+import { Text } from '@/components/ui/text';
+import type { MomentRow } from '@/db/repositories/moments';
+import type { SavedPlaceRow } from '@/db/repositories/saved-places';
+import type { MomentPreviewContext } from '@/lib/moments/moment-preview-context';
 import {
   formatMomentVoiceDuration,
   momentHasVoiceAttachment,
   resolveMomentVoiceContentPath,
 } from '@/lib/moments/moment-voice';
-import {notePhotoAttachmentPaths} from '@/lib/moments/note-photo-attachments';
-import {getEmotionContextTokenByLabel} from '@/lib/moments/emotion-context-tokens';
-import {getEmotionTokenByLabel, parseEmotionMoodLabel} from '@/lib/moments/emotion-tokens';
-import {momentVideoUri, resolveExistingMomentContentPath} from '@/lib/moments/moment-media-uri';
+import { notePhotoAttachmentPaths } from '@/lib/moments/note-photo-attachments';
+import { getEmotionContextTokenByLabel } from '@/lib/moments/emotion-context-tokens';
+import {
+  getEmotionTokenByLabel,
+  parseEmotionMoodLabel,
+} from '@/lib/moments/emotion-tokens';
+import {
+  momentVideoUri,
+  resolveExistingMomentContentPath,
+} from '@/lib/moments/moment-media-uri';
 import {
   createVoiceRecorderSession,
   getVoiceRecordingErrorMessage,
 } from '@/lib/moments/voice-recorder';
-import {formatTripClockTime} from '@/lib/trip-format';
+import { formatTripClockTime } from '@/lib/trip-format';
 
 export type MomentPreviewViewerProps = {
   moments: MomentRow[];
@@ -92,23 +108,40 @@ function VoiceAttachmentRow({
       accessibilityRole="button"
       accessibilityLabel={isPlaying ? 'Pause voice memo' : 'Play voice memo'}
       onPress={onToggle}
-      style={[styles.voiceAttachmentRow, compact ? styles.voiceAttachmentRowCompact : null]}>
+      style={[
+        styles.voiceAttachmentRow,
+        compact ? styles.voiceAttachmentRowCompact : null,
+      ]}
+    >
       <View
         style={[
           styles.voiceAttachmentPlay,
           compact ? styles.voiceAttachmentPlayCompact : null,
-          {backgroundColor: theme.badgeBg},
-        ]}>
+          { backgroundColor: theme.badgeBg },
+        ]}
+      >
         {isPlaying ? (
-          <Pause size={compact ? 16 : 18} color={theme.icon} strokeWidth={2.25} />
+          <Pause
+            size={compact ? 16 : 18}
+            color={theme.icon}
+            strokeWidth={2.25}
+          />
         ) : (
-          <Play size={compact ? 16 : 18} color={theme.icon} strokeWidth={2.25} />
+          <Play
+            size={compact ? 16 : 18}
+            color={theme.icon}
+            strokeWidth={2.25}
+          />
         )}
       </View>
       <View style={styles.voiceAttachmentCopy}>
         <Text
-          style={[styles.voiceAttachmentLabel, compact ? styles.voiceAttachmentLabelCompact : null]}
-          numberOfLines={1}>
+          style={[
+            styles.voiceAttachmentLabel,
+            compact ? styles.voiceAttachmentLabelCompact : null,
+          ]}
+          numberOfLines={1}
+        >
           {label}
         </Text>
         {durationLabel ? (
@@ -119,30 +152,36 @@ function VoiceAttachmentRow({
   );
 }
 
-function MomentTypeIcon({moment, size = 18}: {moment: MomentRow; size?: number}) {
+function MomentTypeIcon({
+  moment,
+  size = 18,
+}: {
+  moment: MomentRow;
+  size?: number;
+}) {
   const theme =
     moment.type === 'voice'
       ? CAPTURE_BUTTON_THEMES.voice
       : moment.type === 'note'
-        ? CAPTURE_BUTTON_THEMES.note
-        : moment.type === 'activity'
-          ? CAPTURE_BUTTON_THEMES.activity
-          : moment.type === 'video'
-            ? CAPTURE_BUTTON_THEMES.camera
-            : CAPTURE_BUTTON_THEMES.camera;
+      ? CAPTURE_BUTTON_THEMES.note
+      : moment.type === 'activity'
+      ? CAPTURE_BUTTON_THEMES.activity
+      : moment.type === 'video'
+      ? CAPTURE_BUTTON_THEMES.camera
+      : CAPTURE_BUTTON_THEMES.camera;
   const Icon =
     moment.type === 'voice'
       ? AudioLines
       : moment.type === 'note'
-        ? NotebookPen
-        : moment.type === 'activity'
-          ? Activity
-          : moment.type === 'video'
-            ? Video
-            : Camera;
+      ? NotebookPen
+      : moment.type === 'activity'
+      ? Activity
+      : moment.type === 'video'
+      ? Video
+      : Camera;
 
   return (
-    <View style={[styles.typeOrb, {backgroundColor: theme.badgeBg}]}>
+    <View style={[styles.typeOrb, { backgroundColor: theme.badgeBg }]}>
       <Icon size={size} color={theme.icon} strokeWidth={2.25} />
     </View>
   );
@@ -165,7 +204,9 @@ function MomentInfoHeader({
     <View style={styles.infoHeader}>
       <View style={styles.infoTopRow}>
         <MomentTypeIcon moment={moment} size={16} />
-        <Text style={styles.infoTime}>{formatTripClockTime(moment.timestamp)}</Text>
+        <Text style={styles.infoTime}>
+          {formatTripClockTime(moment.timestamp)}
+        </Text>
       </View>
 
       {previewEntryContext ? (
@@ -226,8 +267,11 @@ function VoiceMomentPage({
         accessibilityRole="button"
         accessibilityLabel={isPlaying ? 'Pause voice memo' : 'Play voice memo'}
         onPress={onToggle}
-        style={styles.voicePlayButton}>
-        <View style={[styles.voicePlayCircle, {backgroundColor: theme.badgeBg}]}>
+        style={styles.voicePlayButton}
+      >
+        <View
+          style={[styles.voicePlayCircle, { backgroundColor: theme.badgeBg }]}
+        >
           {isPlaying ? (
             <Pause size={36} color={theme.icon} strokeWidth={2.25} />
           ) : (
@@ -248,14 +292,16 @@ function VoiceMomentPage({
   );
 }
 
-function ActivityMomentPage({moment}: {moment: MomentRow}) {
+function ActivityMomentPage({ moment }: { moment: MomentRow }) {
   const theme = CAPTURE_BUTTON_THEMES.activity;
   const emoji = moment.activityEmoji?.trim() || '✨';
   const label = moment.activityLabel?.trim() || 'Activity';
 
   return (
     <View style={styles.activityPage}>
-      <View style={[styles.activitySticker, {backgroundColor: theme.badgeBg}]}>
+      <View
+        style={[styles.activitySticker, { backgroundColor: theme.badgeBg }]}
+      >
         <Text style={styles.activityEmoji}>{emoji}</Text>
       </View>
       <Text style={styles.activityLabel}>{label}</Text>
@@ -285,14 +331,14 @@ function NotePhotoTile({
   return (
     <MomentPreviewImage
       contentPath={path}
-      style={[styles.notePhoto, {width, height}]}
+      style={[styles.notePhoto, { width, height }]}
       resizeMode="cover"
     />
   );
 }
 
-function NotePhotoGrid({paths}: {paths: string[]}) {
-  const {width: windowWidth} = useWindowDimensions();
+function NotePhotoGrid({ paths }: { paths: string[] }) {
+  const { width: windowWidth } = useWindowDimensions();
   const gridWidth = windowWidth - NOTE_PREVIEW_HORIZONTAL_PADDING * 2;
   const halfWidth = (gridWidth - NOTE_PHOTO_GAP) / 2;
   const tileHeight = halfWidth;
@@ -303,42 +349,46 @@ function NotePhotoGrid({paths}: {paths: string[]}) {
 
   if (paths.length === 1) {
     return (
-      <NotePhotoTile path={paths[0]!} width={gridWidth} height={gridWidth * 0.72} />
+      <NotePhotoTile
+        path={paths[0]!}
+        width={gridWidth}
+        height={gridWidth * 0.72}
+      />
     );
   }
 
-  const rows: Array<Array<{path: string; span: 'half' | 'full'}>> = [];
+  const rows: Array<Array<{ path: string; span: 'half' | 'full' }>> = [];
 
   if (paths.length === 2) {
     rows.push([
-      {path: paths[0]!, span: 'half'},
-      {path: paths[1]!, span: 'half'},
+      { path: paths[0]!, span: 'half' },
+      { path: paths[1]!, span: 'half' },
     ]);
   } else if (paths.length === 3) {
     rows.push([
-      {path: paths[0]!, span: 'half'},
-      {path: paths[1]!, span: 'half'},
+      { path: paths[0]!, span: 'half' },
+      { path: paths[1]!, span: 'half' },
     ]);
-    rows.push([{path: paths[2]!, span: 'full'}]);
+    rows.push([{ path: paths[2]!, span: 'full' }]);
   } else if (paths.length === 4) {
     rows.push([
-      {path: paths[0]!, span: 'half'},
-      {path: paths[1]!, span: 'half'},
+      { path: paths[0]!, span: 'half' },
+      { path: paths[1]!, span: 'half' },
     ]);
     rows.push([
-      {path: paths[2]!, span: 'half'},
-      {path: paths[3]!, span: 'half'},
+      { path: paths[2]!, span: 'half' },
+      { path: paths[3]!, span: 'half' },
     ]);
   } else {
     rows.push([
-      {path: paths[0]!, span: 'half'},
-      {path: paths[1]!, span: 'half'},
+      { path: paths[0]!, span: 'half' },
+      { path: paths[1]!, span: 'half' },
     ]);
     rows.push([
-      {path: paths[2]!, span: 'half'},
-      {path: paths[3]!, span: 'half'},
+      { path: paths[2]!, span: 'half' },
+      { path: paths[3]!, span: 'half' },
     ]);
-    rows.push([{path: paths[4]!, span: 'full'}]);
+    rows.push([{ path: paths[4]!, span: 'full' }]);
   }
 
   return (
@@ -396,9 +446,10 @@ function NoteMomentPage({
       style={styles.noteScroll}
       contentContainerStyle={[
         styles.noteScrollContent,
-        {paddingTop: contentInsetTop},
+        { paddingTop: contentInsetTop },
       ]}
-      showsVerticalScrollIndicator={false}>
+      showsVerticalScrollIndicator={false}
+    >
       {moment.title?.trim() ? (
         <Text style={styles.noteTitle}>{moment.title.trim()}</Text>
       ) : null}
@@ -408,18 +459,28 @@ function NoteMomentPage({
       {emotionToken ? (
         <View style={styles.noteEmotionRow}>
           <View
-            style={[styles.noteEmotionSticker, {backgroundColor: emotionToken.tint}]}>
+            style={[
+              styles.noteEmotionSticker,
+              { backgroundColor: emotionToken.tint },
+            ]}
+          >
             <Text style={styles.noteEmotionEmoji}>{emotionToken.sticker}</Text>
           </View>
           <View style={styles.noteEmotionCopy}>
             <Text style={styles.noteMood}>{emotionToken.label}</Text>
             {contextToken ? (
               <View style={styles.noteContextRow}>
-                <Text style={styles.noteContextSticker}>{contextToken.sticker}</Text>
-                <Text style={styles.noteContextLabel}>{contextToken.label}</Text>
+                <Text style={styles.noteContextSticker}>
+                  {contextToken.sticker}
+                </Text>
+                <Text style={styles.noteContextLabel}>
+                  {contextToken.label}
+                </Text>
               </View>
             ) : parsedMood?.contextLabel ? (
-              <Text style={styles.noteContextLabel}>{parsedMood.contextLabel}</Text>
+              <Text style={styles.noteContextLabel}>
+                {parsedMood.contextLabel}
+              </Text>
             ) : null}
           </View>
         </View>
@@ -429,10 +490,18 @@ function NoteMomentPage({
       {moment.voiceAttachmentPath ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={isPlayingVoice ? 'Pause voice message' : 'Play voice message'}
+          accessibilityLabel={
+            isPlayingVoice ? 'Pause voice message' : 'Play voice message'
+          }
           onPress={onToggleVoice}
-          style={styles.noteVoiceRow}>
-          <View style={[styles.noteVoicePlay, {backgroundColor: voiceTheme.badgeBg}]}>
+          style={styles.noteVoiceRow}
+        >
+          <View
+            style={[
+              styles.noteVoicePlay,
+              { backgroundColor: voiceTheme.badgeBg },
+            ]}
+          >
             {isPlayingVoice ? (
               <Pause size={18} color={voiceTheme.icon} strokeWidth={2.25} />
             ) : (
@@ -490,7 +559,7 @@ function MomentPagerPage({
   noteContentInsetTop: number;
 }) {
   return (
-    <View style={[styles.page, {width: pageWidth}]}>
+    <View style={[styles.page, { width: pageWidth }]}>
       {moment.type === 'photo' && moment.contentPath ? (
         <MomentPreviewImage
           contentPath={moment.contentPath}
@@ -520,19 +589,27 @@ function MomentPagerPage({
         />
       ) : null}
 
-      {moment.type === 'activity' ? <ActivityMomentPage moment={moment} /> : null}
+      {moment.type === 'activity' ? (
+        <ActivityMomentPage moment={moment} />
+      ) : null}
     </View>
   );
 }
 
-function PaginationDots({count, activeIndex}: {count: number; activeIndex: number}) {
+function PaginationDots({
+  count,
+  activeIndex,
+}: {
+  count: number;
+  activeIndex: number;
+}) {
   if (count <= 1) {
     return null;
   }
 
   return (
     <View style={styles.dotsRow}>
-      {Array.from({length: count}, (_, index) => (
+      {Array.from({ length: count }, (_, index) => (
         <View
           key={index}
           style={[styles.dot, index === activeIndex ? styles.dotActive : null]}
@@ -559,7 +636,9 @@ export function MomentPreviewViewer({
   const [deletingMomentId, setDeletingMomentId] = useState<number | null>(null);
   const [noteContentInsetTop, setNoteContentInsetTop] = useState(112);
   const pagerRef = useRef<FlatList<MomentRow>>(null);
-  const playerRef = useRef<ReturnType<typeof createVoiceRecorderSession> | null>(null);
+  const playerRef = useRef<ReturnType<
+    typeof createVoiceRecorderSession
+  > | null>(null);
   const autoPlayGenerationRef = useRef(0);
   const lastAutoPlayedKeyRef = useRef<string | null>(null);
   const aliveRef = useRef(true);
@@ -578,47 +657,53 @@ export function MomentPreviewViewer({
     }
   }, []);
 
-  const playVoice = useCallback(async (moment: MomentRow, generation?: number) => {
-    if (!momentHasVoiceAttachment(moment)) {
-      return;
-    }
-    const voicePath = resolveMomentVoiceContentPath(moment);
-    if (!voicePath) {
-      return;
-    }
-    const existingPath = await resolveExistingMomentContentPath(voicePath);
-    if (!existingPath || !aliveRef.current) {
-      return;
-    }
-    if (generation != null && generation !== autoPlayGenerationRef.current) {
-      return;
-    }
+  const playVoice = useCallback(
+    async (moment: MomentRow, generation?: number) => {
+      if (!momentHasVoiceAttachment(moment)) {
+        return;
+      }
+      const voicePath = resolveMomentVoiceContentPath(moment);
+      if (!voicePath) {
+        return;
+      }
+      const existingPath = await resolveExistingMomentContentPath(voicePath);
+      if (!existingPath || !aliveRef.current) {
+        return;
+      }
+      if (generation != null && generation !== autoPlayGenerationRef.current) {
+        return;
+      }
 
-    try {
-      await playerRef.current?.stopPreview();
-      if (
-        !aliveRef.current ||
-        (generation != null && generation !== autoPlayGenerationRef.current)
-      ) {
-        return;
-      }
-      await playerRef.current?.startPreview(existingPath);
-      if (
-        !aliveRef.current ||
-        (generation != null && generation !== autoPlayGenerationRef.current)
-      ) {
+      try {
         await playerRef.current?.stopPreview();
-        return;
+        if (
+          !aliveRef.current ||
+          (generation != null && generation !== autoPlayGenerationRef.current)
+        ) {
+          return;
+        }
+        await playerRef.current?.startPreview(existingPath);
+        if (
+          !aliveRef.current ||
+          (generation != null && generation !== autoPlayGenerationRef.current)
+        ) {
+          await playerRef.current?.stopPreview();
+          return;
+        }
+        setPlayingVoiceId(moment.id);
+      } catch (error) {
+        if (!aliveRef.current) {
+          return;
+        }
+        setPlayingVoiceId(null);
+        Alert.alert(
+          APP_COPY.alerts.couldNotPlayVoiceMemo,
+          getVoiceRecordingErrorMessage(error),
+        );
       }
-      setPlayingVoiceId(moment.id);
-    } catch (error) {
-      if (!aliveRef.current) {
-        return;
-      }
-      setPlayingVoiceId(null);
-      Alert.alert(APP_COPY.alerts.couldNotPlayVoiceMemo, getVoiceRecordingErrorMessage(error));
-    }
-  }, []);
+    },
+    [],
+  );
 
   useEffect(() => {
     aliveRef.current = true;
@@ -678,7 +763,10 @@ export function MomentPreviewViewer({
       Math.min(initialIndex, Math.max(0, moments.length - 1)),
     );
     setActiveIndex(index);
-    pagerRef.current?.scrollToOffset({offset: index * pageWidth, animated: false});
+    pagerRef.current?.scrollToOffset({
+      offset: index * pageWidth,
+      animated: false,
+    });
   }, [initialIndex, moments.length, pageWidth]);
 
   useEffect(() => {
@@ -748,7 +836,10 @@ export function MomentPreviewViewer({
           if (!aliveRef.current) {
             return;
           }
-          Alert.alert(APP_COPY.alerts.couldNotPauseVoiceMemo, getVoiceRecordingErrorMessage(error));
+          Alert.alert(
+            APP_COPY.alerts.couldNotPauseVoiceMemo,
+            getVoiceRecordingErrorMessage(error),
+          );
         }
         return;
       }
@@ -762,41 +853,40 @@ export function MomentPreviewViewer({
   const confirmDeleteMoment = useCallback(
     (moment: MomentRow) => {
       const noun = momentDeleteNoun(moment.type);
-      Alert.alert(
-        `Delete this ${noun}?`,
-        'This cannot be undone.',
-        [
-          {text: 'Cancel', style: 'cancel'},
-          {
-            text: 'Delete',
-            style: 'destructive',
-            onPress: () => {
-              void (async () => {
-                if (deletingMomentId != null) {
-                  return;
-                }
-                setDeletingMomentId(moment.id);
-                if (playingVoiceId === moment.id) {
-                  await stopVoice();
-                }
-                try {
-                  await onDeleteMoment(moment.id);
-                } catch {
-                  Alert.alert(APP_COPY.common.couldNotDeleteMoment, APP_COPY.common.deleteMomentTryAgain);
-                } finally {
-                  setDeletingMomentId(null);
-                }
-              })();
-            },
+      Alert.alert(`Delete this ${noun}?`, 'This cannot be undone.', [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            void (async () => {
+              if (deletingMomentId != null) {
+                return;
+              }
+              setDeletingMomentId(moment.id);
+              if (playingVoiceId === moment.id) {
+                await stopVoice();
+              }
+              try {
+                await onDeleteMoment(moment.id);
+              } catch {
+                Alert.alert(
+                  APP_COPY.common.couldNotDeleteMoment,
+                  APP_COPY.common.deleteMomentTryAgain,
+                );
+              } finally {
+                setDeletingMomentId(null);
+              }
+            })();
           },
-        ],
-      );
+        },
+      ]);
     },
     [deletingMomentId, onDeleteMoment, playingVoiceId, stopVoice],
   );
 
   const renderPage = useCallback(
-    ({item, index}: {item: MomentRow; index: number}) => (
+    ({ item, index }: { item: MomentRow; index: number }) => (
       <MomentPagerPage
         moment={item}
         pageWidth={pageWidth}
@@ -818,89 +908,95 @@ export function MomentPreviewViewer({
 
   return (
     <View style={styles.root}>
-        <FlatList
-          ref={pagerRef}
-          style={styles.pager}
-          data={moments}
-          horizontal
-          pagingEnabled
-          bounces={moments.length > 1}
-          showsHorizontalScrollIndicator={false}
-          keyExtractor={keyExtractor}
-          renderItem={renderPage}
-          onScrollBeginDrag={handleScrollBeginDrag}
-          onMomentumScrollEnd={handleMomentumScrollEnd}
-          getItemLayout={(_, index) => ({
-            length: pageWidth,
-            offset: pageWidth * index,
-            index,
-          })}
-        />
+      <FlatList
+        ref={pagerRef}
+        style={styles.pager}
+        data={moments}
+        horizontal
+        pagingEnabled
+        bounces={moments.length > 1}
+        showsHorizontalScrollIndicator={false}
+        keyExtractor={keyExtractor}
+        renderItem={renderPage}
+        onScrollBeginDrag={handleScrollBeginDrag}
+        onMomentumScrollEnd={handleMomentumScrollEnd}
+        getItemLayout={(_, index) => ({
+          length: pageWidth,
+          offset: pageWidth * index,
+          index,
+        })}
+      />
 
-        <View
-          pointerEvents="box-none"
-          onLayout={event => {
-            setNoteContentInsetTop(event.nativeEvent.layout.height + 12);
-          }}
-          style={[styles.topChrome, {paddingTop: insets.top + 8}]}>
-          <View style={styles.topChromeRow}>
-            {activeMoment ? (
-              <MomentInfoHeader
-                moment={activeMoment}
-                previewEntryContext={previewEntryContext}
-                previewSavedPlace={previewSavedPlace}
-              />
-            ) : null}
-
-            {activeMoment ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Delete ${momentDeleteNoun(activeMoment.type)}`}
-                disabled={deletingMomentId === activeMoment.id}
-                hitSlop={8}
-                onPress={() => confirmDeleteMoment(activeMoment)}
-                style={[
-                  styles.topDeleteButton,
-                  deletingMomentId === activeMoment.id ? styles.disabled : null,
-                ]}>
-                <Trash2 size={20} color="#FF453A" strokeWidth={2.25} />
-              </Pressable>
-            ) : null}
-          </View>
-        </View>
-
-        <View
-          pointerEvents="box-none"
-          style={[styles.bottomChrome, {paddingBottom: insets.bottom + 16}]}>
-          {activePhotoVoice ? (
-            <View style={styles.bottomVoiceDock}>
-              <VoiceAttachmentRow
-                compact
-                label="Voice memo"
-                durationLabel={formatMomentVoiceDuration(activePhotoVoice)}
-                isPlaying={playingVoiceId === activePhotoVoice.id}
-                onToggle={() => void toggleVoice(activePhotoVoice)}
-              />
-            </View>
+      <View
+        pointerEvents="box-none"
+        onLayout={event => {
+          setNoteContentInsetTop(event.nativeEvent.layout.height + 12);
+        }}
+        style={[styles.topChrome, { paddingTop: insets.top + 8 }]}
+      >
+        <View style={styles.topChromeRow}>
+          {activeMoment ? (
+            <MomentInfoHeader
+              moment={activeMoment}
+              previewEntryContext={previewEntryContext}
+              previewSavedPlace={previewSavedPlace}
+            />
           ) : null}
-          <View style={styles.bottomRow}>
-            <View style={[styles.bottomRowSide, styles.bottomRowSideLeft]}>
-              <View style={styles.bottomRowBalance} />
-            </View>
-            <PaginationDots count={moments.length} activeIndex={activeIndex} />
-            <View style={[styles.bottomRowSide, styles.bottomRowSideRight]}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Close moments"
-                onPress={closeViewer}
-                hitSlop={8}
-                style={styles.chromeIconButton}>
-                <X size={22} color="#FFFFFF" strokeWidth={2.25} />
-              </Pressable>
-            </View>
+
+          {activeMoment ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Delete ${momentDeleteNoun(
+                activeMoment.type,
+              )}`}
+              disabled={deletingMomentId === activeMoment.id}
+              hitSlop={8}
+              onPress={() => confirmDeleteMoment(activeMoment)}
+              style={[
+                styles.topDeleteButton,
+                deletingMomentId === activeMoment.id ? styles.disabled : null,
+              ]}
+            >
+              <Trash2 size={20} color="#FF453A" strokeWidth={2.25} />
+            </Pressable>
+          ) : null}
+        </View>
+      </View>
+
+      <View
+        pointerEvents="box-none"
+        style={[styles.bottomChrome, { paddingBottom: insets.bottom + 16 }]}
+      >
+        {activePhotoVoice ? (
+          <View style={styles.bottomVoiceDock}>
+            <VoiceAttachmentRow
+              compact
+              label="Voice memo"
+              durationLabel={formatMomentVoiceDuration(activePhotoVoice)}
+              isPlaying={playingVoiceId === activePhotoVoice.id}
+              onToggle={() => void toggleVoice(activePhotoVoice)}
+            />
+          </View>
+        ) : null}
+        <View style={styles.bottomRow}>
+          <View style={[styles.bottomRowSide, styles.bottomRowSideLeft]}>
+            <View style={styles.bottomRowBalance} />
+          </View>
+          <PaginationDots count={moments.length} activeIndex={activeIndex} />
+          <View style={[styles.bottomRowSide, styles.bottomRowSideRight]}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Close moments"
+              onPress={closeViewer}
+              hitSlop={8}
+              style={styles.chromeIconButton}
+            >
+              <X size={22} color="#FFFFFF" strokeWidth={2.25} />
+            </Pressable>
           </View>
         </View>
       </View>
+    </View>
   );
 }
 
@@ -917,7 +1013,8 @@ export function MomentsPreviewSheet({
       visible
       animationType="none"
       presentationStyle="fullScreen"
-      onRequestClose={viewerProps.onClose}>
+      onRequestClose={viewerProps.onClose}
+    >
       <MomentPreviewViewer {...viewerProps} />
     </Modal>
   );

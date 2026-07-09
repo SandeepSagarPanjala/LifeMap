@@ -1,10 +1,10 @@
-import type {LocationPointRow} from '@/db/repositories/location-days';
-import {getLocationPointsForDay} from '@/db/repositories/location-days';
-import type {SavedPlaceRow} from '@/db/repositories/saved-places';
-import {listSavedPlaces} from '@/db/repositories/saved-places';
-import type {PlaceLookupRow, PlacePoiRow} from '@/lib/place-lookup-types';
-import {loadPlaceLookupContext} from '@/lib/place-lookup-context';
-import {shiftDateKey} from '@/lib/day-utils';
+import type { LocationPointRow } from '@/db/repositories/location-days';
+import { getLocationPointsForDay } from '@/db/repositories/location-days';
+import type { SavedPlaceRow } from '@/db/repositories/saved-places';
+import { listSavedPlaces } from '@/db/repositories/saved-places';
+import type { PlaceLookupRow, PlacePoiRow } from '@/lib/place-lookup-types';
+import { loadPlaceLookupContext } from '@/lib/place-lookup-context';
+import { shiftDateKey } from '@/lib/day-utils';
 import {
   buildSegmentationTimeline,
   detectSegmentsForDay,
@@ -13,12 +13,10 @@ import {
   dedupeLocationPoints,
   type DayTimelineEntry,
 } from '@/lib/trip-detection';
-import type {TripDetectionConfig} from '@/lib/trip-settings';
+import type { TripDetectionConfig } from '@/lib/trip-settings';
 
 /** GPS rows for prev + day + next — same window as point-explorer `detectTripsForDay`. */
-export async function loadExplorerGpsWindow(
-  dateKey: string,
-): Promise<{
+export async function loadExplorerGpsWindow(dateKey: string): Promise<{
   windowPoints: LocationPointRow[];
   prevPointCount: number;
   dayPointCount: number;
@@ -73,11 +71,12 @@ export async function buildExplorerDayTimelineFromGps(
   entries: DayTimelineEntry[];
   dayPointCount: number;
 }> {
-  const [places, placeLookup, {windowPoints, dayPointCount}] = await Promise.all([
-    savedPlaces ? Promise.resolve(savedPlaces) : listSavedPlaces(),
-    loadPlaceLookupContext(),
-    loadExplorerGpsWindow(dateKey),
-  ]);
+  const [places, placeLookup, { windowPoints, dayPointCount }] =
+    await Promise.all([
+      savedPlaces ? Promise.resolve(savedPlaces) : listSavedPlaces(),
+      loadPlaceLookupContext(),
+      loadExplorerGpsWindow(dateKey),
+    ]);
   const entries = buildExplorerDayTimeline(
     dateKey,
     windowPoints,
@@ -86,7 +85,7 @@ export async function buildExplorerDayTimelineFromGps(
     placeLookup.placeLookupCache,
     placeLookup.placePois,
   );
-  return {entries, dayPointCount};
+  return { entries, dayPointCount };
 }
 
-export {detectSegmentsForDay};
+export { detectSegmentsForDay };

@@ -1,4 +1,4 @@
-import {detectRestoreConflicts} from '../src/lib/backup/backup-conflicts';
+import { detectRestoreConflicts } from '../src/lib/backup/backup-conflicts';
 
 describe('backup merge conflicts', () => {
   it('finds no conflicts when backup and local cover different times', () => {

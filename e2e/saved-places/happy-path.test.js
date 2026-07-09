@@ -3,7 +3,7 @@
  *
  * Fast smoke coverage: open list, add/rename/delete one favorite by address.
  */
-const {launchToMap} = require('../helpers/launch-to-map');
+const { launchToMap } = require('../helpers/launch-to-map');
 const M = require('./helpers/saved-places-matchers');
 const {
   addFavoriteByAddress,
@@ -29,25 +29,19 @@ describe('Saved places happy path', () => {
     await expect(element(by.text(M.ADD_BY_ADDRESS))).toBeVisible();
   });
 
-  it(
-    'adds, renames, and deletes a favorite by address',
-    async () => {
-      const label = `E2E Fav ${Date.now()}`;
-      const renamed = `${label} X`;
+  it('adds, renames, and deletes a favorite by address', async () => {
+    const label = `E2E Fav ${Date.now()}`;
+    const renamed = `${label} X`;
 
-      await addFavoriteByAddress(label);
+    await addFavoriteByAddress(label);
 
-      await ensureSavedPlacesList();
-      await expect(element(by.text(label))).toBeVisible();
-      await expect(
-        element(by.label(`Show ${label} on map`)),
-      ).toBeVisible();
+    await ensureSavedPlacesList();
+    await expect(element(by.text(label))).toBeVisible();
+    await expect(element(by.label(`Show ${label} on map`))).toBeVisible();
 
-      await renameFavorite(label, renamed);
-      await expect(element(by.text(renamed))).toBeVisible();
+    await renameFavorite(label, renamed);
+    await expect(element(by.text(renamed))).toBeVisible();
 
-      await deleteFavorite(renamed);
-    },
-    180000,
-  );
+    await deleteFavorite(renamed);
+  }, 180000);
 });

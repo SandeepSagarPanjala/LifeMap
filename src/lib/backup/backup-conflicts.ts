@@ -1,4 +1,4 @@
-import type {BackupBundleTables} from './backup-export';
+import type { BackupBundleTables } from './backup-export';
 
 export type RestoreConflictKind = 'location_point' | 'moment' | 'setting';
 
@@ -45,14 +45,17 @@ function parseBackupLocationRows(rows: unknown[]) {
       const timestamp = Date.parse(String(record.timestamp ?? ''));
       const lat = Number(record.lat);
       const lng = Number(record.lng);
-      if (!Number.isFinite(timestamp) || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+      if (
+        !Number.isFinite(timestamp) ||
+        !Number.isFinite(lat) ||
+        !Number.isFinite(lng)
+      ) {
         return null;
       }
       return {
         key: locationPointKey(timestamp, lat, lng),
         source: String(record.source ?? ''),
-        accuracy:
-          record.accuracy == null ? null : Number(record.accuracy),
+        accuracy: record.accuracy == null ? null : Number(record.accuracy),
       };
     })
     .filter((row): row is NonNullable<typeof row> => row != null);
@@ -79,8 +82,7 @@ function parseBackupMomentRows(rows: unknown[]) {
         type,
         contentPath,
         textBody,
-        caption:
-          typeof record.caption === 'string' ? record.caption : null,
+        caption: typeof record.caption === 'string' ? record.caption : null,
       };
     })
     .filter((row): row is NonNullable<typeof row> => row != null);
@@ -98,7 +100,7 @@ function parseBackupSettingRows(rows: unknown[]) {
         return null;
       }
       const value = record.value == null ? null : String(record.value);
-      return {key, value};
+      return { key, value };
     })
     .filter((row): row is NonNullable<typeof row> => row != null);
 }
@@ -160,7 +162,7 @@ export function detectRestoreConflicts(input: {
     textBody: string | null;
     caption: string | null;
   }>;
-  localSettings: Array<{key: string; value: string | null}>;
+  localSettings: Array<{ key: string; value: string | null }>;
 }): RestoreConflict[] {
   const conflicts: RestoreConflict[] = [];
 
@@ -174,7 +176,9 @@ export function detectRestoreConflicts(input: {
   const seenLocationKeys = new Set<string>();
   let locationConflictCount = 0;
 
-  for (const backupRow of parseBackupLocationRows(input.backupTables.location_points)) {
+  for (const backupRow of parseBackupLocationRows(
+    input.backupTables.location_points,
+  )) {
     if (seenLocationKeys.has(backupRow.key)) {
       continue;
     }
@@ -227,7 +231,8 @@ export function detectRestoreConflicts(input: {
         id: `moment:${backupRow.key}`,
         kind: 'moment',
         title: `${backupRow.type} moment overlap`,
-        backupDetail: backupRow.caption ?? backupRow.textBody ?? 'Backup memory',
+        backupDetail:
+          backupRow.caption ?? backupRow.textBody ?? 'Backup memory',
         localDetail: local.caption ?? local.textBody ?? 'Memory on this device',
       };
     }
@@ -287,9 +292,5 @@ export function resolveRestoreConflictChoice(
   conflictId: string,
   bulkId: string,
 ): RestoreConflictChoice {
-  return (
-    resolutions.get(conflictId) ??
-    resolutions.get(bulkId) ??
-    'local'
-  );
+  return resolutions.get(conflictId) ?? resolutions.get(bulkId) ?? 'local';
 }

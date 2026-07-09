@@ -18,14 +18,14 @@ Heartbeat fresh GPS? → MOVING
 
 ### Geo + spacing (default profile)
 
-| Setting | Value | Why |
-|---------|-------|-----|
-| `distanceFilter` | **10m** (was 25m) | Better walks + short trips; elasticity widens at speed |
-| `disableElasticity` | **false** | Auto: slow → tighter points, fast → wider |
-| `elasticityMultiplier` | **1.0** | SDK default formula |
-| `desiredAccuracy` | **High** | Real GPS for routes |
-| `stopTimeout` | **5 min** | Avoid false stop at red lights |
-| `stopDetectionDelay` (iOS) | **60–90 sec** | Grace before GPS sleeps |
+| Setting                    | Value             | Why                                                    |
+| -------------------------- | ----------------- | ------------------------------------------------------ |
+| `distanceFilter`           | **10m** (was 25m) | Better walks + short trips; elasticity widens at speed |
+| `disableElasticity`        | **false**         | Auto: slow → tighter points, fast → wider              |
+| `elasticityMultiplier`     | **1.0**           | SDK default formula                                    |
+| `desiredAccuracy`          | **High**          | Real GPS for routes                                    |
+| `stopTimeout`              | **5 min**         | Avoid false stop at red lights                         |
+| `stopDetectionDelay` (iOS) | **60–90 sec**     | Grace before GPS sleeps                                |
 
 ### Activity / Motion sensitivity
 
@@ -38,6 +38,7 @@ activity: {
 ```
 
 Notes:
+
 - Lower confidence helps when Motion reports `walking` at 55–65% (below default cutoff).
 - Does **not** help when Motion reports `still` at 90% (EV + pocket case) — need GPS/geofence wake-ups.
 - Do **not** go below ~50 without testing — too many false wakes at home.
@@ -58,25 +59,26 @@ Settings UI: wire the existing “Maximum reliability” switch (currently disab
 
 ### Departure watchdog & speed wake (tune static thresholds)
 
-| Constant | Today | Target | Why |
-|----------|-------|--------|-----|
+| Constant                                  | Today           | Target                | Why                                                        |
+| ----------------------------------------- | --------------- | --------------------- | ---------------------------------------------------------- |
 | `MIN_DEPARTURE_SPEED_MS` / GPS speed wake | 2 m/s (~7 km/h) | **4.5 m/s (~10 mph)** | Fast-walk false positives at 2 m/s; drives clear at 10 mph |
-| `DEPARTURE_WATCHDOG_MIN_MS` | 15 min | **5 min** | Shorter wait before speed-based departure check |
-| `HEARTBEAT_DEPARTURE_DISTANCE_METERS` | 100 m | **100 m** | Keep |
-| `STATIONARY_PING_MIN_MS` | 30 min | **30 min** | Keep |
-| `HEARTBEAT_CHECK_INTERVAL_SEC` | 60 s | **60 s** | Platform minimum — keep |
+| `DEPARTURE_WATCHDOG_MIN_MS`               | 15 min          | **5 min**             | Shorter wait before speed-based departure check            |
+| `HEARTBEAT_DEPARTURE_DISTANCE_METERS`     | 100 m           | **100 m**             | Keep                                                       |
+| `STATIONARY_PING_MIN_MS`                  | 30 min          | **30 min**            | Keep                                                       |
+| `HEARTBEAT_CHECK_INTERVAL_SEC`            | 60 s            | **60 s**              | Platform minimum — keep                                    |
 
 ### Place & timeline radius — **20 m**
 
 **Decision:** Use **20 m** for both saved places and history same-place detection (was 150 m saved places, 25 m history).
 
-| Setting | Today | Target | Code / schema |
-|---------|-------|--------|---------------|
-| Saved place radius (Home, Work, etc.) | **150 m** | **20 m** | `DEFAULT_SAVED_PLACE_RADIUS_METERS`, `saved_places.radius_meters` default, UI copy |
-| `HISTORY_SAME_PLACE_RADIUS_METERS` | **25 m** | **20 m** | `src/lib/trip-settings.ts` |
-| Home geofence exit (departure wake) | (planned 150 m) | **20 m** | `addGeofence` around saved Home at place radius |
+| Setting                               | Today           | Target   | Code / schema                                                                      |
+| ------------------------------------- | --------------- | -------- | ---------------------------------------------------------------------------------- |
+| Saved place radius (Home, Work, etc.) | **150 m**       | **20 m** | `DEFAULT_SAVED_PLACE_RADIUS_METERS`, `saved_places.radius_meters` default, UI copy |
+| `HISTORY_SAME_PLACE_RADIUS_METERS`    | **25 m**        | **20 m** | `src/lib/trip-settings.ts`                                                         |
+| Home geofence exit (departure wake)   | (planned 150 m) | **20 m** | `addGeofence` around saved Home at place radius                                    |
 
 Notes:
+
 - Tighter than typical life apps (often 50–150 m) — matches precise “this spot” semantics.
 - GPS jitter is often 5–10 m; 20 m may false-trigger geofence exit or split visits — validate on dogfood.
 - `TRIP_RADIUS_CHOICES` in Settings may need **20** added if users can pick radius.
@@ -90,11 +92,11 @@ LifeMap should classify movement using **time + distance + speed + spread** — 
 
 **Authoritative rules:** [`timeline-model.md`](./timeline-model.md) — alternating drive/visit, speed classification, time continuity.
 
-| Mode | Speed | Distance / spread | Time | Example |
-|------|-------|-------------------|------|---------|
-| **Still** | ≤ ~2 m/s (or null) | Tiny spread from anchor | Any | Sitting on couch, parked |
-| **Walking / venue visit** | Low–moderate (~0–6 km/h) | **High path**, **bounded spread** (mall, campus) | ≥ dwell (5 min) or mid-route stop | Walking entire mall — lots of steps, stay inside venue envelope |
-| **Drive** | Moderate–high (≥ ~10 mph typical) | **Large path distance**, leaves area | Continuous movement between stays | Sister drop-off, highway |
+| Mode                      | Speed                             | Distance / spread                                | Time                              | Example                                                         |
+| ------------------------- | --------------------------------- | ------------------------------------------------ | --------------------------------- | --------------------------------------------------------------- |
+| **Still**                 | ≤ ~2 m/s (or null)                | Tiny spread from anchor                          | Any                               | Sitting on couch, parked                                        |
+| **Walking / venue visit** | Low–moderate (~0–6 km/h)          | **High path**, **bounded spread** (mall, campus) | ≥ dwell (5 min) or mid-route stop | Walking entire mall — lots of steps, stay inside venue envelope |
+| **Drive**                 | Moderate–high (≥ ~10 mph typical) | **Large path distance**, leaves area             | Continuous movement between stays | Sister drop-off, highway                                        |
 
 **Mall rule:** User can walk 500 m+ inside a mall but still be **one visit** — classify by **spread from arrival anchor** + **path÷spread ratio** (looping walk), not by “moved 500 m therefore driving.”
 
@@ -102,17 +104,17 @@ LifeMap should classify movement using **time + distance + speed + spread** — 
 
 ### How code works today (`src/lib/trip-detection.ts`)
 
-| Signal | Constant / logic | Used for |
-|--------|------------------|----------|
-| Stationary save | `VISIT_ARRIVAL_SPEED_MS` = **2 m/s** | Visit start/end boundaries (`isStationarySave`) |
-| Visit envelope | `MAX_STAY_ENVELOPE_SPREAD_M` = **250 m** | Stay span — points within spread of anchor |
-| Mall / campus walk | `VENUE_MAX_SPREAD_M` = **400 m**, `isVenueWalkCluster` | Peel mall walking from end of drive; path÷spread ≥ 2 |
-| Meaningful drive | `MIN_TRAVEL_DISTANCE_M` = **40 m**, or **≥ 100 m** | `isMeaningfulTravel` |
-| Departure hop | implied speed **2.5–80 km/h**, 80–800 m in ≤ 5 min | `isShortGapDeparture` — left visit, not GPS wake |
-| Stale wake (still at place) | gap ≥ 10 min, drift &lt; 400 m, speed &lt; 2 km/h | `isStaleWakeNotDeparture` |
-| Dwell for visit | `DEFAULT_TRIP_DWELL_MINUTES` = **5 min** | Min time for stay card |
-| Same-place merge | `dwellRadiusMeters` / `HISTORY_SAME_PLACE_RADIUS` (**→ 20 m**) | Merge adjacent visits at same pin |
-| Saved Home label | saved place radius (**→ 20 m**) | “Home” card, geofence |
+| Signal                      | Constant / logic                                               | Used for                                             |
+| --------------------------- | -------------------------------------------------------------- | ---------------------------------------------------- |
+| Stationary save             | `VISIT_ARRIVAL_SPEED_MS` = **2 m/s**                           | Visit start/end boundaries (`isStationarySave`)      |
+| Visit envelope              | `MAX_STAY_ENVELOPE_SPREAD_M` = **250 m**                       | Stay span — points within spread of anchor           |
+| Mall / campus walk          | `VENUE_MAX_SPREAD_M` = **400 m**, `isVenueWalkCluster`         | Peel mall walking from end of drive; path÷spread ≥ 2 |
+| Meaningful drive            | `MIN_TRAVEL_DISTANCE_M` = **40 m**, or **≥ 100 m**             | `isMeaningfulTravel`                                 |
+| Departure hop               | implied speed **2.5–80 km/h**, 80–800 m in ≤ 5 min             | `isShortGapDeparture` — left visit, not GPS wake     |
+| Stale wake (still at place) | gap ≥ 10 min, drift &lt; 400 m, speed &lt; 2 km/h              | `isStaleWakeNotDeparture`                            |
+| Dwell for visit             | `DEFAULT_TRIP_DWELL_MINUTES` = **5 min**                       | Min time for stay card                               |
+| Same-place merge            | `dwellRadiusMeters` / `HISTORY_SAME_PLACE_RADIUS` (**→ 20 m**) | Merge adjacent visits at same pin                    |
+| Saved Home label            | saved place radius (**→ 20 m**)                                | “Home” card, geofence                                |
 
 **Verified:** Mall-style visits are **already partially implemented** via spread envelope + venue walk clustering — not just 20 m radius.
 
@@ -153,13 +155,14 @@ Doc index: [Setup](https://docs.transistorsoft.com/react-native/setup/) · [Exam
 
 ### Lifecycle (stereo receiver model)
 
-| Step | API | LifeMap |
-|------|-----|---------|
-| Wire speakers | Register `onX` listeners **before** `ready()` | ✅ `configure()` |
-| Plug in power | `ready(config)` **once per launch** — without it SDK is silent | ✅ |
-| Power button | `start()` / `stop()` — tracking on/off | ✅ `syncEnabledFromSettings()` respects user setting |
+| Step          | API                                                            | LifeMap                                              |
+| ------------- | -------------------------------------------------------------- | ---------------------------------------------------- |
+| Wire speakers | Register `onX` listeners **before** `ready()`                  | ✅ `configure()`                                     |
+| Plug in power | `ready(config)` **once per launch** — without it SDK is silent | ✅                                                   |
+| Power button  | `start()` / `stop()` — tracking on/off                         | ✅ `syncEnabledFromSettings()` respects user setting |
 
 Rules from docs:
+
 - Do **not** call `start`, `requestPermission`, `getCurrentPosition`, `watchPosition` until **after** `ready()` resolves.
 - `ready()` restores persisted state; if tracking was on at kill, SDK may auto-resume — LifeMap still gates on `tracking_enabled` (correct product behavior).
 - `registerHeadlessTask` must live in **`index.js`** (not a component); callback must be **`async`** and **await** all work.
@@ -172,11 +175,11 @@ Long home stay + pocket + smooth EV → Motion stays `still` → zero points unt
 
 ### iOS force-quit vs background
 
-| State | Behavior |
-|-------|----------|
-| Background (not killed) | JS alive; listeners + heartbeat work (with `preventSuspend`) |
-| Force-quit (swipe up) | JS dead; iOS creates stationary geofence (~`stationaryRadius`, often ~200 m); app relaunches on exit |
-| Android terminated | Native service continues; custom JS work needs `app.enableHeadless: true` + headless task |
+| State                   | Behavior                                                                                             |
+| ----------------------- | ---------------------------------------------------------------------------------------------------- |
+| Background (not killed) | JS alive; listeners + heartbeat work (with `preventSuspend`)                                         |
+| Force-quit (swipe up)   | JS dead; iOS creates stationary geofence (~`stationaryRadius`, often ~200 m); app relaunches on exit |
+| Android terminated      | Native service continues; custom JS work needs `app.enableHeadless: true` + headless task            |
 
 ### Heartbeat contract
 
@@ -189,16 +192,17 @@ Long home stay + pocket + smooth EV → Motion stays `still` → zero points unt
 
 Options for one-shot high-power GPS inside heartbeat, geofence EXIT handler, and Android headless. Centralize as **`HEARTBEAT_CURRENT_POSITION_REQUEST`** in `src/lib/motion-tracking-policy.ts` (reuse in headless).
 
-| Option | Default (SDK) | LifeMap today | Target | Why |
-|--------|---------------|---------------|--------|-----|
-| `maximumAge` | **0** (fresh only) | omitted (inherits 0) | **`0` explicit** | Reject cached home coords; Jun 11 watchdog saw `distanceMeters: 0` while user was driving |
-| `samples` | **3** | **1** ✅ | **1** | Heartbeat must finish quickly (~60s window); one sample enough for departure speed/drift |
-| `persist` | `true` when enabled | **`false`** ✅ | **`false`** | LifeMap writes to our SQLite; avoid duplicate SDK queue + `onLocation` |
-| `timeout` | **30** s | **30** ✅ | **30** | Rejects with `LocationError` → log `heartbeat_error` (already) |
-| `desiredAccuracy` | `stationaryRadius` (~150 m) | **omitted** | **`25` m** | **Stopping threshold** (not hardware) — stop sampling once accuracy ≤ 25 m; aligns with `MAX_DEPARTURE_ACCURACY_METERS` gate |
-| `extras` | — | omitted | optional `{ source: 'heartbeat' }` | Debug in SDK logs if needed |
+| Option            | Default (SDK)               | LifeMap today        | Target                             | Why                                                                                                                          |
+| ----------------- | --------------------------- | -------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `maximumAge`      | **0** (fresh only)          | omitted (inherits 0) | **`0` explicit**                   | Reject cached home coords; Jun 11 watchdog saw `distanceMeters: 0` while user was driving                                    |
+| `samples`         | **3**                       | **1** ✅             | **1**                              | Heartbeat must finish quickly (~60s window); one sample enough for departure speed/drift                                     |
+| `persist`         | `true` when enabled         | **`false`** ✅       | **`false`**                        | LifeMap writes to our SQLite; avoid duplicate SDK queue + `onLocation`                                                       |
+| `timeout`         | **30** s                    | **30** ✅            | **30**                             | Rejects with `LocationError` → log `heartbeat_error` (already)                                                               |
+| `desiredAccuracy` | `stationaryRadius` (~150 m) | **omitted**          | **`25` m**                         | **Stopping threshold** (not hardware) — stop sampling once accuracy ≤ 25 m; aligns with `MAX_DEPARTURE_ACCURACY_METERS` gate |
+| `extras`          | —                           | omitted              | optional `{ source: 'heartbeat' }` | Debug in SDK logs if needed                                                                                                  |
 
 Notes from docs:
+
 - SDK **always** requests native GPS at `DesiredAccuracy.High` regardless of `desiredAccuracy` option — the option only controls when to **stop sampling** and return.
 - Only the **final** selected sample is persisted (when `persist: true`); intermediate samples still fire `onLocation` with `sample: true` → filter in `onLocation`.
 - Call only **after** `ready()` resolves (and tracking enabled for meaningful departure checks).
@@ -250,6 +254,7 @@ v5 adds on-device `geolocation.filter` (enabled by default). Can change which fi
 **Do we need to migrate?** **Yes — required for this pass.**
 
 Flat config still runs on v5.1.1 (deprecation warnings) but:
+
 - Official [Config](https://docs.transistorsoft.com/react-native/Config/) / [Examples](https://docs.transistorsoft.com/react-native/examples/) use nested groups only.
 - Keys moved groups — see mapping table below.
 - **Maximum reliability** toggle must use grouped `setConfig()` — flat spread is fragile.
@@ -258,33 +263,33 @@ Flat config still runs on v5.1.1 (deprecation warnings) but:
 
 ### Code today vs target (config drift)
 
-| Key | Code today | Target | Group |
-|-----|------------|--------|-------|
-| `distanceFilter` | **25** | **10** | `geolocation` |
-| `stopTimeout` | **30** min | **5** min | `geolocation` |
-| `stopDetectionDelay` | **5** min | **60–90** s | `activity` |
-| `locationAuthorizationRequest` | top-level flat | **`Always`** | `geolocation` |
-| `enableHeadless` | **missing** | **`true`** | `app` (Android) |
-| `debug` / `logLevel` | top-level flat | nested | `logger` |
-| `autoSync` / `batchSync` | top-level flat | nested | `http` |
-| `maxRecordsToPersist` | top-level flat | nested | `persistence` |
+| Key                            | Code today     | Target       | Group           |
+| ------------------------------ | -------------- | ------------ | --------------- |
+| `distanceFilter`               | **25**         | **10**       | `geolocation`   |
+| `stopTimeout`                  | **30** min     | **5** min    | `geolocation`   |
+| `stopDetectionDelay`           | **5** min      | **60–90** s  | `activity`      |
+| `locationAuthorizationRequest` | top-level flat | **`Always`** | `geolocation`   |
+| `enableHeadless`               | **missing**    | **`true`**   | `app` (Android) |
+| `debug` / `logLevel`           | top-level flat | nested       | `logger`        |
+| `autoSync` / `batchSync`       | top-level flat | nested       | `http`          |
+| `maxRecordsToPersist`          | top-level flat | nested       | `persistence`   |
 
 ### Alignment with Transistor setup patterns
 
-| Pattern | LifeMap today | Verdict |
-|---------|---------------|---------|
-| Listeners before `ready()` | ✅ `onLocation`, `onMotionChange`, `onHeartbeat`, `onProviderChange`, `onAuthorization` | Good |
-| `ready()` ≠ tracking on | ✅ bootstrap → configure → permission → syncEnabledFromSettings → `start()` | Good |
-| `stopOnTerminate: false` | ✅ | Matches plan |
-| `startOnBoot: true` | ✅ | Matches plan |
-| `distanceFilter: 10` | ❌ still **25** | Change |
-| v5 nested config | ❌ flat spread | **Migrate** |
-| `enableHeadless` | ❌ missing | **Add** |
-| Filter `location.sample` | ❌ saves all `onLocation` | **Add** |
-| `getCurrentPosition` options | partial (`samples`, `persist`, `timeout`) | **Add `maximumAge: 0`, `desiredAccuracy: 25`** |
-| `onGeofence` + `addGeofence` | ❌ not wired | Plan #5 |
-| Headless beyond `Location` | ❌ only `Event.Location` | Plan #10 |
-| `onActivityChange` logging | ❌ | Phase 2 |
+| Pattern                      | LifeMap today                                                                           | Verdict                                        |
+| ---------------------------- | --------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| Listeners before `ready()`   | ✅ `onLocation`, `onMotionChange`, `onHeartbeat`, `onProviderChange`, `onAuthorization` | Good                                           |
+| `ready()` ≠ tracking on      | ✅ bootstrap → configure → permission → syncEnabledFromSettings → `start()`             | Good                                           |
+| `stopOnTerminate: false`     | ✅                                                                                      | Matches plan                                   |
+| `startOnBoot: true`          | ✅                                                                                      | Matches plan                                   |
+| `distanceFilter: 10`         | ❌ still **25**                                                                         | Change                                         |
+| v5 nested config             | ❌ flat spread                                                                          | **Migrate**                                    |
+| `enableHeadless`             | ❌ missing                                                                              | **Add**                                        |
+| Filter `location.sample`     | ❌ saves all `onLocation`                                                               | **Add**                                        |
+| `getCurrentPosition` options | partial (`samples`, `persist`, `timeout`)                                               | **Add `maximumAge: 0`, `desiredAccuracy: 25`** |
+| `onGeofence` + `addGeofence` | ❌ not wired                                                                            | Plan #5                                        |
+| Headless beyond `Location`   | ❌ only `Event.Location`                                                                | Plan #10                                       |
+| `onActivityChange` logging   | ❌                                                                                      | Phase 2                                        |
 
 ### Target shape (`tracking-presets.ts` + `transistorsoft-location-service.ts`)
 

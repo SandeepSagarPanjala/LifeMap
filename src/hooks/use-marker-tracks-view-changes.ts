@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useState} from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 const MARKER_SNAPSHOT_TIMEOUT_MS = 2_000;
 
@@ -18,5 +18,5 @@ export function useMarkerTracksViewChanges(signature: string) {
     setTracksViewChanges(false);
   }, []);
 
-  return {tracksViewChanges, onLayout};
+  return { tracksViewChanges, onLayout };
 }

@@ -1,7 +1,7 @@
-import type {NativeStackNavigationOptions} from '@react-navigation/native-stack';
+import type { NativeStackNavigationOptions } from '@react-navigation/native-stack';
 
-import {APP_COPY} from '@/lib/app-copy';
-import {ACCENT_THEMES} from '@/lib/app-constants';
+import { APP_COPY } from '@/lib/app-copy';
+import { ACCENT_THEMES } from '@/lib/app-constants';
 
 export function settingsSubScreenOptions(
   title: string,

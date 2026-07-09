@@ -1,5 +1,10 @@
-import {chicagoDayEnd, chicagoDayStart, dateKeyForTimestamp, formatDateLabel} from '../lib/export';
-import type {DayTimelineEntry} from './types';
+import {
+  chicagoDayEnd,
+  chicagoDayStart,
+  dateKeyForTimestamp,
+  formatDateLabel,
+} from '../lib/export';
+import type { DayTimelineEntry } from './types';
 
 export const HISTORY_COLORS = {
   track: '#FFFFFF',
@@ -60,7 +65,7 @@ export type HistoryDayRuler = {
   barWidthPx: number;
 };
 
-type TimeBreakpoint = {timeMs: number; px: number};
+type TimeBreakpoint = { timeMs: number; px: number };
 
 function minWidthForKind(kind: DayTimelineEntry['kind']): number {
   return kind === 'gap' ? MIN_GAP_SEGMENT_PX : ANCHOR_SIZE_PX;
@@ -91,7 +96,7 @@ function layoutSegmentsOnFixedBar(
     const slot = barWidthPx / sorted.length;
     let left = 0;
     return sorted.map(segment => {
-      const laid = {...segment, leftPx: left, widthPx: slot};
+      const laid = { ...segment, leftPx: left, widthPx: slot };
       left += slot;
       return laid;
     });
@@ -112,7 +117,7 @@ function layoutSegmentsOnFixedBar(
       extra = (segmentDurationMs(segment) / totalDurationMs) * flexWidth;
     }
     const widthPx = minW + extra;
-    const laid = {...segment, leftPx: left, widthPx};
+    const laid = { ...segment, leftPx: left, widthPx };
     left += widthPx;
     return laid;
   });
@@ -126,21 +131,21 @@ function buildTimeBreakpoints(
   now: Date,
 ): TimeBreakpoint[] {
   const endMs = Math.min(now.getTime(), dayEnd.getTime());
-  const points: TimeBreakpoint[] = [{timeMs: dayStart.getTime(), px: 0}];
+  const points: TimeBreakpoint[] = [{ timeMs: dayStart.getTime(), px: 0 }];
 
   const sorted = [...segments].sort(
     (a, b) => a.startAt.getTime() - b.startAt.getTime(),
   );
 
   for (const segment of sorted) {
-    points.push({timeMs: segment.startAt.getTime(), px: segment.leftPx});
+    points.push({ timeMs: segment.startAt.getTime(), px: segment.leftPx });
     points.push({
       timeMs: segment.endAt.getTime(),
       px: segment.leftPx + segment.widthPx,
     });
   }
 
-  points.push({timeMs: endMs, px: barWidthPx});
+  points.push({ timeMs: endMs, px: barWidthPx });
   points.sort((a, b) => a.timeMs - b.timeMs);
 
   const deduped: TimeBreakpoint[] = [];
@@ -221,7 +226,9 @@ function clipEntryToDay(
   dayEnd: Date,
 ): Omit<HistoryDaySegment, 'leftPx' | 'widthPx'> | null {
   const rawEnd = entry.endAt;
-  const segStart = new Date(Math.max(entry.startAt.getTime(), dayStart.getTime()));
+  const segStart = new Date(
+    Math.max(entry.startAt.getTime(), dayStart.getTime()),
+  );
   const segEnd = new Date(Math.min(rawEnd.getTime(), dayEnd.getTime()));
   if (segEnd.getTime() <= segStart.getTime()) {
     return null;
@@ -262,7 +269,7 @@ export function buildHistoryDayRuler(
     }
     const clipped = clipEntryToDay(entry, index, dayStart, dayEnd);
     if (clipped) {
-      raw.push({...clipped, leftPx: 0, widthPx: 0});
+      raw.push({ ...clipped, leftPx: 0, widthPx: 0 });
     }
   }
 

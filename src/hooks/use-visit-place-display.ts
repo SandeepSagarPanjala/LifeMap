@@ -1,7 +1,10 @@
-import {useCallback, useEffect, useState, useSyncExternalStore} from 'react';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 
-import {getPlaceLookupById} from '@/db/repositories/place-lookup-cache';
-import {insertPlacePoi, listPlacePoisForCache} from '@/db/repositories/place-pois';
+import { getPlaceLookupById } from '@/db/repositories/place-lookup-cache';
+import {
+  insertPlacePoi,
+  listPlacePoisForCache,
+} from '@/db/repositories/place-pois';
 import {
   getTripByEventKey,
   getTripById,
@@ -19,22 +22,22 @@ import {
   getPlaceLookupRevision,
   subscribePlaceLookup,
 } from '@/lib/place-lookup-events';
-import {expandPlaceLookupArea} from '@/lib/place-lookup-service';
-import {PLACE_LOOKUP_VENUE_RADIUS_M} from '@/lib/app-constants';
+import { expandPlaceLookupArea } from '@/lib/place-lookup-service';
+import { PLACE_LOOKUP_VENUE_RADIUS_M } from '@/lib/app-constants';
 import {
   getMaterializationRevision,
   subscribeMaterialization,
   notifyMaterializationUpdated,
 } from '@/lib/trip-materialization-events';
-import type {VisitPlaceDisplay} from '@/lib/place-lookup-types';
-import {resolvedPlaceFromTripRow} from '@/lib/resolved-place';
-import {matchSavedPlaceForStay} from '@/lib/saved-places';
-import type {DetectedTrip} from '@/lib/trip-detection';
+import type { VisitPlaceDisplay } from '@/lib/place-lookup-types';
+import { resolvedPlaceFromTripRow } from '@/lib/resolved-place';
+import { matchSavedPlaceForStay } from '@/lib/saved-places';
+import type { DetectedTrip } from '@/lib/trip-detection';
 import {
   ensureTripForClosedStay,
   tripEventKey,
 } from '@/lib/trip-materialization';
-import {resolveStayAnchor} from '@/lib/trip-detection';
+import { resolveStayAnchor } from '@/lib/trip-detection';
 
 const EMPTY_DISPLAY: VisitPlaceDisplay = {
   source: 'none',
@@ -193,12 +196,7 @@ export function useSelectVisitPlaceCandidate() {
       (resolved?.placeKind === 'cache' ? resolved.placeId : null) ??
       (args.stay.placeKind === 'cache' ? args.stay.placeId ?? null : null);
 
-    await updateTripPoiSelection(
-      tripId,
-      args.poiId,
-      args.poiLabel,
-      cacheId,
-    );
+    await updateTripPoiSelection(tripId, args.poiId, args.poiLabel, cacheId);
     notifyMaterializationUpdated();
   }, []);
 }

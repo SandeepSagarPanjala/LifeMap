@@ -1,5 +1,11 @@
-import {useCallback, useEffect, useRef, useState, type ElementRef} from 'react';
-import {APP_COPY, errorMessageOr} from '@/lib/app-copy';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ElementRef,
+} from 'react';
+import { APP_COPY, errorMessageOr } from '@/lib/app-copy';
 import {
   ActivityIndicator,
   Alert,
@@ -14,11 +20,24 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import {useFocusEffect, useNavigation} from '@react-navigation/native';
-import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {Check, RefreshCw, RotateCcw, RotateCw, Square, Type, X, Zap, ZapOff, AudioLines, Pause, Play} from 'lucide-react-native';
-import {BottomSheetModalProvider} from '@gorhom/bottom-sheet';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import {
+  Check,
+  RefreshCw,
+  RotateCcw,
+  RotateCw,
+  Square,
+  Type,
+  X,
+  Zap,
+  ZapOff,
+  AudioLines,
+  Pause,
+  Play,
+} from 'lucide-react-native';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Camera,
   useCameraDevice,
@@ -28,33 +47,33 @@ import {
   useVideoOutput,
   type Recorder,
 } from 'react-native-vision-camera';
-import {ResizeMode, type VideoRef} from 'react-native-video';
+import { ResizeMode, type VideoRef } from 'react-native-video';
 import ViewShot from 'react-native-view-shot';
 
-import {FilteredCaptureImage} from '@/components/capture/FilteredCaptureImage';
-import {MomentVideoPlayer} from '@/components/capture/MomentVideoPlayer';
-import {VoiceMemoSheet} from '@/components/map/VoiceMemoSheet';
-import {CAPTURE_BUTTON_THEMES} from '@/components/map/map-capture-button-theme';
-import {savePhotoMoment} from '@/lib/moments/capture-photo';
+import { FilteredCaptureImage } from '@/components/capture/FilteredCaptureImage';
+import { MomentVideoPlayer } from '@/components/capture/MomentVideoPlayer';
+import { VoiceMemoSheet } from '@/components/map/VoiceMemoSheet';
+import { CAPTURE_BUTTON_THEMES } from '@/components/map/map-capture-button-theme';
+import { savePhotoMoment } from '@/lib/moments/capture-photo';
 import {
   isVideoRecordingTooShort,
   saveVideoMoment,
 } from '@/lib/moments/capture-video';
-import {formatVoiceDurationMs} from '@/lib/moments/format-voice-duration';
-import {deleteMomentContentFile} from '@/lib/moments/moment-storage';
+import { formatVoiceDurationMs } from '@/lib/moments/format-voice-duration';
+import { deleteMomentContentFile } from '@/lib/moments/moment-storage';
 import {
   createVoiceRecorderSession,
   getVoiceRecordingErrorMessage,
 } from '@/lib/moments/voice-recorder';
-import {VIDEO_MAX_DURATION_MS} from '@/lib/app-constants';
-import {normalizeCameraPhoto} from '@/lib/moments/normalize-camera-photo';
+import { VIDEO_MAX_DURATION_MS } from '@/lib/app-constants';
+import { normalizeCameraPhoto } from '@/lib/moments/normalize-camera-photo';
 import {
   captureFilteredPhotoUri,
   PHOTO_FILTER_OPTIONS,
   type PhotoFilterId,
 } from '@/lib/moments/photo-filters';
-import type {RootStackParamList} from '@/navigation/types';
-import {releaseVoiceRecordingSession} from '@/lib/voice-audio-session';
+import type { RootStackParamList } from '@/navigation/types';
+import { releaseVoiceRecordingSession } from '@/lib/voice-audio-session';
 
 const CAMERA_AUDIO_RELEASE_MS = 400;
 const CAMERA_STOP_RELEASE_MS = 2500;
@@ -65,7 +84,9 @@ const CAMERA_CAPTURE_MAX_ATTEMPTS = 3;
 function isPhotoOutputNotReadyError(error: unknown): boolean {
   return (
     error instanceof Error &&
-    error.message.includes('PhotoOutput is not yet connected to the CameraSession')
+    error.message.includes(
+      'PhotoOutput is not yet connected to the CameraSession',
+    )
   );
 }
 
@@ -153,15 +174,17 @@ function PhotoFilterStrip({
           <Pressable
             key={option.id}
             accessibilityRole="button"
-            accessibilityState={{selected}}
+            accessibilityState={{ selected }}
             disabled={disabled}
             onPress={() => onSelectFilter(option.id)}
-            style={styles.filterChip}>
+            style={styles.filterChip}
+          >
             <View
               style={[
                 styles.filterThumb,
                 selected ? styles.filterThumbSelected : styles.filterThumbIdle,
-              ]}>
+              ]}
+            >
               <FilteredCaptureImage
                 uri={sourceUri}
                 filterId={option.id}
@@ -174,7 +197,8 @@ function PhotoFilterStrip({
               style={[
                 styles.filterChipLabel,
                 selected ? styles.filterChipLabelSelected : null,
-              ]}>
+              ]}
+            >
               {option.label}
             </Text>
           </Pressable>
@@ -188,8 +212,8 @@ export function CapturePhotoScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const insets = useSafeAreaInsets();
-  const {width: windowWidth, height: windowHeight} = useWindowDimensions();
-  const {hasPermission, requestPermission} = useCameraPermission();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const { hasPermission, requestPermission } = useCameraPermission();
   const {
     hasPermission: hasMicPermission,
     requestPermission: requestMicPermission,
@@ -197,9 +221,12 @@ export function CapturePhotoScreen() {
 
   const [captureMode, setCaptureMode] = useState<CaptureMode>('photo');
   const [phase, setPhase] = useState<'camera' | 'review'>('camera');
-  const [cameraPosition, setCameraPosition] = useState<'front' | 'back'>('back');
+  const [cameraPosition, setCameraPosition] = useState<'front' | 'back'>(
+    'back',
+  );
   const [draft, setDraft] = useState<MediaDraft | null>(null);
-  const [selectedFilter, setSelectedFilter] = useState<PhotoFilterId>('original');
+  const [selectedFilter, setSelectedFilter] =
+    useState<PhotoFilterId>('original');
   const [rotationSteps, setRotationSteps] = useState(0);
   const [flashMode, setFlashMode] = useState<CaptureFlashMode>('off');
   const [captionText, setCaptionText] = useState('');
@@ -220,13 +247,19 @@ export function CapturePhotoScreen() {
   } | null>(null);
 
   const photoOutput = usePhotoOutput();
-  const videoOutput = useVideoOutput({enableAudio: captureMode === 'video'});
+  const videoOutput = useVideoOutput({ enableAudio: captureMode === 'video' });
   const exportShotRef = useRef<ElementRef<typeof ViewShot>>(null);
   const recorderRef = useRef<Recorder | null>(null);
   const recordingStartedAtRef = useRef(0);
-  const recordingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const cameraReadyFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const cameraCloseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const recordingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
+    null,
+  );
+  const cameraReadyFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const cameraCloseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const cameraPreviewStoppedRef = useRef(false);
   const cameraLeavingRef = useRef(false);
   const cameraShutdownIntentRef = useRef<CameraShutdownIntent | null>(null);
@@ -304,7 +337,7 @@ export function CapturePhotoScreen() {
       cameraShutdownCompletedRef.current = false;
       cameraShutdownIntentRef.current = intent;
       pendingReviewDraftRef.current =
-        intent === 'review' ? (reviewDraft ?? null) : null;
+        intent === 'review' ? reviewDraft ?? null : null;
       setCameraLeaving(true);
       clearCameraCloseTimeout();
       cameraCloseTimeoutRef.current = setTimeout(() => {
@@ -340,8 +373,7 @@ export function CapturePhotoScreen() {
     }, CAMERA_PREVIEW_SETTLE_MS);
   }, [clearCameraCloseTimeout, completeCameraShutdown, markCameraNotReady]);
 
-  const isCameraMounted =
-    hasPermission && phase === 'camera' && device != null;
+  const isCameraMounted = hasPermission && phase === 'camera' && device != null;
 
   useFocusEffect(
     useCallback(() => {
@@ -420,9 +452,9 @@ export function CapturePhotoScreen() {
 
   useEffect(() => {
     photoOutput.prepareSettings([
-      {flashMode: 'off', enableShutterSound: true},
-      {flashMode: 'auto', enableShutterSound: true},
-      {flashMode: 'on', enableShutterSound: true},
+      { flashMode: 'off', enableShutterSound: true },
+      { flashMode: 'auto', enableShutterSound: true },
+      { flashMode: 'on', enableShutterSound: true },
     ]);
   }, [photoOutput]);
 
@@ -528,7 +560,12 @@ export function CapturePhotoScreen() {
       })();
     });
     return unsubscribe;
-  }, [beginCameraShutdownAndClose, isCameraMounted, navigation, runCloseCleanup]);
+  }, [
+    beginCameraShutdownAndClose,
+    isCameraMounted,
+    navigation,
+    runCloseCleanup,
+  ]);
 
   const toggleVoicePreview = useCallback(async () => {
     if (!voiceUri) {
@@ -543,7 +580,10 @@ export function CapturePhotoScreen() {
       await voicePlayerRef.current.startPreview(voiceUri);
       setVoicePlaying(true);
     } catch (error) {
-      Alert.alert(APP_COPY.alerts.couldNotPlayRecording, getVoiceRecordingErrorMessage(error));
+      Alert.alert(
+        APP_COPY.alerts.couldNotPlayRecording,
+        getVoiceRecordingErrorMessage(error),
+      );
     }
   }, [voicePlaying, voiceUri]);
 
@@ -624,7 +664,10 @@ export function CapturePhotoScreen() {
       resetRecordingState();
 
       if (isVideoRecordingTooShort(durationMs)) {
-        Alert.alert('Video too short', 'Hold record for at least half a second.');
+        Alert.alert(
+          'Video too short',
+          'Hold record for at least half a second.',
+        );
         return;
       }
 
@@ -641,10 +684,7 @@ export function CapturePhotoScreen() {
   const handleVideoRecordingError = useCallback(
     (error: Error) => {
       resetRecordingState();
-      Alert.alert(
-        APP_COPY.alerts.couldNotRecordVideo,
-        errorMessageOr(error),
-      );
+      Alert.alert(APP_COPY.alerts.couldNotRecordVideo, errorMessageOr(error));
     },
     [resetRecordingState],
   );
@@ -703,7 +743,11 @@ export function CapturePhotoScreen() {
   ]);
 
   const handleStopVideoRecording = useCallback(async () => {
-    if (cameraLeavingRef.current || !isRecording || recorderRef.current == null) {
+    if (
+      cameraLeavingRef.current ||
+      !isRecording ||
+      recorderRef.current == null
+    ) {
       return;
     }
     setCapturing(true);
@@ -711,10 +755,7 @@ export function CapturePhotoScreen() {
       await recorderRef.current.stopRecording();
     } catch (error) {
       resetRecordingState();
-      Alert.alert(
-        APP_COPY.alerts.couldNotStopRecording,
-        errorMessageOr(error),
-      );
+      Alert.alert(APP_COPY.alerts.couldNotStopRecording, errorMessageOr(error));
     } finally {
       setCapturing(false);
     }
@@ -726,9 +767,14 @@ export function CapturePhotoScreen() {
     }
     setCapturing(true);
     try {
-      let photoFile: Awaited<ReturnType<typeof photoOutput.capturePhotoToFile>> | null =
-        null;
-      for (let attempt = 0; attempt < CAMERA_CAPTURE_MAX_ATTEMPTS; attempt += 1) {
+      let photoFile: Awaited<
+        ReturnType<typeof photoOutput.capturePhotoToFile>
+      > | null = null;
+      for (
+        let attempt = 0;
+        attempt < CAMERA_CAPTURE_MAX_ATTEMPTS;
+        attempt += 1
+      ) {
         try {
           photoFile = await photoOutput.capturePhotoToFile(
             {
@@ -751,7 +797,9 @@ export function CapturePhotoScreen() {
       if (photoFile == null) {
         throw new Error('Camera is still starting. Try again in a moment.');
       }
-      const normalized = await normalizeCameraPhoto(toFileUri(photoFile.filePath));
+      const normalized = await normalizeCameraPhoto(
+        toFileUri(photoFile.filePath),
+      );
       setSelectedFilter('original');
       beginCameraShutdownForReview({
         kind: 'photo',
@@ -760,10 +808,7 @@ export function CapturePhotoScreen() {
         sourceHeight: normalized.height,
       });
     } catch (error) {
-      Alert.alert(
-        APP_COPY.alerts.couldNotTakePhoto,
-        errorMessageOr(error),
-      );
+      Alert.alert(APP_COPY.alerts.couldNotTakePhoto, errorMessageOr(error));
     } finally {
       setCapturing(false);
     }
@@ -777,7 +822,7 @@ export function CapturePhotoScreen() {
     setSaveStatus(null);
     try {
       if (draft.kind === 'photo') {
-        setSaveStatus({label: 'Saving…'});
+        setSaveStatus({ label: 'Saving…' });
         const filteredUri = await captureFilteredPhotoUri(
           exportShotRef,
           selectedFilter,
@@ -788,12 +833,17 @@ export function CapturePhotoScreen() {
           filteredUri,
           null,
           captionText,
-          voiceUri ? {uri: voiceUri, durationMs: voiceDurationMs} : null,
+          voiceUri ? { uri: voiceUri, durationMs: voiceDurationMs } : null,
         );
       } else {
-        await saveVideoMoment(draft.sourceUri, draft.durationMs, captionText, update => {
-          setSaveStatus(update);
-        });
+        await saveVideoMoment(
+          draft.sourceUri,
+          draft.durationMs,
+          captionText,
+          update => {
+            setSaveStatus(update);
+          },
+        );
       }
       try {
         await voicePlayerRef.current.stopPreview();
@@ -805,20 +855,34 @@ export function CapturePhotoScreen() {
       navigation.goBack();
     } catch (error) {
       Alert.alert(
-        draft.kind === 'photo' ? APP_COPY.alerts.couldNotSavePhoto : APP_COPY.alerts.couldNotSaveVideo,
+        draft.kind === 'photo'
+          ? APP_COPY.alerts.couldNotSavePhoto
+          : APP_COPY.alerts.couldNotSaveVideo,
         errorMessageOr(error),
       );
     } finally {
       setSaving(false);
       setSaveStatus(null);
     }
-  }, [captionText, draft, navigation, rotationSteps, saving, selectedFilter, voiceDurationMs, voiceUri]);
+  }, [
+    captionText,
+    draft,
+    navigation,
+    rotationSteps,
+    saving,
+    selectedFilter,
+    voiceDurationMs,
+    voiceUri,
+  ]);
 
   if (!hasPermission) {
     return (
-      <View style={[styles.root, styles.centered, {paddingTop: insets.top}]}>
+      <View style={[styles.root, styles.centered, { paddingTop: insets.top }]}>
         <Text style={styles.permissionText}>Camera access is required.</Text>
-        <Pressable onPress={() => void requestPermission()} style={styles.permissionButton}>
+        <Pressable
+          onPress={() => void requestPermission()}
+          style={styles.permissionButton}
+        >
           <Text style={styles.permissionButtonText}>Allow camera</Text>
         </Pressable>
         <Pressable onPress={handleClose} style={styles.permissionClose}>
@@ -831,7 +895,9 @@ export function CapturePhotoScreen() {
   if (phase === 'camera') {
     if (device == null) {
       return (
-        <View style={[styles.root, styles.centered, {paddingTop: insets.top}]}>
+        <View
+          style={[styles.root, styles.centered, { paddingTop: insets.top }]}
+        >
           <Text style={styles.permissionText}>Camera is not available.</Text>
           <Pressable onPress={handleClose} style={styles.permissionClose}>
             <Text style={styles.permissionCloseText}>Close</Text>
@@ -846,8 +912,12 @@ export function CapturePhotoScreen() {
           key={`${cameraPosition}-${captureMode}`}
           style={StyleSheet.absoluteFill}
           device={device}
-          isActive={phase === 'camera' && !cameraLeaving && !cameraBackgroundPaused}
-          outputs={captureMode === 'video' ? [photoOutput, videoOutput] : [photoOutput]}
+          isActive={
+            phase === 'camera' && !cameraLeaving && !cameraBackgroundPaused
+          }
+          outputs={
+            captureMode === 'video' ? [photoOutput, videoOutput] : [photoOutput]
+          }
           mirrorMode="off"
           enableNativeZoomGesture
           onPreviewStarted={markCameraReady}
@@ -861,8 +931,9 @@ export function CapturePhotoScreen() {
           pointerEvents="box-none"
           style={[
             styles.cameraOverlay,
-            {paddingTop: insets.top + 8, paddingBottom: insets.bottom + 12},
-          ]}>
+            { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 12 },
+          ]}
+        >
           <View style={styles.cameraTopRow}>
             <View style={styles.cameraTopSpacer} />
             {isRecording ? (
@@ -881,7 +952,8 @@ export function CapturePhotoScreen() {
                 style={[
                   styles.flashButton,
                   capturing || cameraLeaving ? styles.disabled : null,
-                ]}>
+                ]}
+              >
                 {flashMode === 'off' ? (
                   <ZapOff size={20} color="#FFFFFF" strokeWidth={2.25} />
                 ) : (
@@ -905,37 +977,41 @@ export function CapturePhotoScreen() {
             <View style={styles.modeSwitchRow}>
               <Pressable
                 accessibilityRole="button"
-                accessibilityState={{selected: captureMode === 'photo'}}
+                accessibilityState={{ selected: captureMode === 'photo' }}
                 accessibilityLabel="Photo mode"
                 disabled={capturing || isRecording || cameraLeaving}
                 onPress={() => handleSelectCaptureMode('photo')}
                 style={[
                   styles.modePill,
                   captureMode === 'photo' ? styles.modePillActive : null,
-                ]}>
+                ]}
+              >
                 <Text
                   style={[
                     styles.modePillLabel,
                     captureMode === 'photo' ? styles.modePillLabelActive : null,
-                  ]}>
+                  ]}
+                >
                   Photo
                 </Text>
               </Pressable>
               <Pressable
                 accessibilityRole="button"
-                accessibilityState={{selected: captureMode === 'video'}}
+                accessibilityState={{ selected: captureMode === 'video' }}
                 accessibilityLabel="Video mode"
                 disabled={capturing || isRecording || cameraLeaving}
                 onPress={() => handleSelectCaptureMode('video')}
                 style={[
                   styles.modePill,
                   captureMode === 'video' ? styles.modePillActive : null,
-                ]}>
+                ]}
+              >
                 <Text
                   style={[
                     styles.modePillLabel,
                     captureMode === 'video' ? styles.modePillLabelActive : null,
-                  ]}>
+                  ]}
+                >
                   Video
                 </Text>
               </Pressable>
@@ -954,15 +1030,16 @@ export function CapturePhotoScreen() {
                     capturing || !cameraReady || cameraLeaving
                       ? styles.shutterButtonPending
                       : null,
-                  ]}>
-                  {capturing ? (
-                    <ActivityIndicator color="#000000" />
-                  ) : null}
+                  ]}
+                >
+                  {capturing ? <ActivityIndicator color="#000000" /> : null}
                 </Pressable>
               ) : (
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={isRecording ? 'Stop recording' : 'Start recording'}
+                  accessibilityLabel={
+                    isRecording ? 'Stop recording' : 'Start recording'
+                  }
                   disabled={capturing || cameraLeaving}
                   onPress={() =>
                     void (isRecording
@@ -973,10 +1050,16 @@ export function CapturePhotoScreen() {
                     styles.shutterButton,
                     isRecording ? styles.shutterButtonRecording : null,
                     capturing || cameraLeaving ? styles.disabled : null,
-                  ]}>
+                  ]}
+                >
                   {isRecording ? (
                     <View style={styles.shutterStopIcon}>
-                      <Square size={22} color="#FFFFFF" fill="#FFFFFF" strokeWidth={0} />
+                      <Square
+                        size={22}
+                        color="#FFFFFF"
+                        fill="#FFFFFF"
+                        strokeWidth={0}
+                      />
                     </View>
                   ) : capturing ? (
                     <ActivityIndicator color="#FF3B30" />
@@ -991,7 +1074,11 @@ export function CapturePhotoScreen() {
                   accessibilityLabel="Close camera"
                   disabled={cameraLeaving}
                   onPress={handleClose}
-                  style={[styles.iconButton, cameraLeaving ? styles.disabled : null]}>
+                  style={[
+                    styles.iconButton,
+                    cameraLeaving ? styles.disabled : null,
+                  ]}
+                >
                   <X size={22} color="#FFFFFF" strokeWidth={2.25} />
                 </Pressable>
                 <Pressable
@@ -1009,8 +1096,11 @@ export function CapturePhotoScreen() {
                   }}
                   style={[
                     styles.iconButton,
-                    capturing || isRecording || cameraLeaving ? styles.disabled : null,
-                  ]}>
+                    capturing || isRecording || cameraLeaving
+                      ? styles.disabled
+                      : null,
+                  ]}
+                >
                   <RefreshCw size={22} color="#FFFFFF" strokeWidth={2.25} />
                 </Pressable>
               </View>
@@ -1033,266 +1123,320 @@ export function CapturePhotoScreen() {
 
   return (
     <BottomSheetModalProvider>
-    <View style={styles.root}>
-      {isPhotoDraft ? (
-        <ViewShot
-          ref={exportShotRef}
-          style={StyleSheet.absoluteFill}
-          options={{format: 'jpg', quality: 1, result: 'tmpfile'}}>
-          <View style={styles.photoStage}>
-            <View
-              style={[
-                styles.photoStageInner,
-                {
-                  width: stageWidth,
-                  height: stageHeight,
-                  transform: [{rotate: `${rotationDeg}deg`}],
-                },
-              ]}>
-              <FilteredCaptureImage
+      <View style={styles.root}>
+        {isPhotoDraft ? (
+          <ViewShot
+            ref={exportShotRef}
+            style={StyleSheet.absoluteFill}
+            options={{ format: 'jpg', quality: 1, result: 'tmpfile' }}
+          >
+            <View style={styles.photoStage}>
+              <View
+                style={[
+                  styles.photoStageInner,
+                  {
+                    width: stageWidth,
+                    height: stageHeight,
+                    transform: [{ rotate: `${rotationDeg}deg` }],
+                  },
+                ]}
+              >
+                <FilteredCaptureImage
+                  uri={draft.sourceUri}
+                  filterId={selectedFilter}
+                  style={StyleSheet.absoluteFill}
+                  resizeMode="cover"
+                />
+              </View>
+            </View>
+          </ViewShot>
+        ) : (
+          <View style={styles.reviewVideoStage} pointerEvents="box-none">
+            <View style={styles.reviewVideoFrame}>
+              <MomentVideoPlayer
+                ref={reviewVideoRef}
                 uri={draft.sourceUri}
-                filterId={selectedFilter}
                 style={StyleSheet.absoluteFill}
-                resizeMode="cover"
+                resizeMode={ResizeMode.COVER}
+                repeat={false}
+                paused={reviewPlaybackPaused || reviewVideoEnded || saving}
+                onEnd={handleReviewVideoEnded}
               />
             </View>
-          </View>
-        </ViewShot>
-      ) : (
-        <View style={styles.reviewVideoStage} pointerEvents="box-none">
-          <View style={styles.reviewVideoFrame}>
-            <MomentVideoPlayer
-              ref={reviewVideoRef}
-              uri={draft.sourceUri}
-              style={StyleSheet.absoluteFill}
-              resizeMode={ResizeMode.COVER}
-              repeat={false}
-              paused={reviewPlaybackPaused || reviewVideoEnded || saving}
-              onEnd={handleReviewVideoEnded}
-            />
-          </View>
-          {reviewVideoEnded && !saving ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Play video"
-              onPress={handleReplayReviewVideo}
-              style={styles.reviewVideoPlayOverlay}>
-              <View style={styles.reviewVideoPlayButton}>
-                <Play size={28} color="#FFFFFF" strokeWidth={2.25} />
-              </View>
-            </Pressable>
-          ) : null}
-        </View>
-      )}
-
-      {saving ? (
-        <View style={styles.savingOverlay}>
-          <ActivityIndicator color="#FFFFFF" size="large" />
-          {saveStatus?.label ? (
-            <Text style={styles.savingStatusText}>{saveStatus.label}</Text>
-          ) : null}
-          {saveStatus?.progress != null ? (
-            <Text style={styles.savingProgressText}>
-              {Math.round(saveStatus.progress * 100)}%
-            </Text>
-          ) : null}
-        </View>
-      ) : null}
-
-      <View pointerEvents="box-none" style={styles.reviewRoot}>
-        {captionInputOpen ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Dismiss text editing"
-            onPress={handleDismissCaption}
-            style={styles.captionDismissBackdrop}
-          />
-        ) : (
-          <View pointerEvents="box-none" style={styles.reviewSideToolsDock}>
-            <View style={styles.reviewToolsDockRow}>
-              <View style={styles.reviewAttachmentColumn}>
-                {isPhotoDraft && voiceUri ? (
-                  <View style={styles.voicePreviewRow}>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={voicePlaying ? 'Pause voice memo' : 'Play voice memo'}
-                      onPress={() => void toggleVoicePreview()}
-                      style={[
-                        styles.voicePreviewPlay,
-                        {backgroundColor: CAPTURE_BUTTON_THEMES.voice.badgeBg},
-                      ]}>
-                      {voicePlaying ? (
-                        <Pause size={18} color={CAPTURE_BUTTON_THEMES.voice.icon} strokeWidth={2.25} />
-                      ) : (
-                        <Play size={18} color={CAPTURE_BUTTON_THEMES.voice.icon} strokeWidth={2.25} />
-                      )}
-                    </Pressable>
-                    <View style={styles.voicePreviewCopy}>
-                      <Text style={styles.voicePreviewLabel}>Voice memo</Text>
-                      <Text style={styles.voicePreviewDuration}>
-                        {formatVoiceDurationMs(voiceDurationMs)}
-                      </Text>
-                    </View>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Remove voice memo"
-                      onPress={() => void clearVoice()}
-                      style={styles.voicePreviewRemove}>
-                      <X size={16} color="#FFFFFF" strokeWidth={2.5} />
-                    </Pressable>
-                  </View>
-                ) : null}
-                {captionText.trim().length > 0 ? (
-                  <View style={styles.captionPreviewRow}>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Edit photo text"
-                      disabled={saving}
-                      onPress={() => setCaptionInputOpen(true)}
-                      style={[styles.captionPreviewBody, saving ? styles.disabled : null]}>
-                      <Text numberOfLines={2} style={styles.captionPreviewText}>
-                        {captionText.trim()}
-                      </Text>
-                    </Pressable>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Remove photo text"
-                      disabled={saving}
-                      onPress={clearCaption}
-                      style={styles.captionPreviewRemove}>
-                      <X size={16} color="#FFFFFF" strokeWidth={2.5} />
-                    </Pressable>
-                  </View>
-                ) : (
-                  <View style={styles.captionPreviewSpacer} />
-                )}
-              </View>
-              <View style={styles.reviewSideToolsColumn}>
-                {isPhotoDraft ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Rotate photo"
-                    disabled={saving}
-                    onPress={handleRotatePhoto}
-                    style={[styles.sideToolButton, saving ? styles.disabled : null]}>
-                    <RotateCw size={18} color="#FFFFFF" strokeWidth={2.25} />
-                    <Text style={styles.sideToolButtonLabel}>Rotate</Text>
-                  </Pressable>
-                ) : null}
-                {isPhotoDraft ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Record voice memo about this photo"
-                    disabled={saving || voiceUri != null || voiceSheetOpen}
-                    onPress={handleOpenVoiceSheet}
-                    style={[styles.sideToolButton, saving ? styles.disabled : null]}>
-                    <AudioLines size={18} color="#FFFFFF" strokeWidth={2.25} />
-                    <Text style={styles.sideToolButtonLabel}>Voice</Text>
-                  </Pressable>
-                ) : null}
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Add optional text"
-                  disabled={saving}
-                  onPress={() => setCaptionInputOpen(true)}
-                  style={[styles.sideToolButton, saving ? styles.disabled : null]}>
-                  <Type size={18} color="#FFFFFF" strokeWidth={2.25} />
-                  <Text style={styles.sideToolButtonLabel}>Text</Text>
-                </Pressable>
-              </View>
-            </View>
+            {reviewVideoEnded && !saving ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Play video"
+                onPress={handleReplayReviewVideo}
+                style={styles.reviewVideoPlayOverlay}
+              >
+                <View style={styles.reviewVideoPlayButton}>
+                  <Play size={28} color="#FFFFFF" strokeWidth={2.25} />
+                </View>
+              </Pressable>
+            ) : null}
           </View>
         )}
 
-        <KeyboardAvoidingView
-          pointerEvents="box-none"
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.reviewBottomDock}
-          keyboardVerticalOffset={0}>
-          <View
-            style={[
-              styles.reviewChrome,
-              captionInputOpen ? styles.reviewChromeCaption : null,
-              {paddingBottom: captionInputOpen ? 10 : insets.bottom + 8},
-            ]}>
-            {!captionInputOpen && isPhotoDraft ? (
-              <PhotoFilterStrip
-                sourceUri={draft.sourceUri}
-                selectedFilter={selectedFilter}
-                onSelectFilter={setSelectedFilter}
-                disabled={saving}
-              />
+        {saving ? (
+          <View style={styles.savingOverlay}>
+            <ActivityIndicator color="#FFFFFF" size="large" />
+            {saveStatus?.label ? (
+              <Text style={styles.savingStatusText}>{saveStatus.label}</Text>
             ) : null}
-
-            {captionInputOpen ? (
-              <View style={styles.captionSection}>
-                <TextInput
-                  autoFocus
-                  value={captionText}
-                  onChangeText={setCaptionText}
-                  placeholder="What a lovely day… (optional)"
-                  placeholderTextColor="rgba(255,255,255,0.45)"
-                  style={styles.captionInput}
-                  returnKeyType="done"
-                  blurOnSubmit
-                  onSubmitEditing={handleDismissCaption}
-                  multiline
-                  maxLength={280}
-                  editable={!saving}
-                />
-              </View>
-            ) : null}
-
-            {!captionInputOpen ? (
-              <View style={styles.reviewActionsRow}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Close without saving"
-                  disabled={saving}
-                  onPress={handleClose}
-                  style={[styles.iconButton, saving ? styles.disabled : null]}>
-                  <X size={22} color="#FFFFFF" strokeWidth={2.25} />
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={isPhotoDraft ? 'Retake photo' : 'Retake video'}
-                  disabled={saving}
-                  onPress={handleRetake}
-                  style={[styles.iconButton, saving ? styles.disabled : null]}>
-                  <RotateCcw size={22} color="#FFFFFF" strokeWidth={2.25} />
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={isPhotoDraft ? 'Save photo' : 'Save video'}
-                  disabled={saving}
-                  onPress={() => void handleSave()}
-                  style={[styles.doneIconButton, saving ? styles.disabled : null]}>
-                  {saving ? (
-                    <ActivityIndicator color="#FFFFFF" size="small" />
-                  ) : (
-                    <Check size={22} color="#FFFFFF" strokeWidth={2.5} />
-                  )}
-                </Pressable>
-              </View>
+            {saveStatus?.progress != null ? (
+              <Text style={styles.savingProgressText}>
+                {Math.round(saveStatus.progress * 100)}%
+              </Text>
             ) : null}
           </View>
-        </KeyboardAvoidingView>
-      </View>
+        ) : null}
 
-      <VoiceMemoSheet
-        visible={voiceSheetOpen}
-        saveTarget="photo"
-        startRecordingOnOpen={false}
-        onDiaryAttach={attachment => {
-          void clearVoice().then(() => {
-            setVoiceUri(attachment.uri);
-            setVoiceDurationMs(attachment.durationMs);
-          });
-        }}
-        onClose={() => setVoiceSheetOpen(false)}
-        onSaved={async () => {}}
-      />
-    </View>
+        <View pointerEvents="box-none" style={styles.reviewRoot}>
+          {captionInputOpen ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Dismiss text editing"
+              onPress={handleDismissCaption}
+              style={styles.captionDismissBackdrop}
+            />
+          ) : (
+            <View pointerEvents="box-none" style={styles.reviewSideToolsDock}>
+              <View style={styles.reviewToolsDockRow}>
+                <View style={styles.reviewAttachmentColumn}>
+                  {isPhotoDraft && voiceUri ? (
+                    <View style={styles.voicePreviewRow}>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={
+                          voicePlaying ? 'Pause voice memo' : 'Play voice memo'
+                        }
+                        onPress={() => void toggleVoicePreview()}
+                        style={[
+                          styles.voicePreviewPlay,
+                          {
+                            backgroundColor:
+                              CAPTURE_BUTTON_THEMES.voice.badgeBg,
+                          },
+                        ]}
+                      >
+                        {voicePlaying ? (
+                          <Pause
+                            size={18}
+                            color={CAPTURE_BUTTON_THEMES.voice.icon}
+                            strokeWidth={2.25}
+                          />
+                        ) : (
+                          <Play
+                            size={18}
+                            color={CAPTURE_BUTTON_THEMES.voice.icon}
+                            strokeWidth={2.25}
+                          />
+                        )}
+                      </Pressable>
+                      <View style={styles.voicePreviewCopy}>
+                        <Text style={styles.voicePreviewLabel}>Voice memo</Text>
+                        <Text style={styles.voicePreviewDuration}>
+                          {formatVoiceDurationMs(voiceDurationMs)}
+                        </Text>
+                      </View>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel="Remove voice memo"
+                        onPress={() => void clearVoice()}
+                        style={styles.voicePreviewRemove}
+                      >
+                        <X size={16} color="#FFFFFF" strokeWidth={2.5} />
+                      </Pressable>
+                    </View>
+                  ) : null}
+                  {captionText.trim().length > 0 ? (
+                    <View style={styles.captionPreviewRow}>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel="Edit photo text"
+                        disabled={saving}
+                        onPress={() => setCaptionInputOpen(true)}
+                        style={[
+                          styles.captionPreviewBody,
+                          saving ? styles.disabled : null,
+                        ]}
+                      >
+                        <Text
+                          numberOfLines={2}
+                          style={styles.captionPreviewText}
+                        >
+                          {captionText.trim()}
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel="Remove photo text"
+                        disabled={saving}
+                        onPress={clearCaption}
+                        style={styles.captionPreviewRemove}
+                      >
+                        <X size={16} color="#FFFFFF" strokeWidth={2.5} />
+                      </Pressable>
+                    </View>
+                  ) : (
+                    <View style={styles.captionPreviewSpacer} />
+                  )}
+                </View>
+                <View style={styles.reviewSideToolsColumn}>
+                  {isPhotoDraft ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Rotate photo"
+                      disabled={saving}
+                      onPress={handleRotatePhoto}
+                      style={[
+                        styles.sideToolButton,
+                        saving ? styles.disabled : null,
+                      ]}
+                    >
+                      <RotateCw size={18} color="#FFFFFF" strokeWidth={2.25} />
+                      <Text style={styles.sideToolButtonLabel}>Rotate</Text>
+                    </Pressable>
+                  ) : null}
+                  {isPhotoDraft ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Record voice memo about this photo"
+                      disabled={saving || voiceUri != null || voiceSheetOpen}
+                      onPress={handleOpenVoiceSheet}
+                      style={[
+                        styles.sideToolButton,
+                        saving ? styles.disabled : null,
+                      ]}
+                    >
+                      <AudioLines
+                        size={18}
+                        color="#FFFFFF"
+                        strokeWidth={2.25}
+                      />
+                      <Text style={styles.sideToolButtonLabel}>Voice</Text>
+                    </Pressable>
+                  ) : null}
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Add optional text"
+                    disabled={saving}
+                    onPress={() => setCaptionInputOpen(true)}
+                    style={[
+                      styles.sideToolButton,
+                      saving ? styles.disabled : null,
+                    ]}
+                  >
+                    <Type size={18} color="#FFFFFF" strokeWidth={2.25} />
+                    <Text style={styles.sideToolButtonLabel}>Text</Text>
+                  </Pressable>
+                </View>
+              </View>
+            </View>
+          )}
+
+          <KeyboardAvoidingView
+            pointerEvents="box-none"
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.reviewBottomDock}
+            keyboardVerticalOffset={0}
+          >
+            <View
+              style={[
+                styles.reviewChrome,
+                captionInputOpen ? styles.reviewChromeCaption : null,
+                { paddingBottom: captionInputOpen ? 10 : insets.bottom + 8 },
+              ]}
+            >
+              {!captionInputOpen && isPhotoDraft ? (
+                <PhotoFilterStrip
+                  sourceUri={draft.sourceUri}
+                  selectedFilter={selectedFilter}
+                  onSelectFilter={setSelectedFilter}
+                  disabled={saving}
+                />
+              ) : null}
+
+              {captionInputOpen ? (
+                <View style={styles.captionSection}>
+                  <TextInput
+                    autoFocus
+                    value={captionText}
+                    onChangeText={setCaptionText}
+                    placeholder="What a lovely day… (optional)"
+                    placeholderTextColor="rgba(255,255,255,0.45)"
+                    style={styles.captionInput}
+                    returnKeyType="done"
+                    blurOnSubmit
+                    onSubmitEditing={handleDismissCaption}
+                    multiline
+                    maxLength={280}
+                    editable={!saving}
+                  />
+                </View>
+              ) : null}
+
+              {!captionInputOpen ? (
+                <View style={styles.reviewActionsRow}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Close without saving"
+                    disabled={saving}
+                    onPress={handleClose}
+                    style={[styles.iconButton, saving ? styles.disabled : null]}
+                  >
+                    <X size={22} color="#FFFFFF" strokeWidth={2.25} />
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      isPhotoDraft ? 'Retake photo' : 'Retake video'
+                    }
+                    disabled={saving}
+                    onPress={handleRetake}
+                    style={[styles.iconButton, saving ? styles.disabled : null]}
+                  >
+                    <RotateCcw size={22} color="#FFFFFF" strokeWidth={2.25} />
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      isPhotoDraft ? 'Save photo' : 'Save video'
+                    }
+                    disabled={saving}
+                    onPress={() => void handleSave()}
+                    style={[
+                      styles.doneIconButton,
+                      saving ? styles.disabled : null,
+                    ]}
+                  >
+                    {saving ? (
+                      <ActivityIndicator color="#FFFFFF" size="small" />
+                    ) : (
+                      <Check size={22} color="#FFFFFF" strokeWidth={2.5} />
+                    )}
+                  </Pressable>
+                </View>
+              ) : null}
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+
+        <VoiceMemoSheet
+          visible={voiceSheetOpen}
+          saveTarget="photo"
+          startRecordingOnOpen={false}
+          onDiaryAttach={attachment => {
+            void clearVoice().then(() => {
+              setVoiceUri(attachment.uri);
+              setVoiceDurationMs(attachment.durationMs);
+            });
+          }}
+          onClose={() => setVoiceSheetOpen(false)}
+          onSaved={async () => {}}
+        />
+      </View>
     </BottomSheetModalProvider>
   );
 }
@@ -1690,7 +1834,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#FFFFFF',
     shadowColor: SELECTED_BORDER_COLOR,
-    shadowOffset: {width: 0, height: 0},
+    shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.35,
     shadowRadius: 6,
     elevation: 3,

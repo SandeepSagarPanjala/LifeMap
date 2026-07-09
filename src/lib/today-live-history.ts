@@ -1,26 +1,26 @@
-import type {LocationPointRow} from '@/db/repositories/location-days';
-import {listSavedPlaces} from '@/db/repositories/saved-places';
-import {getDayRange} from '@/lib/day-utils';
-import type {HistoryData} from '@/lib/history-data-types';
-import {loadExplorerGpsWindow} from '@/lib/explorer-day-trips';
-import {loadPlaceLookupContext} from '@/lib/place-lookup-context';
-import {prepareDayHistoryTimeline} from '@/lib/today-history';
+import type { LocationPointRow } from '@/db/repositories/location-days';
+import { listSavedPlaces } from '@/db/repositories/saved-places';
+import { getDayRange } from '@/lib/day-utils';
+import type { HistoryData } from '@/lib/history-data-types';
+import { loadExplorerGpsWindow } from '@/lib/explorer-day-trips';
+import { loadPlaceLookupContext } from '@/lib/place-lookup-context';
+import { prepareDayHistoryTimeline } from '@/lib/today-history';
 import {
   isPlayableTimelineEntry,
   type DayTimelineEntry,
   type DetectedTrip,
 } from '@/lib/trip-detection';
-import {flattenTimelinePoints} from '@/lib/trip-geometry';
-import type {TripDetectionConfig} from '@/lib/trip-settings';
+import { flattenTimelinePoints } from '@/lib/trip-geometry';
+import type { TripDetectionConfig } from '@/lib/trip-settings';
 
 /** Today map/history display — main alg + open visit through now. */
 export async function buildTodayDisplayHistory(
   dateKey: string,
   detectionConfig: TripDetectionConfig,
   referenceNow: Date = new Date(),
-): Promise<HistoryData & {dayPointCount: number}> {
-  const {start: dayStart, end: dayEnd} = getDayRange(dateKey);
-  const [savedPlaces, {windowPoints, dayPointCount}, placeLookup] =
+): Promise<HistoryData & { dayPointCount: number }> {
+  const { start: dayStart, end: dayEnd } = getDayRange(dateKey);
+  const [savedPlaces, { windowPoints, dayPointCount }, placeLookup] =
     await Promise.all([
       listSavedPlaces(),
       loadExplorerGpsWindow(dateKey),
@@ -62,9 +62,9 @@ export async function buildTodayTailDisplayHistory(
   tailStart: Date,
   detectionConfig: TripDetectionConfig,
   referenceNow: Date = new Date(),
-): Promise<HistoryData & {dayPointCount: number}> {
-  const {start: dayStart, end: dayEnd} = getDayRange(dateKey);
-  const [savedPlaces, {windowPoints, dayPointCount}, placeLookup] =
+): Promise<HistoryData & { dayPointCount: number }> {
+  const { start: dayStart, end: dayEnd } = getDayRange(dateKey);
+  const [savedPlaces, { windowPoints, dayPointCount }, placeLookup] =
     await Promise.all([
       listSavedPlaces(),
       loadExplorerGpsWindow(dateKey),
@@ -109,7 +109,7 @@ export function historyDataFromEntries(
   rangeEnd: Date,
   entries: readonly DayTimelineEntry[],
   dayPointCount = 0,
-): HistoryData & {dayPointCount: number} {
+): HistoryData & { dayPointCount: number } {
   const playable = entries.filter((entry): entry is DetectedTrip =>
     isPlayableTimelineEntry(entry),
   );
@@ -117,7 +117,7 @@ export function historyDataFromEntries(
     dateKey,
     points: flattenTimelinePoints(playable),
     entries: [...entries],
-    range: {startAt: dayStart, endAt: rangeEnd},
+    range: { startAt: dayStart, endAt: rangeEnd },
     dayPointCount,
   };
 }

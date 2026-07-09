@@ -5,11 +5,11 @@ import {
   tripLookupAnchorFromRow,
   tripRowToBackfillStay,
 } from '@/lib/place-lookup-backfill';
-import type {PlaceLookupRow} from '@/lib/place-lookup-types';
-import {PLACE_LOOKUP_VENUE_RADIUS_M} from '@/lib/app-constants';
-import type {PersistedTripLabel} from '@/lib/trip-materialization';
-import {getDefaultTripDetectionConfig} from '@/lib/trip-materialization';
-import type {TripRow} from '@/db/repositories/trips';
+import type { PlaceLookupRow } from '@/lib/place-lookup-types';
+import { PLACE_LOOKUP_VENUE_RADIUS_M } from '@/lib/app-constants';
+import type { PersistedTripLabel } from '@/lib/trip-materialization';
+import { getDefaultTripDetectionConfig } from '@/lib/trip-materialization';
+import type { TripRow } from '@/db/repositories/trips';
 
 function tripRow(overrides: Partial<TripRow> = {}): TripRow {
   return {
@@ -53,27 +53,29 @@ function cacheRow(overrides: Partial<PlaceLookupRow> = {}): PlaceLookupRow {
 
 describe('place-lookup-backfill', () => {
   it('uses sealed trip centroid as lookup anchor', () => {
-    const row = tripRow({centroidLat: 40.1, centroidLng: -74.2});
-    expect(tripLookupAnchorFromRow(row)).toEqual({lat: 40.1, lng: -74.2});
+    const row = tripRow({ centroidLat: 40.1, centroidLng: -74.2 });
+    expect(tripLookupAnchorFromRow(row)).toEqual({ lat: 40.1, lng: -74.2 });
   });
 
   it('detects stays missing any place label', () => {
     expect(isStayMissingPlaceLabel(tripRow())).toBe(true);
-    expect(isStayMissingPlaceLabel(tripRow({placeId: 2, placeKind: 'saved'}))).toBe(false);
     expect(
-      isStayMissingPlaceLabel(tripRow({placeId: 3, placeKind: 'cache'})),
+      isStayMissingPlaceLabel(tripRow({ placeId: 2, placeKind: 'saved' })),
     ).toBe(false);
     expect(
-      isStayMissingPlaceLabel(tripRow({poiId: 42, poiLabel: 'Walmart'})),
+      isStayMissingPlaceLabel(tripRow({ placeId: 3, placeKind: 'cache' })),
     ).toBe(false);
     expect(
-      isStayMissingPlaceLabel(tripRow({placeLabel: 'Walmart'})),
+      isStayMissingPlaceLabel(tripRow({ poiId: 42, poiLabel: 'Walmart' })),
     ).toBe(false);
-    expect(isStayMissingPlaceLabel(tripRow({kind: 'travel'}))).toBe(false);
+    expect(isStayMissingPlaceLabel(tripRow({ placeLabel: 'Walmart' }))).toBe(
+      false,
+    );
+    expect(isStayMissingPlaceLabel(tripRow({ kind: 'travel' }))).toBe(false);
   });
 
   it('lists qualifying unlabeled stays only', () => {
-    const config = {...getDefaultTripDetectionConfig(), gapMinutes: 15};
+    const config = { ...getDefaultTripDetectionConfig(), gapMinutes: 15 };
     const rows = [
       tripRow(),
       tripRow({
@@ -119,7 +121,7 @@ describe('place-lookup-backfill', () => {
     const merged = mergeTripPlaceLabelAfterLookup(
       eventKey,
       existing,
-      cacheRow({id: 9}),
+      cacheRow({ id: 9 }),
     );
 
     expect(merged.placeLabel).toBe('123 Main St');

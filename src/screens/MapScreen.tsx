@@ -1,13 +1,13 @@
-import {View} from 'react-native';
+import { View } from 'react-native';
 
-import {SavePlaceSheet} from '@/components/map/SavePlaceSheet';
+import { SavePlaceSheet } from '@/components/map/SavePlaceSheet';
 
-import {MapHistoryPanel} from './map/MapHistoryPanel';
-import {MapScreenFloatingControls} from './map/MapScreenFloatingControls';
-import {MapDayLoadingOverlay} from '@/components/map/MapDayLoadingOverlay';
-import {MapScreenMap} from './map/MapScreenMap';
-import {MapScreenTopBar} from './map/MapScreenTopBar';
-import {useMapScreenController} from './map/use-map-screen-controller';
+import { MapHistoryPanel } from './map/MapHistoryPanel';
+import { MapScreenFloatingControls } from './map/MapScreenFloatingControls';
+import { MapDayLoadingOverlay } from '@/components/map/MapDayLoadingOverlay';
+import { MapScreenMap } from './map/MapScreenMap';
+import { MapScreenTopBar } from './map/MapScreenTopBar';
+import { useMapScreenController } from './map/use-map-screen-controller';
 
 export function MapScreen() {
   const controller = useMapScreenController();

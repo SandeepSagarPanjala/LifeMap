@@ -1,5 +1,5 @@
-import {Alert} from 'react-native';
-import {APP_COPY} from '@/lib/app-copy';
+import { Alert } from 'react-native';
+import { APP_COPY } from '@/lib/app-copy';
 import {
   launchCamera,
   launchImageLibrary,
@@ -8,8 +8,8 @@ import {
   type ImagePickerResponse,
 } from 'react-native-image-picker';
 
-import {compressMomentImage} from '@/lib/moments/compress-image';
-import {MAX_NOTE_PHOTO_ATTACHMENTS} from '@/lib/app-constants';
+import { compressMomentImage } from '@/lib/moments/compress-image';
+import { MAX_NOTE_PHOTO_ATTACHMENTS } from '@/lib/app-constants';
 
 const LIBRARY_OPTIONS: ImageLibraryOptions = {
   mediaType: 'photo',
@@ -36,7 +36,9 @@ export function getLibraryPickerErrorMessage(
   if (response.errorCode === 'permission') {
     return 'Photo library access is required to attach photos to notes.';
   }
-  return response.errorCode ? `Photo library error: ${response.errorCode}` : null;
+  return response.errorCode
+    ? `Photo library error: ${response.errorCode}`
+    : null;
 }
 
 export type PickedNotePhoto = {
@@ -80,7 +82,10 @@ async function pickNotePhotosFromResponse(
 
   const assets = response.assets?.filter(asset => asset.uri) ?? [];
   if (assets.length === 0) {
-    Alert.alert(APP_COPY.alerts.couldNotAttachPhoto, APP_COPY.alerts.noImagesFromLibrary);
+    Alert.alert(
+      APP_COPY.alerts.couldNotAttachPhoto,
+      APP_COPY.alerts.noImagesFromLibrary,
+    );
     return [];
   }
 
@@ -96,7 +101,10 @@ async function pickNotePhotosFromResponse(
         sourceBytes: asset.fileSize ?? null,
       });
     } catch {
-      Alert.alert(APP_COPY.alerts.couldNotAttachPhoto, APP_COPY.alerts.failedCompressPhoto);
+      Alert.alert(
+        APP_COPY.alerts.couldNotAttachPhoto,
+        APP_COPY.alerts.failedCompressPhoto,
+      );
       break;
     }
   }
@@ -117,7 +125,10 @@ async function pickNotePhotoFromResponse(
 
   const asset = response.assets?.[0];
   if (!asset?.uri) {
-    Alert.alert(APP_COPY.alerts.couldNotAttachPhoto, APP_COPY.alerts.noImageFromLibrary);
+    Alert.alert(
+      APP_COPY.alerts.couldNotAttachPhoto,
+      APP_COPY.alerts.noImageFromLibrary,
+    );
     return null;
   }
 
@@ -128,7 +139,10 @@ async function pickNotePhotoFromResponse(
       sourceBytes: asset.fileSize ?? null,
     };
   } catch {
-    Alert.alert(APP_COPY.alerts.couldNotAttachPhoto, APP_COPY.alerts.failedCompressPhotoForLifeMap);
+    Alert.alert(
+      APP_COPY.alerts.couldNotAttachPhoto,
+      APP_COPY.alerts.failedCompressPhotoForLifeMap,
+    );
     return null;
   }
 }

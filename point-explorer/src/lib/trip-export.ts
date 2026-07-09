@@ -1,7 +1,7 @@
-import {displayPointsForSegment} from '@lifemap/segmentation';
-import type {Stop} from '@lifemap/segmentation';
-import type {TripSegment} from '@lifemap/segmentation';
-import type {MomentRow, ParsedPoint} from '../types';
+import { displayPointsForSegment } from '@lifemap/segmentation';
+import type { Stop } from '@lifemap/segmentation';
+import type { TripSegment } from '@lifemap/segmentation';
+import type { MomentRow, ParsedPoint } from '../types';
 
 export type TripExportGeometry = 'raw' | 'canonical';
 
@@ -18,7 +18,7 @@ export type TripExportPayload = {
     arrivedAt: string;
     leftAt: string;
     durationMs: number;
-    center: {lat: number; lng: number};
+    center: { lat: number; lng: number };
     spreadM: number;
     pointCount: number;
   }>;
@@ -83,8 +83,8 @@ function serializeSegment(
       distanceM: Math.round(segment.distanceM),
       fromKind: segment.fromKind,
       toKind: segment.toKind,
-      from: {lat: segment.fromLat, lng: segment.fromLng},
-      to: {lat: segment.toLat, lng: segment.toLng},
+      from: { lat: segment.fromLat, lng: segment.fromLng },
+      to: { lat: segment.toLat, lng: segment.toLng },
       pointCount: 0,
       pathPointCount: 0,
       path: pathSerialized,
@@ -99,14 +99,15 @@ function serializeSegment(
       order: segment.order,
       stopId: segment.stop.id,
       savedPlaceLabel: segment.placeLabel ?? null,
-      savedPlaceId: segment.placeKind === 'saved' ? segment.placeId ?? null : null,
+      savedPlaceId:
+        segment.placeKind === 'saved' ? segment.placeId ?? null : null,
       placeLabel: segment.placeLabel ?? null,
       placeId: segment.placeId ?? null,
       placeKind: segment.placeKind ?? null,
       arrivedAt: segment.startAt.toISOString(),
       leftAt: segment.endAt.toISOString(),
       durationMs: segment.durationMs,
-      center: {lat: segment.stop.lat, lng: segment.stop.lng},
+      center: { lat: segment.stop.lat, lng: segment.stop.lng },
       spreadM: Math.round(segment.stop.spreadM),
       pointCount: segment.stop.pointCount,
       rawPathPointCount: rawPointCount,
@@ -159,7 +160,7 @@ export function buildTripExportPayload(args: {
       arrivedAt: stop.arrivedAt.toISOString(),
       leftAt: stop.leftAt.toISOString(),
       durationMs: stop.durationMs,
-      center: {lat: stop.lat, lng: stop.lng},
+      center: { lat: stop.lat, lng: stop.lng },
       spreadM: Math.round(stop.spreadM),
       pointCount: stop.pointCount,
     })),

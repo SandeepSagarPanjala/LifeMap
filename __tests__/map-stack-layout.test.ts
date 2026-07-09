@@ -20,10 +20,18 @@ describe('map stack layout', () => {
     expect(MAP_LEFT_STACK_COUNT).toBe(3);
     expect(MAP_RIGHT_STACK_COUNT).toBe(4);
     expect(
-      mapStackTotalHeight(MAP_LEFT_STACK_COUNT, MAP_STACK_BUTTON_SIZE, MAP_STACK_BUTTON_GAP),
+      mapStackTotalHeight(
+        MAP_LEFT_STACK_COUNT,
+        MAP_STACK_BUTTON_SIZE,
+        MAP_STACK_BUTTON_GAP,
+      ),
     ).toBe(148);
     expect(
-      mapStackTotalHeight(MAP_RIGHT_STACK_COUNT, MAP_STACK_BUTTON_SIZE, MAP_STACK_BUTTON_GAP),
+      mapStackTotalHeight(
+        MAP_RIGHT_STACK_COUNT,
+        MAP_STACK_BUTTON_SIZE,
+        MAP_STACK_BUTTON_GAP,
+      ),
     ).toBe(200);
   });
 });

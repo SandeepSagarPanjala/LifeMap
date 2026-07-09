@@ -78,7 +78,7 @@ export class LocationPersistScheduler {
     this.pendingTimestampMs = null;
     this.lastPersistedMs = timestampMs;
 
-    await this.onFlush({timestampMs});
+    await this.onFlush({ timestampMs });
   }
 
   private clearTimer(): void {

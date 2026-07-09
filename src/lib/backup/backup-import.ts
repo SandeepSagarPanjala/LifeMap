@@ -1,4 +1,4 @@
-import {getDatabase} from '@/db/client';
+import { getDatabase } from '@/db/client';
 import {
   activities,
   locationPoints,
@@ -18,7 +18,7 @@ import {
   rebuildAllTrips,
 } from '@/lib/trip-materialization';
 
-import type {BackupBundleTables} from './backup-export';
+import type { BackupBundleTables } from './backup-export';
 import {
   parseIsoDate,
   parseOptionalNumber,
@@ -27,14 +27,11 @@ import {
   parseRequiredNumber,
   parseRequiredString,
 } from './backup-serialize';
-import type {BackupProgress, TripLabelOverride} from './backup-types';
+import type { BackupProgress, TripLabelOverride } from './backup-types';
 
 type IdMap = Map<number, number>;
 
-function remapId(
-  value: number | null | undefined,
-  map: IdMap,
-): number | null {
+function remapId(value: number | null | undefined, map: IdMap): number | null {
   if (value == null) {
     return null;
   }
@@ -56,11 +53,17 @@ async function importActivities(rows: unknown[]): Promise<IdMap> {
       .values({
         emoji: parseRequiredString(record.emoji, 'activities.emoji'),
         label: parseRequiredString(record.label, 'activities.label'),
-        sortOrder: parseRequiredNumber(record.sortOrder, 'activities.sortOrder'),
-        createdAt: parseRequiredIsoDate(record.createdAt, 'activities.createdAt'),
+        sortOrder: parseRequiredNumber(
+          record.sortOrder,
+          'activities.sortOrder',
+        ),
+        createdAt: parseRequiredIsoDate(
+          record.createdAt,
+          'activities.createdAt',
+        ),
         archivedAt: parseIsoDate(record.archivedAt),
       })
-      .returning({id: activities.id});
+      .returning({ id: activities.id });
     map.set(oldId, inserted[0]!.id);
   }
 
@@ -91,7 +94,7 @@ async function importLocationPoints(rows: unknown[]): Promise<IdMap> {
         speed: parseOptionalNumber(record.speed),
         source: parseRequiredString(record.source, 'location_points.source'),
       })
-      .returning({id: locationPoints.id});
+      .returning({ id: locationPoints.id });
     map.set(oldId, inserted[0]!.id);
   }
 
@@ -128,11 +131,14 @@ async function importSavedPlaces(rows: unknown[]): Promise<IdMap> {
           typeof record.active === 'number'
             ? record.active
             : record.active === false
-              ? 0
-              : 1,
-        createdAt: parseRequiredIsoDate(record.createdAt, 'saved_places.createdAt'),
+            ? 0
+            : 1,
+        createdAt: parseRequiredIsoDate(
+          record.createdAt,
+          'saved_places.createdAt',
+        ),
       })
-      .returning({id: savedPlaces.id});
+      .returning({ id: savedPlaces.id });
     map.set(oldId, inserted[0]!.id);
   }
 
@@ -152,35 +158,37 @@ async function importPlaceLookupCache(rows: unknown[]): Promise<IdMap> {
     const inserted = await db
       .insert(placeLookupCache)
       .values({
-        anchorLat: parseRequiredNumber(record.anchorLat, 'place_lookup_cache.anchorLat'),
-        anchorLng: parseRequiredNumber(record.anchorLng, 'place_lookup_cache.anchorLng'),
+        anchorLat: parseRequiredNumber(
+          record.anchorLat,
+          'place_lookup_cache.anchorLat',
+        ),
+        anchorLng: parseRequiredNumber(
+          record.anchorLng,
+          'place_lookup_cache.anchorLng',
+        ),
         venueRadiusMeters: parseRequiredNumber(
           record.venueRadiusMeters,
           'place_lookup_cache.venueRadiusMeters',
         ),
         addressLine: parseOptionalString(record.addressLine),
         candidatesJson: parseOptionalString(record.candidatesJson),
-        selectedCandidateIndex: parseOptionalNumber(record.selectedCandidateIndex),
+        selectedCandidateIndex: parseOptionalNumber(
+          record.selectedCandidateIndex,
+        ),
         lookupStatus: parseRequiredString(
           record.lookupStatus,
           'place_lookup_cache.lookupStatus',
         ),
         fetchedAt: parseIsoDate(record.fetchedAt),
       })
-      .returning({id: placeLookupCache.id});
+      .returning({ id: placeLookupCache.id });
     map.set(oldId, inserted[0]!.id);
   }
 
   return map;
 }
 
-const MOMENT_TYPES = new Set([
-  'photo',
-  'note',
-  'video',
-  'voice',
-  'activity',
-]);
+const MOMENT_TYPES = new Set(['photo', 'note', 'video', 'voice', 'activity']);
 
 async function importMoments(
   rows: unknown[],
@@ -220,8 +228,7 @@ async function importMoments(
       contentBytes: parseOptionalNumber(record.contentBytes),
       sourceBytes: parseOptionalNumber(record.sourceBytes),
       contentFormat: parseOptionalString(record.contentFormat),
-      shareVisibility:
-        parseOptionalString(record.shareVisibility) ?? 'private',
+      shareVisibility: parseOptionalString(record.shareVisibility) ?? 'private',
       contentSyncState:
         parseOptionalString(record.contentSyncState) ?? 'local_only',
       activityId: remapId(parseOptionalNumber(record.activityId), activityMap),
@@ -239,9 +246,8 @@ async function importSettings(rows: unknown[]): Promise<void> {
     }
     const record = row as Record<string, unknown>;
     const key = parseRequiredString(record.key, 'settings.key');
-    const value =
-      record.value == null ? null : String(record.value);
-    await db.insert(settings).values({key, value});
+    const value = record.value == null ? null : String(record.value);
+    await db.insert(settings).values({ key, value });
   }
 }
 
@@ -251,7 +257,9 @@ export async function importBackupTables(
   const activityMap = await importActivities(tables.activities);
   const locationPointMap = await importLocationPoints(tables.location_points);
   const savedPlaceMap = await importSavedPlaces(tables.saved_places);
-  const placeLookupMap = await importPlaceLookupCache(tables.place_lookup_cache);
+  const placeLookupMap = await importPlaceLookupCache(
+    tables.place_lookup_cache,
+  );
   await importMoments(tables.moments, locationPointMap, activityMap);
   await importSettings(tables.settings);
 
@@ -277,13 +285,10 @@ export async function applyTripLabelOverrides(
       override.placeKind === 'cache' && maps != null
         ? remapId(override.placeId, maps.placeLookupMap)
         : override.placeKind === 'saved' && maps != null
-          ? remapId(override.placeId, maps.savedPlaceMap)
-          : override.placeId;
+        ? remapId(override.placeId, maps.savedPlaceMap)
+        : override.placeId;
 
-    if (
-      override.placeLabel != null &&
-      override.placeLabel.trim().length > 0
-    ) {
+    if (override.placeLabel != null && override.placeLabel.trim().length > 0) {
       await updateTripCustomLabel(
         trip.id,
         override.placeLabel,
@@ -346,7 +351,7 @@ export async function rebuildTripsAfterRestore(
 
 export async function buildOverrideMaps(
   tables: BackupBundleTables,
-): Promise<{savedPlaceMap: IdMap; placeLookupMap: IdMap}> {
+): Promise<{ savedPlaceMap: IdMap; placeLookupMap: IdMap }> {
   const db = await getDatabase();
   const [savedPlaceRows, placeLookupRows] = await Promise.all([
     db.select().from(savedPlaces).orderBy(savedPlaces.id),
@@ -377,5 +382,5 @@ export async function buildOverrideMaps(
     }
   });
 
-  return {savedPlaceMap, placeLookupMap};
+  return { savedPlaceMap, placeLookupMap };
 }

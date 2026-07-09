@@ -15,6 +15,8 @@
     "ios:beta": "bash -c 'source scripts/ruby-env.sh && cd ios && bundle exec fastlane beta'",
     "pod-install": "bash -c 'source scripts/ruby-env.sh && cd ios && bundle exec pod install --repo-update'",
     "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
     "start": "react-native start",
     "test": "jest",

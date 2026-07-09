@@ -1,4 +1,4 @@
-import type {DetectedTrip} from '@/lib/trip-detection';
+import type { DetectedTrip } from '@/lib/trip-detection';
 import {
   filterLiveTailEntries,
   mergeSealedAndLiveTimeline,
@@ -6,10 +6,15 @@ import {
   tailGpsStartMs,
   trimSealedAtBoundary,
 } from '@/lib/today-sealed-history';
-import type {TripRow} from '@/db/repositories/trips';
-import {makeTripRow} from './helpers/trip-row-fixture';
+import type { TripRow } from '@/db/repositories/trips';
+import { makeTripRow } from './helpers/trip-row-fixture';
 
-function stay(id: string, startMs: number, endMs: number, open = false): DetectedTrip {
+function stay(
+  id: string,
+  startMs: number,
+  endMs: number,
+  open = false,
+): DetectedTrip {
   const startAt = new Date(startMs);
   const endAt = new Date(endMs);
   return {
@@ -103,11 +108,7 @@ describe('mergeSealedAndLiveTimeline', () => {
     ];
     const merged = mergeSealedAndLiveTimeline(sealed, live, 9_000);
     const playable = merged.filter(entry => entry.kind !== 'gap');
-    expect(playable.map(entry => entry.id)).toEqual([
-      'home',
-      'drive',
-      'shop',
-    ]);
+    expect(playable.map(entry => entry.id)).toEqual(['home', 'drive', 'shop']);
     if (playable[2]?.kind === 'stay') {
       expect(playable[2].openThroughNow).toBe(true);
     }

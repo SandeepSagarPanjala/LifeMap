@@ -1,11 +1,11 @@
-import {useCallback, useMemo} from 'react';
-import {Pressable, StyleSheet, Text, View} from 'react-native';
-import {ChevronLeft, ChevronRight} from 'lucide-react-native';
+import { useCallback, useMemo } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 
-import {getTodayDateKey, shiftDateKey} from '@/lib/day-utils';
-import {HISTORY_COLORS} from '@/lib/app-constants';
-import {formatHistoryDayNavLabel} from '@/lib/history-timeline';
-import {useAppStore} from '@/stores/app-store';
+import { getTodayDateKey, shiftDateKey } from '@/lib/day-utils';
+import { HISTORY_COLORS } from '@/lib/app-constants';
+import { formatHistoryDayNavLabel } from '@/lib/history-timeline';
+import { useAppStore } from '@/stores/app-store';
 
 const ICON_COLOR = HISTORY_COLORS.playhead;
 
@@ -26,8 +26,7 @@ export function HistoryDayNav({
   const earliestDateKey = useAppStore(state => state.historyEarliestDateKey);
   const isToday = dateKey === todayKey;
   const canGoNextDay = !isToday;
-  const canGoPrevDay =
-    earliestDateKey == null || dateKey > earliestDateKey;
+  const canGoPrevDay = earliestDateKey == null || dateKey > earliestDateKey;
 
   const goPrevDay = useCallback(() => {
     if (!canGoPrevDay) {
@@ -55,11 +54,12 @@ export function HistoryDayNav({
           accessibilityLabel="Previous day"
           disabled={!canGoPrevDay}
           onPress={goPrevDay}
-          style={({pressed}) => [
+          style={({ pressed }) => [
             styles.sideBtn,
             !canGoPrevDay && styles.sideBtnDisabled,
             pressed && canGoPrevDay ? styles.btnPressed : null,
-          ]}>
+          ]}
+        >
           <ChevronLeft
             size={18}
             color={ICON_COLOR}
@@ -74,10 +74,11 @@ export function HistoryDayNav({
           accessibilityRole="button"
           accessibilityLabel={`${dayLabel}, choose date`}
           onPress={onOpenDatePicker}
-          style={({pressed}) => [
+          style={({ pressed }) => [
             styles.centerBtn,
             pressed ? styles.btnPressed : null,
-          ]}>
+          ]}
+        >
           <Text style={styles.centerLabel} numberOfLines={1}>
             {dayLabel}
           </Text>
@@ -90,11 +91,12 @@ export function HistoryDayNav({
           accessibilityLabel="Next day"
           disabled={!canGoNextDay}
           onPress={goNextDay}
-          style={({pressed}) => [
+          style={({ pressed }) => [
             styles.sideBtn,
             !canGoNextDay && styles.sideBtnDisabled,
             pressed && canGoNextDay ? styles.btnPressed : null,
-          ]}>
+          ]}
+        >
           <ChevronRight
             size={18}
             color={ICON_COLOR}
@@ -122,7 +124,7 @@ const styles = StyleSheet.create({
     borderColor: '#E5E5EA',
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.14,
     shadowRadius: 8,
     elevation: 5,

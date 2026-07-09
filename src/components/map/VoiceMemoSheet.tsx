@@ -1,5 +1,5 @@
-import {useCallback, useEffect, useRef, useState} from 'react';
-import {APP_COPY, errorMessageOr} from '@/lib/app-copy';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { APP_COPY, errorMessageOr } from '@/lib/app-copy';
 import {
   ActivityIndicator,
   Alert,
@@ -10,29 +10,35 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import {AudioLines, Mic, Pause, Play, Square} from 'lucide-react-native';
-import {BottomSheetTextInput} from '@gorhom/bottom-sheet';
-import type {BottomSheetModal} from '@gorhom/bottom-sheet';
+import { AudioLines, Mic, Pause, Play, Square } from 'lucide-react-native';
+import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
+import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 
-import {CAPTURE_BUTTON_THEMES} from '@/components/map/map-capture-button-theme';
-import {VoiceLiveMeter, VoicePlaybackMeter} from '@/components/voice/VoiceMeter';
-import {Text} from '@/components/ui/text';
-import {BOTTOM_SHEET_SURFACE} from '@/lib/app-constants';
-import {AppBottomSheet} from '@/components/ui/app-bottom-sheet';
-import type {VoiceMemoPreviewDraft} from '@/components/map/VoiceMemoPreviewSheet';
-import {useThemeColors} from '@/hooks/use-theme-colors';
+import { CAPTURE_BUTTON_THEMES } from '@/components/map/map-capture-button-theme';
+import {
+  VoiceLiveMeter,
+  VoicePlaybackMeter,
+} from '@/components/voice/VoiceMeter';
+import { Text } from '@/components/ui/text';
+import { BOTTOM_SHEET_SURFACE } from '@/lib/app-constants';
+import { AppBottomSheet } from '@/components/ui/app-bottom-sheet';
+import type { VoiceMemoPreviewDraft } from '@/components/map/VoiceMemoPreviewSheet';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 import {
   formatVoiceDurationCap,
   formatVoiceDurationMs,
   isVoiceDurationAtCap,
 } from '@/lib/moments/format-voice-duration';
-import {saveVoiceMoment} from '@/lib/moments/capture-voice';
-import {normalizeVoiceMetering, throttleVoiceUi} from '@/lib/moments/voice-waveform';
+import { saveVoiceMoment } from '@/lib/moments/capture-voice';
+import {
+  normalizeVoiceMetering,
+  throttleVoiceUi,
+} from '@/lib/moments/voice-waveform';
 import {
   createVoiceRecorderSession,
   getVoiceRecordingErrorMessage,
 } from '@/lib/moments/voice-recorder';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type VoiceMemoPhase = 'idle' | 'recording' | 'preview' | 'saving';
 
@@ -43,7 +49,7 @@ type VoiceMemoSheetProps = {
   onClose: () => void;
   onSaved: () => Promise<void>;
   saveTarget?: VoiceMemoSaveTarget;
-  onDiaryAttach?: (attachment: {uri: string; durationMs: number}) => void;
+  onDiaryAttach?: (attachment: { uri: string; durationMs: number }) => void;
   onWillClose?: () => void;
   /** When true, begin recording as soon as the sheet opens. Default: tap mic (Voice Memos style). */
   startRecordingOnOpen?: boolean;
@@ -88,7 +94,9 @@ export function VoiceMemoSheet({
   const [autoStartFailed, setAutoStartFailed] = useState(false);
   const [manualStartOnly, setManualStartOnly] = useState(false);
 
-  const recorderRef = useRef<ReturnType<typeof createVoiceRecorderSession> | null>(null);
+  const recorderRef = useRef<ReturnType<
+    typeof createVoiceRecorderSession
+  > | null>(null);
   const aliveRef = useRef(true);
   const visibleRef = useRef(visible);
   const stopRecordingRef = useRef<() => Promise<void>>(async () => {});
@@ -146,7 +154,7 @@ export function VoiceMemoSheet({
 
   const promptDiscardOnClose = useCallback(() => {
     Alert.alert('Discard voice memo?', 'This recording will be deleted.', [
-      {text: 'Keep editing', style: 'cancel'},
+      { text: 'Keep editing', style: 'cancel' },
       {
         text: 'Discard',
         style: 'destructive',
@@ -182,9 +190,13 @@ export function VoiceMemoSheet({
   }, [resetDraft, visible]);
 
   useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    const showSub = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
+    const showEvent =
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent =
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, () =>
+      setKeyboardVisible(true),
+    );
     const hideSub = Keyboard.addListener(hideEvent, () => {
       setKeyboardVisible(false);
       if (restoreSheetAfterKeyboardRef.current) {
@@ -272,7 +284,10 @@ export function VoiceMemoSheet({
         setPhase('idle');
         setDurationMs(0);
         durationMsRef.current = 0;
-        Alert.alert('Recording too short', 'Hold the mic for at least half a second.');
+        Alert.alert(
+          'Recording too short',
+          'Hold the mic for at least half a second.',
+        );
         return;
       }
       if (useExternalPreview) {
@@ -292,7 +307,10 @@ export function VoiceMemoSheet({
       setIsPlayingPreview(false);
       setPlaybackPositionMs(0);
     } catch (error) {
-      Alert.alert(APP_COPY.alerts.couldNotStopRecording, getVoiceRecordingErrorMessage(error));
+      Alert.alert(
+        APP_COPY.alerts.couldNotStopRecording,
+        getVoiceRecordingErrorMessage(error),
+      );
       setPhase('idle');
     }
   }, [onBeginPreview, useExternalPreview]);
@@ -317,43 +335,49 @@ export function VoiceMemoSheet({
         : durationMs
       : durationMs;
 
-  const handleStartRecording = useCallback(async (options?: {showErrorAlert?: boolean}) => {
-    const session = recorderRef.current;
-    if (!session || !aliveRef.current || !visibleRef.current) {
-      return false;
-    }
-    const showErrorAlert = options?.showErrorAlert ?? true;
-    try {
-      setAutoStartFailed(false);
-      setManualStartOnly(false);
-      setPreviewPath(null);
-      setIsPlayingPreview(false);
-      setDurationMs(0);
-      durationMsRef.current = 0;
-      setLiveLevel(0.12);
-      setPlaybackPositionMs(0);
-      await session.startRecording();
-      if (!aliveRef.current || !visibleRef.current) {
-        try {
-          await session.discardRecording();
-        } catch {
-          // Not recording.
+  const handleStartRecording = useCallback(
+    async (options?: { showErrorAlert?: boolean }) => {
+      const session = recorderRef.current;
+      if (!session || !aliveRef.current || !visibleRef.current) {
+        return false;
+      }
+      const showErrorAlert = options?.showErrorAlert ?? true;
+      try {
+        setAutoStartFailed(false);
+        setManualStartOnly(false);
+        setPreviewPath(null);
+        setIsPlayingPreview(false);
+        setDurationMs(0);
+        durationMsRef.current = 0;
+        setLiveLevel(0.12);
+        setPlaybackPositionMs(0);
+        await session.startRecording();
+        if (!aliveRef.current || !visibleRef.current) {
+          try {
+            await session.discardRecording();
+          } catch {
+            // Not recording.
+          }
+          return false;
+        }
+        setPhase('recording');
+        return true;
+      } catch (error) {
+        if (!aliveRef.current) {
+          return false;
+        }
+        setAutoStartFailed(true);
+        if (showErrorAlert) {
+          Alert.alert(
+            APP_COPY.alerts.couldNotStartRecording,
+            getVoiceRecordingErrorMessage(error),
+          );
         }
         return false;
       }
-      setPhase('recording');
-      return true;
-    } catch (error) {
-      if (!aliveRef.current) {
-        return false;
-      }
-      setAutoStartFailed(true);
-      if (showErrorAlert) {
-        Alert.alert(APP_COPY.alerts.couldNotStartRecording, getVoiceRecordingErrorMessage(error));
-      }
-      return false;
-    }
-  }, []);
+    },
+    [],
+  );
 
   const startRecordingRef = useRef(handleStartRecording);
   const autoStartAttemptedRef = useRef(false);
@@ -396,7 +420,10 @@ export function VoiceMemoSheet({
       await recorderRef.current.startPreview(previewPath);
       setIsPlayingPreview(true);
     } catch (error) {
-      Alert.alert(APP_COPY.alerts.couldNotPlayRecording, getVoiceRecordingErrorMessage(error));
+      Alert.alert(
+        APP_COPY.alerts.couldNotPlayRecording,
+        getVoiceRecordingErrorMessage(error),
+      );
     }
   };
 
@@ -408,7 +435,7 @@ export function VoiceMemoSheet({
     try {
       await recorderRef.current.stopPreview();
       if (saveTarget === 'diary' || saveTarget === 'photo') {
-        onDiaryAttach?.({uri: previewPath, durationMs});
+        onDiaryAttach?.({ uri: previewPath, durationMs });
         setPreviewPath(null);
         setPhase('idle');
         setDurationMs(0);
@@ -425,10 +452,7 @@ export function VoiceMemoSheet({
       onClose();
     } catch (error) {
       setPhase('preview');
-      Alert.alert(
-        APP_COPY.alerts.couldNotSaveVoiceMemo,
-        errorMessageOr(error),
-      );
+      Alert.alert(APP_COPY.alerts.couldNotSaveVoiceMemo, errorMessageOr(error));
     }
   };
 
@@ -438,20 +462,20 @@ export function VoiceMemoSheet({
     saveTarget === 'diary'
       ? 'Add to diary'
       : saveTarget === 'photo'
-        ? 'Add to photo'
-        : 'Save moment';
+      ? 'Add to photo'
+      : 'Save moment';
   const previewHint =
     saveTarget === 'diary'
       ? 'Preview your memo, then add it to this diary entry.'
       : saveTarget === 'photo'
-        ? 'Preview your memo, then add it to this photo.'
-        : 'Preview your memo, then save it.';
+      ? 'Preview your memo, then add it to this photo.'
+      : 'Preview your memo, then save it.';
   const idleHint =
     saveTarget === 'diary'
       ? `Record up to ${capLabel} for this diary entry.`
       : saveTarget === 'photo'
-        ? `Record up to ${capLabel} for this photo.`
-        : `Record up to ${capLabel} and save to your day.`;
+      ? `Record up to ${capLabel} for this photo.`
+      : `Record up to ${capLabel} and save to your day.`;
 
   const handleAnimate = useCallback(
     (_fromIndex: number, toIndex: number) => {
@@ -514,12 +538,14 @@ export function VoiceMemoSheet({
         {phase === 'recording'
           ? `Recording… max ${capLabel}`
           : phase === 'preview'
-            ? previewHint
-            : idleHint}
+          ? previewHint
+          : idleHint}
       </Text>
 
       <View style={styles.timerRow}>
-        <Text className="text-3xl font-semibold tabular-nums">{durationLabel}</Text>
+        <Text className="text-3xl font-semibold tabular-nums">
+          {durationLabel}
+        </Text>
         {phase === 'recording' ? (
           <View style={styles.recordingBadge}>
             <View style={styles.recordingDot} />
@@ -558,7 +584,11 @@ export function VoiceMemoSheet({
                 accessibilityRole="button"
                 accessibilityLabel="Start recording"
                 onPress={() => void handleStartRecording()}
-                style={[styles.primaryCircle, {backgroundColor: voiceTheme.badgeBg}]}>
+                style={[
+                  styles.primaryCircle,
+                  { backgroundColor: voiceTheme.badgeBg },
+                ]}
+              >
                 <Mic size={28} color={voiceTheme.icon} strokeWidth={2.25} />
               </Pressable>
               <Text variant="muted" className="text-xs text-center">
@@ -573,7 +603,11 @@ export function VoiceMemoSheet({
             accessibilityRole="button"
             accessibilityLabel="Stop recording"
             onPress={() => void handleStopRecording()}
-            style={[styles.primaryCircle, {backgroundColor: voiceTheme.badgeBg}]}>
+            style={[
+              styles.primaryCircle,
+              { backgroundColor: voiceTheme.badgeBg },
+            ]}
+          >
             <Square
               size={24}
               color={voiceTheme.icon}
@@ -587,9 +621,15 @@ export function VoiceMemoSheet({
           <View style={styles.previewRow}>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={isPlayingPreview ? 'Pause preview' : 'Play preview'}
+              accessibilityLabel={
+                isPlayingPreview ? 'Pause preview' : 'Play preview'
+              }
               onPress={() => void handleTogglePreview()}
-              style={[styles.secondaryCircle, {backgroundColor: voiceTheme.badgeBg}]}>
+              style={[
+                styles.secondaryCircle,
+                { backgroundColor: voiceTheme.badgeBg },
+              ]}
+            >
               {isPlayingPreview ? (
                 <Pause size={22} color={voiceTheme.icon} strokeWidth={2.25} />
               ) : (
@@ -600,9 +640,16 @@ export function VoiceMemoSheet({
               accessibilityRole="button"
               accessibilityLabel="Save voice memo"
               onPress={() => void handleSave()}
-              style={[styles.saveButton, {backgroundColor: colors.primary}]}>
-              <AudioLines size={18} color={colors.primaryForeground} strokeWidth={2.25} />
-              <Text className="text-primary-foreground font-medium">{saveActionLabel}</Text>
+              style={[styles.saveButton, { backgroundColor: colors.primary }]}
+            >
+              <AudioLines
+                size={18}
+                color={colors.primaryForeground}
+                strokeWidth={2.25}
+              />
+              <Text className="text-primary-foreground font-medium">
+                {saveActionLabel}
+              </Text>
             </Pressable>
           </View>
         ) : null}
@@ -648,7 +695,8 @@ export function VoiceMemoSheet({
           {
             paddingBottom: Math.max(insets.bottom, 16),
           },
-        ]}>
+        ]}
+      >
         {sheetBody}
       </View>
     );
@@ -668,7 +716,8 @@ export function VoiceMemoSheet({
       keyboardBlurBehavior="none"
       bottomSheetRef={sheetRef}
       onBackdropPress={handleBackdropPress}
-      enablePanDownToClose={!noteEditingActive && phase !== 'preview'}>
+      enablePanDownToClose={!noteEditingActive && phase !== 'preview'}
+    >
       {sheetBody}
     </AppBottomSheet>
   );
@@ -714,7 +763,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.12,
     shadowRadius: 6,
     elevation: 4,

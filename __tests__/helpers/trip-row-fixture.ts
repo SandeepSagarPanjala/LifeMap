@@ -1,7 +1,8 @@
-import type {TripRow} from '@/db/repositories/trips';
+import type { TripRow } from '@/db/repositories/trips';
 
 export function makeTripRow(
-  partial: Partial<TripRow> & Pick<TripRow, 'id' | 'eventKey' | 'kind' | 'startAt' | 'endAt'>,
+  partial: Partial<TripRow> &
+    Pick<TripRow, 'id' | 'eventKey' | 'kind' | 'startAt' | 'endAt'>,
 ): TripRow {
   return {
     dateKey: '2026-06-14',

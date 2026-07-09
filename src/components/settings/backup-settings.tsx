@@ -1,6 +1,6 @@
-import {useCallback, useEffect, useState} from 'react';
-import {errorMessageOr} from '@/lib/app-copy';
-import {format} from 'date-fns';
+import { useCallback, useEffect, useState } from 'react';
+import { errorMessageOr } from '@/lib/app-copy';
+import { format } from 'date-fns';
 import {
   ActivityIndicator,
   Alert,
@@ -8,15 +8,15 @@ import {
   Pressable,
   View,
 } from 'react-native';
-import {ChevronRight} from 'lucide-react-native';
+import { ChevronRight } from 'lucide-react-native';
 
-import {useNavigation} from '@react-navigation/native';
-import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import {Icon} from '@/components/ui/icon';
-import {Text} from '@/components/ui/text';
-import {BackupProgressModal} from '@/components/backup/BackupProgressModal';
-import {useThemeColors} from '@/hooks/use-theme-colors';
+import { Icon } from '@/components/ui/icon';
+import { Text } from '@/components/ui/text';
+import { BackupProgressModal } from '@/components/backup/BackupProgressModal';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 import {
   areBackupPrefsInitialized,
   backupScheduleLabel,
@@ -24,8 +24,8 @@ import {
   setBackupAutoSchedule,
   type BackupAutoSchedule,
 } from '@/lib/backup/backup-settings';
-import type {RootStackParamList} from '@/navigation/types';
-import {shouldShowSettingsRestore} from '@/lib/backup/backup-install-state';
+import type { RootStackParamList } from '@/navigation/types';
+import { shouldShowSettingsRestore } from '@/lib/backup/backup-install-state';
 import {
   getBackupStatus,
   runBackupNow,
@@ -40,8 +40,8 @@ import {
   getCloudBackupButtonLabel,
   getCloudRestoreButtonLabel,
 } from '@/lib/backup/native-backup-cloud';
-import type {BackupProgress} from '@/lib/backup/backup-types';
-import {formatStorageBytes} from '@/lib/format-storage';
+import type { BackupProgress } from '@/lib/backup/backup-types';
+import { formatStorageBytes } from '@/lib/format-storage';
 
 const SCHEDULE_OPTIONS: BackupAutoSchedule[] = ['off', 'daily', 'weekly'];
 
@@ -56,7 +56,10 @@ function formatBackupTimestamp(value: Date | string | null): string {
   return format(date, "MMM d, yyyy 'at' h:mm a");
 }
 
-function formatCloudBackupLabel(exportedAt: string, totalBytes: number): string {
+function formatCloudBackupLabel(
+  exportedAt: string,
+  totalBytes: number,
+): string {
   const when = format(new Date(exportedAt), "MMM d, yyyy 'at' h:mm a");
   if (totalBytes > 0) {
     return `${when} (${formatStorageBytes(totalBytes)})`;
@@ -109,19 +112,18 @@ export function BackupSettings() {
 
   const performBackupNow = useCallback(async () => {
     setBackingUp(true);
-    setProgress({phase: 'exporting', message: 'Starting backup…'});
+    setProgress({ phase: 'exporting', message: 'Starting backup…' });
     try {
       const result = await runBackupNow(setProgress);
       await refreshStatus();
       Alert.alert(
         'Backup complete',
-        `Saved ${formatStorageBytes(result.totalBytes)} to ${status?.cloudProviderLabel ?? 'cloud'}.`,
+        `Saved ${formatStorageBytes(result.totalBytes)} to ${
+          status?.cloudProviderLabel ?? 'cloud'
+        }.`,
       );
     } catch (error) {
-      Alert.alert(
-        'Backup failed',
-        errorMessageOr(error),
-      );
+      Alert.alert('Backup failed', errorMessageOr(error));
     } finally {
       setBackingUp(false);
       setProgress(null);
@@ -135,7 +137,7 @@ export function BackupSettings() {
       return;
     }
 
-    const {cloudBackup, localEstimateBytes} = replacePrompt;
+    const { cloudBackup, localEstimateBytes } = replacePrompt;
     const provider = status?.cloudProviderLabel ?? 'iCloud';
     const backupLabel = formatCloudBackupLabel(
       cloudBackup.exportedAt,
@@ -144,12 +146,16 @@ export function BackupSettings() {
 
     Alert.alert(
       `${provider} backup is larger`,
-      `Your ${provider} backup (${formatStorageBytes(cloudBackup.totalBytes)}) from ${backupLabel} is larger than what this phone would save now (${formatStorageBytes(localEstimateBytes)}). Restore first, replace it anyway, or cancel.`,
+      `Your ${provider} backup (${formatStorageBytes(
+        cloudBackup.totalBytes,
+      )}) from ${backupLabel} is larger than what this phone would save now (${formatStorageBytes(
+        localEstimateBytes,
+      )}). Restore first, replace it anyway, or cancel.`,
       [
         {
           text: 'Restore',
           onPress: () =>
-            navigation.navigate('RestoreBackup', {source: 'settings'}),
+            navigation.navigate('RestoreBackup', { source: 'settings' }),
         },
         {
           text: 'Replace backup',
@@ -158,27 +164,26 @@ export function BackupSettings() {
             void performBackupNow();
           },
         },
-        {text: 'Cancel', style: 'cancel'},
+        { text: 'Cancel', style: 'cancel' },
       ],
     );
   }, [navigation, performBackupNow, status?.cloudProviderLabel]);
 
   const handleExportToDrive = useCallback(async () => {
     setExportingToDrive(true);
-    setProgress({phase: 'exporting', message: 'Starting export…'});
+    setProgress({ phase: 'exporting', message: 'Starting export…' });
     try {
       const result = await exportBackupToDrive(next => {
         setProgress(next);
       });
       Alert.alert(
         'Backup ready',
-        `Created a ${formatStorageBytes(result.totalBytes)} backup file. Save it to Google Drive from the share sheet.`,
+        `Created a ${formatStorageBytes(
+          result.totalBytes,
+        )} backup file. Save it to Google Drive from the share sheet.`,
       );
     } catch (error) {
-      Alert.alert(
-        'Export failed',
-        errorMessageOr(error),
-      );
+      Alert.alert('Export failed', errorMessageOr(error));
     } finally {
       setExportingToDrive(false);
       setProgress(null);
@@ -194,12 +199,9 @@ export function BackupSettings() {
       if (!staged) {
         return;
       }
-      navigation.navigate('RestoreBackup', {source: 'drive'});
+      navigation.navigate('RestoreBackup', { source: 'drive' });
     } catch (error) {
-      Alert.alert(
-        'Import failed',
-        errorMessageOr(error),
-      );
+      Alert.alert('Import failed', errorMessageOr(error));
     } finally {
       setImportingFromDrive(false);
       setProgress(null);
@@ -211,14 +213,15 @@ export function BackupSettings() {
       'Auto backup',
       'Back up automatically on Wi-Fi. Off by default until you turn it on.',
       [
-      ...SCHEDULE_OPTIONS.map(option => ({
-        text: backupScheduleLabel(option),
-        onPress: () => {
-          void setBackupAutoSchedule(option).then(refreshStatus);
-        },
-      })),
-      {text: 'Cancel', style: 'cancel'},
-    ]);
+        ...SCHEDULE_OPTIONS.map(option => ({
+          text: backupScheduleLabel(option),
+          onPress: () => {
+            void setBackupAutoSchedule(option).then(refreshStatus);
+          },
+        })),
+        { text: 'Cancel', style: 'cancel' },
+      ],
+    );
   };
 
   const lastBackupAt = status?.lastBackupAt ?? null;
@@ -237,106 +240,111 @@ export function BackupSettings() {
           </Text>
         ) : null}
         <Text className="text-center text-sm font-medium">
-            Last backup on this phone: {formatBackupTimestamp(lastBackupAt)}
-          </Text>
-          <Text variant="muted" className="mt-1 text-center text-sm">
-            Last backup size: {formatStorageBytes(lastBackupBytes)}
-          </Text>
-          {loading ? (
-            <ActivityIndicator className="mt-3" />
-          ) : null}
-          {!status?.cloudAvailable && Platform.OS === 'ios' ? (
-            <Text variant="muted" className="mt-3 text-center text-xs leading-4">
-              iCloud is unavailable. Sign in to iCloud and allow LifeMap to use
-              iCloud, then try again.
-            </Text>
-          ) : null}
-        </View>
-
-        <Pressable
-          accessibilityRole="button"
-          disabled={busy || loading}
-          onPress={() => void handleBackupNow()}
-          className={`border-border mt-4 rounded-xl border px-4 py-3 ${
-            busy ? 'opacity-50' : ''
-          }`}>
-          {backingUp ? (
-            <ActivityIndicator />
-          ) : (
-            <Text className="text-primary text-center text-base font-medium">
-              {cloudBackupLabel}
-            </Text>
-          )}
-        </Pressable>
-
-        <Pressable
-          accessibilityRole="button"
-          disabled={busy || loading}
-          onPress={() => void handleExportToDrive()}
-          className={`border-border mt-3 rounded-xl border px-4 py-3 ${
-            busy ? 'opacity-50' : ''
-          }`}>
-          {exportingToDrive ? (
-            <ActivityIndicator />
-          ) : (
-            <Text className="text-primary text-center text-base font-medium">
-              Export or Backup to Drive
-            </Text>
-          )}
-        </Pressable>
-
-        <Pressable
-          accessibilityRole="button"
-          disabled={busy || loading}
-          onPress={chooseSchedule}
-          className={`border-border mt-3 flex-row items-center justify-between rounded-xl border px-4 py-3 ${
-            busy ? 'opacity-50' : ''
-          }`}>
-          <Text className="text-base">Auto backup</Text>
-          <View className="flex-row items-center gap-2">
-            <Text variant="muted" className="text-base">
-              {backupScheduleLabel(status?.autoSchedule ?? 'off')}
-            </Text>
-            <Icon as={ChevronRight} size={18} color={colors.mutedForeground} />
-          </View>
-        </Pressable>
-
-        <Pressable
-          accessibilityRole="button"
-          disabled={busy || loading}
-          onPress={() => void handleImportFromDrive()}
-          className={`border-border mt-3 flex-row items-center justify-between rounded-xl border px-4 py-3 ${
-            busy ? 'opacity-50' : ''
-          }`}>
-          <Text className="text-base">
-            {importingFromDrive && progress == null ? 'Choose a file…' : 'Import'}
-          </Text>
-          {importingFromDrive && progress != null ? (
-            <ActivityIndicator />
-          ) : importingFromDrive ? null : (
-            <Icon as={ChevronRight} size={18} color={colors.mutedForeground} />
-          )}
-        </Pressable>
-
-        {showSettingsRestore ? (
-          <Pressable
-            accessibilityRole="button"
-            disabled={busy || loading}
-            onPress={() => navigation.navigate('RestoreBackup', {source: 'settings'})}
-            className={`border-border mt-3 flex-row items-center justify-between rounded-xl border px-4 py-3 ${
-              busy ? 'opacity-50' : ''
-            }`}>
-            <Text className="text-base">{cloudRestoreLabel}</Text>
-            <Icon as={ChevronRight} size={18} color={colors.mutedForeground} />
-          </Pressable>
-        ) : null}
-
-        <Text variant="muted" className="mt-3 text-xs leading-4">
-          Connect to Wi-Fi for large backups. LifeMap keeps one{' '}
-          {status?.cloudProviderLabel ?? 'iCloud'} backup. Use Drive export for a
-          portable copy you can save to Google Drive. Auto backup stays off until
-          you enable it. End-to-end encrypted backup is coming later.
+          Last backup on this phone: {formatBackupTimestamp(lastBackupAt)}
         </Text>
+        <Text variant="muted" className="mt-1 text-center text-sm">
+          Last backup size: {formatStorageBytes(lastBackupBytes)}
+        </Text>
+        {loading ? <ActivityIndicator className="mt-3" /> : null}
+        {!status?.cloudAvailable && Platform.OS === 'ios' ? (
+          <Text variant="muted" className="mt-3 text-center text-xs leading-4">
+            iCloud is unavailable. Sign in to iCloud and allow LifeMap to use
+            iCloud, then try again.
+          </Text>
+        ) : null}
+      </View>
+
+      <Pressable
+        accessibilityRole="button"
+        disabled={busy || loading}
+        onPress={() => void handleBackupNow()}
+        className={`border-border mt-4 rounded-xl border px-4 py-3 ${
+          busy ? 'opacity-50' : ''
+        }`}
+      >
+        {backingUp ? (
+          <ActivityIndicator />
+        ) : (
+          <Text className="text-primary text-center text-base font-medium">
+            {cloudBackupLabel}
+          </Text>
+        )}
+      </Pressable>
+
+      <Pressable
+        accessibilityRole="button"
+        disabled={busy || loading}
+        onPress={() => void handleExportToDrive()}
+        className={`border-border mt-3 rounded-xl border px-4 py-3 ${
+          busy ? 'opacity-50' : ''
+        }`}
+      >
+        {exportingToDrive ? (
+          <ActivityIndicator />
+        ) : (
+          <Text className="text-primary text-center text-base font-medium">
+            Export or Backup to Drive
+          </Text>
+        )}
+      </Pressable>
+
+      <Pressable
+        accessibilityRole="button"
+        disabled={busy || loading}
+        onPress={chooseSchedule}
+        className={`border-border mt-3 flex-row items-center justify-between rounded-xl border px-4 py-3 ${
+          busy ? 'opacity-50' : ''
+        }`}
+      >
+        <Text className="text-base">Auto backup</Text>
+        <View className="flex-row items-center gap-2">
+          <Text variant="muted" className="text-base">
+            {backupScheduleLabel(status?.autoSchedule ?? 'off')}
+          </Text>
+          <Icon as={ChevronRight} size={18} color={colors.mutedForeground} />
+        </View>
+      </Pressable>
+
+      <Pressable
+        accessibilityRole="button"
+        disabled={busy || loading}
+        onPress={() => void handleImportFromDrive()}
+        className={`border-border mt-3 flex-row items-center justify-between rounded-xl border px-4 py-3 ${
+          busy ? 'opacity-50' : ''
+        }`}
+      >
+        <Text className="text-base">
+          {importingFromDrive && progress == null ? 'Choose a file…' : 'Import'}
+        </Text>
+        {importingFromDrive && progress != null ? (
+          <ActivityIndicator />
+        ) : importingFromDrive ? null : (
+          <Icon as={ChevronRight} size={18} color={colors.mutedForeground} />
+        )}
+      </Pressable>
+
+      {showSettingsRestore ? (
+        <Pressable
+          accessibilityRole="button"
+          disabled={busy || loading}
+          onPress={() =>
+            navigation.navigate('RestoreBackup', { source: 'settings' })
+          }
+          className={`border-border mt-3 flex-row items-center justify-between rounded-xl border px-4 py-3 ${
+            busy ? 'opacity-50' : ''
+          }`}
+        >
+          <Text className="text-base">{cloudRestoreLabel}</Text>
+          <Icon as={ChevronRight} size={18} color={colors.mutedForeground} />
+        </Pressable>
+      ) : null}
+
+      <Text variant="muted" className="mt-3 text-xs leading-4">
+        Connect to Wi-Fi for large backups. LifeMap keeps one{' '}
+        {status?.cloudProviderLabel ?? 'iCloud'} backup. Use Drive export for a
+        portable copy you can save to Google Drive. Auto backup stays off until
+        you enable it. End-to-end encrypted backup is coming later.
+      </Text>
 
       <BackupProgressModal
         visible={progress != null}
@@ -345,8 +353,8 @@ export function BackupSettings() {
           exportingToDrive
             ? 'Exporting backup'
             : importingFromDrive && progress != null
-              ? 'Importing backup'
-              : 'Backing up'
+            ? 'Importing backup'
+            : 'Backing up'
         }
       />
     </>

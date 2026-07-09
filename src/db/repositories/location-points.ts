@@ -1,9 +1,9 @@
-import {desc, eq, gte, like, or, sql} from 'drizzle-orm';
+import { desc, eq, gte, like, or, sql } from 'drizzle-orm';
 
-import {getDatabase, getSqlite} from '../client';
-import {locationPoints} from '../schema';
-import {locationPointTimestampToStorageValue} from '@/lib/location-point-storage';
-import {scheduleTodayRefreshAfterGps} from '@/lib/today-refresh-scheduler';
+import { getDatabase, getSqlite } from '../client';
+import { locationPoints } from '../schema';
+import { locationPointTimestampToStorageValue } from '@/lib/location-point-storage';
+import { scheduleTodayRefreshAfterGps } from '@/lib/today-refresh-scheduler';
 
 export type NewLocationPoint = {
   timestamp: Date;
@@ -64,7 +64,7 @@ export function subscribeLocationPointInserts(
 
 export async function insertLocationPoint(
   point: NewLocationPoint,
-  options?: {dedupe?: boolean},
+  options?: { dedupe?: boolean },
 ): Promise<void> {
   const source = point.source ?? 'gps';
   const timestampValue = locationPointTimestampToStorageValue(point.timestamp);
@@ -83,21 +83,26 @@ export async function insertLocationPoint(
   ]);
 
   const rowsChanged = Number(
-    (result as {rowsAffected?: number; changes?: number}).rowsAffected ??
-      (result as {changes?: number}).changes ??
+    (result as { rowsAffected?: number; changes?: number }).rowsAffected ??
+      (result as { changes?: number }).changes ??
       0,
   );
   if (rowsChanged === 0) {
     return;
   }
 
-  notifyInsert({timestamp: point.timestamp, lat: point.lat, lng: point.lng, source});
+  notifyInsert({
+    timestamp: point.timestamp,
+    lat: point.lat,
+    lng: point.lng,
+    source,
+  });
 }
 
 export async function countMotionLocationPoints(): Promise<number> {
   const db = await getDatabase();
   const result = await db
-    .select({count: sql<number>`count(*)`})
+    .select({ count: sql<number>`count(*)` })
     .from(locationPoints)
     .where(motionLocationSourceFilter());
   return Number(result[0]?.count ?? 0);
@@ -115,7 +120,9 @@ export async function deleteMotionLocationPoints(): Promise<number> {
 
 export async function countLocationPoints(): Promise<number> {
   const db = await getDatabase();
-  const result = await db.select({count: sql<number>`count(*)`}).from(locationPoints);
+  const result = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(locationPoints);
   return Number(result[0]?.count ?? 0);
 }
 

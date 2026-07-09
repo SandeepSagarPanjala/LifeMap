@@ -167,12 +167,8 @@
           "name": "moments_linked_point_id_location_points_id_fk",
           "tableFrom": "moments",
           "tableTo": "location_points",
-          "columnsFrom": [
-            "linked_point_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["linked_point_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -209,9 +205,7 @@
       "indexes": {
         "settings_key_unique": {
           "name": "settings_key_unique",
-          "columns": [
-            "key"
-          ],
+          "columns": ["key"],
           "isUnique": true
         }
       },

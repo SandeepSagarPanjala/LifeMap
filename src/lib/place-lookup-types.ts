@@ -93,13 +93,17 @@ export type VisitPlaceDisplay = {
   venueRadiusMeters: number;
 };
 
-export function isVisitPlaceLabelConfirmed(display: VisitPlaceDisplay): boolean {
+export function isVisitPlaceLabelConfirmed(
+  display: VisitPlaceDisplay,
+): boolean {
   if (display.source === 'saved') {
     return true;
   }
   return display.selectedPoiId != null;
 }
 
-export function visitPlaceDefaultLabel(display: VisitPlaceDisplay): string | null {
+export function visitPlaceDefaultLabel(
+  display: VisitPlaceDisplay,
+): string | null {
   return display.primaryLabel?.trim() || display.addressLabel?.trim() || null;
 }

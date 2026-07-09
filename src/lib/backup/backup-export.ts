@@ -1,7 +1,7 @@
-import {asc, sql} from 'drizzle-orm';
+import { asc, sql } from 'drizzle-orm';
 import ReactNativeBlobUtil from 'react-native-blob-util';
 
-import {getDatabase} from '@/db/client';
+import { getDatabase } from '@/db/client';
 import {
   activities,
   locationPoints,
@@ -11,10 +11,10 @@ import {
   settings,
   trips,
 } from '@/db/schema';
-import {getDocumentDirectory} from '@/lib/moments/moment-media-uri';
-import {resolveMomentVoiceContentPath} from '@/lib/moments/moment-voice';
-import {notePhotoAttachmentPaths} from '@/lib/moments/note-photo-attachments';
-import {getAllMoments} from '@/db/repositories/moments';
+import { getDocumentDirectory } from '@/lib/moments/moment-media-uri';
+import { resolveMomentVoiceContentPath } from '@/lib/moments/moment-voice';
+import { notePhotoAttachmentPaths } from '@/lib/moments/note-photo-attachments';
+import { getAllMoments } from '@/db/repositories/moments';
 
 import {
   BACKUP_FORMAT_VERSION,
@@ -27,8 +27,8 @@ import {
   type TripLabelOverride,
   type BackupProgress,
 } from './backup-types';
-import {ensureDirectory, yieldToUi} from './backup-fs';
-import {iso} from './backup-serialize';
+import { ensureDirectory, yieldToUi } from './backup-fs';
+import { iso } from './backup-serialize';
 
 export async function estimateLocalBackupBytes(): Promise<number> {
   const mediaFiles = await collectMomentMediaFiles();
@@ -41,11 +41,11 @@ export async function estimateLocalBackupBytes(): Promise<number> {
     savedPlaceRows,
     activityRows,
   ] = await Promise.all([
-    db.select({count: sql<number>`count(*)`}).from(locationPoints),
-    db.select({count: sql<number>`count(*)`}).from(moments),
-    db.select({count: sql<number>`count(*)`}).from(trips),
-    db.select({count: sql<number>`count(*)`}).from(savedPlaces),
-    db.select({count: sql<number>`count(*)`}).from(activities),
+    db.select({ count: sql<number>`count(*)` }).from(locationPoints),
+    db.select({ count: sql<number>`count(*)` }).from(moments),
+    db.select({ count: sql<number>`count(*)` }).from(trips),
+    db.select({ count: sql<number>`count(*)` }).from(savedPlaces),
+    db.select({ count: sql<number>`count(*)` }).from(activities),
   ]);
   const locationCount = Number(locationPointRows[0]?.count ?? 0);
   const momentCount = Number(momentRows[0]?.count ?? 0);
@@ -165,7 +165,9 @@ function serializeMoments(rows: Array<typeof moments.$inferSelect>): unknown[] {
   }));
 }
 
-function serializeSettings(rows: Array<typeof settings.$inferSelect>): unknown[] {
+function serializeSettings(
+  rows: Array<typeof settings.$inferSelect>,
+): unknown[] {
   return rows.map(row => ({
     id: row.id,
     key: row.key,
@@ -256,7 +258,11 @@ async function collectMomentMediaFiles(): Promise<BackupMediaFile[]> {
     if (voicePath) {
       paths.add(voicePath);
     }
-    if (moment.contentPath && moment.type !== 'note' && moment.type !== 'activity') {
+    if (
+      moment.contentPath &&
+      moment.type !== 'note' &&
+      moment.type !== 'activity'
+    ) {
       paths.add(moment.contentPath);
     }
 
@@ -297,7 +303,10 @@ export async function prepareBackupBundle(
     settingRows,
     tripRows,
   ] = await Promise.all([
-    db.select().from(activities).orderBy(asc(activities.sortOrder), asc(activities.id)),
+    db
+      .select()
+      .from(activities)
+      .orderBy(asc(activities.sortOrder), asc(activities.id)),
     db.select().from(locationPoints).orderBy(asc(locationPoints.timestamp)),
     db.select().from(savedPlaces).orderBy(asc(savedPlaces.createdAt)),
     db.select().from(placeLookupCache).orderBy(asc(placeLookupCache.id)),
@@ -318,13 +327,10 @@ export async function prepareBackupBundle(
 
   const mediaFiles = await collectMomentMediaFiles();
   const mediaBytes = mediaFiles.reduce((sum, file) => sum + file.bytes, 0);
-  const tableCounts = BACKUP_TABLE_NAMES.reduce(
-    (counts, tableName) => {
-      counts[tableName] = tables[tableName].length;
-      return counts;
-    },
-    {} as Record<BackupTableName, number>,
-  );
+  const tableCounts = BACKUP_TABLE_NAMES.reduce((counts, tableName) => {
+    counts[tableName] = tables[tableName].length;
+    return counts;
+  }, {} as Record<BackupTableName, number>);
 
   const manifest: BackupManifest = {
     format: 'lifemap-backup',
@@ -375,7 +381,10 @@ export async function writeBackupBundleToDirectory(
   );
 
   for (const file of bundle.mediaFiles) {
-    const destination = `${directoryPath}/media/${file.relativePath.replace(/^moments\//, '')}`;
+    const destination = `${directoryPath}/media/${file.relativePath.replace(
+      /^moments\//,
+      '',
+    )}`;
     const destinationDir = destination.slice(0, destination.lastIndexOf('/'));
     if (destinationDir.length > 0) {
       await ensureDirectory(destinationDir);
@@ -412,7 +421,10 @@ export async function readBackupBundleFromDirectory(
   });
   await yieldToUi();
 
-  const manifestRaw = await fs.readFile(`${directoryPath}/manifest.json`, 'utf8');
+  const manifestRaw = await fs.readFile(
+    `${directoryPath}/manifest.json`,
+    'utf8',
+  );
   const manifest = JSON.parse(manifestRaw) as BackupManifest;
   if (manifest.format !== 'lifemap-backup') {
     throw new Error('Unsupported backup format.');
@@ -421,8 +433,8 @@ export async function readBackupBundleFromDirectory(
     throw new Error('This backup requires a newer version of LifeMap.');
   }
 
-  const tableWeights = BACKUP_TABLE_NAMES.map(
-    name => Math.max(manifest.tableCounts[name] ?? 0, 1),
+  const tableWeights = BACKUP_TABLE_NAMES.map(name =>
+    Math.max(manifest.tableCounts[name] ?? 0, 1),
   );
   const totalWeight =
     1 + tableWeights.reduce((sum, weight) => sum + weight, 0) + 1;
@@ -444,7 +456,10 @@ export async function readBackupBundleFromDirectory(
     const tableName = BACKUP_TABLE_NAMES[index]!;
     reportReadProgress(`Reading ${TABLE_READ_LABELS[tableName]}…`);
     await yieldToUi();
-    const raw = await fs.readFile(`${directoryPath}/db/${tableName}.json`, 'utf8');
+    const raw = await fs.readFile(
+      `${directoryPath}/db/${tableName}.json`,
+      'utf8',
+    );
     tables[tableName] = JSON.parse(raw) as unknown[];
     completedWeight += tableWeights[index]!;
     reportReadProgress(`Reading ${TABLE_READ_LABELS[tableName]}…`);
@@ -465,5 +480,5 @@ export async function readBackupBundleFromDirectory(
   completedWeight += 1;
   reportReadProgress('Backup read complete');
 
-  return {manifest, tables, tripOverrides};
+  return { manifest, tables, tripOverrides };
 }

@@ -1,8 +1,11 @@
-import type {LocationPointRow} from '@/db/repositories/location-days';
-import type {MaterializedDayRow} from '@/db/repositories/materialized-days';
-import type {MomentRow, MomentType} from '@/db/repositories/moments';
-import type {SavedPlaceKind, SavedPlaceRow} from '@/db/repositories/saved-places';
-import type {TripPointRow} from '@/db/repositories/trip-points';
+import type { LocationPointRow } from '@/db/repositories/location-days';
+import type { MaterializedDayRow } from '@/db/repositories/materialized-days';
+import type { MomentRow, MomentType } from '@/db/repositories/moments';
+import type {
+  SavedPlaceKind,
+  SavedPlaceRow,
+} from '@/db/repositories/saved-places';
+import type { TripPointRow } from '@/db/repositories/trip-points';
 
 export function makeSavedPlace(
   partial: Partial<SavedPlaceRow> &
@@ -117,8 +120,7 @@ export function mapExportSavedPlace(row: {
     lng: row.lng,
     radiusMeters: row.radiusMeters,
     addressLine: row.addressLine ?? null,
-    active:
-      row.active === 0 || row.active === false ? false : true,
+    active: row.active === 0 || row.active === false ? false : true,
     createdAt:
       row.createdAt instanceof Date ? row.createdAt : new Date(row.createdAt),
   };

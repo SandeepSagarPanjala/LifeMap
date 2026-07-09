@@ -1,17 +1,17 @@
-import {useCallback, useState} from 'react';
-import {APP_COPY, errorMessageOr} from '@/lib/app-copy';
-import {format} from 'date-fns';
-import {ActivityIndicator, Alert, Modal, Pressable, View} from 'react-native';
+import { useCallback, useState } from 'react';
+import { APP_COPY, errorMessageOr } from '@/lib/app-copy';
+import { format } from 'date-fns';
+import { ActivityIndicator, Alert, Modal, Pressable, View } from 'react-native';
 
-import {Text} from '@/components/ui/text';
-import {useTripDetectionConfig} from '@/hooks/use-trip-detection-config';
-import {parseDateKey} from '@/lib/day-utils';
-import {clearHistoryDataCache} from '@/lib/history-data-cache';
+import { Text } from '@/components/ui/text';
+import { useTripDetectionConfig } from '@/hooks/use-trip-detection-config';
+import { parseDateKey } from '@/lib/day-utils';
+import { clearHistoryDataCache } from '@/lib/history-data-cache';
 import {
   rebuildAllTrips,
   type RebuildPastTripsProgress,
 } from '@/lib/trip-materialization';
-import {refreshTodayOnForeground} from '@/lib/today-refresh-scheduler';
+import { refreshTodayOnForeground } from '@/lib/today-refresh-scheduler';
 
 export function TripRebuildSettings() {
   const detectionConfig = useTripDetectionConfig();
@@ -22,7 +22,7 @@ export function TripRebuildSettings() {
 
   const runRebuild = useCallback(async () => {
     setRebuilding(true);
-    setProgress({phase: 'past', completed: 0, total: 0, dateKey: ''});
+    setProgress({ phase: 'past', completed: 0, total: 0, dateKey: '' });
     try {
       const result = await rebuildAllTrips(detectionConfig, setProgress);
       clearHistoryDataCache();
@@ -36,10 +36,7 @@ export function TripRebuildSettings() {
           : `Saved ${segments} trip segments for today (live tail not persisted).`,
       );
     } catch (error) {
-      Alert.alert(
-        APP_COPY.alerts.couldNotRebuildTrips,
-        errorMessageOr(error),
-      );
+      Alert.alert(APP_COPY.alerts.couldNotRebuildTrips, errorMessageOr(error));
     } finally {
       setRebuilding(false);
       setProgress(null);
@@ -51,7 +48,7 @@ export function TripRebuildSettings() {
       'Rebuild trips?',
       'This deletes cached trips, rebuilds visits and drives from GPS for all past days plus today’s settled prefix, and saves segment routes. Your raw location points are not deleted.\n\nThis may take a few minutes.',
       [
-        {text: 'Cancel', style: 'cancel'},
+        { text: 'Cancel', style: 'cancel' },
         {
           text: 'Rebuild',
           style: 'destructive',
@@ -72,16 +69,16 @@ export function TripRebuildSettings() {
     progress?.phase === 'today'
       ? 'Today'
       : progress?.dateKey
-        ? format(parseDateKey(progress.dateKey), 'MMM d, yyyy')
-        : 'Preparing…';
+      ? format(parseDateKey(progress.dateKey), 'MMM d, yyyy')
+      : 'Preparing…';
 
   return (
     <>
       <View className="bg-card border-border mt-2 rounded-xl border px-4 py-4">
         <Text variant="muted" className="text-sm leading-5">
           Recompute visits and drives from GPS using the same rules as the point
-          explorer, then save segment routes. Today’s last two segments stay live
-          on the map and are not written to the database.
+          explorer, then save segment routes. Today’s last two segments stay
+          live on the map and are not written to the database.
         </Text>
 
         <Pressable
@@ -90,7 +87,8 @@ export function TripRebuildSettings() {
           onPress={confirmRebuild}
           className={`bg-primary mt-4 items-center rounded-full px-4 py-3 ${
             rebuilding ? 'opacity-50' : ''
-          }`}>
+          }`}
+        >
           <Text className="text-primary-foreground font-medium">Rebuild</Text>
         </Pressable>
       </View>
@@ -107,7 +105,7 @@ export function TripRebuildSettings() {
             <View className="bg-muted mt-4 h-2 overflow-hidden rounded-full">
               <View
                 className="bg-primary h-2 rounded-full"
-                style={{width: `${Math.round(progressRatio * 100)}%`}}
+                style={{ width: `${Math.round(progressRatio * 100)}%` }}
               />
             </View>
             <View className="mt-3 flex-row items-center justify-center gap-2">

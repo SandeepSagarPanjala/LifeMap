@@ -1,9 +1,9 @@
-import {eq, inArray} from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 
-import {getDatabase} from '../client';
-import {placePois} from '../schema';
-import type {PlacePoiRow, PlacePoiSource} from '@/lib/place-lookup-types';
-import {distanceMeters} from '@/lib/place-lookup-venue';
+import { getDatabase } from '../client';
+import { placePois } from '../schema';
+import type { PlacePoiRow, PlacePoiSource } from '@/lib/place-lookup-types';
+import { distanceMeters } from '@/lib/place-lookup-venue';
 
 export type SyncMapkitPlacePoisResult = {
   updated: number;
@@ -13,8 +13,8 @@ export type SyncMapkitPlacePoisResult = {
 const COORD_EPSILON = 1e-5;
 
 export function poiCoordinatesMatchAnchor(
-  poi: {lat: number; lng: number},
-  anchor: {lat: number; lng: number},
+  poi: { lat: number; lng: number },
+  anchor: { lat: number; lng: number },
 ): boolean {
   return (
     Math.abs(poi.lat - anchor.lat) < COORD_EPSILON &&
@@ -23,7 +23,7 @@ export function poiCoordinatesMatchAnchor(
 }
 
 export function cacheNeedsPoiCoordinateRefresh(
-  anchor: {lat: number; lng: number},
+  anchor: { lat: number; lng: number },
   pois: readonly PlacePoiRow[],
 ): boolean {
   const mapkitPois = pois.filter(poi => poi.source === 'mapkit');
@@ -52,7 +52,7 @@ export async function listPlacePois(): Promise<PlacePoiRow[]> {
 }
 
 export function closestPlacePoiToAnchor(
-  anchor: {lat: number; lng: number},
+  anchor: { lat: number; lng: number },
   pois: readonly PlacePoiRow[],
 ): PlacePoiRow | null {
   let best: PlacePoiRow | null = null;
@@ -62,7 +62,7 @@ export function closestPlacePoiToAnchor(
     if (!Number.isFinite(poi.lat) || !Number.isFinite(poi.lng)) {
       continue;
     }
-    const distanceM = distanceMeters(anchor, {lat: poi.lat, lng: poi.lng});
+    const distanceM = distanceMeters(anchor, { lat: poi.lat, lng: poi.lng });
     if (distanceM < bestDistanceM) {
       best = poi;
       bestDistanceM = distanceM;
@@ -170,7 +170,7 @@ export async function syncMapkitPlacePoisForCache(
       if (latChanged || lngChanged) {
         await db
           .update(placePois)
-          .set({lat: candidate.lat, lng: candidate.lng})
+          .set({ lat: candidate.lat, lng: candidate.lng })
           .where(eq(placePois.id, match.id));
         updated += 1;
       }
@@ -188,7 +188,7 @@ export async function syncMapkitPlacePoisForCache(
     inserted += 1;
   }
 
-  return {updated, inserted};
+  return { updated, inserted };
 }
 
 export async function replacePlacePoisForCache(
@@ -201,9 +201,7 @@ export async function replacePlacePoisForCache(
   }>,
 ): Promise<PlacePoiRow[]> {
   const db = await getDatabase();
-  await db
-    .delete(placePois)
-    .where(eq(placePois.cacheId, cacheId));
+  await db.delete(placePois).where(eq(placePois.cacheId, cacheId));
   if (pois.length === 0) {
     return [];
   }
@@ -234,9 +232,7 @@ export async function mergePlacePoisForCache(
   }>,
 ): Promise<PlacePoiRow[]> {
   const existing = await listPlacePoisForCache(cacheId);
-  const seen = new Set(
-    existing.map(poi => poi.name.trim().toLowerCase()),
-  );
+  const seen = new Set(existing.map(poi => poi.name.trim().toLowerCase()));
   const toInsert = incoming.filter(poi => {
     const key = poi.name.trim().toLowerCase();
     if (!key || seen.has(key)) {

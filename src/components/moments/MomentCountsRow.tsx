@@ -1,12 +1,21 @@
-import {Activity, AudioLines, Camera, NotebookPen, Video} from 'lucide-react-native';
-import {Pressable, StyleSheet, Text, View} from 'react-native';
+import {
+  Activity,
+  AudioLines,
+  Camera,
+  NotebookPen,
+  Video,
+} from 'lucide-react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
   CAPTURE_BUTTON_THEMES,
   CAPTURE_ICON_SIZE,
 } from '@/components/map/map-capture-button-theme';
-import type {MomentCountType, MomentCounts} from '@/lib/moments/moment-counts';
-import {hasMomentCounts} from '@/lib/moments/moment-counts';
+import type {
+  MomentCountType,
+  MomentCounts,
+} from '@/lib/moments/moment-counts';
+import { hasMomentCounts } from '@/lib/moments/moment-counts';
 
 type MomentCountsRowLayout = 'inline' | 'stacked';
 
@@ -92,24 +101,29 @@ function MomentCountChip({
           styles.iconOrb,
           styles.iconOrbStacked,
           dense ? styles.iconOrbStackedDense : null,
-          {backgroundColor: theme.badgeBg},
-        ]}>
+          { backgroundColor: theme.badgeBg },
+        ]}
+      >
         <Icon
           size={dense ? iconSize - 4 : iconSize - 2}
           color={theme.icon}
           strokeWidth={2.25}
         />
       </View>
-      <Text style={[styles.countStacked, dense ? styles.countStackedDense : null]}>
+      <Text
+        style={[styles.countStacked, dense ? styles.countStackedDense : null]}
+      >
         {count}
       </Text>
     </View>
   ) : (
     <View style={[styles.chip, compact ? styles.chipCompact : null]}>
-      <View style={[styles.iconOrb, {backgroundColor: theme.badgeBg}]}>
+      <View style={[styles.iconOrb, { backgroundColor: theme.badgeBg }]}>
         <Icon size={iconSize} color={theme.icon} strokeWidth={2.25} />
       </View>
-      <Text style={[styles.count, compact ? styles.countCompact : null]}>{count}</Text>
+      <Text style={[styles.count, compact ? styles.countCompact : null]}>
+        {count}
+      </Text>
     </View>
   );
 
@@ -123,7 +137,8 @@ function MomentCountChip({
       accessibilityLabel={accessibilityLabel}
       hitSlop={6}
       onPress={onPress}
-      style={({pressed}) => [pressed ? styles.pressed : null]}>
+      style={({ pressed }) => [pressed ? styles.pressed : null]}
+    >
       {chip}
     </Pressable>
   );
@@ -149,7 +164,8 @@ export function MomentCountsRow({
         layout === 'stacked'
           ? [styles.rowStacked, dense ? styles.rowStackedDense : null]
           : null,
-      ]}>
+      ]}
+    >
       {CHIP_DEFINITIONS.map(definition => {
         const count = counts[definition.type];
         if (count <= 0) {
@@ -166,7 +182,9 @@ export function MomentCountsRow({
             compact={compact}
             dense={dense}
             layout={layout}
-            onPress={onPressType ? () => onPressType(definition.type) : undefined}
+            onPress={
+              onPressType ? () => onPressType(definition.type) : undefined
+            }
             accessibilityLabel={definition.accessibilityLabel}
           />
         );
@@ -188,7 +206,8 @@ export function MomentCountsRow({
       accessibilityLabel="Preview moments"
       hitSlop={8}
       onPress={onPress}
-      style={({pressed}) => [pressed ? styles.pressed : null]}>
+      style={({ pressed }) => [pressed ? styles.pressed : null]}
+    >
       {row}
     </Pressable>
   );

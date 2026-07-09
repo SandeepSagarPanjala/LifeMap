@@ -1,5 +1,5 @@
-import type {SegmentMomentCounts} from '@lifemap/segmentation';
-import type {ParsedPoint} from '../types';
+import type { SegmentMomentCounts } from '@lifemap/segmentation';
+import type { ParsedPoint } from '../types';
 
 export type PlaceKind = 'saved' | 'cache';
 

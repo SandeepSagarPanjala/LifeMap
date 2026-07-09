@@ -1,4 +1,4 @@
-import {computeDatabaseFileStats} from '../src/lib/database-file-stats';
+import { computeDatabaseFileStats } from '../src/lib/database-file-stats';
 
 describe('computeDatabaseFileStats', () => {
   it('separates used and free pages in the database file', () => {

@@ -1,12 +1,12 @@
-import type {MomentMapPin} from '@/components/map/MomentMapOverlay';
-import type {SavedPlaceRow} from '@/db/repositories/saved-places';
-import type {MomentRow} from '@/db/repositories/moments';
+import type { MomentMapPin } from '@/components/map/MomentMapOverlay';
+import type { SavedPlaceRow } from '@/db/repositories/saved-places';
+import type { MomentRow } from '@/db/repositories/moments';
 import {
   coalesceMomentMapPins,
   partitionMomentMapPins,
   shouldClusterMomentsOnMap,
 } from '../src/lib/moments/moment-map-clustering';
-import {makeMoment} from './helpers/fixtures';
+import { makeMoment } from './helpers/fixtures';
 
 const home: SavedPlaceRow = {
   id: 1,
@@ -27,8 +27,8 @@ function momentPin(
   type: MomentRow['type'] = 'photo',
 ): MomentMapPin {
   return {
-    moment: makeMoment({id, type, timestamp: new Date()}),
-    coordinate: {latitude: lat, longitude: lng},
+    moment: makeMoment({ id, type, timestamp: new Date() }),
+    coordinate: { latitude: lat, longitude: lng },
   };
 }
 

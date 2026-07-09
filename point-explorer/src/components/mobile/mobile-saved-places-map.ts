@@ -1,8 +1,8 @@
-import type {SavedPlaceRow} from '../../types';
+import type { SavedPlaceRow } from '../../types';
 
 export const SAVED_PLACE_MAP_STYLE: Record<
   SavedPlaceRow['kind'],
-  {badgeBg: string; stroke: string; icon: string}
+  { badgeBg: string; stroke: string; icon: string }
 > = {
   home: {
     badgeBg: '#FFF8EE',

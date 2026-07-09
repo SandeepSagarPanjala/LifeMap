@@ -5,22 +5,18 @@ import {
   prepareDayHistoryTimeline,
   prepareTodayHistoryTimeline,
 } from '../src/lib/today-history';
-import {buildHistoryDayRuler} from '../src/lib/history-timeline';
-import {buildTripDetectionConfig} from '../src/lib/trip-settings';
-import {getDayRange} from '../src/lib/day-utils';
-import type {LocationPointRow} from '../src/db/repositories/location-days';
-import {mapExportSavedPlace} from './helpers/fixtures';
-import {ALL_DATA_EXPORT_PATH} from './helpers/personal-export';
-import {endOfDay} from 'date-fns';
+import { buildHistoryDayRuler } from '../src/lib/history-timeline';
+import { buildTripDetectionConfig } from '../src/lib/trip-settings';
+import { getDayRange } from '../src/lib/day-utils';
+import type { LocationPointRow } from '../src/db/repositories/location-days';
+import { mapExportSavedPlace } from './helpers/fixtures';
+import { ALL_DATA_EXPORT_PATH } from './helpers/personal-export';
+import { endOfDay } from 'date-fns';
 
 const config = buildTripDetectionConfig(10, 10, 25);
-const home = {lat: 33.25045, lng: -97.15306};
+const home = { lat: 33.25045, lng: -97.15306 };
 
-function row(
-  iso: string,
-  id: number,
-  coords = home,
-): LocationPointRow {
+function row(iso: string, id: number, coords = home): LocationPointRow {
   return {
     id,
     timestamp: new Date(iso),
@@ -61,7 +57,7 @@ describe('prepareTodayHistoryTimeline', () => {
       config,
       now,
       [],
-      {savedPlaces},
+      { savedPlaces },
     );
     const stay = entries.find(e => e.kind === 'stay');
     expect(stay?.kind).toBe('stay');
@@ -115,7 +111,7 @@ describe('prepareTodayHistoryTimeline', () => {
       },
     ];
     const activity = getCurrentOpenActivity(entries, {
-      userCoordinate: {latitude: 33.3, longitude: -97.2},
+      userCoordinate: { latitude: 33.3, longitude: -97.2 },
       config,
     });
     expect(activity?.kind).toBe('travel');
@@ -145,10 +141,10 @@ describe('prepareTodayHistoryTimeline', () => {
       config,
       now,
       [],
-      {savedPlaces},
+      { savedPlaces },
     );
     const visit = getCurrentOpenVisit(entries, {
-      userCoordinate: {latitude: home.lat, longitude: home.lng},
+      userCoordinate: { latitude: home.lat, longitude: home.lng },
       config,
     });
     expect(visit?.kind).toBe('stay');
@@ -165,7 +161,7 @@ describe('prepareTodayHistoryTimeline', () => {
       config,
     );
     const visit = getCurrentOpenVisit(entries, {
-      userCoordinate: {latitude: 33.3, longitude: -97.2},
+      userCoordinate: { latitude: 33.3, longitude: -97.2 },
       config,
     });
     expect(visit).toBeNull();
@@ -234,7 +230,9 @@ describe('prepareTodayHistoryTimeline', () => {
       p => p.timestamp >= dayStart && p.timestamp <= referenceNow,
     );
     const lookback = allPoints.filter(p => p.timestamp < dayStart);
-    const savedPlaces = (raw.tables.saved_places ?? []).map(mapExportSavedPlace);
+    const savedPlaces = (raw.tables.saved_places ?? []).map(
+      mapExportSavedPlace,
+    );
 
     const entries = prepareDayHistoryTimeline(
       '2026-06-19',
@@ -243,13 +241,14 @@ describe('prepareTodayHistoryTimeline', () => {
       tripConfig,
       referenceNow,
       [],
-      {savedPlaces},
+      { savedPlaces },
     );
 
     const evening = entries.filter(
       entry =>
         entry.kind !== 'gap' &&
-        entry.startAt.getTime() >= new Date('2026-06-20T00:00:00.000Z').getTime(),
+        entry.startAt.getTime() >=
+          new Date('2026-06-20T00:00:00.000Z').getTime(),
     );
     const vishnuStay = evening.find(
       entry => entry.kind === 'stay' && entry.placeLabel === 'Vishnu',
@@ -258,8 +257,7 @@ describe('prepareTodayHistoryTimeline', () => {
       (entry, index) =>
         entry.kind === 'travel' &&
         evening[index - 1]?.kind === 'stay' &&
-        (evening[index - 1] as {placeLabel?: string}).placeLabel ===
-          'Vishnu',
+        (evening[index - 1] as { placeLabel?: string }).placeLabel === 'Vishnu',
     );
 
     expect(vishnuStay?.kind).toBe('stay');
@@ -274,8 +272,12 @@ describe('prepareTodayHistoryTimeline', () => {
   });
 
   it('does not split a midnight drive into a fake visit and restart', () => {
-    const road = {lat: 33.22, lng: -96.95};
-    const moving = (iso: string, id: number, latOffset: number): LocationPointRow => ({
+    const road = { lat: 33.22, lng: -96.95 };
+    const moving = (
+      iso: string,
+      id: number,
+      latOffset: number,
+    ): LocationPointRow => ({
       id,
       timestamp: new Date(iso),
       lat: road.lat + latOffset,
@@ -332,9 +334,7 @@ describe('prepareTodayHistoryTimeline', () => {
       expect(yesterdayDrive.endAt.toISOString()).toBe(
         '2026-06-08T05:20:00.000Z',
       );
-      expect(todayDrive.startAt.toISOString()).toBe(
-        '2026-06-08T04:51:00.000Z',
-      );
+      expect(todayDrive.startAt.toISOString()).toBe('2026-06-08T04:51:00.000Z');
       expect(todayDrive.endAt.toISOString()).toBe(referenceNow.toISOString());
       expect(todayDrive.openThroughNow).toBe(true);
     }
@@ -359,9 +359,7 @@ describe('prepareTodayHistoryTimeline', () => {
     expect(yesterdaySegment.endAt.toISOString()).toBe(
       '2026-06-08T04:59:59.999Z',
     );
-    expect(todaySegment.startAt.toISOString()).toBe(
-      '2026-06-08T05:00:00.000Z',
-    );
+    expect(todaySegment.startAt.toISOString()).toBe('2026-06-08T05:00:00.000Z');
     expect(todaySegment.endAt.toISOString()).toBe(referenceNow.toISOString());
   });
 
@@ -417,7 +415,9 @@ describe('prepareTodayHistoryTimeline', () => {
       p => p.timestamp > dayEnd && p.timestamp <= lookaheadEnd,
     );
     const referenceNow = new Date('2026-06-10T12:00:00.000Z');
-    const savedPlaces = (raw.tables.saved_places ?? []).map(mapExportSavedPlace);
+    const savedPlaces = (raw.tables.saved_places ?? []).map(
+      mapExportSavedPlace,
+    );
 
     const persistEntries = prepareDayHistoryTimeline(
       dateKey,
@@ -426,15 +426,13 @@ describe('prepareTodayHistoryTimeline', () => {
       tripConfig,
       referenceNow,
       lookaheadPoints,
-      {savedPlaces},
+      { savedPlaces },
       false,
     );
 
     const inboundDrive = persistEntries.find(entry => entry.kind === 'travel');
     const homeStay = persistEntries.find(
-      entry =>
-        entry.kind === 'stay' &&
-        entry.durationMs >= 12 * 60 * 60_000,
+      entry => entry.kind === 'stay' && entry.durationMs >= 12 * 60 * 60_000,
     );
 
     expect(inboundDrive?.kind).toBe('travel');
@@ -487,9 +485,13 @@ describe('prepareTodayHistoryTimeline', () => {
     const savedPlaces = raw.tables.saved_places.map(mapExportSavedPlace);
     const jun13DayStart = new Date('2026-06-13T05:00:00.000Z');
     const dayPoints = points.filter(
-      point => point.timestamp >= jun13DayStart && point.timestamp < new Date('2026-06-13T07:24:00.000Z'),
+      point =>
+        point.timestamp >= jun13DayStart &&
+        point.timestamp < new Date('2026-06-13T07:24:00.000Z'),
     );
-    const lookback = points.filter(point => point.timestamp < jun13DayStart).slice(-80);
+    const lookback = points
+      .filter(point => point.timestamp < jun13DayStart)
+      .slice(-80);
 
     const entries = prepareDayHistoryTimeline(
       '2026-06-13',
@@ -498,7 +500,7 @@ describe('prepareTodayHistoryTimeline', () => {
       buildTripDetectionConfig(10, 5, 20),
       new Date('2026-06-13T07:24:00.000Z'),
       [],
-      {savedPlaces},
+      { savedPlaces },
     );
 
     const kinds = entries.map(entry => entry.kind);
@@ -559,7 +561,9 @@ describe('prepareTodayHistoryTimeline', () => {
         point.timestamp >= jun12DayStart &&
         point.timestamp < new Date('2026-06-13T05:00:00.000Z'),
     );
-    const lookback = points.filter(point => point.timestamp < jun12DayStart).slice(-80);
+    const lookback = points
+      .filter(point => point.timestamp < jun12DayStart)
+      .slice(-80);
 
     const entries = prepareDayHistoryTimeline(
       '2026-06-12',
@@ -568,7 +572,7 @@ describe('prepareTodayHistoryTimeline', () => {
       buildTripDetectionConfig(10, 5, 20),
       new Date('2026-06-13T07:24:00.000Z'),
       [],
-      {savedPlaces},
+      { savedPlaces },
     );
 
     const evening = entries.filter(
@@ -590,8 +594,10 @@ describe('prepareTodayHistoryTimeline', () => {
     const slimVisit = evening.find(
       entry =>
         entry.kind === 'stay' &&
-        entry.startAt.getTime() >= new Date('2026-06-13T03:38:00.000Z').getTime() &&
-        entry.startAt.getTime() <= new Date('2026-06-13T03:40:00.000Z').getTime(),
+        entry.startAt.getTime() >=
+          new Date('2026-06-13T03:38:00.000Z').getTime() &&
+        entry.startAt.getTime() <=
+          new Date('2026-06-13T03:40:00.000Z').getTime(),
     );
     expect(slimVisit).toBeUndefined();
 
@@ -653,7 +659,7 @@ describe('prepareTodayHistoryTimeline', () => {
     const referenceNow = new Date('2026-06-13T07:24:00.000Z');
 
     function loadDay(dateKey: string) {
-      const {start: dayRangeStart} = getDayRange(dateKey);
+      const { start: dayRangeStart } = getDayRange(dateKey);
       const dayEnd = endOfDay(dayRangeStart);
       const lookaheadEnd = getHistoryLookaheadEnd(dayEnd);
       const dayPoints = points.filter(
@@ -670,7 +676,7 @@ describe('prepareTodayHistoryTimeline', () => {
         tripConfig,
         referenceNow,
         lookahead,
-        {savedPlaces},
+        { savedPlaces },
       );
     }
 
@@ -688,7 +694,12 @@ describe('prepareTodayHistoryTimeline', () => {
         endOfDay(getDayRange('2026-06-12').start).getTime(),
       );
 
-      const jun12Bar = buildHistoryDayRuler(jun12, '2026-06-12', 300, referenceNow);
+      const jun12Bar = buildHistoryDayRuler(
+        jun12,
+        '2026-06-12',
+        300,
+        referenceNow,
+      );
       const jun12Segment = jun12Bar.segments.at(-1)!;
       expect(jun12Segment.endAt).toEqual(jun12LastStay.endAt);
     }

@@ -1,13 +1,13 @@
-import {useCallback, useEffect, useLayoutEffect, useState} from 'react';
-import {ActivityIndicator, View} from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { ActivityIndicator, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import {CachedPlaceMapView} from '@/components/settings/CachedPlaceMapView';
-import {Text} from '@/components/ui/text';
-import {getPlaceLookupById} from '@/db/repositories/place-lookup-cache';
-import {listPlacePoisForCache} from '@/db/repositories/place-pois';
-import type {RootStackScreenProps} from '@/navigation/types';
-import type {PlaceLookupRow, PlacePoiRow} from '@/lib/place-lookup-types';
+import { CachedPlaceMapView } from '@/components/settings/CachedPlaceMapView';
+import { Text } from '@/components/ui/text';
+import { getPlaceLookupById } from '@/db/repositories/place-lookup-cache';
+import { listPlacePoisForCache } from '@/db/repositories/place-pois';
+import type { RootStackScreenProps } from '@/navigation/types';
+import type { PlaceLookupRow, PlacePoiRow } from '@/lib/place-lookup-types';
 
 function mapScreenTitle(row: PlaceLookupRow | null): string {
   const address = row?.addressLine?.trim();
@@ -21,7 +21,7 @@ export function CachedPlaceMapScreen({
   route,
   navigation,
 }: RootStackScreenProps<'CachedPlaceMap'>) {
-  const {cacheId} = route.params;
+  const { cacheId } = route.params;
   const [cache, setCache] = useState<PlaceLookupRow | null>(null);
   const [pois, setPois] = useState<PlacePoiRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,7 +55,7 @@ export function CachedPlaceMapScreen({
   }, [cacheId]);
 
   useLayoutEffect(() => {
-    navigation.setOptions({title: mapScreenTitle(cache)});
+    navigation.setOptions({ title: mapScreenTitle(cache) });
   }, [cache, navigation]);
 
   useEffect(() => {
@@ -76,7 +76,7 @@ export function CachedPlaceMapScreen({
         </View>
       ) : (
         <CachedPlaceMapView
-          anchor={{lat: cache.anchorLat, lng: cache.anchorLng}}
+          anchor={{ lat: cache.anchorLat, lng: cache.anchorLng }}
           addressLabel={cache.addressLine}
           venueRadiusMeters={cache.venueRadiusMeters}
           pois={pois}

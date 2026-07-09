@@ -1,10 +1,10 @@
-import {useCallback, useEffect, useState} from 'react';
-import {Pressable} from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { Pressable } from 'react-native';
 
-import {SettingsIosToggle} from '@/components/settings/settings-group';
-import {Text} from '@/components/ui/text';
-import {getLocationService} from '@/location/transistorsoft-location-service';
-import type {LocationAuthorizationStatus} from '@/location/types';
+import { SettingsIosToggle } from '@/components/settings/settings-group';
+import { Text } from '@/components/ui/text';
+import { getLocationService } from '@/location/transistorsoft-location-service';
+import type { LocationAuthorizationStatus } from '@/location/types';
 import {
   STATIONARY_PING_MIN_MS_MAX_RELIABILITY,
   TRACKING_DISTANCE_FILTER_METERS,
@@ -73,11 +73,13 @@ export function TrackingSettings() {
         onValueChange={value => void handleToggle(value)}
       />
 
-      {authorizationStatus === 'denied' || authorizationStatus === 'when_in_use' ? (
+      {authorizationStatus === 'denied' ||
+      authorizationStatus === 'when_in_use' ? (
         <Pressable
           accessibilityRole="button"
           onPress={() => void handleRequestPermission()}
-          className="border-primary mt-3 rounded-xl border px-3 py-3">
+          className="border-primary mt-3 rounded-xl border px-3 py-3"
+        >
           <Text className="text-primary text-center font-medium">
             Request location access
           </Text>

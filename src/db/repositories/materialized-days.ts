@@ -1,13 +1,9 @@
-import {eq, sql} from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 
-import {getDatabase} from '../client';
-import {materializedDays} from '../schema';
+import { getDatabase } from '../client';
+import { materializedDays } from '../schema';
 
-export type MaterializedDayStatus =
-  | 'open'
-  | 'partial'
-  | 'complete'
-  | 'failed';
+export type MaterializedDayStatus = 'open' | 'partial' | 'complete' | 'failed';
 
 export type MaterializedDayRow = {
   dateKey: string;
@@ -20,9 +16,7 @@ export type MaterializedDayRow = {
   updatedAt: Date;
 };
 
-function mapRow(
-  row: typeof materializedDays.$inferSelect,
-): MaterializedDayRow {
+function mapRow(row: typeof materializedDays.$inferSelect): MaterializedDayRow {
   return {
     dateKey: row.dateKey,
     status: row.status as MaterializedDayStatus,
@@ -89,7 +83,7 @@ export async function upsertMaterializedDay(
 export async function countMaterializedDays(): Promise<number> {
   const db = await getDatabase();
   const [row] = await db
-    .select({count: sql<number>`cast(count(*) as integer)`})
+    .select({ count: sql<number>`cast(count(*) as integer)` })
     .from(materializedDays);
   return row?.count ?? 0;
 }
@@ -98,7 +92,7 @@ export async function deleteAllMaterializedDays(): Promise<number> {
   const db = await getDatabase();
   const deleted = await db
     .delete(materializedDays)
-    .returning({dateKey: materializedDays.dateKey});
+    .returning({ dateKey: materializedDays.dateKey });
   return deleted.length;
 }
 

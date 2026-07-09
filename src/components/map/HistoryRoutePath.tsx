@@ -1,9 +1,9 @@
-import {memo, useMemo} from 'react';
-import {Polyline} from 'react-native-maps';
+import { memo, useMemo } from 'react';
+import { Polyline } from 'react-native-maps';
 
-import type {LocationPointRow} from '@/db/repositories/location-days';
-import {toDisplayMapCoordinates} from '@/lib/location-geo';
-import {isSparseTravelRoute} from '@/lib/trip-detection';
+import type { LocationPointRow } from '@/db/repositories/location-days';
+import { toDisplayMapCoordinates } from '@/lib/location-geo';
+import { isSparseTravelRoute } from '@/lib/trip-detection';
 import {
   HISTORY_FUTURE_ROUTE_BORDER,
   HISTORY_FUTURE_ROUTE_FILL,
@@ -24,10 +24,7 @@ export const HistoryRoutePath = memo(function HistoryRoutePath({
   tone,
   pathKey,
 }: HistoryRoutePathProps) {
-  const coordinates = useMemo(
-    () => toDisplayMapCoordinates(points),
-    [points],
-  );
+  const coordinates = useMemo(() => toDisplayMapCoordinates(points), [points]);
 
   if (coordinates.length < 2 || isSparseTravelRoute(points)) {
     return null;

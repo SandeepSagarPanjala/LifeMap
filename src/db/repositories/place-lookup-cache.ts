@@ -1,10 +1,13 @@
-import {eq} from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 
-import {getDatabase} from '../client';
-import {placeLookupCache} from '../schema';
-import type {PlaceLookupRow, PlaceLookupStatus} from '@/lib/place-lookup-types';
-import {PLACE_LOOKUP_VENUE_RADIUS_M} from '@/lib/app-constants';
-import {findNearestPlaceLookupMatch} from '@/lib/place-lookup-venue';
+import { getDatabase } from '../client';
+import { placeLookupCache } from '../schema';
+import type {
+  PlaceLookupRow,
+  PlaceLookupStatus,
+} from '@/lib/place-lookup-types';
+import { PLACE_LOOKUP_VENUE_RADIUS_M } from '@/lib/app-constants';
+import { findNearestPlaceLookupMatch } from '@/lib/place-lookup-venue';
 
 function mapRow(row: typeof placeLookupCache.$inferSelect): PlaceLookupRow {
   return {
@@ -24,16 +27,18 @@ export async function listPlaceLookupCacheRows(): Promise<PlaceLookupRow[]> {
   return rows.map(mapRow);
 }
 
-export async function findPlaceLookupNearAnchor(
-  anchor: {lat: number; lng: number},
-): Promise<PlaceLookupRow | null> {
+export async function findPlaceLookupNearAnchor(anchor: {
+  lat: number;
+  lng: number;
+}): Promise<PlaceLookupRow | null> {
   const rows = await listPlaceLookupCacheRows();
   return findNearestPlaceLookupMatch(anchor, rows);
 }
 
-export async function insertPendingPlaceLookup(
-  anchor: {lat: number; lng: number},
-): Promise<PlaceLookupRow> {
+export async function insertPendingPlaceLookup(anchor: {
+  lat: number;
+  lng: number;
+}): Promise<PlaceLookupRow> {
   const db = await getDatabase();
   const inserted = await db
     .insert(placeLookupCache)
@@ -121,10 +126,12 @@ export async function listLegacyPlaceLookupCacheRows(): Promise<
   }));
 }
 
-export async function clearLegacyCandidatesJson(cacheId: number): Promise<void> {
+export async function clearLegacyCandidatesJson(
+  cacheId: number,
+): Promise<void> {
   const db = await getDatabase();
   await db
     .update(placeLookupCache)
-    .set({candidatesJson: null, selectedCandidateIndex: null})
+    .set({ candidatesJson: null, selectedCandidateIndex: null })
     .where(eq(placeLookupCache.id, cacheId));
 }

@@ -1,9 +1,12 @@
-import {StackActions, type NavigationContainerRef} from '@react-navigation/native';
-import {AppState, Linking, Platform} from 'react-native';
+import {
+  StackActions,
+  type NavigationContainerRef,
+} from '@react-navigation/native';
+import { AppState, Linking, Platform } from 'react-native';
 
-import type {RootStackParamList} from '@/navigation/types';
+import type { RootStackParamList } from '@/navigation/types';
 
-import {consumePendingWidgetAction} from './native-widget-snapshot';
+import { consumePendingWidgetAction } from './native-widget-snapshot';
 
 export type WidgetAction = 'note' | 'photo' | 'voice' | 'activity' | 'refresh';
 
@@ -91,7 +94,9 @@ export function parseWidgetDeepLink(url: string): WidgetAction | null {
   }
 }
 
-export function registerWidgetSheetHandlers(next: WidgetSheetHandlers | null): void {
+export function registerWidgetSheetHandlers(
+  next: WidgetSheetHandlers | null,
+): void {
   sheetHandlers = next;
   if (sheetHandlers != null) {
     void drainPendingWidgetAction();
@@ -176,7 +181,8 @@ async function drainPendingWidgetAction(): Promise<void> {
   }
   draining = true;
   try {
-    const nativeAction = Platform.OS === 'ios' ? await readNativePendingAction() : null;
+    const nativeAction =
+      Platform.OS === 'ios' ? await readNativePendingAction() : null;
     const action = nativeAction ?? pendingAction;
     if (action == null) {
       return;
@@ -190,7 +196,7 @@ async function drainPendingWidgetAction(): Promise<void> {
 }
 
 export function startWidgetDeepLinkListening(): () => void {
-  const subscriptions: Array<{remove: () => void}> = [];
+  const subscriptions: Array<{ remove: () => void }> = [];
 
   if (Platform.OS !== 'ios') {
     void Linking.getInitialURL().then(url => {

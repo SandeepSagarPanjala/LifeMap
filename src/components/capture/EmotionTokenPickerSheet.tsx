@@ -1,12 +1,18 @@
-import {useCallback, useEffect, useState} from 'react';
-import {Platform, Pressable, StyleSheet, View, useWindowDimensions} from 'react-native';
-import {BottomSheetFlatList, BottomSheetView} from '@gorhom/bottom-sheet';
-import {ChevronLeft} from 'lucide-react-native';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  Platform,
+  Pressable,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+} from 'react-native';
+import { BottomSheetFlatList, BottomSheetView } from '@gorhom/bottom-sheet';
+import { ChevronLeft } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import {Text} from '@/components/ui/text';
-import {AppBottomSheet} from '@/components/ui/app-bottom-sheet';
-import {useThemeColors} from '@/hooks/use-theme-colors';
+import { Text } from '@/components/ui/text';
+import { AppBottomSheet } from '@/components/ui/app-bottom-sheet';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 import {
   EMOTION_CONTEXT_TOKENS,
   emotionContextPrompt,
@@ -55,24 +61,35 @@ function TokenPickerCell({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{selected}}
+      accessibilityState={{ selected }}
       accessibilityLabel={label}
       onPress={onPress}
-      style={styles.tokenCell}>
+      style={styles.tokenCell}
+    >
       <View style={styles.tokenStickerWrap}>
         <View
           style={[
             styles.tokenSticker,
-            stickerShape === 'circle' ? styles.tokenStickerCircle : styles.tokenStickerSquare,
-            {backgroundColor: tint, borderColor: selected ? primaryColor : 'transparent'},
+            stickerShape === 'circle'
+              ? styles.tokenStickerCircle
+              : styles.tokenStickerSquare,
+            {
+              backgroundColor: tint,
+              borderColor: selected ? primaryColor : 'transparent',
+            },
             selected ? styles.tokenStickerSelected : styles.tokenStickerIdle,
-          ]}>
+          ]}
+        >
           <Text style={styles.tokenEmoji}>{sticker}</Text>
         </View>
       </View>
       <Text
         numberOfLines={1}
-        style={[styles.tokenLabel, selected ? {color: primaryColor, fontWeight: '700'} : null]}>
+        style={[
+          styles.tokenLabel,
+          selected ? { color: primaryColor, fontWeight: '700' } : null,
+        ]}
+      >
         {label}
       </Text>
     </Pressable>
@@ -113,17 +130,15 @@ export function EmotionTokenPickerSheet({
 }: EmotionTokenPickerSheetProps) {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
-  const {width: windowWidth} = useWindowDimensions();
+  const { width: windowWidth } = useWindowDimensions();
   const cellWidth =
     (windowWidth - 40 - GRID_GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS;
 
   const [step, setStep] = useState<PickerStep>('emotion');
-  const [pendingEmotionId, setPendingEmotionId] = useState<EmotionTokenId | null>(
-    selectedEmotionId,
-  );
-  const [pendingContextId, setPendingContextId] = useState<EmotionContextTokenId | null>(
-    selectedContextId,
-  );
+  const [pendingEmotionId, setPendingEmotionId] =
+    useState<EmotionTokenId | null>(selectedEmotionId);
+  const [pendingContextId, setPendingContextId] =
+    useState<EmotionContextTokenId | null>(selectedContextId);
 
   const pendingEmotion =
     pendingEmotionId != null ? getEmotionToken(pendingEmotionId) : null;
@@ -151,8 +166,10 @@ export function EmotionTokenPickerSheet({
       return;
     }
     const emotion = getEmotionToken(pendingEmotionId);
-    const context = EMOTION_CONTEXT_TOKENS.find(token => token.id === contextId)!;
-    onSelect({emotion, context});
+    const context = EMOTION_CONTEXT_TOKENS.find(
+      token => token.id === contextId,
+    )!;
+    onSelect({ emotion, context });
     handleClose();
   };
 
@@ -174,9 +191,14 @@ export function EmotionTokenPickerSheet({
       onAnimate={handleAnimate}
       dismissKeyboardOnClose={false}
       rawChildren
-      snapPoints={[...snapPoints]}>
+      snapPoints={[...snapPoints]}
+    >
       <BottomSheetView
-        style={[styles.sheetBody, {paddingBottom: Math.max(insets.bottom, 16)}]}>
+        style={[
+          styles.sheetBody,
+          { paddingBottom: Math.max(insets.bottom, 16) },
+        ]}
+      >
         {step === 'emotion' ? (
           <View style={styles.stepBody}>
             <View style={styles.stepHeader}>
@@ -193,8 +215,8 @@ export function EmotionTokenPickerSheet({
               contentContainerStyle={styles.gridContent}
               showsVerticalScrollIndicator={false}
               style={styles.grid}
-              renderItem={({item}) => (
-                <View style={{width: cellWidth}}>
+              renderItem={({ item }) => (
+                <View style={{ width: cellWidth }}>
                   <EmotionTokenCell
                     token={item}
                     selected={pendingEmotionId === item.id}
@@ -212,7 +234,8 @@ export function EmotionTokenPickerSheet({
                 accessibilityRole="button"
                 accessibilityLabel="Back to emotions"
                 onPress={() => setStep('emotion')}
-                style={styles.backRow}>
+                style={styles.backRow}
+              >
                 <ChevronLeft size={20} color="#1C1C1E" strokeWidth={2.25} />
                 <Text style={styles.backLabel}>Back</Text>
               </Pressable>
@@ -221,11 +244,16 @@ export function EmotionTokenPickerSheet({
                 <View
                   style={[
                     styles.contextHeroSticker,
-                    {backgroundColor: pendingEmotion.tint},
-                  ]}>
-                  <Text style={styles.contextHeroEmoji}>{pendingEmotion.sticker}</Text>
+                    { backgroundColor: pendingEmotion.tint },
+                  ]}
+                >
+                  <Text style={styles.contextHeroEmoji}>
+                    {pendingEmotion.sticker}
+                  </Text>
                 </View>
-                <Text style={styles.contextHeroLabel}>{pendingEmotion.label}</Text>
+                <Text style={styles.contextHeroLabel}>
+                  {pendingEmotion.label}
+                </Text>
               </View>
 
               <Text variant="h4" className="border-0 pb-0 text-center">
@@ -241,8 +269,8 @@ export function EmotionTokenPickerSheet({
               contentContainerStyle={styles.gridContent}
               showsVerticalScrollIndicator={false}
               style={styles.contextGrid}
-              renderItem={({item}) => (
-                <View style={{width: cellWidth}}>
+              renderItem={({ item }) => (
+                <View style={{ width: cellWidth }}>
                   <TokenPickerCell
                     label={item.label}
                     sticker={item.sticker}
@@ -330,13 +358,13 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   tokenStickerSelected: {
-    transform: [{scale: 1.05}],
+    transform: [{ scale: 1.05 }],
     ...Platform.select({
       ios: {
         shadowColor: '#000000',
         shadowOpacity: 0.14,
         shadowRadius: 8,
-        shadowOffset: {width: 0, height: 3},
+        shadowOffset: { width: 0, height: 3 },
       },
       android: {
         elevation: 4,
@@ -353,7 +381,7 @@ const styles = StyleSheet.create({
     fontSize: 32,
     lineHeight: Platform.OS === 'android' ? 36 : 34,
     textAlign: 'center',
-    ...(Platform.OS === 'android' ? {includeFontPadding: false} : null),
+    ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
   },
   tokenLabel: {
     fontSize: 11,
@@ -377,7 +405,7 @@ const styles = StyleSheet.create({
     fontSize: 32,
     lineHeight: Platform.OS === 'android' ? 36 : 34,
     textAlign: 'center',
-    ...(Platform.OS === 'android' ? {includeFontPadding: false} : null),
+    ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
   },
   contextHeroLabel: {
     fontSize: 17,

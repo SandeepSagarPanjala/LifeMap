@@ -1,8 +1,5 @@
-import {formatDuration} from '@/lib/segmentation/stops';
-import {
-  formatDistance,
-  type TripSegment,
-} from '@/lib/segmentation/trips';
+import { formatDuration } from '@/lib/segmentation/stops';
+import { formatDistance, type TripSegment } from '@/lib/segmentation/trips';
 
 const timeFmt = new Intl.DateTimeFormat(undefined, {
   hour: 'numeric',
@@ -43,7 +40,10 @@ export function describeTripSegment(segment: TripSegment): SegmentDisplay {
       variant: 'stay',
       subtitle: segment.placeLabel,
       timeRange,
-      stats: [formatDuration(segment.durationMs), `${segment.points.length} pts`],
+      stats: [
+        formatDuration(segment.durationMs),
+        `${segment.points.length} pts`,
+      ],
     };
   }
 

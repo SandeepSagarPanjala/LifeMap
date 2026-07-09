@@ -1,7 +1,12 @@
-import {listSavedPlaces, type SavedPlaceRow} from '@/db/repositories/saved-places';
-import {GEOFENCE_WAKE_MIN_RADIUS_METERS} from '@/lib/app-constants';
-import {nativeSyncGeofences, type NativeGeofenceSpec} from '@/location/native-location-persist';
-import {recordTrackingDiagnostic} from '@/lib/tracking-diagnostics';
+import {
+  listSavedPlaces,
+  type SavedPlaceRow,
+} from '@/db/repositories/saved-places';
+import { GEOFENCE_WAKE_MIN_RADIUS_METERS } from '@/lib/app-constants';
+import {
+  nativeSyncGeofences,
+  type NativeGeofenceSpec,
+} from '@/location/native-location-persist';
 
 /** iOS geofence wake radius — Apple is unreliable below ~100 m. */
 export function savedPlaceGeofenceSpecs(
@@ -21,9 +26,5 @@ export async function syncSavedPlaceGeofences(
   const rows = places ?? (await listSavedPlaces());
   const specs = savedPlaceGeofenceSpecs(rows);
   const synced = await nativeSyncGeofences(specs);
-  await recordTrackingDiagnostic('geofence_sync', {
-    count: synced,
-    places: specs.map(spec => spec.identifier),
-  });
   return synced;
 }

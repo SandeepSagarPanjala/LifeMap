@@ -1,4 +1,4 @@
-import {Platform} from 'react-native';
+import { Platform } from 'react-native';
 
 type EdgeInsets = {
   top: number;
@@ -23,7 +23,7 @@ const ATTRIBUTION_LEFT = 10;
  */
 export function buildMapAttributionInsets(
   bottomClearance: number,
-  options?: {left?: number},
+  options?: { left?: number },
 ): MapAttributionInsets {
   if (Platform.OS !== 'ios') {
     return {};

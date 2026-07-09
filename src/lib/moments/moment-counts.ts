@@ -1,15 +1,15 @@
-import type {MomentRow} from '@/db/repositories/moments';
-import type {LocationPointRow} from '@/db/repositories/location-days';
-import type {SavedPlaceRow} from '@/db/repositories/saved-places';
-import {distanceKm, type LocationPointLike} from '@/lib/location-geo';
-import {matchSavedPlaceForPoint} from '@/lib/saved-places';
-import type {DayTimelineEntry, DetectedTrip} from '@/lib/trip-detection';
+import type { MomentRow } from '@/db/repositories/moments';
+import type { LocationPointRow } from '@/db/repositories/location-days';
+import type { SavedPlaceRow } from '@/db/repositories/saved-places';
+import { distanceKm, type LocationPointLike } from '@/lib/location-geo';
+import { matchSavedPlaceForPoint } from '@/lib/saved-places';
+import type { DayTimelineEntry, DetectedTrip } from '@/lib/trip-detection';
 import {
   isMaterializedEntry,
   momentCountsFromRefs,
   momentsForTripRefs,
 } from '@/lib/moment-refs';
-import {resolveStayAnchor} from '@/lib/trip-detection';
+import { resolveStayAnchor } from '@/lib/trip-detection';
 
 import {
   effectiveTimelineEntryEnd,
@@ -27,13 +27,13 @@ export type MomentCounts = {
 
 export type TravelMomentMarker = {
   key: string;
-  coordinate: {latitude: number; longitude: number};
+  coordinate: { latitude: number; longitude: number };
   counts: MomentCounts;
   momentIds: number[];
 };
 
 export function emptyMomentCounts(): MomentCounts {
-  return {photo: 0, video: 0, voice: 0, note: 0, activity: 0};
+  return { photo: 0, video: 0, voice: 0, note: 0, activity: 0 };
 }
 
 export function hasMomentCounts(counts: MomentCounts): boolean {
@@ -164,7 +164,7 @@ export function resolveMomentLocation(
     containingEntry,
   );
   return coordinate != null
-    ? {lat: coordinate.lat, lng: coordinate.lng}
+    ? { lat: coordinate.lat, lng: coordinate.lng }
     : null;
 }
 
@@ -201,10 +201,7 @@ export function momentMatchesStayLocation(
   }
 
   const anchor = resolveStayAnchor(stay);
-  return (
-    distanceKm(location, anchor) * 1000 <=
-    dwellRadiusMeters + 5
-  );
+  return distanceKm(location, anchor) * 1000 <= dwellRadiusMeters + 5;
 }
 
 export function filterMomentsForStayEntry(
@@ -303,7 +300,7 @@ export function buildTravelMomentMarkers(
     addToCounts(counts, moment);
     grouped.set(bucket, {
       key: `${bucket}-${moment.id}`,
-      coordinate: {latitude: resolved.lat, longitude: resolved.lng},
+      coordinate: { latitude: resolved.lat, longitude: resolved.lng },
       counts,
       momentIds: [moment.id],
     });

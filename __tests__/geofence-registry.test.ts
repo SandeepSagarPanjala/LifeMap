@@ -1,6 +1,6 @@
-import {GEOFENCE_WAKE_MIN_RADIUS_METERS} from '@/lib/app-constants';
-import {savedPlaceGeofenceSpecs} from '@/location/geofence-registry';
-import type {SavedPlaceRow} from '@/db/repositories/saved-places';
+import { GEOFENCE_WAKE_MIN_RADIUS_METERS } from '@/lib/app-constants';
+import { savedPlaceGeofenceSpecs } from '@/location/geofence-registry';
+import type { SavedPlaceRow } from '@/db/repositories/saved-places';
 
 describe('geofence registry', () => {
   it('uses at least the iOS wake radius for saved places', () => {

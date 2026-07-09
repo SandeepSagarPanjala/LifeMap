@@ -62,11 +62,11 @@ pnpm ios:beta                                     # build Release + upload
 
 Full setup: [docs/ios-testflight.md](docs/ios-testflight.md)
 
-| Command | What it does |
-|---------|----------------|
-| `pnpm ios` | Debug dev build (Metro required) |
-| `pnpm ios:release` | Release `.ipa` only, no upload |
-| `pnpm ios:beta` | Release + TestFlight upload |
+| Command            | What it does                     |
+| ------------------ | -------------------------------- |
+| `pnpm ios`         | Debug dev build (Metro required) |
+| `pnpm ios:release` | Release `.ipa` only, no upload   |
+| `pnpm ios:beta`    | Release + TestFlight upload      |
 
 ### Android
 
@@ -149,9 +149,9 @@ pnpm test          # Jest
 
 ### CI (automatic vs manual)
 
-| Workflow | Trigger | What it checks | Why |
-|----------|---------|----------------|-----|
-| **CI** | Every push/PR to `main` | lint, typecheck, test | Fast (~2 min), free — catches broken TS/tests before merge |
+| Workflow                  | Trigger                       | What it checks                           | Why                                                                                    |
+| ------------------------- | ----------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------- |
+| **CI**                    | Every push/PR to `main`       | lint, typecheck, test                    | Fast (~2 min), free — catches broken TS/tests before merge                             |
 | **Mobile build (manual)** | Actions → Run workflow button | Android APK and/or iOS simulator compile | Slower, uses Android SDK + macOS minutes — run before releases or after native changes |
 
 **Run mobile builds manually:** GitHub → **Actions** → **Mobile build (manual)** → **Run workflow** → pick `android`, `ios`, or `both`.
@@ -178,6 +178,7 @@ Device tests live under `e2e/`. They use accessibility labels (not Maestro-style
   ```
 
   Verify: `applesimutils --version`
+
 - Android: AVD `LifeMap_Emulator` (`pnpm android:create-emulator` once)
 - **One-time iOS Detox setup** (builds `Detox.framework` under `~/Library/Detox/`):
 
@@ -186,6 +187,7 @@ Device tests live under `e2e/`. They use accessibility labels (not Maestro-style
   ```
 
   Run this after `pnpm install` if tests fail with `Detox.framework could not be found`, or after upgrading Xcode.
+
 - Check everything: `pnpm e2e:check:ios`
 - Metro is started automatically by Detox; for manual debugging run `pnpm start` in another terminal
 
@@ -247,12 +249,12 @@ Implementation lives in [`src/lib/place-lookup-backfill.ts`](src/lib/place-looku
 
 ### API
 
-| Export | Role |
-|--------|------|
-| `runPlaceLookupBackfillBatch()` | Main entry — processes up to **3** unlabeled stays per call (override with `{ maxTrips }`). |
-| `listStaysNeedingPlaceLookup()` | Pure filter for stays that qualify for backfill. |
+| Export                             | Role                                                                                          |
+| ---------------------------------- | --------------------------------------------------------------------------------------------- |
+| `runPlaceLookupBackfillBatch()`    | Main entry — processes up to **3** unlabeled stays per call (override with `{ maxTrips }`).   |
+| `listStaysNeedingPlaceLookup()`    | Pure filter for stays that qualify for backfill.                                              |
 | `mergeTripPlaceLabelAfterLookup()` | Rebuild-safe label merge via stable `eventKey` (user renames survive day re-materialization). |
-| `existingTripLabelsByEventKey()` | Build the label map from current trip rows (from `@/lib/trip-materialization`). |
+| `existingTripLabelsByEventKey()`   | Build the label map from current trip rows (from `@/lib/trip-materialization`).               |
 
 ### Future integration
 
@@ -265,10 +267,18 @@ When you enable steady backfill:
 Example (not active):
 
 ```typescript
-import {runWhenIdle} from '@/lib/run-when-idle';
-import {runPlaceLookupBackfillBatch} from '@/lib/place-lookup-backfill';
+import { runWhenIdle } from '@/lib/run-when-idle';
+import { runPlaceLookupBackfillBatch } from '@/lib/place-lookup-backfill';
 
 runWhenIdle(() => {
-  void runPlaceLookupBackfillBatch({maxTrips: 3});
+  void runPlaceLookupBackfillBatch({ maxTrips: 3 });
 });
 ```
+
+## TODO — earliest date cache (optimization)
+
+`ensureHistoryCalendarBounds()` already caches the earliest history day in settings + Zustand (`historyEarliestDateKey`), so cold start usually avoids `min(timestamp)` on `location_points`.
+
+**Still uncached:** `listDateKeysWithLocationDataBefore()` in [`src/db/repositories/location-days.ts`](src/db/repositories/location-days.ts) calls `getEarliestLocationDateKey()` directly (full `min()` query). Used from [`src/lib/trip-materialization.ts`](src/lib/trip-materialization.ts) when sealing past days.
+
+**Later:** route that path through the cached `historyEarliestDateKey` (or update the cache on backup import / data delete so it stays correct).

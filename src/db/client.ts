@@ -14,9 +14,9 @@ import { getOrCreateDatabaseKey } from './keychain';
 
 export type Database = ReturnType<typeof drizzle>;
 
-let initPromise: Promise<{db: Database; sqlite: DB}> | null = null;
+let initPromise: Promise<{ db: Database; sqlite: DB }> | null = null;
 
-function getInitPromise(): Promise<{db: Database; sqlite: DB}> {
+function getInitPromise(): Promise<{ db: Database; sqlite: DB }> {
   if (!initPromise) {
     initPromise = initDatabase().catch(error => {
       initPromise = null;
@@ -27,11 +27,11 @@ function getInitPromise(): Promise<{db: Database; sqlite: DB}> {
 }
 
 export function getDatabase(): Promise<Database> {
-  return getInitPromise().then(({db}) => db);
+  return getInitPromise().then(({ db }) => db);
 }
 
 export function getSqlite(): Promise<DB> {
-  return getInitPromise().then(({sqlite}) => sqlite);
+  return getInitPromise().then(({ sqlite }) => sqlite);
 }
 
 /** Reset singleton for tests only. */
@@ -61,4 +61,3 @@ async function initDatabase(): Promise<{ db: Database; sqlite: DB }> {
 
   return { db, sqlite };
 }
-

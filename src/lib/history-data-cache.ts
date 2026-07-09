@@ -1,6 +1,9 @@
-import type {HistoryData} from '@/lib/history-data-types';
-import {HISTORY_DATA_CACHE_MAX_ENTRIES, TRIP_DETECTION_VERSION} from '@/lib/app-constants';
-import type {TripDetectionConfig} from '@/lib/trip-settings';
+import type { HistoryData } from '@/lib/history-data-types';
+import {
+  HISTORY_DATA_CACHE_MAX_ENTRIES,
+  TRIP_DETECTION_VERSION,
+} from '@/lib/app-constants';
+import type { TripDetectionConfig } from '@/lib/trip-settings';
 
 /** Today never uses fingerprint cache validation — placeholder for RAM peek only. */
 export const TODAY_LIVE_FINGERPRINT = 'today-live';
@@ -52,11 +55,7 @@ class HistoryDataCache {
     return slot.data;
   }
 
-  write(
-    cacheKey: string,
-    data: HistoryData,
-    fingerprint: string,
-  ): void {
+  write(cacheKey: string, data: HistoryData, fingerprint: string): void {
     if (!this.slots.has(cacheKey)) {
       while (this.accessOrder.length >= HISTORY_DATA_CACHE_MAX_ENTRIES) {
         const evictKey = this.accessOrder.shift();
@@ -71,7 +70,7 @@ class HistoryDataCache {
       this.touch(cacheKey);
     }
 
-    this.slots.set(cacheKey, {data, fingerprint});
+    this.slots.set(cacheKey, { data, fingerprint });
   }
 
   clear(): void {

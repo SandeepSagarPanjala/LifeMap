@@ -1,5 +1,5 @@
-import {distanceMeters, type LocationPointLike} from './geo';
-import type {PlacePoiRow} from './types';
+import { distanceMeters, type LocationPointLike } from './geo';
+import type { PlacePoiRow } from './types';
 
 export function closestPlacePoiToAnchor(
   anchor: LocationPointLike,
@@ -12,7 +12,7 @@ export function closestPlacePoiToAnchor(
     if (!Number.isFinite(poi.lat) || !Number.isFinite(poi.lng)) {
       continue;
     }
-    const distanceM = distanceMeters(anchor, {lat: poi.lat, lng: poi.lng});
+    const distanceM = distanceMeters(anchor, { lat: poi.lat, lng: poi.lng });
     if (distanceM < bestDistanceM) {
       best = poi;
       bestDistanceM = distanceM;

@@ -4,9 +4,9 @@ import {
   shouldRunTodayOpenSilentSeal,
   TODAY_OPEN_SILENT_SEAL_MIN_TAIL_SEGMENTS,
 } from '@/lib/today-sync';
-import {buildTripDetectionConfig} from '@/lib/trip-settings';
-import type {TripRow} from '@/db/repositories/trips';
-import {makeTripRow} from './helpers/trip-row-fixture';
+import { buildTripDetectionConfig } from '@/lib/trip-settings';
+import type { TripRow } from '@/db/repositories/trips';
+import { makeTripRow } from './helpers/trip-row-fixture';
 
 const config = buildTripDetectionConfig(10, 10, 150);
 
@@ -39,45 +39,49 @@ describe('canExtendOpenStayWithNewPoints', () => {
 
   it('allows new points within dwell radius of the stay centroid', () => {
     expect(
-      canExtendOpenStayWithNewPoints(stayTrip(), [
-        {
-          id: 1,
-          timestamp: new Date('2026-06-22T20:00:00'),
-          lat: 33.21001,
-          lng: -97.13001,
-          accuracy: 10,
-          altitude: null,
-          speed: null,
-          source: 'gps',
-        },
-      ], config),
+      canExtendOpenStayWithNewPoints(
+        stayTrip(),
+        [
+          {
+            id: 1,
+            timestamp: new Date('2026-06-22T20:00:00'),
+            lat: 33.21001,
+            lng: -97.13001,
+            accuracy: 10,
+            altitude: null,
+            speed: null,
+            source: 'gps',
+          },
+        ],
+        config,
+      ),
     ).toBe(true);
   });
 
   it('rejects new points outside dwell radius', () => {
     expect(
-      canExtendOpenStayWithNewPoints(stayTrip(), [
-        {
-          id: 1,
-          timestamp: new Date('2026-06-22T20:00:00'),
-          lat: 33.25,
-          lng: -97.13,
-          accuracy: 10,
-          altitude: null,
-          speed: null,
-          source: 'gps',
-        },
-      ], config),
+      canExtendOpenStayWithNewPoints(
+        stayTrip(),
+        [
+          {
+            id: 1,
+            timestamp: new Date('2026-06-22T20:00:00'),
+            lat: 33.25,
+            lng: -97.13,
+            accuracy: 10,
+            altitude: null,
+            speed: null,
+            source: 'gps',
+          },
+        ],
+        config,
+      ),
     ).toBe(false);
   });
 
   it('rejects when the last trip is not a stay', () => {
     expect(
-      canExtendOpenStayWithNewPoints(
-        stayTrip({kind: 'travel'}),
-        [],
-        config,
-      ),
+      canExtendOpenStayWithNewPoints(stayTrip({ kind: 'travel' }), [], config),
     ).toBe(false);
   });
 });

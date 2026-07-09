@@ -5,12 +5,12 @@ import {
   type ErrorInfo,
   type ReactNode,
 } from 'react';
-import {View} from 'react-native';
-import {useNavigation} from '@react-navigation/native';
+import { View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 
-import {Button} from '@/components/ui/button';
-import {Text} from '@/components/ui/text';
-import {APP_COPY} from '@/lib/app-copy';
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
+import { APP_COPY } from '@/lib/app-copy';
 
 type AppErrorBoundaryProps = {
   children: ReactNode;
@@ -26,7 +26,7 @@ type FeatureErrorBoundaryProps = {
 
 type ErrorBoundaryProps = {
   children: ReactNode;
-  fallback: (props: {resetError: () => void}) => ReactNode;
+  fallback: (props: { resetError: () => void }) => ReactNode;
   onError?: (error: Error, errorInfo: ErrorInfo) => void;
 };
 
@@ -35,7 +35,7 @@ type ErrorBoundaryState = {
   resetKey: number;
 };
 
-const FEATURE_COPY: Record<FeatureId, {title: string; body: string}> = {
+const FEATURE_COPY: Record<FeatureId, { title: string; body: string }> = {
   map: APP_COPY.errors.mapUnavailable,
   capture: APP_COPY.errors.captureUnavailable,
 };
@@ -71,7 +71,7 @@ function ErrorFallback({
   );
 }
 
-function RootErrorFallback({resetError}: {resetError: () => void}) {
+function RootErrorFallback({ resetError }: { resetError: () => void }) {
   return (
     <ErrorFallback
       resetError={resetError}
@@ -81,11 +81,14 @@ function RootErrorFallback({resetError}: {resetError: () => void}) {
   );
 }
 
-class ReactErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  state: ErrorBoundaryState = {error: null, resetKey: 0};
+class ReactErrorBoundary extends Component<
+  ErrorBoundaryProps,
+  ErrorBoundaryState
+> {
+  state: ErrorBoundaryState = { error: null, resetKey: 0 };
 
   static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
-    return {error};
+    return { error };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
@@ -104,7 +107,7 @@ class ReactErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryStat
 
   render(): ReactNode {
     if (this.state.error != null) {
-      return this.props.fallback({resetError: this.resetError});
+      return this.props.fallback({ resetError: this.resetError });
     }
 
     return <Fragment key={this.state.resetKey}>{this.props.children}</Fragment>;
@@ -122,17 +125,22 @@ export function FeatureErrorBoundary({
     <ReactErrorBoundary
       onError={(error, errorInfo) => {
         if (__DEV__) {
-          console.error(`[ErrorBoundary:${feature}]`, error, errorInfo.componentStack);
+          console.error(
+            `[ErrorBoundary:${feature}]`,
+            error,
+            errorInfo.componentStack,
+          );
         }
       }}
-      fallback={({resetError}) => (
+      fallback={({ resetError }) => (
         <ErrorFallback
           resetError={resetError}
           title={copy.title}
           body={copy.body}
           onDismiss={onDismiss}
         />
-      )}>
+      )}
+    >
       {children}
     </ReactErrorBoundary>
   );
@@ -141,7 +149,7 @@ export function FeatureErrorBoundary({
 export function withFeatureErrorBoundary<P extends object>(
   Component: ComponentType<P>,
   feature: FeatureId,
-  options?: {dismissible?: boolean},
+  options?: { dismissible?: boolean },
 ) {
   function Wrapped(props: P) {
     const navigation = useNavigation();
@@ -155,12 +163,16 @@ export function withFeatureErrorBoundary<P extends object>(
     );
   }
 
-  Wrapped.displayName = `WithFeatureErrorBoundary(${Component.displayName ?? Component.name ?? 'Component'})`;
+  Wrapped.displayName = `WithFeatureErrorBoundary(${
+    Component.displayName ?? Component.name ?? 'Component'
+  })`;
   return Wrapped;
 }
 
-export function AppErrorBoundary({children}: AppErrorBoundaryProps) {
+export function AppErrorBoundary({ children }: AppErrorBoundaryProps) {
   return (
-    <ReactErrorBoundary fallback={RootErrorFallback}>{children}</ReactErrorBoundary>
+    <ReactErrorBoundary fallback={RootErrorFallback}>
+      {children}
+    </ReactErrorBoundary>
   );
 }

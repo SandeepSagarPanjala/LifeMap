@@ -1,5 +1,5 @@
-import type {ParsedPoint} from './types';
-import type {DriveSegment} from './trips';
+import type { ParsedPoint } from './types';
+import type { DriveSegment } from './trips';
 
 /** Perpendicular distance threshold for straight / gentle curve segments. */
 export const DRIVE_DOUGLAS_PEUCKER_EPSILON_M = 15;
@@ -13,8 +13,8 @@ export const DRIVE_MIN_POINTS_TO_SIMPLIFY = 30;
 const EARTH_RADIUS_M = 6_371_000;
 
 function haversineM(
-  a: {lat: number; lng: number},
-  b: {lat: number; lng: number},
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
 ): number {
   const toRad = (x: number) => (x * Math.PI) / 180;
   const dLat = toRad(b.lat - a.lat);
@@ -34,8 +34,8 @@ function sortedPoints(points: ParsedPoint[]): ParsedPoint[] {
 }
 
 function bearingDegrees(
-  a: {lat: number; lng: number},
-  b: {lat: number; lng: number},
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
 ): number {
   const toRad = (deg: number) => (deg * Math.PI) / 180;
   const toDeg = (rad: number) => (rad * 180) / Math.PI;
@@ -70,7 +70,10 @@ function pointLineDistanceM(
   return (2 * Math.sqrt(area)) / total;
 }
 
-function douglasPeucker(points: ParsedPoint[], epsilonM: number): ParsedPoint[] {
+function douglasPeucker(
+  points: ParsedPoint[],
+  epsilonM: number,
+): ParsedPoint[] {
   if (points.length <= 2) {
     return points;
   }
@@ -154,6 +157,8 @@ export function canonicalizeTravelPoints(
   return sortedPoints([...byId.values()]);
 }
 
-export function canonicalizeTravelSegmentPoints(segment: DriveSegment): ParsedPoint[] {
+export function canonicalizeTravelSegmentPoints(
+  segment: DriveSegment,
+): ParsedPoint[] {
   return canonicalizeTravelPoints(segment.points);
 }

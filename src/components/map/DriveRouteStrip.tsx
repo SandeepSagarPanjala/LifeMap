@@ -1,13 +1,13 @@
 import LottieView from 'lottie-react-native';
-import {Pressable, StyleSheet, Text as RNText, View} from 'react-native';
-import {Pause, Pencil, Play} from 'lucide-react-native';
+import { Pressable, StyleSheet, Text as RNText, View } from 'react-native';
+import { Pause, Pencil, Play } from 'lucide-react-native';
 
-import {DriveEndpointPlaceRow} from '@/components/map/DriveEndpointPlaceRow';
-import {Text} from '@/components/ui/text';
-import {useThemeColors} from '@/hooks/use-theme-colors';
-import type {DriveEndpointLabel} from '@/lib/drive-endpoint-label';
-import {hasDriveEndpointLabel} from '@/lib/drive-endpoint-label';
-import {formatTripTimeRange} from '@/lib/trip-format';
+import { DriveEndpointPlaceRow } from '@/components/map/DriveEndpointPlaceRow';
+import { Text } from '@/components/ui/text';
+import { useThemeColors } from '@/hooks/use-theme-colors';
+import type { DriveEndpointLabel } from '@/lib/drive-endpoint-label';
+import { hasDriveEndpointLabel } from '@/lib/drive-endpoint-label';
+import { formatTripTimeRange } from '@/lib/trip-format';
 
 const DRIVE_LOTTIE = require('../../../assets/lottie/drive-car.json');
 
@@ -46,13 +46,13 @@ function DriveCarLottie() {
   );
 }
 
-function TimeRangeLine({startAt, endAt}: {startAt: Date; endAt: Date}) {
+function TimeRangeLine({ startAt, endAt }: { startAt: Date; endAt: Date }) {
   return (
     <Text style={styles.timeRange}>{formatTripTimeRange(startAt, endAt)}</Text>
   );
 }
 
-function DriveEndpointEditButton({onPress}: {onPress: () => void}) {
+function DriveEndpointEditButton({ onPress }: { onPress: () => void }) {
   const colors = useThemeColors();
   return (
     <Pressable
@@ -60,7 +60,8 @@ function DriveEndpointEditButton({onPress}: {onPress: () => void}) {
       accessibilityLabel="Edit place label"
       onPress={onPress}
       hitSlop={8}
-      style={styles.editButton}>
+      style={styles.editButton}
+    >
       <Pencil size={14} color={colors.primary} strokeWidth={2.25} />
     </Pressable>
   );
@@ -163,8 +164,7 @@ export function DriveRouteStrip({
   const hasLabels =
     (startLabel != null && hasDriveEndpointLabel(startLabel)) ||
     (endLabel != null && hasDriveEndpointLabel(endLabel));
-  const showRouteRow =
-    hasLabels || canEditStartLabel || canEditEndLabel;
+  const showRouteRow = hasLabels || canEditStartLabel || canEditEndLabel;
 
   return (
     <View style={styles.wrap}>
@@ -199,7 +199,8 @@ export function DriveRouteStrip({
           accessibilityRole="button"
           accessibilityLabel={isPlaying ? 'Stop playback' : 'Play on map'}
           onPress={onPlayPress}
-          style={[styles.playButton, {backgroundColor: playButtonColor}]}>
+          style={[styles.playButton, { backgroundColor: playButtonColor }]}
+        >
           {isPlaying ? (
             <Pause size={20} color="#FFFFFF" fill="#FFFFFF" />
           ) : (
@@ -284,7 +285,7 @@ const styles = StyleSheet.create({
     width: CAR_RENDER_WIDTH,
     height: CAR_RENDER_HEIGHT,
     marginTop: -38,
-    transform: [{scaleX: -1}],
+    transform: [{ scaleX: -1 }],
   },
   detailsColumn: {
     flex: 1,

@@ -1,6 +1,6 @@
 import * as Keychain from 'react-native-keychain';
 
-import {generateSecureRandomKey} from '@/lib/secure-random';
+import { generateSecureRandomKey } from '@/lib/secure-random';
 
 const SERVICE_NAME = 'lifemap-db-key';
 

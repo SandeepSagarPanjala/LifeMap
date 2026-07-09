@@ -1,5 +1,10 @@
-import {useEffect, useRef} from 'react';
-import {Animated, Easing, StyleSheet, useWindowDimensions} from 'react-native';
+import { useEffect, useRef } from 'react';
+import {
+  Animated,
+  Easing,
+  StyleSheet,
+  useWindowDimensions,
+} from 'react-native';
 
 export type AppScreenKey = 'splash' | 'onboarding' | 'main';
 
@@ -8,10 +13,15 @@ type AppScreenTransitionProps = {
   children: React.ReactNode;
 };
 
-export function AppScreenTransition({screenKey, children}: AppScreenTransitionProps) {
-  const {width} = useWindowDimensions();
+export function AppScreenTransition({
+  screenKey,
+  children,
+}: AppScreenTransitionProps) {
+  const { width } = useWindowDimensions();
   const slideFromRight = Math.min(width * 0.28, 140);
-  const opacity = useRef(new Animated.Value(screenKey === 'splash' ? 1 : 0)).current;
+  const opacity = useRef(
+    new Animated.Value(screenKey === 'splash' ? 1 : 0),
+  ).current;
   const translateX = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -46,9 +56,10 @@ export function AppScreenTransition({screenKey, children}: AppScreenTransitionPr
         styles.fill,
         {
           opacity,
-          transform: [{translateX}],
+          transform: [{ translateX }],
         },
-      ]}>
+      ]}
+    >
       {children}
     </Animated.View>
   );

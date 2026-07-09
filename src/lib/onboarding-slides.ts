@@ -1,7 +1,7 @@
-import type {ComponentProps} from 'react';
+import type { ComponentProps } from 'react';
 import type LottieView from 'lottie-react-native';
 
-import {APP_COPY} from '@/lib/app-copy';
+import { APP_COPY } from '@/lib/app-copy';
 
 type LottieSource = ComponentProps<typeof LottieView>['source'];
 

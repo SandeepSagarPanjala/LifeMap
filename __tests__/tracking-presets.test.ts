@@ -1,4 +1,4 @@
-import {TRACKING_DISTANCE_FILTER_METERS} from '@/lib/app-constants';
+import { TRACKING_DISTANCE_FILTER_METERS } from '@/lib/app-constants';
 import {
   getTrackingConfig,
   getTrackingPresetConfig,
@@ -37,6 +37,9 @@ describe('tracking presets', () => {
 
   it('keeps deprecated flat accessor working', () => {
     const config = getTrackingPresetConfig();
-    expect((config as {geolocation?: {distanceFilter?: number}}).geolocation?.distanceFilter).toBe(10);
+    expect(
+      (config as { geolocation?: { distanceFilter?: number } }).geolocation
+        ?.distanceFilter,
+    ).toBe(10);
   });
 });

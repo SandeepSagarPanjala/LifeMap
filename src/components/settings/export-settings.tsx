@@ -1,60 +1,74 @@
-import {format} from 'date-fns';
-import {EXPORT_SHARE_DELAY_MS} from '@/lib/app-constants';
-import {APP_COPY, errorMessageOr} from '@/lib/app-copy';
-import {useCallback, useEffect, useState} from 'react';
-import {ActivityIndicator, Alert, InteractionManager, Pressable, Share, View} from 'react-native';
-import {CalendarDays, Database} from 'lucide-react-native';
+import { format } from 'date-fns';
+import { EXPORT_SHARE_DELAY_MS } from '@/lib/app-constants';
+import { APP_COPY, errorMessageOr } from '@/lib/app-copy';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  InteractionManager,
+  Pressable,
+  Share,
+  View,
+} from 'react-native';
+import { CalendarDays, Database, Eye, Trash2 } from 'lucide-react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import {HistoryDatePickerSheet} from '@/components/map/HistoryDatePickerSheet';
-import {SettingsStatsRefreshBar} from '@/components/settings/settings-stats-refresh-bar';
-import {Icon} from '@/components/ui/icon';
-import {Text} from '@/components/ui/text';
+import { HistoryDatePickerSheet } from '@/components/map/HistoryDatePickerSheet';
+import { SettingsStatsRefreshBar } from '@/components/settings/settings-stats-refresh-bar';
+import { Icon } from '@/components/ui/icon';
+import { Text } from '@/components/ui/text';
 import {
   fetchDatabaseExportTable,
   fetchDatabaseExportTables,
   type ExportTableStats,
 } from '@/db/repositories/database-export';
-import {deleteAllTrackingEvents} from '@/db/repositories/tracking-events';
-import {vacuumDatabase} from '@/db/repositories/storage-stats';
-import {useThemeColors} from '@/hooks/use-theme-colors';
+import { deleteAllTrackingEvents } from '@/db/repositories/tracking-events';
+import { vacuumDatabase } from '@/db/repositories/storage-stats';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 import {
+  ALGORITHM_DATA_EXPORT_TABLE_NAMES,
   buildDatabaseExportJson,
   buildOriginalDataExportJson,
   buildSingleTableExportJson,
-  DATABASE_EXPORT_TABLE_NAMES,
   databaseExportFileLabel,
+  MATERIALIZED_TRIP_EXPORT_TABLE_NAMES,
   originalDataExportFileLabel,
+  ORIGINAL_DATA_EXPORT_TABLE_NAMES,
   pickOriginalDataExportTables,
   sumExportTableRowCounts,
   sumOriginalDataExportRowCounts,
   sumOriginalDataExportStorageBytes,
+  type AlgorithmDataExportTableName,
   type DatabaseExportTableName,
+  type MaterializedTripExportTableName,
 } from '@/lib/database-export';
-import {getTodayDateKey, parseDateKey} from '@/lib/day-utils';
-import {formatStorageBytes} from '@/lib/format-storage';
-import {resolveExportPeriod} from '@/lib/export-period';
+import { getTodayDateKey, parseDateKey } from '@/lib/day-utils';
+import { formatStorageBytes } from '@/lib/format-storage';
+import { resolveExportPeriod } from '@/lib/export-period';
 import {
   computeAndCacheExportTableStats,
   loadCachedExportTableStats,
 } from '@/lib/settings-stats';
-import {
-  getTrackingDiagnosticsEnabled,
-  setTrackingDiagnosticsEnabled,
-} from '@/lib/tracking-diagnostics';
+import { resetMaterializedTripHistory } from '@/lib/trip-materialization';
+import type { RootStackParamList } from '@/navigation/types';
 
 type ExportPickerTarget =
   | DatabaseExportTableName
   | 'all_tables'
   | 'original_data';
 
+type DeletingTarget = 'materialized' | 'tracking_events' | null;
+
 export function ExportSettings() {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const colors = useThemeColors();
   const [calculating, setCalculating] = useState(false);
   const [tableStats, setTableStats] = useState<ExportTableStats | null>(null);
   const [calculatedAt, setCalculatedAt] = useState<Date | null>(null);
-  const [diagnosticsEnabled, setDiagnosticsEnabled] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [deletingDiagnostics, setDeletingDiagnostics] = useState(false);
+  const [deletingTarget, setDeletingTarget] = useState<DeletingTarget>(null);
   const [compacting, setCompacting] = useState(false);
   const [dayPickerVisible, setDayPickerVisible] = useState(false);
   const [pickerTarget, setPickerTarget] = useState<ExportPickerTarget | null>(
@@ -93,12 +107,6 @@ export function ExportSettings() {
     void loadCache();
   }, [loadCache]);
 
-  useEffect(() => {
-    void getTrackingDiagnosticsEnabled()
-      .then(setDiagnosticsEnabled)
-      .catch(() => undefined);
-  }, []);
-
   const shareExport = async (
     target: ExportPickerTarget,
     scope: 'all' | 'day',
@@ -106,7 +114,10 @@ export function ExportSettings() {
   ) => {
     setExporting(true);
     try {
-      const period = resolveExportPeriod(scope === 'all' ? 'all' : 'day', dateKey);
+      const period = resolveExportPeriod(
+        scope === 'all' ? 'all' : 'day',
+        dateKey,
+      );
 
       if (target === 'all_tables') {
         const tables = await fetchDatabaseExportTables(period);
@@ -119,7 +130,9 @@ export function ExportSettings() {
             'Nothing to export',
             scope === 'all'
               ? 'No rows in the database yet.'
-              : `No rows for ${formatDayLabel(period.dateKey ?? getTodayDateKey())}.`,
+              : `No rows for ${formatDayLabel(
+                  period.dateKey ?? getTodayDateKey(),
+                )}.`,
           );
           return;
         }
@@ -143,7 +156,9 @@ export function ExportSettings() {
             'Nothing to export',
             scope === 'all'
               ? 'No original data rows in the database yet.'
-              : `No original data rows for ${formatDayLabel(period.dateKey ?? getTodayDateKey())}.`,
+              : `No original data rows for ${formatDayLabel(
+                  period.dateKey ?? getTodayDateKey(),
+                )}.`,
           );
           return;
         }
@@ -160,7 +175,9 @@ export function ExportSettings() {
           'Nothing to export',
           scope === 'all'
             ? `No rows in ${target} yet.`
-            : `No ${target} rows for ${formatDayLabel(period.dateKey ?? getTodayDateKey())}.`,
+            : `No ${target} rows for ${formatDayLabel(
+                period.dateKey ?? getTodayDateKey(),
+              )}.`,
         );
         return;
       }
@@ -170,10 +187,7 @@ export function ExportSettings() {
         title: databaseExportFileLabel(period, target),
       });
     } catch (error) {
-      Alert.alert(
-        APP_COPY.alerts.couldNotExport,
-        errorMessageOr(error),
-      );
+      Alert.alert(APP_COPY.alerts.couldNotExport, errorMessageOr(error));
     } finally {
       setExporting(false);
     }
@@ -184,45 +198,105 @@ export function ExportSettings() {
     setDayPickerVisible(true);
   };
 
-  const toggleDiagnostics = async () => {
-    const next = !diagnosticsEnabled;
-    setDiagnosticsEnabled(next);
-    await setTrackingDiagnosticsEnabled(next);
-  };
-
-  const confirmDeleteDiagnostics = () => {
+  const confirmDeleteTable = (tableName: AlgorithmDataExportTableName) => {
+    if (isMaterializedTripTable(tableName)) {
+      confirmDeleteMaterializedTables(tableName);
+      return;
+    }
     const rowCount = tableStats?.counts.tracking_events ?? 0;
     Alert.alert(
-      'Delete tracking diagnostics?',
-      rowCount > 0
-        ? `This removes ${rowCount.toLocaleString()} debug log rows from tracking_events. Your map, visits, drives, and GPS points are not affected.`
-        : 'This removes debug log rows from tracking_events. Your map, visits, drives, and GPS points are not affected.',
+      'Delete tracking events?',
+      deleteTrackingEventsMessage(rowCount),
       [
-        {text: 'Cancel', style: 'cancel'},
+        { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
           style: 'destructive',
           onPress: () => {
-            void runDeleteDiagnostics();
+            void runDeleteTrackingEvents();
           },
         },
       ],
     );
   };
 
-  const runDeleteDiagnostics = async () => {
-    setDeletingDiagnostics(true);
+  const confirmDeleteMaterializedTables = (
+    triggeredFrom: MaterializedTripExportTableName,
+  ) => {
+    if (tableStats == null) {
+      return;
+    }
+    const counts = materializedTripCounts(tableStats);
+    const totalRows =
+      counts.trips + counts.trip_points + counts.materialized_days;
+    if (totalRows === 0) {
+      return;
+    }
+    Alert.alert(
+      'Delete materialized trips?',
+      deleteMaterializedTablesMessage(counts, formatTableLabel(triggeredFrom)),
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete all',
+          style: 'destructive',
+          onPress: () => {
+            void runDeleteMaterializedTables();
+          },
+        },
+      ],
+    );
+  };
+
+  const runDeleteMaterializedTables = async () => {
+    setDeletingTarget('materialized');
+    try {
+      const before =
+        tableStats != null ? materializedTripCounts(tableStats) : null;
+      await resetMaterializedTripHistory();
+      let compactMessage = '';
+      const totalBefore =
+        before != null
+          ? before.trips + before.trip_points + before.materialized_days
+          : 0;
+      if (totalBefore > 0) {
+        setCompacting(true);
+        const compacted = await vacuumDatabase();
+        compactMessage = `\n\nDatabase compacted from ${formatStorageBytes(
+          compacted.beforeBytes,
+        )} to ${formatStorageBytes(compacted.afterBytes)}.`;
+      }
+      await calculate();
+      Alert.alert(
+        'Materialized trips deleted',
+        `${formatMaterializedDeleteSummary(before)}${compactMessage}`,
+      );
+    } catch (error) {
+      Alert.alert(
+        APP_COPY.alerts.couldNotDeleteDiagnostics,
+        errorMessageOr(error),
+      );
+    } finally {
+      setDeletingTarget(null);
+      setCompacting(false);
+    }
+  };
+
+  const runDeleteTrackingEvents = async () => {
+    setDeletingTarget('tracking_events');
     try {
       const deleted = await deleteAllTrackingEvents();
       let compactMessage = '';
       if (deleted > 0) {
         setCompacting(true);
         const compacted = await vacuumDatabase();
-        compactMessage = `\n\nDatabase compacted from ${formatStorageBytes(compacted.beforeBytes)} to ${formatStorageBytes(compacted.afterBytes)}.`;
+        compactMessage = `\n\nDatabase compacted from ${formatStorageBytes(
+          compacted.beforeBytes,
+        )} to ${formatStorageBytes(compacted.afterBytes)}.`;
       }
       await calculate();
       Alert.alert(
-        'Diagnostics deleted',
+        'Deleted',
         `Removed ${deleted.toLocaleString()} tracking_events rows.${compactMessage}`,
       );
     } catch (error) {
@@ -231,7 +305,7 @@ export function ExportSettings() {
         errorMessageOr(error),
       );
     } finally {
-      setDeletingDiagnostics(false);
+      setDeletingTarget(null);
       setCompacting(false);
     }
   };
@@ -240,9 +314,11 @@ export function ExportSettings() {
     const reclaimable = tableStats?.freeDbBytes ?? 0;
     Alert.alert(
       'Compact database?',
-      `SQLite keeps empty pages after deletes. This reclaims about ${formatStorageBytes(reclaimable)} on disk. Your data is not deleted.`,
+      `SQLite keeps empty pages after deletes. This reclaims about ${formatStorageBytes(
+        reclaimable,
+      )} on disk. Your data is not deleted.`,
       [
-        {text: 'Cancel', style: 'cancel'},
+        { text: 'Cancel', style: 'cancel' },
         {
           text: 'Compact',
           onPress: () => {
@@ -260,7 +336,9 @@ export function ExportSettings() {
       await calculate();
       Alert.alert(
         'Database compacted',
-        `Reduced from ${formatStorageBytes(result.beforeBytes)} to ${formatStorageBytes(result.afterBytes)}.`,
+        `Reduced from ${formatStorageBytes(
+          result.beforeBytes,
+        )} to ${formatStorageBytes(result.afterBytes)}.`,
       );
     } catch (error) {
       Alert.alert(
@@ -275,18 +353,21 @@ export function ExportSettings() {
   const totalRows =
     tableStats != null ? sumExportTableRowCounts(tableStats.counts) : 0;
   const originalDataRows =
-    tableStats != null
-      ? sumOriginalDataExportRowCounts(tableStats.counts)
-      : 0;
+    tableStats != null ? sumOriginalDataExportRowCounts(tableStats.counts) : 0;
   const originalDataStorageBytes =
     tableStats != null
       ? sumOriginalDataExportStorageBytes(tableStats.storageBytes)
       : 0;
-  const trackingEventsCount = tableStats?.counts.tracking_events ?? 0;
   const totalDbBytes = tableStats?.totalDbBytes ?? 0;
   const freeDbBytes = tableStats?.freeDbBytes ?? 0;
   const tableActionsDisabled =
-    exporting || deletingDiagnostics || compacting || calculating;
+    exporting || deletingTarget != null || compacting || calculating;
+  const hasMaterializedRows =
+    tableStats != null &&
+    MATERIALIZED_TRIP_EXPORT_TABLE_NAMES.some(
+      tableName => (tableStats.counts[tableName] ?? 0) > 0,
+    );
+  const hasTrackingEventRows = (tableStats?.counts.tracking_events ?? 0) > 0;
 
   return (
     <>
@@ -296,8 +377,8 @@ export function ExportSettings() {
           <View className="flex-1">
             <Text className="font-medium">Export data</Text>
             <Text variant="muted" className="mt-1 text-sm leading-5">
-              Export one table or everything as JSON. Row counts and storage
-              estimates are saved after you calculate.
+              Export JSON by table, day, or bundle. Tap Calculate to refresh row
+              counts and storage estimates.
             </Text>
           </View>
         </View>
@@ -310,12 +391,14 @@ export function ExportSettings() {
 
         {tableStats != null ? (
           <>
-            <View className="border-border mt-4 overflow-hidden rounded-xl border">
-              <ExportTableHeader />
-              {DATABASE_EXPORT_TABLE_NAMES.map(tableName => (
-                <ExportTableRow
+            <ExportSection
+              title="Original data"
+              description="Raw GPS, places, moments, and settings captured on device."
+            >
+              {ORIGINAL_DATA_EXPORT_TABLE_NAMES.map(tableName => (
+                <ExportDataRow
                   key={tableName}
-                  tableName={tableName}
+                  label={formatTableLabel(tableName)}
                   count={tableStats.counts[tableName] ?? 0}
                   storageBytes={tableStats.storageBytes[tableName] ?? 0}
                   disabled={tableActionsDisabled}
@@ -323,8 +406,51 @@ export function ExportSettings() {
                   onExportAll={() => void shareExport(tableName, 'all')}
                 />
               ))}
-              <ExportTableRow
-                tableName="all_tables"
+            </ExportSection>
+
+            <ExportSection
+              title="Algorithm data"
+              description="Visits, drives, and seal metadata built from GPS. Deleting trips, trip points, or materialized days clears all three. Raw location points are kept."
+            >
+              {ALGORITHM_DATA_EXPORT_TABLE_NAMES.map(tableName => (
+                <ExportDataRow
+                  key={tableName}
+                  label={formatTableLabel(tableName)}
+                  count={tableStats.counts[tableName] ?? 0}
+                  storageBytes={tableStats.storageBytes[tableName] ?? 0}
+                  disabled={tableActionsDisabled}
+                  deleting={
+                    isMaterializedTripTable(tableName)
+                      ? deletingTarget === 'materialized'
+                      : deletingTarget === 'tracking_events'
+                  }
+                  showDelete={
+                    isMaterializedTripTable(tableName)
+                      ? hasMaterializedRows
+                      : hasTrackingEventRows
+                  }
+                  deleteLabel={
+                    isMaterializedTripTable(tableName)
+                      ? 'Delete all 3'
+                      : 'Delete'
+                  }
+                  showView={
+                    tableName === 'trips' && (tableStats.counts.trips ?? 0) > 0
+                  }
+                  onView={() => navigation.navigate('ExportTripDays')}
+                  onPickDay={() => openDayPicker(tableName)}
+                  onExportAll={() => void shareExport(tableName, 'all')}
+                  onDelete={() => confirmDeleteTable(tableName)}
+                />
+              ))}
+            </ExportSection>
+
+            <ExportSection
+              title="Full exports"
+              description="Bundled JSON for backup, analysis, or Point Explorer."
+            >
+              <ExportDataRow
+                label="All tables"
                 count={totalRows}
                 storageBytes={totalDbBytes}
                 disabled={tableActionsDisabled}
@@ -332,8 +458,8 @@ export function ExportSettings() {
                 onPickDay={() => openDayPicker('all_tables')}
                 onExportAll={() => void shareExport('all_tables', 'all')}
               />
-              <ExportTableRow
-                tableName="original_data"
+              <ExportDataRow
+                label="Original data export"
                 count={originalDataRows}
                 storageBytes={originalDataStorageBytes}
                 disabled={tableActionsDisabled}
@@ -341,10 +467,10 @@ export function ExportSettings() {
                 onPickDay={() => openDayPicker('original_data')}
                 onExportAll={() => void shareExport('original_data', 'all')}
               />
-            </View>
+            </ExportSection>
 
             {freeDbBytes > 0 ? (
-              <Text variant="muted" className="mt-3 text-xs leading-4">
+              <Text variant="muted" className="mt-1 text-xs leading-4">
                 {formatStorageBytes(freeDbBytes)} of the DB file is empty space
                 from deleted rows. Compact to reclaim it on disk.
               </Text>
@@ -357,7 +483,8 @@ export function ExportSettings() {
                 onPress={confirmCompactDatabase}
                 className={`border-border mt-3 self-start rounded-full border px-3 py-2 ${
                   tableActionsDisabled ? 'opacity-50' : ''
-                }`}>
+                }`}
+              >
                 {compacting ? (
                   <ActivityIndicator />
                 ) : (
@@ -365,51 +492,6 @@ export function ExportSettings() {
                 )}
               </Pressable>
             ) : null}
-
-            <View className="border-border mt-4 border-t pt-4">
-              <View className="flex-row items-center gap-3">
-                <Text className="text-sm font-medium">Tracking diagnostics</Text>
-                <View className="flex-1" />
-                <Pressable
-                  accessibilityRole="switch"
-                  accessibilityState={{checked: diagnosticsEnabled}}
-                  onPress={() => void toggleDiagnostics()}
-                  className={`h-6 w-11 rounded-full px-0.5 ${
-                    diagnosticsEnabled ? 'bg-primary' : 'bg-muted'
-                  }`}>
-                  <View
-                    className={`mt-0.5 h-5 w-5 rounded-full bg-white ${
-                      diagnosticsEnabled ? 'ml-auto' : 'ml-0'
-                    }`}
-                  />
-                </Pressable>
-              </View>
-
-              <Text variant="muted" className="mt-2 text-xs leading-4">
-                Debug only — not used for your map or timeline. Turn on briefly
-                when investigating a tracking gap, export tracking_events from
-                the table above if needed, then turn off and delete. With
-                maximum reliability on, this table grows very fast.
-              </Text>
-
-              {trackingEventsCount > 0 ? (
-                <Pressable
-                  accessibilityRole="button"
-                  disabled={exporting || deletingDiagnostics || compacting}
-                  onPress={confirmDeleteDiagnostics}
-                  className={`border-destructive mt-3 self-start rounded-full border px-3 py-2 ${
-                    exporting || deletingDiagnostics ? 'opacity-50' : ''
-                  }`}>
-                  {deletingDiagnostics ? (
-                    <ActivityIndicator />
-                  ) : (
-                    <Text className="text-destructive text-sm font-medium">
-                      Delete diagnostics
-                    </Text>
-                  )}
-                </Pressable>
-              ) : null}
-            </View>
           </>
         ) : null}
       </View>
@@ -440,108 +522,222 @@ export function ExportSettings() {
   );
 }
 
-function ExportTableHeader() {
+function ExportSection({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
   return (
-    <View className="bg-muted/40 border-border flex-row items-center border-b px-2 py-2">
-      <Text variant="muted" className="min-w-0 flex-1 text-[10px] font-semibold uppercase">
-        Table
+    <View className="mt-5">
+      <Text className="text-sm font-semibold">{title}</Text>
+      <Text variant="muted" className="mt-1 text-xs leading-4">
+        {description}
       </Text>
-      <Text
-        variant="muted"
-        className="w-11 text-right text-[10px] font-semibold uppercase">
-        Count
-      </Text>
-      <Text
-        variant="muted"
-        className="w-14 text-right text-[10px] font-semibold uppercase">
-        Storage
-      </Text>
-      <Text
-        variant="muted"
-        className="w-10 text-center text-[10px] font-semibold uppercase">
-        Day
-      </Text>
-      <Text
-        variant="muted"
-        className="w-14 text-center text-[10px] font-semibold uppercase">
-        All days
-      </Text>
+      <View className="mt-3 gap-2">{children}</View>
     </View>
   );
 }
 
-function ExportTableRow({
-  tableName,
+function ExportDataRow({
+  label,
   count,
   storageBytes,
   disabled,
   emphasized = false,
+  showDelete = false,
+  deleteLabel = 'Delete',
+  showView = false,
+  deleting = false,
   onPickDay,
   onExportAll,
+  onView,
+  onDelete,
 }: {
-  tableName: ExportPickerTarget;
+  label: string;
   count: number;
   storageBytes: number;
   disabled: boolean;
   emphasized?: boolean;
+  showDelete?: boolean;
+  deleteLabel?: string;
+  showView?: boolean;
+  deleting?: boolean;
   onPickDay: () => void;
   onExportAll: () => void;
+  onView?: () => void;
+  onDelete?: () => void;
 }) {
   const colors = useThemeColors();
-  const label =
-    tableName === 'all_tables'
-      ? 'all tables'
-      : tableName === 'original_data'
-        ? 'original data export'
-        : tableName;
 
   return (
     <View
-      className={`border-border flex-row items-center border-b px-2 py-2.5 ${
-        emphasized ? 'bg-primary/5' : ''
-      }`}>
+      className={`rounded-xl border px-3 py-3 ${
+        emphasized
+          ? 'border-primary/30 bg-primary/5'
+          : 'border-border bg-background'
+      }`}
+    >
       <Text
-        className={`min-w-0 flex-1 text-xs ${emphasized ? 'font-semibold' : ''}`}
-        numberOfLines={2}>
+        className={`text-sm ${
+          emphasized ? 'font-semibold text-primary' : 'font-medium'
+        }`}
+      >
         {label}
       </Text>
-      <Text className="w-11 text-right text-xs font-medium">
-        {(count ?? 0).toLocaleString()}
+      <Text variant="muted" className="mt-1 text-xs leading-4">
+        {count.toLocaleString()} rows · {formatStorageBytes(storageBytes)}
       </Text>
-      <Text
-        className={`w-14 text-right text-[10px] font-medium ${
-          emphasized ? 'font-semibold' : ''
-        }`}>
-        {formatStorageBytes(storageBytes)}
-      </Text>
-      <View className="w-10 items-center">
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Export ${label} for selected day`}
+      <View className="mt-3 flex-row flex-wrap gap-2">
+        {showView && onView != null ? (
+          <ExportActionButton
+            label="View"
+            icon={Eye}
+            iconColor={colors.primary}
+            disabled={disabled}
+            onPress={onView}
+          />
+        ) : null}
+        <ExportActionButton
+          label="Day"
+          icon={CalendarDays}
+          iconColor={colors.primary}
           disabled={disabled}
           onPress={onPickDay}
-          className={`rounded-full p-1.5 ${disabled ? 'opacity-40' : ''}`}>
-          <Icon as={CalendarDays} size={16} color={colors.primary} />
-        </Pressable>
-      </View>
-      <View className="w-14 items-center">
-        <Pressable
-          accessibilityRole="button"
+        />
+        <ExportActionButton
+          label="Export all"
           disabled={disabled}
+          emphasized={emphasized}
           onPress={onExportAll}
-          className={`rounded-full border px-2 py-1 ${
-            emphasized ? 'border-primary' : 'border-border'
-          } ${disabled ? 'opacity-40' : ''}`}>
-          <Text
-            className={`text-[10px] font-medium ${
-              emphasized ? 'text-primary' : ''
-            }`}>
-            Export
-          </Text>
-        </Pressable>
+        />
+        {showDelete && onDelete != null ? (
+          <ExportActionButton
+            label={deleteLabel}
+            icon={Trash2}
+            iconColor="#dc2626"
+            disabled={disabled}
+            destructive
+            loading={deleting}
+            onPress={onDelete}
+          />
+        ) : null}
       </View>
     </View>
   );
+}
+
+function ExportActionButton({
+  label,
+  icon,
+  iconColor,
+  disabled,
+  emphasized = false,
+  destructive = false,
+  loading = false,
+  onPress,
+}: {
+  label: string;
+  icon?: typeof CalendarDays;
+  iconColor?: string;
+  disabled: boolean;
+  emphasized?: boolean;
+  destructive?: boolean;
+  loading?: boolean;
+  onPress: () => void;
+}) {
+  const colors = useThemeColors();
+  const borderClass = destructive
+    ? 'border-destructive'
+    : emphasized
+    ? 'border-primary'
+    : 'border-border';
+  const textClass = destructive
+    ? 'text-destructive'
+    : emphasized
+    ? 'text-primary'
+    : '';
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      disabled={disabled || loading}
+      onPress={onPress}
+      className={`flex-row items-center gap-1.5 rounded-full border px-3 py-1.5 ${borderClass} ${
+        disabled || loading ? 'opacity-40' : ''
+      }`}
+    >
+      {loading ? (
+        <ActivityIndicator size="small" />
+      ) : icon != null ? (
+        <Icon as={icon} size={14} color={iconColor ?? colors.foreground} />
+      ) : null}
+      <Text className={`text-xs font-medium ${textClass}`}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function isMaterializedTripTable(
+  tableName: AlgorithmDataExportTableName,
+): tableName is MaterializedTripExportTableName {
+  return (MATERIALIZED_TRIP_EXPORT_TABLE_NAMES as readonly string[]).includes(
+    tableName,
+  );
+}
+
+function materializedTripCounts(stats: ExportTableStats): {
+  trips: number;
+  trip_points: number;
+  materialized_days: number;
+} {
+  return {
+    trips: stats.counts.trips ?? 0,
+    trip_points: stats.counts.trip_points ?? 0,
+    materialized_days: stats.counts.materialized_days ?? 0,
+  };
+}
+
+function deleteMaterializedTablesMessage(
+  counts: ReturnType<typeof materializedTripCounts>,
+  triggeredFromLabel: string,
+): string {
+  return [
+    `Deleting from ${triggeredFromLabel} also removes trips, trip points, and materialized days together.`,
+    '',
+    `${counts.trips.toLocaleString()} trips`,
+    `${counts.trip_points.toLocaleString()} trip points`,
+    `${counts.materialized_days.toLocaleString()} materialized days`,
+    '',
+    'Raw GPS points are not deleted. The timeline rebuilds from GPS on the next seal.',
+  ].join('\n');
+}
+
+function deleteTrackingEventsMessage(rowCount: number): string {
+  const countLabel =
+    rowCount > 0
+      ? `This removes ${rowCount.toLocaleString()} debug log rows. `
+      : '';
+  return `${countLabel}Your map, visits, drives, and GPS points are not affected.`;
+}
+
+function formatMaterializedDeleteSummary(
+  before: ReturnType<typeof materializedTripCounts> | null,
+): string {
+  if (before == null) {
+    return 'Removed materialized trip data.';
+  }
+  return [
+    `Removed ${before.trips.toLocaleString()} trips,`,
+    `${before.trip_points.toLocaleString()} trip points, and`,
+    `${before.materialized_days.toLocaleString()} materialized days.`,
+  ].join(' ');
+}
+
+function formatTableLabel(tableName: DatabaseExportTableName): string {
+  return tableName.replaceAll('_', ' ');
 }
 
 function formatDayLabel(dateKey: string): string {

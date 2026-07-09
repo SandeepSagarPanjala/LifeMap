@@ -1,6 +1,6 @@
-import {useEffect, useState} from 'react';
+import { useEffect, useState } from 'react';
 
-import {runWhenIdle} from '@/lib/run-when-idle';
+import { runWhenIdle } from '@/lib/run-when-idle';
 
 /** True after open animations / taps finish — safe to run heavier UI work. */
 export function useAfterInteractions(active: boolean): boolean {

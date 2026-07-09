@@ -1,7 +1,7 @@
-import {ActivityIndicator, Modal, View} from 'react-native';
+import { ActivityIndicator, Modal, View } from 'react-native';
 
-import {Text} from '@/components/ui/text';
-import type {BackupProgress} from '@/lib/backup/backup-types';
+import { Text } from '@/components/ui/text';
+import type { BackupProgress } from '@/lib/backup/backup-types';
 
 type BackupProgressModalProps = {
   visible: boolean;

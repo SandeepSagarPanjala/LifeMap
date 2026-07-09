@@ -5,7 +5,7 @@ import {
   getCloudBackupMetadataForOperation,
   withTimeout,
 } from './native-backup-cloud';
-import type {CloudBackupMetadata} from './backup-types';
+import type { CloudBackupMetadata } from './backup-types';
 
 const INSTALL_SNAPSHOT_KEY = 'lifemap-install-cloud-backup-snapshot';
 const RESTORE_COMPLETED_KEY = 'lifemap-backup-restore-completed';
@@ -68,7 +68,9 @@ export async function getInstallCloudBackupSnapshot(): Promise<InstallCloudBacku
   return JSON.parse(raw) as InstallCloudBackupSnapshot;
 }
 
-export async function loadRestoreOfferMetadata(): Promise<InstallCloudBackupSnapshot | CloudBackupMetadata | null> {
+export async function loadRestoreOfferMetadata(): Promise<
+  InstallCloudBackupSnapshot | CloudBackupMetadata | null
+> {
   const snapshot = await getInstallCloudBackupSnapshot();
   if (snapshot?.exportedAt) {
     return snapshot;
@@ -113,7 +115,7 @@ export async function shouldAutoNavigateToRestore(): Promise<boolean> {
   if ((await AsyncStorage.getItem(INSTALL_RESTORE_PRESENTED_KEY)) === 'true') {
     return false;
   }
-  const {hasLocalUserData} = await import('./backup-clear');
+  const { hasLocalUserData } = await import('./backup-clear');
   if (await hasLocalUserData()) {
     return false;
   }
@@ -125,7 +127,10 @@ export async function dismissInstallRestoreOffer(): Promise<void> {
 }
 
 export async function wasInstallRestoreDismissed(): Promise<boolean> {
-  return (await AsyncStorage.getItem('lifemap-backup-restore-prompt')) === 'dismissed';
+  return (
+    (await AsyncStorage.getItem('lifemap-backup-restore-prompt')) ===
+    'dismissed'
+  );
 }
 
 /** Settings: show restore while a cloud backup exists and restore has not completed. */

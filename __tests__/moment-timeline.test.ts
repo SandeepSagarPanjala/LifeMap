@@ -3,7 +3,7 @@ import {
   findContainingTimelineEntry,
   resolveMomentCoordinate,
 } from '../src/lib/moments/moment-timeline';
-import type {DayTimelineEntry} from '../src/lib/trip-detection';
+import type { DayTimelineEntry } from '../src/lib/trip-detection';
 
 describe('moment timeline', () => {
   const now = new Date('2026-06-08T16:00:00.000Z');
@@ -31,7 +31,9 @@ describe('moment timeline', () => {
 
   it('places a moment inside an open visit by open timestamp', () => {
     const momentAt = new Date('2026-06-08T15:00:00.000Z');
-    expect(findContainingTimelineEntry(momentAt, [travel, stay], now)).toBe(stay);
+    expect(findContainingTimelineEntry(momentAt, [travel, stay], now)).toBe(
+      stay,
+    );
   });
 
   it('prefers stay over travel when both could match', () => {
@@ -47,7 +49,9 @@ describe('moment timeline', () => {
 
   it('returns null when no timeline entry contains the moment', () => {
     const momentAt = new Date('2026-06-08T09:00:00.000Z');
-    expect(findContainingTimelineEntry(momentAt, [travel, stay], now)).toBeNull();
+    expect(
+      findContainingTimelineEntry(momentAt, [travel, stay], now),
+    ).toBeNull();
   });
 
   it('attaches moments to timeline entries in timestamp order', () => {
@@ -101,11 +105,11 @@ describe('moment timeline', () => {
       null,
     );
 
-    expect(coordinate).toEqual({lat: 33.5, lng: -96.5});
+    expect(coordinate).toEqual({ lat: 33.5, lng: -96.5 });
   });
 
   it('reuses sorted GPS trail cache across coordinate lookups', () => {
-    const points = Array.from({length: 500}, (_, index) => ({
+    const points = Array.from({ length: 500 }, (_, index) => ({
       id: index + 1,
       timestamp: new Date(Date.UTC(2026, 5, 8, 0, 0, index)),
       lat: 33 + index * 0.001,
@@ -159,7 +163,7 @@ describe('moment timeline', () => {
         [],
         stayWithPoints,
       ),
-    ).toEqual({lat: 33.1, lng: -97.1});
+    ).toEqual({ lat: 33.1, lng: -97.1 });
   });
 
   it('falls back to stay anchor when stay has no GPS points', () => {
@@ -176,6 +180,6 @@ describe('moment timeline', () => {
         [],
         anchoredStay,
       ),
-    ).toEqual({lat: 33.5, lng: -97.5});
+    ).toEqual({ lat: 33.5, lng: -97.5 });
   });
 });
