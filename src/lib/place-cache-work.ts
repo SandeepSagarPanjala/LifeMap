@@ -1,6 +1,5 @@
 import { closestPlacePoiToAnchor } from '@/db/repositories/place-pois';
 import { getTripById } from '@/db/repositories/trips';
-import { listSavedPlaces } from '@/db/repositories/saved-places';
 import { applyTripPersistedLabel } from '@/db/repositories/trips';
 import {
   mergeTripPlaceLabelAfterLookup,
@@ -11,10 +10,7 @@ import {
   platformResolvesClosestPoi,
 } from '@/lib/place-lookup-service';
 import { notifyPlaceLookupUpdated } from '@/lib/place-lookup-events';
-import {
-  existingTripLabelsByEventKey,
-  getDefaultTripDetectionConfig,
-} from '@/lib/trip-materialization';
+import { existingTripLabelsByEventKey } from '@/lib/trip-materialization';
 import { notifyMaterializationUpdated } from '@/lib/trip-materialization-events';
 import type { PlaceCacheWorkItem } from '@/lib/place-cache-backlog';
 import { PLACE_LOOKUP_CATCH_UP_DELAY_MS } from '@/lib/app-constants';
@@ -36,8 +32,6 @@ export async function runPlaceCacheWorkItem(
     return;
   }
 
-  const config = getDefaultTripDetectionConfig();
-  const savedPlaces = await listSavedPlaces();
   const anchor = tripLookupAnchorFromRow(trip);
   const cache = await ensureCompletePlaceLookupAtAnchor(anchor, {
     bypassSessionBudget: true,

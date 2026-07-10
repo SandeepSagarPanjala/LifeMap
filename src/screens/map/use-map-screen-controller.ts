@@ -119,7 +119,6 @@ import {
 } from '@/lib/place-lookup-types';
 import { buildMapAttributionInsets } from '@/lib/map-attribution-insets';
 import {
-  getBackgroundWorkRevision,
   isBackgroundWorkBannerVisible,
   subscribeBackgroundWork,
 } from '@/lib/background-work-events';
@@ -618,11 +617,6 @@ export function useMapScreenController() {
   );
   const floatingControlsClearance = stackBaseBottom + leftStackHeight + 16;
 
-  const backgroundWorkRevision = useSyncExternalStore(
-    subscribeBackgroundWork,
-    getBackgroundWorkRevision,
-    getBackgroundWorkRevision,
-  );
   const backgroundWorkBannerVisible = useSyncExternalStore(
     subscribeBackgroundWork,
     isBackgroundWorkBannerVisible,
@@ -639,12 +633,7 @@ export function useMapScreenController() {
       bottom: floatingControlsClearance,
       left: 12,
     }),
-    [
-      floatingControlsClearance,
-      insets.top,
-      backgroundWorkBannerVisible,
-      backgroundWorkRevision,
-    ],
+    [floatingControlsClearance, insets.top, backgroundWorkBannerVisible],
   );
 
   const screenWidth = Dimensions.get('window').width;
