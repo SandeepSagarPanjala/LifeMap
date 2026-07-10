@@ -15,34 +15,42 @@ export type MapAttributionInsets = {
 /** Visual height of the Legal link row (iOS). */
 const LEGAL_ROW_HEIGHT = 16;
 const LOGO_LEGAL_GAP = 2;
-const ATTRIBUTION_LEFT = 10;
+const LEGAL_WIDTH_ESTIMATE = 76;
+
+export type BuildMapAttributionInsetsOptions = {
+  screenWidth: number;
+  /** Bottom offset of the date navigation cluster from the screen bottom. */
+  dateNavBottom: number;
+};
 
 /**
- * Stack Apple Maps logo directly above the Legal link in the bottom-left.
- * iOS only — Android/Google attribution is separate.
+ * Center Apple Maps Legal just below the date pill (iOS only).
  */
 export function buildMapAttributionInsets(
-  bottomClearance: number,
-  options?: { left?: number },
+  options: BuildMapAttributionInsetsOptions,
 ): MapAttributionInsets {
   if (Platform.OS !== 'ios') {
     return {};
   }
 
-  const left = options?.left ?? ATTRIBUTION_LEFT;
+  const legalBottom = Math.max(8, options.dateNavBottom - 6);
+  const legalLeft = Math.max(
+    8,
+    Math.round((options.screenWidth - LEGAL_WIDTH_ESTIMATE) / 2),
+  );
 
   return {
     legalLabelInsets: {
       top: 0,
       right: 0,
-      left,
-      bottom: bottomClearance,
+      left: legalLeft,
+      bottom: legalBottom,
     },
     appleLogoInsets: {
       top: 0,
       right: 0,
-      left,
-      bottom: bottomClearance + LEGAL_ROW_HEIGHT + LOGO_LEGAL_GAP,
+      left: legalLeft,
+      bottom: legalBottom + LEGAL_ROW_HEIGHT + LOGO_LEGAL_GAP,
     },
   };
 }

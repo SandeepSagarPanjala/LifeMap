@@ -218,6 +218,14 @@ export const tripPoints = sqliteTable(
   }),
 );
 
+export const locationDaySummaries = sqliteTable('location_day_summaries', {
+  dateKey: text('date_key').primaryKey(),
+  pointCount: integer('point_count').notNull(),
+  minTimestamp: integer('min_timestamp', { mode: 'timestamp' }),
+  maxTimestamp: integer('max_timestamp', { mode: 'timestamp' }),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+});
+
 export const materializedDays = sqliteTable('materialized_days', {
   dateKey: text('date_key').primaryKey(),
   status: text('status').notNull(),

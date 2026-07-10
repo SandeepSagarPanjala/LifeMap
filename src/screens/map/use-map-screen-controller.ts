@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import {
   Alert,
   Animated,
@@ -6,6 +6,7 @@ import {
   Easing,
   Platform,
   useColorScheme,
+  useWindowDimensions,
 } from 'react-native';
 import {
   useNavigation,
@@ -117,6 +118,11 @@ import {
   visitPlaceDefaultLabel,
 } from '@/lib/place-lookup-types';
 import { buildMapAttributionInsets } from '@/lib/map-attribution-insets';
+import {
+  isBackgroundWorkBannerVisible,
+  subscribeBackgroundWork,
+} from '@/lib/background-work-events';
+import { setBackgroundWorkMapFocused } from '@/lib/background-work-pause';
 import type { RootStackParamList } from '@/navigation/types';
 import {
   refreshWidgetSnapshot,
@@ -134,12 +140,11 @@ import {
   MAP_HISTORY_DATE_NAV_ABOVE_PANEL_GAP,
   MAP_HISTORY_FLOATING_CONTROLS_GAP,
   MAP_HISTORY_PANEL_CLOSE_MS,
-  MAP_LEFT_STACK_COUNT,
   MAP_LOCATE_BUTTON_BOTTOM_GAP,
-  MAP_SETTINGS_SIZE,
   MAP_SETTINGS_TOP_GAP,
   MAP_STACK_BUTTON_GAP,
   MAP_STACK_BUTTON_SIZE,
+  BACKGROUND_WORK_BANNER_BODY_HEIGHT,
 } from '@/lib/app-constants';
 import {
   MAP_FALLBACK_REGION,
@@ -592,6 +597,10 @@ export function useMapScreenController() {
     viewingToday ? 1 : 0,
   );
   const placesButtonBottom = mapStackButtonBottom(stackBaseBottom, 2);
+  const settingsButtonBottom = mapStackButtonBottom(
+    stackBaseBottom,
+    viewingToday ? 3 : 1,
+  );
 
   const cameraButtonBottom = mapStackButtonBottom(stackBaseBottom, 0);
   const voiceButtonBottom = mapStackButtonBottom(stackBaseBottom, 1);
@@ -600,29 +609,42 @@ export function useMapScreenController() {
 
   const dateNavAnchorBottom = stackBaseBottom;
 
+  const leftStackButtonCount = viewingToday ? 4 : 2;
   const leftStackHeight = mapStackTotalHeight(
-    MAP_LEFT_STACK_COUNT,
+    leftStackButtonCount,
     MAP_STACK_BUTTON_SIZE,
     MAP_STACK_BUTTON_GAP,
   );
   const floatingControlsClearance = stackBaseBottom + leftStackHeight + 16;
 
+  const backgroundWorkBannerVisible = useSyncExternalStore(
+    subscribeBackgroundWork,
+    isBackgroundWorkBannerVisible,
+    isBackgroundWorkBannerVisible,
+  );
+
   const mapPadding = useMemo(
     () => ({
-      top: insets.top + MAP_SETTINGS_TOP_GAP + MAP_SETTINGS_SIZE,
+      top:
+        insets.top +
+        MAP_SETTINGS_TOP_GAP +
+        (backgroundWorkBannerVisible ? BACKGROUND_WORK_BANNER_BODY_HEIGHT : 0),
       right: 12,
       bottom: floatingControlsClearance,
       left: 12,
     }),
-    [floatingControlsClearance, insets.top],
+    [floatingControlsClearance, insets.top, backgroundWorkBannerVisible],
   );
 
-  const mapAttributionInsets = useMemo(() => {
-    const bottomClearance = historyPanelOpen
-      ? insets.bottom + 8
-      : locateButtonBottom + MAP_STACK_BUTTON_SIZE + 6;
-    return buildMapAttributionInsets(bottomClearance);
-  }, [historyPanelOpen, insets.bottom, locateButtonBottom]);
+  const { width: screenWidth } = useWindowDimensions();
+  const mapAttributionInsets = useMemo(
+    () =>
+      buildMapAttributionInsets({
+        screenWidth,
+        dateNavBottom: dateNavAnchorBottom,
+      }),
+    [screenWidth, dateNavAnchorBottom],
+  );
 
   const scrubOnEvent = historyScrubOnEvent;
 
@@ -1270,6 +1292,10 @@ export function useMapScreenController() {
     navigation.navigate('SavedPlaces');
   }, [navigation]);
 
+  const openSettings = useCallback(() => {
+    navigation.navigate('Settings');
+  }, [navigation]);
+
   const openCaptureVoice = useCallback(() => {
     navigation.navigate('CaptureVoice');
   }, [navigation]);
@@ -1525,6 +1551,15 @@ export function useMapScreenController() {
 
   useFocusEffect(
     useCallback(() => {
+      setBackgroundWorkMapFocused(true);
+      return () => {
+        setBackgroundWorkMapFocused(false);
+      };
+    }, []),
+  );
+
+  useFocusEffect(
+    useCallback(() => {
       const dateKey = consumeHistoryDatePickerResult();
       if (dateKey != null) {
         handleSelectMapDate(dateKey);
@@ -1544,6 +1579,7 @@ export function useMapScreenController() {
       mapPadding,
       mapAttributionInsets,
       locateButtonBottom,
+      settingsButtonBottom,
       placesButtonBottom,
       historyButtonBottom,
       cameraButtonBottom,
@@ -1638,6 +1674,7 @@ export function useMapScreenController() {
       handleSaveWorkPlace,
       handleSaveFavoritePlace,
       openSavedPlaces,
+      openSettings,
       goToCurrentLocation,
       openHistoryDatePicker,
       handleSelectMapDate,
@@ -1658,6 +1695,7 @@ export function useMapScreenController() {
       mapPadding,
       mapAttributionInsets,
       locateButtonBottom,
+      settingsButtonBottom,
       placesButtonBottom,
       historyButtonBottom,
       cameraButtonBottom,
@@ -1751,6 +1789,7 @@ export function useMapScreenController() {
       handleSaveWorkPlace,
       handleSaveFavoritePlace,
       openSavedPlaces,
+      openSettings,
       goToCurrentLocation,
       openHistoryDatePicker,
       handleSelectMapDate,
