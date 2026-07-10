@@ -3,10 +3,10 @@ import {
   Alert,
   Animated,
   AppState,
-  Dimensions,
   Easing,
   Platform,
   useColorScheme,
+  useWindowDimensions,
 } from 'react-native';
 import {
   useNavigation,
@@ -636,7 +636,7 @@ export function useMapScreenController() {
     [floatingControlsClearance, insets.top, backgroundWorkBannerVisible],
   );
 
-  const screenWidth = Dimensions.get('window').width;
+  const { width: screenWidth } = useWindowDimensions();
   const mapAttributionInsets = useMemo(
     () =>
       buildMapAttributionInsets({

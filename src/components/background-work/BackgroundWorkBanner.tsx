@@ -21,7 +21,6 @@ import { useAppStore } from '@/stores/app-store';
 import {
   clearBackgroundWorkProgress,
   getBackgroundWorkProgress,
-  getBackgroundWorkRevision,
   subscribeBackgroundWork,
 } from '@/lib/background-work-events';
 import {
@@ -104,11 +103,6 @@ export function BackgroundWorkBanner() {
     subscribeBackgroundWork,
     getBackgroundWorkProgress,
     getBackgroundWorkProgress,
-  );
-  useSyncExternalStore(
-    subscribeBackgroundWork,
-    getBackgroundWorkRevision,
-    getBackgroundWorkRevision,
   );
 
   const meterWidth = useRef(new Animated.Value(0)).current;

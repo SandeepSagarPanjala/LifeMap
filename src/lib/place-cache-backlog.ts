@@ -1,6 +1,5 @@
 import { and, eq, isNull, or, sql } from 'drizzle-orm';
 
-import { getTripById, type TripRow } from '@/db/repositories/trips';
 import { listSavedPlaces } from '@/db/repositories/saved-places';
 import { findPlaceLookupNearAnchor } from '@/db/repositories/place-lookup-cache';
 import { getTodayDateKey } from '@/lib/day-utils';
@@ -14,7 +13,7 @@ import {
 import { matchSavedPlaceForStay } from '@/lib/saved-places';
 import { isWithinPlaceLookupVenue } from '@/lib/place-lookup-venue';
 import type { PlaceLookupRow } from '@/lib/place-lookup-types';
-import { listTripsForDay } from '@/db/repositories/trips';
+import { listTripsForDay, type TripRow } from '@/db/repositories/trips';
 import { getDatabase } from '@/db/client';
 import { trips } from '@/db/schema';
 
@@ -57,14 +56,25 @@ export async function hasPlaceCacheBacklog(): Promise<boolean> {
   return openVisit != null;
 }
 
-export async function listUnlabeledStayTripIds(): Promise<number[]> {
+export async function listUnlabeledStayTripsForPlaceCache(): Promise<
+  PlaceCacheTripWork[]
+> {
   const db = await getDatabase();
   const rows = await db
-    .select({ id: trips.id })
+    .select({
+      tripId: trips.id,
+      eventKey: trips.eventKey,
+      dateKey: trips.dateKey,
+    })
     .from(trips)
     .where(unlabeledStayTripConditions())
     .orderBy(sql`${trips.dateKey} asc`, sql`${trips.startAt} asc`);
-  return rows.map(row => row.id);
+  return rows.map(row => ({
+    kind: 'trip' as const,
+    tripId: row.tripId,
+    eventKey: row.eventKey,
+    dateKey: row.dateKey,
+  }));
 }
 
 async function detectOpenVisitNeedingPlaceCache(): Promise<PlaceCacheOpenVisitWork | null> {
@@ -91,13 +101,17 @@ async function detectOpenVisitNeedingPlaceCache(): Promise<PlaceCacheOpenVisitWo
   ) {
     return null;
   }
-  const anchor = {
-    lat: openVisit.anchorLat ?? openVisit.points[0]?.lat ?? 0,
-    lng: openVisit.anchorLng ?? openVisit.points[0]?.lng ?? 0,
-  };
-  if (!Number.isFinite(anchor.lat) || !Number.isFinite(anchor.lng)) {
+  const lat = openVisit.anchorLat ?? openVisit.points[0]?.lat;
+  const lng = openVisit.anchorLng ?? openVisit.points[0]?.lng;
+  if (
+    lat == null ||
+    lng == null ||
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lng)
+  ) {
     return null;
   }
+  const anchor = { lat, lng };
   const cache = await findPlaceLookupNearAnchor(anchor);
   if (cache?.lookupStatus === 'complete') {
     return null;
@@ -111,37 +125,15 @@ async function detectOpenVisitNeedingPlaceCache(): Promise<PlaceCacheOpenVisitWo
 }
 
 export async function buildPlaceCacheWorkQueue(): Promise<PlaceCacheWorkItem[]> {
-  const tripIds = await listUnlabeledStayTripIds();
-  const items: PlaceCacheWorkItem[] = tripIds.map(tripId => ({
-    kind: 'trip',
-    tripId,
-    eventKey: '',
-    dateKey: '',
-  }));
-
-  for (let index = 0; index < items.length; index += 1) {
-    const item = items[index]!;
-    if (item.kind !== 'trip') {
-      continue;
-    }
-    const trip = await getTripById(item.tripId);
-    if (trip == null) {
-      continue;
-    }
-    items[index] = {
-      kind: 'trip',
-      tripId: trip.id,
-      eventKey: trip.eventKey,
-      dateKey: trip.dateKey,
-    };
-  }
+  const items: PlaceCacheWorkItem[] =
+    await listUnlabeledStayTripsForPlaceCache();
 
   const openVisit = await detectOpenVisitNeedingPlaceCache();
   if (openVisit != null) {
     items.push(openVisit);
   }
 
-  return items.filter(item => item.kind !== 'trip' || item.eventKey.length > 0);
+  return items;
 }
 
 export function tripNeedsPlaceCache(trip: TripRow): boolean {

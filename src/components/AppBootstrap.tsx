@@ -92,7 +92,11 @@ export function AppBootstrap({ children }: AppBootstrapProps) {
         await ensureHistoryCalendarBounds();
         // Yesterday must be sealed before today's tail detect — lookback uses
         // excludedCrossMidnightFromMs from yesterday's materialized day.
-        await sealYesterdayIfNeeded();
+        try {
+          await sealYesterdayIfNeeded();
+        } catch (error) {
+          logPipelineFailure('seal_yesterday', error);
+        }
         await preloadTodayHistory();
       })
       .then(() => {
@@ -144,7 +148,11 @@ export function AppBootstrap({ children }: AppBootstrapProps) {
                 } catch {
                   // Best-effort — still refresh the map from whatever is in the DB.
                 }
-                await sealYesterdayIfNeeded();
+                try {
+                  await sealYesterdayIfNeeded();
+                } catch {
+                  // Best-effort — still refresh today even if yesterday seal fails.
+                }
                 await refreshTodayOnForeground();
                 startBackgroundWorkCycle();
               } catch (error) {

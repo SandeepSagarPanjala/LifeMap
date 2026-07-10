@@ -1,9 +1,10 @@
 import { format, parseISO } from 'date-fns';
 
 import {
+  backfillLocationDaySummaries,
+  countLocationDaySummaries,
   listPastDaysNeedingSeal,
 } from '@/db/repositories/location-day-summaries';
-import { countLocationDaySummaries } from '@/db/repositories/location-day-summaries';
 import { countLocationPoints } from '@/db/repositories/location-points';
 import { getCurrentTripDetectionConfig } from '@/lib/trip-detection-config';
 import {
@@ -171,9 +172,11 @@ async function runBackgroundWorkCycleImpl(): Promise<void> {
     countLocationPoints(),
   ]);
 
+  // Upgrade path: summaries table is new — index existing GPS days once, then
+  // continue into past-day seal + place cache (do not abort the cycle).
   if (summaryCount === 0 && pointCount > 0) {
-    clearBackgroundWorkProgress();
-    return;
+    await backfillLocationDaySummaries();
+    await yieldToEventLoop();
   }
 
   const pastDays = await listPastDaysNeedingSeal();
