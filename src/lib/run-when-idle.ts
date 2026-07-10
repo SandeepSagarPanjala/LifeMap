@@ -12,7 +12,11 @@ type IdleGlobal = typeof globalThis & {
 
 /** Yield so taps/animations can run before heavy synchronous work. */
 export function yieldToEventLoop(): Promise<void> {
-  return new Promise(resolve => setImmediate(resolve));
+  return new Promise(resolve => {
+    setImmediate(() => {
+      resolve();
+    });
+  });
 }
 
 /** Schedule work when the JS thread is idle — replaces deprecated InteractionManager.runAfterInteractions. */
@@ -23,10 +27,14 @@ export function runWhenIdle(
   const { requestIdleCallback, cancelIdleCallback } = globalThis as IdleGlobal;
 
   if (requestIdleCallback && cancelIdleCallback) {
-    const handle = requestIdleCallback(callback, { timeout });
+    const handle = requestIdleCallback(() => {
+      callback();
+    }, { timeout });
     return { cancel: () => cancelIdleCallback(handle) };
   }
 
-  const timeoutId = setTimeout(callback, 0);
+  const timeoutId = setTimeout(() => {
+    callback();
+  }, 0);
   return { cancel: () => clearTimeout(timeoutId) };
 }

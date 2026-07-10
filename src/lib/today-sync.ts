@@ -24,6 +24,7 @@ import {
 } from '@/lib/trip-detection';
 import { TODAY_LIVE_BUFFER_MAX_SEGMENTS } from '@/lib/app-constants';
 import type { TripDetectionConfig } from '@/lib/trip-settings';
+import { resetTodayPreloadMountSkip } from '@/lib/today-preload-coordination';
 
 /** Withholds last 2 live segments — need ≥3 tail segments before seal can persist anything. */
 export const TODAY_OPEN_SILENT_SEAL_MIN_TAIL_SEGMENTS =
@@ -165,6 +166,7 @@ async function mergeTodayDisplayFromDbAndTail(
       tailStart,
       detectionConfig,
       referenceNow,
+      tripRows,
     ),
   ]);
 
@@ -243,9 +245,16 @@ export async function silentTripSealToday(
     return 0;
   }
 
-  return persistClosedTripsIncremental(dateKey, detectionConfig, sealable, {
-    pointCount: dayPointCount,
-  });
+  const tripsSaved = await persistClosedTripsIncremental(
+    dateKey,
+    detectionConfig,
+    sealable,
+    {
+      pointCount: dayPointCount,
+    },
+  );
+  // Yesterday's excludedCrossMidnightFromMs stays set — lookback is gated on empty today trips.
+  return tripsSaved;
 }
 
 let sealPromise: Promise<void> | null = null;
@@ -253,6 +262,7 @@ let openCycleSilentSealDone = false;
 
 export function beginTodayOpenCycle(): void {
   openCycleSilentSealDone = false;
+  resetTodayPreloadMountSkip();
 }
 
 /** One silent seal per app open — after display sync, not on GPS refresh. */

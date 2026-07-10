@@ -1,10 +1,12 @@
 import type { LocationPointRow } from '@/db/repositories/location-days';
+import { getLocationPointsForDay } from '@/db/repositories/location-days';
+import type { TripRow } from '@/db/repositories/trips';
 import { listSavedPlaces } from '@/db/repositories/saved-places';
 import { getDayRange } from '@/lib/day-utils';
 import type { HistoryData } from '@/lib/history-data-types';
-import { loadExplorerGpsWindow } from '@/lib/explorer-day-trips';
 import { loadPlaceLookupContext } from '@/lib/place-lookup-context';
 import { prepareDayHistoryTimeline } from '@/lib/today-history';
+import { loadYesterdayLookbackPointsForToday } from '@/lib/today-lookback';
 import {
   isPlayableTimelineEntry,
   type DayTimelineEntry,
@@ -18,23 +20,20 @@ export async function buildTodayDisplayHistory(
   dateKey: string,
   detectionConfig: TripDetectionConfig,
   referenceNow: Date = new Date(),
+  todayTripRows: readonly TripRow[] = [],
 ): Promise<HistoryData & { dayPointCount: number }> {
   const { start: dayStart, end: dayEnd } = getDayRange(dateKey);
-  const [savedPlaces, { windowPoints, dayPointCount }, placeLookup] =
+  const [savedPlaces, lookbackPoints, dayPoints, placeLookup] =
     await Promise.all([
       listSavedPlaces(),
-      loadExplorerGpsWindow(dateKey),
+      loadYesterdayLookbackPointsForToday(dateKey, todayTripRows),
+      getLocationPointsForDay(dateKey),
       loadPlaceLookupContext(),
     ]);
 
-  const dayPoints = filterPointsInRange(windowPoints, dayStart, dayEnd);
-  const lookbackPoints = windowPoints.filter(
-    point => point.timestamp.getTime() < dayStart.getTime(),
-  );
-
   const entries = prepareDayHistoryTimeline(
     dateKey,
-    dayPoints,
+    filterPointsInRange(dayPoints, dayStart, dayEnd),
     lookbackPoints,
     detectionConfig,
     referenceNow,
@@ -52,7 +51,7 @@ export async function buildTodayDisplayHistory(
     dayStart,
     referenceNow,
     entries,
-    dayPointCount,
+    dayPoints.length,
   );
 }
 
@@ -62,26 +61,28 @@ export async function buildTodayTailDisplayHistory(
   tailStart: Date,
   detectionConfig: TripDetectionConfig,
   referenceNow: Date = new Date(),
+  todayTripRows: readonly TripRow[] = [],
 ): Promise<HistoryData & { dayPointCount: number }> {
   const { start: dayStart, end: dayEnd } = getDayRange(dateKey);
-  const [savedPlaces, { windowPoints, dayPointCount }, placeLookup] =
+  const tailStartMs = tailStart.getTime();
+
+  const [savedPlaces, lookbackPoints, dayPoints, placeLookup] =
     await Promise.all([
       listSavedPlaces(),
-      loadExplorerGpsWindow(dateKey),
+      loadYesterdayLookbackPointsForToday(dateKey, todayTripRows),
+      getLocationPointsForDay(dateKey),
       loadPlaceLookupContext(),
     ]);
 
-  const tailStartMs = tailStart.getTime();
-  const dayPoints = filterPointsInRange(windowPoints, dayStart, dayEnd).filter(
-    point => point.timestamp.getTime() >= tailStartMs,
-  );
-  const lookbackPoints = windowPoints.filter(
-    point => point.timestamp.getTime() < dayStart.getTime(),
-  );
+  const dayPointsInRange = filterPointsInRange(
+    dayPoints,
+    dayStart,
+    dayEnd,
+  ).filter(point => point.timestamp.getTime() >= tailStartMs);
 
   const entries = prepareDayHistoryTimeline(
     dateKey,
-    dayPoints,
+    dayPointsInRange,
     lookbackPoints,
     detectionConfig,
     referenceNow,
@@ -99,7 +100,7 @@ export async function buildTodayTailDisplayHistory(
     dayStart,
     referenceNow,
     entries,
-    dayPointCount,
+    dayPoints.length,
   );
 }
 

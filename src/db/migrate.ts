@@ -150,6 +150,12 @@ export async function migrationAlreadyApplied(
         (await columnExists(sqlite, 'trips', 'poi_id')) &&
         (await columnExists(sqlite, 'trips', 'poi_label'))
       );
+    case '0026_materialized_day_excluded_drive':
+      return columnExists(
+        sqlite,
+        'materialized_days',
+        'excluded_cross_midnight_from_ms',
+      );
     default:
       return false;
   }
@@ -240,6 +246,27 @@ export async function ensureTripPointMetadataColumns(
     await executeMigrationStatement(
       sqlite,
       `ALTER TABLE trip_points ADD COLUMN moment_id integer REFERENCES moments(id)`,
+    );
+  }
+}
+
+/** Repair materialized_days excluded-drive column when migration 0026 was skipped. */
+export async function ensureMaterializedDayExcludedDriveColumn(
+  sqlite: DB,
+): Promise<void> {
+  if (!(await tableExists(sqlite, 'materialized_days'))) {
+    return;
+  }
+  if (
+    !(await columnExists(
+      sqlite,
+      'materialized_days',
+      'excluded_cross_midnight_from_ms',
+    ))
+  ) {
+    await executeMigrationStatement(
+      sqlite,
+      `ALTER TABLE materialized_days ADD COLUMN excluded_cross_midnight_from_ms integer`,
     );
   }
 }

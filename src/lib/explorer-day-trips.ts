@@ -15,6 +15,28 @@ import {
 } from '@/lib/trip-detection';
 import type { TripDetectionConfig } from '@/lib/trip-settings';
 
+/** GPS rows for prev + today only — used by today's map preload and live tail. */
+export async function loadTodayGpsWindow(dateKey: string): Promise<{
+  windowPoints: LocationPointRow[];
+  prevPointCount: number;
+  dayPointCount: number;
+  prevPoints: LocationPointRow[];
+  dayPoints: LocationPointRow[];
+}> {
+  const prevKey = shiftDateKey(dateKey, -1);
+  const [prevPoints, dayPoints] = await Promise.all([
+    getLocationPointsForDay(prevKey),
+    getLocationPointsForDay(dateKey),
+  ]);
+  return {
+    windowPoints: dedupeLocationPoints([...prevPoints, ...dayPoints]),
+    prevPointCount: prevPoints.length,
+    dayPointCount: dayPoints.length,
+    prevPoints,
+    dayPoints,
+  };
+}
+
 /** GPS rows for prev + day + next — same window as point-explorer `detectTripsForDay`. */
 export async function loadExplorerGpsWindow(dateKey: string): Promise<{
   windowPoints: LocationPointRow[];

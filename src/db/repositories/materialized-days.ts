@@ -12,6 +12,7 @@ export type MaterializedDayRow = {
   tripCount: number;
   pointCount: number;
   geometryFingerprint: string | null;
+  excludedCrossMidnightFromMs: number | null;
   sealedAt: Date | null;
   updatedAt: Date;
 };
@@ -24,6 +25,7 @@ function mapRow(row: typeof materializedDays.$inferSelect): MaterializedDayRow {
     tripCount: row.tripCount,
     pointCount: row.pointCount,
     geometryFingerprint: row.geometryFingerprint ?? null,
+    excludedCrossMidnightFromMs: row.excludedCrossMidnightFromMs ?? null,
     sealedAt: row.sealedAt,
     updatedAt: row.updatedAt,
   };
@@ -49,6 +51,7 @@ export async function upsertMaterializedDay(
     tripCount: number;
     pointCount: number;
     geometryFingerprint?: string | null;
+    excludedCrossMidnightFromMs?: number | null;
     sealedAt?: Date | null;
   },
 ): Promise<void> {
@@ -63,6 +66,7 @@ export async function upsertMaterializedDay(
       tripCount: patch.tripCount,
       pointCount: patch.pointCount,
       geometryFingerprint: patch.geometryFingerprint ?? null,
+      excludedCrossMidnightFromMs: patch.excludedCrossMidnightFromMs ?? null,
       sealedAt: patch.sealedAt ?? null,
       updatedAt: now,
     })
@@ -74,10 +78,29 @@ export async function upsertMaterializedDay(
         tripCount: patch.tripCount,
         pointCount: patch.pointCount,
         geometryFingerprint: patch.geometryFingerprint ?? null,
+        excludedCrossMidnightFromMs: patch.excludedCrossMidnightFromMs ?? null,
         sealedAt: patch.sealedAt ?? null,
         updatedAt: now,
       },
     });
+}
+
+export async function clearExcludedCrossMidnightDrive(
+  dateKey: string,
+): Promise<void> {
+  const existing = await getMaterializedDay(dateKey);
+  if (existing == null || existing.excludedCrossMidnightFromMs == null) {
+    return;
+  }
+  await upsertMaterializedDay(dateKey, {
+    status: existing.status,
+    detectionVersion: existing.detectionVersion,
+    tripCount: existing.tripCount,
+    pointCount: existing.pointCount,
+    geometryFingerprint: existing.geometryFingerprint,
+    excludedCrossMidnightFromMs: null,
+    sealedAt: existing.sealedAt,
+  });
 }
 
 export async function countMaterializedDays(): Promise<number> {
@@ -107,6 +130,7 @@ export async function markMaterializedDayFailed(
     tripCount: existing?.tripCount ?? 0,
     pointCount: existing?.pointCount ?? 0,
     geometryFingerprint: existing?.geometryFingerprint ?? null,
+    excludedCrossMidnightFromMs: existing?.excludedCrossMidnightFromMs ?? null,
     sealedAt: existing?.sealedAt ?? null,
   });
 }

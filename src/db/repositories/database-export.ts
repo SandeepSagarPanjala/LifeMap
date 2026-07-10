@@ -277,6 +277,7 @@ export async function fetchDatabaseExportTables(
       tripCount: row.tripCount,
       pointCount: row.pointCount,
       geometryFingerprint: row.geometryFingerprint,
+      excludedCrossMidnightFromMs: row.excludedCrossMidnightFromMs,
       sealedAt: iso(row.sealedAt),
       updatedAt: iso(row.updatedAt),
     })),

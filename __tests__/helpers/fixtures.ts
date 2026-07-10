@@ -70,6 +70,7 @@ export function makeMaterializedDay(
     tripCount: 0,
     pointCount: 0,
     geometryFingerprint: null,
+    excludedCrossMidnightFromMs: null,
     sealedAt: null,
     updatedAt: new Date(),
     ...partial,

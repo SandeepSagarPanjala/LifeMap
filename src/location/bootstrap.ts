@@ -13,14 +13,16 @@ let locationBootstrap: Promise<LocationAuthorizationStatus | null> | null =
   null;
 
 export function ensureDatabaseReady(): Promise<void> {
-  if (!databaseReady) {
-    databaseReady = getDatabase()
-      .then(() => undefined)
-      .catch(error => {
-        databaseReady = null;
-        throw error;
-      });
+  if (databaseReady) {
+    return databaseReady;
   }
+
+  databaseReady = getDatabase()
+    .then(() => undefined)
+    .catch(error => {
+      databaseReady = null;
+      throw error;
+    });
   return databaseReady;
 }
 
@@ -40,12 +42,14 @@ async function runLocationBootstrap(): Promise<LocationAuthorizationStatus | nul
  * Retries after failure — the cached promise is cleared on reject.
  */
 export function bootstrapLocationTracking(): Promise<LocationAuthorizationStatus | null> {
-  if (!locationBootstrap) {
-    locationBootstrap = runLocationBootstrap().catch(error => {
-      locationBootstrap = null;
-      throw error;
-    });
+  if (locationBootstrap) {
+    return locationBootstrap;
   }
+
+  locationBootstrap = runLocationBootstrap().catch(error => {
+    locationBootstrap = null;
+    throw error;
+  });
   return locationBootstrap;
 }
 

@@ -14,16 +14,19 @@ import {
   beginHistoryDayLoad,
   type CoalescedLoadOptions,
   isCurrentHistoryDayLoad,
+  loadHistoryForDayCoalesced,
 } from '@/lib/history-day-load';
 import { useTripDetectionConfig } from '@/hooks/use-trip-detection-config';
 import type { TripDetectionConfig } from '@/lib/trip-settings';
 import { getDayRange, getTodayDateKey } from '@/lib/day-utils';
+import { historyDataDisplayEqual } from '@/lib/history-display-equality';
 import { subscribeSavedPlaces } from '@/lib/saved-places-events';
 import { getCurrentOpenActivity } from '@/lib/today-history';
 import {
   subscribeTodayHistoryRefresh,
   updateTodayRefreshAfterSync,
 } from '@/lib/today-refresh-scheduler';
+import { shouldSkipTodayPreloadMountSync } from '@/lib/today-preload-coordination';
 
 export type { HistoryData } from '@/lib/history-data-types';
 
@@ -72,6 +75,9 @@ function commitHistoryData(
   if (shouldRejectEmptyTodayWipe(dateKey, next, previous)) {
     return previous;
   }
+  if (historyDataDisplayEqual(previous, next)) {
+    return previous;
+  }
   setData(next);
   return next;
 }
@@ -95,7 +101,6 @@ async function loadHistoryForDay(
   detectionConfig: TripDetectionConfig,
   options?: CoalescedLoadOptions,
 ): Promise<HistoryData> {
-  const { loadHistoryForDayCoalesced } = await import('@/lib/history-day-load');
   return loadHistoryForDayCoalesced(dateKey, detectionConfig, options);
 }
 
@@ -106,31 +111,6 @@ async function syncHistoryForDay(
 ): Promise<HistoryData> {
   const cacheKey = historyCacheKey(dateKey, detectionConfig);
   const isToday = dateKey === getTodayDateKey();
-
-  if (isToday && !options?.force) {
-    const cachedToday = historyDataCache.peek(cacheKey);
-    if (
-      cachedToday != null &&
-      cachedToday.dateKey === dateKey &&
-      cachedToday.entries.length > 0
-    ) {
-      void loadHistoryForDay(dateKey, detectionConfig, options).then(result => {
-        if (
-          options?.loadGeneration != null &&
-          !isCurrentHistoryDayLoad(options.loadGeneration)
-        ) {
-          return;
-        }
-        if (shouldRejectEmptyTodayWipe(dateKey, result, cachedToday)) {
-          return;
-        }
-        historyDataCache.write(cacheKey, result, TODAY_LIVE_FINGERPRINT);
-        syncTodayRefreshMode(dateKey, result.entries, detectionConfig);
-      });
-      syncTodayRefreshMode(dateKey, cachedToday.entries, detectionConfig);
-      return cachedToday;
-    }
-  }
 
   let writeFingerprint = TODAY_LIVE_FINGERPRINT;
   if (!isToday) {
@@ -221,27 +201,32 @@ export function useHistoryForDay(
       }
       setError(null);
 
+      const skipPartialWhileCached =
+        hasTodaySnapshot && targetDateKey === getTodayDateKey();
+
       return syncHistoryForDay(targetDateKey, detectionConfig, {
         force: syncOptions?.force,
         preferStored: syncOptions?.preferStored,
         loadGeneration: generation,
-        onPartial: partial => {
-          if (generation !== loadGenerationRef.current) {
-            return;
-          }
-          const committed = commitHistoryData(
-            targetDateKey,
-            partial,
-            dataRef.current,
-            setData,
-          );
-          syncTodayRefreshMode(
-            targetDateKey,
-            committed.entries,
-            detectionConfig,
-          );
-          setLoading(false);
-        },
+        onPartial: skipPartialWhileCached
+          ? undefined
+          : partial => {
+              if (generation !== loadGenerationRef.current) {
+                return;
+              }
+              const committed = commitHistoryData(
+                targetDateKey,
+                partial,
+                dataRef.current,
+                setData,
+              );
+              syncTodayRefreshMode(
+                targetDateKey,
+                committed.entries,
+                detectionConfig,
+              );
+              setLoading(false);
+            },
       })
         .then(result => {
           if (generation !== loadGenerationRef.current) {
@@ -292,13 +277,13 @@ export function useHistoryForDay(
     if (!viewingToday) {
       return;
     }
-    return subscribeTodayHistoryRefresh(() => {
-      void runSync(dateKey, {
+    return subscribeTodayHistoryRefresh(() =>
+      runSync(dateKey, {
         force: false,
         preferStored: true,
         showLoading: false,
-      }).catch(() => undefined);
-    });
+      }).catch(() => undefined),
+    );
   }, [dateKey, runSync, viewingToday]);
 
   useEffect(() => {
@@ -329,6 +314,14 @@ export function useHistoryForDay(
       }
     } else {
       setLoading(viewingToday ? false : true);
+    }
+
+    if (viewingToday && shouldSkipTodayPreloadMountSync(cacheKey)) {
+      const snapshot = historyDataCache.peek(cacheKey) ?? cached;
+      if (snapshot != null && snapshot.dateKey === dateKey) {
+        syncTodayRefreshMode(dateKey, snapshot.entries, detectionConfig);
+      }
+      return;
     }
 
     const debounceMs =

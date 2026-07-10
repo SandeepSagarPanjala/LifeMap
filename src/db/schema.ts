@@ -225,6 +225,8 @@ export const materializedDays = sqliteTable('materialized_days', {
   tripCount: integer('trip_count').notNull().default(0),
   pointCount: integer('point_count').notNull().default(0),
   geometryFingerprint: text('geometry_fingerprint'),
+  /** Drive start ms withheld from past-day seal — used for today's GPS lookback. */
+  excludedCrossMidnightFromMs: integer('excluded_cross_midnight_from_ms'),
   sealedAt: integer('sealed_at', { mode: 'timestamp' }),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 });

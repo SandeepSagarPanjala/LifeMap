@@ -1,5 +1,9 @@
 import { listSavedPlaces } from '@/db/repositories/saved-places';
 import { toDateKey } from '@/lib/day-utils';
+import {
+  historyCacheKey,
+  historyDataCache,
+} from '@/lib/history-data-cache';
 import { formatMapDateLabel } from '@/lib/history-timeline';
 import { loadHistoryForDayCoalesced } from '@/lib/history-day-load';
 import { getCurrentOpenActivity } from '@/lib/today-history';
@@ -47,8 +51,12 @@ export async function buildWidgetSnapshot(
 ): Promise<WidgetSnapshot> {
   const todayKey = toDateKey(now);
   const detectionConfig = getCurrentTripDetectionConfig();
+  const cacheKey = historyCacheKey(todayKey, detectionConfig);
+  const cachedToday = historyDataCache.peek(cacheKey);
   const [history, savedPlaces] = await Promise.all([
-    loadHistoryForDayCoalesced(todayKey, detectionConfig),
+    cachedToday != null && cachedToday.dateKey === todayKey
+      ? Promise.resolve(cachedToday)
+      : loadHistoryForDayCoalesced(todayKey, detectionConfig),
     listSavedPlaces(),
   ]);
 
