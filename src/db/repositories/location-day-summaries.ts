@@ -9,7 +9,7 @@ import {
 import { TRIP_DETECTION_VERSION } from '@/lib/app-constants';
 import { getGeometryPersistFingerprint } from '@/lib/trip-geometry-settings';
 
-import { getDatabase, getSqlite } from '../client';
+import { getDatabase } from '../client';
 import { locationDaySummaries, locationPoints, materializedDays } from '../schema';
 
 export type LocationDaySummaryRow = {
@@ -56,58 +56,6 @@ export async function countLocationDaySummaries(): Promise<number> {
     .select({ count: sql<number>`cast(count(*) as integer)` })
     .from(locationDaySummaries);
   return row?.count ?? 0;
-}
-
-/**
- * One-time / upgrade path: build existence rows for every calendar day that
- * already has GPS. Safe to re-run (clears then rebuilds).
- */
-export async function backfillLocationDaySummaries(): Promise<number> {
-  const sqlite = await getSqlite();
-  await sqlite.execute('DELETE FROM location_day_summaries');
-  ensuredDateKeys.clear();
-
-  const result = await sqlite.execute(
-    `SELECT timestamp FROM location_points ORDER BY timestamp ASC`,
-  );
-  const rows = (result.rows ?? []) as Array<{ timestamp: number | string }>;
-  const days = new Map<string, { min: Date; max: Date }>();
-
-  for (const row of rows) {
-    const raw = row.timestamp;
-    const timestamp = new Date(typeof raw === 'number' ? raw : Number(raw));
-    if (Number.isNaN(timestamp.getTime())) {
-      continue;
-    }
-    const dateKey = toDateKey(timestamp);
-    const existing = days.get(dateKey);
-    if (existing == null) {
-      days.set(dateKey, { min: timestamp, max: timestamp });
-      continue;
-    }
-    if (timestamp < existing.min) {
-      existing.min = timestamp;
-    }
-    if (timestamp > existing.max) {
-      existing.max = timestamp;
-    }
-  }
-
-  const db = await getDatabase();
-  const now = new Date();
-  let upserted = 0;
-  for (const [dateKey, range] of days) {
-    await db.insert(locationDaySummaries).values({
-      dateKey,
-      pointCount: 1,
-      minTimestamp: range.min,
-      maxTimestamp: range.max,
-      updatedAt: now,
-    });
-    ensuredDateKeys.add(dateKey);
-    upserted += 1;
-  }
-  return upserted;
 }
 
 export type PastDaySealBacklog = {

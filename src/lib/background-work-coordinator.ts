@@ -1,11 +1,6 @@
 import { format, parseISO } from 'date-fns';
 
-import {
-  backfillLocationDaySummaries,
-  countLocationDaySummaries,
-  listPastDaysNeedingSeal,
-} from '@/db/repositories/location-day-summaries';
-import { countLocationPoints } from '@/db/repositories/location-points';
+import { listPastDaysNeedingSeal } from '@/db/repositories/location-day-summaries';
 import { getCurrentTripDetectionConfig } from '@/lib/trip-detection-config';
 import {
   clearBackgroundWorkProgress,
@@ -167,18 +162,8 @@ async function runBackgroundWorkCycleImpl(): Promise<void> {
   await sealYesterdayIfNeeded();
   await yieldToEventLoop();
 
-  const [summaryCount, pointCount] = await Promise.all([
-    countLocationDaySummaries(),
-    countLocationPoints(),
-  ]);
-
-  // Upgrade path: summaries table is new — index existing GPS days once, then
-  // continue into past-day seal + place cache (do not abort the cycle).
-  if (summaryCount === 0 && pointCount > 0) {
-    await backfillLocationDaySummaries();
-    await yieldToEventLoop();
-  }
-
+  // Past-day backlog comes from location_day_summaries (filled insert-once on
+  // new GPS). No upgrade backfill — new installs grow the index naturally.
   const pastDays = await listPastDaysNeedingSeal();
   if (pastDays.length > 0) {
     await runPastDaySealPhase(pastDays);
