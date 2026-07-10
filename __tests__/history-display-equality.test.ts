@@ -1,5 +1,6 @@
 import type { HistoryData } from '@/lib/history-data-types';
 import { historyDataDisplayEqual } from '@/lib/history-display-equality';
+import { makeLocationPoint } from './helpers/fixtures';
 
 function historyData(
   overrides: Partial<HistoryData> = {},
@@ -34,14 +35,14 @@ describe('historyDataDisplayEqual', () => {
           openThroughNow: true,
         },
       ],
-      points: [{ recordedAtMs: 1, latitude: 1, longitude: 1 }],
+      points: [makeLocationPoint({ id: 1, lat: 1, lng: 1, timestamp: new Date(1) })],
     });
     const right = historyData({
       entries: [
         {
           id: 'stay-1',
           kind: 'stay',
-          points: [{ recordedAtMs: 99, latitude: 2, longitude: 2 }],
+          points: [makeLocationPoint({ id: 2, lat: 2, lng: 2, timestamp: new Date(99) })],
           startAt: new Date('2026-07-09T08:00:00'),
           endAt: new Date('2026-07-09T09:00:00'),
           durationMs: 3_600_000,
@@ -49,7 +50,7 @@ describe('historyDataDisplayEqual', () => {
           openThroughNow: true,
         },
       ],
-      points: [{ recordedAtMs: 1, latitude: 9, longitude: 9 }],
+      points: [makeLocationPoint({ id: 3, lat: 9, lng: 9, timestamp: new Date(1) })],
     });
 
     expect(historyDataDisplayEqual(left, right)).toBe(true);
@@ -77,10 +78,10 @@ describe('historyDataDisplayEqual', () => {
 
   it('returns false when the latest GPS point timestamp changes', () => {
     const left = historyData({
-      points: [{ recordedAtMs: 1, latitude: 1, longitude: 1 }],
+      points: [makeLocationPoint({ id: 1, lat: 1, lng: 1, timestamp: new Date(1) })],
     });
     const right = historyData({
-      points: [{ recordedAtMs: 2, latitude: 1, longitude: 1 }],
+      points: [makeLocationPoint({ id: 2, lat: 1, lng: 1, timestamp: new Date(2) })],
     });
 
     expect(historyDataDisplayEqual(left, right)).toBe(false);

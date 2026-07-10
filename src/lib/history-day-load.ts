@@ -1,7 +1,6 @@
 import type { HistoryData } from '@/lib/history-data-types';
 import {
   bumpHistoryDayLoadGeneration,
-  isCurrentHistoryDayLoad,
   resetHistoryLoadGenerationForTests,
 } from '@/lib/history-load-generation';
 import { loadHistoryForSelectedDay } from '@/lib/trip-materialization';

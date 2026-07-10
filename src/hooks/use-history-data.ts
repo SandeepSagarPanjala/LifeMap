@@ -277,13 +277,13 @@ export function useHistoryForDay(
     if (!viewingToday) {
       return;
     }
-    return subscribeTodayHistoryRefresh(() =>
-      runSync(dateKey, {
+    return subscribeTodayHistoryRefresh(() => {
+      void runSync(dateKey, {
         force: false,
         preferStored: true,
         showLoading: false,
-      }).catch(() => undefined),
-    );
+      }).catch(() => undefined);
+    });
   }, [dateKey, runSync, viewingToday]);
 
   useEffect(() => {

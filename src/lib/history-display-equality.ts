@@ -1,4 +1,5 @@
 import type { HistoryData } from '@/lib/history-data-types';
+import { isPlayableTimelineEntry } from '@/lib/trip-detection';
 
 /** Whether two history snapshots would paint the same map / timeline. */
 export function historyDataDisplayEqual(
@@ -32,14 +33,18 @@ export function historyDataDisplayEqual(
     if (left.endAt.getTime() !== right.endAt.getTime()) {
       return false;
     }
-    if (left.openThroughNow !== right.openThroughNow) {
+    const leftOpen =
+      isPlayableTimelineEntry(left) && left.openThroughNow === true;
+    const rightOpen =
+      isPlayableTimelineEntry(right) && right.openThroughNow === true;
+    if (leftOpen !== rightOpen) {
       return false;
     }
   }
   if (previous.points.length > 0) {
     const leftLast = previous.points[previous.points.length - 1];
     const rightLast = next.points[next.points.length - 1];
-    if (leftLast.recordedAtMs !== rightLast.recordedAtMs) {
+    if (leftLast.timestamp.getTime() !== rightLast.timestamp.getTime()) {
       return false;
     }
   }
