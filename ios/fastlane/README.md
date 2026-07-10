@@ -1,4 +1,5 @@
-## fastlane documentation
+fastlane documentation
+----
 
 # Installation
 
@@ -46,7 +47,7 @@ Build Release .ipa for App Store / TestFlight
 
 Build and upload to TestFlight (Internal Testing)
 
----
+----
 
 This README.md is auto-generated and will be re-generated every time [_fastlane_](https://fastlane.tools) is run.
 
