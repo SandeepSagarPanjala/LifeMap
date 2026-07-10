@@ -46,7 +46,6 @@ export function AppBootstrap({ children }: AppBootstrapProps) {
   const trackingBootstrapPromiseRef = useRef<Promise<void> | null>(null);
   const cancelForegroundResumeRef = useRef<(() => void) | null>(null);
   const coldStartPipelineStartedRef = useRef(false);
-  const hasBackgroundedRef = useRef(false);
 
   const runTrackingBootstrap = useCallback((): Promise<void> => {
     if (trackingBootstrapSucceededRef.current) {
@@ -121,10 +120,6 @@ export function AppBootstrap({ children }: AppBootstrapProps) {
         return;
       }
       currentState = nextState;
-
-      if (nextState === 'background' || nextState === 'inactive') {
-        hasBackgroundedRef.current = true;
-      }
 
       setTodayRefreshAppForeground(nextState === 'active');
 

@@ -31,7 +31,9 @@ export async function refreshTodayOnForeground(): Promise<void> {
   const listenerResults = [...todayHistoryRefreshListeners].map(listener =>
     listener(),
   );
-  await Promise.all(listenerResults.map(result => Promise.resolve(result)));
+  await Promise.allSettled(
+    listenerResults.map(result => Promise.resolve(result)),
+  );
 }
 
 let gpsRefreshTimer: ReturnType<typeof setTimeout> | null = null;

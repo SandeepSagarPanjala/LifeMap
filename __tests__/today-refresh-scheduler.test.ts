@@ -212,12 +212,12 @@ describe('today refresh scheduler', () => {
     expect(listener).not.toHaveBeenCalled();
   });
 
-  it('does not refresh when the app is backgrounded', () => {
+  it('does not refresh when the app is backgrounded', async () => {
     const listener = jest.fn();
     subscribeTodayHistoryRefresh(listener);
 
     setTodayRefreshAppForeground(false);
-    refreshTodayOnForeground();
+    await refreshTodayOnForeground();
 
     expect(listener).not.toHaveBeenCalled();
     expect(getTodayHistoryRefreshRevision()).toBe(0);
