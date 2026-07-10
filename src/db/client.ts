@@ -4,6 +4,7 @@ import { drizzle } from 'drizzle-orm/op-sqlite';
 import {
   runMigrations,
   ensureMaterializedDayGeometryColumn,
+  ensureMaterializedDayExcludedDriveColumn,
   ensureMomentsMoodColumns,
   ensureMomentsWithoutLocationColumns,
   repairLocationPointsDedupeUniqueIndex,
@@ -57,6 +58,7 @@ async function initDatabase(): Promise<{ db: Database; sqlite: DB }> {
   await ensureMomentsMoodColumns(sqlite);
   await ensureMomentsWithoutLocationColumns(sqlite);
   await ensureMaterializedDayGeometryColumn(sqlite);
+  await ensureMaterializedDayExcludedDriveColumn(sqlite);
   await repairLocationPointsDedupeUniqueIndex(sqlite);
 
   return { db, sqlite };

@@ -1,5 +1,12 @@
 import type { HistoryData } from '@/lib/history-data-types';
+import {
+  bumpHistoryDayLoadGeneration,
+  resetHistoryLoadGenerationForTests,
+} from '@/lib/history-load-generation';
+import { loadHistoryForSelectedDay } from '@/lib/trip-materialization';
 import type { TripDetectionConfig } from '@/lib/trip-settings';
+
+export { isCurrentHistoryDayLoad } from '@/lib/history-load-generation';
 
 export type LoadHistoryCallbacks = {
   onPartial?: (data: HistoryData) => void;
@@ -20,26 +27,19 @@ type InflightEntry = {
 
 const inflightByDateKey = new Map<string, InflightEntry>();
 
-let globalLoadGeneration = 0;
-
 /** Invalidate in-flight loads — only the latest generation may cache results. */
 export function beginHistoryDayLoad(): number {
-  globalLoadGeneration += 1;
   // Drop stale partial listeners so closures do not retain HistoryData.
   for (const entry of inflightByDateKey.values()) {
     entry.onPartials.length = 0;
     entry.lastPartial = undefined;
   }
-  return globalLoadGeneration;
-}
-
-export function isCurrentHistoryDayLoad(generation: number): boolean {
-  return generation === globalLoadGeneration;
+  return bumpHistoryDayLoadGeneration();
 }
 
 /** @internal — reset between tests. */
 export function resetHistoryDayLoadStateForTests(): void {
-  globalLoadGeneration = 0;
+  resetHistoryLoadGenerationForTests();
   inflightByDateKey.clear();
 }
 
@@ -49,15 +49,10 @@ export async function loadHistoryForDayCoalesced(
   detectionConfig: TripDetectionConfig,
   options?: CoalescedLoadOptions,
 ): Promise<HistoryData> {
-  const { loadHistoryForSelectedDay } = await import(
-    '@/lib/trip-materialization'
-  );
-
   if (!options?.force) {
     const existing = inflightByDateKey.get(dateKey);
     if (existing != null) {
       if (options?.onPartial != null) {
-        // Only the latest subscriber should receive partials for this date key.
         existing.onPartials.length = 0;
         existing.onPartials.push(options.onPartial);
         if (existing.lastPartial != null) {

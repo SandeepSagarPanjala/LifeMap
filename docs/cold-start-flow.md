@@ -100,7 +100,7 @@ Wrapped in `AppScreenTransition` (`src/components/navigation/AppScreenTransition
 | -------------------------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `startWidgetDeepLinkListening()` | `src/lib/widget/widget-deep-link.ts` | Android: reads `Linking.getInitialURL()` and subscribes to URL events. iOS: relies on native pending action + `AppState` listener. Queues widget deep links until navigation is ready. |
 
-**Props into `AppBootstrap`:** `enableHistoryPreload={activeScreen === 'main'}` — history preload only starts after splash (and onboarding) are done.
+**`AppBootstrap`** runs the cold-start pipeline during splash (no `enableHistoryPreload` gate).
 
 ---
 
@@ -114,53 +114,27 @@ Runs **in parallel with the splash screen** for returning users.
 
 | Call                                                               | File                                 | Purpose                                                                              |
 | ------------------------------------------------------------------ | ------------------------------------ | ------------------------------------------------------------------------------------ |
-| `initializeTrackingDiagnosticsEnabled()`                           | `src/lib/tracking-diagnostics.ts`    | Ensures tracking diagnostics default is off (reads SQLite settings when DB is ready) |
 | `setTodayRefreshAppForeground(AppState.currentState === 'active')` | `src/lib/today-refresh-scheduler.ts` | Marks app as foreground for today-refresh timers                                     |
 
-### Effect B — tracking bootstrap (only if `hasCompletedPrivacyOnboarding`)
+### Effect B — cold-start pipeline (only if `hasCompletedPrivacyOnboarding`)
 
-**Entry:** `runTrackingBootstrap()` (internal `useCallback`)
+**Entry:** `runTrackingBootstrap()` then `coldStart.pipeline`
 
-| Order | Function                               | File                                | What it does                                       |
-| ----- | -------------------------------------- | ----------------------------------- | -------------------------------------------------- |
-| 1     | `ensureDatabaseReady()`                | `src/location/bootstrap.ts`         | Singleton promise → `getDatabase()`                |
-| 2     | `warmCanonicalTravelGeometrySetting()` | `src/lib/trip-geometry-settings.ts` | No-op warm-up (geometry always on); returns `true` |
-| 3     | `bootstrapLocationTracking()`          | `src/location/bootstrap.ts`         | Singleton → `runLocationBootstrap()`               |
-
-**`runLocationBootstrap()` chain** (`src/location/bootstrap.ts`):
-
-| Order | Function                            | File                                              | What it does                                                                                                                           |
-| ----- | ----------------------------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| 1     | `ensureDatabaseReady()`             | `src/location/bootstrap.ts`                       | Waits for DB (no-op if already open)                                                                                                   |
-| 2     | `getLocationService().configure()`  | `src/location/transistorsoft-location-service.ts` | `BackgroundGeolocation.ready(config)` + registers `onLocation`, `onMotionChange`, `onHeartbeat`, `onProviderChange`, `onAuthorization` |
-| 3     | `service.requestPermission()`       | same                                              | `BackgroundGeolocation.requestPermission()`                                                                                            |
-| 4     | `service.syncEnabledFromSettings()` | same                                              | Reads `tracking_enabled` from SQLite; `BackgroundGeolocation.start()` or `.stop()`; `applyTrackingProfile()`                           |
-| 5     | `startNativeLocationTracking()`     | `src/location/native-location-persist.ts`         | iOS only: `LocationPersistModule.startNativeTracking()`                                                                                |
-| 6     | `syncSavedPlaceGeofences()`         | `src/location/geofence-registry.ts`               | Loads saved places → `nativeSyncGeofences()`                                                                                           |
-
-**After tracking bootstrap succeeds** — deferred **2 seconds** via `runWhenIdle(..., 2000)` (`src/lib/run-when-idle.ts`):
-
-| Function                    | File                               | Purpose                                                  |
-| --------------------------- | ---------------------------------- | -------------------------------------------------------- |
-| `sealYesterdayIfNeeded()`   | `src/lib/trip-materialization.ts`  | Materializes yesterday’s trips if not already `complete` |
-| `startPlaceLookupCatchUp()` | `src/lib/place-lookup-catch-up.ts` | Labels unlabeled stay trips in the background            |
+| Order | Function                               | Priority | Purpose |
+| ----- | -------------------------------------- | -------- | ------- |
+| 1     | `ensureDatabaseReady()` + `bootstrapLocationTracking()` | critical | DB + GPS |
+| 2     | `sealYesterdayIfNeeded()`              | high     | Seal yesterday; **exclude last cross-midnight drive** |
+| 3     | `beginTodayOpenCycle()`                | high     | Reset silent-seal-once flag |
+| 4     | `ensureHistoryCalendarBounds()`        | high     | Calendar bounds |
+| 5     | `preloadTodayHistory()`                | high     | Warm today cache **during splash** |
+| 6     | `scheduleTodayOpenSilentSeal()`        | low      | Background seal for today |
+| 7     | `startPlaceLookupCatchUp()` (deferred) | low      | Label stays in background |
 
 Skipped entirely until the user completes onboarding (`hasCompletedPrivacyOnboarding`).
 
-### Effect C — history preload (only when `enableHistoryPreload && hasCompletedPrivacyOnboarding`)
+**Milestones:** `tracking_ready` → `seal_yesterday_done` → `app_usable` → `silent_seal_scheduled`
 
-Runs when `activeScreen === 'main'` (after splash/onboarding).
-
-| Call                                                           | File                                 | Purpose                                                                |
-| -------------------------------------------------------------- | ------------------------------------ | ---------------------------------------------------------------------- |
-| `beginTodayOpenCycle()`                                        | `src/lib/today-sync.ts`              | Resets “one silent seal per app open” flag                             |
-| `ensureHistoryCalendarBounds()`                                | `src/lib/history-calendar-bounds.ts` | Computes earliest history date for calendar navigation                 |
-| `preloadTodayHistory()`                                        | `src/lib/history-preload.ts`         | Loads today into `historyDataCache` via `loadHistoryForDayCoalesced()` |
-| `scheduleTodayOpenSilentSeal(getCurrentTripDetectionConfig())` | `src/lib/today-sync.ts`              | Best-effort silent trip seal for today after display sync              |
-
-All deferred **2 seconds** via `runWhenIdle`.
-
-### Effect D — `AppState` listener (foreground / background)
+### Effect C — `AppState` listener (foreground / background)
 
 Registered on mount; on **foreground** (`active`) for onboarded users:
 

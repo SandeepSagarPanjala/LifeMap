@@ -246,6 +246,8 @@ ALTER TABLE \`trips\` ADD COLUMN \`poi_id\` integer;
 --> statement-breakpoint
 ALTER TABLE \`trips\` ADD COLUMN \`poi_label\` text;`;
 
+const m0026 = `ALTER TABLE \`materialized_days\` ADD COLUMN \`excluded_cross_midnight_from_ms\` integer;`;
+
 export default {
   journal,
   migrations: {
@@ -275,5 +277,6 @@ export default {
     m0023,
     m0024,
     m0025,
+    m0026,
   },
 };

@@ -47,9 +47,10 @@ import {
 } from '@/lib/day-utils';
 import type { HistoryData } from '@/lib/history-data-types';
 import { clearHistoryDataCache } from '@/lib/history-data-cache';
-import { isCurrentHistoryDayLoad } from '@/lib/history-day-load';
+import { isCurrentHistoryDayLoad } from '@/lib/history-load-generation';
 import { yieldToEventLoop } from '@/lib/run-when-idle';
 import { buildExplorerDayTimelineFromGps } from '@/lib/explorer-day-trips';
+import { splitEntriesForPastDaySeal } from '@/lib/past-day-seal-policy';
 import { buildTimelineFromStoredTrips } from '@/lib/timeline-from-trips';
 import {
   flattenTimelinePoints,
@@ -109,6 +110,7 @@ async function purgeMaterializedDayCache(
     detectionVersion: TRIP_DETECTION_VERSION,
     tripCount: 0,
     pointCount,
+    excludedCrossMidnightFromMs: null,
     sealedAt: null,
   });
   clearHistoryDataCache();
@@ -334,16 +336,22 @@ async function materializePastDayFromGps(
     dateKey,
     detectionConfig,
   );
-  return persistClosedTripsIncremental(
+  const { sealable, excludedCrossMidnightFromMs } = splitEntriesForPastDaySeal(
+    entries,
+    dateKey,
+  );
+  const upserted = await persistClosedTripsIncremental(
     dateKey,
     detectionConfig,
-    entries.filter(isPersistableTimelineEntry),
+    sealable,
     {
       fullReplace: true,
       forceComplete: true,
       pointCount: dayPointCount,
+      excludedCrossMidnightFromMs,
     },
   );
+  return upserted;
 }
 
 export type LoadHistoryFromStoredTripsOptions = {
@@ -601,6 +609,7 @@ export type PersistClosedTripsOptions = {
   fullReplace?: boolean;
   forceComplete?: boolean;
   pointCount?: number;
+  excludedCrossMidnightFromMs?: number | null;
 };
 
 export async function persistClosedTripsIncremental(
@@ -732,6 +741,10 @@ export async function persistClosedTripsIncremental(
     tripCount,
     pointCount,
     geometryFingerprint,
+    excludedCrossMidnightFromMs:
+      options.forceComplete && !isToday
+        ? (options.excludedCrossMidnightFromMs ?? null)
+        : (materializedDay?.excludedCrossMidnightFromMs ?? null),
     sealedAt:
       status === 'complete'
         ? materializedDay?.sealedAt ?? closedAt

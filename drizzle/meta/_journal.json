@@ -183,6 +183,13 @@
       "when": 1788917000000,
       "tag": "0025_place_pois",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1788918000000,
+      "tag": "0026_materialized_day_excluded_drive",
+      "breakpoints": true
     }
   ]
 }

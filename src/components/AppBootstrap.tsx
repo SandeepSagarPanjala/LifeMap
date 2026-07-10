@@ -22,34 +22,30 @@ import {
 import { runWhenIdle, yieldToEventLoop } from '@/lib/run-when-idle';
 import { useAppStore } from '@/stores/app-store';
 
-/** Defer timeline preload and yesterday seal — not location tracking. */
-const DEFER_SECONDARY_LAUNCH_WORK_MS = 2_000;
+/** Defer place-lookup catch-up — not on the critical map path. */
+const DEFER_PLACE_LOOKUP_MS = 2_000;
 
 /** Let the map paint cached today before drain / tail merge on foreground resume. */
 const DEFER_FOREGROUND_RESUME_MS = 100;
 
 type AppBootstrapProps = {
   children: React.ReactNode;
-  /** When false, defer today's history preload until the main app is visible. */
-  enableHistoryPreload?: boolean;
 };
 
-function logBootstrapFailure(scope: string, error: unknown): void {
+function logPipelineFailure(scope: string, error: unknown): void {
   if (__DEV__) {
     console.error(`[LifeMap] ${scope} failed`, error);
   }
 }
 
-export function AppBootstrap({
-  children,
-  enableHistoryPreload = false,
-}: AppBootstrapProps) {
+export function AppBootstrap({ children }: AppBootstrapProps) {
   const hasCompletedPrivacyOnboarding = useAppStore(
     state => state.hasCompletedPrivacyOnboarding,
   );
   const trackingBootstrapSucceededRef = useRef(false);
   const trackingBootstrapPromiseRef = useRef<Promise<void> | null>(null);
   const cancelForegroundResumeRef = useRef<(() => void) | null>(null);
+  const coldStartPipelineStartedRef = useRef(false);
 
   const runTrackingBootstrap = useCallback((): Promise<void> => {
     if (trackingBootstrapSucceededRef.current) {
@@ -66,7 +62,7 @@ export function AppBootstrap({
       })
       .catch(error => {
         trackingBootstrapPromiseRef.current = null;
-        logBootstrapFailure('tracking_bootstrap', error);
+        logPipelineFailure('tracking_bootstrap', error);
         throw error;
       });
 
@@ -76,111 +72,42 @@ export function AppBootstrap({
 
   /**
    * COLD START:
-   * Start location as soon as the DB is open — overlaps splash for returning users.
-   * Retries on foreground only when a prior bootstrap attempt failed.
+   * DB + tracking → seal yesterday → preload today (during splash) → silent seal.
    */
   useEffect(() => {
-    console.log('AppBootstrap.tsx', 'useEffect', 'COLD START');
     if (!hasCompletedPrivacyOnboarding) {
       return;
     }
 
-    let cancelSeal: (() => void) | undefined;
-
-    void runTrackingBootstrap()
-      .then(() => {
-        console.log(
-          'AppBootstrap.tsx',
-          'useEffect',
-          'runTrackingBootstrap',
-          'success',
-        );
-        const sealWork = runWhenIdle(() => {
-          console.log(
-            'AppBootstrap.tsx',
-            'useEffect',
-            'runWhenIdle',
-            'success',
-          );
-          void (async () => {
-            console.log(
-              'AppBootstrap.tsx',
-              'useEffect',
-              'yieldToEventLoop',
-              'success',
-            );
-            await yieldToEventLoop();
-            console.log(
-              'AppBootstrap.tsx',
-              'useEffect',
-              'sealYesterdayIfNeeded',
-              'success',
-            );
-            await sealYesterdayIfNeeded();
-            console.log(
-              'AppBootstrap.tsx',
-              'useEffect',
-              'yieldToEventLoop',
-              'success',
-            );
-            await yieldToEventLoop();
-            console.log(
-              'AppBootstrap.tsx',
-              'useEffect',
-              'startPlaceLookupCatchUp',
-              'success',
-            );
-            startPlaceLookupCatchUp();
-            console.log('AppBootstrap.tsx', 'useEffect', 'success');
-          })();
-        }, DEFER_SECONDARY_LAUNCH_WORK_MS);
-        cancelSeal = sealWork.cancel;
-      })
-      .catch(() => undefined);
-
-    return () => cancelSeal?.();
-  }, [hasCompletedPrivacyOnboarding, runTrackingBootstrap]);
-
-  useEffect(() => {
-    if (!enableHistoryPreload || !hasCompletedPrivacyOnboarding) {
+    if (coldStartPipelineStartedRef.current) {
       return;
     }
-    console.log('AppBootstrap.tsx', 'useEffect', 'BEGIN TODAY OPEN CYCLE');
-    beginTodayOpenCycle();
+    coldStartPipelineStartedRef.current = true;
 
-    const preload = runWhenIdle(() => {
-      console.log(
-        'AppBootstrap.tsx',
-        'useEffect',
-        'ensureHistoryCalendarBounds',
-        'success',
-      );
-      void ensureHistoryCalendarBounds()
-        .then(() => {
-          console.log(
-            'AppBootstrap.tsx',
-            'useEffect',
-            'preloadTodayHistory',
-            'success',
-          );
-          preloadTodayHistory();
-        })
-        .then(() => {
-          console.log(
-            'AppBootstrap.tsx',
-            'useEffect',
-            'scheduleTodayOpenSilentSeal',
-            'success',
-          );
-          scheduleTodayOpenSilentSeal(getCurrentTripDetectionConfig());
-        })
-        .catch(error => {
-          logBootstrapFailure('history_preload', error);
-        });
-    }, DEFER_SECONDARY_LAUNCH_WORK_MS);
+    let cancelPlaceLookup: (() => void) | undefined;
 
-    return () => preload.cancel();
-  }, [enableHistoryPreload, hasCompletedPrivacyOnboarding]);
+    void runTrackingBootstrap()
+      .then(async () => {
+        await yieldToEventLoop();
+        await sealYesterdayIfNeeded();
+        beginTodayOpenCycle();
+        await yieldToEventLoop();
+        await ensureHistoryCalendarBounds();
+        await preloadTodayHistory();
+        scheduleTodayOpenSilentSeal(getCurrentTripDetectionConfig());
+      })
+      .then(() => {
+        const placeLookupWork = runWhenIdle(() => {
+          startPlaceLookupCatchUp();
+        }, DEFER_PLACE_LOOKUP_MS);
+        cancelPlaceLookup = placeLookupWork.cancel;
+      })
+      .catch(error => {
+        logPipelineFailure('cold_start_pipeline', error);
+      });
+
+    return () => cancelPlaceLookup?.();
+  }, [hasCompletedPrivacyOnboarding, runTrackingBootstrap]);
 
   useEffect(() => {
     setTodayRefreshAppForeground(AppState.currentState === 'active');
@@ -193,6 +120,7 @@ export function AppBootstrap({
         return;
       }
       currentState = nextState;
+
       setTodayRefreshAppForeground(nextState === 'active');
 
       if (hasCompletedPrivacyOnboarding) {
@@ -205,26 +133,30 @@ export function AppBootstrap({
           cancelForegroundResumeRef.current?.();
           const resumeWork = runWhenIdle(() => {
             void (async () => {
-              await yieldToEventLoop();
               try {
-                await sealYesterdayIfNeeded();
-              } catch {
-                // Best-effort — map still shows cached today until sync runs.
+                await yieldToEventLoop();
+                try {
+                  await sealYesterdayIfNeeded();
+                } catch {
+                  // Best-effort — map still shows cached today until sync runs.
+                }
+                await yieldToEventLoop();
+                startPlaceLookupCatchUp();
+                try {
+                  await service.drainNativeQueue();
+                } catch {
+                  // Best-effort — persist pipeline may still have rows in SQLite.
+                }
+                try {
+                  await service.refreshPersistPipeline();
+                } catch {
+                  // Best-effort — still refresh the map from whatever is in the DB.
+                }
+                await refreshTodayOnForeground();
+                scheduleTodayOpenSilentSeal(getCurrentTripDetectionConfig());
+              } catch (error) {
+                logPipelineFailure('foreground_resume_pipeline', error);
               }
-              await yieldToEventLoop();
-              startPlaceLookupCatchUp();
-              try {
-                await service.drainNativeQueue();
-              } catch {
-                // Best-effort — persist pipeline may still have rows in SQLite.
-              }
-              try {
-                await service.refreshPersistPipeline();
-              } catch {
-                // Best-effort — still refresh the map from whatever is in the DB.
-              }
-              refreshTodayOnForeground();
-              scheduleTodayOpenSilentSeal(getCurrentTripDetectionConfig());
             })();
           }, DEFER_FOREGROUND_RESUME_MS);
           cancelForegroundResumeRef.current = resumeWork.cancel;

@@ -7,6 +7,7 @@ import {
 import { loadHistoryForDayCoalesced } from '@/lib/history-day-load';
 import { ensureHistoryCalendarBounds } from '@/lib/history-calendar-bounds';
 import { getCurrentTripDetectionConfig } from '@/lib/trip-detection-config';
+import { markTodayPreloadedForMountSkip } from '@/lib/today-preload-coordination';
 
 import { ensureDatabaseReady } from '@/location/bootstrap';
 
@@ -19,9 +20,11 @@ export async function preloadTodayHistory(): Promise<void> {
   const detectionConfig = getCurrentTripDetectionConfig();
   const cacheKey = historyCacheKey(todayKey, detectionConfig);
   if (historyDataCache.has(cacheKey)) {
+    markTodayPreloadedForMountSkip(cacheKey);
     return;
   }
 
   const result = await loadHistoryForDayCoalesced(todayKey, detectionConfig);
   historyDataCache.write(cacheKey, result, TODAY_LIVE_FINGERPRINT);
+  markTodayPreloadedForMountSkip(cacheKey);
 }

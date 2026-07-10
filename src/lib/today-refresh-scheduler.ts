@@ -7,23 +7,33 @@ import type { DetectedTrip } from '@/lib/trip-detection';
 
 let todayRefreshRevision = 0;
 
-const todayHistoryRefreshListeners = new Set<() => void>();
+export type TodayHistoryRefreshListener = () => void | Promise<void>;
+
+const todayHistoryRefreshListeners = new Set<TodayHistoryRefreshListener>();
 
 export function getTodayHistoryRefreshRevision(): number {
   return todayRefreshRevision;
 }
 
-export function subscribeTodayHistoryRefresh(listener: () => void): () => void {
+export function subscribeTodayHistoryRefresh(
+  listener: TodayHistoryRefreshListener,
+): () => void {
   todayHistoryRefreshListeners.add(listener);
   return () => todayHistoryRefreshListeners.delete(listener);
 }
 
-/** Notify listeners — used when the app returns to the foreground. */
-export function refreshTodayOnForeground(): void {
-  todayRefreshRevision += 1;
-  for (const listener of todayHistoryRefreshListeners) {
-    listener();
+/** Notify map listeners to reload today — only while the app is foreground. */
+export async function refreshTodayOnForeground(): Promise<void> {
+  if (!appIsForeground) {
+    return;
   }
+  todayRefreshRevision += 1;
+  const listenerResults = [...todayHistoryRefreshListeners].map(listener =>
+    listener(),
+  );
+  await Promise.allSettled(
+    listenerResults.map(result => Promise.resolve(result)),
+  );
 }
 
 let gpsRefreshTimer: ReturnType<typeof setTimeout> | null = null;
@@ -39,6 +49,12 @@ function clearGpsRefreshTimer(): void {
     clearTimeout(gpsRefreshTimer);
     gpsRefreshTimer = null;
   }
+}
+
+/** Cancel every foreground-only map refresh timer (drive interval + GPS debounce). */
+function stopForegroundTodayRefresh(): void {
+  stopDriveInterval();
+  clearGpsRefreshTimer();
 }
 
 function stopDriveInterval(): void {
@@ -72,8 +88,11 @@ function isOpenDriveActivity(activity: DetectedTrip | null): boolean {
   return activity?.kind === 'travel' && activity.openThroughNow === true;
 }
 
-/** Debounced today sync after new GPS rows are saved (stationary / background). */
+/** Debounced today sync after new GPS rows are saved (foreground only). */
 export function scheduleTodayRefreshAfterGps(): void {
+  if (!appIsForeground) {
+    return;
+  }
   if (driveRefreshInterval != null) {
     return;
   }
@@ -100,7 +119,7 @@ export function updateTodayRefreshAfterSync(
 export function setTodayRefreshAppForeground(foreground: boolean): void {
   appIsForeground = foreground;
   if (!foreground) {
-    stopDriveInterval();
+    stopForegroundTodayRefresh();
   }
 }
 
@@ -137,6 +156,10 @@ export function resetTodayRefreshSchedulerForTests(): void {
 /** @internal — test helpers */
 export function isDriveRefreshIntervalActiveForTests(): boolean {
   return driveRefreshInterval != null;
+}
+
+export function isGpsRefreshTimerActiveForTests(): boolean {
+  return gpsRefreshTimer != null;
 }
 
 export function getDriveRefreshIntervalMsForTests(): number {
