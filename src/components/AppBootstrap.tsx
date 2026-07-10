@@ -8,13 +8,11 @@ import {
 import { getLocationService } from '@/location/transistorsoft-location-service';
 import { ensureHistoryCalendarBounds } from '@/lib/history-calendar-bounds';
 import { preloadTodayHistory } from '@/lib/history-preload';
-import { sealYesterdayIfNeeded } from '@/lib/trip-materialization';
-import { startPlaceLookupCatchUp } from '@/lib/place-lookup-catch-up';
+import { startBackgroundWorkCycle } from '@/lib/background-work-coordinator';
 import {
   beginTodayOpenCycle,
-  scheduleTodayOpenSilentSeal,
 } from '@/lib/today-sync';
-import { getCurrentTripDetectionConfig } from '@/lib/trip-detection-config';
+import { sealYesterdayIfNeeded } from '@/lib/trip-materialization';
 import {
   refreshTodayOnForeground,
   setTodayRefreshAppForeground,
@@ -84,29 +82,30 @@ export function AppBootstrap({ children }: AppBootstrapProps) {
     }
     coldStartPipelineStartedRef.current = true;
 
-    let cancelPlaceLookup: (() => void) | undefined;
+    let cancelBackgroundWork: (() => void) | undefined;
 
     void runTrackingBootstrap()
       .then(async () => {
         await yieldToEventLoop();
-        await sealYesterdayIfNeeded();
         beginTodayOpenCycle();
         await yieldToEventLoop();
         await ensureHistoryCalendarBounds();
+        // Yesterday must be sealed before today's tail detect — lookback uses
+        // excludedCrossMidnightFromMs from yesterday's materialized day.
+        await sealYesterdayIfNeeded();
         await preloadTodayHistory();
-        scheduleTodayOpenSilentSeal(getCurrentTripDetectionConfig());
       })
       .then(() => {
-        const placeLookupWork = runWhenIdle(() => {
-          startPlaceLookupCatchUp();
+        const backgroundWork = runWhenIdle(() => {
+          startBackgroundWorkCycle();
         }, DEFER_PLACE_LOOKUP_MS);
-        cancelPlaceLookup = placeLookupWork.cancel;
+        cancelBackgroundWork = backgroundWork.cancel;
       })
       .catch(error => {
         logPipelineFailure('cold_start_pipeline', error);
       });
 
-    return () => cancelPlaceLookup?.();
+    return () => cancelBackgroundWork?.();
   }, [hasCompletedPrivacyOnboarding, runTrackingBootstrap]);
 
   useEffect(() => {
@@ -136,13 +135,6 @@ export function AppBootstrap({ children }: AppBootstrapProps) {
               try {
                 await yieldToEventLoop();
                 try {
-                  await sealYesterdayIfNeeded();
-                } catch {
-                  // Best-effort — map still shows cached today until sync runs.
-                }
-                await yieldToEventLoop();
-                startPlaceLookupCatchUp();
-                try {
                   await service.drainNativeQueue();
                 } catch {
                   // Best-effort — persist pipeline may still have rows in SQLite.
@@ -152,8 +144,9 @@ export function AppBootstrap({ children }: AppBootstrapProps) {
                 } catch {
                   // Best-effort — still refresh the map from whatever is in the DB.
                 }
+                await sealYesterdayIfNeeded();
                 await refreshTodayOnForeground();
-                scheduleTodayOpenSilentSeal(getCurrentTripDetectionConfig());
+                startBackgroundWorkCycle();
               } catch (error) {
                 logPipelineFailure('foreground_resume_pipeline', error);
               }

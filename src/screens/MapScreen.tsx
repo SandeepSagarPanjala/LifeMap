@@ -1,5 +1,6 @@
 import { View } from 'react-native';
 
+import { BackgroundWorkBanner } from '@/components/background-work/BackgroundWorkBanner';
 import { SavePlaceSheet } from '@/components/map/SavePlaceSheet';
 
 import { MapHistoryPanel } from './map/MapHistoryPanel';
@@ -34,6 +35,7 @@ export function MapScreen() {
       />
       <MapHistoryPanel controller={controller} />
       <MapScreenTopBar controller={controller} />
+      <BackgroundWorkBanner />
     </View>
   );
 }

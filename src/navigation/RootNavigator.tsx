@@ -21,7 +21,6 @@ import { MomentPreviewScreen } from '@/screens/moments/MomentPreviewScreen';
 import { SavedPlacesScreen } from '@/screens/map/SavedPlacesScreen';
 import { RestoreBackupScreen } from '@/screens/backup/RestoreBackupScreen';
 import { ScheduledBackupRunner } from '@/components/backup/ScheduledBackupRunner';
-import { PlaceLookupCatchUpRunner } from '@/components/place-lookup/PlaceLookupCatchUpRunner';
 import { SettingsScreen } from '@/screens/SettingsScreen';
 import { DeveloperSettingsScreen } from '@/screens/settings/DeveloperSettingsScreen';
 import { ExportTripDaysScreen } from '@/screens/settings/export/ExportTripDaysScreen';
@@ -221,7 +220,6 @@ export function RootNavigator() {
         />
       </Stack.Navigator>
       <ScheduledBackupRunner />
-      <PlaceLookupCatchUpRunner />
     </NavigationContainer>
   );
 }

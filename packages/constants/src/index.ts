@@ -80,10 +80,13 @@ export const MAP_STACK_BUTTON_GAP = 8;
 export const MAP_DATE_NAV_ROW_GAP = 10;
 export const MAP_DATE_NAV_CLUSTER_HEIGHT =
   MAP_SETTINGS_SIZE + MAP_DATE_NAV_ROW_GAP + MAP_STACK_BUTTON_SIZE;
-export const MAP_LEFT_STACK_COUNT = 3;
+export const MAP_LEFT_STACK_COUNT = 4;
 export const MAP_RIGHT_STACK_COUNT = 4;
 export const MAP_STACK_BUTTON_LEFT = 16;
 export const MAP_STACK_BUTTON_RIGHT = 16;
+
+/** Visible body below the status bar for the background-work banner. */
+export const BACKGROUND_WORK_BANNER_BODY_HEIGHT = 64;
 
 export const MAP_USER_ZOOM_DELTA = 0.01;
 export const VISIT_MAX_ZOOM_DELTA = 0.0008;

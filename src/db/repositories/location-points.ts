@@ -4,6 +4,7 @@ import { getDatabase, getSqlite } from '../client';
 import { locationPoints } from '../schema';
 import { locationPointTimestampToStorageValue } from '@/lib/location-point-storage';
 import { scheduleTodayRefreshAfterGps } from '@/lib/today-refresh-scheduler';
+import { ensureLocationDaySummaryExists } from '@/db/repositories/location-day-summaries';
 
 export type NewLocationPoint = {
   timestamp: Date;
@@ -97,6 +98,7 @@ export async function insertLocationPoint(
     lng: point.lng,
     source,
   });
+  void ensureLocationDaySummaryExists(point.timestamp).catch(() => undefined);
 }
 
 export async function countMotionLocationPoints(): Promise<number> {

@@ -32,7 +32,6 @@ import {
   buildOriginalDataExportJson,
   buildSingleTableExportJson,
   databaseExportFileLabel,
-  MATERIALIZED_TRIP_EXPORT_TABLE_NAMES,
   originalDataExportFileLabel,
   ORIGINAL_DATA_EXPORT_TABLE_NAMES,
   pickOriginalDataExportTables,
@@ -41,7 +40,6 @@ import {
   sumOriginalDataExportStorageBytes,
   type AlgorithmDataExportTableName,
   type DatabaseExportTableName,
-  type MaterializedTripExportTableName,
 } from '@/lib/database-export';
 import { getTodayDateKey, parseDateKey } from '@/lib/day-utils';
 import { formatStorageBytes } from '@/lib/format-storage';
@@ -50,7 +48,6 @@ import {
   computeAndCacheExportTableStats,
   loadCachedExportTableStats,
 } from '@/lib/settings-stats';
-import { resetMaterializedTripHistory } from '@/lib/trip-materialization';
 import type { RootStackParamList } from '@/navigation/types';
 
 type ExportPickerTarget =
@@ -58,7 +55,7 @@ type ExportPickerTarget =
   | 'all_tables'
   | 'original_data';
 
-type DeletingTarget = 'materialized' | 'tracking_events' | null;
+type DeletingTarget = 'tracking_events' | null;
 
 export function ExportSettings() {
   const navigation =
@@ -199,8 +196,7 @@ export function ExportSettings() {
   };
 
   const confirmDeleteTable = (tableName: AlgorithmDataExportTableName) => {
-    if (isMaterializedTripTable(tableName)) {
-      confirmDeleteMaterializedTables(tableName);
+    if (tableName !== 'tracking_events') {
       return;
     }
     const rowCount = tableStats?.counts.tracking_events ?? 0;
@@ -218,68 +214,6 @@ export function ExportSettings() {
         },
       ],
     );
-  };
-
-  const confirmDeleteMaterializedTables = (
-    triggeredFrom: MaterializedTripExportTableName,
-  ) => {
-    if (tableStats == null) {
-      return;
-    }
-    const counts = materializedTripCounts(tableStats);
-    const totalRows =
-      counts.trips + counts.trip_points + counts.materialized_days;
-    if (totalRows === 0) {
-      return;
-    }
-    Alert.alert(
-      'Delete materialized trips?',
-      deleteMaterializedTablesMessage(counts, formatTableLabel(triggeredFrom)),
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete all',
-          style: 'destructive',
-          onPress: () => {
-            void runDeleteMaterializedTables();
-          },
-        },
-      ],
-    );
-  };
-
-  const runDeleteMaterializedTables = async () => {
-    setDeletingTarget('materialized');
-    try {
-      const before =
-        tableStats != null ? materializedTripCounts(tableStats) : null;
-      await resetMaterializedTripHistory();
-      let compactMessage = '';
-      const totalBefore =
-        before != null
-          ? before.trips + before.trip_points + before.materialized_days
-          : 0;
-      if (totalBefore > 0) {
-        setCompacting(true);
-        const compacted = await vacuumDatabase();
-        compactMessage = `\n\nDatabase compacted from ${formatStorageBytes(
-          compacted.beforeBytes,
-        )} to ${formatStorageBytes(compacted.afterBytes)}.`;
-      }
-      await calculate();
-      Alert.alert(
-        'Materialized trips deleted',
-        `${formatMaterializedDeleteSummary(before)}${compactMessage}`,
-      );
-    } catch (error) {
-      Alert.alert(
-        APP_COPY.alerts.couldNotDeleteDiagnostics,
-        errorMessageOr(error),
-      );
-    } finally {
-      setDeletingTarget(null);
-      setCompacting(false);
-    }
   };
 
   const runDeleteTrackingEvents = async () => {
@@ -362,11 +296,6 @@ export function ExportSettings() {
   const freeDbBytes = tableStats?.freeDbBytes ?? 0;
   const tableActionsDisabled =
     exporting || deletingTarget != null || compacting || calculating;
-  const hasMaterializedRows =
-    tableStats != null &&
-    MATERIALIZED_TRIP_EXPORT_TABLE_NAMES.some(
-      tableName => (tableStats.counts[tableName] ?? 0) > 0,
-    );
   const hasTrackingEventRows = (tableStats?.counts.tracking_events ?? 0) > 0;
 
   return (
@@ -410,7 +339,7 @@ export function ExportSettings() {
 
             <ExportSection
               title="Algorithm data"
-              description="Visits, drives, and seal metadata built from GPS. Deleting trips, trip points, or materialized days clears all three. Raw location points are kept."
+              description="Visits, drives, and seal metadata built from GPS. Raw location points are kept separately under Original data."
             >
               {ALGORITHM_DATA_EXPORT_TABLE_NAMES.map(tableName => (
                 <ExportDataRow
@@ -420,19 +349,12 @@ export function ExportSettings() {
                   storageBytes={tableStats.storageBytes[tableName] ?? 0}
                   disabled={tableActionsDisabled}
                   deleting={
-                    isMaterializedTripTable(tableName)
-                      ? deletingTarget === 'materialized'
-                      : deletingTarget === 'tracking_events'
+                    tableName === 'tracking_events'
+                      ? deletingTarget === 'tracking_events'
+                      : false
                   }
                   showDelete={
-                    isMaterializedTripTable(tableName)
-                      ? hasMaterializedRows
-                      : hasTrackingEventRows
-                  }
-                  deleteLabel={
-                    isMaterializedTripTable(tableName)
-                      ? 'Delete all 3'
-                      : 'Delete'
+                    tableName === 'tracking_events' && hasTrackingEventRows
                   }
                   showView={
                     tableName === 'trips' && (tableStats.counts.trips ?? 0) > 0
@@ -680,60 +602,12 @@ function ExportActionButton({
   );
 }
 
-function isMaterializedTripTable(
-  tableName: AlgorithmDataExportTableName,
-): tableName is MaterializedTripExportTableName {
-  return (MATERIALIZED_TRIP_EXPORT_TABLE_NAMES as readonly string[]).includes(
-    tableName,
-  );
-}
-
-function materializedTripCounts(stats: ExportTableStats): {
-  trips: number;
-  trip_points: number;
-  materialized_days: number;
-} {
-  return {
-    trips: stats.counts.trips ?? 0,
-    trip_points: stats.counts.trip_points ?? 0,
-    materialized_days: stats.counts.materialized_days ?? 0,
-  };
-}
-
-function deleteMaterializedTablesMessage(
-  counts: ReturnType<typeof materializedTripCounts>,
-  triggeredFromLabel: string,
-): string {
-  return [
-    `Deleting from ${triggeredFromLabel} also removes trips, trip points, and materialized days together.`,
-    '',
-    `${counts.trips.toLocaleString()} trips`,
-    `${counts.trip_points.toLocaleString()} trip points`,
-    `${counts.materialized_days.toLocaleString()} materialized days`,
-    '',
-    'Raw GPS points are not deleted. The timeline rebuilds from GPS on the next seal.',
-  ].join('\n');
-}
-
 function deleteTrackingEventsMessage(rowCount: number): string {
   const countLabel =
     rowCount > 0
       ? `This removes ${rowCount.toLocaleString()} debug log rows. `
       : '';
   return `${countLabel}Your map, visits, drives, and GPS points are not affected.`;
-}
-
-function formatMaterializedDeleteSummary(
-  before: ReturnType<typeof materializedTripCounts> | null,
-): string {
-  if (before == null) {
-    return 'Removed materialized trip data.';
-  }
-  return [
-    `Removed ${before.trips.toLocaleString()} trips,`,
-    `${before.trip_points.toLocaleString()} trip points, and`,
-    `${before.materialized_days.toLocaleString()} materialized days.`,
-  ].join(' ');
 }
 
 function formatTableLabel(tableName: DatabaseExportTableName): string {

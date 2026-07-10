@@ -1,13 +1,6 @@
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Settings } from 'lucide-react-native';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { MapDateLabel } from '@/components/map/MapDateLabel';
-import { useThemeColors } from '@/hooks/use-theme-colors';
-import type { RootStackParamList } from '@/navigation/types';
-
-import { MAP_SETTINGS_SIZE, MAP_SETTINGS_TOP_GAP } from '@/lib/app-constants';
 import type { MapScreenController } from './use-map-screen-controller';
 
 type MapScreenTopBarProps = {
@@ -15,9 +8,6 @@ type MapScreenTopBarProps = {
 };
 
 export function MapScreenTopBar({ controller }: MapScreenTopBarProps) {
-  const navigation =
-    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const colors = useThemeColors();
   const {
     insets,
     mapDateLabel,
@@ -31,7 +21,6 @@ export function MapScreenTopBar({ controller }: MapScreenTopBarProps) {
     goToToday,
     openHistoryDatePicker,
   } = controller;
-  const settingsTop = insets.top + MAP_SETTINGS_TOP_GAP;
   const showRestingDateNav = !historyPanelChromeVisible;
 
   return (
@@ -51,14 +40,6 @@ export function MapScreenTopBar({ controller }: MapScreenTopBarProps) {
           onPressLabel={openHistoryDatePicker}
         />
       ) : null}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Settings"
-        onPress={() => navigation.navigate('Settings')}
-        style={[styles.settingsButton, { top: settingsTop }]}
-      >
-        <Settings size={22} color={colors.primary} strokeWidth={2.25} />
-      </Pressable>
     </View>
   );
 }
@@ -72,20 +53,5 @@ const styles = StyleSheet.create({
     bottom: 0,
     zIndex: 20,
     elevation: 20,
-  },
-  settingsButton: {
-    position: 'absolute',
-    left: 16,
-    width: MAP_SETTINGS_SIZE,
-    height: MAP_SETTINGS_SIZE,
-    borderRadius: MAP_SETTINGS_SIZE / 2,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 4,
   },
 });

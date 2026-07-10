@@ -4,6 +4,7 @@ import { MapCameraButton } from '@/components/map/MapCameraButton';
 import { MapHistoryButton } from '@/components/map/MapHistoryButton';
 import { MapLocateButton } from '@/components/map/MapLocateButton';
 import { MapNoteButton } from '@/components/map/MapNoteButton';
+import { MapSettingsButton } from '@/components/map/MapSettingsButton';
 import { MapPlacesButton } from '@/components/map/MapPlacesButton';
 import { MapActivityButton } from '@/components/map/MapActivityButton';
 import { MapVoiceButton } from '@/components/map/MapVoiceButton';
@@ -21,6 +22,7 @@ export function MapScreenFloatingControls({
     viewingToday,
     historyPanelOpen,
     locateButtonBottom,
+    settingsButtonBottom,
     placesButtonBottom,
     historyButtonBottom,
     cameraButtonBottom,
@@ -34,6 +36,7 @@ export function MapScreenFloatingControls({
     openCaptureVoice,
     openCaptureActivity,
     handleCaptureNote,
+    openSettings,
     historyBadgeCount,
     trackingGapWarning,
     emptySelectedDayMessage,
@@ -43,7 +46,7 @@ export function MapScreenFloatingControls({
   const showTodayControls = viewingToday && !historyPanelActive;
   const showHistoryButton = !historyPanelActive;
   const messageAnchorBottom = viewingToday
-    ? placesButtonBottom + 64
+    ? settingsButtonBottom + 64
     : historyButtonBottom + 64;
 
   return (
@@ -61,6 +64,9 @@ export function MapScreenFloatingControls({
           eventCount={historyBadgeCount}
           onPress={handleToggleHistoryPanel}
         />
+      ) : null}
+      {showHistoryButton ? (
+        <MapSettingsButton bottom={settingsButtonBottom} onPress={openSettings} />
       ) : null}
       {showTodayControls ? (
         <MapPlacesButton
