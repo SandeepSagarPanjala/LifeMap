@@ -50,14 +50,6 @@ export async function ensureLocationDaySummaryExists(
   ensuredDateKeys.add(dateKey);
 }
 
-export async function countLocationDaySummaries(): Promise<number> {
-  const db = await getDatabase();
-  const [row] = await db
-    .select({ count: sql<number>`cast(count(*) as integer)` })
-    .from(locationDaySummaries);
-  return row?.count ?? 0;
-}
-
 export type PastDaySealBacklog = {
   hasWork: boolean;
   dateKeys: string[];
