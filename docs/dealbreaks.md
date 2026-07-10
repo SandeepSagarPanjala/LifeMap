@@ -30,7 +30,7 @@ If yesterday is sealed later (e.g. only in the background-work coordinator after
 | ---- | ----- |
 | Cold start | `sealYesterdayIfNeeded()` → `preloadTodayHistory()` |
 | BG → FG | `sealYesterdayIfNeeded()` → `refreshTodayOnForeground()` |
-| Background work | Yesterday stays **silent + early**; banner backlog is only days **older than yesterday** (`date_key < yesterday`) |
+| Background work | Yesterday is **not** sealed here — only AppBootstrap. Banner backlog is days **older than yesterday** (`date_key < yesterday`) |
 
 ### Code anchors
 

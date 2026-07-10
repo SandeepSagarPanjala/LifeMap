@@ -17,10 +17,7 @@ import {
   runPlaceCacheWorkItem,
 } from '@/lib/place-cache-work';
 import { silentTripSealToday } from '@/lib/today-sync';
-import {
-  rebuildPastDayTrips,
-  sealYesterdayIfNeeded,
-} from '@/lib/trip-materialization';
+import { rebuildPastDayTrips } from '@/lib/trip-materialization';
 import { clearHistoryDataCache } from '@/lib/history-data-cache';
 import { refreshTodayOnForeground } from '@/lib/today-refresh-scheduler';
 import { yieldToEventLoop } from '@/lib/run-when-idle';
@@ -159,11 +156,10 @@ async function runBackgroundWorkCycleImpl(): Promise<void> {
   });
 
   await silentTripSealToday(config);
-  await sealYesterdayIfNeeded();
   await yieldToEventLoop();
 
   // Past-day backlog comes from location_day_summaries (filled insert-once on
-  // new GPS). No upgrade backfill — new installs grow the index naturally.
+  // new GPS). Yesterday is sealed on the AppBootstrap critical path only.
   const pastDays = await listPastDaysNeedingSeal();
   if (pastDays.length > 0) {
     await runPastDaySealPhase(pastDays);
