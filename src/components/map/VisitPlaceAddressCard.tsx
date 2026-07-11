@@ -38,22 +38,39 @@ export function VisitPlaceAddressCard({
     display.selectedPoiId,
   );
 
+  // Prefer the persisted selection whenever it arrives or the edit target changes.
   useEffect(() => {
     setDraftPoiId(display.selectedPoiId);
   }, [display.cacheId, display.materializedTripId, display.selectedPoiId]);
 
+  // Keep draft valid as candidates load/expand. Never fall back to the first
+  // POI while a persisted selection exists (avoids overwriting Flower Child
+  // with Reformed Pilates on open / Done).
   useEffect(() => {
     if (display.candidates.length === 0) {
       return;
     }
-    if (
-      draftPoiId != null &&
-      display.candidates.some(candidate => candidate.id === draftPoiId)
-    ) {
-      return;
-    }
-    setDraftPoiId(display.candidates[0]?.id ?? null);
-  }, [display.candidates, draftPoiId]);
+    setDraftPoiId(prev => {
+      if (
+        prev != null &&
+        display.candidates.some(candidate => candidate.id === prev)
+      ) {
+        return prev;
+      }
+      if (
+        display.selectedPoiId != null &&
+        display.candidates.some(
+          candidate => candidate.id === display.selectedPoiId,
+        )
+      ) {
+        return display.selectedPoiId;
+      }
+      if (display.selectedPoiId != null) {
+        return display.selectedPoiId;
+      }
+      return display.candidates[0]?.id ?? null;
+    });
+  }, [display.candidates, display.selectedPoiId]);
 
   const trailingActions = (
     <View style={styles.trailing}>
