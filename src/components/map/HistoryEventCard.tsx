@@ -1,6 +1,6 @@
 import LottieView from 'lottie-react-native';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
-import { Pencil, Play } from 'lucide-react-native';
+import { Building2, MapPin, Play } from 'lucide-react-native';
 
 import { DriveRouteStrip } from '@/components/map/DriveRouteStrip';
 import { SavedPlaceIcon } from '@/components/map/SavedPlaceIcon';
@@ -31,6 +31,8 @@ type HistoryEventCardProps = {
   savedPlace?: SavedPlaceRow | null;
   visitPlaceLabel?: string | null;
   visitPlaceResolving?: boolean;
+  /** True when the visit label is a selected POI (map pin), not a plain address. */
+  visitPlacePinned?: boolean;
   onEditVisitPlaceLabel?: () => void;
   driveStartLabel?: DriveEndpointLabel;
   driveEndLabel?: DriveEndpointLabel;
@@ -77,6 +79,15 @@ function VisitCardIcon() {
   );
 }
 
+function VisitPlaceKindIcon({ pinned }: { pinned: boolean }) {
+  if (pinned) {
+    return (
+      <MapPin size={14} color="#8E8E93" fill="#C7C7CC" strokeWidth={2} />
+    );
+  }
+  return <Building2 size={14} color="#8E8E93" strokeWidth={2.25} />;
+}
+
 function driveCardStatsLine(
   entry: DayTimelineEntry,
   distanceUnit: DistanceUnit,
@@ -89,6 +100,7 @@ export function HistoryEventCard({
   savedPlace = null,
   visitPlaceLabel = null,
   visitPlaceResolving = false,
+  visitPlacePinned = false,
   onEditVisitPlaceLabel,
   driveStartLabel,
   driveEndLabel,
@@ -182,29 +194,36 @@ export function HistoryEventCard({
                 {visitPlaceResolving ? (
                   <ActivityIndicator size="small" color={colors.primary} />
                 ) : null}
-                {visitPlaceLabel ? (
-                  <Text
-                    className="text-base font-semibold"
-                    numberOfLines={1}
-                    variant={visitPlaceResolving ? 'muted' : undefined}
-                  >
-                    {visitPlaceLabel}
-                  </Text>
-                ) : null}
                 {onEditVisitPlaceLabel ? (
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel="Edit place label"
                     onPress={onEditVisitPlaceLabel}
                     hitSlop={8}
-                    style={styles.visitEditButton}
+                    style={styles.visitPlaceLabelPressable}
                   >
-                    <Pencil
-                      size={14}
-                      color={colors.primary}
-                      strokeWidth={2.25}
-                    />
+                    {visitPlaceLabel?.trim() ? (
+                      <VisitPlaceKindIcon pinned={visitPlacePinned} />
+                    ) : null}
+                    <Text
+                      className="text-base font-semibold"
+                      numberOfLines={1}
+                      style={{ color: colors.primary }}
+                    >
+                      {visitPlaceLabel?.trim() || 'Add label'}
+                    </Text>
                   </Pressable>
+                ) : visitPlaceLabel ? (
+                  <>
+                    <VisitPlaceKindIcon pinned={visitPlacePinned} />
+                    <Text
+                      className="text-base font-semibold"
+                      numberOfLines={1}
+                      variant={visitPlaceResolving ? 'muted' : undefined}
+                    >
+                      {visitPlaceLabel}
+                    </Text>
+                  </>
                 ) : null}
               </View>
             )}
@@ -319,13 +338,12 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     minWidth: 0,
   },
-  visitEditButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#F2F2F7',
+  visitPlaceLabelPressable: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 6,
+    flexShrink: 1,
+    minWidth: 0,
   },
   visitLottieAnchor: {
     position: 'absolute',

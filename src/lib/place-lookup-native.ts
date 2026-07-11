@@ -46,7 +46,7 @@ function dedupeCandidates(
     });
   }
 
-  return unique.slice(0, 8);
+  return unique;
 }
 
 function normalizeGeocodeResults(

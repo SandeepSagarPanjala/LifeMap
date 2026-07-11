@@ -195,7 +195,7 @@ export const TRACKING_DIAGNOSTICS_RATE_LIMIT_MS = 60_000;
 
 /** Default venue match radius for cached reverse-geocode anchors (not saved places). */
 export const PLACE_LOOKUP_VENUE_RADIUS_M = 100;
-export const PLACE_LOOKUP_RADIUS_STEPS = [100, 250, 500, 750, 1000] as const;
+export const PLACE_LOOKUP_RADIUS_STEPS = [100, 250] as const;
 export const PLACE_LOOKUP_MAX_RADIUS_M =
   PLACE_LOOKUP_RADIUS_STEPS[PLACE_LOOKUP_RADIUS_STEPS.length - 1];
 export const PLACE_LOOKUP_SESSION_BUDGET = 10;

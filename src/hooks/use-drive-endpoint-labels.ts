@@ -70,8 +70,11 @@ export function useDriveEndpointLabels(
     setEnd(endSync);
   }, [endSync, startSync]);
 
+  // Always re-read non-saved endpoints from DB. Timeline stays can keep a
+  // stale poiLabel after the user renames/selects a place; sync text alone
+  // must not skip enrichment or History keeps showing the old name.
   useEffect(() => {
-    if (!previousStay || startSync.source === 'saved' || startSync.text) {
+    if (!previousStay || startSync.source === 'saved') {
       return;
     }
 
@@ -90,7 +93,7 @@ export function useDriveEndpointLabels(
   }, [previousStay, savedPlaces, startSync, materializationRevision]);
 
   useEffect(() => {
-    if (!nextStay || endSync.source === 'saved' || endSync.text) {
+    if (!nextStay || endSync.source === 'saved') {
       return;
     }
 

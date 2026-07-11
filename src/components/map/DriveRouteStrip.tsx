@@ -1,6 +1,6 @@
 import LottieView from 'lottie-react-native';
 import { Pressable, StyleSheet, Text as RNText, View } from 'react-native';
-import { Pause, Pencil, Play } from 'lucide-react-native';
+import { Pause, Play } from 'lucide-react-native';
 
 import { DriveEndpointPlaceRow } from '@/components/map/DriveEndpointPlaceRow';
 import { Text } from '@/components/ui/text';
@@ -16,7 +16,6 @@ const CAR_CLIP_WIDTH = 72;
 const CAR_CLIP_HEIGHT = 44;
 const CAR_RENDER_WIDTH = 210;
 const CAR_RENDER_HEIGHT = 120;
-const EDIT_BUTTON_SIZE = 28;
 
 type DriveRouteStripProps = {
   startAt: Date;
@@ -52,21 +51,6 @@ function TimeRangeLine({ startAt, endAt }: { startAt: Date; endAt: Date }) {
   );
 }
 
-function DriveEndpointEditButton({ onPress }: { onPress: () => void }) {
-  const colors = useThemeColors();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Edit place label"
-      onPress={onPress}
-      hitSlop={8}
-      style={styles.editButton}
-    >
-      <Pencil size={14} color={colors.primary} strokeWidth={2.25} />
-    </Pressable>
-  );
-}
-
 function DriveRouteEndpoint({
   label,
   canEdit,
@@ -76,25 +60,46 @@ function DriveRouteEndpoint({
   canEdit?: boolean;
   onEdit?: () => void;
 }) {
+  const colors = useThemeColors();
   const hasText = label != null && hasDriveEndpointLabel(label);
-  if (!hasText && !canEdit) {
+  const editable = Boolean(canEdit && onEdit);
+  if (!hasText && !editable) {
     return null;
   }
 
-  return (
-    <View style={styles.routeEndpoint}>
-      {hasText ? (
-        <DriveEndpointPlaceRow
-          label={label!}
-          iconSize={14}
-          textStyle={styles.routeText}
-          numberOfLines={1}
-          ellipsizeMode="tail"
-        />
-      ) : null}
-      {canEdit && onEdit ? <DriveEndpointEditButton onPress={onEdit} /> : null}
-    </View>
+  const textStyle = editable
+    ? [styles.routeText, { color: colors.primary }]
+    : styles.routeText;
+
+  const content = hasText ? (
+    <DriveEndpointPlaceRow
+      label={label!}
+      iconSize={14}
+      textStyle={textStyle}
+      numberOfLines={1}
+      ellipsizeMode="tail"
+    />
+  ) : (
+    <RNText style={textStyle} numberOfLines={1}>
+      Add label
+    </RNText>
   );
+
+  if (editable) {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Edit place label"
+        onPress={onEdit}
+        hitSlop={8}
+        style={styles.routeEndpoint}
+      >
+        {content}
+      </Pressable>
+    );
+  }
+
+  return <View style={styles.routeEndpoint}>{content}</View>;
 }
 
 function DriveRouteLine({
@@ -237,16 +242,6 @@ const styles = StyleSheet.create({
   routeText: {
     fontSize: 15,
     fontWeight: '600',
-  },
-  editButton: {
-    width: EDIT_BUTTON_SIZE,
-    height: EDIT_BUTTON_SIZE,
-    borderRadius: EDIT_BUTTON_SIZE / 2,
-    backgroundColor: '#F2F2F7',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-    marginRight: 8,
   },
   routeArrow: {
     flexShrink: 0,
