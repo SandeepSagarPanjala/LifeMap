@@ -5,8 +5,8 @@ import { HistoryEventCard } from '@/components/map/HistoryEventCard';
 import { HistoryPanelChrome } from '@/components/map/HistoryPanelChrome';
 import { HistoryPanelSkeleton } from '@/components/map/HistoryPanelSkeleton';
 import { HistoryTimelineBar } from '@/components/map/HistoryTimelineBar';
-import { VisitPlaceAddressCard } from '@/components/map/VisitPlaceAddressCard';
 import { VisitPlaceCustomLabelSheet } from '@/components/map/VisitPlaceCustomLabelSheet';
+import { VisitPlacePickerSheet } from '@/components/map/VisitPlacePickerSheet';
 import { MAP_HISTORY_DATE_NAV_ABOVE_PANEL_GAP } from '@/lib/app-constants';
 
 import type { MapScreenController } from './use-map-screen-controller';
@@ -27,14 +27,12 @@ export function MapHistoryPanel({ controller }: MapHistoryPanelProps) {
     selectedSavedPlace,
     selectedDriveEndpointLabels,
     placeLabelEditDisplay,
-    handleExpandVisitPlaceArea,
     handleSaveCustomVisitPlaceLabel,
     handleDonePlaceLabel,
-    expandingVisitPlaceArea,
+    handleClosePlaceLabel,
     showPlaceLabelCard,
     visitPlaceLabelInEventCard,
     visitPlacePinnedInEventCard,
-    visitPlaceResolving,
     openVisitPlaceLabelCard,
     openDriveStartLabelCard,
     openDriveEndLabelCard,
@@ -74,6 +72,7 @@ export function MapHistoryPanel({ controller }: MapHistoryPanelProps) {
     return selected?.source === 'user' ? selected.name : '';
   }, [placeLabelEditDisplay.candidates, placeLabelEditDisplay.selectedPoiId]);
   const eventSelected = selectedHistoryIndex >= 0 && selectedEntry != null;
+  const pickerVisible = showPlaceLabelCard && !customLabelOpen;
 
   if (!historyPanelChromeVisible) {
     return null;
@@ -102,20 +101,20 @@ export function MapHistoryPanel({ controller }: MapHistoryPanelProps) {
       />
       {showHistoryPanelContent ? (
         <View style={styles.content} onLayout={handleHistoryPanelContentLayout}>
-          {showPlaceLabelCard ? (
-            <VisitPlaceAddressCard
+          {pickerVisible ? (
+            <VisitPlacePickerSheet
               display={placeLabelEditDisplay}
-              expandingArea={expandingVisitPlaceArea}
-              onExpandArea={handleExpandVisitPlaceArea}
-              onRequestCustomLabel={() => setCustomLabelOpen(true)}
-              onDone={handleDonePlaceLabel}
+              onSelect={selection => {
+                handleDonePlaceLabel(selection);
+              }}
+              onRequestCustom={() => setCustomLabelOpen(true)}
+              onClose={handleClosePlaceLabel}
             />
           ) : null}
           <HistoryEventCard
             entry={eventSelected ? selectedEntry : null}
             savedPlace={scrubOnEvent ? selectedSavedPlace : null}
             visitPlaceLabel={visitPlaceLabelInEventCard}
-            visitPlaceResolving={visitPlaceResolving}
             visitPlacePinned={visitPlacePinnedInEventCard}
             onEditVisitPlaceLabel={
               scrubOnEvent &&

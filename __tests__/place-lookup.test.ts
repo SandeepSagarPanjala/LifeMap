@@ -2,6 +2,7 @@ import {
   __resetPlaceLookupServiceForTests,
   enqueuePlaceLookupForStay,
   resetPlaceLookupSessionBudget,
+  selectMapkitPoisForPersist,
   shouldSkipPlaceLookupForStay,
   stayQualifiesForPlaceLookup,
 } from '@/lib/place-lookup-service';
@@ -76,6 +77,77 @@ function stay(points: { lat: number; lng: number }[]): DetectedTrip {
     durationMs: points.length * 60_000,
   };
 }
+
+describe('place lookup poi caps', () => {
+  it('keeps the closest N on initial lookup', () => {
+    const selected = selectMapkitPoisForPersist(
+      [
+        {
+          id: 'a',
+          name: 'Far',
+          kind: 'poi',
+          distanceM: 90,
+          lat: 1,
+          lng: 1,
+        },
+        {
+          id: 'b',
+          name: 'Near',
+          kind: 'poi',
+          distanceM: 10,
+          lat: 1,
+          lng: 1,
+        },
+        {
+          id: 'c',
+          name: 'Mid',
+          kind: 'poi',
+          distanceM: 40,
+          lat: 1,
+          lng: 1,
+        },
+      ],
+      { maxNew: 2 },
+    );
+    expect(selected.map(poi => poi.name)).toEqual(['Near', 'Mid']);
+  });
+
+  it('skips names already stored when filling remaining slots', () => {
+    const selected = selectMapkitPoisForPersist(
+      [
+        {
+          id: 'a',
+          name: 'Near',
+          kind: 'poi',
+          distanceM: 10,
+          lat: 1,
+          lng: 1,
+        },
+        {
+          id: 'b',
+          name: 'Extra',
+          kind: 'poi',
+          distanceM: 120,
+          lat: 1,
+          lng: 1,
+        },
+        {
+          id: 'c',
+          name: 'Farther',
+          kind: 'poi',
+          distanceM: 200,
+          lat: 1,
+          lng: 1,
+        },
+      ],
+      {
+        maxNew: 1,
+        existingNames: new Set(['near']),
+      },
+    );
+    expect(selected.map(poi => poi.name)).toEqual(['Near', 'Extra']);
+  });
+});
 
 describe('place lookup venue matching', () => {
   it('matches anchors within the visit venue radius', () => {

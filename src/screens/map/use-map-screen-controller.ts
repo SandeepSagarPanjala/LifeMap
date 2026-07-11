@@ -61,12 +61,10 @@ import {
   shouldClusterMomentsOnMap,
 } from '@/lib/moments/moment-map-clustering';
 import {
-  useExpandVisitPlaceLookupArea,
   useSelectVisitPlaceCandidate,
   useSetCustomVisitPlaceLabel,
   useVisitPlaceDisplay,
 } from '@/hooks/use-visit-place-display';
-import { useResolvePlaceOnStaySelect } from '@/hooks/use-resolve-place-on-stay-select';
 import { useTripDetectionConfig } from '@/hooks/use-trip-detection-config';
 import { useTripPlayback } from '@/hooks/use-trip-playback';
 import { buildHistoryMapPlan } from '@/lib/history-map-plan';
@@ -193,7 +191,6 @@ export function useMapScreenController() {
   const [historyPanelContentHeight, setHistoryPanelContentHeight] = useState<
     number | null
   >(null);
-  const [expandingVisitPlaceArea, setExpandingVisitPlaceArea] = useState(false);
   const [selectedHistoryIndex, setSelectedHistoryIndex] = useState(-1);
   const [userCoordinate, setUserCoordinate] =
     useState<MapUserCoordinate | null>(null);
@@ -655,13 +652,6 @@ export function useMapScreenController() {
     savedPlaces,
   );
 
-  const visitPlaceResolving = useResolvePlaceOnStaySelect(
-    scrubOnEvent && selectedStay ? selectedStay : null,
-    selectedDateKey,
-    savedPlaces,
-    historyScrubOnEvent,
-  );
-
   const placeLabelEditDisplay = useVisitPlaceDisplay(
     placeLabelEditStay,
     savedPlaces,
@@ -672,9 +662,6 @@ export function useMapScreenController() {
   } = placeLabelEditDisplay;
 
   const visitPlaceLabelInEventCard = useMemo(() => {
-    if (visitPlaceResolving) {
-      return 'Finding place…';
-    }
     if (!historyScrubOnEvent || selectedSavedPlace != null) {
       return null;
     }
@@ -683,7 +670,6 @@ export function useMapScreenController() {
     }
     return visitPlaceDefaultLabel(selectedVisitPlaceDisplay);
   }, [
-    visitPlaceResolving,
     historyScrubOnEvent,
     selectedSavedPlace,
     selectedVisitPlaceDisplay,
@@ -737,7 +723,6 @@ export function useMapScreenController() {
 
   const selectVisitPlaceCandidate = useSelectVisitPlaceCandidate();
   const setCustomVisitPlaceLabel = useSetCustomVisitPlaceLabel();
-  const expandVisitPlaceLookupArea = useExpandVisitPlaceLookupArea();
 
   const handleDonePlaceLabel = useCallback(
     (selection: { poiId: number; poiLabel: string } | null) => {
@@ -745,8 +730,12 @@ export function useMapScreenController() {
       if (!stay) {
         return;
       }
+      const unchanged =
+        selection != null &&
+        placeLabelEditDisplay.selectedPoiId != null &&
+        selection.poiId === placeLabelEditDisplay.selectedPoiId;
       const done =
-        selection != null
+        selection != null && !unchanged
           ? selectVisitPlaceCandidate({
               cacheId: placeLabelEditCacheId,
               poiId: selection.poiId,
@@ -762,21 +751,17 @@ export function useMapScreenController() {
     },
     [
       placeLabelEditCacheId,
+      placeLabelEditDisplay.selectedPoiId,
       placeLabelEditMaterializedTripId,
       placeLabelEditStay,
       selectVisitPlaceCandidate,
       selectedDateKey,
     ],
   );
-  const handleExpandVisitPlaceArea = useCallback(() => {
-    if (!placeLabelEditStay || placeLabelEditCacheId == null) {
-      return;
-    }
-    setExpandingVisitPlaceArea(true);
-    void expandVisitPlaceLookupArea(placeLabelEditCacheId).finally(() =>
-      setExpandingVisitPlaceArea(false),
-    );
-  }, [expandVisitPlaceLookupArea, placeLabelEditCacheId, placeLabelEditStay]);
+
+  const handleClosePlaceLabel = useCallback(() => {
+    setPlaceLabelEditStay(null);
+  }, []);
 
   const handleSaveCustomVisitPlaceLabel = useCallback(
     (label: string) => {
@@ -1616,7 +1601,6 @@ export function useMapScreenController() {
       selectedVisitPlaceDisplay,
       visitPlaceLabelInEventCard,
       visitPlacePinnedInEventCard,
-      visitPlaceResolving,
       showPlaceLabelCard,
       placeLabelEditDisplay,
       openVisitPlaceLabelCard,
@@ -1625,10 +1609,9 @@ export function useMapScreenController() {
       canEditDriveStartLabel,
       canEditDriveEndLabel,
       handleDonePlaceLabel,
+      handleClosePlaceLabel,
       currentOpenVisitPlaceDisplay,
-      handleExpandVisitPlaceArea,
       handleSaveCustomVisitPlaceLabel,
-      expandingVisitPlaceArea,
       savedPlaces,
       hasHome,
       hasWork,
@@ -1732,7 +1715,6 @@ export function useMapScreenController() {
       selectedVisitPlaceDisplay,
       visitPlaceLabelInEventCard,
       visitPlacePinnedInEventCard,
-      visitPlaceResolving,
       showPlaceLabelCard,
       placeLabelEditDisplay,
       openVisitPlaceLabelCard,
@@ -1741,10 +1723,9 @@ export function useMapScreenController() {
       canEditDriveStartLabel,
       canEditDriveEndLabel,
       handleDonePlaceLabel,
+      handleClosePlaceLabel,
       currentOpenVisitPlaceDisplay,
-      handleExpandVisitPlaceArea,
       handleSaveCustomVisitPlaceLabel,
-      expandingVisitPlaceArea,
       savedPlaces,
       hasHome,
       hasWork,

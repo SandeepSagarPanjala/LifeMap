@@ -67,7 +67,7 @@ export const MAP_HISTORY_EVENT_CARD_HEIGHT = 100;
 /** Extra height when the event card shows a moment counts row. */
 export const MAP_HISTORY_EVENT_CARD_MOMENTS_EXTRA_HEIGHT = 44;
 /** Height of the address-selection card (pager + action row). */
-export const MAP_HISTORY_ADDRESS_CARD_HEIGHT = 128;
+export const MAP_HISTORY_ADDRESS_CARD_HEIGHT = 220;
 export const MAP_HISTORY_ADDRESS_CARD_GAP = 8;
 export const MAP_HISTORY_FLOATING_CONTROLS_GAP = 8;
 /** Gap between date navigation and the panel content below it. */
@@ -195,9 +195,9 @@ export const TRACKING_DIAGNOSTICS_RATE_LIMIT_MS = 60_000;
 
 /** Default venue match radius for cached reverse-geocode anchors (not saved places). */
 export const PLACE_LOOKUP_VENUE_RADIUS_M = 100;
-export const PLACE_LOOKUP_RADIUS_STEPS = [100, 250] as const;
-export const PLACE_LOOKUP_MAX_RADIUS_M =
-  PLACE_LOOKUP_RADIUS_STEPS[PLACE_LOOKUP_RADIUS_STEPS.length - 1];
+export const PLACE_LOOKUP_MAX_RADIUS_M = PLACE_LOOKUP_VENUE_RADIUS_M;
+/** Closest MapKit POIs kept per lookup (100m). Beyond this, use Custom. */
+export const PLACE_LOOKUP_MAX_MAPKIT_POIS = 20;
 export const PLACE_LOOKUP_SESSION_BUDGET = 10;
 export const DEFAULT_PLACE_LOOKUP_BACKFILL_BATCH_SIZE = 10;
 /** Show bottom progress strip when this many unlabeled stays need catch-up. */

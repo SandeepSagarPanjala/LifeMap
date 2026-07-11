@@ -1,6 +1,7 @@
 import { listPlaceLookupCacheRows } from '@/db/repositories/place-lookup-cache';
 import {
   cacheNeedsPoiCoordinateRefresh,
+  listPlacePoisForCache,
   listPlacePoisForCaches,
   syncMapkitPlacePoisForCache,
 } from '@/db/repositories/place-pois';
@@ -9,10 +10,9 @@ import {
   fetchNearbyPlaceLookup,
   platformResolvesClosestPoi,
 } from '@/lib/place-lookup-native';
-import type {
-  PlaceLookupCandidate,
-  PlaceLookupRow,
-} from '@/lib/place-lookup-types';
+import { selectMapkitPoisForPersist } from '@/lib/place-lookup-service';
+import { PLACE_LOOKUP_MAX_MAPKIT_POIS } from '@/lib/app-constants';
+import type { PlaceLookupRow } from '@/lib/place-lookup-types';
 
 const REFRESH_DELAY_MS = 250;
 
@@ -40,18 +40,6 @@ export type PlacePoiCoordinateRefreshBatchResult = {
   insertedPois: number;
   results: PlacePoiCoordinateRefreshCacheResult[];
 };
-
-function mapkitCandidatesFromLookup(
-  candidates: readonly PlaceLookupCandidate[],
-): Array<{ name: string; lat: number; lng: number }> {
-  return candidates
-    .filter(candidate => candidate.kind === 'poi')
-    .map(candidate => ({
-      name: candidate.name,
-      lat: candidate.lat,
-      lng: candidate.lng,
-    }));
-}
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -108,7 +96,18 @@ export async function refreshPlacePoiCoordinatesForCache(
       row.anchorLng,
       row.venueRadiusMeters,
     );
-    const incoming = mapkitCandidatesFromLookup(result.candidates);
+    const existingPois = await listPlacePoisForCache(cacheId);
+    const existingNames = new Set(
+      existingPois
+        .filter(poi => poi.source === 'mapkit')
+        .map(poi => poi.name.trim().toLowerCase())
+        .filter(Boolean),
+    );
+    const maxNew = Math.max(0, PLACE_LOOKUP_MAX_MAPKIT_POIS - existingNames.size);
+    const incoming = selectMapkitPoisForPersist(result.candidates, {
+      maxNew,
+      existingNames,
+    });
     if (incoming.length === 0) {
       return { cacheId, status: 'skipped', updated: 0, inserted: 0 };
     }

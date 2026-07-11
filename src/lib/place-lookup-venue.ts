@@ -1,17 +1,5 @@
 import { distanceKm, type LocationPointLike } from '@/lib/location-geo';
-import {
-  PLACE_LOOKUP_RADIUS_STEPS,
-  PLACE_LOOKUP_VENUE_RADIUS_M,
-} from '@/lib/app-constants';
-
-export function nextPlaceLookupRadiusM(current: number): number | null {
-  for (const step of PLACE_LOOKUP_RADIUS_STEPS) {
-    if (step > current) {
-      return step;
-    }
-  }
-  return null;
-}
+import { PLACE_LOOKUP_VENUE_RADIUS_M } from '@/lib/app-constants';
 
 export function placeLookupAnchorKey(lat: number, lng: number): string {
   return `${lat.toFixed(5)},${lng.toFixed(5)}`;
