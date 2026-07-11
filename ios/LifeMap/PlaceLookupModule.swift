@@ -130,12 +130,17 @@ class PlaceLookupModule: NSObject {
       }
 
       if #available(iOS 16.0, *) {
-        let poiRequest = MKLocalPointsOfInterestRequest(center: coordinate, radius: searchRadius)
+        let poiRadius = min(searchRadius, MKLocalPointsOfInterestRequest.maxRadius)
+        let poiRequest = MKLocalPointsOfInterestRequest(center: coordinate, radius: poiRadius)
         let search = MKLocalSearch(request: poiRequest)
         search.start { response, searchError in
           if let items = response?.mapItems {
-            for item in items.prefix(5) {
-              guard let name = item.name, !name.isEmpty else { continue }
+            for item in items {
+              guard let name = item.name?.trimmingCharacters(in: .whitespacesAndNewlines),
+                    !name.isEmpty
+              else {
+                continue
+              }
               let itemLocation = item.placemark.location ?? location
               collectedCandidates.append([
                 "id": "poi-\(name)-\(item.placemark.coordinate.latitude)",

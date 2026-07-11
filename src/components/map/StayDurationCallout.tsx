@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Marker } from 'react-native-maps';
-import { Armchair, MapPin } from 'lucide-react-native';
+import { Building2, MapPin } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { SavedPlaceIcon } from '@/components/map/SavedPlaceIcon';
@@ -127,11 +127,7 @@ export function StayDurationCallout({
                 strokeWidth={2}
               />
             ) : (
-              <Armchair
-                size={14}
-                color={HISTORY_COLORS.stay}
-                strokeWidth={2.25}
-              />
+              <Building2 size={14} color="#8E8E93" strokeWidth={2.25} />
             )}
             <Text style={styles.placeLabel} numberOfLines={1}>
               {nearbyPlaceLabel}

@@ -27,13 +27,13 @@ export function MapHistoryPanel({ controller }: MapHistoryPanelProps) {
     selectedSavedPlace,
     selectedDriveEndpointLabels,
     placeLabelEditDisplay,
-    handleSelectVisitPlacePoi,
     handleExpandVisitPlaceArea,
     handleSaveCustomVisitPlaceLabel,
     handleDonePlaceLabel,
     expandingVisitPlaceArea,
     showPlaceLabelCard,
     visitPlaceLabelInEventCard,
+    visitPlacePinnedInEventCard,
     visitPlaceResolving,
     openVisitPlaceLabelCard,
     openDriveStartLabelCard,
@@ -106,7 +106,6 @@ export function MapHistoryPanel({ controller }: MapHistoryPanelProps) {
             <VisitPlaceAddressCard
               display={placeLabelEditDisplay}
               expandingArea={expandingVisitPlaceArea}
-              onSelectPoiId={handleSelectVisitPlacePoi}
               onExpandArea={handleExpandVisitPlaceArea}
               onRequestCustomLabel={() => setCustomLabelOpen(true)}
               onDone={handleDonePlaceLabel}
@@ -117,6 +116,7 @@ export function MapHistoryPanel({ controller }: MapHistoryPanelProps) {
             savedPlace={scrubOnEvent ? selectedSavedPlace : null}
             visitPlaceLabel={visitPlaceLabelInEventCard}
             visitPlaceResolving={visitPlaceResolving}
+            visitPlacePinned={visitPlacePinnedInEventCard}
             onEditVisitPlaceLabel={
               scrubOnEvent &&
               selectedEntry?.kind === 'stay' &&

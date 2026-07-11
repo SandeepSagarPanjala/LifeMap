@@ -668,9 +668,7 @@ export function useMapScreenController() {
   );
   const {
     cacheId: placeLabelEditCacheId,
-    candidates: placeLabelEditCandidates,
     materializedTripId: placeLabelEditMaterializedTripId,
-    selectedPoiId: placeLabelEditSelectedPoiId,
   } = placeLabelEditDisplay;
 
   const visitPlaceLabelInEventCard = useMemo(() => {
@@ -691,6 +689,10 @@ export function useMapScreenController() {
     selectedVisitPlaceDisplay,
   ]);
 
+  const visitPlacePinnedInEventCard =
+    historyScrubOnEvent &&
+    selectedSavedPlace == null &&
+    isVisitPlaceLabelConfirmed(selectedVisitPlaceDisplay);
   const openPlaceLabelCardForStay = useCallback(
     (stay: DetectedTrip) => {
       if (matchSavedPlaceForStay(stay, savedPlaces)) {
@@ -737,64 +739,35 @@ export function useMapScreenController() {
   const setCustomVisitPlaceLabel = useSetCustomVisitPlaceLabel();
   const expandVisitPlaceLookupArea = useExpandVisitPlaceLookupArea();
 
-  const handleSelectVisitPlacePoi = useCallback(
-    (poiId: number, poiLabel: string) => {
-      if (!placeLabelEditStay) {
+  const handleDonePlaceLabel = useCallback(
+    (selection: { poiId: number; poiLabel: string } | null) => {
+      const stay = placeLabelEditStay;
+      if (!stay) {
         return;
       }
-      void selectVisitPlaceCandidate({
-        cacheId: placeLabelEditDisplay.cacheId,
-        poiId,
-        poiLabel,
-        stay: placeLabelEditStay,
-        dateKey: selectedDateKey,
-        materializedTripId: placeLabelEditDisplay.materializedTripId,
+      const done =
+        selection != null
+          ? selectVisitPlaceCandidate({
+              cacheId: placeLabelEditCacheId,
+              poiId: selection.poiId,
+              poiLabel: selection.poiLabel,
+              stay,
+              dateKey: selectedDateKey,
+              materializedTripId: placeLabelEditMaterializedTripId,
+            })
+          : Promise.resolve();
+      void done.finally(() => {
+        setPlaceLabelEditStay(null);
       });
     },
     [
-      placeLabelEditDisplay.cacheId,
-      placeLabelEditDisplay.materializedTripId,
+      placeLabelEditCacheId,
+      placeLabelEditMaterializedTripId,
       placeLabelEditStay,
       selectVisitPlaceCandidate,
       selectedDateKey,
     ],
   );
-
-  const handleDonePlaceLabel = useCallback(() => {
-    const stay = placeLabelEditStay;
-    if (!stay) {
-      return;
-    }
-    const selected =
-      placeLabelEditSelectedPoiId != null
-        ? placeLabelEditCandidates.find(
-            candidate => candidate.id === placeLabelEditSelectedPoiId,
-          )
-        : null;
-    const done =
-      selected != null
-        ? selectVisitPlaceCandidate({
-            cacheId: placeLabelEditCacheId,
-            poiId: selected.id,
-            poiLabel: selected.name,
-            stay,
-            dateKey: selectedDateKey,
-            materializedTripId: placeLabelEditMaterializedTripId,
-          })
-        : Promise.resolve();
-    void done.finally(() => {
-      setPlaceLabelEditStay(null);
-    });
-  }, [
-    placeLabelEditCacheId,
-    placeLabelEditCandidates,
-    placeLabelEditMaterializedTripId,
-    placeLabelEditSelectedPoiId,
-    placeLabelEditStay,
-    selectVisitPlaceCandidate,
-    selectedDateKey,
-  ]);
-
   const handleExpandVisitPlaceArea = useCallback(() => {
     if (!placeLabelEditStay || placeLabelEditCacheId == null) {
       return;
@@ -1642,6 +1615,7 @@ export function useMapScreenController() {
       selectedDriveEndpointLabels,
       selectedVisitPlaceDisplay,
       visitPlaceLabelInEventCard,
+      visitPlacePinnedInEventCard,
       visitPlaceResolving,
       showPlaceLabelCard,
       placeLabelEditDisplay,
@@ -1652,7 +1626,6 @@ export function useMapScreenController() {
       canEditDriveEndLabel,
       handleDonePlaceLabel,
       currentOpenVisitPlaceDisplay,
-      handleSelectVisitPlacePoi,
       handleExpandVisitPlaceArea,
       handleSaveCustomVisitPlaceLabel,
       expandingVisitPlaceArea,
@@ -1758,6 +1731,7 @@ export function useMapScreenController() {
       selectedDriveEndpointLabels,
       selectedVisitPlaceDisplay,
       visitPlaceLabelInEventCard,
+      visitPlacePinnedInEventCard,
       visitPlaceResolving,
       showPlaceLabelCard,
       placeLabelEditDisplay,
@@ -1768,7 +1742,6 @@ export function useMapScreenController() {
       canEditDriveEndLabel,
       handleDonePlaceLabel,
       currentOpenVisitPlaceDisplay,
-      handleSelectVisitPlacePoi,
       handleExpandVisitPlaceArea,
       handleSaveCustomVisitPlaceLabel,
       expandingVisitPlaceArea,

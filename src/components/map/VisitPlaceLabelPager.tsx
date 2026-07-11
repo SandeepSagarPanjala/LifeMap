@@ -1,11 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  ScrollView,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { useCallback, useMemo } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 
 import { VisitPlaceLabelWithPin } from '@/components/map/VisitPlaceLabelWithPin';
 import { Text } from '@/components/ui/text';
@@ -13,102 +8,121 @@ import type { VisitPlaceDisplay } from '@/lib/place-lookup-types';
 
 type VisitPlaceLabelPagerProps = {
   display: VisitPlaceDisplay;
-  compact?: boolean;
-  onSelectPoiId: (poiId: number, poiLabel: string) => void;
+  /** Browsing only — does not persist until Done. */
+  draftPoiId: number | null;
+  onDraftPoiIdChange: (poiId: number) => void;
 };
 
-const PAGE_WIDTH = 220;
-const PAGE_WIDTH_COMPACT = 168;
+/** MapPin 13 + row gap 5 — lines "x of y" up with the label text. */
+const COUNT_INDENT_WITH_PIN = 18;
 
 export function VisitPlaceLabelPager({
   display,
-  compact = false,
-  onSelectPoiId,
+  draftPoiId,
+  onDraftPoiIdChange,
 }: VisitPlaceLabelPagerProps) {
-  const pageWidth = compact ? PAGE_WIDTH_COMPACT : PAGE_WIDTH;
-  const scrollRef = useRef<ScrollView>(null);
   const candidates = display.candidates;
-  const selectedIndex = useMemo(() => {
-    if (display.selectedPoiId == null) {
+  const pageIndex = useMemo(() => {
+    if (draftPoiId == null) {
       return 0;
     }
-    const index = candidates.findIndex(
-      candidate => candidate.id === display.selectedPoiId,
-    );
+    const index = candidates.findIndex(candidate => candidate.id === draftPoiId);
     return index >= 0 ? index : 0;
-  }, [candidates, display.selectedPoiId]);
-  const [pageIndex, setPageIndex] = useState(selectedIndex);
+  }, [candidates, draftPoiId]);
 
-  useEffect(() => {
-    setPageIndex(selectedIndex);
-  }, [selectedIndex]);
-
-  const handleMomentumEnd = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const nextIndex = Math.round(
-        event.nativeEvent.contentOffset.x / pageWidth,
-      );
+  const selectIndex = useCallback(
+    (nextIndex: number) => {
       const clamped = Math.max(0, Math.min(nextIndex, candidates.length - 1));
-      setPageIndex(clamped);
       const candidate = candidates[clamped];
-      if (candidate && candidate.id !== display.selectedPoiId) {
-        onSelectPoiId(candidate.id, candidate.name);
+      if (candidate) {
+        onDraftPoiIdChange(candidate.id);
       }
     },
-    [candidates, display.selectedPoiId, onSelectPoiId, pageWidth],
+    [candidates, onDraftPoiIdChange],
   );
 
-  const showUserPin = display.selectedPoiId != null;
-  if (display.source !== 'lookup' || candidates.length <= 1) {
+  const total = candidates.length;
+  const showPin = draftPoiId != null;
+
+  if (display.source !== 'lookup' || total <= 1) {
     if (!display.primaryLabel) {
       return null;
     }
     return (
-      <VisitPlaceLabelWithPin
-        name={display.primaryLabel}
-        showPin={showUserPin}
-      />
+      <View style={styles.wrap}>
+        <View style={styles.cluster}>
+          <View style={styles.labelBlock}>
+            <VisitPlaceLabelWithPin
+              name={display.primaryLabel}
+              showPin={showPin}
+            />
+            {total === 1 ? (
+              <Text
+                variant="muted"
+                style={[
+                  styles.countText,
+                  showPin ? styles.countTextIndented : null,
+                ]}
+              >
+                1 of 1
+              </Text>
+            ) : null}
+          </View>
+        </View>
+      </View>
     );
   }
 
+  const current = candidates[pageIndex] ?? candidates[0]!;
+  const canGoPrev = pageIndex > 0;
+  const canGoNext = pageIndex < total - 1;
+  const pinVisible = showPin && current.id === draftPoiId;
+
   return (
-    <View style={[styles.wrap, compact && styles.wrapCompact]}>
-      <ScrollView
-        ref={scrollRef}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        contentOffset={{ x: selectedIndex * pageWidth, y: 0 }}
-        snapToInterval={pageWidth}
-        decelerationRate="fast"
-        onMomentumScrollEnd={handleMomentumEnd}
-        style={styles.scroll}
-      >
-        {candidates.map(candidate => (
-          <View
-            key={`${candidate.id}-${candidate.name}`}
-            style={[styles.page, { width: pageWidth }]}
-          >
-            <VisitPlaceLabelWithPin
-              name={candidate.name}
-              showPin={showUserPin && candidate.id === display.selectedPoiId}
-            />
-            <Text
-              variant="muted"
-              className="text-[10px] uppercase tracking-wide"
-            >
-              {candidate.source === 'user' ? 'Custom' : 'Nearby'}
-            </Text>
-          </View>
-        ))}
-      </ScrollView>
-      <View style={styles.dots}>
-        {candidates.map((candidate, index) => (
-          <View
-            key={`dot-${candidate.id}`}
-            style={[styles.dot, index === pageIndex && styles.dotActive]}
+    <View style={styles.wrap}>
+      <View style={styles.cluster}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Previous place"
+          disabled={!canGoPrev}
+          hitSlop={6}
+          onPress={() => selectIndex(pageIndex - 1)}
+          style={[styles.chevron, !canGoPrev && styles.chevronDisabled]}
+        >
+          <ChevronLeft
+            size={18}
+            color={canGoPrev ? '#1C1C1E' : '#C7C7CC'}
+            strokeWidth={2.25}
           />
-        ))}
+        </Pressable>
+
+        <View style={styles.labelBlock}>
+          <VisitPlaceLabelWithPin name={current.name} showPin={pinVisible} />
+          <Text
+            variant="muted"
+            style={[
+              styles.countText,
+              pinVisible ? styles.countTextIndented : null,
+            ]}
+          >
+            {pageIndex + 1} of {total}
+          </Text>
+        </View>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Next place"
+          disabled={!canGoNext}
+          hitSlop={6}
+          onPress={() => selectIndex(pageIndex + 1)}
+          style={[styles.chevron, !canGoNext && styles.chevronDisabled]}
+        >
+          <ChevronRight
+            size={18}
+            color={canGoNext ? '#1C1C1E' : '#C7C7CC'}
+            strokeWidth={2.25}
+          />
+        </Pressable>
       </View>
     </View>
   );
@@ -116,31 +130,38 @@ export function VisitPlaceLabelPager({
 
 const styles = StyleSheet.create({
   wrap: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  cluster: {
+    flexDirection: 'row',
+    alignItems: 'center',
     flexShrink: 1,
     minWidth: 0,
-    maxWidth: PAGE_WIDTH,
+    gap: 2,
   },
-  wrapCompact: {
-    maxWidth: PAGE_WIDTH_COMPACT,
+  chevron: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
   },
-  scroll: {
-    flexGrow: 0,
+  chevronDisabled: {
+    opacity: 0.45,
   },
-  page: {
-    paddingRight: 8,
+  labelBlock: {
+    flexShrink: 1,
+    minWidth: 0,
+    gap: 1,
   },
-  dots: {
-    flexDirection: 'row',
-    gap: 4,
-    marginTop: 2,
+  countText: {
+    fontSize: 11,
+    fontWeight: '500',
   },
-  dot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: '#D1D1D6',
-  },
-  dotActive: {
-    backgroundColor: '#8E8E93',
+  countTextIndented: {
+    paddingLeft: COUNT_INDENT_WITH_PIN,
   },
 });

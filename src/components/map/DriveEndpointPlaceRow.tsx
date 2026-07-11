@@ -1,9 +1,8 @@
-import { Armchair, MapPin } from 'lucide-react-native';
+import { Building2, MapPin } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { SavedPlaceIcon } from '@/components/map/SavedPlaceIcon';
 import type { DriveEndpointLabel } from '@/lib/drive-endpoint-label';
-import { HISTORY_COLORS } from '@/lib/app-constants';
 import { SAVED_PLACE_MAP_STYLE } from '@/lib/saved-places-map';
 
 type DriveEndpointPlaceRowProps = {
@@ -76,11 +75,7 @@ export function DriveEndpointPlaceRow({
 
   return (
     <View style={rowStyle}>
-      <Armchair
-        size={iconSize}
-        color={HISTORY_COLORS.stay}
-        strokeWidth={2.25}
-      />
+      <Building2 size={iconSize} color="#8E8E93" strokeWidth={2.25} />
       <Text
         style={[styles.text, textStyle, textAlignStyle]}
         numberOfLines={numberOfLines}
