@@ -8,7 +8,12 @@ const HOME = { lat: 33.21, lng: -97.13 };
 const WALMART = { lat: 33.25, lng: -97.05 };
 
 function makePoints(
-  specs: Array<{ minutes: number; lat: number; lng: number }>,
+  specs: Array<{
+    minutes: number;
+    lat: number;
+    lng: number;
+    speed?: number | null;
+  }>,
   start = new Date('2026-06-03T08:00:00'),
 ): LocationPointRow[] {
   return specs.map((spec, index) => ({
@@ -18,7 +23,7 @@ function makePoints(
     lng: spec.lng,
     accuracy: 10,
     altitude: null,
-    speed: null,
+    speed: spec.speed ?? null,
     source: 'gps',
   }));
 }
@@ -59,6 +64,38 @@ describe('segmentation detection (current algorithm)', () => {
       const firstStay = timeline[0];
       if (firstDrive?.kind === 'travel' && firstStay?.kind === 'stay') {
         expect(firstStay.endAt.getTime()).toBe(firstDrive.startAt.getTime());
+      }
+    });
+
+    it('stay end equals drive start when departure is a moving-speed GPS', () => {
+      const timeline = buildDayTimeline(
+        makePoints([
+          { minutes: 0, ...HOME },
+          { minutes: 20, ...HOME },
+          { minutes: 40, ...HOME },
+          // Last stationary at the stay, then a moving fix a few minutes later.
+          { minutes: 42, lat: 33.212, lng: -97.128, speed: 8 },
+          { minutes: 50, lat: 33.22, lng: -97.1, speed: 12 },
+          { minutes: 60, ...WALMART },
+          { minutes: 80, ...WALMART },
+        ]),
+        config,
+      );
+
+      expect(timeline.map(entry => entry.kind)).toEqual([
+        'stay',
+        'travel',
+        'stay',
+      ]);
+      const stay = timeline[0];
+      const drive = timeline[1];
+      if (stay?.kind === 'stay' && drive?.kind === 'travel') {
+        expect(stay.endAt.getTime()).toBe(drive.startAt.getTime());
+        // Stay must end on the last stationary cluster point (40 min), not the
+        // moving fix (42 min).
+        expect(stay.endAt.getTime()).toBe(
+          new Date('2026-06-03T08:40:00').getTime(),
+        );
       }
     });
 

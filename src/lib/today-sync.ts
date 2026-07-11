@@ -69,12 +69,13 @@ async function loadHistoryFromStoredTripsToday(
   const { loadHistoryFromStoredTrips } = await import(
     '@/lib/trip-materialization'
   );
+  // Sealed DB rows stay closed — open visit / "Still here" comes only from the live tail.
   return loadHistoryFromStoredTrips(
     dateKey,
     tripRows,
     referenceNow,
     detectionConfig,
-    { markLastStayOpen: true },
+    { markLastStayOpen: false },
   );
 }
 
@@ -215,7 +216,8 @@ export async function syncTodayDisplay(
 }
 
 /**
- * Full-day silent detect; persist sealable prefix (withholds last 2 live segments).
+ * Full-day silent detect; persist sealable prefix (hard X − 2: never seal last 2).
+ * Remaining tail finalizes next day via sealYesterdayIfNeeded.
  * Skips when nothing is sealable or signatures are unchanged.
  */
 export async function silentTripSealToday(

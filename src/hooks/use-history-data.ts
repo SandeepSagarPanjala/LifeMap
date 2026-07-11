@@ -313,15 +313,19 @@ export function useHistoryForDay(
         return;
       }
     } else {
+      // Drop other-day snapshots so badge/paths never flash the wrong date.
+      setData(emptyForDateKey(dateKey));
       setLoading(viewingToday ? false : true);
     }
 
+    // Cold-start mount-skip only when today is still warm in cache. If browsing
+    // another day evicted it, fall through and reload (do not wait on GPS).
     if (viewingToday && shouldSkipTodayPreloadMountSync(cacheKey)) {
       const snapshot = historyDataCache.peek(cacheKey) ?? cached;
       if (snapshot != null && snapshot.dateKey === dateKey) {
         syncTodayRefreshMode(dateKey, snapshot.entries, detectionConfig);
+        return;
       }
-      return;
     }
 
     const debounceMs =

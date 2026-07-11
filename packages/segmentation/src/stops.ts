@@ -145,21 +145,28 @@ function inferSparseGapStop(
   if (haversineM(anchor, nextPoint) > config.radiusM) {
     return null;
   }
-  const points = [...cluster, nextPoint];
+  const arrivedAt = cluster[0]!.at;
+  // Stay ends on the last cluster GPS — the moving point belongs to the drive.
+  // Drive construction shares that last stay point as its start vertex.
+  const leftAt = anchor.at;
+  const durationMs = leftAt.getTime() - arrivedAt.getTime();
+  if (durationMs < config.minDwellMs) {
+    return null;
+  }
   const centre = {
-    lat: points.reduce((sum, p) => sum + p.lat, 0) / points.length,
-    lng: points.reduce((sum, p) => sum + p.lng, 0) / points.length,
+    lat: cluster.reduce((sum, p) => sum + p.lat, 0) / cluster.length,
+    lng: cluster.reduce((sum, p) => sum + p.lng, 0) / cluster.length,
   };
   return {
     id: `stop-${cluster[0]!.id}-inferred-${nextPoint.id}`,
     lat: centre.lat,
     lng: centre.lng,
-    arrivedAt: cluster[0]!.at,
-    leftAt: nextPoint.at,
-    durationMs: gapMs,
-    pointCount: points.length,
-    spreadM: maxSpreadM(points, centre),
-    pointIds: points.map(p => p.id),
+    arrivedAt,
+    leftAt,
+    durationMs,
+    pointCount: cluster.length,
+    spreadM: maxSpreadM(cluster, centre),
+    pointIds: cluster.map(point => point.id),
     inferred: true,
   };
 }
@@ -368,7 +375,9 @@ export function detectStops(
     }
 
     if (cluster.length > 0 && (j > i + 1 || departureAt != null)) {
-      const leftAt = departureAt ?? cluster[cluster.length - 1]!.at;
+      // Stay end = last cluster GPS. Moving departure time must not extend
+      // leftAt past that point — trailing drive starts on the same vertex.
+      const leftAt = cluster[cluster.length - 1]!.at;
       pushStop(stops, cluster, centre, leftAt, config, departureAt != null);
       i = departureAt != null ? j + 1 : j;
     } else {

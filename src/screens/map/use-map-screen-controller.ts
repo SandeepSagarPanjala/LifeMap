@@ -307,10 +307,12 @@ export function useMapScreenController() {
   const historyBlockingLoader =
     historyLoading && !historyDayLoaded && !viewingToday;
 
-  const historyBadgeCount = useMemo(
-    () => countHistoryTimelineEvents(historyEntries),
-    [historyEntries],
-  );
+  const historyBadgeCount = useMemo(() => {
+    if (!historyDayLoaded) {
+      return 0;
+    }
+    return countHistoryTimelineEvents(historyEntries);
+  }, [historyDayLoaded, historyEntries]);
   const emptySelectedDayMessage = useMemo(() => {
     if (!historyDayLoaded || historyHasGpsData || historyPanelOpen) {
       return null;

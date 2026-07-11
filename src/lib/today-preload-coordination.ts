@@ -15,7 +15,11 @@ export function markTodayPreloadedForMountSkip(cacheKey: string): void {
   preloadedCacheKeyForMountSkip = cacheKey;
 }
 
-/** True while preload warmed this cache key for the current open cycle. */
+/**
+ * True while preload warmed this cache key for the current open cycle.
+ * Callers must still verify the cache slot is present — skip only avoids a
+ * duplicate sync when today is still warm, not when it was evicted.
+ */
 export function shouldSkipTodayPreloadMountSync(cacheKey: string): boolean {
   return (
     preloadedCacheKeyForMountSkip != null &&
