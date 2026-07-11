@@ -355,7 +355,11 @@ async function materializePastDayFromGps(
 }
 
 export type LoadHistoryFromStoredTripsOptions = {
-  /** When false, sealed rows stay closed — live tail supplies the open visit. */
+  /**
+   * Today only. Default false: sealed DB rows stay closed; the live tail owns
+   * openThroughNow / "Still here". Set true only for legacy callers that load
+   * sealed rows without a tail merge.
+   */
   markLastStayOpen?: boolean;
 };
 
@@ -397,7 +401,7 @@ export async function loadHistoryFromStoredTrips(
   const rangeEnd =
     referenceNow != null && isToday ? referenceNow : endOfDay(dayStart);
   const rows = tripRows ?? (await listTripsForDay(dateKey));
-  const markLastStayOpen = options.markLastStayOpen ?? true;
+  const markLastStayOpen = options.markLastStayOpen === true;
 
   if (rows.length === 0) {
     return {

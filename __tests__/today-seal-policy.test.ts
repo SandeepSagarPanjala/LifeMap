@@ -45,7 +45,7 @@ describe('today seal policy', () => {
     expect(getSealableTodayEntries(entries, now, config)).toHaveLength(0);
   });
 
-  it('seals settled drives even when they sit before an open stay', () => {
+  it('hard X − 2: seals only the prefix and always leaves the last 2 live', () => {
     const now = new Date('2026-06-19T22:00:00.000Z');
     const entries = [
       stay(
@@ -73,16 +73,15 @@ describe('today seal policy', () => {
     ];
 
     expect(getTodayLiveBufferStartIndex(entries, now, config)).toBe(
-      entries.length - 1,
+      entries.length - 2,
     );
     expect(
       getSealableTodayEntries(entries, now, config).map(entry => entry.id),
-    ).toEqual(['home', 'out', 'shop', 'back']);
+    ).toEqual(['home', 'out', 'shop']);
   });
 
-  it('extends the live buffer when a segment ended too recently to seal', () => {
+  it('hard X − 2: does not seal the last 2 even when they ended long ago', () => {
     const now = new Date('2026-06-19T22:00:00.000Z');
-    const dwellMs = config.dwellMinutes * 60_000;
     const entries = [
       stay(
         'home',
@@ -92,14 +91,28 @@ describe('today seal policy', () => {
       travel(
         'drive',
         now.getTime() - 3 * 60 * 60_000,
-        now.getTime() - dwellMs + 60_000,
+        now.getTime() - 2 * 60 * 60_000,
       ),
-      stay('stop', now.getTime() - dwellMs + 60_000, now.getTime(), true),
+      stay(
+        'stop',
+        now.getTime() - 2 * 60 * 60_000,
+        now.getTime() - 90 * 60_000,
+      ),
     ];
 
     expect(getTodayLiveBufferStartIndex(entries, now, config)).toBe(1);
     expect(
       getSealableTodayEntries(entries, now, config).map(entry => entry.id),
     ).toEqual(['home']);
+  });
+
+  it('does not seal when X − 2 ≤ 0', () => {
+    const now = new Date('2026-06-19T22:00:00.000Z');
+    const entries = [
+      travel('a', now.getTime() - 20 * 60_000, now.getTime() - 10 * 60_000),
+      stay('b', now.getTime() - 10 * 60_000, now.getTime(), true),
+    ];
+    expect(getTodayLiveBufferStartIndex(entries, now, config)).toBe(0);
+    expect(getSealableTodayEntries(entries, now, config)).toHaveLength(0);
   });
 });

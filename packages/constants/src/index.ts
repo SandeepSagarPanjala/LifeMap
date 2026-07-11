@@ -95,7 +95,8 @@ export const MAX_EMPHASIZED_TRIP_POLYLINE_POINTS = 500;
 export const MOMENT_CLUSTER_MIN_ZOOM_DELTA = 0.008;
 
 export const HISTORY_DAY_LOAD_DEBOUNCE_MS = 300;
-export const HISTORY_DATA_CACHE_MAX_ENTRIES = 1;
+/** Today + one browsed past day — avoids evicting today when opening history. */
+export const HISTORY_DATA_CACHE_MAX_ENTRIES = 2;
 
 export const NATIVE_HALF_SHEET_HEIGHT_RATIO = 0.5;
 export const HISTORY_DATE_PICKER_HEIGHT_RATIO = 0.55;

@@ -7,30 +7,16 @@ import type { TripDetectionConfig } from '@/lib/trip-settings';
 
 import { TODAY_LIVE_BUFFER_MAX_SEGMENTS } from '@/lib/app-constants';
 
-function shouldStayLive(
-  entry: DetectedTrip,
-  index: number,
-  count: number,
-  referenceNow: Date,
-  config: TripDetectionConfig,
-): boolean {
-  if (entry.openThroughNow) {
-    return true;
-  }
-  const dwellConfirmMs = config.dwellMinutes * 60_000;
-  const endedRecently =
-    entry.endAt.getTime() > referenceNow.getTime() - dwellConfirmMs;
-  if (!endedRecently) {
-    return false;
-  }
-  return index >= count - TODAY_LIVE_BUFFER_MAX_SEGMENTS;
-}
-
-/** First index of the live tail — prefix `[0, liveStart)` is sealable when closed. */
+/**
+ * First index of the live tail — prefix `[0, liveStart)` is sealable.
+ * Hard rule: always leave the last {@link TODAY_LIVE_BUFFER_MAX_SEGMENTS}
+ * playable segments for tail (Y = X − 2). Those finalize next day via
+ * sealYesterdayIfNeeded — not via dwell-based early seal.
+ */
 export function getTodayLiveBufferStartIndex(
   entries: readonly DayTimelineEntry[],
-  referenceNow: Date,
-  config: TripDetectionConfig,
+  _referenceNow: Date,
+  _config: TripDetectionConfig,
 ): number {
   const playable = entries.filter((entry): entry is DetectedTrip =>
     isPlayableTimelineEntry(entry),
@@ -39,20 +25,10 @@ export function getTodayLiveBufferStartIndex(
   if (count === 0) {
     return 0;
   }
-
-  let liveStart = count;
-  for (let index = count - 1; index >= 0; index -= 1) {
-    const entry = playable[index]!;
-    if (shouldStayLive(entry, index, count, referenceNow, config)) {
-      liveStart = index;
-      continue;
-    }
-    break;
-  }
-  return liveStart;
+  return Math.max(0, count - TODAY_LIVE_BUFFER_MAX_SEGMENTS);
 }
 
-/** Closed segments safe to persist for today (semantic rules + live buffer). */
+/** Closed segments safe to persist for today (hard X − 2 live buffer). */
 export function getSealableTodayEntries(
   entries: readonly DayTimelineEntry[],
   referenceNow: Date,
