@@ -51,6 +51,8 @@ export type PlaceLookupCandidate = {
   distanceM: number;
   lat: number;
   lng: number;
+  /** MapKit `pointOfInterestCategory` raw value, when available. */
+  category?: string | null;
 };
 
 export type PlaceLookupStatus = 'pending' | 'complete' | 'failed';
@@ -74,6 +76,8 @@ export type PlacePoiRow = {
   name: string;
   lat: number;
   lng: number;
+  /** MapKit `pointOfInterestCategory` raw value, when available. */
+  category?: string | null;
   source: PlacePoiSource;
   createdAt?: Date | string;
 };

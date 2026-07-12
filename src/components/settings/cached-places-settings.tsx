@@ -113,6 +113,24 @@ function formatDistanceMeters(distanceM: number): string {
   return `${(distanceM / 1000).toFixed(1)} km`;
 }
 
+/** MapKit raw value e.g. MKPOICategoryRestaurant → Restaurant */
+function formatPoiCategory(category: string | null | undefined): string | null {
+  if (!category?.trim()) {
+    return null;
+  }
+  const trimmed = category.trim();
+  const withoutPrefix = trimmed.startsWith('MKPOICategory')
+    ? trimmed.slice('MKPOICategory'.length)
+    : trimmed;
+  if (!withoutPrefix) {
+    return null;
+  }
+  return withoutPrefix
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/_/g, ' ')
+    .trim();
+}
+
 function poiDistanceLabel(
   anchor: { lat: number; lng: number },
   poi: PlacePoiRow,
@@ -189,31 +207,41 @@ function CachedPlaceCard({
           </Text>
           {pois.length > 0 ? (
             <View className="mt-1.5 gap-1.5">
-              {pois.map(poi => (
-                <View key={poi.id} className="flex-row items-start gap-2">
-                  <Text variant="muted" className="text-sm leading-5">
-                    •
-                  </Text>
-                  <Text className="flex-1 text-sm leading-5">
-                    {poi.name}
-                    <Text variant="muted" className="text-sm">
-                      {' '}
-                      · {formatCoordinate(poi.lat)}, {formatCoordinate(poi.lng)}
+              {pois.map(poi => {
+                const categoryLabel = formatPoiCategory(poi.category);
+                return (
+                  <View key={poi.id} className="flex-row items-start gap-2">
+                    <Text variant="muted" className="text-sm leading-5">
+                      •
                     </Text>
-                    {poi.source === 'user' ? (
+                    <Text className="flex-1 text-sm leading-5">
+                      {poi.name}
+                      {categoryLabel ? (
+                        <Text variant="muted" className="text-sm">
+                          {' '}
+                          · {categoryLabel}
+                        </Text>
+                      ) : null}
                       <Text variant="muted" className="text-sm">
                         {' '}
-                        · Custom
+                        · {formatCoordinate(poi.lat)},{' '}
+                        {formatCoordinate(poi.lng)}
                       </Text>
-                    ) : (
-                      <Text variant="muted" className="text-sm">
-                        {' '}
-                        · {poiDistanceLabel(anchor, poi)}
-                      </Text>
-                    )}
-                  </Text>
-                </View>
-              ))}
+                      {poi.source === 'user' ? (
+                        <Text variant="muted" className="text-sm">
+                          {' '}
+                          · Custom
+                        </Text>
+                      ) : (
+                        <Text variant="muted" className="text-sm">
+                          {' '}
+                          · {poiDistanceLabel(anchor, poi)}
+                        </Text>
+                      )}
+                    </Text>
+                  </View>
+                );
+              })}
             </View>
           ) : (
             <Text variant="muted" className="mt-1 text-sm leading-5">
@@ -347,7 +375,7 @@ export function CachedPlacesSettings() {
       const summary = [
         `${result.refreshed.toLocaleString()} refreshed`,
         result.updatedPois > 0
-          ? `${result.updatedPois.toLocaleString()} POI coordinates updated`
+          ? `${result.updatedPois.toLocaleString()} POIs updated`
           : null,
         result.insertedPois > 0
           ? `${result.insertedPois.toLocaleString()} POIs added`
@@ -357,10 +385,10 @@ export function CachedPlacesSettings() {
         .filter(Boolean)
         .join(' · ');
       Alert.alert(
-        'POI coordinates refreshed',
+        'POIs refreshed',
         summary.length > 0
-          ? `${summary}.\n\nRebuild trips in Developer tools to apply updated POI positions to history.`
-          : 'No cached addresses needed coordinate refresh.',
+          ? `${summary}.\n\nExisting POI IDs were kept. Rebuild trips in Developer tools if you want history to pick up updated coordinates.`
+          : 'No cached addresses needed a POI refresh.',
       );
     } catch (error) {
       Alert.alert(
@@ -377,10 +405,10 @@ export function CachedPlacesSettings() {
 
   const confirmCoordinateRefresh = useCallback(() => {
     Alert.alert(
-      'Refresh POI coordinates?',
-      `This fetches MapKit POI locations for ${coordinateRefreshPendingCount.toLocaleString()} cached address${
+      'Refresh POIs?',
+      `This fetches MapKit for ${coordinateRefreshPendingCount.toLocaleString()} cached address${
         coordinateRefreshPendingCount === 1 ? '' : 'es'
-      }. Existing POIs are updated in place — nothing is deleted. Custom POIs are kept.`,
+      }. Existing POIs are updated in place (coordinates + category) — IDs are not changed, so trip links stay valid. New POI names are inserted up to 20 per address. Nothing is deleted.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -441,9 +469,10 @@ export function CachedPlacesSettings() {
           <Text className="text-base font-medium">Refresh POI coordinates</Text>
           <Text variant="muted" className="mt-1 text-sm leading-5">
             {coordinateRefreshPendingCount.toLocaleString()} cached address
-            {coordinateRefreshPendingCount === 1 ? '' : 'es'} still use
-            placeholder POI coordinates. Fetch real MapKit locations once, then
-            rebuild trips in Developer tools.
+            {coordinateRefreshPendingCount === 1 ? '' : 'es'} need a MapKit
+            refresh (placeholder coordinates and/or missing category). Existing
+            POI rows are updated in place — IDs stay stable for trips. New names
+            are added up to 20 per address; nothing is deleted.
           </Text>
           {coordinateRefreshProgress != null &&
           coordinateRefreshProgress.total > 0 ? (

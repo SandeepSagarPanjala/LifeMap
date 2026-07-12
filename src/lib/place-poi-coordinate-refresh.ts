@@ -7,14 +7,15 @@ import {
 } from '@/db/repositories/place-pois';
 import { notifyPlaceLookupUpdated } from '@/lib/place-lookup-events';
 import {
-  fetchNearbyPlaceLookup,
+  fetchNearbyPoisOnly,
   platformResolvesClosestPoi,
 } from '@/lib/place-lookup-native';
 import { selectMapkitPoisForPersist } from '@/lib/place-lookup-service';
 import { PLACE_LOOKUP_MAX_MAPKIT_POIS } from '@/lib/app-constants';
 import type { PlaceLookupRow } from '@/lib/place-lookup-types';
 
-const REFRESH_DELAY_MS = 250;
+/** Stay under MapKit ~50 req/60s when batch-refreshing many addresses. */
+const REFRESH_DELAY_MS = 1750;
 
 export type PlacePoiCoordinateRefreshProgress = {
   completed: number;
@@ -91,7 +92,7 @@ export async function refreshPlacePoiCoordinatesForCache(
   }
 
   try {
-    const result = await fetchNearbyPlaceLookup(
+    const candidates = await fetchNearbyPoisOnly(
       row.anchorLat,
       row.anchorLng,
       row.venueRadiusMeters,
@@ -104,7 +105,7 @@ export async function refreshPlacePoiCoordinatesForCache(
         .filter(Boolean),
     );
     const maxNew = Math.max(0, PLACE_LOOKUP_MAX_MAPKIT_POIS - existingNames.size);
-    const incoming = selectMapkitPoisForPersist(result.candidates, {
+    const incoming = selectMapkitPoisForPersist(candidates, {
       maxNew,
       existingNames,
     });

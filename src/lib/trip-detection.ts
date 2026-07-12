@@ -50,17 +50,21 @@ export type DetectedTrip = {
   placeKind?: PlaceKind;
   poiId?: number;
   poiLabel?: string;
+  /** MapKit category from place_pois (hydrated). */
+  poiCategory?: string | null;
   /** Drive endpoints — copied from endpoint match or adjacent stays. */
   fromPlaceLabel?: string;
   fromPlaceId?: number;
   fromPlaceKind?: PlaceKind;
   fromPoiId?: number;
   fromPoiLabel?: string;
+  fromPoiCategory?: string | null;
   toPlaceLabel?: string;
   toPlaceId?: number;
   toPlaceKind?: PlaceKind;
   toPoiId?: number;
   toPoiLabel?: string;
+  toPoiCategory?: string | null;
   inferred?: boolean;
   /** Materialized moment membership when read from DB. */
   momentRefs?: TripMomentRef[];

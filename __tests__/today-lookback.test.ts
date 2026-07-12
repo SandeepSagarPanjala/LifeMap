@@ -37,6 +37,7 @@ function makeTripRow(endAt: Date): TripRow {
     placeKind: null,
     poiId: null,
     poiLabel: null,
+    poiCategory: null,
     momentRefs: [],
     inferred: false,
     selectedCandidateIndex: null,

@@ -258,6 +258,10 @@ const m0027 = `CREATE TABLE IF NOT EXISTS \`location_day_summaries\` (
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS \`trips_unlabeled_stays_idx\` ON \`trips\` (\`date_key\`, \`start_at\`) WHERE \`kind\` = 'stay' AND \`place_id\` IS NULL AND \`poi_id\` IS NULL AND (\`place_label\` IS NULL OR \`place_label\` = '');`;
 
+const m0028 = `ALTER TABLE \`place_pois\` ADD COLUMN \`category\` text;`;
+
+const m0029 = `ALTER TABLE \`trips\` DROP COLUMN \`poi_label\`;`;
+
 export default {
   journal,
   migrations: {
@@ -289,5 +293,7 @@ export default {
     m0025,
     m0026,
     m0027,
+    m0028,
+    m0029,
   },
 };

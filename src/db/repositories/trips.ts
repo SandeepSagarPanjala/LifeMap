@@ -18,7 +18,7 @@ import {
 } from '@/lib/moment-refs';
 
 import { getDatabase } from '../client';
-import { trips } from '../schema';
+import { placePois, trips } from '../schema';
 
 import { deleteTripPointsForTripIds } from './trip-points';
 
@@ -38,7 +38,10 @@ export type TripRow = {
   placeId: number | null;
   placeKind: 'saved' | 'cache' | null;
   poiId: number | null;
+  /** Hydrated from place_pois.name (not stored on trips). */
   poiLabel: string | null;
+  /** Hydrated from place_pois.category (not stored on trips). */
+  poiCategory: string | null;
   inferred: boolean;
   /** @deprecated Replaced by poi_id. */
   selectedCandidateIndex: number | null;
@@ -47,7 +50,14 @@ export type TripRow = {
   momentRefs: TripMomentRef[];
 };
 
-function mapRow(row: typeof trips.$inferSelect): TripRow {
+type TripSelectRow = typeof trips.$inferSelect;
+
+function mapRow(
+  row: TripSelectRow,
+  poi?: { name: string | null; category: string | null } | null,
+): TripRow {
+  const poiName = poi?.name?.trim() || null;
+  const poiCategory = poi?.category?.trim() || null;
   return {
     id: row.id,
     eventKey: row.eventKey,
@@ -64,7 +74,8 @@ function mapRow(row: typeof trips.$inferSelect): TripRow {
     placeId: row.placeId,
     placeKind: row.placeKind,
     poiId: row.poiId,
-    poiLabel: row.poiLabel,
+    poiLabel: poiName,
+    poiCategory,
     inferred: row.inferred === 1,
     selectedCandidateIndex: row.selectedCandidateIndex,
     detectionVersion: row.detectionVersion,
@@ -73,14 +84,45 @@ function mapRow(row: typeof trips.$inferSelect): TripRow {
   };
 }
 
+function mapJoinedRow(row: {
+  trip: TripSelectRow;
+  poiName: string | null;
+  poiCategory: string | null;
+}): TripRow {
+  return mapRow(row.trip, {
+    name: row.poiName,
+    category: row.poiCategory,
+  });
+}
+
+async function hydrateTripRow(row: TripSelectRow): Promise<TripRow> {
+  if (row.poiId == null) {
+    return mapRow(row);
+  }
+  const db = await getDatabase();
+  const pois = await db
+    .select({ name: placePois.name, category: placePois.category })
+    .from(placePois)
+    .where(eq(placePois.id, row.poiId))
+    .limit(1);
+  return mapRow(row, pois[0] ?? null);
+}
+
+const tripWithPoiSelect = {
+  trip: trips,
+  poiName: placePois.name,
+  poiCategory: placePois.category,
+} as const;
+
 export async function listTripsForDay(dateKey: string): Promise<TripRow[]> {
   const db = await getDatabase();
   const rows = await db
-    .select()
+    .select(tripWithPoiSelect)
     .from(trips)
+    .leftJoin(placePois, eq(trips.poiId, placePois.id))
     .where(eq(trips.dateKey, dateKey))
     .orderBy(asc(trips.segmentOrder), asc(trips.startAt));
-  return rows.map(mapRow);
+  return rows.map(mapJoinedRow);
 }
 
 export type TripDaySummary = {
@@ -115,14 +157,23 @@ export async function listTripDaySummaries(): Promise<TripDaySummary[]> {
 
 export async function listAllTrips(): Promise<TripRow[]> {
   const db = await getDatabase();
-  const rows = await db.select().from(trips).orderBy(asc(trips.startAt));
-  return rows.map(mapRow);
+  const rows = await db
+    .select(tripWithPoiSelect)
+    .from(trips)
+    .leftJoin(placePois, eq(trips.poiId, placePois.id))
+    .orderBy(asc(trips.startAt));
+  return rows.map(mapJoinedRow);
 }
 
 export async function getTripById(id: number): Promise<TripRow | null> {
   const db = await getDatabase();
-  const rows = await db.select().from(trips).where(eq(trips.id, id)).limit(1);
-  return rows[0] ? mapRow(rows[0]) : null;
+  const rows = await db
+    .select(tripWithPoiSelect)
+    .from(trips)
+    .leftJoin(placePois, eq(trips.poiId, placePois.id))
+    .where(eq(trips.id, id))
+    .limit(1);
+  return rows[0] ? mapJoinedRow(rows[0]) : null;
 }
 
 export async function getTripByEventKey(
@@ -130,11 +181,12 @@ export async function getTripByEventKey(
 ): Promise<TripRow | null> {
   const db = await getDatabase();
   const rows = await db
-    .select()
+    .select(tripWithPoiSelect)
     .from(trips)
+    .leftJoin(placePois, eq(trips.poiId, placePois.id))
     .where(eq(trips.eventKey, eventKey))
     .limit(1);
-  return rows[0] ? mapRow(rows[0]) : null;
+  return rows[0] ? mapJoinedRow(rows[0]) : null;
 }
 
 export type InsertTripInput = {
@@ -152,7 +204,6 @@ export type InsertTripInput = {
   placeId?: number | null;
   placeKind?: 'saved' | 'cache' | null;
   poiId?: number | null;
-  poiLabel?: string | null;
   inferred?: boolean;
   selectedCandidateIndex?: number | null;
   detectionVersion: number;
@@ -176,7 +227,6 @@ function tripValues(input: InsertTripInput) {
     placeId: input.placeId ?? null,
     placeKind: input.placeKind ?? null,
     poiId: input.poiId ?? null,
-    poiLabel: input.poiLabel ?? null,
     inferred: input.inferred ? 1 : 0,
     selectedCandidateIndex: input.selectedCandidateIndex ?? null,
     detectionVersion: input.detectionVersion,
@@ -196,7 +246,7 @@ export async function insertTripIfAbsent(
     .returning();
 
   if (inserted[0]) {
-    return mapRow(inserted[0]);
+    return hydrateTripRow(inserted[0]);
   }
 
   return getTripByEventKey(input.eventKey);
@@ -223,7 +273,6 @@ export async function upsertTrip(input: InsertTripInput): Promise<TripRow> {
         placeId: input.placeId ?? null,
         placeKind: input.placeKind ?? null,
         poiId: input.poiId ?? null,
-        poiLabel: input.poiLabel ?? null,
         inferred: input.inferred ? 1 : 0,
         selectedCandidateIndex: input.selectedCandidateIndex ?? null,
         detectionVersion: input.detectionVersion,
@@ -241,7 +290,7 @@ export async function upsertTrip(input: InsertTripInput): Promise<TripRow> {
     }
     return existing;
   }
-  return mapRow(row);
+  return hydrateTripRow(row);
 }
 
 export async function updateTripEndTime(
@@ -267,7 +316,6 @@ export async function applyTripPersistedLabel(
       placeId: labels.placeId,
       placeKind: labels.placeKind,
       poiId: labels.poiId,
-      poiLabel: labels.poiLabel,
       selectedCandidateIndex: null,
     })
     .where(eq(trips.id, tripId));
@@ -276,7 +324,7 @@ export async function applyTripPersistedLabel(
 export async function updateTripPoiSelection(
   tripId: number,
   poiId: number,
-  poiLabel: string,
+  _poiLabel?: string,
   cachePlaceId?: number | null,
 ): Promise<void> {
   const db = await getDatabase();
@@ -284,7 +332,6 @@ export async function updateTripPoiSelection(
     .update(trips)
     .set({
       poiId,
-      poiLabel: poiLabel.trim(),
       selectedCandidateIndex: null,
       ...(cachePlaceId != null
         ? {
@@ -308,7 +355,6 @@ export async function updateTripLabelSelection(
     .set({
       selectedCandidateIndex,
       poiId: null,
-      poiLabel: null,
       ...(cachePlaceId != null
         ? {
             placeId: cachePlaceId,
@@ -334,7 +380,6 @@ export async function updateTripCustomLabel(
     .update(trips)
     .set({
       placeLabel: trimmed,
-      poiLabel: cachePlaceId != null ? trimmed : null,
       poiId: null,
       selectedCandidateIndex: null,
       ...(cachePlaceId != null
@@ -360,7 +405,6 @@ export async function updateTripSavedPlaceAssociation(
       placeId: savedPlaceId,
       placeKind: savedPlaceId != null ? ('saved' as const) : null,
       poiId: null,
-      poiLabel: null,
       ...(label != null ? { placeLabel: label } : {}),
     })
     .where(eq(trips.id, tripId));
@@ -394,7 +438,7 @@ export async function listUnlabeledStayTrips(
     .where(unlabeledStayTripConditions())
     .orderBy(desc(trips.dateKey), desc(trips.startAt))
     .limit(limit);
-  return rows.map(mapRow);
+  return rows.map(row => mapRow(row));
 }
 
 export async function countTripsForDay(dateKey: string): Promise<number> {

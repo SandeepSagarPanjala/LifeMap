@@ -136,6 +136,7 @@ export function mergeTripPlaceLabelAfterLookup(
     placeKind?: DetectedTrip['placeKind'] | null;
     poiId?: number | null;
     poiLabel?: string | null;
+    poiCategory?: string | null;
   },
 ): PersistedTripLabel {
   if (placeLookup != null) {
@@ -145,6 +146,7 @@ export function mergeTripPlaceLabelAfterLookup(
       placeLabel: placeLookup.addressLine ?? detected?.placeLabel ?? null,
       poiId: detected?.poiId ?? null,
       poiLabel: detected?.poiLabel ?? null,
+      poiCategory: detected?.poiCategory ?? null,
     });
   }
 
@@ -153,8 +155,9 @@ export function mergeTripPlaceLabelAfterLookup(
       placeLabel: detected.placeLabel ?? null,
       placeId: detected.placeId ?? null,
       placeKind: detected.placeKind,
-      poiId: detected.poiId ?? null,
-      poiLabel: detected.poiLabel ?? null,
+      poiId: detected?.poiId ?? null,
+      poiLabel: detected?.poiLabel ?? null,
+      poiCategory: detected?.poiCategory ?? null,
     });
   }
 

@@ -197,6 +197,20 @@
       "when": 1788919000000,
       "tag": "0027_location_day_summaries",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1788920000000,
+      "tag": "0028_place_pois_category",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1788921000000,
+      "tag": "0029_drop_trip_poi_label",
+      "breakpoints": true
     }
   ]
 }

@@ -52,12 +52,19 @@ export function resolveVisitPlaceDisplay(input: {
       id: poi.id,
       name: poi.name,
       source: poi.source,
+      category: poi.category ?? null,
     }));
-    const primaryLabel = visitDisplayLabel({
-      placeKind: 'cache',
-      placeLabel: input.placeLabel,
-      poiLabel: input.poiLabel,
-    });
+    const selectedPoi =
+      input.poiId != null
+        ? candidates.find(candidate => candidate.id === input.poiId)
+        : undefined;
+    const primaryLabel =
+      selectedPoi?.name.trim() ||
+      visitDisplayLabel({
+        placeKind: 'cache',
+        placeLabel: input.placeLabel,
+        poiLabel: input.poiLabel,
+      });
 
     return {
       source: 'lookup',

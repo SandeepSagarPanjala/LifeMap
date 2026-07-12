@@ -68,17 +68,20 @@ export function clearResolvedPlace(target: {
 }
 
 export function applyResolvedPoi(
-  target: { poiId?: number; poiLabel?: string },
-  poi: { id: number; name: string },
+  target: { poiId?: number; poiLabel?: string; poiCategory?: string | null },
+  poi: { id: number; name: string; category?: string | null },
 ): void {
   target.poiId = poi.id;
   target.poiLabel = poi.name;
+  target.poiCategory = poi.category ?? null;
 }
 
 export function clearResolvedPoi(target: {
   poiId?: number;
   poiLabel?: string;
+  poiCategory?: string | null;
 }): void {
   target.poiId = undefined;
   target.poiLabel = undefined;
+  target.poiCategory = undefined;
 }

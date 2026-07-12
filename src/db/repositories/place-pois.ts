@@ -30,7 +30,13 @@ export function cacheNeedsPoiCoordinateRefresh(
   if (mapkitPois.length === 0) {
     return true;
   }
-  return mapkitPois.some(poi => poiCoordinatesMatchAnchor(poi, anchor));
+  if (mapkitPois.some(poi => poiCoordinatesMatchAnchor(poi, anchor))) {
+    return true;
+  }
+  // One-shot category backfill: only if every MapKit POI still lacks category
+  // (pre-category data). MapKit leaves many POIs uncategorized forever, so
+  // do not treat partial nulls as needing another refresh.
+  return mapkitPois.every(poi => poi.category == null || !poi.category.trim());
 }
 
 function mapRow(row: typeof placePois.$inferSelect): PlacePoiRow {
@@ -40,6 +46,7 @@ function mapRow(row: typeof placePois.$inferSelect): PlacePoiRow {
     name: row.name,
     lat: row.lat,
     lng: row.lng,
+    category: row.category?.trim() ? row.category.trim() : null,
     source: row.source as PlacePoiSource,
     createdAt: row.createdAt,
   };
@@ -112,9 +119,11 @@ export async function insertPlacePoi(input: {
   name: string;
   lat: number;
   lng: number;
+  category?: string | null;
   source: PlacePoiSource;
 }): Promise<PlacePoiRow> {
   const db = await getDatabase();
+  const category = input.category?.trim() ? input.category.trim() : null;
   const inserted = await db
     .insert(placePois)
     .values({
@@ -122,6 +131,7 @@ export async function insertPlacePoi(input: {
       name: input.name.trim(),
       lat: input.lat,
       lng: input.lng,
+      category,
       source: input.source,
       createdAt: new Date(),
     })
@@ -129,13 +139,14 @@ export async function insertPlacePoi(input: {
   return mapRow(inserted[0]!);
 }
 
-/** Upsert MapKit POIs by name — update lat/lng, insert new names, never delete. */
+/** Upsert MapKit POIs by name — update lat/lng/category, insert new names, never delete. */
 export async function syncMapkitPlacePoisForCache(
   cacheId: number,
   incoming: ReadonlyArray<{
     name: string;
     lat: number;
     lng: number;
+    category?: string | null;
   }>,
 ): Promise<SyncMapkitPlacePoisResult> {
   const existing = await listPlacePoisForCache(cacheId);
@@ -163,14 +174,22 @@ export async function syncMapkitPlacePoisForCache(
     }
     seenIncoming.add(key);
 
+    const category = candidate.category?.trim()
+      ? candidate.category.trim()
+      : null;
     const match = mapkitByName.get(key);
     if (match != null) {
       const latChanged = Math.abs(match.lat - candidate.lat) >= COORD_EPSILON;
       const lngChanged = Math.abs(match.lng - candidate.lng) >= COORD_EPSILON;
-      if (latChanged || lngChanged) {
+      const categoryChanged = category != null && category !== match.category;
+      if (latChanged || lngChanged || categoryChanged) {
         await db
           .update(placePois)
-          .set({ lat: candidate.lat, lng: candidate.lng })
+          .set({
+            lat: candidate.lat,
+            lng: candidate.lng,
+            ...(categoryChanged ? { category } : {}),
+          })
           .where(eq(placePois.id, match.id));
         updated += 1;
       }
@@ -182,6 +201,7 @@ export async function syncMapkitPlacePoisForCache(
       name,
       lat: candidate.lat,
       lng: candidate.lng,
+      category,
       source: 'mapkit',
     });
     mapkitByName.set(key, row);
@@ -197,6 +217,7 @@ export async function replacePlacePoisForCache(
     name: string;
     lat: number;
     lng: number;
+    category?: string | null;
     source: PlacePoiSource;
   }>,
 ): Promise<PlacePoiRow[]> {
@@ -214,6 +235,7 @@ export async function replacePlacePoisForCache(
         name: poi.name.trim(),
         lat: poi.lat,
         lng: poi.lng,
+        category: poi.category?.trim() ? poi.category.trim() : null,
         source: poi.source,
         createdAt: now,
       })),
@@ -228,6 +250,7 @@ export async function mergePlacePoisForCache(
     name: string;
     lat: number;
     lng: number;
+    category?: string | null;
     source: PlacePoiSource;
   }>,
 ): Promise<PlacePoiRow[]> {
@@ -254,6 +277,7 @@ export async function mergePlacePoisForCache(
         name: poi.name.trim(),
         lat: poi.lat,
         lng: poi.lng,
+        category: poi.category?.trim() ? poi.category.trim() : null,
         source: poi.source,
         createdAt: now,
       })),

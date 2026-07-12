@@ -66,7 +66,7 @@ export function selectMapkitPoisForPersist(
     maxNew?: number;
     existingNames?: ReadonlySet<string>;
   } = {},
-): Array<{ name: string; lat: number; lng: number }> {
+): Array<{ name: string; lat: number; lng: number; category: string | null }> {
   const maxNew = options.maxNew ?? PLACE_LOOKUP_MAX_MAPKIT_POIS;
   const existingNames = options.existingNames ?? new Set<string>();
 
@@ -76,14 +76,25 @@ export function selectMapkitPoisForPersist(
       name: candidate.name.trim(),
       lat: candidate.lat,
       lng: candidate.lng,
+      category: candidate.category?.trim() ? candidate.category.trim() : null,
       distanceM: candidate.distanceM,
     }))
     .filter(poi => poi.name.length > 0)
     .sort((a, b) => a.distanceM - b.distanceM);
 
   const seen = new Set<string>();
-  const known: Array<{ name: string; lat: number; lng: number }> = [];
-  const fresh: Array<{ name: string; lat: number; lng: number }> = [];
+  const known: Array<{
+    name: string;
+    lat: number;
+    lng: number;
+    category: string | null;
+  }> = [];
+  const fresh: Array<{
+    name: string;
+    lat: number;
+    lng: number;
+    category: string | null;
+  }> = [];
 
   for (const poi of sorted) {
     const key = poi.name.toLowerCase();
@@ -91,7 +102,12 @@ export function selectMapkitPoisForPersist(
       continue;
     }
     seen.add(key);
-    const entry = { name: poi.name, lat: poi.lat, lng: poi.lng };
+    const entry = {
+      name: poi.name,
+      lat: poi.lat,
+      lng: poi.lng,
+      category: poi.category,
+    };
     if (existingNames.has(key)) {
       known.push(entry);
     } else {

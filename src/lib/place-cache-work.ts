@@ -40,13 +40,19 @@ export async function runPlaceCacheWorkItem(
     return;
   }
 
-  let closestPoi: { poiId: number; poiLabel: string } | undefined;
+  let closestPoi:
+    | { poiId: number; poiLabel: string; poiCategory: string | null }
+    | undefined;
   if (platformResolvesClosestPoi()) {
     const { listPlacePoisForCache } = await import('@/db/repositories/place-pois');
     const pois = await listPlacePoisForCache(cache.id);
     const closest = closestPlacePoiToAnchor(anchor, pois);
     if (closest != null) {
-      closestPoi = { poiId: closest.id, poiLabel: closest.name };
+      closestPoi = {
+        poiId: closest.id,
+        poiLabel: closest.name,
+        poiCategory: closest.category ?? null,
+      };
     }
   }
 

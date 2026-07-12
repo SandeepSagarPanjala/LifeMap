@@ -114,6 +114,7 @@ import {
 import {
   isVisitPlaceLabelConfirmed,
   visitPlaceDefaultLabel,
+  visitPlaceSelectedCategory,
 } from '@/lib/place-lookup-types';
 import { buildMapAttributionInsets } from '@/lib/map-attribution-insets';
 import {
@@ -679,6 +680,9 @@ export function useMapScreenController() {
     historyScrubOnEvent &&
     selectedSavedPlace == null &&
     isVisitPlaceLabelConfirmed(selectedVisitPlaceDisplay);
+  const visitPlaceCategoryInEventCard = visitPlacePinnedInEventCard
+    ? visitPlaceSelectedCategory(selectedVisitPlaceDisplay)
+    : null;
   const openPlaceLabelCardForStay = useCallback(
     (stay: DetectedTrip) => {
       if (matchSavedPlaceForStay(stay, savedPlaces)) {
@@ -1601,6 +1605,7 @@ export function useMapScreenController() {
       selectedVisitPlaceDisplay,
       visitPlaceLabelInEventCard,
       visitPlacePinnedInEventCard,
+      visitPlaceCategoryInEventCard,
       showPlaceLabelCard,
       placeLabelEditDisplay,
       openVisitPlaceLabelCard,
@@ -1715,6 +1720,7 @@ export function useMapScreenController() {
       selectedVisitPlaceDisplay,
       visitPlaceLabelInEventCard,
       visitPlacePinnedInEventCard,
+      visitPlaceCategoryInEventCard,
       showPlaceLabelCard,
       placeLabelEditDisplay,
       openVisitPlaceLabelCard,

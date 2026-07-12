@@ -6,6 +6,8 @@ export type PlacePoiRow = {
   name: string;
   lat: number;
   lng: number;
+  /** MapKit `pointOfInterestCategory` raw value, e.g. MKPOICategoryRestaurant. */
+  category: string | null;
   source: PlacePoiSource;
   createdAt: Date;
 };
@@ -19,6 +21,8 @@ export type PlaceLookupCandidate = {
   distanceM: number;
   lat: number;
   lng: number;
+  /** MapKit `pointOfInterestCategory` raw value, when available. */
+  category?: string | null;
 };
 
 export type PlaceLookupStatus = 'pending' | 'complete' | 'failed';
@@ -77,6 +81,7 @@ export type VisitPlaceDisplayCandidate = {
   id: number;
   name: string;
   source: PlacePoiSource;
+  category: string | null;
 };
 
 export type VisitPlaceDisplay = {
@@ -100,6 +105,18 @@ export function isVisitPlaceLabelConfirmed(
     return true;
   }
   return display.selectedPoiId != null;
+}
+
+export function visitPlaceSelectedCategory(
+  display: VisitPlaceDisplay,
+): string | null {
+  if (display.selectedPoiId == null) {
+    return null;
+  }
+  return (
+    display.candidates.find(candidate => candidate.id === display.selectedPoiId)
+      ?.category ?? null
+  );
 }
 
 export function visitPlaceDefaultLabel(

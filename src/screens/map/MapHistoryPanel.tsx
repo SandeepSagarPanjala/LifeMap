@@ -33,6 +33,7 @@ export function MapHistoryPanel({ controller }: MapHistoryPanelProps) {
     showPlaceLabelCard,
     visitPlaceLabelInEventCard,
     visitPlacePinnedInEventCard,
+    visitPlaceCategoryInEventCard,
     openVisitPlaceLabelCard,
     openDriveStartLabelCard,
     openDriveEndLabelCard,
@@ -116,6 +117,7 @@ export function MapHistoryPanel({ controller }: MapHistoryPanelProps) {
             savedPlace={scrubOnEvent ? selectedSavedPlace : null}
             visitPlaceLabel={visitPlaceLabelInEventCard}
             visitPlacePinned={visitPlacePinnedInEventCard}
+            visitPlaceCategory={visitPlaceCategoryInEventCard}
             onEditVisitPlaceLabel={
               scrubOnEvent &&
               selectedEntry?.kind === 'stay' &&

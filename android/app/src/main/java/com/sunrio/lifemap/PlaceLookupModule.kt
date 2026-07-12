@@ -79,6 +79,12 @@ class PlaceLookupModule(reactContext: ReactApplicationContext) :
     }
   }
 
+  /** iOS MapKit refresh path — no Android POI provider; return empty. */
+  @ReactMethod
+  fun lookupNearbyPois(lat: Double, lng: Double, radiusM: Double, promise: Promise) {
+    promise.resolve(emptyResult(null))
+  }
+
   @ReactMethod
   fun lookupNearbyPlace(lat: Double, lng: Double, radiusM: Double, promise: Promise) {
     val context = reactApplicationContext
@@ -113,6 +119,7 @@ class PlaceLookupModule(reactContext: ReactApplicationContext) :
         candidate.putString("name", line)
         candidate.putString("kind", "address")
         candidate.putDouble("distanceM", 0.0)
+        candidate.putNull("category")
         candidates.pushMap(candidate)
       }
 

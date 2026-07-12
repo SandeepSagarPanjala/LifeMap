@@ -29,6 +29,7 @@ function tripRow(overrides: Partial<TripRow> = {}): TripRow {
     placeKind: null,
     poiId: null,
     poiLabel: null,
+    poiCategory: null,
     inferred: false,
     selectedCandidateIndex: null,
     detectionVersion: 1,
@@ -114,6 +115,7 @@ describe('place-lookup-backfill', () => {
           placeKind: 'cache',
           poiId: 10,
           poiLabel: 'Walmart',
+          poiCategory: null,
         },
       ],
     ]);

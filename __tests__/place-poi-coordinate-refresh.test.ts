@@ -11,6 +11,7 @@ function poi(
   return {
     cacheId: 1,
     source: 'mapkit',
+    category: null,
     createdAt: new Date(),
     ...overrides,
   };
@@ -36,16 +37,64 @@ describe('poi coordinate refresh helpers', () => {
     expect(cacheNeedsPoiCoordinateRefresh(anchor, pois)).toBe(true);
   });
 
-  it('does not refresh when mapkit POIs have distinct coordinates', () => {
+  it('does not refresh when mapkit POIs have distinct coordinates and categories', () => {
     const anchor = { lat: 33.22, lng: -97.16 };
     const pois = [
-      poi({ id: 1, name: 'A', lat: 33.221, lng: -97.161 }),
+      poi({
+        id: 1,
+        name: 'A',
+        lat: 33.221,
+        lng: -97.161,
+        category: 'MKPOICategoryRestaurant',
+      }),
       poi({
         id: 2,
         name: 'Custom',
         lat: 33.22,
         lng: -97.16,
         source: 'user',
+      }),
+    ];
+    expect(cacheNeedsPoiCoordinateRefresh(anchor, pois)).toBe(false);
+  });
+
+  it('marks cache for refresh when every mapkit POI is missing category', () => {
+    const anchor = { lat: 33.22, lng: -97.16 };
+    const pois = [
+      poi({
+        id: 1,
+        name: 'A',
+        lat: 33.221,
+        lng: -97.161,
+        category: null,
+      }),
+      poi({
+        id: 2,
+        name: 'B',
+        lat: 33.222,
+        lng: -97.162,
+        category: null,
+      }),
+    ];
+    expect(cacheNeedsPoiCoordinateRefresh(anchor, pois)).toBe(true);
+  });
+
+  it('does not refresh when some mapkit POIs already have category', () => {
+    const anchor = { lat: 33.22, lng: -97.16 };
+    const pois = [
+      poi({
+        id: 1,
+        name: 'A',
+        lat: 33.221,
+        lng: -97.161,
+        category: 'MKPOICategoryStore',
+      }),
+      poi({
+        id: 2,
+        name: 'B',
+        lat: 33.222,
+        lng: -97.162,
+        category: null,
       }),
     ];
     expect(cacheNeedsPoiCoordinateRefresh(anchor, pois)).toBe(false);

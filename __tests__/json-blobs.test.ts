@@ -42,12 +42,20 @@ describe('json-blobs', () => {
 
   it('keeps valid place lookup candidate JSON', () => {
     const raw =
-      '[{"id":"poi-1","name":"Cafe","kind":"poi","distanceM":42,"lat":33.2,"lng":-97.1}]';
+      '[{"id":"poi-1","name":"Cafe","kind":"poi","distanceM":42,"lat":33.2,"lng":-97.1,"category":"MKPOICategoryCafe"}]';
     expect(parsePlaceLookupCandidates(raw)).toEqual([
-      { id: 'poi-1', name: 'Cafe', kind: 'poi', distanceM: 42 },
+      {
+        id: 'poi-1',
+        name: 'Cafe',
+        kind: 'poi',
+        distanceM: 42,
+        lat: 33.2,
+        lng: -97.1,
+        category: 'MKPOICategoryCafe',
+      },
     ]);
     expect(sanitizeCandidatesJson(raw)).toBe(
-      '[{"id":"poi-1","name":"Cafe","kind":"poi","distanceM":42}]',
+      '[{"id":"poi-1","name":"Cafe","kind":"poi","distanceM":42,"lat":33.2,"lng":-97.1,"category":"MKPOICategoryCafe"}]',
     );
   });
 
@@ -61,9 +69,12 @@ describe('json-blobs', () => {
           distanceM: 42,
           lat: 33.2,
           lng: -97.1,
+          category: 'MKPOICategoryCafe',
         },
       ]),
-    ).toBe('[{"id":"poi-1","name":"Cafe","kind":"poi","distanceM":42}]');
+    ).toBe(
+      '[{"id":"poi-1","name":"Cafe","kind":"poi","distanceM":42,"lat":33.2,"lng":-97.1,"category":"MKPOICategoryCafe"}]',
+    );
     expect(serializePlaceLookupCandidates([])).toBeNull();
   });
 });
