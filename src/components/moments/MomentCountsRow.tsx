@@ -117,11 +117,29 @@ function MomentCountChip({
       </Text>
     </View>
   ) : (
-    <View style={[styles.chip, compact ? styles.chipCompact : null]}>
-      <View style={[styles.iconOrb, { backgroundColor: theme.badgeBg }]}>
+    <View
+      style={[
+        styles.chip,
+        compact ? styles.chipCompact : null,
+        dense ? styles.chipInlineDense : null,
+      ]}
+    >
+      <View
+        style={[
+          styles.iconOrb,
+          dense ? styles.iconOrbInlineDense : null,
+          { backgroundColor: theme.badgeBg },
+        ]}
+      >
         <Icon size={iconSize} color={theme.icon} strokeWidth={2.25} />
       </View>
-      <Text style={[styles.count, compact ? styles.countCompact : null]}>
+      <Text
+        style={[
+          styles.count,
+          compact ? styles.countCompact : null,
+          dense ? styles.countInlineDense : null,
+        ]}
+      >
         {count}
       </Text>
     </View>
@@ -163,7 +181,9 @@ export function MomentCountsRow({
         styles.row,
         layout === 'stacked'
           ? [styles.rowStacked, dense ? styles.rowStackedDense : null]
-          : null,
+          : dense
+            ? styles.rowInlineDense
+            : null,
       ]}
     >
       {CHIP_DEFINITIONS.map(definition => {
@@ -227,6 +247,9 @@ const styles = StyleSheet.create({
   rowStackedDense: {
     gap: 6,
   },
+  rowInlineDense: {
+    gap: 6,
+  },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -234,6 +257,9 @@ const styles = StyleSheet.create({
   },
   chipCompact: {
     gap: 4,
+  },
+  chipInlineDense: {
+    gap: 3,
   },
   chipStacked: {
     alignItems: 'center',
@@ -249,6 +275,11 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  iconOrbInlineDense: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
   },
   iconOrbStacked: {
     width: 26,
@@ -268,6 +299,10 @@ const styles = StyleSheet.create({
   },
   countCompact: {
     fontSize: 13,
+  },
+  countInlineDense: {
+    fontSize: 11,
+    minWidth: 10,
   },
   countStacked: {
     fontSize: 11,

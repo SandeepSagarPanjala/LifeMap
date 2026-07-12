@@ -63,12 +63,17 @@ export function areMapScreenMapPropsEqual(
     previous.handleUserLocation === next.handleUserLocation &&
     previous.showDayJourney === next.showDayJourney &&
     previous.showSavedPlaceMarkersOnMap === next.showSavedPlaceMarkersOnMap &&
+    previous.mapSavedPlaces === next.mapSavedPlaces &&
     previous.dayMomentMapPins === next.dayMomentMapPins &&
     previous.historyMomentMapPins === next.historyMomentMapPins &&
     previous.openMomentMapPinPreview === next.openMomentMapPinPreview &&
+    previous.openDayStoryMomentType === next.openDayStoryMomentType &&
+    previous.openHistoryToStay === next.openHistoryToStay &&
+    previous.dayMoments === next.dayMoments &&
     previous.historyData === next.historyData &&
     previous.dayStays === next.dayStays &&
     previous.dayTravels === next.dayTravels &&
+    previous.dayStoryStops === next.dayStoryStops &&
     previous.tripDetectionConfig === next.tripDetectionConfig &&
     previous.currentOpenVisit === next.currentOpenVisit &&
     previous.currentOpenDrive === next.currentOpenDrive &&

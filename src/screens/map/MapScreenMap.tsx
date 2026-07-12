@@ -34,8 +34,8 @@ export const MapScreenMap = memo(
       historyMomentMapPins,
       openMomentMapPinPreview,
       historyData,
-      dayStays,
       dayTravels,
+      dayStoryStops,
       tripDetectionConfig,
       currentOpenVisit,
       currentOpenDrive,
@@ -55,8 +55,11 @@ export const MapScreenMap = memo(
       openSelectedEntryMomentsPreview,
       playback,
       savedPlaces,
-      showSavedPlaceMarkersOnMap,
+      mapSavedPlaces,
       savedPlaceMomentClusters,
+      openDayStoryMomentType,
+      openHistoryToStay,
+      dayMoments,
     } = controller;
 
     if (mapInitialRegion == null) {
@@ -86,10 +89,8 @@ export const MapScreenMap = memo(
         onLongPress={handleMapLongPress}
       >
         <SavedPlacesMapOverlay
-          places={showSavedPlaceMarkersOnMap ? savedPlaces : []}
-          momentClusters={
-            showSavedPlaceMarkersOnMap ? savedPlaceMomentClusters : []
-          }
+          places={mapSavedPlaces}
+          momentClusters={savedPlaceMomentClusters}
           hideMarkerPlaceId={
             showHistoryMap
               ? selectedSavedPlace?.id ??
@@ -105,10 +106,15 @@ export const MapScreenMap = memo(
           <>
             <DayJourneyOverlay
               travels={dayTravels}
-              stays={dayStays}
+              stops={dayStoryStops}
               tripConfig={tripDetectionConfig}
               savedPlaces={savedPlaces}
               fallbackPoints={historyData.points}
+              dayMoments={dayMoments}
+              historyEntries={historyData.entries}
+              hideSavedPlaceId={currentOpenVisitSavedPlace?.id ?? null}
+              onPressStoryMomentType={openDayStoryMomentType}
+              onPressStoryStay={openHistoryToStay}
             />
             <MomentMapOverlay
               pins={dayMomentMapPins}

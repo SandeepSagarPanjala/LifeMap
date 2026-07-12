@@ -66,9 +66,13 @@ export const BOTTOM_SHEET_SURFACE = {
 
 /** Life360-style journey path on the map (no dots along the line). */
 export const ROUTE_PATH_OPACITY = 0.35;
+/** Softer connectors under day-story numbered stops. */
+export const ROUTE_PATH_STORY_OPACITY = 0.5;
 
 export const ROUTE_PATH_FILL = `rgba(0, 122, 255, ${ROUTE_PATH_OPACITY})`;
 export const ROUTE_PATH_BORDER = `rgba(255, 255, 255, ${ROUTE_PATH_OPACITY})`;
+export const ROUTE_PATH_STORY_FILL = `rgba(0, 122, 255, ${ROUTE_PATH_STORY_OPACITY})`;
+export const ROUTE_PATH_STORY_BORDER = `rgba(255, 255, 255, ${ROUTE_PATH_STORY_OPACITY})`;
 
 export const STAY_AREA_OPACITY = 0.28;
 export const STAY_AREA_FILL = `rgba(255, 149, 0, ${STAY_AREA_OPACITY})`;

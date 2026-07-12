@@ -54,6 +54,11 @@ import {
   type MomentCountType,
   type MomentCounts,
 } from '@/lib/moments/moment-counts';
+import {
+  buildDayStoryStops,
+  isCoordinateOnDayStoryStop,
+  type DayStoryStop,
+} from '@/lib/day-story-stops';
 import { queueMomentPreview } from '@/lib/moments/moment-preview-navigation';
 import {
   coalesceMomentMapPins,
@@ -801,6 +806,44 @@ export function useMapScreenController() {
   const showSavedPlaceMarkersOnMap =
     showHistoryMap || !viewingToday || historyHasGpsData;
 
+  const mapSavedPlaces = useMemo((): SavedPlaceRow[] => {
+    if (!showSavedPlaceMarkersOnMap) {
+      return [];
+    }
+    // History-closed day browse: story overlay owns pins (incl. Home).
+    if (showDayJourney) {
+      return [];
+    }
+    // History mode (and any non-today day): only Home. Work/favorites are today-only.
+    if (historyPanelOpen || !viewingToday) {
+      return savedPlaces.filter(place => place.kind === 'home');
+    }
+    return savedPlaces;
+  }, [
+    historyPanelOpen,
+    savedPlaces,
+    showDayJourney,
+    showSavedPlaceMarkersOnMap,
+    viewingToday,
+  ]);
+
+  const dayStoryStops = useMemo(
+    () =>
+      showDayJourney
+        ? buildDayStoryStops(
+            dayStays,
+            savedPlaces,
+            tripDetectionConfig.dwellRadiusMeters,
+          )
+        : [],
+    [
+      showDayJourney,
+      dayStays,
+      savedPlaces,
+      tripDetectionConfig.dwellRadiusMeters,
+    ],
+  );
+
   const dayMomentMapPinsRaw = useMemo((): MomentMapPin[] => {
     if (!showDayJourney || currentOpenVisit != null) {
       return [];
@@ -827,15 +870,30 @@ export function useMapScreenController() {
     );
   }, [showHistoryMap, selectedEntry, dayMoments, historyData.points]);
 
-  const dayMomentMapPins = useMemo(
-    () =>
-      partitionMomentMapPins(
-        dayMomentMapPinsRaw,
-        savedPlaces,
-        clusterMomentsOnMap,
-      ).individualPins,
-    [dayMomentMapPinsRaw, savedPlaces, clusterMomentsOnMap],
-  );
+  const dayMomentMapPins = useMemo(() => {
+    const individual = partitionMomentMapPins(
+      dayMomentMapPinsRaw,
+      savedPlaces,
+      clusterMomentsOnMap,
+    ).individualPins;
+    if (dayStoryStops.length === 0) {
+      return individual;
+    }
+    return individual.filter(
+      pin =>
+        !isCoordinateOnDayStoryStop(
+          pin.coordinate,
+          dayStoryStops,
+          tripDetectionConfig.dwellRadiusMeters,
+        ),
+    );
+  }, [
+    dayMomentMapPinsRaw,
+    savedPlaces,
+    clusterMomentsOnMap,
+    dayStoryStops,
+    tripDetectionConfig.dwellRadiusMeters,
+  ]);
 
   const historyMomentMapPins = useMemo(
     () =>
@@ -885,21 +943,17 @@ export function useMapScreenController() {
 
   const savedPlaceMomentClusters =
     useMemo((): SavedPlaceMomentClusterOnMap[] => {
-      const raw = showDayJourney
-        ? dayMomentMapPinsRaw
-        : showHistoryMap
-        ? historyMomentMapPinsRaw
-        : [];
+      // Day-story callout owns Home moments+numbers while History is closed.
+      if (showDayJourney) {
+        return [];
+      }
+      const raw = showHistoryMap ? historyMomentMapPinsRaw : [];
       if (raw.length === 0 || !clusterMomentsOnMap) {
         return [];
       }
 
-      const calloutSavedPlaceId = showDayJourney
-        ? currentOpenVisitSavedPlace?.id
-        : selectedSavedPlace?.id;
-      const calloutMomentCounts = showDayJourney
-        ? currentVisitMomentCounts
-        : selectedEntryMomentCounts;
+      const calloutSavedPlaceId = selectedSavedPlace?.id;
+      const calloutMomentCounts = selectedEntryMomentCounts;
 
       return partitionMomentMapPins(raw, savedPlaces, true)
         .savedPlaceClusters.filter(
@@ -925,9 +979,6 @@ export function useMapScreenController() {
         });
     }, [
       clusterMomentsOnMap,
-      currentOpenVisitSavedPlace?.id,
-      currentVisitMomentCounts,
-      dayMomentMapPinsRaw,
       dayMoments,
       historyMomentMapPinsRaw,
       openMomentPreview,
@@ -937,6 +988,56 @@ export function useMapScreenController() {
       showDayJourney,
       showHistoryMap,
     ]);
+
+  const openDayStoryMomentType = useCallback(
+    (stop: DayStoryStop, initialType?: MomentCountType) => {
+      const primary = stop.stays[0];
+      if (primary == null) {
+        return;
+      }
+      const savedPlace =
+        stop.savedPlaceId != null
+          ? savedPlaces.find(place => place.id === stop.savedPlaceId) ?? null
+          : null;
+      const moments = filterMomentsForStayEntry(dayMoments, primary, {
+        savedPlace,
+        dwellRadiusMeters: tripDetectionConfig.dwellRadiusMeters,
+        points: historyData.points,
+        entries: historyEntries,
+        aggregation: 'place',
+      });
+      openMomentPreview({
+        moments,
+        initialType,
+        previewEntry: primary,
+      });
+    },
+    [
+      dayMoments,
+      historyData.points,
+      historyEntries,
+      openMomentPreview,
+      savedPlaces,
+      tripDetectionConfig.dwellRadiusMeters,
+    ],
+  );
+
+  const openHistoryToStay = useCallback(
+    (stay: DetectedTrip) => {
+      const index = historyEntries.findIndex(entry => entry.id === stay.id);
+      if (index < 0) {
+        return;
+      }
+      playback.stop();
+      setSelectedHistoryIndex(index);
+      if (!historyPanelOpen) {
+        setHistoryPanelChromeVisible(true);
+        historyPanelY.setValue(historyPanelSlideDistanceRef.current);
+        setHistoryPanelOpen(true);
+      }
+    },
+    [historyEntries, historyPanelOpen, historyPanelY, playback],
+  );
 
   const openCurrentVisitMomentsPreview = useCallback(
     (initialType?: MomentCountType) => {
@@ -1563,6 +1664,7 @@ export function useMapScreenController() {
       historyEntries,
       dayStays,
       dayTravels,
+      dayStoryStops,
       historyMapPlan,
       historyBadgeCount,
       trackingGapWarning,
@@ -1591,6 +1693,7 @@ export function useMapScreenController() {
       showHistoryMap,
       showDayJourney,
       showSavedPlaceMarkersOnMap,
+      mapSavedPlaces,
       currentVisitMomentCounts,
       dayMomentMapPins,
       historyMomentMapPins,
@@ -1618,6 +1721,9 @@ export function useMapScreenController() {
       currentOpenVisitPlaceDisplay,
       handleSaveCustomVisitPlaceLabel,
       savedPlaces,
+      openDayStoryMomentType,
+      openHistoryToStay,
+      dayMoments,
       hasHome,
       hasWork,
       canSaveHome,
@@ -1678,6 +1784,7 @@ export function useMapScreenController() {
       historyEntries,
       dayStays,
       dayTravels,
+      dayStoryStops,
       historyMapPlan,
       historyBadgeCount,
       trackingGapWarning,
@@ -1706,6 +1813,7 @@ export function useMapScreenController() {
       showHistoryMap,
       showDayJourney,
       showSavedPlaceMarkersOnMap,
+      mapSavedPlaces,
       currentVisitMomentCounts,
       dayMomentMapPins,
       historyMomentMapPins,
@@ -1733,6 +1841,9 @@ export function useMapScreenController() {
       currentOpenVisitPlaceDisplay,
       handleSaveCustomVisitPlaceLabel,
       savedPlaces,
+      openDayStoryMomentType,
+      openHistoryToStay,
+      dayMoments,
       hasHome,
       hasWork,
       canSaveHome,
