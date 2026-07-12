@@ -5,7 +5,6 @@ import {
   findPlaceLookupNearAnchor,
   getPlaceLookupById,
   insertPendingPlaceLookup,
-  updatePlaceLookupVenueRadius,
 } from '@/db/repositories/place-lookup-cache';
 import {
   listPlacePoisForCache,
@@ -17,13 +16,11 @@ import {
   platformResolvesClosestPoi,
 } from '@/lib/place-lookup-native';
 import {
+  PLACE_LOOKUP_MAX_MAPKIT_POIS,
   PLACE_LOOKUP_SESSION_BUDGET,
   PLACE_LOOKUP_VENUE_RADIUS_M,
 } from '@/lib/app-constants';
-import {
-  nextPlaceLookupRadiusM,
-  placeLookupAnchorKey,
-} from '@/lib/place-lookup-venue';
+import { placeLookupAnchorKey } from '@/lib/place-lookup-venue';
 import type {
   PlaceLookupCandidate,
   PlaceLookupRow,
@@ -59,35 +56,72 @@ export function shouldSkipPlaceLookupForStay(
   return stay.placeKind === 'saved' && stay.placeId != null;
 }
 
-function mapkitPoisFromCandidates(
+/**
+ * Keep existing MapKit names (for coord refresh) plus closest unseen POIs
+ * up to the overall max (20 at 100m).
+ */
+export function selectMapkitPoisForPersist(
   candidates: readonly PlaceLookupCandidate[],
-): Array<{ name: string; lat: number; lng: number; source: 'mapkit' }> {
-  return candidates
+  options: {
+    maxNew?: number;
+    existingNames?: ReadonlySet<string>;
+  } = {},
+): Array<{ name: string; lat: number; lng: number }> {
+  const maxNew = options.maxNew ?? PLACE_LOOKUP_MAX_MAPKIT_POIS;
+  const existingNames = options.existingNames ?? new Set<string>();
+
+  const sorted = candidates
     .filter(candidate => candidate.kind === 'poi')
     .map(candidate => ({
-      name: candidate.name,
+      name: candidate.name.trim(),
       lat: candidate.lat,
       lng: candidate.lng,
-      source: 'mapkit' as const,
-    }));
+      distanceM: candidate.distanceM,
+    }))
+    .filter(poi => poi.name.length > 0)
+    .sort((a, b) => a.distanceM - b.distanceM);
+
+  const seen = new Set<string>();
+  const known: Array<{ name: string; lat: number; lng: number }> = [];
+  const fresh: Array<{ name: string; lat: number; lng: number }> = [];
+
+  for (const poi of sorted) {
+    const key = poi.name.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    const entry = { name: poi.name, lat: poi.lat, lng: poi.lng };
+    if (existingNames.has(key)) {
+      known.push(entry);
+    } else {
+      fresh.push(entry);
+    }
+  }
+
+  return [...known, ...fresh.slice(0, maxNew)];
 }
 
 async function persistLookupPois(
   cacheId: number,
   candidates: readonly PlaceLookupCandidate[],
 ): Promise<void> {
-  const pois = mapkitPoisFromCandidates(candidates);
+  const existing = await listPlacePoisForCache(cacheId);
+  const existingNames = new Set(
+    existing
+      .filter(poi => poi.source === 'mapkit')
+      .map(poi => poi.name.trim().toLowerCase())
+      .filter(Boolean),
+  );
+  const maxNew = Math.max(0, PLACE_LOOKUP_MAX_MAPKIT_POIS - existingNames.size);
+  const pois = selectMapkitPoisForPersist(candidates, {
+    maxNew,
+    existingNames,
+  });
   if (pois.length === 0) {
     return;
   }
-  await syncMapkitPlacePoisForCache(
-    cacheId,
-    pois.map(poi => ({
-      name: poi.name,
-      lat: poi.lat,
-      lng: poi.lng,
-    })),
-  );
+  await syncMapkitPlacePoisForCache(cacheId, pois);
 }
 
 async function performPlaceLookup(
@@ -137,10 +171,12 @@ async function performPlaceLookup(
       notifyPlaceLookupUpdated();
     }
 
+    const venueRadius =
+      existing?.venueRadiusMeters ?? PLACE_LOOKUP_VENUE_RADIUS_M;
     const result = await fetchNearbyPlaceLookup(
       anchor.lat,
       anchor.lng,
-      existing?.venueRadiusMeters ?? PLACE_LOOKUP_VENUE_RADIUS_M,
+      venueRadius,
     );
     await completePlaceLookup(rowId, {
       addressLine: result.addressLine,
@@ -199,48 +235,6 @@ export async function enqueuePlaceLookupsForStays(
       break;
     }
     await enqueuePlaceLookupForStay(stay, savedPlaces, config);
-  }
-}
-
-export async function expandPlaceLookupArea(cacheId: number): Promise<boolean> {
-  const row = await getPlaceLookupById(cacheId);
-  if (!row) {
-    return false;
-  }
-
-  const nextRadius = nextPlaceLookupRadiusM(row.venueRadiusMeters);
-  if (nextRadius == null) {
-    return false;
-  }
-
-  const key = placeLookupAnchorKey(row.anchorLat, row.anchorLng);
-  if (inFlightKeys.has(key)) {
-    return false;
-  }
-
-  inFlightKeys.add(key);
-  try {
-    await updatePlaceLookupVenueRadius(cacheId, nextRadius);
-    notifyPlaceLookupUpdated();
-
-    const result = await fetchNearbyPlaceLookup(
-      row.anchorLat,
-      row.anchorLng,
-      nextRadius,
-    );
-    await completePlaceLookup(cacheId, {
-      addressLine: result.addressLine ?? row.addressLine,
-    });
-    if (platformResolvesClosestPoi()) {
-      await persistLookupPois(cacheId, result.candidates);
-    }
-    return true;
-  } catch {
-    await failPlaceLookup(cacheId);
-    return false;
-  } finally {
-    inFlightKeys.delete(key);
-    notifyPlaceLookupUpdated();
   }
 }
 

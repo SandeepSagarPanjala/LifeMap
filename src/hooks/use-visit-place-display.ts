@@ -22,7 +22,6 @@ import {
   getPlaceLookupRevision,
   subscribePlaceLookup,
 } from '@/lib/place-lookup-events';
-import { expandPlaceLookupArea } from '@/lib/place-lookup-service';
 import { PLACE_LOOKUP_VENUE_RADIUS_M } from '@/lib/app-constants';
 import {
   getMaterializationRevision,
@@ -243,14 +242,5 @@ export function useSetCustomVisitPlaceLabel() {
 
     await updateTripPoiSelection(tripId, poi.id, poi.name, cacheId);
     notifyMaterializationUpdated();
-  }, []);
-}
-
-export function useExpandVisitPlaceLookupArea() {
-  return useCallback(async (cacheId: number | null) => {
-    if (cacheId == null) {
-      return false;
-    }
-    return expandPlaceLookupArea(cacheId);
   }, []);
 }
