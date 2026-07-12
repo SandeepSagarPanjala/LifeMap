@@ -57,7 +57,6 @@ export function MapHistoryPanel({ controller }: MapHistoryPanelProps) {
     canGoNextDay,
     goToPrevDay,
     goToNextDay,
-    goToToday,
     closeHistoryPanel,
     openHistoryDatePicker,
   } = controller;

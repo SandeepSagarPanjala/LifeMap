@@ -5,8 +5,6 @@ import type { DayTimelineEntry, DetectedTrip } from '@/lib/trip-detection';
 
 export type DayStoryCardSide = 'top' | 'bottom' | 'left' | 'right';
 
-const CARD_SIDES: DayStoryCardSide[] = ['top', 'bottom', 'left', 'right'];
-
 /** Prefer these among sides that are still free. */
 const DEFAULT_SIDE_ORDER: DayStoryCardSide[] = [
   'left',
