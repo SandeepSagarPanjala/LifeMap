@@ -3,7 +3,6 @@ import {
   Anchor,
   Banknote,
   Beer,
-  Building2,
   Bus,
   Car,
   Caravan,
