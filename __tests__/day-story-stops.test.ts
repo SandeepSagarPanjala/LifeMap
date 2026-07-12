@@ -126,6 +126,30 @@ describe('buildDayStoryStops', () => {
     expect(homeStop.coordinate.longitude).toBeCloseTo(-97.16, 5);
   });
 
+  it('does not group cache placeId with a saved place of the same numeric id', () => {
+    const stops = buildDayStoryStops(
+      [
+        stay('home', '2026-07-10T08:00:00.000Z', 33.23, -97.16, {
+          placeKind: 'saved',
+          placeId: 1,
+          placeLabel: 'Home',
+        }),
+        stay('shop', '2026-07-10T12:00:00.000Z', 33.25, -97.14, {
+          placeKind: 'cache',
+          placeId: 1,
+          placeLabel: '3925 N Elm St',
+        }),
+      ],
+      [home],
+    );
+    expect(stops).toHaveLength(2);
+    expect(stops.find(stop => stop.isHome)?.visitNumbers).toEqual([1]);
+    expect(stops.find(stop => stop.label === '3925 N Elm St')?.visitNumbers).toEqual([
+      2,
+    ]);
+    expect(stops.find(stop => stop.label === '3925 N Elm St')?.isHome).toBe(false);
+  });
+
   it('groups nearby unlabeled stays by proximity', () => {
     const stops = buildDayStoryStops([
       stay('a', '2026-07-10T09:00:00.000Z', 33.23, -97.16, {

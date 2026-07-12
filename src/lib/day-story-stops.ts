@@ -21,20 +21,12 @@ export type DayStoryStop = {
   poiCategory: string | null;
 };
 
-function stayGroupKey(
-  stay: DetectedTrip,
-  savedPlacesById: Map<number, SavedPlaceRow>,
-): string | null {
+function stayGroupKey(stay: DetectedTrip): string | null {
   if (stay.placeKind === 'saved' && stay.placeId != null) {
     return `saved:${stay.placeId}`;
   }
   if (stay.poiId != null) {
     return `poi:${stay.poiId}`;
-  }
-  const saved =
-    stay.placeId != null ? savedPlacesById.get(stay.placeId) : undefined;
-  if (saved) {
-    return `saved:${saved.id}`;
   }
   return null;
 }
@@ -85,7 +77,7 @@ export function buildDayStoryStops(
   stayOnly.forEach((stay, index) => {
     const visitNumber = index + 1;
     const centroid = stayMapCentroid(stay);
-    const explicitKey = stayGroupKey(stay, savedPlacesById);
+    const explicitKey = stayGroupKey(stay);
 
     let groupIndex =
       explicitKey != null ? keyToIndex.get(explicitKey) : undefined;

@@ -26,7 +26,7 @@ type RoutePathOverlayProps = {
   tripConfig: TripDetectionConfig;
   /** Softer stroke for day-story browse under numbered stops. */
   soft?: boolean;
-  /** Day-story destination color (hex). When set with soft, tints the path. */
+  /** Day-story origin visit color (hex). When set with soft, tints the path. */
   color?: string | null;
 };
 
