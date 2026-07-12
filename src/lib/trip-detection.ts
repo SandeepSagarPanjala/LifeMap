@@ -50,6 +50,8 @@ export type DetectedTrip = {
   placeKind?: PlaceKind;
   poiId?: number;
   poiLabel?: string;
+  /** MapKit category from place_pois (hydrated). */
+  poiCategory?: string | null;
   /** Drive endpoints — copied from endpoint match or adjacent stays. */
   fromPlaceLabel?: string;
   fromPlaceId?: number;

@@ -20,6 +20,7 @@ type HistoryDayMapOverlayProps = {
   selectedSavedPlace?: SavedPlaceRow | null;
   selectedNearbyPlaceLabel?: string | null;
   selectedNearbyPlacePinned?: boolean;
+  selectedNearbyPlaceCategory?: string | null;
   selectedDriveStartLabel?: DriveEndpointLabel;
   selectedDriveEndLabel?: DriveEndpointLabel;
   selectedEntryMomentCounts?: MomentCounts;
@@ -35,6 +36,7 @@ export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
   selectedSavedPlace = null,
   selectedNearbyPlaceLabel = null,
   selectedNearbyPlacePinned = false,
+  selectedNearbyPlaceCategory = null,
   selectedDriveStartLabel,
   selectedDriveEndLabel,
   selectedEntryMomentCounts,
@@ -156,6 +158,9 @@ export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
             selectedSavedPlace ? null : selectedNearbyPlaceLabel
           }
           nearbyPlacePinned={!selectedSavedPlace && selectedNearbyPlacePinned}
+          nearbyPlaceCategory={
+            selectedSavedPlace ? null : selectedNearbyPlaceCategory
+          }
           momentCounts={selectedEntryMomentCounts}
           onPressMomentType={onPressSelectedEntryMoments}
         />

@@ -9,6 +9,7 @@ export type ResolvedPlaceFields = {
   placeKind: PlaceKind | null;
   poiId: number | null;
   poiLabel: string | null;
+  poiCategory: string | null;
 };
 
 export function tripPlaceFieldsFromResolved(
@@ -20,13 +21,20 @@ export function tripPlaceFieldsFromResolved(
     placeKind: resolved.placeKind,
     poiId: resolved.poiId,
     poiLabel: resolved.poiLabel?.trim() || null,
+    poiCategory: resolved.poiCategory?.trim() || null,
   };
 }
 
 export function tripPlaceFieldsFromDetected(
   entry: Pick<
     DetectedTrip,
-    'kind' | 'placeLabel' | 'placeId' | 'placeKind' | 'poiId' | 'poiLabel'
+    | 'kind'
+    | 'placeLabel'
+    | 'placeId'
+    | 'placeKind'
+    | 'poiId'
+    | 'poiLabel'
+    | 'poiCategory'
   >,
 ): ResolvedPlaceFields {
   if (entry.kind !== 'stay') {
@@ -36,6 +44,7 @@ export function tripPlaceFieldsFromDetected(
       placeKind: null,
       poiId: null,
       poiLabel: null,
+      poiCategory: null,
     };
   }
   return tripPlaceFieldsFromResolved({
@@ -44,13 +53,19 @@ export function tripPlaceFieldsFromDetected(
     placeKind: entry.placeKind ?? null,
     poiId: entry.poiId ?? null,
     poiLabel: entry.poiLabel ?? null,
+    poiCategory: entry.poiCategory ?? null,
   });
 }
 
 export function resolvedPlaceFromTripRow(
   row: Pick<
     TripRow,
-    'placeLabel' | 'placeId' | 'placeKind' | 'poiId' | 'poiLabel'
+    | 'placeLabel'
+    | 'placeId'
+    | 'placeKind'
+    | 'poiId'
+    | 'poiLabel'
+    | 'poiCategory'
   >,
 ): ResolvedPlaceFields {
   return {
@@ -59,6 +74,7 @@ export function resolvedPlaceFromTripRow(
     placeKind: row.placeKind,
     poiId: row.poiId,
     poiLabel: row.poiLabel?.trim() || null,
+    poiCategory: row.poiCategory?.trim() || null,
   };
 }
 
@@ -73,5 +89,6 @@ export function applyResolvedPlaceToDetected(
     placeKind: resolved.placeKind ?? undefined,
     poiId: resolved.poiId ?? undefined,
     poiLabel: resolved.poiLabel ?? undefined,
+    poiCategory: resolved.poiCategory ?? undefined,
   };
 }

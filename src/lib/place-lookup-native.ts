@@ -15,12 +15,26 @@ type PlaceLookupNativeModule = {
     lng: number,
     radiusM: number,
   ): Promise<NativePlaceLookupResult>;
+  /** MapKit POI search only — no reverse geocode (iOS refresh path). */
+  lookupNearbyPois?(
+    lat: number,
+    lng: number,
+    radiusM: number,
+  ): Promise<NativePlaceLookupResult>;
   geocodeAddress(address: string): Promise<NativeAddressGeocodeResponse>;
 };
 
 const nativeModule = NativeModules.PlaceLookupModule as
   | PlaceLookupNativeModule
   | undefined;
+
+function normalizeCategory(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
 
 function dedupeCandidates(
   candidates: PlaceLookupCandidate[],
@@ -43,6 +57,7 @@ function dedupeCandidates(
       ...candidate,
       lat: Number.isFinite(candidate.lat) ? candidate.lat : fallbackLat,
       lng: Number.isFinite(candidate.lng) ? candidate.lng : fallbackLng,
+      category: normalizeCategory(candidate.category),
     });
   }
 
@@ -109,6 +124,7 @@ export async function fetchNearbyPlaceLookup(
             distanceM: 0,
             lat,
             lng,
+            category: null,
           },
         ],
       };
@@ -124,6 +140,27 @@ export async function fetchNearbyPlaceLookup(
     addressLine: result.addressLine,
     candidates: dedupeCandidates(poiCandidates, lat, lng),
   };
+}
+
+/**
+ * MapKit POI-only lookup (no reverse geocode).
+ * Used by Cached Places "Refresh POI" so we don't re-hit geocode.
+ */
+export async function fetchNearbyPoisOnly(
+  lat: number,
+  lng: number,
+  radiusM = PLACE_LOOKUP_VENUE_RADIUS_M,
+): Promise<PlaceLookupCandidate[]> {
+  if (!nativeModule?.lookupNearbyPois) {
+    return [];
+  }
+
+  const result = await nativeModule.lookupNearbyPois(lat, lng, radiusM);
+  return dedupeCandidates(
+    (result.candidates ?? []).filter(c => c.kind === 'poi'),
+    lat,
+    lng,
+  );
 }
 
 /** iOS-only — POI resolution uses MapKit coordinates. */

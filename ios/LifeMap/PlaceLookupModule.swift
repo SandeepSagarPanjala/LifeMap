@@ -97,6 +97,67 @@ class PlaceLookupModule: NSObject {
     }
   }
 
+  /// MapKit POI search only — no reverse geocode. Used by Cached Places refresh.
+  @objc func lookupNearbyPois(
+    _ lat: Double,
+    lng: Double,
+    radiusM: Double,
+    resolver: @escaping RCTPromiseResolveBlock,
+    rejecter: @escaping RCTPromiseRejectBlock
+  ) {
+    let coordinate = CLLocationCoordinate2D(latitude: lat, longitude: lng)
+    let location = CLLocation(latitude: lat, longitude: lng)
+    let searchRadius = max(50, min(radiusM, 5000))
+
+    guard #available(iOS 16.0, *) else {
+      resolver([
+        "addressLine": NSNull(),
+        "candidates": [] as [[String: Any]],
+      ])
+      return
+    }
+
+    let poiRadius = min(searchRadius, MKLocalPointsOfInterestRequest.maxRadius)
+    let poiRequest = MKLocalPointsOfInterestRequest(center: coordinate, radius: poiRadius)
+    let search = MKLocalSearch(request: poiRequest)
+    search.start { response, searchError in
+      var collectedCandidates: [[String: Any]] = []
+      if let items = response?.mapItems {
+        for item in items {
+          guard let name = item.name?.trimmingCharacters(in: .whitespacesAndNewlines),
+                !name.isEmpty
+          else {
+            continue
+          }
+          let itemLocation = item.placemark.location ?? location
+          collectedCandidates.append([
+            "id": "poi-\(name)-\(item.placemark.coordinate.latitude)",
+            "name": name,
+            "kind": "poi",
+            "distanceM": location.distance(from: itemLocation),
+            "lat": item.placemark.coordinate.latitude,
+            "lng": item.placemark.coordinate.longitude,
+            "category": item.pointOfInterestCategory?.rawValue ?? NSNull(),
+          ])
+        }
+      }
+
+      if searchError != nil && collectedCandidates.isEmpty {
+        rejecter(
+          "E_PLACE_LOOKUP",
+          "Unable to resolve nearby POIs",
+          searchError
+        )
+        return
+      }
+
+      resolver([
+        "addressLine": NSNull(),
+        "candidates": collectedCandidates,
+      ])
+    }
+  }
+
   @objc func lookupNearbyPlace(
     _ lat: Double,
     lng: Double,
@@ -125,6 +186,7 @@ class PlaceLookupModule: NSObject {
             "distanceM": 0,
             "lat": location.coordinate.latitude,
             "lng": location.coordinate.longitude,
+            "category": NSNull(),
           ])
         }
       }
@@ -149,6 +211,7 @@ class PlaceLookupModule: NSObject {
                 "distanceM": location.distance(from: itemLocation),
                 "lat": item.placemark.coordinate.latitude,
                 "lng": item.placemark.coordinate.longitude,
+                "category": item.pointOfInterestCategory?.rawValue ?? NSNull(),
               ])
             }
           }

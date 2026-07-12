@@ -8,7 +8,7 @@ import { HistoryDayMapOverlay } from '@/components/map/HistoryDayMapOverlay';
 import { MomentMapOverlay } from '@/components/map/MomentMapOverlay';
 import { SavedPlacesMapOverlay } from '@/components/map/SavedPlacesMapOverlay';
 import { StayDurationCallout } from '@/components/map/StayDurationCallout';
-import { isVisitPlaceLabelConfirmed } from '@/lib/place-lookup-types';
+import { isVisitPlaceLabelConfirmed, visitPlaceSelectedCategory } from '@/lib/place-lookup-types';
 
 import { areMapScreenMapPropsEqual } from './map-screen-map-props';
 import type { MapScreenController } from './use-map-screen-controller';
@@ -127,6 +127,11 @@ export const MapScreenMap = memo(
                   !currentOpenVisitSavedPlace &&
                   isVisitPlaceLabelConfirmed(currentOpenVisitPlaceDisplay)
                 }
+                nearbyPlaceCategory={
+                  currentOpenVisitSavedPlace
+                    ? null
+                    : visitPlaceSelectedCategory(currentOpenVisitPlaceDisplay)
+                }
                 showVisitPin={false}
                 anchorCoordinate={userCoordinate}
                 momentCounts={currentVisitMomentCounts}
@@ -156,6 +161,11 @@ export const MapScreenMap = memo(
               selectedNearbyPlacePinned={
                 !selectedSavedPlace &&
                 isVisitPlaceLabelConfirmed(selectedVisitPlaceDisplay)
+              }
+              selectedNearbyPlaceCategory={
+                selectedSavedPlace
+                  ? null
+                  : visitPlaceSelectedCategory(selectedVisitPlaceDisplay)
               }
               selectedDriveStartLabel={selectedDriveEndpointLabels.start}
               selectedDriveEndLabel={selectedDriveEndpointLabels.end}

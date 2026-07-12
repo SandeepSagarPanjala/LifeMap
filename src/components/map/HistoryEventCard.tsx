@@ -1,9 +1,10 @@
 import LottieView from 'lottie-react-native';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Building2, MapPin, Play } from 'lucide-react-native';
+import { Play } from 'lucide-react-native';
 
 import { DriveRouteStrip } from '@/components/map/DriveRouteStrip';
 import { SavedPlaceIcon } from '@/components/map/SavedPlaceIcon';
+import { VisitPlaceKindIcon } from '@/components/map/VisitPlaceKindIcon';
 import { MomentCountsRow } from '@/components/moments/MomentCountsRow';
 import { Text } from '@/components/ui/text';
 import type { SavedPlaceRow } from '@/db/repositories/saved-places';
@@ -32,6 +33,7 @@ type HistoryEventCardProps = {
   visitPlaceLabel?: string | null;
   /** True when the visit label is a selected POI (map pin), not a plain address. */
   visitPlacePinned?: boolean;
+  visitPlaceCategory?: string | null;
   onEditVisitPlaceLabel?: () => void;
   driveStartLabel?: DriveEndpointLabel;
   driveEndLabel?: DriveEndpointLabel;
@@ -78,13 +80,23 @@ function VisitCardIcon() {
   );
 }
 
-function VisitPlaceKindIcon({ pinned }: { pinned: boolean }) {
-  if (pinned) {
-    return (
-      <MapPin size={14} color="#8E8E93" fill="#C7C7CC" strokeWidth={2} />
-    );
-  }
-  return <Building2 size={14} color="#8E8E93" strokeWidth={2.25} />;
+function VisitPlaceKindIconRow({
+  pinned,
+  category,
+  color,
+}: {
+  pinned: boolean;
+  category?: string | null;
+  color?: string;
+}) {
+  return (
+    <VisitPlaceKindIcon
+      pinned={pinned}
+      category={category}
+      size={14}
+      color={color}
+    />
+  );
 }
 
 function driveCardStatsLine(
@@ -99,6 +111,7 @@ export function HistoryEventCard({
   savedPlace = null,
   visitPlaceLabel = null,
   visitPlacePinned = false,
+  visitPlaceCategory = null,
   onEditVisitPlaceLabel,
   driveStartLabel,
   driveEndLabel,
@@ -198,7 +211,11 @@ export function HistoryEventCard({
                     style={styles.visitPlaceLabelPressable}
                   >
                     {visitPlaceLabel?.trim() ? (
-                      <VisitPlaceKindIcon pinned={visitPlacePinned} />
+                      <VisitPlaceKindIconRow
+                        pinned={visitPlacePinned}
+                        category={visitPlaceCategory}
+                        color={colors.primary}
+                      />
                     ) : null}
                     <Text
                       className="text-base font-semibold"
@@ -210,7 +227,11 @@ export function HistoryEventCard({
                   </Pressable>
                 ) : visitPlaceLabel ? (
                   <>
-                    <VisitPlaceKindIcon pinned={visitPlacePinned} />
+                    <VisitPlaceKindIconRow
+                      pinned={visitPlacePinned}
+                      category={visitPlaceCategory}
+                      color={colors.primary}
+                    />
                     <Text
                       className="text-base font-semibold"
                       numberOfLines={1}

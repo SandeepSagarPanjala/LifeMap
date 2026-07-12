@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Marker } from 'react-native-maps';
-import { Building2, MapPin } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { SavedPlaceIcon } from '@/components/map/SavedPlaceIcon';
+import { VisitPlaceKindIcon } from '@/components/map/VisitPlaceKindIcon';
 import { MomentCountsRow } from '@/components/moments/MomentCountsRow';
 import { useMarkerTracksViewChanges } from '@/hooks/use-marker-tracks-view-changes';
 import type { SavedPlaceRow } from '@/db/repositories/saved-places';
@@ -32,6 +32,7 @@ type StayDurationCalloutProps = {
   savedPlace?: SavedPlaceRow | null;
   nearbyPlaceLabel?: string | null;
   nearbyPlacePinned?: boolean;
+  nearbyPlaceCategory?: string | null;
   momentCounts?: MomentCounts;
   /** History scrub — orange visit pin. Live map keeps the system blue user puck. */
   showVisitPin?: boolean;
@@ -45,6 +46,7 @@ export function StayDurationCallout({
   savedPlace = null,
   nearbyPlaceLabel = null,
   nearbyPlacePinned = false,
+  nearbyPlaceCategory = null,
   momentCounts,
   showVisitPin = true,
   anchorCoordinate = null,
@@ -119,16 +121,11 @@ export function StayDurationCallout({
           </View>
         ) : nearbyPlaceLabel ? (
           <View style={styles.placeRow}>
-            {nearbyPlacePinned ? (
-              <MapPin
-                size={12}
-                color="#8E8E93"
-                fill="#C7C7CC"
-                strokeWidth={2}
-              />
-            ) : (
-              <Building2 size={14} color="#8E8E93" strokeWidth={2.25} />
-            )}
+            <VisitPlaceKindIcon
+              pinned={nearbyPlacePinned}
+              category={nearbyPlaceCategory}
+              size={nearbyPlacePinned ? 12 : 14}
+            />
             <Text style={styles.placeLabel} numberOfLines={1}>
               {nearbyPlaceLabel}
             </Text>

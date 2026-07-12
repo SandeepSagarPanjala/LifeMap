@@ -25,6 +25,7 @@ function trip(overrides: Partial<TripRow> = {}): TripRow {
     placeKind: 'saved',
     poiId: null,
     poiLabel: null,
+    poiCategory: null,
     inferred: false,
     selectedCandidateIndex: null,
     detectionVersion: 10,

@@ -55,7 +55,34 @@ export function parsePlaceLookupCandidates(
           return null;
         }
 
-        return { id, name, kind, distanceM };
+        const lat =
+          'lat' in item &&
+          typeof item.lat === 'number' &&
+          Number.isFinite(item.lat)
+            ? item.lat
+            : 0;
+        const lng =
+          'lng' in item &&
+          typeof item.lng === 'number' &&
+          Number.isFinite(item.lng)
+            ? item.lng
+            : 0;
+        const category =
+          'category' in item &&
+          typeof item.category === 'string' &&
+          item.category.trim()
+            ? item.category.trim()
+            : null;
+
+        return {
+          id,
+          name,
+          kind,
+          distanceM,
+          lat,
+          lng,
+          ...(category != null ? { category } : {}),
+        } satisfies PlaceLookupCandidate;
       })
       .filter((item): item is PlaceLookupCandidate => item != null);
   } catch {

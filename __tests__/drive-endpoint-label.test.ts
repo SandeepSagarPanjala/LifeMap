@@ -123,12 +123,19 @@ describe('drive endpoint labels', () => {
   it('formats a drive route title from endpoint labels', () => {
     expect(
       formatDriveRouteTitle(
-        { source: 'saved', text: 'Home', savedPlace: home, pinned: false },
+        {
+          source: 'saved',
+          text: 'Home',
+          savedPlace: home,
+          pinned: false,
+          poiCategory: null,
+        },
         {
           source: 'auto-label',
           text: '116 W University Dr',
           savedPlace: null,
           pinned: false,
+          poiCategory: null,
         },
       ),
     ).toBe('Home to 116 W University Dr');
@@ -146,6 +153,7 @@ describe('drive endpoint labels', () => {
       text: 'Walmart',
       savedPlace: null,
       pinned: false,
+      poiCategory: null,
     });
   });
 });

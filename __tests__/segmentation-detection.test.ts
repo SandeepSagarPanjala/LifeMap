@@ -225,6 +225,7 @@ describe('segmentation detection (current algorithm)', () => {
           name: 'Walmart',
           lat: WALMART.lat,
           lng: WALMART.lng,
+          category: null,
           source: 'mapkit',
           createdAt: new Date('2026-06-03T08:00:00.000Z'),
         },

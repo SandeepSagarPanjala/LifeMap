@@ -10,6 +10,7 @@ function poi(id: number, lat: number, lng: number, name = 'POI'): PlacePoiRow {
     name,
     lat,
     lng,
+    category: null,
     source: 'mapkit',
     createdAt: new Date(),
   };

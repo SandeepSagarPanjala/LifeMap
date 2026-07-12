@@ -136,6 +136,7 @@ describe('tripLabelForPersist', () => {
         placeKind: 'cache',
         poiId: 2,
         poiLabel: 'Custom POI',
+        poiCategory: null,
       }),
     ]);
 
@@ -146,6 +147,7 @@ describe('tripLabelForPersist', () => {
         placeLabel: null,
         poiId: 0,
         poiLabel: 'Other POI',
+        poiCategory: null,
       }),
     ).toEqual({
       placeLabel: null,
@@ -153,6 +155,7 @@ describe('tripLabelForPersist', () => {
       placeKind: 'cache',
       poiId: 2,
       poiLabel: 'Custom POI',
+      poiCategory: null,
     });
   });
 
@@ -166,6 +169,7 @@ describe('tripLabelForPersist', () => {
         placeLabel: '123 Main St',
         poiId: 1,
         poiLabel: 'Walmart',
+        poiCategory: 'MKPOICategoryStore',
       }),
     ).toEqual({
       placeLabel: '123 Main St',
@@ -173,6 +177,7 @@ describe('tripLabelForPersist', () => {
       placeKind: 'cache',
       poiId: 1,
       poiLabel: 'Walmart',
+      poiCategory: 'MKPOICategoryStore',
     });
   });
 });

@@ -252,7 +252,6 @@ export async function fetchDatabaseExportTables(
       placeId: row.placeId,
       placeKind: row.placeKind,
       poiId: row.poiId,
-      poiLabel: row.poiLabel,
       inferred: row.inferred === 1,
       selectedCandidateIndex: row.selectedCandidateIndex,
       detectionVersion: row.detectionVersion,

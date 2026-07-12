@@ -147,8 +147,7 @@ export async function migrationAlreadyApplied(
     case '0025_place_pois':
       return (
         (await tableExists(sqlite, 'place_pois')) &&
-        (await columnExists(sqlite, 'trips', 'poi_id')) &&
-        (await columnExists(sqlite, 'trips', 'poi_label'))
+        (await columnExists(sqlite, 'trips', 'poi_id'))
       );
     case '0026_materialized_day_excluded_drive':
       return columnExists(
@@ -156,6 +155,10 @@ export async function migrationAlreadyApplied(
         'materialized_days',
         'excluded_cross_midnight_from_ms',
       );
+    case '0028_place_pois_category':
+      return columnExists(sqlite, 'place_pois', 'category');
+    case '0029_drop_trip_poi_label':
+      return !(await columnExists(sqlite, 'trips', 'poi_label'));
     default:
       return false;
   }
@@ -208,12 +211,6 @@ export async function ensureTripSegmentMetadataColumns(
     await executeMigrationStatement(
       sqlite,
       `ALTER TABLE trips ADD COLUMN poi_id integer`,
-    );
-  }
-  if (!(await columnExists(sqlite, 'trips', 'poi_label'))) {
-    await executeMigrationStatement(
-      sqlite,
-      `ALTER TABLE trips ADD COLUMN poi_label text`,
     );
   }
 }

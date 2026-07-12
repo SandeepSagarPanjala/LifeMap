@@ -18,6 +18,8 @@ export type DriveEndpointLabel = {
   text: string | null;
   savedPlace: SavedPlaceRow | null;
   pinned: boolean;
+  /** MapKit category when endpoint is a selected POI. */
+  poiCategory: string | null;
 };
 
 export const EMPTY_DRIVE_ENDPOINT_LABEL: DriveEndpointLabel = {
@@ -25,6 +27,7 @@ export const EMPTY_DRIVE_ENDPOINT_LABEL: DriveEndpointLabel = {
   text: null,
   savedPlace: null,
   pinned: false,
+  poiCategory: null,
 };
 
 export function driveEndpointLabelFromVisitDisplay(
@@ -36,6 +39,7 @@ export function driveEndpointLabelFromVisitDisplay(
       text: display.primaryLabel,
       savedPlace: null,
       pinned: false,
+      poiCategory: null,
     };
   }
 
@@ -53,6 +57,7 @@ export function driveEndpointLabelFromVisitDisplay(
       text,
       savedPlace: null,
       pinned: true,
+      poiCategory: selected?.category ?? null,
     };
   }
 
@@ -61,6 +66,7 @@ export function driveEndpointLabelFromVisitDisplay(
     text,
     savedPlace: null,
     pinned: false,
+    poiCategory: null,
   };
 }
 
@@ -79,6 +85,7 @@ export function resolveDriveEndpointLabelFromStaySync(
       text: savedPlaceDisplayLabel(savedPlace),
       savedPlace,
       pinned: false,
+      poiCategory: null,
     };
   }
 
@@ -88,6 +95,7 @@ export function resolveDriveEndpointLabelFromStaySync(
       text: stay.placeLabel.trim(),
       savedPlace: null,
       pinned: false,
+      poiCategory: null,
     };
   }
 
@@ -102,10 +110,11 @@ export function resolveDriveEndpointLabelFromStaySync(
   }
 
   return {
-    source: stay.poiId != null ? 'auto-label' : 'auto-label',
+    source: 'auto-label',
     text,
     savedPlace: null,
     pinned: stay.poiId != null,
+    poiCategory: stay.poiCategory ?? null,
   };
 }
 

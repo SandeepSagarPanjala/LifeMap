@@ -202,6 +202,7 @@ export function tripLabelForPersist(
     placeKind: detected?.placeKind ?? null,
     poiId: detected?.poiId ?? null,
     poiLabel: detected?.poiLabel ?? null,
+    poiCategory: detected?.poiCategory ?? null,
   });
 
   if (existing?.poiId != null) {
@@ -211,6 +212,7 @@ export function tripLabelForPersist(
       placeKind: existing.placeKind ?? detectedPlace.placeKind,
       poiId: existing.poiId,
       poiLabel: existing.poiLabel,
+      poiCategory: existing.poiCategory ?? detectedPlace.poiCategory,
     };
   }
 
@@ -229,6 +231,7 @@ export function tripLabelForPersist(
       placeKind: null,
       poiId: null,
       poiLabel: null,
+      poiCategory: null,
     }
   );
 }
@@ -684,6 +687,7 @@ export async function persistClosedTripsIncremental(
       placeKind: entry.placeKind ?? null,
       poiId: entry.poiId ?? null,
       poiLabel: entry.poiLabel ?? null,
+      poiCategory: entry.poiCategory ?? null,
     });
     const momentRefs = buildMomentRefsForSegment(
       dayMoments,
@@ -705,7 +709,6 @@ export async function persistClosedTripsIncremental(
       placeId: labels.placeId,
       placeKind: labels.placeKind,
       poiId: labels.poiId,
-      poiLabel: labels.poiLabel,
       inferred: entry.inferred ?? false,
       detectionVersion: TRIP_DETECTION_VERSION,
       closedAt,
@@ -808,6 +811,7 @@ export async function ensureTripForClosedStay(
     placeKind: stay.placeKind ?? null,
     poiId: stay.poiId ?? null,
     poiLabel: stay.poiLabel ?? null,
+    poiCategory: stay.poiCategory ?? null,
   });
 
   if (!trip) {
@@ -825,10 +829,12 @@ export async function ensureTripForClosedStay(
       placeId: labels.placeId,
       placeKind: labels.placeKind,
       poiId: labels.poiId,
-      poiLabel: labels.poiLabel,
       detectionVersion: TRIP_DETECTION_VERSION,
       closedAt,
     });
+    if (trip != null) {
+      trip = { ...trip, ...labels };
+    }
   } else if (
     trip.placeId == null &&
     labels.placeId != null &&
@@ -971,6 +977,7 @@ export async function rebuildAllTrips(
       placeKind: row.placeKind,
       poiId: row.poiId,
       poiLabel: row.poiLabel,
+      poiCategory: row.poiCategory,
     })),
   );
 

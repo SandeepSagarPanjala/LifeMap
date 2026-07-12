@@ -45,6 +45,7 @@ export type ExportTripView = {
   placeKind: TripRow['placeKind'];
   poiId: number | null;
   poiLabel: string | null;
+  poiCategory: string | null;
   inferred: boolean;
   detectionVersion: number;
   momentRefs: TripRow['momentRefs'];
@@ -89,6 +90,7 @@ export function buildExportTripView(
     placeKind: trip.placeKind,
     poiId: trip.poiId,
     poiLabel: trip.poiLabel,
+    poiCategory: trip.poiCategory,
     inferred: trip.inferred,
     detectionVersion: trip.detectionVersion,
     momentRefs: trip.momentRefs,

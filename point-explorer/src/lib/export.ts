@@ -260,6 +260,12 @@ function parsePlaceLookupCandidates(raw: unknown): PlaceLookupCandidate[] {
       name,
       kind,
       distanceM: typeof entry.distanceM === 'number' ? entry.distanceM : 0,
+      lat: typeof entry.lat === 'number' ? entry.lat : 0,
+      lng: typeof entry.lng === 'number' ? entry.lng : 0,
+      category:
+        typeof entry.category === 'string' && entry.category.trim()
+          ? entry.category.trim()
+          : null,
     });
   }
   return candidates;

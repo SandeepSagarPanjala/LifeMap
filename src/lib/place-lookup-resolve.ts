@@ -59,7 +59,7 @@ export function stayNeedsLazyPlaceLookup(
 async function resolveClosestPoiForCache(
   cacheId: number,
   anchor: { lat: number; lng: number },
-): Promise<{ poiId: number; poiLabel: string } | null> {
+): Promise<{ poiId: number; poiLabel: string; poiCategory: string | null } | null> {
   if (!platformResolvesClosestPoi()) {
     return null;
   }
@@ -68,7 +68,11 @@ async function resolveClosestPoiForCache(
   if (closest == null) {
     return null;
   }
-  return { poiId: closest.id, poiLabel: closest.name };
+  return {
+    poiId: closest.id,
+    poiLabel: closest.name,
+    poiCategory: closest.category ?? null,
+  };
 }
 
 export type ResolvePlaceLabelResult =

@@ -58,6 +58,7 @@ export async function migrateLegacyPlaceLookupCandidatesToPois(): Promise<Legacy
           Number.isFinite(candidate.lng) && candidate.lng !== 0
             ? candidate.lng
             : row.anchorLng,
+        category: candidate.category,
       })),
     );
     insertedPois += inserted.inserted + inserted.updated;

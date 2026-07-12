@@ -148,6 +148,8 @@ export const placePois = sqliteTable(
     name: text('name').notNull(),
     lat: real('lat').notNull(),
     lng: real('lng').notNull(),
+    /** MapKit pointOfInterestCategory raw value (e.g. MKPOICategoryRestaurant). */
+    category: text('category'),
     source: text('source', { enum: ['mapkit', 'user'] })
       .notNull()
       .default('mapkit'),
@@ -179,8 +181,6 @@ export const trips = sqliteTable(
     placeKind: text('place_kind', { enum: ['saved', 'cache'] }),
     /** POI row when placeKind is cache (MapKit or user-created). */
     poiId: integer('poi_id'),
-    /** Denormalized POI display name. */
-    poiLabel: text('poi_label'),
     /** Materialized moment membership — [{ momentId, momentKind }]. */
     momentRefs: text('moment_refs'),
     inferred: integer('inferred').notNull().default(0),
