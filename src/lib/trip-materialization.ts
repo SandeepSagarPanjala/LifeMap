@@ -832,6 +832,9 @@ export async function ensureTripForClosedStay(
       detectionVersion: TRIP_DETECTION_VERSION,
       closedAt,
     });
+    if (trip != null) {
+      trip = { ...trip, ...labels };
+    }
   } else if (
     trip.placeId == null &&
     labels.placeId != null &&

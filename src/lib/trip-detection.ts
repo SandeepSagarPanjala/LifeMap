@@ -58,13 +58,11 @@ export type DetectedTrip = {
   fromPlaceKind?: PlaceKind;
   fromPoiId?: number;
   fromPoiLabel?: string;
-  fromPoiCategory?: string | null;
   toPlaceLabel?: string;
   toPlaceId?: number;
   toPlaceKind?: PlaceKind;
   toPoiId?: number;
   toPoiLabel?: string;
-  toPoiCategory?: string | null;
   inferred?: boolean;
   /** Materialized moment membership when read from DB. */
   momentRefs?: TripMomentRef[];

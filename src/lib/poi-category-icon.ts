@@ -70,8 +70,25 @@ export function normalizePoiCategoryKey(
   return key.length > 0 ? key : null;
 }
 
+/**
+ * MapKit strips to PascalCase (`Restaurant`, `ATM`, `EVCharger`).
+ * Icon map keys are camelCase (`restaurant`, `atm`, `evCharger`).
+ * First-char-only lower breaks leading acronyms (`ATM` → `aTM`).
+ */
 function categoryLookupKey(raw: string): string {
-  return raw.charAt(0).toLowerCase() + raw.slice(1);
+  const firstLower = raw.charAt(0).toLowerCase() + raw.slice(1);
+  // EVCharger → evCharger; ATM → atm; RVPark → rvPark
+  const acronymLower = raw.replace(
+    /^([A-Z]+)(?=[A-Z][a-z]|$)/,
+    (acronym) => acronym.toLowerCase(),
+  );
+  if (CATEGORY_ICONS[firstLower]) {
+    return firstLower;
+  }
+  if (CATEGORY_ICONS[acronymLower]) {
+    return acronymLower;
+  }
+  return firstLower;
 }
 
 const CATEGORY_ICONS: Record<string, LucideIcon> = {

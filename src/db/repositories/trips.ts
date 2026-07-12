@@ -95,19 +95,6 @@ function mapJoinedRow(row: {
   });
 }
 
-async function hydrateTripRow(row: TripSelectRow): Promise<TripRow> {
-  if (row.poiId == null) {
-    return mapRow(row);
-  }
-  const db = await getDatabase();
-  const pois = await db
-    .select({ name: placePois.name, category: placePois.category })
-    .from(placePois)
-    .where(eq(placePois.id, row.poiId))
-    .limit(1);
-  return mapRow(row, pois[0] ?? null);
-}
-
 const tripWithPoiSelect = {
   trip: trips,
   poiName: placePois.name,
@@ -246,7 +233,8 @@ export async function insertTripIfAbsent(
     .returning();
 
   if (inserted[0]) {
-    return hydrateTripRow(inserted[0]);
+    // RETURNING is trips-only; list/get paths join place_pois when labels are needed.
+    return mapRow(inserted[0]);
   }
 
   return getTripByEventKey(input.eventKey);
@@ -290,7 +278,7 @@ export async function upsertTrip(input: InsertTripInput): Promise<TripRow> {
     }
     return existing;
   }
-  return hydrateTripRow(row);
+  return mapRow(row);
 }
 
 export async function updateTripEndTime(

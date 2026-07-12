@@ -137,7 +137,7 @@ class PlaceLookupModule: NSObject {
             "distanceM": location.distance(from: itemLocation),
             "lat": item.placemark.coordinate.latitude,
             "lng": item.placemark.coordinate.longitude,
-            "category": item.pointOfInterestCategory?.rawValue as Any,
+            "category": item.pointOfInterestCategory?.rawValue ?? NSNull(),
           ])
         }
       }
@@ -211,7 +211,7 @@ class PlaceLookupModule: NSObject {
                 "distanceM": location.distance(from: itemLocation),
                 "lat": item.placemark.coordinate.latitude,
                 "lng": item.placemark.coordinate.longitude,
-                "category": item.pointOfInterestCategory?.rawValue as Any,
+                "category": item.pointOfInterestCategory?.rawValue ?? NSNull(),
               ])
             }
           }
