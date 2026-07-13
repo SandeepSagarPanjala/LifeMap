@@ -807,29 +807,6 @@ export function useMapScreenController() {
   const showSavedPlaceMarkersOnMap =
     showHistoryMap || !viewingToday || historyHasGpsData;
 
-  const mapSavedPlaces = useMemo((): SavedPlaceRow[] => {
-    if (!showSavedPlaceMarkersOnMap) {
-      return [];
-    }
-    // History-closed day browse: story overlay owns Home. Keep Work/favorites on Today.
-    if (showDayJourney) {
-      return viewingToday
-        ? savedPlaces.filter(place => place.kind !== 'home')
-        : [];
-    }
-    // History mode (and any non-today day): only Home. Work/favorites are today-only.
-    if (historyPanelOpen || !viewingToday) {
-      return savedPlaces.filter(place => place.kind === 'home');
-    }
-    return savedPlaces;
-  }, [
-    historyPanelOpen,
-    savedPlaces,
-    showDayJourney,
-    showSavedPlaceMarkersOnMap,
-    viewingToday,
-  ]);
-
   const dayStoryStops = useMemo(
     () =>
       showDayJourney
@@ -846,6 +823,39 @@ export function useMapScreenController() {
       tripDetectionConfig.dwellRadiusMeters,
     ],
   );
+
+  const dayStoryHasHomeStop = useMemo(
+    () => dayStoryStops.some(stop => stop.isHome),
+    [dayStoryStops],
+  );
+
+  const mapSavedPlaces = useMemo((): SavedPlaceRow[] => {
+    if (!showSavedPlaceMarkersOnMap) {
+      return [];
+    }
+    // History-closed day browse: story overlay owns Home only when a Home stay exists.
+    // Keep the saved-place Home pin on Today until then (and always keep Work/favorites).
+    if (showDayJourney) {
+      if (!viewingToday) {
+        return [];
+      }
+      return dayStoryHasHomeStop
+        ? savedPlaces.filter(place => place.kind !== 'home')
+        : savedPlaces;
+    }
+    // History mode (and any non-today day): only Home. Work/favorites are today-only.
+    if (historyPanelOpen || !viewingToday) {
+      return savedPlaces.filter(place => place.kind === 'home');
+    }
+    return savedPlaces;
+  }, [
+    dayStoryHasHomeStop,
+    historyPanelOpen,
+    savedPlaces,
+    showDayJourney,
+    showSavedPlaceMarkersOnMap,
+    viewingToday,
+  ]);
 
   const dayMomentMapPinsRaw = useMemo((): MomentMapPin[] => {
     if (!showDayJourney || currentOpenVisit != null) {
