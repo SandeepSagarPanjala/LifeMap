@@ -1,6 +1,6 @@
 import { and, asc, gt, gte, lte, sql } from 'drizzle-orm';
 
-import { getDayRange, shiftDateKey, toDateKey } from '@/lib/day-utils';
+import { getDayRange, getTodayDateKey, shiftDateKey, toDateKey } from '@/lib/day-utils';
 
 import { getDatabase } from '../client';
 import { locationPoints } from '../schema';
@@ -65,6 +65,32 @@ export async function listDateKeysWithLocationDataBefore(
   const keys: string[] = [];
   let cursor = earliest;
   while (cursor < beforeDateKey) {
+    const { start, end } = getDayRange(cursor);
+    const fingerprint = await getLocationPointsFingerprintInRange(start, end);
+    const pointCount = Number(fingerprint.split(':')[0] ?? 0);
+    if (pointCount > 0) {
+      keys.push(cursor);
+    }
+    cursor = shiftDateKey(cursor, 1);
+  }
+  return keys;
+}
+
+/** Every calendar day from earliest GPS through today that has at least one point. */
+export async function listAllDateKeysWithLocationData(): Promise<string[]> {
+  const earliest = await getEarliestLocationDateKey();
+  if (earliest == null) {
+    return [];
+  }
+
+  const todayKey = getTodayDateKey();
+  if (earliest > todayKey) {
+    return [];
+  }
+
+  const keys: string[] = [];
+  let cursor = earliest;
+  while (cursor <= todayKey) {
     const { start, end } = getDayRange(cursor);
     const fingerprint = await getLocationPointsFingerprintInRange(start, end);
     const pointCount = Number(fingerprint.split(':')[0] ?? 0);

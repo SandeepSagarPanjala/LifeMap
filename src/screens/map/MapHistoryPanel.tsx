@@ -57,7 +57,6 @@ export function MapHistoryPanel({ controller }: MapHistoryPanelProps) {
     canGoNextDay,
     goToPrevDay,
     goToNextDay,
-    goToToday,
     closeHistoryPanel,
     openHistoryDatePicker,
   } = controller;
@@ -97,7 +96,7 @@ export function MapHistoryPanel({ controller }: MapHistoryPanelProps) {
         canGoNext={canGoNextDay}
         onPrev={goToPrevDay}
         onNext={goToNextDay}
-        onClose={viewingToday ? closeHistoryPanel : goToToday}
+        onClose={closeHistoryPanel}
         onPressLabel={openHistoryDatePicker}
       />
       {showHistoryPanelContent ? (

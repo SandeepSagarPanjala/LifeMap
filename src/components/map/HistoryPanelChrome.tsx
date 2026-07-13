@@ -10,6 +10,7 @@ import {
 } from '@/lib/app-constants';
 
 const MAP_CLOSE_ICON_COLOR = '#E0352B';
+const MAP_WARNING_CLOSE_ICON_COLOR = '#FF9500';
 const HISTORY_NAV_ICON_COLOR = CAPTURE_BUTTON_THEMES.camera.icon;
 
 type HistoryPanelChromeProps = {
@@ -33,6 +34,11 @@ export function HistoryPanelChrome({
   onClose,
   onPressLabel,
 }: HistoryPanelChromeProps) {
+  const closeVariant = viewingToday ? 'softRed' : 'softWarning';
+  const closeIconColor = viewingToday
+    ? MAP_CLOSE_ICON_COLOR
+    : MAP_WARNING_CLOSE_ICON_COLOR;
+
   return (
     <View
       pointerEvents="box-none"
@@ -43,11 +49,13 @@ export function HistoryPanelChrome({
       style={styles.wrap}
     >
       <MapCircleButton
-        accessibilityLabel={viewingToday ? 'Close history' : 'Return to today'}
-        variant="softRed"
+        accessibilityLabel={
+          viewingToday ? 'Close history' : 'Close day history'
+        }
+        variant={closeVariant}
         onPress={onClose}
       >
-        <X size={20} color={MAP_CLOSE_ICON_COLOR} strokeWidth={2.5} />
+        <X size={20} color={closeIconColor} strokeWidth={2.5} />
       </MapCircleButton>
 
       <View style={styles.dateRow} pointerEvents="box-none">
