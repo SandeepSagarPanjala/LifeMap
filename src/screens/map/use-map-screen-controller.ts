@@ -810,9 +810,11 @@ export function useMapScreenController() {
     if (!showSavedPlaceMarkersOnMap) {
       return [];
     }
-    // History-closed day browse: story overlay owns pins (incl. Home).
+    // History-closed day browse: story overlay owns Home. Keep Work/favorites on Today.
     if (showDayJourney) {
-      return [];
+      return viewingToday
+        ? savedPlaces.filter(place => place.kind !== 'home')
+        : [];
     }
     // History mode (and any non-today day): only Home. Work/favorites are today-only.
     if (historyPanelOpen || !viewingToday) {
