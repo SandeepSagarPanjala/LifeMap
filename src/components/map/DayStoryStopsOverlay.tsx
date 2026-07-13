@@ -12,10 +12,9 @@ import {
   type DayStoryCardSide,
 } from '@/lib/day-story-placement';
 import type { DayStoryStop } from '@/lib/day-story-stops';
+import { momentCountsForDayStoryStop } from '@/lib/day-story-moments';
 import {
-  countMoments,
   emptyMomentCounts,
-  filterMomentsForStayEntry,
   hasMomentCounts,
   type MomentCountType,
   type MomentCounts,
@@ -47,59 +46,6 @@ type DayStoryStopsOverlayProps = {
   /** Open History to this stay (e.g. tap visit number 3 → Flower Child). */
   onPressStay?: (stay: DetectedTrip) => void;
 };
-
-function momentCountsForStop(
-  stop: DayStoryStop,
-  dayMoments: readonly MomentRow[],
-  savedPlaces: readonly SavedPlaceRow[],
-  historyPoints: readonly LocationPointRow[],
-  historyEntries: readonly DayTimelineEntry[],
-  dwellRadiusMeters: number,
-): MomentCounts {
-  if (dayMoments.length === 0 || stop.stays.length === 0) {
-    return emptyMomentCounts();
-  }
-  const savedPlace =
-    stop.savedPlaceId != null
-      ? savedPlaces.find(place => place.id === stop.savedPlaceId) ?? null
-      : null;
-
-  // Union moments across every visit at this stop (Home 1·2·5, etc.).
-  const byId = new Map<number, MomentRow>();
-  for (const stay of stop.stays) {
-    const visitMoments = filterMomentsForStayEntry(
-      dayMoments as MomentRow[],
-      stay,
-      {
-        savedPlace: null,
-        dwellRadiusMeters,
-        points: historyPoints as LocationPointRow[],
-        entries: historyEntries as DayTimelineEntry[],
-        aggregation: 'visit',
-      },
-    );
-    for (const moment of visitMoments) {
-      byId.set(moment.id, moment);
-    }
-  }
-  if (savedPlace != null) {
-    const placeMoments = filterMomentsForStayEntry(
-      dayMoments as MomentRow[],
-      stop.stays[0]!,
-      {
-        savedPlace,
-        dwellRadiusMeters,
-        points: historyPoints as LocationPointRow[],
-        entries: historyEntries as DayTimelineEntry[],
-        aggregation: 'place',
-      },
-    );
-    for (const moment of placeMoments) {
-      byId.set(moment.id, moment);
-    }
-  }
-  return countMoments([...byId.values()]);
-}
 
 function VisitNumberBadges({
   numbers,
@@ -347,7 +293,7 @@ export const DayStoryStopsOverlay = memo(function DayStoryStopsOverlay({
     for (const stop of stops) {
       map.set(
         stop.key,
-        momentCountsForStop(
+        momentCountsForDayStoryStop(
           stop,
           dayMoments,
           savedPlaces,

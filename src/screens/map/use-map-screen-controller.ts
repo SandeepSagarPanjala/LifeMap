@@ -59,6 +59,7 @@ import {
   isCoordinateOnDayStoryStop,
   type DayStoryStop,
 } from '@/lib/day-story-stops';
+import { collectMomentsForDayStoryStop } from '@/lib/day-story-moments';
 import { queueMomentPreview } from '@/lib/moments/moment-preview-navigation';
 import {
   coalesceMomentMapPins,
@@ -997,17 +998,14 @@ export function useMapScreenController() {
       if (primary == null) {
         return;
       }
-      const savedPlace =
-        stop.savedPlaceId != null
-          ? savedPlaces.find(place => place.id === stop.savedPlaceId) ?? null
-          : null;
-      const moments = filterMomentsForStayEntry(dayMoments, primary, {
-        savedPlace,
-        dwellRadiusMeters: tripDetectionConfig.dwellRadiusMeters,
-        points: historyData.points,
-        entries: historyEntries,
-        aggregation: 'place',
-      });
+      const moments = collectMomentsForDayStoryStop(
+        stop,
+        dayMoments,
+        savedPlaces,
+        historyData.points,
+        historyEntries,
+        tripDetectionConfig.dwellRadiusMeters,
+      );
       openMomentPreview({
         moments,
         initialType,
