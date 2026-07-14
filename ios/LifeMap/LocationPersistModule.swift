@@ -43,9 +43,9 @@ class LocationPersistModule: NSObject {
       timestampMs: timestampMs.int64Value,
       lat: lat.doubleValue,
       lng: lng.doubleValue,
-      accuracy: optionalDouble(accuracy),
-      altitude: optionalDouble(altitude),
-      speed: optionalSpeed(speed),
+      accuracy: optionalNonNegative(accuracy),
+      altitude: optionalAltitude(altitude),
+      speed: optionalNonNegative(speed),
       source: source as String,
       heading: optionalExtrasDouble(extras, key: "heading"),
       headingAccuracy: optionalExtrasDouble(extras, key: "headingAccuracy"),
@@ -96,12 +96,22 @@ class LocationPersistModule: NSObject {
     ])
   }
 
-  private func optionalDouble(_ value: NSNumber) -> Double? {
-    value.doubleValue < 0 ? nil : value.doubleValue
+  /// JS sends -1 for missing accuracy/speed. Negative values are never valid for those fields.
+  private func optionalNonNegative(_ value: NSNumber) -> Double? {
+    let number = value.doubleValue
+    guard number.isFinite, number >= 0 else {
+      return nil
+    }
+    return number
   }
 
-  private func optionalSpeed(_ value: NSNumber) -> Double? {
-    value.doubleValue < 0 ? nil : value.doubleValue
+  /// JS sends -1 when altitude is missing. Real altitudes may be below sea level.
+  private func optionalAltitude(_ value: NSNumber) -> Double? {
+    let number = value.doubleValue
+    guard number.isFinite, number != -1 else {
+      return nil
+    }
+    return number
   }
 
   private func optionalExtrasDouble(_ extras: NSDictionary?, key: String) -> Double? {
