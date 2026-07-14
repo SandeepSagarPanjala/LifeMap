@@ -42,6 +42,19 @@ export function parseOptionalString(value: unknown): string | null {
   return trimmed.length > 0 ? value : null;
 }
 
+export function parseOptionalBoolean(value: unknown): boolean | null {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  if (value === 0 || value === 1) {
+    return value === 1;
+  }
+  if (value === '0' || value === '1') {
+    return value === '1';
+  }
+  return null;
+}
+
 export function parseRequiredString(value: unknown, field: string): string {
   if (typeof value !== 'string' || !value.trim()) {
     throw new Error(`Invalid string for ${field}`);

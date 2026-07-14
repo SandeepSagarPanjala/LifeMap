@@ -5,7 +5,7 @@ import {
   canonicalizeStayGeometryForPersist,
 } from '@/lib/stay-geometry';
 import type { DetectedTrip } from '@/lib/trip-detection';
-import { makeMoment } from './helpers/fixtures';
+import { makeLocationPoint, makeMoment } from './helpers/fixtures';
 
 function point(
   id: number,
@@ -14,16 +14,14 @@ function point(
   lng: number,
   speed: number | null = null,
 ): LocationPointRow {
-  return {
+  return makeLocationPoint({
     id,
     timestamp: new Date(iso),
     lat,
     lng,
     accuracy: 10,
-    altitude: null,
     speed,
-    source: 'gps',
-  };
+  });
 }
 
 function homeStay(points: LocationPointRow[]): DetectedTrip {

@@ -1,6 +1,7 @@
 import type { LocationPointRow } from '@/db/repositories/location-days';
 import type { SavedPlaceRow } from '@/db/repositories/saved-places';
 import { toDateKey } from '@/lib/day-utils';
+import { locationPointRow } from '@/lib/location-point-row';
 import {
   type DayTimelineEntry,
   type DetectedTrip,
@@ -55,7 +56,7 @@ function parsedToLocationRow(point: {
   if (timestamp == null) {
     return null;
   }
-  return {
+  return locationPointRow({
     id: point.id,
     timestamp,
     lat: point.lat,
@@ -64,7 +65,7 @@ function parsedToLocationRow(point: {
     altitude: point.altitude,
     speed: point.speed,
     source: point.source,
-  };
+  });
 }
 
 function staySegmentToTrip(segment: StaySegment): DetectedTrip {

@@ -161,6 +161,8 @@ export async function migrationAlreadyApplied(
       return !(await columnExists(sqlite, 'trips', 'poi_label'));
     case '0030_visit_label_overrides':
       return tableExists(sqlite, 'visit_label_overrides');
+    case '0031_location_points_sdk_extras':
+      return columnExists(sqlite, 'location_points', 'activity_type');
     default:
       return false;
   }

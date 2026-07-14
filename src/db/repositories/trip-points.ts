@@ -1,6 +1,7 @@
 import { asc, eq, inArray, sql } from 'drizzle-orm';
 
 import type { LocationPointRow } from '@/db/repositories/location-days';
+import { locationPointRow } from '@/lib/location-point-row';
 import { getDatabase, getSqlite } from '../client';
 import { ensureTripPointMetadataColumns } from '../migrate';
 import { tripPoints, trips } from '../schema';
@@ -132,16 +133,15 @@ export async function replaceTripPoints(
 ): Promise<void> {
   await replaceTripPointsFromLocations(
     tripId,
-    coordinates.map((coordinate, seq) => ({
-      id: -(tripId * 10_000 + seq),
-      timestamp: new Date(),
-      lat: coordinate.lat,
-      lng: coordinate.lng,
-      accuracy: null,
-      altitude: null,
-      speed: null,
-      source: 'route',
-    })),
+    coordinates.map((coordinate, seq) =>
+      locationPointRow({
+        id: -(tripId * 10_000 + seq),
+        timestamp: new Date(),
+        lat: coordinate.lat,
+        lng: coordinate.lng,
+        source: 'route',
+      }),
+    ),
   );
 }
 

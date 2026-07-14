@@ -14,6 +14,17 @@ export type NewLocationPoint = {
   altitude?: number | null;
   speed?: number | null;
   source?: string;
+  heading?: number | null;
+  headingAccuracy?: number | null;
+  speedAccuracy?: number | null;
+  altitudeAccuracy?: number | null;
+  activityType?: string | null;
+  activityConfidence?: number | null;
+  isMoving?: boolean | null;
+  isMock?: boolean | null;
+  uuid?: string | null;
+  batteryLevel?: number | null;
+  batteryIsCharging?: boolean | null;
 };
 
 /** Legacy rows from motion callbacks — GPS rows are kept. */
@@ -63,6 +74,13 @@ export function subscribeLocationPointInserts(
   };
 }
 
+function bindOptionalBool(value: boolean | null | undefined): number | null {
+  if (value == null) {
+    return null;
+  }
+  return value ? 1 : 0;
+}
+
 export async function insertLocationPoint(
   point: NewLocationPoint,
   options?: { dedupe?: boolean },
@@ -71,8 +89,18 @@ export async function insertLocationPoint(
   const timestampValue = locationPointTimestampToStorageValue(point.timestamp);
   const sqlite = await getSqlite();
   const insertSql = options?.dedupe
-    ? `INSERT OR IGNORE INTO location_points (timestamp, lat, lng, accuracy, altitude, speed, source) VALUES (?, ?, ?, ?, ?, ?, ?)`
-    : `INSERT INTO location_points (timestamp, lat, lng, accuracy, altitude, speed, source) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+    ? `INSERT OR IGNORE INTO location_points (
+        timestamp, lat, lng, accuracy, altitude, speed, source,
+        heading, heading_accuracy, speed_accuracy, altitude_accuracy,
+        activity_type, activity_confidence, is_moving, is_mock, uuid,
+        battery_level, battery_is_charging
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    : `INSERT INTO location_points (
+        timestamp, lat, lng, accuracy, altitude, speed, source,
+        heading, heading_accuracy, speed_accuracy, altitude_accuracy,
+        activity_type, activity_confidence, is_moving, is_mock, uuid,
+        battery_level, battery_is_charging
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
   const result = await sqlite.execute(insertSql, [
     timestampValue,
     point.lat,
@@ -81,6 +109,17 @@ export async function insertLocationPoint(
     point.altitude ?? null,
     point.speed ?? null,
     source,
+    point.heading ?? null,
+    point.headingAccuracy ?? null,
+    point.speedAccuracy ?? null,
+    point.altitudeAccuracy ?? null,
+    point.activityType ?? null,
+    point.activityConfidence ?? null,
+    bindOptionalBool(point.isMoving),
+    bindOptionalBool(point.isMock),
+    point.uuid ?? null,
+    point.batteryLevel ?? null,
+    bindOptionalBool(point.batteryIsCharging),
   ]);
 
   const rowsChanged = Number(

@@ -2,6 +2,7 @@ import type { MomentRow } from '@/db/repositories/moments';
 import type { LocationPointRow } from '@/db/repositories/location-days';
 import type { PersistTripPointInput } from '@/db/repositories/trip-points';
 import { calculatePathDistanceKm, distanceKm } from '@/lib/location-geo';
+import { locationPointRow } from '@/lib/location-point-row';
 import type { DetectedTrip } from '@/lib/trip-detection';
 import { visitCorePoints } from '@/lib/trip-detection';
 
@@ -262,16 +263,13 @@ export function canonicalizeStayGeometryForPersist(
   const shapePoints =
     stay.points.length === 0
       ? [
-          {
+          locationPointRow({
             id: -1,
             timestamp: stay.startAt,
             lat: centroid.lat,
             lng: centroid.lng,
-            accuracy: null,
-            altitude: null,
-            speed: null,
-            source: 'anchor' as const,
-          },
+            source: 'anchor',
+          }),
         ]
       : canonicalizeStayGeometry(stay, centroid, moments);
 

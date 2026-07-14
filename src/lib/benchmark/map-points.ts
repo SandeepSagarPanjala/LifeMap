@@ -1,5 +1,6 @@
 import type { LocationPointRow } from '@/db/repositories/location-days';
 import type { MomentRow } from '@/db/repositories/moments';
+import { locationPointRow } from '@/lib/location-point-row';
 import { locationRowsToParsedPoints } from '@/lib/segmentation/parse-points';
 import {
   canonicalizeStaySegmentPoints,
@@ -13,16 +14,18 @@ import type { StaySegment, TripSegment } from '@/lib/segmentation/trips';
 export function parsedPointsToLocationRows(
   points: readonly ParsedPoint[],
 ): LocationPointRow[] {
-  return points.map(point => ({
-    id: point.id,
-    timestamp: point.at,
-    lat: point.lat,
-    lng: point.lng,
-    accuracy: point.accuracy,
-    altitude: point.altitude,
-    speed: point.speed,
-    source: point.source,
-  }));
+  return points.map(point =>
+    locationPointRow({
+      id: point.id,
+      timestamp: point.at,
+      lat: point.lat,
+      lng: point.lng,
+      accuracy: point.accuracy,
+      altitude: point.altitude,
+      speed: point.speed,
+      source: point.source,
+    }),
+  );
 }
 
 export function segmentToLocationRows(

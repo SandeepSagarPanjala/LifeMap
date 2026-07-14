@@ -218,6 +218,13 @@
       "when": 1788922000000,
       "tag": "0030_visit_label_overrides",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1788923000000,
+      "tag": "0031_location_points_sdk_extras",
+      "breakpoints": true
     }
   ]
 }

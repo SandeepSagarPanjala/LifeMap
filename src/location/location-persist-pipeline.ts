@@ -24,6 +24,7 @@ import {
   STATIONARY_PING_MIN_MS_MAX_RELIABILITY,
 } from '@/lib/app-constants';
 import { HEARTBEAT_CURRENT_POSITION_REQUEST } from '@/lib/motion-tracking-policy';
+import { sdkLocationExtras } from '@/lib/sdk-location-extras';
 import {
   createTrackingMotionGuardState,
   resetDepartureWake,
@@ -120,6 +121,7 @@ export async function persistLocationFromSdk(
       altitude: coords.altitude,
       speed: coords.speed != null && coords.speed >= 0 ? coords.speed : null,
       source,
+      ...sdkLocationExtras(location),
     },
     { dedupe: options?.dedupe },
   );

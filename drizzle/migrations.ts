@@ -277,6 +277,28 @@ CREATE UNIQUE INDEX IF NOT EXISTS \`visit_label_overrides_date_start_unique\` ON
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS \`visit_label_overrides_date_key_idx\` ON \`visit_label_overrides\` (\`date_key\`);`;
 
+const m0031 = `ALTER TABLE \`location_points\` ADD COLUMN \`heading\` real;
+--> statement-breakpoint
+ALTER TABLE \`location_points\` ADD COLUMN \`heading_accuracy\` real;
+--> statement-breakpoint
+ALTER TABLE \`location_points\` ADD COLUMN \`speed_accuracy\` real;
+--> statement-breakpoint
+ALTER TABLE \`location_points\` ADD COLUMN \`altitude_accuracy\` real;
+--> statement-breakpoint
+ALTER TABLE \`location_points\` ADD COLUMN \`activity_type\` text;
+--> statement-breakpoint
+ALTER TABLE \`location_points\` ADD COLUMN \`activity_confidence\` integer;
+--> statement-breakpoint
+ALTER TABLE \`location_points\` ADD COLUMN \`is_moving\` integer;
+--> statement-breakpoint
+ALTER TABLE \`location_points\` ADD COLUMN \`is_mock\` integer;
+--> statement-breakpoint
+ALTER TABLE \`location_points\` ADD COLUMN \`uuid\` text;
+--> statement-breakpoint
+ALTER TABLE \`location_points\` ADD COLUMN \`battery_level\` real;
+--> statement-breakpoint
+ALTER TABLE \`location_points\` ADD COLUMN \`battery_is_charging\` integer;`;
+
 export default {
   journal,
   migrations: {
@@ -311,5 +333,6 @@ export default {
     m0028,
     m0029,
     m0030,
+    m0031,
   },
 };

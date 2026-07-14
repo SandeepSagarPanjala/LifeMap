@@ -21,6 +21,7 @@ import {
 import type { BackupBundleTables } from './backup-export';
 import {
   parseIsoDate,
+  parseOptionalBoolean,
   parseOptionalNumber,
   parseOptionalString,
   parseRequiredIsoDate,
@@ -93,6 +94,17 @@ async function importLocationPoints(rows: unknown[]): Promise<IdMap> {
         altitude: parseOptionalNumber(record.altitude),
         speed: parseOptionalNumber(record.speed),
         source: parseRequiredString(record.source, 'location_points.source'),
+        heading: parseOptionalNumber(record.heading),
+        headingAccuracy: parseOptionalNumber(record.headingAccuracy),
+        speedAccuracy: parseOptionalNumber(record.speedAccuracy),
+        altitudeAccuracy: parseOptionalNumber(record.altitudeAccuracy),
+        activityType: parseOptionalString(record.activityType),
+        activityConfidence: parseOptionalNumber(record.activityConfidence),
+        isMoving: parseOptionalBoolean(record.isMoving),
+        isMock: parseOptionalBoolean(record.isMock),
+        uuid: parseOptionalString(record.uuid),
+        batteryLevel: parseOptionalNumber(record.batteryLevel),
+        batteryIsCharging: parseOptionalBoolean(record.batteryIsCharging),
       })
       .returning({ id: locationPoints.id });
     map.set(oldId, inserted[0]!.id);

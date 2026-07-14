@@ -7,6 +7,7 @@ import type { SavedPlaceRow } from '@/db/repositories/saved-places';
 import { listSavedPlaces } from '@/db/repositories/saved-places';
 import { getDayRange, shiftDateKey } from '@/lib/day-utils';
 import { loadExplorerGpsWindow } from '@/lib/explorer-day-trips';
+import { locationPointRow } from '@/lib/location-point-row';
 import { locationRowsToParsedPoints } from '@/lib/segmentation/parse-points';
 import {
   filterPointsBySources,
@@ -101,16 +102,18 @@ function rowsToTripTrackPoints(
   rows: readonly LocationPointRow[],
 ): LocationPointRow[] {
   const parsed = locationRowsToParsedPoints(rows);
-  return filterPointsBySources(parsed, TRIP_SOURCES).map(point => ({
-    id: point.id,
-    timestamp: point.at,
-    lat: point.lat,
-    lng: point.lng,
-    accuracy: point.accuracy,
-    altitude: point.altitude,
-    speed: point.speed,
-    source: point.source,
-  }));
+  return filterPointsBySources(parsed, TRIP_SOURCES).map(point =>
+    locationPointRow({
+      id: point.id,
+      timestamp: point.at,
+      lat: point.lat,
+      lng: point.lng,
+      accuracy: point.accuracy,
+      altitude: point.altitude,
+      speed: point.speed,
+      source: point.source,
+    }),
+  );
 }
 
 export async function loadParsedTripTrackForDateKey(
@@ -135,16 +138,18 @@ export async function loadParsedTripTrackForDateKeys(
   return filterPointsBySources(
     parsed.filter(point => keySet.has(point.dateKey)),
     TRIP_SOURCES,
-  ).map(point => ({
-    id: point.id,
-    timestamp: point.at,
-    lat: point.lat,
-    lng: point.lng,
-    accuracy: point.accuracy,
-    altitude: point.altitude,
-    speed: point.speed,
-    source: point.source,
-  }));
+  ).map(point =>
+    locationPointRow({
+      id: point.id,
+      timestamp: point.at,
+      lat: point.lat,
+      lng: point.lng,
+      accuracy: point.accuracy,
+      altitude: point.altitude,
+      speed: point.speed,
+      source: point.source,
+    }),
+  );
 }
 
 async function resolveSavedPlaces(

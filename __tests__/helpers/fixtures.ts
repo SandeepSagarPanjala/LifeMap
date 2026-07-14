@@ -6,6 +6,7 @@ import type {
   SavedPlaceRow,
 } from '@/db/repositories/saved-places';
 import type { TripPointRow } from '@/db/repositories/trip-points';
+import { locationPointRow } from '@/lib/location-point-row';
 
 export function makeSavedPlace(
   partial: Partial<SavedPlaceRow> &
@@ -24,13 +25,10 @@ export function makeLocationPoint(
   partial: Partial<LocationPointRow> &
     Pick<LocationPointRow, 'id' | 'lat' | 'lng' | 'timestamp'>,
 ): LocationPointRow {
-  return {
+  return locationPointRow({
     accuracy: 10,
-    altitude: null,
-    speed: null,
-    source: 'gps',
     ...partial,
-  };
+  });
 }
 
 export function makeMoment(

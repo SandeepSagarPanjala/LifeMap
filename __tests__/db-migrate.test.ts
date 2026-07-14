@@ -8,7 +8,7 @@ import {
 describe('database migrations', () => {
   it('loads bundled sqlite migrations in journal order', () => {
     const prepared = prepareMigrations();
-    expect(prepared).toHaveLength(31);
+    expect(prepared).toHaveLength(32);
     expect(prepared[0]?.tag).toBe('0000_init');
     expect(prepared[0]?.sql[0]).toContain('CREATE TABLE `location_points`');
     expect(prepared[6]?.tag).toBe('0006_moments_mood');
@@ -26,9 +26,7 @@ describe('database migrations', () => {
     expect(prepared[24]?.tag).toBe('0024_drop_moment_location_columns');
     expect(prepared[25]?.tag).toBe('0025_place_pois');
     expect(prepared[26]?.tag).toBe('0026_materialized_day_excluded_drive');
-    expect(prepared[26]?.sql[0]).toContain(
-      'excluded_cross_midnight_from_ms',
-    );
+    expect(prepared[26]?.sql[0]).toContain('excluded_cross_midnight_from_ms');
     expect(prepared[27]?.tag).toBe('0027_location_day_summaries');
     expect(prepared[27]?.sql[0]).toContain('location_day_summaries');
     expect(prepared[28]?.tag).toBe('0028_place_pois_category');
@@ -37,6 +35,8 @@ describe('database migrations', () => {
     expect(prepared[29]?.sql[0]).toContain('poi_label');
     expect(prepared[30]?.tag).toBe('0030_visit_label_overrides');
     expect(prepared[30]?.sql[0]).toContain('visit_label_overrides');
+    expect(prepared[31]?.tag).toBe('0031_location_points_sdk_extras');
+    expect(prepared[31]?.sql.join('\n')).toContain('activity_type');
   });
 
   it('detects whether a migration is already applied', async () => {

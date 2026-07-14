@@ -18,6 +18,18 @@ export const locationPoints = sqliteTable(
     altitude: real('altitude'),
     speed: real('speed'),
     source: text('source').notNull().default('gps'),
+    /** Transistor Soft / Core Location extras — collected for future mode detection. */
+    heading: real('heading'),
+    headingAccuracy: real('heading_accuracy'),
+    speedAccuracy: real('speed_accuracy'),
+    altitudeAccuracy: real('altitude_accuracy'),
+    activityType: text('activity_type'),
+    activityConfidence: integer('activity_confidence'),
+    isMoving: integer('is_moving', { mode: 'boolean' }),
+    isMock: integer('is_mock', { mode: 'boolean' }),
+    uuid: text('uuid'),
+    batteryLevel: real('battery_level'),
+    batteryIsCharging: integer('battery_is_charging', { mode: 'boolean' }),
   },
   table => ({
     timestampIdx: index('location_points_timestamp_idx').on(table.timestamp),

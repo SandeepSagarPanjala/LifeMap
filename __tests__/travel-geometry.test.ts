@@ -22,6 +22,17 @@ function point(
     altitude: null,
     speed: 20,
     source: 'gps',
+    heading: null,
+    headingAccuracy: null,
+    speedAccuracy: null,
+    altitudeAccuracy: null,
+    activityType: null,
+    activityConfidence: null,
+    isMoving: null,
+    isMock: null,
+    uuid: null,
+    batteryLevel: null,
+    batteryIsCharging: null,
   };
 }
 

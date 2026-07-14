@@ -35,6 +35,7 @@ class LocationPersistModule: NSObject {
     altitude: NSNumber,
     speed: NSNumber,
     source: NSString,
+    extras: NSDictionary?,
     resolver: @escaping RCTPromiseResolveBlock,
     rejecter: @escaping RCTPromiseRejectBlock
   ) {
@@ -42,10 +43,21 @@ class LocationPersistModule: NSObject {
       timestampMs: timestampMs.int64Value,
       lat: lat.doubleValue,
       lng: lng.doubleValue,
-      accuracy: optionalDouble(accuracy),
-      altitude: optionalDouble(altitude),
-      speed: optionalSpeed(speed),
-      source: source as String
+      accuracy: optionalNonNegative(accuracy),
+      altitude: optionalAltitude(altitude),
+      speed: optionalNonNegative(speed),
+      source: source as String,
+      heading: optionalExtrasDouble(extras, key: "heading"),
+      headingAccuracy: optionalExtrasDouble(extras, key: "headingAccuracy"),
+      speedAccuracy: optionalExtrasDouble(extras, key: "speedAccuracy"),
+      altitudeAccuracy: optionalExtrasDouble(extras, key: "altitudeAccuracy"),
+      activityType: optionalExtrasString(extras, key: "activityType"),
+      activityConfidence: optionalExtrasInt(extras, key: "activityConfidence"),
+      isMoving: optionalExtrasBool(extras, key: "isMoving"),
+      isMock: optionalExtrasBool(extras, key: "isMock"),
+      uuid: optionalExtrasString(extras, key: "uuid"),
+      batteryLevel: optionalExtrasDouble(extras, key: "batteryLevel"),
+      batteryIsCharging: optionalExtrasBool(extras, key: "batteryIsCharging")
     )
     let inserted = LifeMapDatabase.shared.insertLocation(point, dedupe: true)
     resolver(inserted)
@@ -84,11 +96,51 @@ class LocationPersistModule: NSObject {
     ])
   }
 
-  private func optionalDouble(_ value: NSNumber) -> Double? {
-    value.doubleValue < 0 ? nil : value.doubleValue
+  /// JS sends -1 for missing accuracy/speed. Negative values are never valid for those fields.
+  private func optionalNonNegative(_ value: NSNumber) -> Double? {
+    let number = value.doubleValue
+    guard number.isFinite, number >= 0 else {
+      return nil
+    }
+    return number
   }
 
-  private func optionalSpeed(_ value: NSNumber) -> Double? {
-    value.doubleValue < 0 ? nil : value.doubleValue
+  /// JS sends -1 when altitude is missing. Real altitudes may be below sea level.
+  private func optionalAltitude(_ value: NSNumber) -> Double? {
+    let number = value.doubleValue
+    guard number.isFinite, number != -1 else {
+      return nil
+    }
+    return number
+  }
+
+  private func optionalExtrasDouble(_ extras: NSDictionary?, key: String) -> Double? {
+    guard let value = extras?[key] as? NSNumber else {
+      return nil
+    }
+    let number = value.doubleValue
+    return number.isFinite ? number : nil
+  }
+
+  private func optionalExtrasInt(_ extras: NSDictionary?, key: String) -> Int? {
+    guard let value = extras?[key] as? NSNumber else {
+      return nil
+    }
+    return value.intValue
+  }
+
+  private func optionalExtrasBool(_ extras: NSDictionary?, key: String) -> Bool? {
+    guard let value = extras?[key] as? NSNumber else {
+      return nil
+    }
+    return value.boolValue
+  }
+
+  private func optionalExtrasString(_ extras: NSDictionary?, key: String) -> String? {
+    guard let value = extras?[key] as? String else {
+      return nil
+    }
+    let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+    return trimmed.isEmpty ? nil : trimmed
   }
 }

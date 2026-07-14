@@ -109,7 +109,18 @@ struct NativeGeofenceSpec: Codable {
       accuracy: location.horizontalAccuracy >= 0 ? location.horizontalAccuracy : nil,
       altitude: location.verticalAccuracy >= 0 ? location.altitude : nil,
       speed: location.speed >= 0 ? location.speed : nil,
-      source: source
+      source: source,
+      heading: location.course >= 0 ? location.course : nil,
+      headingAccuracy: location.courseAccuracy >= 0 ? location.courseAccuracy : nil,
+      speedAccuracy: location.speedAccuracy >= 0 ? location.speedAccuracy : nil,
+      altitudeAccuracy: location.verticalAccuracy >= 0 ? location.verticalAccuracy : nil,
+      activityType: nil,
+      activityConfidence: nil,
+      isMoving: nil,
+      isMock: nil,
+      uuid: nil,
+      batteryLevel: nil,
+      batteryIsCharging: nil
     )
     _ = LifeMapDatabase.shared.insertLocation(point, dedupe: true)
     if forceMoving {
@@ -228,7 +239,18 @@ enum TransistorBridge {
         accuracy: location.horizontalAccuracy >= 0 ? location.horizontalAccuracy : nil,
         altitude: location.verticalAccuracy >= 0 ? location.altitude : nil,
         speed: location.speed >= 0 ? location.speed : nil,
-        source: "native_ts_queue"
+        source: "native_ts_queue",
+        heading: location.course >= 0 ? location.course : nil,
+        headingAccuracy: location.courseAccuracy >= 0 ? location.courseAccuracy : nil,
+        speedAccuracy: location.speedAccuracy >= 0 ? location.speedAccuracy : nil,
+        altitudeAccuracy: location.verticalAccuracy >= 0 ? location.verticalAccuracy : nil,
+        activityType: nil,
+        activityConfidence: nil,
+        isMoving: nil,
+        isMock: nil,
+        uuid: nil,
+        batteryLevel: nil,
+        batteryIsCharging: nil
       )
       if LifeMapDatabase.shared.insertLocation(point, dedupe: true) {
         imported += 1
