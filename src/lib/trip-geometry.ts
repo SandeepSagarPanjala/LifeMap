@@ -5,6 +5,7 @@ import {
   routeMomentAnchorsFromTripPoints,
   type TripMomentRef,
 } from '@/lib/moment-refs';
+import { locationPointRow } from '@/lib/location-point-row';
 import { resolvedPlaceFromTripRow } from '@/lib/resolved-place';
 import {
   isPlayableTimelineEntry,
@@ -16,16 +17,13 @@ export function syntheticStayPoint(trip: TripRow): LocationPointRow {
   const midpointMs = Math.floor(
     (trip.startAt.getTime() + trip.endAt.getTime()) / 2,
   );
-  return {
+  return locationPointRow({
     id: -trip.id,
     timestamp: new Date(midpointMs),
     lat: trip.centroidLat,
     lng: trip.centroidLng,
-    accuracy: null,
-    altitude: null,
-    speed: null,
     source: 'anchor',
-  };
+  });
 }
 
 export function syntheticRoutePoints(
@@ -52,18 +50,17 @@ export function storedTripPointsToLocationRows(
   const endMs = trip.endAt.getTime();
   const spanMs = Math.max(1, endMs - startMs);
 
-  return route.map((point, index) => ({
-    id: point.locationPointId ?? -(trip.id * 10_000 + point.seq),
-    timestamp:
-      point.recordedAt ??
-      new Date(startMs + (spanMs * index) / Math.max(1, route.length - 1)),
-    lat: point.lat,
-    lng: point.lng,
-    accuracy: null,
-    altitude: null,
-    speed: null,
-    source: point.source ?? 'route',
-  }));
+  return route.map((point, index) =>
+    locationPointRow({
+      id: point.locationPointId ?? -(trip.id * 10_000 + point.seq),
+      timestamp:
+        point.recordedAt ??
+        new Date(startMs + (spanMs * index) / Math.max(1, route.length - 1)),
+      lat: point.lat,
+      lng: point.lng,
+      source: point.source ?? 'route',
+    }),
+  );
 }
 
 export function locationPointsForTripRow(

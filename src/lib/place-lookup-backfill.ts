@@ -6,6 +6,7 @@ import { DEFAULT_PLACE_LOOKUP_BACKFILL_BATCH_SIZE } from '@/lib/app-constants';
 import { findPlaceLookupNearAnchor } from '@/db/repositories/place-lookup-cache';
 import type { SavedPlaceRow } from '@/db/repositories/saved-places';
 import { listUnlabeledStayTrips, type TripRow } from '@/db/repositories/trips';
+import { locationPointRow } from '@/lib/location-point-row';
 import {
   shouldSkipPlaceLookupForStay,
   stayQualifiesForPlaceLookup,
@@ -82,16 +83,14 @@ export function tripRowToBackfillStay(trip: TripRow): DetectedTrip {
     id: trip.eventKey,
     kind: 'stay',
     points: [
-      {
+      locationPointRow({
         id: trip.id,
         timestamp: trip.startAt,
         lat: trip.centroidLat,
         lng: trip.centroidLng,
         accuracy: 10,
-        altitude: null,
-        speed: null,
         source: 'backfill',
-      },
+      }),
     ],
     startAt: trip.startAt,
     endAt: trip.endAt,

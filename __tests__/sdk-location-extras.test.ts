@@ -62,11 +62,12 @@ describe('sdkLocationExtras', () => {
     });
   });
 
-  it('nulls invalid negative accuracy values', () => {
+  it('nulls invalid negative accuracy and heading values', () => {
     expect(
       sdkLocationExtras(
         makeLocation({
           coords: {
+            heading: -1,
             heading_accuracy: -1,
             speed_accuracy: -1,
             altitude_accuracy: -1,
@@ -75,6 +76,7 @@ describe('sdkLocationExtras', () => {
         }),
       ),
     ).toMatchObject({
+      heading: null,
       headingAccuracy: null,
       speedAccuracy: null,
       altitudeAccuracy: null,

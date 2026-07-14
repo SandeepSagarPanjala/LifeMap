@@ -25,6 +25,17 @@ function makePoints(
     altitude: null,
     speed: spec.speed ?? null,
     source: 'gps',
+    heading: null,
+    headingAccuracy: null,
+    speedAccuracy: null,
+    altitudeAccuracy: null,
+    activityType: null,
+    activityConfidence: null,
+    isMoving: null,
+    isMock: null,
+    uuid: null,
+    batteryLevel: null,
+    batteryIsCharging: null,
   }));
 }
 

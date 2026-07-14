@@ -9,13 +9,6 @@ function nonNegative(value: number | null | undefined): number | null {
   return value;
 }
 
-function finiteOrNull(value: number | null | undefined): number | null {
-  if (value == null || !Number.isFinite(value)) {
-    return null;
-  }
-  return value;
-}
-
 /** Map Transistor Soft Location extras we persist for future travel-mode work. */
 export function sdkLocationExtras(
   location: Location,
@@ -38,7 +31,7 @@ export function sdkLocationExtras(
   const battery = location.battery;
 
   return {
-    heading: finiteOrNull(coords.heading),
+    heading: nonNegative(coords.heading),
     headingAccuracy: nonNegative(coords.heading_accuracy),
     speedAccuracy: nonNegative(coords.speed_accuracy),
     altitudeAccuracy: nonNegative(coords.altitude_accuracy),

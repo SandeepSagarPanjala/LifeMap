@@ -5,28 +5,7 @@ import { getDayRange, getTodayDateKey, shiftDateKey, toDateKey } from '@/lib/day
 import { getDatabase } from '../client';
 import { locationPoints } from '../schema';
 
-/** Core GPS row used by trip detection. SDK extras are optional (null on older rows / synthetic points). */
-export type LocationPointRow = {
-  id: number;
-  timestamp: Date;
-  lat: number;
-  lng: number;
-  accuracy: number | null;
-  altitude: number | null;
-  speed: number | null;
-  source: string;
-  heading?: number | null;
-  headingAccuracy?: number | null;
-  speedAccuracy?: number | null;
-  altitudeAccuracy?: number | null;
-  activityType?: string | null;
-  activityConfidence?: number | null;
-  isMoving?: boolean | null;
-  isMock?: boolean | null;
-  uuid?: string | null;
-  batteryLevel?: number | null;
-  batteryIsCharging?: boolean | null;
-};
+export type LocationPointRow = typeof locationPoints.$inferSelect;
 
 export async function getLocationPointsForDay(
   dateKey: string,

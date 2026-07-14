@@ -9,7 +9,7 @@ import { buildHistoryDayRuler } from '../src/lib/history-timeline';
 import { buildTripDetectionConfig } from '../src/lib/trip-settings';
 import { getDayRange } from '../src/lib/day-utils';
 import type { LocationPointRow } from '../src/db/repositories/location-days';
-import { mapExportSavedPlace } from './helpers/fixtures';
+import { makeLocationPoint, mapExportSavedPlace } from './helpers/fixtures';
 import { ALL_DATA_EXPORT_PATH } from './helpers/personal-export';
 import { endOfDay } from 'date-fns';
 
@@ -17,16 +17,13 @@ const config = buildTripDetectionConfig(10, 10, 25);
 const home = { lat: 33.25045, lng: -97.15306 };
 
 function row(iso: string, id: number, coords = home): LocationPointRow {
-  return {
+  return makeLocationPoint({
     id,
     timestamp: new Date(iso),
     lat: coords.lat,
     lng: coords.lng,
     accuracy: 10,
-    altitude: null,
-    speed: null,
-    source: 'gps',
-  };
+  });
 }
 
 describe('prepareTodayHistoryTimeline', () => {
@@ -219,11 +216,13 @@ describe('prepareTodayHistoryTimeline', () => {
       };
     };
     const tripConfig = buildTripDetectionConfig(10, 5, 75);
-    const allPoints = raw.tables.location_points.map(point => ({
-      ...point,
-      timestamp: new Date(point.timestamp),
-      source: point.source as LocationPointRow['source'],
-    }));
+    const allPoints = raw.tables.location_points.map(point =>
+      makeLocationPoint({
+        ...point,
+        timestamp: new Date(point.timestamp),
+        source: point.source as LocationPointRow['source'],
+      }),
+    );
     const dayStart = new Date('2026-06-19T05:00:00.000Z');
     const referenceNow = new Date('2026-06-20T00:50:00.000Z'); // 7:50 PM CDT, mid-drive
     const dayPoints = allPoints.filter(
@@ -277,16 +276,16 @@ describe('prepareTodayHistoryTimeline', () => {
       iso: string,
       id: number,
       latOffset: number,
-    ): LocationPointRow => ({
-      id,
-      timestamp: new Date(iso),
-      lat: road.lat + latOffset,
-      lng: road.lng + latOffset * 0.01,
-      accuracy: 8,
-      altitude: 180,
-      speed: 20,
-      source: 'gps',
-    });
+    ): LocationPointRow =>
+      makeLocationPoint({
+        id,
+        timestamp: new Date(iso),
+        lat: road.lat + latOffset,
+        lng: road.lng + latOffset * 0.01,
+        accuracy: 8,
+        altitude: 180,
+        speed: 20,
+      });
 
     const jun7Points = [
       moving('2026-06-08T04:51:00.000Z', 1, 0), // 11:51 PM Jun 7 CDT
@@ -394,11 +393,13 @@ describe('prepareTodayHistoryTimeline', () => {
       };
     };
     const tripConfig = buildTripDetectionConfig(10, 5, 25);
-    const allPoints = raw.tables.location_points.map(point => ({
-      ...point,
-      timestamp: new Date(point.timestamp),
-      source: point.source as LocationPointRow['source'],
-    }));
+    const allPoints = raw.tables.location_points.map(point =>
+      makeLocationPoint({
+        ...point,
+        timestamp: new Date(point.timestamp),
+        source: point.source as LocationPointRow['source'],
+      }),
+    );
 
     const dateKey = '2026-06-08';
     const jun8DayStart = new Date('2026-06-08T05:00:00.000Z');
@@ -477,11 +478,13 @@ describe('prepareTodayHistoryTimeline', () => {
       };
     };
 
-    const points = raw.tables.location_points.map(point => ({
-      ...point,
-      timestamp: new Date(point.timestamp),
-      source: point.source as LocationPointRow['source'],
-    }));
+    const points = raw.tables.location_points.map(point =>
+      makeLocationPoint({
+        ...point,
+        timestamp: new Date(point.timestamp),
+        source: point.source as LocationPointRow['source'],
+      }),
+    );
     const savedPlaces = raw.tables.saved_places.map(mapExportSavedPlace);
     const jun13DayStart = new Date('2026-06-13T05:00:00.000Z');
     const dayPoints = points.filter(
@@ -549,11 +552,13 @@ describe('prepareTodayHistoryTimeline', () => {
       };
     };
 
-    const points = raw.tables.location_points.map(point => ({
-      ...point,
-      timestamp: new Date(point.timestamp),
-      source: point.source as LocationPointRow['source'],
-    }));
+    const points = raw.tables.location_points.map(point =>
+      makeLocationPoint({
+        ...point,
+        timestamp: new Date(point.timestamp),
+        source: point.source as LocationPointRow['source'],
+      }),
+    );
     const savedPlaces = raw.tables.saved_places.map(mapExportSavedPlace);
     const jun12DayStart = new Date('2026-06-12T05:00:00.000Z');
     const dayPoints = points.filter(
@@ -649,11 +654,13 @@ describe('prepareTodayHistoryTimeline', () => {
       };
     };
 
-    const points = raw.tables.location_points.map(point => ({
-      ...point,
-      timestamp: new Date(point.timestamp),
-      source: point.source as LocationPointRow['source'],
-    }));
+    const points = raw.tables.location_points.map(point =>
+      makeLocationPoint({
+        ...point,
+        timestamp: new Date(point.timestamp),
+        source: point.source as LocationPointRow['source'],
+      }),
+    );
     const savedPlaces = raw.tables.saved_places.map(mapExportSavedPlace);
     const tripConfig = buildTripDetectionConfig(10, 5, 20);
     const referenceNow = new Date('2026-06-13T07:24:00.000Z');
