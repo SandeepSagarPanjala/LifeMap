@@ -1,0 +1,91 @@
+diff --git a/ios/Extensions/AVFoundation/AVCaptureInput+isMicrophone.swift b/ios/Extensions/AVFoundation/AVCaptureInput+isMicrophone.swift
+index d0a2f67c0a0bf77fafd8fc7a05faf44ced120764..5a383ce75cc6ca4c6171afc839c67a13e3ae3f86 100644
+--- a/ios/Extensions/AVFoundation/AVCaptureInput+isMicrophone.swift
++++ b/ios/Extensions/AVFoundation/AVCaptureInput+isMicrophone.swift
+@@ -10,13 +10,15 @@ import NitroModules
+ 
+ extension AVCaptureInput {
+   var isMicrophone: Bool {
+-    guard let self = self as? AVCaptureDeviceInput else {
++    guard let deviceInput = self as? AVCaptureDeviceInput else {
+       return false
+     }
+-    if #available(iOS 17.0, *) {
+-      return self.device.deviceType == .microphone
+-    } else {
+-      return self.device.deviceType == .builtInMicrophone
+-    }
++    // Check the device's media type instead of comparing `deviceType` against
++    // `.microphone`: that constant (`AVCaptureDeviceTypeMicrophone`) is an
++    // iOS 17+ weak-linked symbol, and the Swift optimizer can hoist its load
++    // out of the `#available(iOS 17.0, *)` branch. On older iOS the symbol
++    // resolves to NULL and dereferencing it crashes with SIGSEGV.
++    // See https://github.com/mrousavy/react-native-vision-camera/issues/3773
++    return deviceInput.device.hasMediaType(.audio)
+   }
+ }
+diff --git a/ios/Hybrid Objects/HybridCameraSession.swift b/ios/Hybrid Objects/HybridCameraSession.swift
+index b7b0c3cf3cecd28e9abea5404ba02f7301362716..cf587ef3f7da95d8a9d3e3704e7f41b47a12db57 100644
+--- a/ios/Hybrid Objects/HybridCameraSession.swift	
++++ b/ios/Hybrid Objects/HybridCameraSession.swift	
+@@ -29,6 +29,36 @@ final class HybridCameraSession: HybridCameraSessionSpec {
+     super.init()
+   }
+ 
++  deinit {
++    // Gracefully tear down the AVCaptureSession before ARC deallocates it.
++    // Without this, the session can be deallocated (e.g. on the main thread
++    // during a CATransaction commit, via AVCaptureVideoPreviewLayer dealloc)
++    // while its inputs/outputs are still attached — AVFoundation then asserts
++    // in `-[AVCaptureOutput detachFromFigCaptureSession:]`, especially on iOS 26.
++    // Stopping the session and detaching all I/O on the shared serial session
++    // queue serializes teardown against any in-flight configure()/start(),
++    // and leaves the session empty so its eventual dealloc is a no-op.
++    // See https://github.com/mrousavy/react-native-vision-camera/issues/4026
++    let session = self.session
++    Self.queue.async {
++      if session.isRunning {
++        session.stopRunning()
++      }
++      session.beginConfiguration()
++      for connection in session.connections {
++        session.removeConnection(connection)
++      }
++      for output in session.outputs {
++        session.removeOutput(output)
++      }
++      for input in session.inputs {
++        session.removeInput(input)
++      }
++      session.commitConfiguration()
++      logger.info("CameraSession torn down gracefully.")
++    }
++  }
++
+   var isRunning: Bool {
+     return session.isRunning
+   }
+diff --git a/ios/Hybrid Objects/Outputs/HybridCameraPreviewOutput.swift b/ios/Hybrid Objects/Outputs/HybridCameraPreviewOutput.swift
+index bc95c1f6d366217ab99e07b2fd9f31471253ef1d..f81b4a4a500b72d19ba6e3f0564ad968d83a470a 100644
+--- a/ios/Hybrid Objects/Outputs/HybridCameraPreviewOutput.swift	
++++ b/ios/Hybrid Objects/Outputs/HybridCameraPreviewOutput.swift	
+@@ -50,6 +50,19 @@ final class HybridCameraPreviewOutput: HybridCameraPreviewOutputSpec, NativePrev
+ 
+   deinit {
+     orientationManager.stopOrientationUpdates()
++    // Detach the preview layer from the capture session before the layer can be
++    // released inside a CATransaction commit. Otherwise AVCaptureVideoPreviewLayer
++    // dealloc can cascade into AVCaptureSession dealloc and assert on iOS 26.
++    // See https://github.com/mrousavy/react-native-vision-camera/issues/4026
++    let layer = previewLayer
++    let detach = {
++      layer.session = nil
++    }
++    if Thread.isMainThread {
++      detach()
++    } else {
++      DispatchQueue.main.async(execute: detach)
++    }
+   }
+ 
+   func configure(config: CameraOutputConfiguration) {

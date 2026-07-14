@@ -262,6 +262,21 @@ const m0028 = `ALTER TABLE \`place_pois\` ADD COLUMN \`category\` text;`;
 
 const m0029 = `ALTER TABLE \`trips\` DROP COLUMN \`poi_label\`;`;
 
+const m0030 = `CREATE TABLE IF NOT EXISTS \`visit_label_overrides\` (
+	\`id\` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	\`date_key\` text NOT NULL,
+	\`start_at_ms\` integer NOT NULL,
+	\`poi_id\` integer NOT NULL,
+	\`poi_label\` text,
+	\`place_id\` integer,
+	\`place_kind\` text,
+	\`updated_at\` integer NOT NULL
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS \`visit_label_overrides_date_start_unique\` ON \`visit_label_overrides\` (\`date_key\`, \`start_at_ms\`);
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS \`visit_label_overrides_date_key_idx\` ON \`visit_label_overrides\` (\`date_key\`);`;
+
 export default {
   journal,
   migrations: {
@@ -295,5 +310,6 @@ export default {
     m0027,
     m0028,
     m0029,
+    m0030,
   },
 };
