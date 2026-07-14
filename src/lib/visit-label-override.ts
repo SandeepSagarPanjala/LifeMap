@@ -20,7 +20,10 @@ export function visitLabelOverrideToResolved(
   };
 }
 
-/** Prefer user override when no sealed trip poi is present. */
+/**
+ * Prefer a user override for open visits, for unsealed stays, or when a
+ * sealed trip still has no poi.
+ */
 export function shouldApplyVisitLabelOverride(args: {
   materializedTripId: number | null;
   poiId: number | null;
@@ -58,6 +61,25 @@ export function findVisitLabelOverrideForStart(
   startAtMs: number,
 ): VisitLabelOverrideRow | null {
   return matchVisitLabelOverride(overrides, startAtMs);
+}
+
+/**
+ * Same match as {@link findVisitLabelOverrideForStart}, then remove the row so
+ * a later stay in the same run cannot reuse it via fuzzy start matching.
+ */
+export function takeVisitLabelOverrideForStart(
+  overrides: VisitLabelOverrideRow[],
+  startAtMs: number,
+): VisitLabelOverrideRow | null {
+  const matched = matchVisitLabelOverride(overrides, startAtMs);
+  if (matched == null) {
+    return null;
+  }
+  const index = overrides.findIndex((row) => row.id === matched.id);
+  if (index >= 0) {
+    overrides.splice(index, 1);
+  }
+  return matched;
 }
 
 export function mergeOverrideIntoPersistLabel(

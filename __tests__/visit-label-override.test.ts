@@ -12,6 +12,7 @@ import {
   findVisitLabelOverrideForStart,
   mergeOverrideIntoPersistLabel,
   shouldApplyVisitLabelOverride,
+  takeVisitLabelOverrideForStart,
   visitLabelOverrideToResolved,
 } from '@/lib/visit-label-override';
 import type { DetectedTrip } from '@/lib/trip-detection';
@@ -180,6 +181,15 @@ describe('mergeOverrideIntoPersistLabel', () => {
     expect(findVisitLabelOverrideForStart(rows, 1_000 + 30_000)?.poiId).toBe(
       99,
     );
+  });
+
+  it('consumes an override so a later nearby stay cannot reuse it', () => {
+    const rows = [override({ id: 7, startAtMs: 1_000, poiId: 99 })];
+    expect(takeVisitLabelOverrideForStart(rows, 1_000 + 30_000)?.poiId).toBe(
+      99,
+    );
+    expect(rows).toHaveLength(0);
+    expect(takeVisitLabelOverrideForStart(rows, 1_000 + 60_000)).toBeNull();
   });
 });
 

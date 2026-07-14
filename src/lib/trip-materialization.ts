@@ -51,8 +51,8 @@ import {
 } from '@/lib/day-utils';
 import type { HistoryData } from '@/lib/history-data-types';
 import {
-  findVisitLabelOverrideForStart,
   mergeOverrideIntoPersistLabel,
+  takeVisitLabelOverrideForStart,
 } from '@/lib/visit-label-override';
 import { clearHistoryDataCache } from '@/lib/history-data-cache';
 import { isCurrentHistoryDayLoad } from '@/lib/history-load-generation';
@@ -646,13 +646,15 @@ export async function persistClosedTripsIncremental(
   const existingLabels = existingTripLabelsByEventKey(existingTrips);
   const savedPlaces = await listSavedPlaces();
   const { start: dayStart, end: dayEnd } = getDayRange(dateKey);
-  const [dayMoments, canonicalizeTravel, geometryFingerprint, dayOverrides] =
+  const [dayMoments, canonicalizeTravel, geometryFingerprint, listedOverrides] =
     await Promise.all([
       getMomentsForDay(dayStart, dayEnd),
       isCanonicalTravelGeometryEnabled(),
       getGeometryPersistFingerprint(),
       listVisitLabelOverridesForDay(dateKey),
     ]);
+  // Mutable: each consumed override is removed so fuzzy matching cannot reuse it.
+  const dayOverrides = [...listedOverrides];
 
   if (options.fullReplace) {
     await deleteTripsForDay(dateKey);
@@ -692,7 +694,7 @@ export async function persistClosedTripsIncremental(
     const eventKey = tripEventKey(entry);
     const override =
       entry.kind === 'stay'
-        ? findVisitLabelOverrideForStart(dayOverrides, entry.startAt.getTime())
+        ? takeVisitLabelOverrideForStart(dayOverrides, entry.startAt.getTime())
         : null;
     const labels = mergeOverrideIntoPersistLabel(
       tripLabelForPersist(eventKey, existingLabels, {

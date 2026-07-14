@@ -74,7 +74,9 @@ export async function upsertVisitLabelOverride(
 
   const row = await getVisitLabelOverrideExact(input.dateKey, input.startAtMs);
   if (!row) {
-    throw new Error('visit_label_override upsert failed to read back');
+    throw new Error(
+      `visit_label_override upsert failed to read back (${input.dateKey} @ ${input.startAtMs})`,
+    );
   }
   return row;
 }
