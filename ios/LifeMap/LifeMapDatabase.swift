@@ -9,6 +9,17 @@ struct LifeMapLocationInsert {
   let altitude: Double?
   let speed: Double?
   let source: String
+  let heading: Double?
+  let headingAccuracy: Double?
+  let speedAccuracy: Double?
+  let altitudeAccuracy: Double?
+  let activityType: String?
+  let activityConfidence: Int?
+  let isMoving: Bool?
+  let isMock: Bool?
+  let uuid: String?
+  let batteryLevel: Double?
+  let batteryIsCharging: Bool?
 }
 
 struct LifeMapPersistStats {
@@ -71,7 +82,14 @@ final class LifeMapDatabase {
       }
 
       let sql =
-        "INSERT INTO location_points (timestamp, lat, lng, accuracy, altitude, speed, source) VALUES (?, ?, ?, ?, ?, ?, ?);"
+        """
+        INSERT INTO location_points (
+          timestamp, lat, lng, accuracy, altitude, speed, source,
+          heading, heading_accuracy, speed_accuracy, altitude_accuracy,
+          activity_type, activity_confidence, is_moving, is_mock, uuid,
+          battery_level, battery_is_charging
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        """
       var statement: OpaquePointer?
       guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK,
             let statement else {
@@ -86,6 +104,17 @@ final class LifeMapDatabase {
       bindOptionalDouble(statement, index: 5, value: point.altitude)
       bindOptionalDouble(statement, index: 6, value: point.speed)
       sqlite3_bind_text(statement, 7, point.source, -1, SQLITE_TRANSIENT)
+      bindOptionalDouble(statement, index: 8, value: point.heading)
+      bindOptionalDouble(statement, index: 9, value: point.headingAccuracy)
+      bindOptionalDouble(statement, index: 10, value: point.speedAccuracy)
+      bindOptionalDouble(statement, index: 11, value: point.altitudeAccuracy)
+      bindOptionalText(statement, index: 12, value: point.activityType)
+      bindOptionalInt(statement, index: 13, value: point.activityConfidence)
+      bindOptionalBool(statement, index: 14, value: point.isMoving)
+      bindOptionalBool(statement, index: 15, value: point.isMock)
+      bindOptionalText(statement, index: 16, value: point.uuid)
+      bindOptionalDouble(statement, index: 17, value: point.batteryLevel)
+      bindOptionalBool(statement, index: 18, value: point.batteryIsCharging)
 
       return sqlite3_step(statement) == SQLITE_DONE
     }
@@ -135,6 +164,42 @@ final class LifeMapDatabase {
   ) {
     if let value {
       sqlite3_bind_double(statement, index, value)
+    } else {
+      sqlite3_bind_null(statement, index)
+    }
+  }
+
+  private func bindOptionalInt(
+    _ statement: OpaquePointer,
+    index: Int32,
+    value: Int?
+  ) {
+    if let value {
+      sqlite3_bind_int64(statement, index, Int64(value))
+    } else {
+      sqlite3_bind_null(statement, index)
+    }
+  }
+
+  private func bindOptionalBool(
+    _ statement: OpaquePointer,
+    index: Int32,
+    value: Bool?
+  ) {
+    if let value {
+      sqlite3_bind_int(statement, index, value ? 1 : 0)
+    } else {
+      sqlite3_bind_null(statement, index)
+    }
+  }
+
+  private func bindOptionalText(
+    _ statement: OpaquePointer,
+    index: Int32,
+    value: String?
+  ) {
+    if let value {
+      sqlite3_bind_text(statement, index, value, -1, SQLITE_TRANSIENT)
     } else {
       sqlite3_bind_null(statement, index)
     }

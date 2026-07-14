@@ -3,6 +3,8 @@ import { NativeModules } from 'react-native';
 
 import type { Location } from 'react-native-background-geolocation';
 
+import { sdkLocationExtras } from '@/lib/sdk-location-extras';
+
 function locationTimestamp(location: Location): Date {
   const value = location.timestamp as string | number | Date;
   return value instanceof Date ? value : new Date(value);
@@ -13,6 +15,20 @@ type NativeGeofenceSpec = {
   lat: number;
   lng: number;
   radiusMeters: number;
+};
+
+type LocationPersistExtras = {
+  heading?: number | null;
+  headingAccuracy?: number | null;
+  speedAccuracy?: number | null;
+  altitudeAccuracy?: number | null;
+  activityType?: string | null;
+  activityConfidence?: number | null;
+  isMoving?: boolean | null;
+  isMock?: boolean | null;
+  uuid?: string | null;
+  batteryLevel?: number | null;
+  batteryIsCharging?: boolean | null;
 };
 
 type LocationPersistNativeModule = {
@@ -26,6 +42,7 @@ type LocationPersistNativeModule = {
     altitude: number,
     speed: number,
     source: string,
+    extras: LocationPersistExtras | null,
   ): Promise<boolean>;
   drainTransistorQueue(): Promise<number>;
   syncGeofences(specs: NativeGeofenceSpec[]): Promise<number>;
@@ -60,6 +77,7 @@ export async function nativePersistLocation(
 
   const timestamp = locationTimestamp(location);
   const { coords } = location;
+  const extras = sdkLocationExtras(location);
   return nativeModule!.insertLocation(
     timestamp.getTime(),
     coords.latitude,
@@ -68,6 +86,7 @@ export async function nativePersistLocation(
     coords.altitude ?? -1,
     coords.speed ?? -1,
     source,
+    extras,
   );
 }
 

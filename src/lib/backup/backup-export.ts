@@ -102,6 +102,17 @@ function serializeLocationPoints(
     altitude: row.altitude,
     speed: row.speed,
     source: row.source,
+    heading: row.heading,
+    headingAccuracy: row.headingAccuracy,
+    speedAccuracy: row.speedAccuracy,
+    altitudeAccuracy: row.altitudeAccuracy,
+    activityType: row.activityType,
+    activityConfidence: row.activityConfidence,
+    isMoving: row.isMoving,
+    isMock: row.isMock,
+    uuid: row.uuid,
+    batteryLevel: row.batteryLevel,
+    batteryIsCharging: row.batteryIsCharging,
   }));
 }
 

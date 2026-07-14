@@ -15,6 +15,7 @@ RCT_EXTERN_METHOD(insertLocation:(nonnull NSNumber *)timestampMs
                   altitude:(nonnull NSNumber *)altitude
                   speed:(nonnull NSNumber *)speed
                   source:(nonnull NSString *)source
+                  extras:(NSDictionary *)extras
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 

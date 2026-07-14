@@ -29,6 +29,17 @@ export function makeLocationPoint(
     altitude: null,
     speed: null,
     source: 'gps',
+    heading: null,
+    headingAccuracy: null,
+    speedAccuracy: null,
+    altitudeAccuracy: null,
+    activityType: null,
+    activityConfidence: null,
+    isMoving: null,
+    isMock: null,
+    uuid: null,
+    batteryLevel: null,
+    batteryIsCharging: null,
     ...partial,
   };
 }
