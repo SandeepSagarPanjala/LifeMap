@@ -40,12 +40,20 @@ import {
   type TripRow,
 } from '@/db/repositories/trips';
 import {
+  deleteVisitLabelOverrideById,
+  listVisitLabelOverridesForDay,
+} from '@/db/repositories/visit-label-overrides';
+import {
   getDayRange,
   getTodayDateKey,
   parseDateKey,
   toDateKey,
 } from '@/lib/day-utils';
 import type { HistoryData } from '@/lib/history-data-types';
+import {
+  findVisitLabelOverrideForStart,
+  mergeOverrideIntoPersistLabel,
+} from '@/lib/visit-label-override';
 import { clearHistoryDataCache } from '@/lib/history-data-cache';
 import { isCurrentHistoryDayLoad } from '@/lib/history-load-generation';
 import { yieldToEventLoop } from '@/lib/run-when-idle';
@@ -638,11 +646,12 @@ export async function persistClosedTripsIncremental(
   const existingLabels = existingTripLabelsByEventKey(existingTrips);
   const savedPlaces = await listSavedPlaces();
   const { start: dayStart, end: dayEnd } = getDayRange(dateKey);
-  const [dayMoments, canonicalizeTravel, geometryFingerprint] =
+  const [dayMoments, canonicalizeTravel, geometryFingerprint, dayOverrides] =
     await Promise.all([
       getMomentsForDay(dayStart, dayEnd),
       isCanonicalTravelGeometryEnabled(),
       getGeometryPersistFingerprint(),
+      listVisitLabelOverridesForDay(dateKey),
     ]);
 
   if (options.fullReplace) {
@@ -681,14 +690,21 @@ export async function persistClosedTripsIncremental(
 
     const centroid = tripCentroidForPersist(entry, savedPlaces);
     const eventKey = tripEventKey(entry);
-    const labels = tripLabelForPersist(eventKey, existingLabels, {
-      placeLabel: entry.placeLabel ?? null,
-      placeId: entry.placeId ?? null,
-      placeKind: entry.placeKind ?? null,
-      poiId: entry.poiId ?? null,
-      poiLabel: entry.poiLabel ?? null,
-      poiCategory: entry.poiCategory ?? null,
-    });
+    const override =
+      entry.kind === 'stay'
+        ? findVisitLabelOverrideForStart(dayOverrides, entry.startAt.getTime())
+        : null;
+    const labels = mergeOverrideIntoPersistLabel(
+      tripLabelForPersist(eventKey, existingLabels, {
+        placeLabel: entry.placeLabel ?? null,
+        placeId: entry.placeId ?? null,
+        placeKind: entry.placeKind ?? null,
+        poiId: entry.poiId ?? null,
+        poiLabel: entry.poiLabel ?? null,
+        poiCategory: entry.poiCategory ?? null,
+      }),
+      override,
+    );
     const momentRefs = buildMomentRefsForSegment(
       dayMoments,
       entry.startAt,
@@ -715,6 +731,9 @@ export async function persistClosedTripsIncremental(
       momentRefs,
     });
     upserted += 1;
+    if (override != null) {
+      await deleteVisitLabelOverrideById(override.id);
+    }
     const geometry = geometryPointsForPersist(
       entry,
       centroid,

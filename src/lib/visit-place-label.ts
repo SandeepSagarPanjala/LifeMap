@@ -3,6 +3,7 @@ import { listPlacePoisForCache } from '@/db/repositories/place-pois';
 import { getTripByEventKey, getTripById } from '@/db/repositories/trips';
 import { getSavedPlaceById } from '@/db/repositories/saved-places';
 import type { SavedPlaceRow } from '@/db/repositories/saved-places';
+import { toDateKey } from '@/lib/day-utils';
 import {
   resolveVisitPlaceDisplay,
   savedPlaceVisitDisplay,
@@ -12,6 +13,11 @@ import { resolvedPlaceFromTripRow } from '@/lib/resolved-place';
 import { matchSavedPlaceForStay } from '@/lib/saved-places';
 import type { DetectedTrip } from '@/lib/trip-detection';
 import { tripEventKey } from '@/lib/trip-materialization';
+import {
+  loadVisitLabelOverrideForStay,
+  shouldApplyVisitLabelOverride,
+  visitLabelOverrideToResolved,
+} from '@/lib/visit-label-override';
 
 /** Saved place or cache address + optional POI for a visit. */
 export async function loadVisitPlaceDisplayForStay(
@@ -52,6 +58,34 @@ export async function loadVisitPlaceDisplayForStay(
     const trip = await getTripById(materializedTripId);
     if (trip) {
       const resolved = resolvedPlaceFromTripRow(trip);
+      placeLabel = resolved.placeLabel;
+      placeId = resolved.placeId;
+      placeKind = resolved.placeKind;
+      poiId = resolved.poiId;
+      poiLabel = resolved.poiLabel;
+    }
+  }
+
+  if (
+    shouldApplyVisitLabelOverride({
+      materializedTripId,
+      poiId,
+      openThroughNow: stay.openThroughNow,
+    })
+  ) {
+    const override = await loadVisitLabelOverrideForStay(
+      toDateKey(stay.startAt),
+      stay.startAt,
+    );
+    if (override) {
+      const resolved = visitLabelOverrideToResolved(override, {
+        placeLabel,
+        placeId,
+        placeKind,
+        poiId,
+        poiLabel,
+        poiCategory: null,
+      });
       placeLabel = resolved.placeLabel;
       placeId = resolved.placeId;
       placeKind = resolved.placeKind;

@@ -244,3 +244,24 @@ export const settingsStatsCache = sqliteTable('settings_stats_cache', {
   payloadJson: text('payload_json').notNull(),
   calculatedAt: integer('calculated_at', { mode: 'timestamp' }).notNull(),
 });
+
+/** User POI picks for live/open visits before the stay is sealed into trips. */
+export const visitLabelOverrides = sqliteTable(
+  'visit_label_overrides',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    dateKey: text('date_key').notNull(),
+    startAtMs: integer('start_at_ms').notNull(),
+    poiId: integer('poi_id').notNull(),
+    poiLabel: text('poi_label'),
+    placeId: integer('place_id'),
+    placeKind: text('place_kind', { enum: ['saved', 'cache'] }),
+    updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+  },
+  table => ({
+    dateStartUnique: uniqueIndex(
+      'visit_label_overrides_date_start_unique',
+    ).on(table.dateKey, table.startAtMs),
+    dateKeyIdx: index('visit_label_overrides_date_key_idx').on(table.dateKey),
+  }),
+);

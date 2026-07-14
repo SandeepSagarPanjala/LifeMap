@@ -159,6 +159,8 @@ export async function migrationAlreadyApplied(
       return columnExists(sqlite, 'place_pois', 'category');
     case '0029_drop_trip_poi_label':
       return !(await columnExists(sqlite, 'trips', 'poi_label'));
+    case '0030_visit_label_overrides':
+      return tableExists(sqlite, 'visit_label_overrides');
     default:
       return false;
   }
