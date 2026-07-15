@@ -156,15 +156,16 @@ export function buildDayStoryStops(
     if (!group.poiCategory && stay.poiCategory) {
       group.poiCategory = stay.poiCategory;
     }
-    if (!group.poiId && stay.poiId != null) {
+    // Prefer a concrete POI pick (History / override) over the first closest-POI name.
+    if (stay.poiId != null) {
       group.poiId = stay.poiId;
-    }
-    if (group.label === 'Stop') {
+      const nextLabel = stayLabel(stay, savedPlacesById);
+      if (nextLabel !== 'Stop') {
+        group.label = nextLabel;
+      }
+    } else if (group.label === 'Stop') {
       group.label = stayLabel(stay, savedPlacesById);
-    } else if (
-      stay.placeKind === 'saved' ||
-      (stay.poiLabel && group.poiId == null)
-    ) {
+    } else if (stay.placeKind === 'saved') {
       const nextLabel = stayLabel(stay, savedPlacesById);
       if (nextLabel !== 'Stop') {
         group.label = nextLabel;
