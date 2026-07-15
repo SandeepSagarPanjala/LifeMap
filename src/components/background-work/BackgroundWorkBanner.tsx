@@ -153,13 +153,16 @@ export function BackgroundWorkBanner() {
     return null;
   }
 
+  const isBackupPhase = progress.phase === 'backup';
   const isPlacePhase = progress.phase === 'place_cache';
   const message =
     progress.message.trim().length > 0
       ? progress.message
-      : isPlacePhase
-        ? 'Looking up places…'
-        : 'Building trips…';
+      : isBackupPhase
+        ? 'Auto backup…'
+        : isPlacePhase
+          ? 'Looking up places…'
+          : 'Building trips…';
 
   const showMeter = progress.total > 0;
   const displayStep = showMeter
@@ -167,6 +170,9 @@ export function BackgroundWorkBanner() {
     : 0;
 
   const onDismiss = () => {
+    if (isBackupPhase) {
+      return;
+    }
     if (isBackgroundWorkCycleRunning()) {
       requestBackgroundWorkAbort();
       return;
@@ -233,15 +239,17 @@ export function BackgroundWorkBanner() {
               </Text>
             </View>
           ) : null}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Stop background work"
-            hitSlop={10}
-            onPress={onDismiss}
-            style={styles.dismiss}
-          >
-            <X size={18} color={colors.mutedForeground} strokeWidth={2.25} />
-          </Pressable>
+          {isBackupPhase ? null : (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Stop background work"
+              hitSlop={10}
+              onPress={onDismiss}
+              style={styles.dismiss}
+            >
+              <X size={18} color={colors.mutedForeground} strokeWidth={2.25} />
+            </Pressable>
+          )}
         </View>
 
         {showMeter ? (
