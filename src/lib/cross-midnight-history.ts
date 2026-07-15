@@ -42,9 +42,9 @@ function timelineAlreadyHasTravelStart(
 }
 
 /**
- * Display-only: when day D sealed away an overnight drive, borrow that sealed
- * travel from D+1 (no GPS re-detect). No-op when the flag is null or D+1
- * is not sealed yet.
+ * Display-only: when day D sealed away an overnight drive, borrow that travel
+ * from D+1 by exact start ms (no GPS re-detect). No-op when the flag is null
+ * or D+1 does not yet have that travel row.
  */
 export async function appendExcludedCrossMidnightTravel(
   dateKey: string,

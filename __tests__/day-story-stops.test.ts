@@ -175,6 +175,26 @@ describe('buildDayStoryStops', () => {
     expect(stops).toHaveLength(1);
     expect(stops[0]?.visitNumbers).toEqual([1, 2]);
   });
+
+  it('updates poiCategory when a later revisit has a newer category', () => {
+    const stops = buildDayStoryStops([
+      stay('a', '2026-07-10T14:00:00.000Z', 33.23, -97.16, {
+        placeKind: 'cache',
+        poiId: 2,
+        poiLabel: 'CVS',
+        poiCategory: 'grocery',
+      }),
+      stay('b', '2026-07-10T18:00:00.000Z', 33.2301, -97.1601, {
+        placeKind: 'cache',
+        poiId: 2,
+        poiLabel: 'CVS',
+        poiCategory: 'pharmacy',
+      }),
+    ]);
+    expect(stops).toHaveLength(1);
+    expect(stops[0]?.poiId).toBe(2);
+    expect(stops[0]?.poiCategory).toBe('pharmacy');
+  });
 });
 
 describe('isCoordinateOnDayStoryStop', () => {

@@ -153,22 +153,26 @@ export function buildDayStoryStops(
       latitude: latSum / group.stays.length,
       longitude: lngSum / group.stays.length,
     };
-    if (!group.poiCategory && stay.poiCategory) {
-      group.poiCategory = stay.poiCategory;
-    }
     // Prefer a concrete POI pick (History / override) over the first closest-POI name.
     if (stay.poiId != null) {
       group.poiId = stay.poiId;
+      // Keep category in sync with the chosen POI (not only the first fill).
+      group.poiCategory = stay.poiCategory ?? group.poiCategory;
       const nextLabel = stayLabel(stay, savedPlacesById);
       if (nextLabel !== 'Stop') {
         group.label = nextLabel;
       }
-    } else if (group.label === 'Stop') {
-      group.label = stayLabel(stay, savedPlacesById);
-    } else if (stay.placeKind === 'saved') {
-      const nextLabel = stayLabel(stay, savedPlacesById);
-      if (nextLabel !== 'Stop') {
-        group.label = nextLabel;
+    } else {
+      if (!group.poiCategory && stay.poiCategory) {
+        group.poiCategory = stay.poiCategory;
+      }
+      if (group.label === 'Stop') {
+        group.label = stayLabel(stay, savedPlacesById);
+      } else if (stay.placeKind === 'saved') {
+        const nextLabel = stayLabel(stay, savedPlacesById);
+        if (nextLabel !== 'Stop') {
+          group.label = nextLabel;
+        }
       }
     }
   });
