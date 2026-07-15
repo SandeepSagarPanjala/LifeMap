@@ -61,6 +61,20 @@ export function ScheduledBackupRunner() {
           if (AppState.currentState !== 'active') {
             return;
           }
+
+          // Reserve the banner owner before any awaited backup-due checks so
+          // background-work cycles won't start and later overwrite progress.
+          const current = getBackgroundWorkProgress();
+          if (current.phase === 'idle' && !current.bannerVisible) {
+            setBackgroundWorkProgress({
+              phase: 'backup',
+              message: '',
+              completed: 0,
+              total: 0,
+              bannerVisible: false,
+            });
+          }
+
           await maybeRunScheduledBackup(publishBackupProgress);
         } catch {
           // Best-effort — next FG will retry if still due.
