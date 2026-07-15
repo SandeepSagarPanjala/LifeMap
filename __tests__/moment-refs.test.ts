@@ -85,6 +85,7 @@ describe('moment refs', () => {
         locationPointId: 100,
         source: 'gps',
         momentId: null,
+        activityType: null,
       },
       {
         id: 2,
@@ -96,6 +97,7 @@ describe('moment refs', () => {
         locationPointId: 101,
         source: 'gps',
         momentId: 42,
+        activityType: null,
       },
     ];
     expect(routeMomentAnchorsFromTripPoints(route)).toEqual([

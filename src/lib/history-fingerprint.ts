@@ -6,7 +6,7 @@ import { getMaterializedDay } from '@/db/repositories/materialized-days';
 import { countTripPointsForDay } from '@/db/repositories/trip-points';
 import { listTripsForDay, countTripsForDay } from '@/db/repositories/trips';
 import { getMomentsDayFingerprint } from '@/db/repositories/moments';
-import { getTodayDateKey } from '@/lib/day-utils';
+import { getTodayDateKey, shiftDateKey } from '@/lib/day-utils';
 import { sealedThroughMs } from '@/lib/today-sealed-history';
 import { getGeometryPersistFingerprint } from '@/lib/trip-geometry-settings';
 import {
@@ -39,6 +39,15 @@ export async function getDayHistoryFingerprint(
     countTripPointsForDay(dateKey),
     getGeometryPersistFingerprint(),
   ]);
+
+  // When D excluded an overnight drive, invalidate if D+1 seal changes.
+  const excludedMs = materializedDay?.excludedCrossMidnightFromMs ?? null;
+  let nextDayBorrowToken = 'none';
+  if (!isToday && excludedMs != null) {
+    const nextDay = await getMaterializedDay(shiftDateKey(dateKey, 1));
+    nextDayBorrowToken = `${nextDay?.status ?? 'none'}:${nextDay?.tripCount ?? 0}:${nextDay?.detectionVersion ?? 0}`;
+  }
+
   return [
     locationFingerprint,
     momentsFingerprint,
@@ -50,5 +59,7 @@ export async function getDayHistoryFingerprint(
     materializedDay?.status ?? 'none',
     tripCount,
     tripPointCount,
+    excludedMs ?? 'none',
+    nextDayBorrowToken,
   ].join('|');
 }

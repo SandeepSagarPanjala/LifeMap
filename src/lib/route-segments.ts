@@ -1,15 +1,15 @@
 import type { LocationPointRow } from '@/db/repositories/location-days';
-import {
-  distanceKm,
-  type MapCoordinate,
-  toMapCoordinates,
-} from '@/lib/location-geo';
+import { distanceKm, type MapCoordinate } from '@/lib/location-geo';
 import {
   MAX_PLAUSIBLE_SPEED_MS,
   SAME_PLACE_LINE_BREAK_MS,
 } from '@/lib/app-constants';
 import type { TripDetectionConfig } from '@/lib/trip-settings';
 import { isStoredRoutePoints } from '@/lib/trip-geometry';
+import {
+  buildTravelModeLegs,
+  type TravelModeLeg,
+} from '@/lib/travel-mode-legs';
 
 function shouldConnectPoints(
   a: LocationPointRow,
@@ -41,25 +41,24 @@ function shouldConnectPoints(
   return speedMs <= MAX_PLAUSIBLE_SPEED_MS;
 }
 
-/** Split today's points into polylines that should not mislead (no 4 hr line for 25 m). */
-export function buildDrawableRouteSegments(
+function splitDrawablePointGroups(
   points: LocationPointRow[],
   config: TripDetectionConfig,
-): MapCoordinate[][] {
+): LocationPointRow[][] {
   if (points.length < 2) {
-    return points.length === 1 ? [toMapCoordinates(points)] : [];
+    return points.length === 1 ? [points] : [];
   }
 
   // trip_points use evenly spaced fake timestamps — speed heuristics break the line.
   if (isStoredRoutePoints(points)) {
-    return [toMapCoordinates(points)];
+    return [points];
   }
 
   const sorted = [...points].sort(
     (a, b) => a.timestamp.getTime() - b.timestamp.getTime(),
   );
   const tripGapMs = config.gapMinutes * 60_000;
-  const segments: MapCoordinate[][] = [];
+  const groups: LocationPointRow[][] = [];
   let current: LocationPointRow[] = [sorted[0]!];
 
   for (let index = 1; index < sorted.length; index += 1) {
@@ -72,15 +71,41 @@ export function buildDrawableRouteSegments(
       current.push(point);
     } else {
       if (current.length >= 1) {
-        segments.push(toMapCoordinates(current));
+        groups.push(current);
       }
       current = [point];
     }
   }
 
   if (current.length >= 1) {
-    segments.push(toMapCoordinates(current));
+    groups.push(current);
   }
 
-  return segments.filter(segment => segment.length >= 2);
+  return groups.filter(group => group.length >= 2);
+}
+
+/** Split today's points into polylines that should not mislead (no 4 hr line for 25 m). */
+export function buildDrawableRouteSegments(
+  points: LocationPointRow[],
+  config: TripDetectionConfig,
+): MapCoordinate[][] {
+  return splitDrawablePointGroups(points, config).map(group =>
+    group.map(point => ({
+      latitude: point.lat,
+      longitude: point.lng,
+    })),
+  );
+}
+
+/** Gap-safe groups, then solid/dashed travel-mode legs within each. */
+export function buildDrawableRouteModeLegs(
+  points: LocationPointRow[],
+  config: TripDetectionConfig,
+): TravelModeLeg[] {
+  const groups = splitDrawablePointGroups(points, config);
+  const legs: TravelModeLeg[] = [];
+  for (const group of groups) {
+    legs.push(...buildTravelModeLegs(group));
+  }
+  return legs.filter(leg => leg.coordinates.length >= 2);
 }

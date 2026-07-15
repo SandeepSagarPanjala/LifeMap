@@ -54,6 +54,7 @@ describe('export-trip-view', () => {
         locationPointId: 99,
         source: 'gps',
         momentId: null,
+        activityType: null,
       },
     ];
     const view = buildExportTripView(trip(), points, 'km');

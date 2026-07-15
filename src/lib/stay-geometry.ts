@@ -239,6 +239,7 @@ function locationPointToPersist(
     locationPointId: point.id > 0 ? point.id : null,
     source: point.source ?? 'gps',
     momentId,
+    activityType: point.activityType ?? null,
   };
 }
 

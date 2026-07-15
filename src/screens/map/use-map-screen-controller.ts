@@ -36,6 +36,7 @@ import { useLatestLocationSave } from '@/hooks/use-latest-location-save';
 import { useSavedPlaces } from '@/hooks/use-saved-places';
 import { useStaySavedPlace } from '@/hooks/use-stay-saved-place';
 import { useDriveEndpointLabels } from '@/hooks/use-drive-endpoint-labels';
+import { useDayStoryStops } from '@/hooks/use-day-story-stops';
 import { useDayMoments } from '@/hooks/use-day-moments';
 import {
   buildHistoryMomentMapPins,
@@ -55,7 +56,6 @@ import {
   type MomentCounts,
 } from '@/lib/moments/moment-counts';
 import {
-  buildDayStoryStops,
   isCoordinateOnDayStoryStop,
   type DayStoryStop,
 } from '@/lib/day-story-stops';
@@ -807,21 +807,11 @@ export function useMapScreenController() {
   const showSavedPlaceMarkersOnMap =
     showHistoryMap || !viewingToday || historyHasGpsData;
 
-  const dayStoryStops = useMemo(
-    () =>
-      showDayJourney
-        ? buildDayStoryStops(
-            dayStays,
-            savedPlaces,
-            tripDetectionConfig.dwellRadiusMeters,
-          )
-        : [],
-    [
-      showDayJourney,
-      dayStays,
-      savedPlaces,
-      tripDetectionConfig.dwellRadiusMeters,
-    ],
+  const dayStoryStops = useDayStoryStops(
+    showDayJourney,
+    dayStays,
+    savedPlaces,
+    tripDetectionConfig.dwellRadiusMeters,
   );
 
   const dayStoryHasHomeStop = useMemo(

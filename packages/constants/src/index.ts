@@ -41,10 +41,22 @@ export const TRIP_RADIUS_CHOICES = [20, 25, 50, 75, 100, 150] as const;
 export const SAVED_PLACE_MIN_DWELL_MINUTES = 1;
 
 /** Bump when visit/drive detection rules change — invalidates sealed day cache. */
-export const TRIP_DETECTION_VERSION = 14;
+export const TRIP_DETECTION_VERSION = 15;
 
 /** Bump when stored route/visit geometry rules change — invalidates fast load path. */
-export const TRIP_GEOMETRY_VERSION = 3;
+export const TRIP_GEOMETRY_VERSION = 4;
+
+/**
+ * Foot / walk / run legs shorter than this stay solid (or absorb into stay).
+ * Tuned for typical parking→door walks (~40–70 m) while filtering curb GPS jitter.
+ */
+export const TRAVEL_MODE_DASH_MIN_PATH_M = 50;
+/** Minimum duration for a foot leg to render as dashed. */
+export const TRAVEL_MODE_DASH_MIN_DURATION_MS = 45_000;
+/** Minimum activity confidence to trust motion activity over GPS speed alone. */
+export const TRAVEL_MODE_ACTIVITY_CONFIDENCE_MIN = 60;
+/** react-native-maps dash pattern for on-foot travel legs. */
+export const TRAVEL_MODE_DASH_PATTERN = [10, 8] as const;
 
 // ——— Map layout ———
 

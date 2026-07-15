@@ -156,6 +156,10 @@ export function MapHistoryPanel({ controller }: MapHistoryPanelProps) {
             entries={historyEntries}
             selectedIndex={selectedHistoryIndex}
             onSelectIndex={selectHistoryIndex}
+            canWrapToPrevDay={canGoPrevDay}
+            canWrapToNextDay={canGoNextDay}
+            onWrapToPrevDay={goToPrevDay}
+            onWrapToNextDay={goToNextDay}
           />
           <VisitPlaceCustomLabelSheet
             visible={customLabelOpen}

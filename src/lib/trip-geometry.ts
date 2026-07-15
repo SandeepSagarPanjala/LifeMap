@@ -59,6 +59,7 @@ export function storedTripPointsToLocationRows(
       lat: point.lat,
       lng: point.lng,
       source: point.source ?? 'route',
+      activityType: point.activityType ?? null,
     }),
   );
 }

@@ -18,6 +18,7 @@ export type TripPointRow = {
   locationPointId: number | null;
   source: string | null;
   momentId: number | null;
+  activityType: string | null;
 };
 
 export type PersistTripPointInput = {
@@ -27,6 +28,7 @@ export type PersistTripPointInput = {
   locationPointId: number | null;
   source: string;
   momentId: number | null;
+  activityType?: string | null;
 };
 
 let tripPointSchemaEnsured = false;
@@ -51,6 +53,7 @@ function mapRow(row: typeof tripPoints.$inferSelect): TripPointRow {
     locationPointId: row.locationPointId ?? null,
     source: row.source ?? null,
     momentId: row.momentId ?? null,
+    activityType: row.activityType ?? null,
   };
 }
 
@@ -108,6 +111,7 @@ export async function listTripPointsForDay(
       locationPointId: tripPoints.locationPointId,
       source: tripPoints.source,
       momentId: tripPoints.momentId,
+      activityType: tripPoints.activityType,
     })
     .from(tripPoints)
     .innerJoin(trips, eq(tripPoints.tripId, trips.id))
@@ -167,6 +171,7 @@ export async function replaceTripPersistPoints(
       locationPointId: point.locationPointId,
       source: point.source,
       momentId: point.momentId,
+      activityType: point.activityType ?? null,
     })),
   );
 }
@@ -185,6 +190,7 @@ export async function replaceTripPointsFromLocations(
       locationPointId: point.id > 0 ? point.id : null,
       source: point.source ?? 'gps',
       momentId: null,
+      activityType: point.activityType ?? null,
     })),
   );
 }

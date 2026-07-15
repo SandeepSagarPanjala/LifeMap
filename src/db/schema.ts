@@ -221,6 +221,8 @@ export const tripPoints = sqliteTable(
     locationPointId: integer('location_point_id'),
     source: text('source').default('gps'),
     momentId: integer('moment_id').references(() => moments.id),
+    /** Transistor Soft activity at this vertex — null on pre-activity geometry. */
+    activityType: text('activity_type'),
   },
   table => ({
     tripIdSeqIdx: index('trip_points_trip_id_seq_idx').on(

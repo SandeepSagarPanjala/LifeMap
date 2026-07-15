@@ -58,6 +58,10 @@ import { clearHistoryDataCache } from '@/lib/history-data-cache';
 import { isCurrentHistoryDayLoad } from '@/lib/history-load-generation';
 import { yieldToEventLoop } from '@/lib/run-when-idle';
 import { buildExplorerDayTimelineFromGps } from '@/lib/explorer-day-trips';
+import {
+  appendExcludedCrossMidnightTravel,
+  attachCrossMidnightDepartureLabelStays,
+} from '@/lib/cross-midnight-history';
 import { splitEntriesForPastDaySeal } from '@/lib/past-day-seal-policy';
 import { buildTimelineFromStoredTrips } from '@/lib/timeline-from-trips';
 import {
@@ -414,18 +418,17 @@ export async function loadHistoryFromStoredTrips(
   const rows = tripRows ?? (await listTripsForDay(dateKey));
   const markLastStayOpen = options.markLastStayOpen === true;
 
-  if (rows.length === 0) {
-    return {
-      dateKey,
-      points: [],
-      entries: [],
-      range: { startAt: dayStart, endAt: rangeEnd },
-    };
-  }
+  const [pointsByTripId, materializedDay] = await Promise.all([
+    rows.length > 0
+      ? listTripPointsForDay(dateKey)
+      : Promise.resolve(new Map()),
+    isToday ? Promise.resolve(null) : getMaterializedDay(dateKey),
+  ]);
 
-  const pointsByTripId = await listTripPointsForDay(dateKey);
-
-  let entries = buildTimelineFromStoredTrips(rows, pointsByTripId);
+  let entries =
+    rows.length > 0
+      ? buildTimelineFromStoredTrips(rows, pointsByTripId)
+      : [];
 
   if (isToday && referenceNow != null && markLastStayOpen) {
     let lastStayIdx = -1;
@@ -451,6 +454,15 @@ export async function loadHistoryFromStoredTrips(
         ...entries.slice(lastStayIdx + 1),
       ];
     }
+  }
+
+  if (!isToday) {
+    entries = await appendExcludedCrossMidnightTravel(
+      dateKey,
+      entries,
+      materializedDay,
+    );
+    entries = await attachCrossMidnightDepartureLabelStays(dateKey, entries);
   }
 
   return {

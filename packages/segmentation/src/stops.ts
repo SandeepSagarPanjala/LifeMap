@@ -1,4 +1,13 @@
-import { DEFAULT_STOP_DETECTION_CONFIG } from '@lifemap/constants';
+import {
+  DEFAULT_STOP_DETECTION_CONFIG,
+  TRAVEL_MODE_ACTIVITY_CONFIDENCE_MIN,
+  TRAVEL_MODE_DASH_MIN_PATH_M,
+} from '@lifemap/constants';
+import {
+  isFootMotionActivity,
+  isWheeledMotionActivity,
+  normalizeMotionActivity,
+} from './activity';
 import { TRIP_PLOT_SOURCES } from './sources';
 import type { ParsedPoint } from './types';
 
@@ -94,10 +103,32 @@ function findMovingBurstReturnIndex(
   if (burstMs > config.movingBurstReturnMaxMs) {
     return null;
   }
+  // Meaningful on-foot bursts (parking → door) are real travel, not stay jitter.
+  if (footPathLengthM(points, startIdx, k) >= TRAVEL_MODE_DASH_MIN_PATH_M) {
+    return null;
+  }
   if (haversineM(centre, next) <= spreadLimitM) {
     return k;
   }
   return null;
+}
+
+function footPathLengthM(
+  points: ParsedPoint[],
+  startIdx: number,
+  endIdxExclusive: number,
+): number {
+  let pathM = 0;
+  for (let i = startIdx; i < endIdxExclusive - 1; i += 1) {
+    const a = points[i]!;
+    const b = points[i + 1]!;
+    const activity = normalizeMotionActivity(a.activityType);
+    if (!isFootMotionActivity(activity)) {
+      continue;
+    }
+    pathM += haversineM(a, b);
+  }
+  return pathM;
 }
 
 function pushStop(
@@ -171,11 +202,34 @@ function inferSparseGapStop(
   };
 }
 
-/** A point counts as "driving" only when it has a real speed above the gate. */
+/**
+ * Moving = evidence of travel. Prefers SDK activity / is_moving when confident;
+ * falls back to GPS speed. High-confidence `still` is never moving.
+ */
 export function isMovingPoint(
   point: ParsedPoint,
   config: StopDetectionConfig = DEFAULT_STOP_CONFIG,
 ): boolean {
+  const activity = normalizeMotionActivity(point.activityType);
+  const confidence = point.activityConfidence;
+  const confident =
+    confidence != null && confidence >= TRAVEL_MODE_ACTIVITY_CONFIDENCE_MIN;
+
+  if (activity === 'still' && confident) {
+    return false;
+  }
+  if (
+    confident &&
+    (isFootMotionActivity(activity) || isWheeledMotionActivity(activity))
+  ) {
+    return true;
+  }
+  if (point.isMoving === true) {
+    return true;
+  }
+  if (point.isMoving === false && activity === 'still') {
+    return false;
+  }
   return point.speed != null && point.speed >= config.movingSpeedMps;
 }
 
