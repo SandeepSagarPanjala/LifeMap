@@ -146,11 +146,8 @@ export const TripRouteOverlay = memo(function TripRouteOverlay({
     ) {
       last.coordinates = [...last.coordinates, routeEnd];
     }
-    return legs.map(leg => ({
-      ...leg,
-      coordinates: downsampleMapCoordinates(leg.coordinates, polylineCap),
-    }));
-  }, [points, polylineCap, routeEnd, routeStart]);
+    return legs;
+  }, [points, routeEnd, routeStart]);
 
   if (coordinates.length < 1) {
     return null;
@@ -177,6 +174,7 @@ export const TripRouteOverlay = memo(function TripRouteOverlay({
           fillWidth={ROUTE_PATH_FILL_WIDTH}
           borderWidth={ROUTE_PATH_BORDER_WIDTH}
           zBase={emphasized ? 3 : 1}
+          maxPoints={polylineCap}
         />
       ) : null}
 
