@@ -2,7 +2,8 @@ export type BackgroundWorkPhase =
   | 'idle'
   | 'today_seal'
   | 'past_day_seal'
-  | 'place_cache';
+  | 'place_cache'
+  | 'backup';
 
 export type BackgroundWorkProgress = {
   phase: BackgroundWorkPhase;
