@@ -225,6 +225,13 @@
       "when": 1788923000000,
       "tag": "0031_location_points_sdk_extras",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1788924000000,
+      "tag": "0032_trip_points_activity",
+      "breakpoints": true
     }
   ]
 }

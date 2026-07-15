@@ -2,12 +2,19 @@ import { memo, useMemo } from 'react';
 import { Polyline } from 'react-native-maps';
 
 import { DriveEndpointLabels } from '@/components/map/DriveEndpointLabels';
+import { TravelModePolylines } from '@/components/map/TravelModePolylines';
 import { TripPlaybackHead } from '@/components/map/TripPlaybackHead';
 import type { LocationPointRow } from '@/db/repositories/location-days';
 import type { DriveEndpointLabel } from '@/lib/drive-endpoint-label';
 import {
   MAX_EMPHASIZED_TRIP_POLYLINE_POINTS,
   MAX_MAP_POLYLINE_POINTS,
+  ROUTE_PATH_BORDER,
+  ROUTE_PATH_BORDER_SOLID,
+  ROUTE_PATH_BORDER_WIDTH,
+  ROUTE_PATH_FILL,
+  ROUTE_PATH_FILL_SOLID,
+  ROUTE_PATH_FILL_WIDTH,
 } from '@/lib/app-constants';
 import {
   distanceKm,
@@ -24,14 +31,7 @@ import {
   buildDensePlaybackSamples,
   getTripPlaybackFrame,
 } from '@/lib/trip-playback';
-import {
-  ROUTE_PATH_BORDER,
-  ROUTE_PATH_BORDER_SOLID,
-  ROUTE_PATH_BORDER_WIDTH,
-  ROUTE_PATH_FILL,
-  ROUTE_PATH_FILL_SOLID,
-  ROUTE_PATH_FILL_WIDTH,
-} from '@/lib/app-constants';
+import { buildTravelModeLegs } from '@/lib/travel-mode-legs';
 
 type TripRouteOverlayProps = {
   points: LocationPointRow[];
@@ -114,35 +114,43 @@ export const TripRouteOverlay = memo(function TripRouteOverlay({
     return coordinates[coordinates.length - 1] ?? { latitude: 0, longitude: 0 };
   }, [anchorEndStay, coordinates, endLabel]);
 
-  const routeLineCoordinates = useMemo(() => {
-    if (coordinates.length === 0) {
-      return downsampleMapCoordinates([routeStart, routeEnd]);
+  const modeLegs = useMemo(() => {
+    const legs = buildTravelModeLegs(points).map(leg => ({
+      style: leg.style,
+      coordinates: [...leg.coordinates],
+    }));
+    if (legs.length === 0) {
+      return legs;
     }
-    const line = [...coordinates];
-    const first = line[0]!;
-    const last = line[line.length - 1]!;
+    const first = legs[0]!;
+    const last = legs[legs.length - 1]!;
+    const firstCoord = first.coordinates[0]!;
+    const lastCoord = last.coordinates[last.coordinates.length - 1]!;
     if (
       distanceKm(
-        { lat: first.latitude, lng: first.longitude },
+        { lat: firstCoord.latitude, lng: firstCoord.longitude },
         { lat: routeStart.latitude, lng: routeStart.longitude },
       ) *
         1000 >
       8
     ) {
-      line.unshift(routeStart);
+      first.coordinates = [routeStart, ...first.coordinates];
     }
     if (
       distanceKm(
-        { lat: last.latitude, lng: last.longitude },
+        { lat: lastCoord.latitude, lng: lastCoord.longitude },
         { lat: routeEnd.latitude, lng: routeEnd.longitude },
       ) *
         1000 >
       8
     ) {
-      line.push(routeEnd);
+      last.coordinates = [...last.coordinates, routeEnd];
     }
-    return downsampleMapCoordinates(line, polylineCap);
-  }, [coordinates, polylineCap, routeEnd, routeStart]);
+    return legs.map(leg => ({
+      ...leg,
+      coordinates: downsampleMapCoordinates(leg.coordinates, polylineCap),
+    }));
+  }, [points, polylineCap, routeEnd, routeStart]);
 
   if (coordinates.length < 1) {
     return null;
@@ -162,24 +170,14 @@ export const TripRouteOverlay = memo(function TripRouteOverlay({
   return (
     <>
       {drawRouteLine ? (
-        <>
-          <Polyline
-            coordinates={routeLineCoordinates}
-            strokeColor={routeBorder}
-            strokeWidth={ROUTE_PATH_BORDER_WIDTH}
-            lineCap="round"
-            lineJoin="round"
-            zIndex={emphasized ? 3 : 1}
-          />
-          <Polyline
-            coordinates={routeLineCoordinates}
-            strokeColor={routeFill}
-            strokeWidth={ROUTE_PATH_FILL_WIDTH}
-            lineCap="round"
-            lineJoin="round"
-            zIndex={emphasized ? 4 : 2}
-          />
-        </>
+        <TravelModePolylines
+          legs={modeLegs}
+          fill={routeFill}
+          border={routeBorder}
+          fillWidth={ROUTE_PATH_FILL_WIDTH}
+          borderWidth={ROUTE_PATH_BORDER_WIDTH}
+          zBase={emphasized ? 3 : 1}
+        />
       ) : null}
 
       {isPlaying && playedCoordinates.length > 0 ? (

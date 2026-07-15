@@ -19,6 +19,10 @@ export type RawLocationPoint = {
   speed: number | null;
   source: string;
   timestamp: Date | string;
+  /** Transistor Soft activity.type when present (null on older GPS rows). */
+  activityType?: string | null;
+  activityConfidence?: number | null;
+  isMoving?: boolean | null;
 };
 
 export type LocationPointRow = RawLocationPoint & {

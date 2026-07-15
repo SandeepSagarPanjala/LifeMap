@@ -163,6 +163,8 @@ export async function migrationAlreadyApplied(
       return tableExists(sqlite, 'visit_label_overrides');
     case '0031_location_points_sdk_extras':
       return columnExists(sqlite, 'location_points', 'activity_type');
+    case '0032_trip_points_activity':
+      return columnExists(sqlite, 'trip_points', 'activity_type');
     default:
       return false;
   }
@@ -247,6 +249,12 @@ export async function ensureTripPointMetadataColumns(
     await executeMigrationStatement(
       sqlite,
       `ALTER TABLE trip_points ADD COLUMN moment_id integer REFERENCES moments(id)`,
+    );
+  }
+  if (!(await columnExists(sqlite, 'trip_points', 'activity_type'))) {
+    await executeMigrationStatement(
+      sqlite,
+      `ALTER TABLE trip_points ADD COLUMN activity_type text`,
     );
   }
 }

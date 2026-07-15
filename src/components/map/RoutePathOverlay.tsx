@@ -1,12 +1,8 @@
 import { memo, useMemo } from 'react';
-import { Polyline } from 'react-native-maps';
 
+import { TravelModePolylines } from '@/components/map/TravelModePolylines';
 import type { LocationPointRow } from '@/db/repositories/location-days';
-import { buildDrawableRouteSegments } from '@/lib/route-segments';
-import {
-  downsampleMapCoordinates,
-  type MapCoordinate,
-} from '@/lib/location-geo';
+import { buildDrawableRouteModeLegs } from '@/lib/route-segments';
 import {
   ROUTE_PATH_BORDER,
   ROUTE_PATH_BORDER_WIDTH,
@@ -37,12 +33,12 @@ export const RoutePathOverlay = memo(function RoutePathOverlay({
   soft = false,
   color = null,
 }: RoutePathOverlayProps) {
-  const segments = useMemo(
-    () => buildDrawableRouteSegments(points, tripConfig),
+  const legs = useMemo(
+    () => buildDrawableRouteModeLegs(points, tripConfig),
     [points, tripConfig],
   );
 
-  if (segments.length === 0) {
+  if (legs.length === 0) {
     return null;
   }
 
@@ -60,51 +56,12 @@ export const RoutePathOverlay = memo(function RoutePathOverlay({
         : ROUTE_PATH_BORDER;
 
   return (
-    <>
-      {segments.map((coordinates, index) => (
-        <RouteSegmentPolylines
-          key={`route-seg-${index}`}
-          coordinates={coordinates}
-          fill={fill}
-          border={border}
-        />
-      ))}
-    </>
-  );
-});
-
-const RouteSegmentPolylines = memo(function RouteSegmentPolylines({
-  coordinates,
-  fill,
-  border,
-}: {
-  coordinates: MapCoordinate[];
-  fill: string;
-  border: string;
-}) {
-  const displayCoordinates = useMemo(
-    () => downsampleMapCoordinates(coordinates),
-    [coordinates],
-  );
-
-  return (
-    <>
-      <Polyline
-        coordinates={displayCoordinates}
-        strokeColor={border}
-        strokeWidth={ROUTE_PATH_BORDER_WIDTH}
-        lineCap="round"
-        lineJoin="round"
-        zIndex={1}
-      />
-      <Polyline
-        coordinates={displayCoordinates}
-        strokeColor={fill}
-        strokeWidth={ROUTE_PATH_FILL_WIDTH}
-        lineCap="round"
-        lineJoin="round"
-        zIndex={2}
-      />
-    </>
+    <TravelModePolylines
+      legs={legs}
+      fill={fill}
+      border={border}
+      fillWidth={ROUTE_PATH_FILL_WIDTH}
+      borderWidth={ROUTE_PATH_BORDER_WIDTH}
+    />
   );
 });

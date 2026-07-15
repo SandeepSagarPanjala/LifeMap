@@ -84,6 +84,7 @@ export function makeTripPoint(
     locationPointId: null,
     source: 'gps',
     momentId: null,
+    activityType: null,
     ...partial,
   };
 }

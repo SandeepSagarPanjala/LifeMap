@@ -1,8 +1,8 @@
 import { memo, useMemo } from 'react';
-import { Polyline } from 'react-native-maps';
 
+import { TravelModePolylines } from '@/components/map/TravelModePolylines';
 import type { LocationPointRow } from '@/db/repositories/location-days';
-import { toDisplayMapCoordinates } from '@/lib/location-geo';
+import { buildTravelModeLegs } from '@/lib/travel-mode-legs';
 import { isSparseTravelRoute } from '@/lib/trip-detection';
 import {
   HISTORY_FUTURE_ROUTE_BORDER,
@@ -24,9 +24,9 @@ export const HistoryRoutePath = memo(function HistoryRoutePath({
   tone,
   pathKey,
 }: HistoryRoutePathProps) {
-  const coordinates = useMemo(() => toDisplayMapCoordinates(points), [points]);
+  const legs = useMemo(() => buildTravelModeLegs(points), [points]);
 
-  if (coordinates.length < 2 || isSparseTravelRoute(points)) {
+  if (legs.length === 0 || isSparseTravelRoute(points)) {
     return null;
   }
 
@@ -37,25 +37,14 @@ export const HistoryRoutePath = memo(function HistoryRoutePath({
   const zBase = tone === 'past' ? 0 : 1;
 
   return (
-    <>
-      <Polyline
-        key={`${pathKey}-border`}
-        coordinates={coordinates}
-        strokeColor={routeBorder}
-        strokeWidth={HISTORY_GHOST_ROUTE_BORDER_WIDTH}
-        lineCap="round"
-        lineJoin="round"
-        zIndex={zBase}
-      />
-      <Polyline
-        key={`${pathKey}-fill`}
-        coordinates={coordinates}
-        strokeColor={routeFill}
-        strokeWidth={HISTORY_GHOST_ROUTE_FILL_WIDTH}
-        lineCap="round"
-        lineJoin="round"
-        zIndex={zBase + 1}
-      />
-    </>
+    <TravelModePolylines
+      keyPrefix={pathKey}
+      legs={legs}
+      fill={routeFill}
+      border={routeBorder}
+      fillWidth={HISTORY_GHOST_ROUTE_FILL_WIDTH}
+      borderWidth={HISTORY_GHOST_ROUTE_BORDER_WIDTH}
+      zBase={zBase}
+    />
   );
 });
