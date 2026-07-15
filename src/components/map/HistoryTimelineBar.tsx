@@ -39,6 +39,12 @@ type HistoryTimelineBarProps = {
   entries: DayTimelineEntry[];
   selectedIndex: number;
   onSelectIndex: (index: number) => void;
+  /** Past days: wrap to previous day when on the first event. */
+  canWrapToPrevDay?: boolean;
+  /** Past days only (not today): wrap to next day when on the last event. */
+  canWrapToNextDay?: boolean;
+  onWrapToPrevDay?: () => void;
+  onWrapToNextDay?: () => void;
 };
 
 export function HistoryTimelineBar({
@@ -46,6 +52,10 @@ export function HistoryTimelineBar({
   entries,
   selectedIndex,
   onSelectIndex,
+  canWrapToPrevDay = false,
+  canWrapToNextDay = false,
+  onWrapToPrevDay,
+  onWrapToNextDay,
 }: HistoryTimelineBarProps) {
   const [barWidth, setBarWidth] = useState(FALLBACK_BAR_WIDTH);
   const now = useMemo(() => new Date(), []);
@@ -67,44 +77,66 @@ export function HistoryTimelineBar({
     }
   }, []);
 
-  const goPrevEvent = useCallback(() => {
-    if (!hasEntries) {
-      return;
-    }
-    const target =
-      selectedIndex < 0
-        ? lastPlayableTimelineIndex(entries)
-        : findPrevPlayableTimelineIndex(entries, selectedIndex);
-    if (target >= 0) {
-      onSelectIndex(target);
-    }
-  }, [entries, hasEntries, onSelectIndex, selectedIndex]);
-
-  const goNextEvent = useCallback(() => {
-    if (!hasEntries) {
-      return;
-    }
-    const target =
-      selectedIndex < 0
-        ? firstPlayableTimelineIndex(entries)
-        : findNextPlayableTimelineIndex(entries, selectedIndex);
-    if (target >= 0) {
-      onSelectIndex(target);
-    }
-  }, [entries, hasEntries, onSelectIndex, selectedIndex]);
-
   const firstPlayable = firstPlayableTimelineIndex(entries);
   const lastPlayable = lastPlayableTimelineIndex(entries);
-  const canGoPrevEvent =
+  const sameDayPrev =
     hasEntries &&
     (selectedIndex < 0
       ? lastPlayable >= 0
       : findPrevPlayableTimelineIndex(entries, selectedIndex) >= 0);
-  const canGoNextEvent =
+  const sameDayNext =
     hasEntries &&
     (selectedIndex < 0
       ? firstPlayable >= 0
       : findNextPlayableTimelineIndex(entries, selectedIndex) >= 0);
+  const canGoPrevEvent = sameDayPrev || canWrapToPrevDay;
+  const canGoNextEvent = sameDayNext || canWrapToNextDay;
+
+  const goPrevEvent = useCallback(() => {
+    if (hasEntries) {
+      const target =
+        selectedIndex < 0
+          ? lastPlayableTimelineIndex(entries)
+          : findPrevPlayableTimelineIndex(entries, selectedIndex);
+      if (target >= 0) {
+        onSelectIndex(target);
+        return;
+      }
+    }
+    if (canWrapToPrevDay) {
+      onWrapToPrevDay?.();
+    }
+  }, [
+    canWrapToPrevDay,
+    entries,
+    hasEntries,
+    onSelectIndex,
+    onWrapToPrevDay,
+    selectedIndex,
+  ]);
+
+  const goNextEvent = useCallback(() => {
+    if (hasEntries) {
+      const target =
+        selectedIndex < 0
+          ? firstPlayableTimelineIndex(entries)
+          : findNextPlayableTimelineIndex(entries, selectedIndex);
+      if (target >= 0) {
+        onSelectIndex(target);
+        return;
+      }
+    }
+    if (canWrapToNextDay) {
+      onWrapToNextDay?.();
+    }
+  }, [
+    canWrapToNextDay,
+    entries,
+    hasEntries,
+    onSelectIndex,
+    onWrapToNextDay,
+    selectedIndex,
+  ]);
 
   return (
     <View style={styles.wrap}>

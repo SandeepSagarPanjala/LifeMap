@@ -71,6 +71,12 @@ export type DetectedTrip = {
   /** Stay anchor from detection (`stop.lat/lng`) or DB seal (`centroidLat/Lng`). */
   anchorLat?: number;
   anchorLng?: number;
+  /**
+   * Cross-midnight only: neighbor stay from the adjacent calendar day for
+   * From/To labels. Not part of this day's timeline.
+   */
+  crossDayLabelStayPrevious?: DetectedTrip;
+  crossDayLabelStayNext?: DetectedTrip;
 };
 
 export type TimelineGap = {
@@ -322,7 +328,7 @@ export function staysBeforeEntryIndex(
 }
 
 export function stayBeforeEntryIndex(
-  entries: DayTimelineEntry[],
+  entries: readonly DayTimelineEntry[],
   index: number,
 ): DetectedTrip | null {
   for (let entryIndex = index - 1; entryIndex >= 0; entryIndex -= 1) {
@@ -335,7 +341,7 @@ export function stayBeforeEntryIndex(
 }
 
 export function stayAfterEntryIndex(
-  entries: DayTimelineEntry[],
+  entries: readonly DayTimelineEntry[],
   index: number,
 ): DetectedTrip | null {
   for (
@@ -352,15 +358,21 @@ export function stayAfterEntryIndex(
 }
 
 export function adjacentStaysForTravelIndex(
-  entries: DayTimelineEntry[],
+  entries: readonly DayTimelineEntry[],
   travelIndex: number,
 ): {
   previousStay: DetectedTrip | null;
   nextStay: DetectedTrip | null;
 } {
+  const travel = entries[travelIndex];
+  const crossDayPrevious =
+    travel?.kind === 'travel' ? travel.crossDayLabelStayPrevious : undefined;
+  const crossDayNext =
+    travel?.kind === 'travel' ? travel.crossDayLabelStayNext : undefined;
   return {
-    previousStay: stayBeforeEntryIndex(entries, travelIndex),
-    nextStay: stayAfterEntryIndex(entries, travelIndex),
+    previousStay:
+      stayBeforeEntryIndex(entries, travelIndex) ?? crossDayPrevious ?? null,
+    nextStay: stayAfterEntryIndex(entries, travelIndex) ?? crossDayNext ?? null,
   };
 }
 

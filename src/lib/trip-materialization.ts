@@ -58,7 +58,10 @@ import { clearHistoryDataCache } from '@/lib/history-data-cache';
 import { isCurrentHistoryDayLoad } from '@/lib/history-load-generation';
 import { yieldToEventLoop } from '@/lib/run-when-idle';
 import { buildExplorerDayTimelineFromGps } from '@/lib/explorer-day-trips';
-import { appendExcludedCrossMidnightTravel } from '@/lib/cross-midnight-history';
+import {
+  appendExcludedCrossMidnightTravel,
+  attachCrossMidnightDepartureLabelStays,
+} from '@/lib/cross-midnight-history';
 import { splitEntriesForPastDaySeal } from '@/lib/past-day-seal-policy';
 import { buildTimelineFromStoredTrips } from '@/lib/timeline-from-trips';
 import {
@@ -459,6 +462,7 @@ export async function loadHistoryFromStoredTrips(
       entries,
       materializedDay,
     );
+    entries = await attachCrossMidnightDepartureLabelStays(dateKey, entries);
   }
 
   return {
