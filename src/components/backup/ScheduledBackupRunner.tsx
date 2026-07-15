@@ -58,6 +58,9 @@ export function ScheduledBackupRunner() {
       void (async () => {
         try {
           await waitUntilBackgroundWorkCycleSettled();
+          if (AppState.currentState !== 'active') {
+            return;
+          }
           await maybeRunScheduledBackup(publishBackupProgress);
         } catch {
           // Best-effort — next FG will retry if still due.
