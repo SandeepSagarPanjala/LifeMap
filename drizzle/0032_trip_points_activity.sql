@@ -1,1 +1,1 @@
-ALTER TABLE `trip_points` ADD `activity_type` text;
+ALTER TABLE `trip_points` ADD COLUMN `activity_type` text;

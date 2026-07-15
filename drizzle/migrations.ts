@@ -299,7 +299,7 @@ ALTER TABLE \`location_points\` ADD COLUMN \`battery_level\` real;
 --> statement-breakpoint
 ALTER TABLE \`location_points\` ADD COLUMN \`battery_is_charging\` integer;`;
 
-const m0032 = `ALTER TABLE \`trip_points\` ADD \`activity_type\` text;`;
+const m0032 = `ALTER TABLE \`trip_points\` ADD COLUMN \`activity_type\` text;`;
 
 export default {
   journal,
