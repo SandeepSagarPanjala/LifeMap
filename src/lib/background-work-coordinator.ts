@@ -4,7 +4,6 @@ import { listPastDaysNeedingSeal } from '@/db/repositories/location-day-summarie
 import { getCurrentTripDetectionConfig } from '@/lib/trip-detection-config';
 import {
   clearBackgroundWorkProgress,
-  getBackgroundWorkProgress,
   setBackgroundWorkProgress,
   showBackgroundWorkBanner,
 } from '@/lib/background-work-events';
@@ -26,38 +25,12 @@ import { yieldToEventLoop } from '@/lib/run-when-idle';
 let cyclePromise: Promise<void> | null = null;
 let abortAfterCurrentItem = false;
 
-/** Longer than AppBootstrap's FG resume defer so the cycle can start first. */
-const BACKGROUND_WORK_START_GRACE_MS = 250;
-
-function delay(ms: number): Promise<void> {
-  return new Promise(resolve => {
-    setTimeout(resolve, ms);
-  });
-}
-
 export function requestBackgroundWorkAbort(): void {
   abortAfterCurrentItem = true;
 }
 
 export function isBackgroundWorkCycleRunning(): boolean {
   return cyclePromise != null;
-}
-
-/** Resolves when the current seal/place-cache cycle finishes (or immediately if idle). */
-export function whenBackgroundWorkCycleIdle(): Promise<void> {
-  if (cyclePromise == null) {
-    return Promise.resolve();
-  }
-  return cyclePromise.then(() => undefined);
-}
-
-/**
- * Wait for the FG background-work cycle to start (if it will) and finish,
- * so auto-backup does not fight the banner.
- */
-export async function waitUntilBackgroundWorkCycleSettled(): Promise<void> {
-  await delay(BACKGROUND_WORK_START_GRACE_MS);
-  await whenBackgroundWorkCycleIdle();
 }
 
 function formatPastDayLabel(dateKey: string): string {
@@ -207,10 +180,6 @@ async function runBackgroundWorkCycleImpl(): Promise<void> {
 /** Once per cold start or BG→FG after the map pipeline is ready. */
 export function startBackgroundWorkCycle(): void {
   if (cyclePromise != null) {
-    return;
-  }
-  // Auto backup owns the banner — skip this pass; next FG will retry.
-  if (getBackgroundWorkProgress().phase === 'backup') {
     return;
   }
 
