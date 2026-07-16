@@ -20,7 +20,6 @@ This doc lists code that exists mainly for **legacy data**, **mid-flight schema 
 | `src/db/repositories/location-points.ts` | Treats legacy `motion` / `headless:motion` sources specially |
 | `src/lib/saved-place-address.ts` | `backfillMissingSavedPlaceAddresses()` — fill addresses on old saved places |
 | `src/lib/backup/native-backup-cloud.ts` | Reads/cleans legacy Android backup slots (`current` / `previous`) |
-| `src/components/settings/location-points-dedupe-dev-card.tsx` | Dev UI to scan/dedupe GPS on DBs that already have duplicates |
 | `src/db/location-points-dedupe.ts` | Dedupe helpers + unique-index repair for existing point tables |
 | `src/db/migrate.ts` → `repairLocationPointsDedupeUniqueIndex` | Bootstrap repair when unique index can’t be created yet |
 

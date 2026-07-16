@@ -8,8 +8,6 @@ import {
 } from '@/lib/day-utils';
 import { TRIP_DETECTION_VERSION } from '@/lib/app-constants';
 import { getGeometryPersistFingerprint } from '@/lib/trip-geometry-settings';
-import { listAllDateKeysWithLocationData } from '@/db/repositories/location-days';
-import { yieldToEventLoop } from '@/lib/run-when-idle';
 
 import { getDatabase } from '../client';
 import { locationDaySummaries, locationPoints, materializedDays } from '../schema';
@@ -191,55 +189,6 @@ export async function refreshLocationDaySummaryAfterSeal(
       },
     });
   ensuredDateKeys.add(dateKey);
-}
-
-export type DaySummaryBackfillProgress = {
-  completed: number;
-  total: number;
-  dateKey: string;
-};
-
-export type DaySummaryBackfillResult = {
-  daysWithGps: number;
-  daysFilled: number;
-  daysAlreadyIndexed: number;
-};
-
-/**
- * One-time migration for existing users: index calendar days that have GPS but
- * no row in location_day_summaries yet (pre–v0027 installs).
- */
-export async function backfillMissingLocationDaySummaries(
-  onProgress?: (progress: DaySummaryBackfillProgress) => void,
-): Promise<DaySummaryBackfillResult> {
-  const daysWithGps = await listAllDateKeysWithLocationData();
-  if (daysWithGps.length === 0) {
-    return { daysWithGps: 0, daysFilled: 0, daysAlreadyIndexed: 0 };
-  }
-
-  const db = await getDatabase();
-  const existingRows = await db
-    .select({ dateKey: locationDaySummaries.dateKey })
-    .from(locationDaySummaries);
-  const existing = new Set(existingRows.map(row => row.dateKey));
-  const missing = daysWithGps.filter(dateKey => !existing.has(dateKey));
-
-  for (let index = 0; index < missing.length; index += 1) {
-    const dateKey = missing[index]!;
-    await refreshLocationDaySummary(dateKey);
-    onProgress?.({
-      completed: index + 1,
-      total: missing.length,
-      dateKey,
-    });
-    await yieldToEventLoop();
-  }
-
-  return {
-    daysWithGps: daysWithGps.length,
-    daysFilled: missing.length,
-    daysAlreadyIndexed: daysWithGps.length - missing.length,
-  };
 }
 
 /** @internal — tests */

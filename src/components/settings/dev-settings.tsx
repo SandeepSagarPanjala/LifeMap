@@ -13,7 +13,6 @@ import { Text } from '@/components/ui/text';
 import type { RootStackParamList } from '@/navigation/types';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useAppStore } from '@/stores/app-store';
-import { LocationPointsDedupeDevCard } from '@/components/settings/location-points-dedupe-dev-card';
 
 function DevToggle({
   icon,
@@ -79,7 +78,6 @@ export function DevSettings() {
         enabled={devShowOnboarding}
         onToggle={() => setDevShowOnboarding(!devShowOnboarding)}
       />
-      <LocationPointsDedupeDevCard />
       <Pressable
         accessibilityRole="button"
         onPress={() => navigation.navigate('Benchmark')}
