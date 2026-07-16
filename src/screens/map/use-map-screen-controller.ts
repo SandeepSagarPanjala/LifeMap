@@ -1909,7 +1909,6 @@ export function useMapScreenController() {
       savePlaceCoordinate,
       userCoordinate,
       playback,
-      onRegionChangeComplete,
       handleUserLocation,
       handleMapLongPress,
       closeSavePlaceSheet,

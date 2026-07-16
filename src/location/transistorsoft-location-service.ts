@@ -21,10 +21,7 @@ import {
   resetFootTrackingMode,
   updateFootTrackingMode,
 } from '@/lib/foot-tracking-mode';
-import {
-  getOnFootDetectionEnabledSync,
-  hydrateOnFootDetectionSetting,
-} from '@/lib/on-foot-detection-settings';
+import { getOnFootDetectionEnabledSync } from '@/lib/on-foot-detection-settings';
 import {
   createTrackingMotionGuardState,
   resetDepartureWake,
