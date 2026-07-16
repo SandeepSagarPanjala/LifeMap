@@ -1,10 +1,18 @@
 import {
+  ENDPOINT_JUMP_MIN_GAP_MS,
   MERGE_STAY_MAX_DISTANCE_M,
   MIN_DRIVE_DISTANCE_M,
   MISSING_MIN_DISTANCE_M,
   MISSING_MIN_GAP_MS,
   SAVED_PLACE_MIN_DWELL_MS,
+  TRAVEL_MODE_ACTIVITY_CONFIDENCE_MIN,
+  TRAVEL_MODE_DASH_MIN_PATH_M,
 } from '@lifemap/constants';
+import {
+  isFootMotionActivity,
+  isWheeledMotionActivity,
+  normalizeMotionActivity,
+} from './activity';
 import {
   addDaysToDateKey,
   dateKeyForTimestamp,
@@ -57,6 +65,7 @@ export type { SegmentMomentCounts } from './segment-moments';
  * ~0 m of travel, so it is not a real drive.
  */
 export {
+  ENDPOINT_JUMP_MIN_GAP_MS,
   MERGE_STAY_MAX_DISTANCE_M,
   MIN_DRIVE_DISTANCE_M,
   MISSING_MIN_DISTANCE_M,
@@ -260,12 +269,100 @@ function detectSavedPlaceStops(
   return extra;
 }
 
+/**
+ * Phone-off / GPS-dead jump: long blackout with essentially only the stay
+ * endpoints (path ≈ straight line). Not a real tracked drive.
+ */
+function isSparseEndpointJump(points: ParsedPoint[]): boolean {
+  if (points.length < 2) {
+    return false;
+  }
+  const first = points[0]!;
+  const last = points[points.length - 1]!;
+  const durationMs = last.at.getTime() - first.at.getTime();
+  if (durationMs < ENDPOINT_JUMP_MIN_GAP_MS) {
+    return false;
+  }
+  const displacementM = haversineM(first, last);
+  if (displacementM < MISSING_MIN_DISTANCE_M) {
+    return false;
+  }
+  const interiorCount = points.length - 2;
+  const pathM = pathLengthM(points);
+  // Pure endpoints, or a couple of near-duplicate echoes with no real track.
+  if (interiorCount === 0) {
+    return true;
+  }
+  return interiorCount <= 2 && pathM <= displacementM * 1.05;
+}
+
+/**
+ * Brief unknown/accuracy teleports that leave and return near the same spot.
+ * Keeps real walks (confident foot path) and vehicle legs.
+ */
+function isLowQualityStayTeleport(
+  points: ParsedPoint[],
+  config: StopDetectionConfig,
+  pathM: number,
+  displacementM: number,
+  durationMs: number,
+): boolean {
+  if (durationMs > 10 * 60_000) {
+    return false;
+  }
+  if (pathM >= 400) {
+    return false;
+  }
+  let footPathM = 0;
+  let hasWheeled = false;
+  let accuracySum = 0;
+  let accuracyN = 0;
+  for (let i = 0; i < points.length; i += 1) {
+    const point = points[i]!;
+    const activity = normalizeMotionActivity(point.activityType);
+    const confident =
+      point.activityConfidence != null &&
+      point.activityConfidence >= TRAVEL_MODE_ACTIVITY_CONFIDENCE_MIN;
+    if (confident && isWheeledMotionActivity(activity)) {
+      hasWheeled = true;
+    }
+    if (
+      config.footDetectionEnabled !== false &&
+      confident &&
+      isFootMotionActivity(activity) &&
+      i + 1 < points.length
+    ) {
+      footPathM += haversineM(point, points[i + 1]!);
+    }
+    if (point.accuracy != null && point.accuracy > 0) {
+      accuracySum += point.accuracy;
+      accuracyN += 1;
+    }
+  }
+  if (hasWheeled) {
+    return false;
+  }
+  if (footPathM >= TRAVEL_MODE_DASH_MIN_PATH_M) {
+    return false;
+  }
+  const avgAccuracyM = accuracyN > 0 ? accuracySum / accuracyN : 0;
+  // Returned near start (Home→Home flash) or path explained by GPS uncertainty.
+  const returnedNearStart = displacementM <= config.radiusM + avgAccuracyM;
+  const pathWithinNoise =
+    pathM <= Math.max(config.radiusM * 2.5, avgAccuracyM * 3);
+  return returnedNearStart || pathWithinNoise;
+}
+
 /** A real drive needs motion/path evidence; loop-back routes can end near the start. */
 function isRealDrive(
   points: ParsedPoint[],
   config: StopDetectionConfig,
 ): boolean {
   if (points.length < 2) {
+    return false;
+  }
+  // Overnight (etc.) stay→stay with no GPS in between → missing, not a drive.
+  if (isSparseEndpointJump(points)) {
     return false;
   }
   const displacementM = haversineM(points[0]!, points[points.length - 1]!);
@@ -275,6 +372,11 @@ function isRealDrive(
     points[points.length - 1]!.at.getTime() - points[0]!.at.getTime();
   // Long elapsed time with almost no path is sparse geofence drift, not a drive.
   if (durationMs >= 30 * 60 * 1000 && pathM < 1000) {
+    return false;
+  }
+  // Short unknown/accuracy teleports near a stay (Home indoor GPS) are not drives.
+  // Real walks keep confident foot activity; real drives keep vehicle activity.
+  if (isLowQualityStayTeleport(points, config, pathM, displacementM, durationMs)) {
     return false;
   }
   // Round trips (leave and return near the same spot) still count when path is long.
@@ -712,10 +814,28 @@ function clipStay(
   };
 }
 
+function clipMissing(
+  segment: MissingSegment,
+  from: Date,
+  to: Date,
+): MissingSegment | null {
+  if (to.getTime() <= from.getTime()) {
+    return null;
+  }
+  return {
+    ...segment,
+    id: `${segment.id}-clipped-${from.getTime()}`,
+    startAt: from,
+    endAt: to,
+    durationMs: to.getTime() - from.getTime(),
+  };
+}
+
 /**
  * Per-day trip view:
  * - Home stays crossing midnight are split at midnight (including middle
  *   calendar days of a multi-day home visit).
+ * - Missing (GPS blackout) crossing midnight is split the same way.
  * - Drives and non-home stays crossing midnight appear in full on both days.
  */
 export function projectSegmentsForDay(
@@ -764,10 +884,32 @@ export function projectSegmentsForDay(
       continue;
     }
 
+    if (segment.kind === 'missing' && crossesMidnight) {
+      if (startKey === dayKey) {
+        const clipped = clipMissing(segment, segment.startAt, dayEndAt);
+        if (clipped != null) {
+          projected.push({
+            segment: clipped,
+            sortKey: segment.startAt.getTime(),
+          });
+        }
+      } else if (endKey === dayKey) {
+        const clipped = clipMissing(segment, dayStartAt, segment.endAt);
+        if (clipped != null) {
+          projected.push({ segment: clipped, sortKey: dayStartAt.getTime() });
+        }
+      } else if (dayKey > startKey && dayKey < endKey) {
+        const clipped = clipMissing(segment, dayStartAt, dayEndAt);
+        if (clipped != null) {
+          projected.push({ segment: clipped, sortKey: dayStartAt.getTime() });
+        }
+      }
+      continue;
+    }
+
     const spansMidnightAsWhole =
       crossesMidnight &&
       (segment.kind === 'drive' ||
-        segment.kind === 'missing' ||
         (segment.kind === 'stay' && !isHomeStay(segment, savedPlaces)));
 
     if (spansMidnightAsWhole) {

@@ -212,6 +212,13 @@ export function isPlayableTimelineEntry(
   return entry.kind !== 'gap';
 }
 
+/** Stay, travel, and gap — selectable in the history bar / next-prev chrome. */
+export function isNavigableTimelineEntry(entry: DayTimelineEntry): boolean {
+  return (
+    entry.kind === 'stay' || entry.kind === 'travel' || entry.kind === 'gap'
+  );
+}
+
 export function firstPlayableTimelineIndex(
   entries: DayTimelineEntry[],
 ): number {
@@ -250,6 +257,50 @@ export function findPrevPlayableTimelineIndex(
 ): number {
   for (let index = fromIndex - 1; index >= 0; index -= 1) {
     if (isPlayableTimelineEntry(entries[index]!)) {
+      return index;
+    }
+  }
+  return -1;
+}
+
+export function firstNavigableTimelineIndex(
+  entries: DayTimelineEntry[],
+): number {
+  for (let index = 0; index < entries.length; index += 1) {
+    if (isNavigableTimelineEntry(entries[index]!)) {
+      return index;
+    }
+  }
+  return -1;
+}
+
+export function lastNavigableTimelineIndex(entries: DayTimelineEntry[]): number {
+  for (let index = entries.length - 1; index >= 0; index -= 1) {
+    if (isNavigableTimelineEntry(entries[index]!)) {
+      return index;
+    }
+  }
+  return -1;
+}
+
+export function findNextNavigableTimelineIndex(
+  entries: DayTimelineEntry[],
+  fromIndex: number,
+): number {
+  for (let index = fromIndex + 1; index < entries.length; index += 1) {
+    if (isNavigableTimelineEntry(entries[index]!)) {
+      return index;
+    }
+  }
+  return -1;
+}
+
+export function findPrevNavigableTimelineIndex(
+  entries: DayTimelineEntry[],
+  fromIndex: number,
+): number {
+  for (let index = fromIndex - 1; index >= 0; index -= 1) {
+    if (isNavigableTimelineEntry(entries[index]!)) {
       return index;
     }
   }

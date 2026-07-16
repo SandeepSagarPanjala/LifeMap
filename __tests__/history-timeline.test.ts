@@ -153,6 +153,39 @@ describe('history day rulers', () => {
     expect(laid[1]!.leftPx + laid[1]!.widthPx).toBeCloseTo(BAR_WIDTH, 0);
   });
 
+  it('gives gap segments proportional gray width like visits and drives', () => {
+    const withGap: DayTimelineEntry[] = [
+      {
+        id: 'gap-0',
+        kind: 'gap',
+        points: [],
+        startAt: new Date('2026-06-03T05:00:00.000Z'), // midnight CDT
+        endAt: new Date('2026-06-03T15:22:00.000Z'), // ~10:22 AM
+        durationMs: 10 * 3_600_000 + 22 * 60_000,
+        distanceKm: 27,
+      },
+      {
+        id: 'stay-1',
+        kind: 'stay',
+        points: [],
+        startAt: new Date('2026-06-03T15:22:00.000Z'),
+        endAt: new Date('2026-06-03T20:00:00.000Z'),
+        durationMs: 4 * 3_600_000 + 38 * 60_000,
+        distanceKm: 0,
+      },
+    ];
+    const rulers = buildHistoryDayRulers(withGap, range, BAR_WIDTH, now);
+    const today = rulers[rulers.length - 1]!;
+    const gap = today.segments.find(s => s.kind === 'gap');
+    const stay = today.segments.find(s => s.kind === 'stay');
+    expect(gap).toBeDefined();
+    expect(stay).toBeDefined();
+    expect(gap!.widthPx).toBeGreaterThan(ANCHOR_SIZE_PX * 2);
+    // Longer gap should occupy more bar than the shorter stay.
+    expect(gap!.widthPx).toBeGreaterThan(stay!.widthPx);
+    expect(gap!.leftPx).toBe(0);
+  });
+
   it('maps hour labels through event layout (compressed gaps)', () => {
     const rulers = buildHistoryDayRulers(entries, range, BAR_WIDTH, now);
     const today = rulers[rulers.length - 1]!;

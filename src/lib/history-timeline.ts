@@ -18,15 +18,12 @@ import { isVisitOngoing } from '@/lib/trip-format';
 import {
   HISTORY_ANCHOR_SIZE_PX,
   HISTORY_COLORS,
-  HISTORY_MIN_GAP_SEGMENT_PX,
 } from '@/lib/app-constants';
 
 export const ANCHOR_SIZE_PX = HISTORY_ANCHOR_SIZE_PX;
 
 /** @deprecated Use ANCHOR_SIZE_PX */
 export const MIN_SEGMENT_TOUCH_PX = ANCHOR_SIZE_PX;
-
-const MIN_GAP_SEGMENT_PX = HISTORY_MIN_GAP_SEGMENT_PX;
 
 export function historySegmentColor(
   kind: DayTimelineEntry['kind'],
@@ -95,8 +92,9 @@ function segmentEndAt(entry: DayTimelineEntry, now: Date): Date {
   return entry.endAt;
 }
 
-function minWidthForKind(kind: DayTimelineEntry['kind']): number {
-  return kind === 'gap' ? MIN_GAP_SEGMENT_PX : ANCHOR_SIZE_PX;
+function minWidthForKind(_kind: DayTimelineEntry['kind']): number {
+  // Visits, drives, and gaps share the same scrub-handle minimum.
+  return ANCHOR_SIZE_PX;
 }
 
 function segmentDurationMs(segment: HistoryDaySegment): number {
@@ -104,8 +102,8 @@ function segmentDurationMs(segment: HistoryDaySegment): number {
 }
 
 /**
- * Fixed-width bar: each visit/drive is at least scrub-handle wide; extra width
- * by duration. Clock gaps between events collapse (not drawn as empty track).
+ * Fixed-width bar: each visit/drive/gap is at least a min width; extra width
+ * by duration. Empty clock time with no events still collapses (not drawn).
  */
 export function layoutSegmentsOnFixedBar(
   segments: HistoryDaySegment[],
@@ -139,8 +137,7 @@ export function layoutSegmentsOnFixedBar(
   }
 
   const flexWidth = barWidthPx - minSum;
-  const playable = sorted.filter(segment => segment.kind !== 'gap');
-  const totalDurationMs = playable.reduce(
+  const totalDurationMs = sorted.reduce(
     (sum, segment) => sum + segmentDurationMs(segment),
     0,
   );
@@ -149,7 +146,7 @@ export function layoutSegmentsOnFixedBar(
   return sorted.map(segment => {
     const minW = minWidthForKind(segment.kind);
     let extra = 0;
-    if (segment.kind !== 'gap' && totalDurationMs > 0 && flexWidth > 0) {
+    if (totalDurationMs > 0 && flexWidth > 0) {
       extra = (segmentDurationMs(segment) / totalDurationMs) * flexWidth;
     }
     const widthPx = minW + extra;

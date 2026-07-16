@@ -111,7 +111,8 @@ import {
 import { getCurrentOpenActivity } from '@/lib/today-history';
 import {
   isPlayableTimelineEntry,
-  firstPlayableTimelineIndex,
+  firstNavigableTimelineIndex,
+  lastNavigableTimelineIndex,
   adjacentStaysForTravelIndex,
   stayMapMarkerCoordinate,
   type DetectedTrip,
@@ -267,6 +268,8 @@ export function useMapScreenController() {
   const historyPanelY = useRef(new Animated.Value(400)).current;
   const historyPanelOpenRef = useRef(false);
   const pendingGoToTodayRef = useRef(false);
+  /** After a day change: land on first or last bar segment (includes gaps). */
+  const pendingHistoryEdgeSelectRef = useRef<'first' | 'last' | null>(null);
   const bootstrapCoordinateRef = useRef<MapUserCoordinate | null>(null);
 
   useEffect(() => {
@@ -1287,9 +1290,11 @@ export function useMapScreenController() {
     }
     const nextKey = shiftDateKey(selectedDateKey, -1);
     if (earliestDateKey != null && nextKey < earliestDateKey) {
+      pendingHistoryEdgeSelectRef.current = 'last';
       handleHistoryDateKeyChange(earliestDateKey);
       return;
     }
+    pendingHistoryEdgeSelectRef.current = 'last';
     handleHistoryDateKeyChange(nextKey);
   }, [
     canGoPrevDay,
@@ -1302,6 +1307,7 @@ export function useMapScreenController() {
     if (!canGoNextDay) {
       return;
     }
+    pendingHistoryEdgeSelectRef.current = 'first';
     handleHistoryDateKeyChange(shiftDateKey(selectedDateKey, 1));
   }, [canGoNextDay, handleHistoryDateKeyChange, selectedDateKey]);
 
@@ -1311,7 +1317,8 @@ export function useMapScreenController() {
       if (next) {
         setHistoryPanelChromeVisible(true);
         historyPanelY.setValue(historyPanelSlideDistanceRef.current);
-        setSelectedHistoryIndex(firstPlayableTimelineIndex(historyEntries));
+        pendingHistoryEdgeSelectRef.current = 'first';
+        setSelectedHistoryIndex(firstNavigableTimelineIndex(historyEntries));
       } else {
         playback.stop();
       }
@@ -1598,7 +1605,13 @@ export function useMapScreenController() {
     ) {
       return;
     }
-    setSelectedHistoryIndex(firstPlayableTimelineIndex(historyEntries));
+    const edge = pendingHistoryEdgeSelectRef.current ?? 'first';
+    pendingHistoryEdgeSelectRef.current = null;
+    setSelectedHistoryIndex(
+      edge === 'last'
+        ? lastNavigableTimelineIndex(historyEntries)
+        : firstNavigableTimelineIndex(historyEntries),
+    );
   }, [historyEntries, historyLoading, historyPanelOpen, selectedHistoryIndex]);
 
   useEffect(() => {

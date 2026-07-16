@@ -5,9 +5,13 @@ import {
   isUserStillAtStay,
   stayMapMarkerCoordinate,
   stayTripMarkerCoordinate,
+  findNextNavigableTimelineIndex,
   findNextPlayableTimelineIndex,
+  findPrevNavigableTimelineIndex,
   findPrevPlayableTimelineIndex,
+  firstNavigableTimelineIndex,
   firstPlayableTimelineIndex,
+  lastNavigableTimelineIndex,
   lastPlayableTimelineIndex,
 } from '../src/lib/trip-detection';
 import { buildTripDetectionConfig } from '../src/lib/trip-settings';
@@ -277,6 +281,20 @@ describe('playable timeline navigation', () => {
     expect(findPrevPlayableTimelineIndex(entries, 2)).toBe(0);
     expect(findPrevPlayableTimelineIndex(entries, 1)).toBe(0);
     expect(findPrevPlayableTimelineIndex(entries, 0)).toBe(-1);
+  });
+
+  it('includes gaps when moving to the next navigable entry', () => {
+    expect(firstNavigableTimelineIndex(entries)).toBe(0);
+    expect(lastNavigableTimelineIndex(entries)).toBe(2);
+    expect(findNextNavigableTimelineIndex(entries, 0)).toBe(1);
+    expect(findNextNavigableTimelineIndex(entries, 1)).toBe(2);
+    expect(findNextNavigableTimelineIndex(entries, 2)).toBe(-1);
+  });
+
+  it('includes gaps when moving to the previous navigable entry', () => {
+    expect(findPrevNavigableTimelineIndex(entries, 2)).toBe(1);
+    expect(findPrevNavigableTimelineIndex(entries, 1)).toBe(0);
+    expect(findPrevNavigableTimelineIndex(entries, 0)).toBe(-1);
   });
 });
 
