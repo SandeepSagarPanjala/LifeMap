@@ -75,15 +75,16 @@ function canSparseBridge(
   }
   const toCentre = haversineM(centre, next);
   const toAnchor = haversineM(anchor, next);
+  const slack = pointAccuracyM(next);
   return (
-    toCentre <= config.sparseBridgeMaxDistanceM ||
-    toAnchor <= config.sparseBridgeMaxDistanceM
+    toCentre <= config.sparseBridgeMaxDistanceM + slack ||
+    toAnchor <= config.sparseBridgeMaxDistanceM + slack
   );
 }
 
 /**
- * If `startIdx` is moving, skip the burst when the next stationary fix returns
- * to the cluster within `movingBurstReturnMaxMs`.
+ * If `startIdx` is moving, skip the burst when the next soft-stationary fix
+ * returns to the cluster within `movingBurstReturnMaxMs`.
  */
 function findMovingBurstReturnIndex(
   points: ParsedPoint[],
@@ -96,12 +97,14 @@ function findMovingBurstReturnIndex(
     return null;
   }
   let k = startIdx;
-  while (k < points.length && isMovingPoint(points[k]!, config)) {
+  while (k < points.length && !isBurstReturnPoint(points[k]!, config)) {
     k += 1;
   }
   if (k >= points.length) {
     return null;
   }
+  // Landed on the return point itself (may equal startIdx+…); advance past
+  // contiguous soft-stationary noise that is still within the stay bubble.
   const burstStart = points[startIdx]!;
   const next = points[k]!;
   const burstMs = next.at.getTime() - burstStart.at.getTime();
@@ -115,7 +118,7 @@ function findMovingBurstReturnIndex(
   ) {
     return null;
   }
-  if (haversineM(centre, next) <= spreadLimitM) {
+  if (isWithinStayRadius(centre, next, spreadLimitM)) {
     return k;
   }
   return null;
@@ -274,6 +277,45 @@ function haversineM(
   return 2 * EARTH_RADIUS_M * Math.asin(Math.sqrt(h));
 }
 
+function pointAccuracyM(point: ParsedPoint): number {
+  return point.accuracy != null && point.accuracy > 0 ? point.accuracy : 0;
+}
+
+/**
+ * Stay membership with GPS uncertainty: a 80 m jump with 53 m accuracy still
+ * overlaps a 75 m Home radius, so it must not end the visit. Real walks leave
+ * once distance exceeds radius + reported accuracy.
+ */
+function isWithinStayRadius(
+  centre: { lat: number; lng: number },
+  point: ParsedPoint,
+  radiusM: number,
+): boolean {
+  return haversineM(centre, point) <= radiusM + pointAccuracyM(point);
+}
+
+/**
+ * Soft end of a moving burst: not travel evidence, even if SDK left isMoving
+ * stuck true (common indoor Home jitter).
+ */
+function isBurstReturnPoint(
+  point: ParsedPoint,
+  config: StopDetectionConfig,
+): boolean {
+  if (!isMovingPoint(point, config)) {
+    return true;
+  }
+  const activity = normalizeMotionActivity(point.activityType);
+  const speed = point.speed;
+  if (
+    (activity === 'still' || activity === 'unknown' || activity == null) &&
+    (speed == null || speed < config.movingSpeedMps)
+  ) {
+    return true;
+  }
+  return false;
+}
+
 /** Geometry sources used for the track; motion_arrival excluded. */
 const TRIP_SOURCE_SET = new Set<string>(TRIP_PLOT_SOURCES);
 
@@ -403,7 +445,7 @@ export function detectStops(
         sparseAnchored = true;
       } else if (
         !sparseAnchored &&
-        haversineM(centre, candidate) > config.radiusM
+        !isWithinStayRadius(centre, candidate, config.radiusM)
       ) {
         break;
       }
@@ -416,6 +458,18 @@ export function detectStops(
       const spreadLimit = sparseAnchored
         ? config.sparseBridgeMaxDistanceM
         : config.radiusM;
+
+      // Accuracy-only "outside" fixes stay in the visit but must not drag the
+      // cluster centre (Home indoor teleport across the street).
+      if (
+        !sparseGap &&
+        !sparseAnchored &&
+        haversineM(centre, candidate) > spreadLimit
+      ) {
+        cluster.push(candidate);
+        j += 1;
+        continue;
+      }
 
       if (!sparseGap && !sparseAnchored) {
         const delta = haversineM(centre, nextCentre);

@@ -11,10 +11,10 @@ import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import type { DayTimelineEntry } from '@/lib/trip-detection';
 import { CAPTURE_BUTTON_THEMES } from '@/components/map/map-capture-button-theme';
 import {
-  findNextPlayableTimelineIndex,
-  findPrevPlayableTimelineIndex,
-  firstPlayableTimelineIndex,
-  lastPlayableTimelineIndex,
+  findNextNavigableTimelineIndex,
+  findPrevNavigableTimelineIndex,
+  firstNavigableTimelineIndex,
+  lastNavigableTimelineIndex,
 } from '@/lib/trip-detection';
 import { HISTORY_COLORS } from '@/lib/app-constants';
 import {
@@ -77,18 +77,18 @@ export function HistoryTimelineBar({
     }
   }, []);
 
-  const firstPlayable = firstPlayableTimelineIndex(entries);
-  const lastPlayable = lastPlayableTimelineIndex(entries);
+  const firstNavigable = firstNavigableTimelineIndex(entries);
+  const lastNavigable = lastNavigableTimelineIndex(entries);
   const sameDayPrev =
     hasEntries &&
     (selectedIndex < 0
-      ? lastPlayable >= 0
-      : findPrevPlayableTimelineIndex(entries, selectedIndex) >= 0);
+      ? lastNavigable >= 0
+      : findPrevNavigableTimelineIndex(entries, selectedIndex) >= 0);
   const sameDayNext =
     hasEntries &&
     (selectedIndex < 0
-      ? firstPlayable >= 0
-      : findNextPlayableTimelineIndex(entries, selectedIndex) >= 0);
+      ? firstNavigable >= 0
+      : findNextNavigableTimelineIndex(entries, selectedIndex) >= 0);
   const canGoPrevEvent = sameDayPrev || canWrapToPrevDay;
   const canGoNextEvent = sameDayNext || canWrapToNextDay;
 
@@ -96,8 +96,8 @@ export function HistoryTimelineBar({
     if (hasEntries) {
       const target =
         selectedIndex < 0
-          ? lastPlayableTimelineIndex(entries)
-          : findPrevPlayableTimelineIndex(entries, selectedIndex);
+          ? lastNavigableTimelineIndex(entries)
+          : findPrevNavigableTimelineIndex(entries, selectedIndex);
       if (target >= 0) {
         onSelectIndex(target);
         return;
@@ -119,8 +119,8 @@ export function HistoryTimelineBar({
     if (hasEntries) {
       const target =
         selectedIndex < 0
-          ? firstPlayableTimelineIndex(entries)
-          : findNextPlayableTimelineIndex(entries, selectedIndex);
+          ? firstNavigableTimelineIndex(entries)
+          : findNextNavigableTimelineIndex(entries, selectedIndex);
       if (target >= 0) {
         onSelectIndex(target);
         return;

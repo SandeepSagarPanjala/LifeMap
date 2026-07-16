@@ -1,5 +1,9 @@
 import type { LocationPointRow } from '@/db/repositories/location-days';
-import { buildDayTimeline, detectTripsFromPoints } from '@/lib/segmentation';
+import {
+  buildDayTimeline,
+  buildSegmentationTimeline,
+  detectTripsFromPoints,
+} from '@/lib/segmentation';
 import type { PlaceLookupRow, PlacePoiRow } from '@/lib/place-lookup-types';
 import { PLACE_LOOKUP_VENUE_RADIUS_M } from '@/lib/app-constants';
 import { buildTripDetectionConfig } from '@/lib/trip-settings';
@@ -164,16 +168,260 @@ describe('segmentation detection (current algorithm)', () => {
       expect(timeline.some(entry => entry.kind === 'gap')).toBe(false);
     });
 
-    it('does not emit segments from GPS jitter below dwell threshold', () => {
-      const trips = detectTripsFromPoints(
-        makePoints([
+    it('treats overnight phone-off endpoint jumps as missing, not a drive', () => {
+      // Home evening → Work next morning with no GPS in between (Jul 8 pattern).
+      const start = new Date('2026-07-07T23:00:00-05:00');
+      const points = makePoints(
+        [
           { minutes: 0, ...HOME },
-          { minutes: 1, lat: HOME.lat + 0.00001, lng: HOME.lng + 0.00001 },
-        ]),
-        config,
+          { minutes: 11, ...HOME },
+          // ~11h blackout, then Work
+          { minutes: 11 + 11 * 60, ...WALMART },
+          { minutes: 11 + 11 * 60 + 20, ...WALMART },
+        ],
+        start,
       );
 
-      expect(trips).toHaveLength(0);
+      const jul7 = buildSegmentationTimeline('2026-07-07', points, config);
+      const jul8 = buildSegmentationTimeline('2026-07-08', points, config);
+
+      expect(jul7.some(entry => entry.kind === 'travel')).toBe(false);
+      expect(jul8.some(entry => entry.kind === 'travel')).toBe(false);
+      expect(jul7.map(entry => entry.kind)).toContain('gap');
+      expect(jul8.map(entry => entry.kind)).toContain('gap');
+
+      const jul7Gap = jul7.find(entry => entry.kind === 'gap');
+      const jul8Gap = jul8.find(entry => entry.kind === 'gap');
+      expect(jul7Gap?.endAt.getTime()).toBe(
+        new Date('2026-07-08T00:00:00-05:00').getTime(),
+      );
+      expect(jul8Gap?.startAt.getTime()).toBe(
+        new Date('2026-07-08T00:00:00-05:00').getTime(),
+      );
+    });
+
+    it('keeps one stay across Home indoor GPS teleport with bad accuracy', () => {
+      // Jul 16 pattern: solid Home fix, then ~80m jump with ~53m accuracy and
+      // sticky isMoving/unknown, then snap back — must not flash a red drive.
+      const start = new Date('2026-07-16T21:00:00.000Z');
+      const points: LocationPointRow[] = [
+        {
+          id: 1,
+          timestamp: start,
+          lat: HOME.lat,
+          lng: HOME.lng,
+          accuracy: 10,
+          altitude: null,
+          speed: 0,
+          source: 'gps',
+          heading: null,
+          headingAccuracy: null,
+          speedAccuracy: null,
+          altitudeAccuracy: null,
+          activityType: 'still',
+          activityConfidence: 100,
+          isMoving: true,
+          isMock: null,
+          uuid: null,
+          batteryLevel: null,
+          batteryIsCharging: null,
+        },
+        {
+          id: 2,
+          timestamp: new Date(start.getTime() + 10 * 60_000),
+          lat: HOME.lat,
+          lng: HOME.lng,
+          accuracy: 10,
+          altitude: null,
+          speed: 0.2,
+          source: 'gps',
+          heading: null,
+          headingAccuracy: null,
+          speedAccuracy: null,
+          altitudeAccuracy: null,
+          activityType: 'unknown',
+          activityConfidence: 100,
+          isMoving: true,
+          isMock: null,
+          uuid: null,
+          batteryLevel: null,
+          batteryIsCharging: null,
+        },
+        {
+          id: 3,
+          timestamp: new Date(start.getTime() + 10 * 60_000 + 44_000),
+          lat: HOME.lat + 0.00072, // ~80m north
+          lng: HOME.lng + 0.0002,
+          accuracy: 53,
+          altitude: null,
+          speed: 1.83,
+          source: 'gps',
+          heading: null,
+          headingAccuracy: null,
+          speedAccuracy: null,
+          altitudeAccuracy: null,
+          activityType: 'unknown',
+          activityConfidence: 100,
+          isMoving: true,
+          isMock: null,
+          uuid: null,
+          batteryLevel: null,
+          batteryIsCharging: null,
+        },
+        {
+          id: 4,
+          timestamp: new Date(start.getTime() + 10 * 60_000 + 55_000),
+          lat: HOME.lat + 0.0006,
+          lng: HOME.lng + 0.00015,
+          accuracy: 50,
+          altitude: null,
+          speed: 2.78,
+          source: 'gps',
+          heading: null,
+          headingAccuracy: null,
+          speedAccuracy: null,
+          altitudeAccuracy: null,
+          activityType: 'unknown',
+          activityConfidence: 100,
+          isMoving: true,
+          isMock: null,
+          uuid: null,
+          batteryLevel: null,
+          batteryIsCharging: null,
+        },
+        {
+          id: 5,
+          timestamp: new Date(start.getTime() + 10 * 60_000 + 90_000),
+          lat: HOME.lat,
+          lng: HOME.lng,
+          accuracy: 11,
+          altitude: null,
+          speed: 0,
+          source: 'gps',
+          heading: null,
+          headingAccuracy: null,
+          speedAccuracy: null,
+          altitudeAccuracy: null,
+          activityType: 'still',
+          activityConfidence: 100,
+          isMoving: true,
+          isMock: null,
+          uuid: null,
+          batteryLevel: null,
+          batteryIsCharging: null,
+        },
+        {
+          id: 6,
+          timestamp: new Date(start.getTime() + 25 * 60_000),
+          lat: HOME.lat,
+          lng: HOME.lng,
+          accuracy: 14,
+          altitude: null,
+          speed: 0,
+          source: 'gps',
+          heading: null,
+          headingAccuracy: null,
+          speedAccuracy: null,
+          altitudeAccuracy: null,
+          activityType: 'still',
+          activityConfidence: 100,
+          isMoving: false,
+          isMock: null,
+          uuid: null,
+          batteryLevel: null,
+          batteryIsCharging: null,
+        },
+      ];
+
+      const timeline = buildDayTimeline(points, config);
+      expect(timeline.map(entry => entry.kind)).toEqual(['stay']);
+      expect(timeline.some(entry => entry.kind === 'travel')).toBe(false);
+    });
+
+    it('still emits a walk when confident on_foot leaves the stay radius', () => {
+      const start = new Date('2026-07-16T16:00:00.000Z');
+      const points: LocationPointRow[] = [];
+      let id = 1;
+      // Home dwell
+      for (const minutes of [0, 8, 16]) {
+        points.push({
+          id: id++,
+          timestamp: new Date(start.getTime() + minutes * 60_000),
+          lat: HOME.lat,
+          lng: HOME.lng,
+          accuracy: 8,
+          altitude: null,
+          speed: 0,
+          source: 'gps',
+          heading: null,
+          headingAccuracy: null,
+          speedAccuracy: null,
+          altitudeAccuracy: null,
+          activityType: 'still',
+          activityConfidence: 100,
+          isMoving: false,
+          isMock: null,
+          uuid: null,
+          batteryLevel: null,
+          batteryIsCharging: null,
+        });
+      }
+      // Walk ~180m east with confident on_foot (beyond radius+accuracy)
+      for (let step = 1; step <= 6; step += 1) {
+        points.push({
+          id: id++,
+          timestamp: new Date(start.getTime() + (18 + step) * 60_000),
+          lat: HOME.lat,
+          lng: HOME.lng + step * 0.00035,
+          accuracy: 8,
+          altitude: null,
+          speed: 1.4,
+          source: 'gps',
+          heading: null,
+          headingAccuracy: null,
+          speedAccuracy: null,
+          altitudeAccuracy: null,
+          activityType: 'on_foot',
+          activityConfidence: 90,
+          isMoving: true,
+          isMock: null,
+          uuid: null,
+          batteryLevel: null,
+          batteryIsCharging: null,
+        });
+      }
+      // Dwell at destination
+      const destLng = HOME.lng + 6 * 0.00035;
+      for (const minutes of [30, 40, 50]) {
+        points.push({
+          id: id++,
+          timestamp: new Date(start.getTime() + minutes * 60_000),
+          lat: HOME.lat,
+          lng: destLng,
+          accuracy: 8,
+          altitude: null,
+          speed: 0,
+          source: 'gps',
+          heading: null,
+          headingAccuracy: null,
+          speedAccuracy: null,
+          altitudeAccuracy: null,
+          activityType: 'still',
+          activityConfidence: 100,
+          isMoving: false,
+          isMock: null,
+          uuid: null,
+          batteryLevel: null,
+          batteryIsCharging: null,
+        });
+      }
+
+      const timeline = buildDayTimeline(points, config);
+      expect(timeline.map(entry => entry.kind)).toEqual([
+        'stay',
+        'travel',
+        'stay',
+      ]);
     });
 
     it('keeps one stay when indoor GPS wanders with bare isMoving flags', () => {

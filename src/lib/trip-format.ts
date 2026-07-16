@@ -221,7 +221,7 @@ export function formatTimelineStats(
   distanceUnit: DistanceUnit,
 ): string {
   if (entry.kind === 'gap') {
-    return `No saved locations · ${formatTripDuration(entry.durationMs)}`;
+    return `No location data · ${formatTripDuration(entry.durationMs)}`;
   }
 
   if (entry.kind === 'stay') {

@@ -88,7 +88,7 @@ export function formatTimelineTitle(entry: DayTimelineEntry): string {
 
 export function formatTimelineStats(entry: DayTimelineEntry): string {
   if (entry.kind === 'gap') {
-    return `No saved locations · ${formatTripDuration(entry.durationMs)}`;
+    return `No location data · ${formatTripDuration(entry.durationMs)}`;
   }
   if (entry.kind === 'stay') {
     return formatTripDuration(entry.durationMs);
