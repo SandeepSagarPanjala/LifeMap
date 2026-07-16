@@ -18,6 +18,11 @@ import {
 } from '@/location/location-persist-pipeline';
 import { DRIVE_GPS_WAKE_SPEED_MS } from '@/lib/app-constants';
 import {
+  resetFootTrackingMode,
+  updateFootTrackingMode,
+} from '@/lib/foot-tracking-mode';
+import { getOnFootDetectionEnabledSync } from '@/lib/on-foot-detection-settings';
+import {
   createTrackingMotionGuardState,
   resetDepartureWake,
   resetTrackingMotionGuardState,
@@ -64,6 +69,7 @@ export class TransistorSoftLocationService implements LocationService {
   private readonly motionGuard: TrackingMotionGuardState =
     createTrackingMotionGuardState();
   private lastProviderSignature: string | null = null;
+  private footModeActive = false;
 
   async drainNativeQueue(): Promise<void> {
     await drainNativeLocationQueue();
@@ -78,12 +84,44 @@ export class TransistorSoftLocationService implements LocationService {
     return savedTimestampMs;
   }
 
-  async applyTrackingProfile(maxReliability?: boolean): Promise<void> {
+  async applyTrackingProfile(
+    maxReliability?: boolean,
+    options: { onFoot?: boolean } = {},
+  ): Promise<void> {
     const enabled = maxReliability ?? (await readMaxReliability());
     if (!this.configured) {
       return;
     }
-    await BackgroundGeolocation.setConfig(getTrackingConfig(enabled));
+    const onFootDetection = getOnFootDetectionEnabledSync();
+    if (!onFootDetection && this.footModeActive) {
+      this.footModeActive = false;
+      resetFootTrackingMode();
+    }
+    const onFoot =
+      onFootDetection && (options.onFoot ?? this.footModeActive);
+    await BackgroundGeolocation.setConfig(
+      getTrackingConfig(enabled, { onFoot }),
+    );
+  }
+
+  private async maybeApplyFootTrackingProfile(
+    location: Location,
+  ): Promise<void> {
+    if (!getOnFootDetectionEnabledSync()) {
+      if (this.footModeActive) {
+        this.footModeActive = false;
+        resetFootTrackingMode();
+        await this.applyTrackingProfile();
+      }
+      return;
+    }
+
+    const nextFootMode = updateFootTrackingMode(location);
+    if (nextFootMode === this.footModeActive) {
+      return;
+    }
+    this.footModeActive = nextFootMode;
+    await this.applyTrackingProfile(undefined, { onFoot: nextFootMode });
   }
 
   private async onHeartbeat(): Promise<number | null> {
@@ -160,6 +198,7 @@ export class TransistorSoftLocationService implements LocationService {
           try {
             await this.maybeWakeFromSpeed(location);
             await persistLocationFromSdk(location, 'gps', { dedupe: true });
+            await this.maybeApplyFootTrackingProfile(location);
           } catch (error) {
             if (__DEV__) {
               console.warn('[LifeMap] Failed to persist location', error);
@@ -277,6 +316,8 @@ export class TransistorSoftLocationService implements LocationService {
     this.motionInFlight = null;
     this.configured = false;
     this.lastProviderSignature = null;
+    this.footModeActive = false;
+    resetFootTrackingMode();
     resetTrackingMotionGuardState(this.motionGuard);
   }
 }

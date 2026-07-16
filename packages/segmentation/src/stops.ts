@@ -52,6 +52,11 @@ export type StopDetectionConfig = {
    * spot within this window are absorbed into the stay.
    */
   movingBurstReturnMaxMs: number;
+  /**
+   * When false, foot activity is ignored for moving detection and short foot
+   * bursts are absorbed into stays (drive-only mode).
+   */
+  footDetectionEnabled?: boolean;
 };
 
 export const DEFAULT_STOP_CONFIG: StopDetectionConfig = {
@@ -104,7 +109,10 @@ function findMovingBurstReturnIndex(
     return null;
   }
   // Meaningful on-foot bursts (parking → door) are real travel, not stay jitter.
-  if (footPathLengthM(points, startIdx, k) >= TRAVEL_MODE_DASH_MIN_PATH_M) {
+  if (
+    config.footDetectionEnabled !== false &&
+    footPathLengthM(points, startIdx, k) >= TRAVEL_MODE_DASH_MIN_PATH_M
+  ) {
     return null;
   }
   if (haversineM(centre, next) <= spreadLimitM) {
@@ -226,13 +234,18 @@ export function isMovingPoint(
     confident &&
     (isFootMotionActivity(activity) || isWheeledMotionActivity(activity))
   ) {
-    return true;
+    if (config.footDetectionEnabled === false && isFootMotionActivity(activity)) {
+      // Drive-only mode — ignore foot activity; fall through to speed / isMoving.
+    } else {
+      return true;
+    }
   }
   if (point.isMoving === true) {
     if (
       activity == null ||
       activity === 'unknown' ||
-      activity === 'still'
+      activity === 'still' ||
+      (config.footDetectionEnabled === false && isFootMotionActivity(activity))
     ) {
       return point.speed != null && point.speed >= config.movingSpeedMps;
     }

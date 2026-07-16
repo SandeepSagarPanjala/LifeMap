@@ -27,6 +27,7 @@ export const MapScreenMap = memo(
       mapAttributionInsets,
       colorScheme,
       showUserLocation,
+      onRegionChange,
       onRegionChangeComplete,
       handleUserLocation,
       showDayJourney,
@@ -60,6 +61,8 @@ export const MapScreenMap = memo(
       openDayStoryMomentType,
       openHistoryToStay,
       dayMoments,
+      showRouteDirectionArrows,
+      routeDirectionMapLatitudeDelta,
     } = controller;
 
     if (mapInitialRegion == null) {
@@ -84,6 +87,7 @@ export const MapScreenMap = memo(
         zoomEnabled
         pitchEnabled
         rotateEnabled
+        onRegionChange={onRegionChange}
         onRegionChangeComplete={onRegionChangeComplete}
         onUserLocationChange={handleUserLocation}
         onLongPress={handleMapLongPress}
@@ -113,6 +117,8 @@ export const MapScreenMap = memo(
               dayMoments={dayMoments}
               historyEntries={historyData.entries}
               hideSavedPlaceId={currentOpenVisitSavedPlace?.id ?? null}
+              showDirectionArrows={showRouteDirectionArrows}
+              mapLatitudeDelta={routeDirectionMapLatitudeDelta}
               onPressStoryMomentType={openDayStoryMomentType}
               onPressStoryStay={openHistoryToStay}
             />
@@ -179,6 +185,8 @@ export const MapScreenMap = memo(
               onPressSelectedEntryMoments={openSelectedEntryMomentsPreview}
               tripConfig={tripDetectionConfig}
               playbackProgress={playback.isPlaying ? playback.progress : null}
+              showDirectionArrows={showRouteDirectionArrows}
+              mapLatitudeDelta={routeDirectionMapLatitudeDelta}
             />
             <MomentMapOverlay
               pins={historyMomentMapPins}

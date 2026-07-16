@@ -1,6 +1,7 @@
 import { memo, useMemo } from 'react';
 import { Polyline } from 'react-native-maps';
 
+import { useOnFootDetectionEnabled } from '@/hooks/use-on-foot-detection-enabled';
 import { DriveEndpointLabels } from '@/components/map/DriveEndpointLabels';
 import { TravelModePolylines } from '@/components/map/TravelModePolylines';
 import { TripPlaybackHead } from '@/components/map/TripPlaybackHead';
@@ -45,6 +46,9 @@ type TripRouteOverlayProps = {
   endLabel?: DriveEndpointLabel;
   anchorStartStay?: DetectedTrip | null;
   anchorEndStay?: DetectedTrip | null;
+  /** Zoom-gated direction chevrons along the emphasized trip path. */
+  showDirectionArrows?: boolean;
+  mapLatitudeDelta?: number;
 };
 
 export const TripRouteOverlay = memo(function TripRouteOverlay({
@@ -57,7 +61,10 @@ export const TripRouteOverlay = memo(function TripRouteOverlay({
   endLabel,
   anchorStartStay = null,
   anchorEndStay = null,
+  showDirectionArrows = false,
+  mapLatitudeDelta,
 }: TripRouteOverlayProps) {
+  const onFootDetection = useOnFootDetectionEnabled();
   const polylineCap = emphasized
     ? MAX_EMPHASIZED_TRIP_POLYLINE_POINTS
     : MAX_MAP_POLYLINE_POINTS;
@@ -115,7 +122,7 @@ export const TripRouteOverlay = memo(function TripRouteOverlay({
   }, [anchorEndStay, coordinates, endLabel]);
 
   const modeLegs = useMemo(() => {
-    const legs = buildTravelModeLegs(points).map(leg => ({
+    const legs = buildTravelModeLegs(points, { onFootDetection }).map(leg => ({
       style: leg.style,
       coordinates: [...leg.coordinates],
     }));
@@ -147,7 +154,7 @@ export const TripRouteOverlay = memo(function TripRouteOverlay({
       last.coordinates = [...last.coordinates, routeEnd];
     }
     return legs;
-  }, [points, routeEnd, routeStart]);
+  }, [onFootDetection, points, routeEnd, routeStart]);
 
   if (coordinates.length < 1) {
     return null;
@@ -175,6 +182,8 @@ export const TripRouteOverlay = memo(function TripRouteOverlay({
           borderWidth={ROUTE_PATH_BORDER_WIDTH}
           zBase={emphasized ? 3 : 1}
           maxPoints={polylineCap}
+          showDirectionArrows={showDirectionArrows && emphasized && !isPlaying}
+          mapLatitudeDelta={mapLatitudeDelta}
         />
       ) : null}
 

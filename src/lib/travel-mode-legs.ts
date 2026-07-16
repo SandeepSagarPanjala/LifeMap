@@ -103,12 +103,18 @@ function mergeAdjacentSameStyle(runs: readonly StrokeRun[]): StrokeRun[] {
   return merged;
 }
 
+export type BuildTravelModeLegsOptions = {
+  /** When false, all legs render solid (pre foot-path styling). Default true. */
+  onFootDetection?: boolean;
+};
+
 /**
  * Split a travel path into solid (vehicle/bike/unknown) and dashed (foot)
  * legs. Short foot hops stay solid.
  */
 export function buildTravelModeLegs(
   points: readonly LocationPointRow[],
+  options: BuildTravelModeLegsOptions = {},
 ): TravelModeLeg[] {
   if (points.length < 2) {
     return points.length === 1
@@ -124,6 +130,16 @@ export function buildTravelModeLegs(
   const sorted = [...points].sort(
     (a, b) => a.timestamp.getTime() - b.timestamp.getTime() || a.id - b.id,
   );
+
+  if (options.onFootDetection === false) {
+    return [
+      {
+        style: 'solid',
+        coordinates: toCoordinates(sorted),
+      },
+    ];
+  }
+
   const gated = applyDashGates(splitStrokeRuns(sorted));
   const merged = mergeAdjacentSameStyle(gated);
 

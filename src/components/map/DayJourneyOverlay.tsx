@@ -24,6 +24,9 @@ type DayJourneyOverlayProps = {
   dayMoments?: readonly MomentRow[];
   historyEntries?: readonly DayTimelineEntry[];
   hideSavedPlaceId?: number | null;
+  /** Zoom-gated direction chevrons on detected travels. */
+  showDirectionArrows?: boolean;
+  mapLatitudeDelta?: number;
   onPressStoryMomentType?: (
     stop: DayStoryStop,
     type: MomentCountType,
@@ -60,6 +63,8 @@ export const DayJourneyOverlay = memo(function DayJourneyOverlay({
   dayMoments = [],
   historyEntries = [],
   hideSavedPlaceId = null,
+  showDirectionArrows = false,
+  mapLatitudeDelta,
   onPressStoryMomentType,
   onPressStoryStay,
 }: DayJourneyOverlayProps) {
@@ -89,6 +94,9 @@ export const DayJourneyOverlay = memo(function DayJourneyOverlay({
             points={travel.points}
             tripConfig={tripConfig}
             soft
+            continuous
+            showDirectionArrows={showDirectionArrows}
+            mapLatitudeDelta={mapLatitudeDelta}
             color={travelColors.get(travel.id) ?? null}
           />
         ))

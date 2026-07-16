@@ -7,6 +7,7 @@ import {
   HEARTBEAT_CHECK_INTERVAL_SEC_MAX_RELIABILITY,
   TRACKING_ACTIVITY_RECOGNITION_INTERVAL_MS,
   TRACKING_DISTANCE_FILTER_METERS,
+  TRACKING_DISTANCE_FILTER_METERS_ON_FOOT,
   TRACKING_LOCATION_UPDATE_INTERVAL_MS_BALANCED,
   TRACKING_LOCATION_UPDATE_INTERVAL_MS_MAX_RELIABILITY,
   TRACKING_MIN_ACTIVITY_RECOGNITION_CONFIDENCE,
@@ -30,12 +31,25 @@ const BACKGROUND_PERMISSION_RATIONALE = {
   negativeAction: APP_COPY.tracking.backgroundPermissionNegative,
 };
 
+export type TrackingConfigOptions = {
+  /** Tighter distance filter while walking (on-foot detection must be enabled). */
+  onFoot?: boolean;
+};
+
 /** v5 compound config for ready() / setConfig(). */
-export function getTrackingConfig(maxReliability: boolean): Config {
+export function getTrackingConfig(
+  maxReliability: boolean,
+  options: TrackingConfigOptions = {},
+): Config {
+  const distanceFilter =
+    options.onFoot === true
+      ? TRACKING_DISTANCE_FILTER_METERS_ON_FOOT
+      : TRACKING_DISTANCE_FILTER_METERS;
+
   return {
     geolocation: {
       desiredAccuracy: BackgroundGeolocation.DesiredAccuracy.High,
-      distanceFilter: TRACKING_DISTANCE_FILTER_METERS,
+      distanceFilter,
       disableElasticity: maxReliability,
       stopTimeout: maxReliability ? 1 : TRACKING_STOP_TIMEOUT_MINUTES_BALANCED,
       pausesLocationUpdatesAutomatically: !maxReliability,

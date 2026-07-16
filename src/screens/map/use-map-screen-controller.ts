@@ -90,7 +90,11 @@ import {
 } from '@/lib/history-date-picker-navigation';
 import { useAppStore } from '@/stores/app-store';
 import { regionForCoordinates, toMapCoordinates } from '@/lib/location-geo';
-import { MAP_USER_ZOOM_DELTA, VISIT_MAX_ZOOM_DELTA } from '@/lib/app-constants';
+import {
+  MAP_USER_ZOOM_DELTA,
+  ROUTE_DIRECTION_ARROW_REF_ZOOM_DELTA,
+  VISIT_MAX_ZOOM_DELTA,
+} from '@/lib/app-constants';
 import {
   animateRecenterToUser,
   centerMapOnUser,
@@ -207,6 +211,10 @@ export function useMapScreenController() {
     longitude: number;
   } | null>(null);
   const [clusterMomentsOnMap, setClusterMomentsOnMap] = useState(false);
+  const [routeDirectionMapLatitudeDelta, setRouteDirectionMapLatitudeDelta] =
+    useState(ROUTE_DIRECTION_ARROW_REF_ZOOM_DELTA);
+  /** Hide geographic arrows while pinching zoom — they only resize on settle. */
+  const [mapGestureActive, setMapGestureActive] = useState(false);
 
   const {
     places: savedPlaces,
@@ -247,6 +255,12 @@ export function useMapScreenController() {
   const needsDefaultCenterRef = useRef(true);
   const mapRegionRef = useRef<Region>(MAP_FALLBACK_REGION);
   const clusterMomentsOnMapRef = useRef(false);
+  const routeDirectionMapLatitudeDeltaRef = useRef(
+    ROUTE_DIRECTION_ARROW_REF_ZOOM_DELTA,
+  );
+  const mapGestureActiveRef = useRef(false);
+  /** latitudeDelta at the start of the current drag/pinch (for zoom vs pan). */
+  const mapGestureStartDeltaRef = useRef<number | null>(null);
   const fitHistoryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const userCoordinateRef = useRef<MapUserCoordinate | null>(null);
   const lastUserCoordinateRefreshMsRef = useRef(0);
@@ -263,6 +277,8 @@ export function useMapScreenController() {
       }
       setMapInitialRegion(region);
       mapRegionRef.current = region;
+      routeDirectionMapLatitudeDeltaRef.current = region.latitudeDelta;
+      setRouteDirectionMapLatitudeDelta(region.latitudeDelta);
       if (!isWorldFallbackRegion(region)) {
         bootstrapCoordinateRef.current = coordinateFromRegion(region);
         needsDefaultCenterRef.current = true;
@@ -1087,12 +1103,44 @@ export function useMapScreenController() {
   const showUserLocation =
     !historyPanelOpen && !playback.isPlaying && viewingToday;
 
+  const onRegionChange = useCallback((region: Region) => {
+    if (mapGestureStartDeltaRef.current == null) {
+      mapGestureStartDeltaRef.current = routeDirectionMapLatitudeDeltaRef.current;
+    }
+    const startDelta = mapGestureStartDeltaRef.current;
+    const deltaRatio =
+      Math.abs(region.latitudeDelta - startDelta) / Math.max(startDelta, 1e-6);
+    // Only hide on real pinch zoom — pan must not touch arrow state.
+    if (deltaRatio < 0.08 || mapGestureActiveRef.current) {
+      return;
+    }
+    mapGestureActiveRef.current = true;
+    setMapGestureActive(true);
+  }, []);
+
   const onRegionChangeComplete = useCallback((region: Region) => {
     mapRegionRef.current = region;
+    mapGestureStartDeltaRef.current = null;
+
     const nextClusterMoments = shouldClusterMomentsOnMap(region.latitudeDelta);
     if (nextClusterMoments !== clusterMomentsOnMapRef.current) {
       clusterMomentsOnMapRef.current = nextClusterMoments;
       setClusterMomentsOnMap(nextClusterMoments);
+    }
+
+    const prevDelta = routeDirectionMapLatitudeDeltaRef.current;
+    const zoomSettled =
+      Math.abs(region.latitudeDelta - prevDelta) / Math.max(prevDelta, 1e-6) >=
+      0.04;
+    // Pan-only completes must not rebuild arrows (that was the flicker).
+    if (zoomSettled) {
+      routeDirectionMapLatitudeDeltaRef.current = region.latitudeDelta;
+      setRouteDirectionMapLatitudeDelta(region.latitudeDelta);
+    }
+
+    if (mapGestureActiveRef.current) {
+      mapGestureActiveRef.current = false;
+      setMapGestureActive(false);
     }
   }, []);
 
@@ -1694,6 +1742,10 @@ export function useMapScreenController() {
       showDayJourney,
       showSavedPlaceMarkersOnMap,
       mapSavedPlaces,
+      showRouteDirectionArrows: !mapGestureActive,
+      routeDirectionMapLatitudeDelta,
+      onRegionChange,
+      onRegionChangeComplete,
       currentVisitMomentCounts,
       dayMomentMapPins,
       historyMomentMapPins,
@@ -1735,7 +1787,6 @@ export function useMapScreenController() {
       savePlaceCoordinate,
       userCoordinate,
       playback,
-      onRegionChangeComplete,
       handleUserLocation,
       handleMapLongPress,
       closeSavePlaceSheet,
@@ -1814,6 +1865,10 @@ export function useMapScreenController() {
       showDayJourney,
       showSavedPlaceMarkersOnMap,
       mapSavedPlaces,
+      mapGestureActive,
+      routeDirectionMapLatitudeDelta,
+      onRegionChange,
+      onRegionChangeComplete,
       currentVisitMomentCounts,
       dayMomentMapPins,
       historyMomentMapPins,
@@ -1854,7 +1909,6 @@ export function useMapScreenController() {
       savePlaceCoordinate,
       userCoordinate,
       playback,
-      onRegionChangeComplete,
       handleUserLocation,
       handleMapLongPress,
       closeSavePlaceSheet,

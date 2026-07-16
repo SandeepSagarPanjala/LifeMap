@@ -3,31 +3,46 @@ import { Pressable } from 'react-native';
 
 import { SettingsIosToggle } from '@/components/settings/settings-group';
 import { Text } from '@/components/ui/text';
+import { useOnFootDetectionEnabled } from '@/hooks/use-on-foot-detection-enabled';
 import { getLocationService } from '@/location/transistorsoft-location-service';
 import type { LocationAuthorizationStatus } from '@/location/types';
 import {
   STATIONARY_PING_MIN_MS_MAX_RELIABILITY,
   TRACKING_DISTANCE_FILTER_METERS,
+  TRACKING_DISTANCE_FILTER_METERS_ON_FOOT,
 } from '@/lib/app-constants';
+import { APP_COPY } from '@/lib/app-copy';
+import { resetFootTrackingMode } from '@/lib/foot-tracking-mode';
+import {
+  getOnFootDetectionEnabled,
+  setOnFootDetectionEnabled,
+} from '@/lib/on-foot-detection-settings';
 
 const BACKUP_PING_MINUTES = STATIONARY_PING_MIN_MS_MAX_RELIABILITY / 60_000;
 
 export function TrackingSettings() {
   const [loading, setLoading] = useState(true);
   const [enabled, setEnabled] = useState(false);
+  const onFootDetectionEnabled = useOnFootDetectionEnabled();
+  const [onFootLoading, setOnFootLoading] = useState(true);
   const [authorizationStatus, setAuthorizationStatus] =
     useState<LocationAuthorizationStatus>('not_determined');
 
   const refresh = useCallback(async () => {
     setLoading(true);
+    setOnFootLoading(true);
     try {
       const service = getLocationService();
-      const state = await service.getState();
+      const [state] = await Promise.all([
+        service.getState(),
+        getOnFootDetectionEnabled(),
+      ]);
 
       setEnabled(state.enabled);
       setAuthorizationStatus(state.authorizationStatus);
     } finally {
       setLoading(false);
+      setOnFootLoading(false);
     }
   }, []);
 
@@ -53,6 +68,14 @@ export function TrackingSettings() {
     await refresh();
   };
 
+  const handleOnFootToggle = async (next: boolean) => {
+    await setOnFootDetectionEnabled(next);
+    if (!next) {
+      resetFootTrackingMode();
+    }
+    await getLocationService().applyTrackingProfile();
+  };
+
   const handleRequestPermission = async () => {
     const status = await getLocationService().requestPermission();
     setAuthorizationStatus(status);
@@ -71,6 +94,23 @@ export function TrackingSettings() {
         value={enabled}
         loading={loading}
         onValueChange={value => void handleToggle(value)}
+      />
+
+      <SettingsIosToggle
+        label={APP_COPY.tracking.onFootDetection}
+        description={
+          onFootDetectionEnabled
+            ? APP_COPY.tracking.onFootDetectionOn
+            : APP_COPY.tracking.onFootDetectionOff
+        }
+        value={onFootDetectionEnabled}
+        loading={onFootLoading}
+        onValueChange={value => void handleOnFootToggle(value)}
+        footer={
+          onFootDetectionEnabled
+            ? `Uses ${TRACKING_DISTANCE_FILTER_METERS_ON_FOOT} m GPS while walking (normally ${TRACKING_DISTANCE_FILTER_METERS} m for drives).`
+            : undefined
+        }
       />
 
       {authorizationStatus === 'denied' ||

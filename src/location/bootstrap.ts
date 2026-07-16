@@ -2,6 +2,7 @@ import { getDatabase } from '@/db/client';
 
 import { syncSavedPlaceGeofences } from '@/location/geofence-registry';
 import { startNativeLocationTracking } from '@/location/native-location-persist';
+import { hydrateOnFootDetectionSetting } from '@/lib/on-foot-detection-settings';
 import {
   getLocationService,
   resetLocationService,
@@ -28,6 +29,7 @@ export function ensureDatabaseReady(): Promise<void> {
 
 async function runLocationBootstrap(): Promise<LocationAuthorizationStatus | null> {
   await ensureDatabaseReady();
+  await hydrateOnFootDetectionSetting();
   const service = getLocationService();
   await service.configure();
   const authorization = await service.requestPermission();
