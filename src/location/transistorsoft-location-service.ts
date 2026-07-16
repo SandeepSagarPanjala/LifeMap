@@ -93,6 +93,10 @@ export class TransistorSoftLocationService implements LocationService {
       return;
     }
     const onFootDetection = getOnFootDetectionEnabledSync();
+    if (!onFootDetection && this.footModeActive) {
+      this.footModeActive = false;
+      resetFootTrackingMode();
+    }
     const onFoot =
       onFootDetection && (options.onFoot ?? this.footModeActive);
     await BackgroundGeolocation.setConfig(
