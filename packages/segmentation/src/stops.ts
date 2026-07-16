@@ -205,6 +205,10 @@ function inferSparseGapStop(
 /**
  * Moving = evidence of travel. Prefers SDK activity / is_moving when confident;
  * falls back to GPS speed. High-confidence `still` is never moving.
+ *
+ * Bare `isMoving: true` is not enough when activity is still/unknown/missing and
+ * speed is low — indoor GPS often flips that flag during jitter, which would
+ * prematurely end a stay and flash a fake drive until absorb can prove return.
  */
 export function isMovingPoint(
   point: ParsedPoint,
@@ -225,6 +229,13 @@ export function isMovingPoint(
     return true;
   }
   if (point.isMoving === true) {
+    if (
+      activity == null ||
+      activity === 'unknown' ||
+      activity === 'still'
+    ) {
+      return point.speed != null && point.speed >= config.movingSpeedMps;
+    }
     return true;
   }
   if (point.isMoving === false && activity === 'still') {

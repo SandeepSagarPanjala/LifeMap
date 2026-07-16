@@ -13,7 +13,6 @@ import {
   SettingsLinkRow,
 } from '@/components/settings/settings-group';
 import { TrackingSettings } from '@/components/settings/tracking-settings';
-import { DaySummaryBackfillSettings } from '@/components/settings/day-summary-backfill-settings';
 import { backupScheduleLabel } from '@/lib/backup/backup-settings';
 import { getBackupStatus } from '@/lib/backup/backup-service';
 import { driveMapRefreshIntervalLabel } from '@/lib/app-copy';
@@ -154,7 +153,6 @@ export function SettingsScreen() {
             onPress={() => navigation.navigate('DriveMapRefreshSettings')}
           />
         </SettingsGroup>
-        <DaySummaryBackfillSettings />
 
         <SettingsGroupLabel title="Information" />
         <SettingsGroup>

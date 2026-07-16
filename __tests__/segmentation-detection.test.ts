@@ -176,6 +176,125 @@ describe('segmentation detection (current algorithm)', () => {
       expect(trips).toHaveLength(0);
     });
 
+    it('keeps one stay when indoor GPS wanders with bare isMoving flags', () => {
+      // Jul 15 Home pattern: long still stay, ~56m wander with junk isMoving /
+      // unknown + near-zero speed, then back at Home — must not flash a drive.
+      const start = new Date('2026-07-15T05:00:00.000Z');
+      const points: LocationPointRow[] = [
+        {
+          id: 1,
+          timestamp: start,
+          lat: HOME.lat,
+          lng: HOME.lng,
+          accuracy: 10,
+          altitude: null,
+          speed: 0,
+          source: 'gps',
+          heading: null,
+          headingAccuracy: null,
+          speedAccuracy: null,
+          altitudeAccuracy: null,
+          activityType: 'still',
+          activityConfidence: 100,
+          isMoving: true,
+          isMock: null,
+          uuid: null,
+          batteryLevel: null,
+          batteryIsCharging: null,
+        },
+        {
+          id: 2,
+          timestamp: new Date(start.getTime() + 60 * 60_000),
+          lat: HOME.lat,
+          lng: HOME.lng,
+          accuracy: 20,
+          altitude: null,
+          speed: 0,
+          source: 'gps',
+          heading: null,
+          headingAccuracy: null,
+          speedAccuracy: null,
+          altitudeAccuracy: null,
+          activityType: 'still',
+          activityConfidence: 100,
+          isMoving: true,
+          isMock: null,
+          uuid: null,
+          batteryLevel: null,
+          batteryIsCharging: null,
+        },
+        // Peak wander (~50m NE) still confidently still — stay continues.
+        {
+          id: 3,
+          timestamp: new Date(start.getTime() + 60 * 60_000 + 20_000),
+          lat: HOME.lat + 0.0005,
+          lng: HOME.lng + 0.0003,
+          accuracy: 34,
+          altitude: null,
+          speed: 3.2,
+          source: 'gps',
+          heading: null,
+          headingAccuracy: null,
+          speedAccuracy: null,
+          altitudeAccuracy: null,
+          activityType: 'still',
+          activityConfidence: 100,
+          isMoving: true,
+          isMock: null,
+          uuid: null,
+          batteryLevel: null,
+          batteryIsCharging: null,
+        },
+        // Tail that previously ended the stay: unknown + isMoving, tiny speed.
+        {
+          id: 4,
+          timestamp: new Date(start.getTime() + 60 * 60_000 + 40_000),
+          lat: HOME.lat + 0.0003,
+          lng: HOME.lng + 0.0002,
+          accuracy: 22,
+          altitude: null,
+          speed: 0.11,
+          source: 'gps',
+          heading: null,
+          headingAccuracy: null,
+          speedAccuracy: null,
+          altitudeAccuracy: null,
+          activityType: 'unknown',
+          activityConfidence: 100,
+          isMoving: true,
+          isMock: null,
+          uuid: null,
+          batteryLevel: null,
+          batteryIsCharging: null,
+        },
+        {
+          id: 5,
+          timestamp: new Date(start.getTime() + 60 * 60_000 + 60_000),
+          lat: HOME.lat + 0.0001,
+          lng: HOME.lng + 0.0001,
+          accuracy: 11,
+          altitude: null,
+          speed: null,
+          source: 'gps',
+          heading: null,
+          headingAccuracy: null,
+          speedAccuracy: null,
+          altitudeAccuracy: null,
+          activityType: 'unknown',
+          activityConfidence: 0,
+          isMoving: true,
+          isMock: null,
+          uuid: null,
+          batteryLevel: null,
+          batteryIsCharging: null,
+        },
+      ];
+
+      const timeline = buildDayTimeline(points, config);
+      expect(timeline.map(entry => entry.kind)).toEqual(['stay']);
+      expect(timeline.some(entry => entry.kind === 'travel')).toBe(false);
+    });
+
     it('does not emit a stay from a single GPS point', () => {
       const trips = detectTripsFromPoints(
         makePoints([{ minutes: 0, ...HOME }]),
