@@ -37,8 +37,13 @@ export function normalizeOnFootDetectionEnabled(raw: string | null): boolean {
 
 export async function hydrateOnFootDetectionSetting(): Promise<boolean> {
   const raw = await getSetting(SETTINGS_KEY_ON_FOOT_DETECTION_ENABLED);
-  cachedEnabled = normalizeOnFootDetectionEnabled(raw);
+  const next = normalizeOnFootDetectionEnabled(raw);
+  const changed = !hydrated || next !== cachedEnabled;
+  cachedEnabled = next;
   hydrated = true;
+  if (changed) {
+    notifyOnFootDetectionEnabled(cachedEnabled);
+  }
   return cachedEnabled;
 }
 
