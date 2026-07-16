@@ -190,14 +190,27 @@ const DayStoryStopMarker = memo(function DayStoryStopMarker({
     }
   }, [onPressStay, stop.stays]);
 
-  const labelCard = (
-    <View
-      style={[styles.labelCard, { backgroundColor: labelBackground }]}
-      collapsable={false}
-    >
-      <PlaceLabelRow stop={stop} />
-    </View>
-  );
+  // History opens from the label Pressable only — not Marker.onPress.
+  // Moments share this Marker; Marker.onPress would also fire on cam taps.
+  const labelCard =
+    onPressStay != null ? (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Open ${stop.label} in history`}
+        onPress={handlePressStop}
+        style={[styles.labelCard, { backgroundColor: labelBackground }]}
+        collapsable={false}
+      >
+        <PlaceLabelRow stop={stop} />
+      </Pressable>
+    ) : (
+      <View
+        style={[styles.labelCard, { backgroundColor: labelBackground }]}
+        collapsable={false}
+      >
+        <PlaceLabelRow stop={stop} />
+      </View>
+    );
 
   const momentsCard = showMoments ? (
     <View style={styles.momentsCard} collapsable={false}>
@@ -240,7 +253,6 @@ const DayStoryStopMarker = memo(function DayStoryStopMarker({
         centerOffset={cardOffset}
         zIndex={stop.isHome ? 11 : 9}
         tracksViewChanges={cardTracks.tracksViewChanges}
-        onPress={onPressStay != null ? handlePressStop : undefined}
       >
         <View
           style={styles.cardStack}

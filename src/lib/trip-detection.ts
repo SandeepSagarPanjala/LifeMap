@@ -26,6 +26,8 @@ export type TripTimelineOptions = {
   placePois?: readonly import('@/lib/place-lookup-types').PlacePoiRow[];
   /** When true (iOS), pick closest POI to each stay anchor. */
   resolveClosestPoi?: boolean;
+  /** When false, foot activity is ignored for trip detection and map paths. */
+  onFootDetectionEnabled?: boolean;
 };
 
 export type PlaceKind = 'saved' | 'cache';

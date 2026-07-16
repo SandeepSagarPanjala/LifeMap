@@ -60,4 +60,19 @@ describe('buildTravelModeLegs', () => {
     expect(legs).toHaveLength(1);
     expect(legs[0]?.style).toBe('solid');
   });
+
+  it('renders all solid when on-foot detection is disabled', () => {
+    const legs = buildTravelModeLegs(
+      [
+        pointAt(1, 0, 33.2, -97.13, 'in_vehicle'),
+        pointAt(2, 2, 33.21, -97.13, 'in_vehicle'),
+        pointAt(3, 4, 33.211, -97.13, 'walking'),
+        pointAt(4, 6, 33.212, -97.13, 'walking'),
+      ],
+      { onFootDetection: false },
+    );
+    expect(legs).toHaveLength(1);
+    expect(legs[0]?.style).toBe('solid');
+    expect(legs[0]?.coordinates).toHaveLength(4);
+  });
 });

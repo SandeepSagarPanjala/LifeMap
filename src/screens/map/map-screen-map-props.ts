@@ -59,9 +59,13 @@ export function areMapScreenMapPropsEqual(
     previous.mapAttributionInsets === next.mapAttributionInsets &&
     previous.colorScheme === next.colorScheme &&
     previous.showUserLocation === next.showUserLocation &&
+    previous.onRegionChange === next.onRegionChange &&
     previous.onRegionChangeComplete === next.onRegionChangeComplete &&
     previous.handleUserLocation === next.handleUserLocation &&
     previous.showDayJourney === next.showDayJourney &&
+    previous.showRouteDirectionArrows === next.showRouteDirectionArrows &&
+    previous.routeDirectionMapLatitudeDelta ===
+      next.routeDirectionMapLatitudeDelta &&
     previous.mapSavedPlaces === next.mapSavedPlaces &&
     previous.dayMomentMapPins === next.dayMomentMapPins &&
     previous.historyMomentMapPins === next.historyMomentMapPins &&

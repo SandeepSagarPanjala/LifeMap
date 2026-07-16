@@ -106,6 +106,30 @@ export const MAX_MAP_POLYLINE_POINTS = 320;
 export const MAX_EMPHASIZED_TRIP_POLYLINE_POINTS = 500;
 export const MOMENT_CLUSTER_MIN_ZOOM_DELTA = 0.008;
 
+/** Reference latitudeDelta for arrow size/spacing (~neighborhood). */
+export const ROUTE_DIRECTION_ARROW_REF_ZOOM_DELTA = 0.02;
+/** Target spacing between direction arrows at the reference zoom. */
+export const ROUTE_DIRECTION_ARROW_SPACING_M = 120;
+/** Ignore paths shorter than this — avoids Home GPS jitter arrow forests. */
+export const ROUTE_DIRECTION_ARROWS_MIN_PATH_M = 40;
+/** Skip placing an arrow on a segment shorter than this (unstable bearing). */
+export const ROUTE_DIRECTION_ARROWS_MIN_SEGMENT_M = 8;
+/**
+ * Safety ceiling only (native polyline cost). Count is otherwise
+ * floor(pathLength / spacing) — long drives are not stuck at 24.
+ */
+export const ROUTE_DIRECTION_ARROWS_PERF_MAX = 120;
+/** Arrow length in meters at the reference zoom (scales with latitudeDelta). */
+export const ROUTE_DIRECTION_ARROW_SIZE_M = 30;
+/** Thin stroke so arrows read as lines, not blobs. */
+export const ROUTE_DIRECTION_ARROW_STROKE_WIDTH = 1;
+/** High-contrast arrow color on colored path fills. */
+export const ROUTE_DIRECTION_ARROW_COLOR = '#111111';
+/** Clamp zoom used for arrow scaling (very far out). */
+export const ROUTE_DIRECTION_ARROW_MAX_ZOOM_DELTA = 0.35;
+/** Clamp zoom used for arrow scaling (very close in). */
+export const ROUTE_DIRECTION_ARROW_MIN_ZOOM_DELTA = 0.0012;
+
 export const HISTORY_DAY_LOAD_DEBOUNCE_MS = 300;
 /** Today + one browsed past day — avoids evicting today when opening history. */
 export const HISTORY_DATA_CACHE_MAX_ENTRIES = 2;
@@ -183,6 +207,16 @@ export const USER_COORDINATE_MIN_MOVE_METERS = 25;
 
 /** SDK distance filter while MOVING — every qualifying fix is saved. */
 export const TRACKING_DISTANCE_FILTER_METERS = 10;
+/** Tighter distance filter while on foot (when on-foot detection is enabled). */
+export const TRACKING_DISTANCE_FILTER_METERS_ON_FOOT = 5;
+
+export const SETTINGS_KEY_ON_FOOT_DETECTION_ENABLED =
+  'on_foot_detection_enabled';
+export const DEFAULT_ON_FOOT_DETECTION_ENABLED = true;
+/** Keep denser on-foot tracking through brief unknown/still SDK blips. */
+export const ON_FOOT_TRACKING_EXIT_HOLD_MS = 90_000;
+/** Speed ceiling when inferring foot mode from GPS during hold (m/s). */
+export const ON_FOOT_WALK_SPEED_MAX_MS = 3.5;
 
 export const SETTINGS_KEY_TRACKING_ENABLED = 'tracking_enabled';
 export const SETTINGS_KEY_TRACKING_MAX_RELIABILITY = 'tracking_max_reliability';

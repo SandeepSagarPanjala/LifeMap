@@ -27,6 +27,9 @@ type HistoryDayMapOverlayProps = {
   onPressSelectedEntryMoments?: (type: MomentCountType) => void;
   tripConfig: TripDetectionConfig;
   playbackProgress: number | null;
+  /** Zoom-gated direction chevrons on the selected trip. */
+  showDirectionArrows?: boolean;
+  mapLatitudeDelta?: number;
 };
 
 /** All day drives/visits on the map; selected event keeps full detail and labels. */
@@ -43,6 +46,8 @@ export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
   onPressSelectedEntryMoments,
   tripConfig,
   playbackProgress,
+  showDirectionArrows = false,
+  mapLatitudeDelta,
 }: HistoryDayMapOverlayProps) {
   const selected = plan.selected;
   const isPlaying = playbackProgress != null;
@@ -104,6 +109,8 @@ export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
             points={selected.travelPoints}
             playbackProgress={playbackProgress}
             emphasized
+            showDirectionArrows={showDirectionArrows}
+            mapLatitudeDelta={mapLatitudeDelta}
             startAt={selected.entry.startAt}
             endAt={selected.entry.endAt}
             startLabel={selectedDriveStartLabel}
@@ -120,6 +127,8 @@ export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
         <TripRouteOverlay
           points={selected.inboundPoints}
           emphasized
+          showDirectionArrows={showDirectionArrows}
+          mapLatitudeDelta={mapLatitudeDelta}
           anchorStartStay={selected.anchorStartStay}
           anchorEndStay={selected.anchorEndStay}
         />
@@ -132,6 +141,8 @@ export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
         <TripRouteOverlay
           points={selected.outboundPoints}
           emphasized
+          showDirectionArrows={showDirectionArrows}
+          mapLatitudeDelta={mapLatitudeDelta}
           anchorStartStay={selected.entry}
           anchorEndStay={selected.outboundEndStay}
         />

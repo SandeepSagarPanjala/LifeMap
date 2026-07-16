@@ -2,6 +2,7 @@ import type { LocationPointRow } from '@/db/repositories/location-days';
 import type { SavedPlaceRow } from '@/db/repositories/saved-places';
 import { toDateKey } from '@/lib/day-utils';
 import { locationPointRow } from '@/lib/location-point-row';
+import { getOnFootDetectionEnabledSync } from '@/lib/on-foot-detection-settings';
 import {
   type DayTimelineEntry,
   type DetectedTrip,
@@ -33,11 +34,15 @@ export { TRIP_PLOT_SOURCES } from '@lifemap/segmentation';
 
 function stopConfigFromTripConfig(
   config: TripDetectionConfig,
+  options: TripTimelineOptions = {},
 ): StopDetectionConfig {
+  const onFootDetectionEnabled =
+    options.onFootDetectionEnabled ?? getOnFootDetectionEnabledSync();
   return {
     ...DEFAULT_STOP_CONFIG,
     radiusM: config.dwellRadiusMeters,
     minDwellMs: config.dwellMinutes * 60_000,
+    footDetectionEnabled: onFootDetectionEnabled,
   };
 }
 
@@ -153,7 +158,7 @@ export function detectSegmentsForDay(
   options: TripTimelineOptions = {},
 ): TripSegment[] {
   const parsed = locationRowsToParsedPoints(allPoints);
-  const stopConfig = stopConfigFromTripConfig(config);
+  const stopConfig = stopConfigFromTripConfig(config, options);
   const resolveClosestPoi =
     options.resolveClosestPoi ?? platformResolvesClosestPoi();
   return detectTripsForDay(
@@ -196,7 +201,7 @@ export function detectTripsFromPoints(
   options: TripTimelineOptions = {},
 ): DetectedTrip[] {
   const parsed = locationRowsToParsedPoints(points);
-  const stopConfig = stopConfigFromTripConfig(config);
+  const stopConfig = stopConfigFromTripConfig(config, options);
   const result = detectSegmentTrips(
     parsed,
     stopConfig,
