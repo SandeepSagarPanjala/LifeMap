@@ -11,11 +11,11 @@ import {
   MAX_EMPHASIZED_TRIP_POLYLINE_POINTS,
   MAX_MAP_POLYLINE_POINTS,
   ROUTE_PATH_BORDER,
-  ROUTE_PATH_BORDER_SOLID,
   ROUTE_PATH_BORDER_WIDTH,
   ROUTE_PATH_FILL,
-  ROUTE_PATH_FILL_SOLID,
   ROUTE_PATH_FILL_WIDTH,
+  ROUTE_PATH_STORY_BORDER,
+  ROUTE_PATH_STORY_FILL,
 } from '@/lib/app-constants';
 import {
   distanceKm,
@@ -37,7 +37,7 @@ import { buildTravelModeLegs } from '@/lib/travel-mode-legs';
 type TripRouteOverlayProps = {
   points: LocationPointRow[];
   playbackProgress?: number | null;
-  /** History scrub — solid route for the selected drive only. */
+  /** History scrub — selected drive uses the same soft path as day browse. */
   emphasized?: boolean;
   /** Drive start/end times for history endpoint labels. */
   startAt?: Date;
@@ -161,8 +161,10 @@ export const TripRouteOverlay = memo(function TripRouteOverlay({
   }
 
   const isPlaying = playbackProgress != null;
-  const routeBorder = emphasized ? ROUTE_PATH_BORDER_SOLID : ROUTE_PATH_BORDER;
-  const routeFill = emphasized ? ROUTE_PATH_FILL_SOLID : ROUTE_PATH_FILL;
+  // Match day-browse soft path so direction chevrons stay crisp (solid blue
+  // washes out the thin black arrows).
+  const routeBorder = emphasized ? ROUTE_PATH_STORY_BORDER : ROUTE_PATH_BORDER;
+  const routeFill = emphasized ? ROUTE_PATH_STORY_FILL : ROUTE_PATH_FILL;
   const showEndpointLabels =
     emphasized &&
     !isPlaying &&
@@ -191,7 +193,7 @@ export const TripRouteOverlay = memo(function TripRouteOverlay({
         <>
           <Polyline
             coordinates={playedCoordinates}
-            strokeColor={ROUTE_PATH_BORDER_SOLID}
+            strokeColor={ROUTE_PATH_STORY_BORDER}
             strokeWidth={ROUTE_PATH_BORDER_WIDTH}
             lineCap="round"
             lineJoin="round"
@@ -199,7 +201,7 @@ export const TripRouteOverlay = memo(function TripRouteOverlay({
           />
           <Polyline
             coordinates={playedCoordinates}
-            strokeColor={ROUTE_PATH_FILL_SOLID}
+            strokeColor={ROUTE_PATH_STORY_FILL}
             strokeWidth={ROUTE_PATH_FILL_WIDTH}
             lineCap="round"
             lineJoin="round"

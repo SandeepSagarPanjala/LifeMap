@@ -207,15 +207,18 @@ function findVisitDepartureEndIndex(points: LocationPointRow[]): number {
 }
 
 export function isPlayableTimelineEntry(
-  entry: DayTimelineEntry,
+  entry: DayTimelineEntry | null | undefined,
 ): entry is DetectedTrip {
-  return entry.kind !== 'gap';
+  return entry != null && entry.kind !== 'gap';
 }
 
 /** Stay, travel, and gap — selectable in the history bar / next-prev chrome. */
-export function isNavigableTimelineEntry(entry: DayTimelineEntry): boolean {
+export function isNavigableTimelineEntry(
+  entry: DayTimelineEntry | null | undefined,
+): entry is DayTimelineEntry {
   return (
-    entry.kind === 'stay' || entry.kind === 'travel' || entry.kind === 'gap'
+    entry != null &&
+    (entry.kind === 'stay' || entry.kind === 'travel' || entry.kind === 'gap')
   );
 }
 
@@ -223,7 +226,7 @@ export function firstPlayableTimelineIndex(
   entries: DayTimelineEntry[],
 ): number {
   for (let index = 0; index < entries.length; index += 1) {
-    if (isPlayableTimelineEntry(entries[index]!)) {
+    if (isPlayableTimelineEntry(entries[index])) {
       return index;
     }
   }
@@ -232,7 +235,7 @@ export function firstPlayableTimelineIndex(
 
 export function lastPlayableTimelineIndex(entries: DayTimelineEntry[]): number {
   for (let index = entries.length - 1; index >= 0; index -= 1) {
-    if (isPlayableTimelineEntry(entries[index]!)) {
+    if (isPlayableTimelineEntry(entries[index])) {
       return index;
     }
   }
@@ -243,8 +246,9 @@ export function findNextPlayableTimelineIndex(
   entries: DayTimelineEntry[],
   fromIndex: number,
 ): number {
-  for (let index = fromIndex + 1; index < entries.length; index += 1) {
-    if (isPlayableTimelineEntry(entries[index]!)) {
+  const start = Math.max(-1, Math.min(fromIndex, entries.length - 1));
+  for (let index = start + 1; index < entries.length; index += 1) {
+    if (isPlayableTimelineEntry(entries[index])) {
       return index;
     }
   }
@@ -255,8 +259,10 @@ export function findPrevPlayableTimelineIndex(
   entries: DayTimelineEntry[],
   fromIndex: number,
 ): number {
-  for (let index = fromIndex - 1; index >= 0; index -= 1) {
-    if (isPlayableTimelineEntry(entries[index]!)) {
+  // Clamp so a stale scrub index from a longer day cannot read past length.
+  const start = Math.min(fromIndex, entries.length);
+  for (let index = start - 1; index >= 0; index -= 1) {
+    if (isPlayableTimelineEntry(entries[index])) {
       return index;
     }
   }
@@ -267,7 +273,7 @@ export function firstNavigableTimelineIndex(
   entries: DayTimelineEntry[],
 ): number {
   for (let index = 0; index < entries.length; index += 1) {
-    if (isNavigableTimelineEntry(entries[index]!)) {
+    if (isNavigableTimelineEntry(entries[index])) {
       return index;
     }
   }
@@ -276,7 +282,7 @@ export function firstNavigableTimelineIndex(
 
 export function lastNavigableTimelineIndex(entries: DayTimelineEntry[]): number {
   for (let index = entries.length - 1; index >= 0; index -= 1) {
-    if (isNavigableTimelineEntry(entries[index]!)) {
+    if (isNavigableTimelineEntry(entries[index])) {
       return index;
     }
   }
@@ -287,8 +293,9 @@ export function findNextNavigableTimelineIndex(
   entries: DayTimelineEntry[],
   fromIndex: number,
 ): number {
-  for (let index = fromIndex + 1; index < entries.length; index += 1) {
-    if (isNavigableTimelineEntry(entries[index]!)) {
+  const start = Math.max(-1, Math.min(fromIndex, entries.length - 1));
+  for (let index = start + 1; index < entries.length; index += 1) {
+    if (isNavigableTimelineEntry(entries[index])) {
       return index;
     }
   }
@@ -299,8 +306,10 @@ export function findPrevNavigableTimelineIndex(
   entries: DayTimelineEntry[],
   fromIndex: number,
 ): number {
-  for (let index = fromIndex - 1; index >= 0; index -= 1) {
-    if (isNavigableTimelineEntry(entries[index]!)) {
+  // Clamp so a stale scrub index from a longer day cannot read past length.
+  const start = Math.min(fromIndex, entries.length);
+  for (let index = start - 1; index >= 0; index -= 1) {
+    if (isNavigableTimelineEntry(entries[index])) {
       return index;
     }
   }
