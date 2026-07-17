@@ -7,6 +7,7 @@ import {
 } from 'react';
 import { View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import * as Sentry from '@sentry/react-native';
 
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -93,6 +94,11 @@ class ReactErrorBoundary extends Component<
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     this.props.onError?.(error, errorInfo);
+    Sentry.captureException(error, {
+      contexts: {
+        react: { componentStack: errorInfo.componentStack },
+      },
+    });
     if (__DEV__) {
       console.error('[ErrorBoundary]', error, errorInfo.componentStack);
     }

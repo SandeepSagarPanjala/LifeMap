@@ -268,7 +268,10 @@ export function useMapScreenController() {
   const historyPanelY = useRef(new Animated.Value(400)).current;
   const historyPanelOpenRef = useRef(false);
   const pendingGoToTodayRef = useRef(false);
-  /** After a day change: land on first or last bar segment (includes gaps). */
+  /**
+   * After a day change: land on the first bar segment (visit, drive, or gap).
+   * Missing/gap counts like any other timeline event for day-edge selection.
+   */
   const pendingHistoryEdgeSelectRef = useRef<'first' | 'last' | null>(null);
   const bootstrapCoordinateRef = useRef<MapUserCoordinate | null>(null);
 
@@ -1289,12 +1292,11 @@ export function useMapScreenController() {
       return;
     }
     const nextKey = shiftDateKey(selectedDateKey, -1);
+    pendingHistoryEdgeSelectRef.current = 'first';
     if (earliestDateKey != null && nextKey < earliestDateKey) {
-      pendingHistoryEdgeSelectRef.current = 'last';
       handleHistoryDateKeyChange(earliestDateKey);
       return;
     }
-    pendingHistoryEdgeSelectRef.current = 'last';
     handleHistoryDateKeyChange(nextKey);
   }, [
     canGoPrevDay,
@@ -1597,12 +1599,27 @@ export function useMapScreenController() {
   );
 
   useEffect(() => {
-    if (
-      !historyPanelOpen ||
-      historyLoading ||
-      historyEntries.length === 0 ||
-      selectedHistoryIndex >= 0
-    ) {
+    if (!historyPanelOpen || historyLoading) {
+      return;
+    }
+    if (historyEntries.length === 0) {
+      if (selectedHistoryIndex >= 0) {
+        setSelectedHistoryIndex(-1);
+      }
+      return;
+    }
+    // Day swap can briefly keep yesterday's scrub index against a shorter list.
+    if (selectedHistoryIndex >= historyEntries.length) {
+      const edge = pendingHistoryEdgeSelectRef.current ?? 'first';
+      pendingHistoryEdgeSelectRef.current = null;
+      setSelectedHistoryIndex(
+        edge === 'last'
+          ? lastNavigableTimelineIndex(historyEntries)
+          : firstNavigableTimelineIndex(historyEntries),
+      );
+      return;
+    }
+    if (selectedHistoryIndex >= 0) {
       return;
     }
     const edge = pendingHistoryEdgeSelectRef.current ?? 'first';

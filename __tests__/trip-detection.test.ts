@@ -296,6 +296,21 @@ describe('playable timeline navigation', () => {
     expect(findPrevNavigableTimelineIndex(entries, 1)).toBe(0);
     expect(findPrevNavigableTimelineIndex(entries, 0)).toBe(-1);
   });
+
+  it('tolerates a stale scrub index past the current day length', () => {
+    expect(findPrevNavigableTimelineIndex(entries, 99)).toBe(2);
+    expect(findPrevPlayableTimelineIndex(entries, 99)).toBe(2);
+    expect(findNextNavigableTimelineIndex(entries, 99)).toBe(-1);
+    expect(findNextPlayableTimelineIndex(entries, 99)).toBe(-1);
+  });
+
+  it('skips undefined holes without throwing', () => {
+    const withHole = [stay, undefined, travel] as unknown as typeof entries;
+    expect(firstNavigableTimelineIndex(withHole)).toBe(0);
+    expect(lastNavigableTimelineIndex(withHole)).toBe(2);
+    expect(findPrevNavigableTimelineIndex(withHole, 2)).toBe(0);
+    expect(findNextNavigableTimelineIndex(withHole, 0)).toBe(2);
+  });
 });
 
 describe('isUserStillAtStay', () => {
