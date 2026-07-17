@@ -25,7 +25,7 @@ jobs:
           set -euo pipefail
           text="${PR_TITLE}"$'\n'"${PR_BODY}"
           # Match #123 (issue/PR refs). Reject bare "#" from the template placeholder.
-          if ! printf '%s' "$text" | grep -Eq '(^|[^A-Za-z0-9_])#[1-9][0-9]*\b'; then
+          if ! printf '%s' "$text" | grep -Eq '(^|[^[:alnum:]_])#[1-9][0-9]*([^[:digit:]]|$)'; then
             echo "::error::Every PR must reference a GitHub issue number (e.g. #91)."
             echo "Add it in the PR title and/or the Issue field in the PR body template."
             echo ""
