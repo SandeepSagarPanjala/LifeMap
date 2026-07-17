@@ -13,6 +13,27 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  require-issue:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require linked GitHub issue
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -euo pipefail
+          text="${PR_TITLE}"$'\n'"${PR_BODY}"
+          # Match #123 (issue/PR refs). Reject bare "#" from the template placeholder.
+          if ! printf '%s' "$text" | grep -Eq '(^|[^A-Za-z0-9_])#[1-9][0-9]*\b'; then
+            echo "::error::Every PR must reference a GitHub issue number (e.g. #91)."
+            echo "Add it in the PR title and/or the Issue field in the PR body template."
+            echo ""
+            echo "Title: ${PR_TITLE}"
+            exit 1
+          fi
+          echo "Found issue reference in PR title/body."
+
   quality:
     runs-on: ubuntu-latest
     steps:
