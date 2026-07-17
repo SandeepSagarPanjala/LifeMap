@@ -55,6 +55,10 @@ platform :ios do
       targets: ["LifeMap"],
     )
 
+    # Don't fail the archive if Sentry dSYM upload flakes (SSL/network).
+    # Xcode treats any script stdout starting with "error:" as a build failure.
+    ENV["SENTRY_ALLOW_FAILURE"] = "true" unless ENV.key?("SENTRY_ALLOW_FAILURE")
+
     # -allowProvisioningUpdates lets Xcode create/download the Apple Distribution
     # cert + App Store profile (needed for export; archive alone can use Development).
     provisioning_args = "DEVELOPMENT_TEAM=#{team_id} -allowProvisioningUpdates"
