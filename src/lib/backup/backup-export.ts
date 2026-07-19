@@ -213,45 +213,73 @@ function serializeTrips(rows: Array<typeof trips.$inferSelect>): unknown[] {
 export function extractTripLabelOverrides(
   tripRows: unknown[],
 ): TripLabelOverride[] {
-  return tripRows
-    .map(row => {
-      if (typeof row !== 'object' || row == null) {
-        return null;
-      }
-      const record = row as Record<string, unknown>;
-      const eventKey =
-        typeof record.eventKey === 'string' ? record.eventKey.trim() : '';
-      if (!eventKey) {
-        return null;
-      }
-      const placeLabel =
-        typeof record.placeLabel === 'string' ? record.placeLabel : null;
-      const placeId =
-        typeof record.placeId === 'number' ? record.placeId : null;
-      const placeKind =
-        record.placeKind === 'saved' || record.placeKind === 'cache'
-          ? record.placeKind
-          : null;
-      const selectedCandidateIndex =
-        typeof record.selectedCandidateIndex === 'number'
-          ? record.selectedCandidateIndex
-          : null;
-      const hasOverride =
-        (placeLabel != null && placeLabel.trim().length > 0) ||
-        selectedCandidateIndex != null ||
-        placeId != null;
-      if (!hasOverride) {
-        return null;
-      }
-      return {
-        eventKey,
-        placeLabel,
-        placeId,
-        placeKind,
-        selectedCandidateIndex,
-      };
-    })
-    .filter((row): row is TripLabelOverride => row != null);
+  const overrides: TripLabelOverride[] = [];
+  for (const row of tripRows) {
+    if (typeof row !== 'object' || row == null) {
+      continue;
+    }
+    const record = row as Record<string, unknown>;
+    const eventKey =
+      typeof record.eventKey === 'string' ? record.eventKey.trim() : '';
+    if (!eventKey) {
+      continue;
+    }
+    const placeLabel =
+      typeof record.placeLabel === 'string' ? record.placeLabel : null;
+    const placeId = typeof record.placeId === 'number' ? record.placeId : null;
+    const placeKind =
+      record.placeKind === 'saved' || record.placeKind === 'cache'
+        ? record.placeKind
+        : null;
+    const selectedCandidateIndex =
+      typeof record.selectedCandidateIndex === 'number'
+        ? record.selectedCandidateIndex
+        : null;
+    const poiId = typeof record.poiId === 'number' ? record.poiId : null;
+    const poiLabel =
+      typeof record.poiLabel === 'string' ? record.poiLabel : null;
+    const dateKey =
+      typeof record.dateKey === 'string' ? record.dateKey.trim() : null;
+    const startAtMs = parseStartAtMs(record);
+    // Only user choices — not reverse-geocode addresses (those wipe poi on apply).
+    const hasOverride =
+      poiId != null ||
+      placeKind === 'saved' ||
+      selectedCandidateIndex != null;
+    if (!hasOverride) {
+      continue;
+    }
+    overrides.push({
+      eventKey,
+      dateKey,
+      startAtMs,
+      placeLabel,
+      placeId,
+      placeKind,
+      selectedCandidateIndex,
+      poiId,
+      poiLabel,
+    });
+  }
+  return overrides;
+}
+
+function parseStartAtMs(record: Record<string, unknown>): number | null {
+  const startAt = record.startAt;
+  if (startAt instanceof Date && !Number.isNaN(startAt.getTime())) {
+    return startAt.getTime();
+  }
+  if (typeof startAt === 'number' && Number.isFinite(startAt)) {
+    return startAt;
+  }
+  if (typeof startAt === 'string' && startAt.trim().length > 0) {
+    const parsed = Date.parse(startAt);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+  if (typeof record.startAtMs === 'number' && Number.isFinite(record.startAtMs)) {
+    return record.startAtMs;
+  }
+  return null;
 }
 
 async function collectMomentMediaFiles(): Promise<BackupMediaFile[]> {

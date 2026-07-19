@@ -97,16 +97,15 @@ export function buildDrawableRouteSegments(
   );
 }
 
-/** Gap-safe groups, then solid/dashed travel-mode legs within each. */
+/** Gap-safe groups, then solid travel-mode legs within each. */
 export function buildDrawableRouteModeLegs(
   points: LocationPointRow[],
   config: TripDetectionConfig,
-  options: { onFootDetection?: boolean } = {},
 ): TravelModeLeg[] {
   const groups = splitDrawablePointGroups(points, config);
   const legs: TravelModeLeg[] = [];
   for (const group of groups) {
-    legs.push(...buildTravelModeLegs(group, options));
+    legs.push(...buildTravelModeLegs(group));
   }
   return legs.filter(leg => leg.coordinates.length >= 2);
 }

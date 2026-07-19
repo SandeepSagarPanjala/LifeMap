@@ -6,10 +6,8 @@ import {
   MISSING_MIN_GAP_MS,
   SAVED_PLACE_MIN_DWELL_MS,
   TRAVEL_MODE_ACTIVITY_CONFIDENCE_MIN,
-  TRAVEL_MODE_DASH_MIN_PATH_M,
 } from '@lifemap/constants';
 import {
-  isFootMotionActivity,
   isWheeledMotionActivity,
   normalizeMotionActivity,
 } from './activity';
@@ -298,7 +296,7 @@ function isSparseEndpointJump(points: ParsedPoint[]): boolean {
 
 /**
  * Brief unknown/accuracy teleports that leave and return near the same spot.
- * Keeps real walks (confident foot path) and vehicle legs.
+ * Keeps real vehicle legs.
  */
 function isLowQualityStayTeleport(
   points: ParsedPoint[],
@@ -313,7 +311,6 @@ function isLowQualityStayTeleport(
   if (pathM >= 400) {
     return false;
   }
-  let footPathM = 0;
   let hasWheeled = false;
   let accuracySum = 0;
   let accuracyN = 0;
@@ -326,23 +323,12 @@ function isLowQualityStayTeleport(
     if (confident && isWheeledMotionActivity(activity)) {
       hasWheeled = true;
     }
-    if (
-      config.footDetectionEnabled !== false &&
-      confident &&
-      isFootMotionActivity(activity) &&
-      i + 1 < points.length
-    ) {
-      footPathM += haversineM(point, points[i + 1]!);
-    }
     if (point.accuracy != null && point.accuracy > 0) {
       accuracySum += point.accuracy;
       accuracyN += 1;
     }
   }
   if (hasWheeled) {
-    return false;
-  }
-  if (footPathM >= TRAVEL_MODE_DASH_MIN_PATH_M) {
     return false;
   }
   const avgAccuracyM = accuracyN > 0 ? accuracySum / accuracyN : 0;

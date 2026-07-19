@@ -73,6 +73,12 @@ describe('matchVisitLabelOverride', () => {
     const far = 1_000 + VISIT_LABEL_OVERRIDE_START_MATCH_MS + 1;
     expect(matchVisitLabelOverride(rows, far)).toBeNull();
   });
+
+  it('still matches when algorithm shifts stay start by more than five minutes', () => {
+    const rows = [override({ startAtMs: 1_000, poiId: 9 })];
+    const tenMinutes = 1_000 + 10 * 60 * 1000;
+    expect(matchVisitLabelOverride(rows, tenMinutes)?.poiId).toBe(9);
+  });
 });
 
 describe('shouldApplyVisitLabelOverride', () => {

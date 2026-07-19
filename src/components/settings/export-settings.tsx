@@ -7,7 +7,6 @@ import {
   Alert,
   InteractionManager,
   Pressable,
-  Share,
   View,
 } from 'react-native';
 import { CalendarDays, Database, Eye, Trash2 } from 'lucide-react-native';
@@ -48,6 +47,7 @@ import {
   computeAndCacheExportTableStats,
   loadCachedExportTableStats,
 } from '@/lib/settings-stats';
+import { shareJsonFile } from '@/lib/share-json-file';
 import type { RootStackParamList } from '@/navigation/types';
 
 type ExportPickerTarget =
@@ -133,10 +133,10 @@ export function ExportSettings() {
           );
           return;
         }
-        await Share.share({
-          message: buildDatabaseExportJson(period, tables),
-          title: databaseExportFileLabel(period),
-        });
+        await shareJsonFile(
+          databaseExportFileLabel(period),
+          buildDatabaseExportJson(period, tables),
+        );
         return;
       }
 
@@ -159,10 +159,10 @@ export function ExportSettings() {
           );
           return;
         }
-        await Share.share({
-          message: buildOriginalDataExportJson(period, tables),
-          title: originalDataExportFileLabel(period),
-        });
+        await shareJsonFile(
+          originalDataExportFileLabel(period),
+          buildOriginalDataExportJson(period, tables),
+        );
         return;
       }
 
@@ -179,10 +179,10 @@ export function ExportSettings() {
         return;
       }
 
-      await Share.share({
-        message: buildSingleTableExportJson(target, period, rows),
-        title: databaseExportFileLabel(period, target),
-      });
+      await shareJsonFile(
+        databaseExportFileLabel(period, target),
+        buildSingleTableExportJson(target, period, rows),
+      );
     } catch (error) {
       Alert.alert(APP_COPY.alerts.couldNotExport, errorMessageOr(error));
     } finally {

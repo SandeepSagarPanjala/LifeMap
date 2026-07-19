@@ -5,7 +5,6 @@ import { listSavedPlaces } from '@/db/repositories/saved-places';
 import type { PlaceLookupRow, PlacePoiRow } from '@/lib/place-lookup-types';
 import { loadPlaceLookupContext } from '@/lib/place-lookup-context';
 import { shiftDateKey } from '@/lib/day-utils';
-import { getOnFootDetectionEnabled } from '@/lib/on-foot-detection-settings';
 import {
   buildSegmentationTimeline,
   detectSegmentsForDay,
@@ -78,13 +77,11 @@ export function buildExplorerDayTimeline(
   savedPlaces: readonly SavedPlaceRow[] = [],
   placeLookupCache: readonly PlaceLookupRow[] = [],
   placePois: readonly PlacePoiRow[] = [],
-  onFootDetectionEnabled = true,
 ): DayTimelineEntry[] {
   return buildSegmentationTimeline(dateKey, windowPoints, config, {
     savedPlaces,
     placeLookupCache,
     placePois,
-    onFootDetectionEnabled,
   });
 }
 
@@ -96,12 +93,11 @@ export async function buildExplorerDayTimelineFromGps(
   entries: DayTimelineEntry[];
   dayPointCount: number;
 }> {
-  const [places, placeLookup, { windowPoints, dayPointCount }, onFootDetectionEnabled] =
+  const [places, placeLookup, { windowPoints, dayPointCount }] =
     await Promise.all([
       savedPlaces ? Promise.resolve(savedPlaces) : listSavedPlaces(),
       loadPlaceLookupContext(),
       loadExplorerGpsWindow(dateKey),
-      getOnFootDetectionEnabled(),
     ]);
   const entries = buildExplorerDayTimeline(
     dateKey,
@@ -110,7 +106,6 @@ export async function buildExplorerDayTimelineFromGps(
     places,
     placeLookup.placeLookupCache,
     placeLookup.placePois,
-    onFootDetectionEnabled,
   );
   return { entries, dayPointCount };
 }

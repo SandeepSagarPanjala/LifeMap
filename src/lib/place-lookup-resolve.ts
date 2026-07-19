@@ -11,6 +11,7 @@ import {
   mergeTripPlaceLabelAfterLookup,
   tripLookupAnchorFromRow,
   tripRowToBackfillStay,
+  isStayMissingClosestPoi,
   isStayMissingPlaceLabel,
 } from '@/lib/place-lookup-backfill';
 import {
@@ -20,6 +21,7 @@ import {
   stayQualifiesForPlaceLookup,
 } from '@/lib/place-lookup-service';
 import { notifyPlaceLookupUpdated } from '@/lib/place-lookup-events';
+import { getPlaceLookupById } from '@/db/repositories/place-lookup-cache';
 import { matchSavedPlaceForStay } from '@/lib/saved-places';
 import type { DetectedTrip } from '@/lib/trip-detection';
 import {
@@ -81,6 +83,41 @@ export type ResolvePlaceLabelResult =
   | 'skipped'
   | 'failed';
 
+async function attachClosestPoiToTripRow(
+  trip: TripRow,
+  options: {
+    existingByEventKey: ReadonlyMap<string, PersistedTripLabel>;
+  },
+): Promise<ResolvePlaceLabelResult> {
+  if (trip.placeId == null || trip.placeKind !== 'cache') {
+    return 'skipped';
+  }
+  const cache = await getPlaceLookupById(trip.placeId);
+  if (cache == null || cache.lookupStatus !== 'complete') {
+    return 'failed';
+  }
+  const anchor = tripLookupAnchorFromRow(trip);
+  const closestPoi = await resolveClosestPoiForCache(cache.id, anchor);
+  if (closestPoi == null) {
+    return 'skipped';
+  }
+  const labels = mergeTripPlaceLabelAfterLookup(
+    trip.eventKey,
+    options.existingByEventKey,
+    cache,
+    {
+      placeLabel: trip.placeLabel,
+      placeId: trip.placeId,
+      placeKind: 'cache',
+      ...closestPoi,
+    },
+  );
+  await applyTripPersistedLabel(trip.id, labels);
+  notifyMaterializationUpdated();
+  notifyPlaceLookupUpdated();
+  return 'linked_cache';
+}
+
 export async function resolveAndPersistPlaceLabelForTripRow(
   trip: TripRow,
   options: {
@@ -90,6 +127,10 @@ export async function resolveAndPersistPlaceLabelForTripRow(
     bypassSessionBudget?: boolean;
   },
 ): Promise<ResolvePlaceLabelResult> {
+  if (isStayMissingClosestPoi(trip) && !isStayMissingPlaceLabel(trip)) {
+    return attachClosestPoiToTripRow(trip, options);
+  }
+
   if (!isStayMissingPlaceLabel(trip)) {
     return 'skipped';
   }

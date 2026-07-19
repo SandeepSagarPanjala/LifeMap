@@ -33,10 +33,16 @@ export type BackupManifest = {
 
 export type TripLabelOverride = {
   eventKey: string;
+  /** Used to reattach when stay start/end (and thus eventKey) change. */
+  dateKey?: string | null;
+  startAtMs?: number | null;
   placeLabel: string | null;
   placeId: number | null;
   placeKind: 'saved' | 'cache' | null;
   selectedCandidateIndex: number | null;
+  /** User-selected POI — must survive rebuild / detection-version bumps. */
+  poiId?: number | null;
+  poiLabel?: string | null;
 };
 
 export type CloudBackupMetadata = {

@@ -1,4 +1,5 @@
 import { memo, useMemo } from 'react';
+import { Polyline } from 'react-native-maps';
 
 import type { LocationPointRow } from '@/db/repositories/location-days';
 import type { MomentRow } from '@/db/repositories/moments';
@@ -6,25 +7,35 @@ import type { SavedPlaceRow } from '@/db/repositories/saved-places';
 import type { DayTimelineEntry, DetectedTrip } from '@/lib/trip-detection';
 import type { TripDetectionConfig } from '@/lib/trip-settings';
 import type { DayStoryStop } from '@/lib/day-story-stops';
-import { originVisitNumberForTravel } from '@/lib/day-story-stops';
-import { dayStoryColorForVisit } from '@/lib/day-story-colors';
+import {
+  chronologicalStayVisitNumbers,
+  originVisitNumberForTravel,
+} from '@/lib/day-story-stops';
+import {
+  dayStoryColorForVisit,
+  dayStoryRouteBorder,
+  dayStoryRouteFill,
+} from '@/lib/day-story-colors';
+import { buildDayStoryStayConnectors } from '@/lib/day-story-stay-connectors';
+import { travelDisplayPointsForTimeline } from '@/lib/history-map-plan';
 import type { MomentCountType } from '@/lib/moments/moment-counts';
+import {
+  VISIT_CONNECTOR_DASH_PATTERN,
+  VISIT_CONNECTOR_STROKE_WIDTH,
+} from '@/lib/app-constants';
 
 import { DayStoryStopsOverlay } from '@/components/map/DayStoryStopsOverlay';
 import { RoutePathOverlay } from '@/components/map/RoutePathOverlay';
 
 type DayJourneyOverlayProps = {
   travels: DetectedTrip[];
-  /** Prebuilt day-story stops from the map controller. */
   stops: readonly DayStoryStop[];
   tripConfig: TripDetectionConfig;
   savedPlaces?: readonly SavedPlaceRow[];
-  /** Raw GPS fallback only before trip detection has produced any stays or drives. */
   fallbackPoints?: LocationPointRow[];
   dayMoments?: readonly MomentRow[];
   historyEntries?: readonly DayTimelineEntry[];
   hideSavedPlaceId?: number | null;
-  /** Zoom-gated direction chevrons on detected travels. */
   showDirectionArrows?: boolean;
   mapLatitudeDelta?: number;
   onPressStoryMomentType?: (
@@ -34,25 +45,9 @@ type DayJourneyOverlayProps = {
   onPressStoryStay?: (stay: DetectedTrip) => void;
 };
 
-function visitNumbersByStayId(
-  stops: readonly DayStoryStop[],
-): Map<string, number> {
-  const map = new Map<string, number>();
-  for (const stop of stops) {
-    for (let i = 0; i < stop.stayIds.length; i += 1) {
-      const stayId = stop.stayIds[i];
-      const visitNumber = stop.visitNumbers[i];
-      if (stayId != null && visitNumber != null) {
-        map.set(stayId, visitNumber);
-      }
-    }
-  }
-  return map;
-}
-
 /**
- * History-closed day browse: soft drive paths + numbered story stops.
- * Drive tint matches the origin visit number color (leave stop 1 → path uses 1's color).
+ * History-closed day browse: History drive edges + numbered stops + dashed
+ * pin connectors (core start→pin, pin→core end).
  */
 export const DayJourneyOverlay = memo(function DayJourneyOverlay({
   travels,
@@ -68,36 +63,56 @@ export const DayJourneyOverlay = memo(function DayJourneyOverlay({
   onPressStoryMomentType,
   onPressStoryStay,
 }: DayJourneyOverlayProps) {
-  const visitByStayId = useMemo(() => visitNumbersByStayId(stops), [stops]);
+  const visitByStayId = useMemo(() => {
+    const stays = historyEntries.filter(
+      (e): e is DetectedTrip => e.kind === 'stay',
+    );
+    return chronologicalStayVisitNumbers(
+      stays.length > 0 ? stays : stops.flatMap(s => s.stays),
+    );
+  }, [historyEntries, stops]);
 
-  const travelColors = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const travel of travels) {
-      const originVisit = originVisitNumberForTravel(
-        historyEntries,
-        travel.id,
-        visitByStayId,
-      );
-      if (originVisit != null) {
-        map.set(travel.id, dayStoryColorForVisit(originVisit));
-      }
-    }
-    return map;
-  }, [travels, historyEntries, visitByStayId]);
+  const travelPaths = useMemo(
+    () =>
+      travels.map(travel => {
+        const originVisit = originVisitNumberForTravel(
+          historyEntries,
+          travel.id,
+          visitByStayId,
+        );
+        return {
+          travel,
+          points: travelDisplayPointsForTimeline(
+            travel,
+            historyEntries,
+            tripConfig,
+          ),
+          color:
+            originVisit != null ? dayStoryColorForVisit(originVisit) : null,
+        };
+      }),
+    [travels, historyEntries, tripConfig, visitByStayId],
+  );
+
+  const connectors = useMemo(
+    () => buildDayStoryStayConnectors(stops, historyEntries),
+    [stops, historyEntries],
+  );
+  const dash = useMemo(() => [...VISIT_CONNECTOR_DASH_PATTERN], []);
 
   return (
     <>
-      {travels.length > 0 ? (
-        travels.map(travel => (
+      {travelPaths.length > 0 ? (
+        travelPaths.map(({ travel, points, color }) => (
           <RoutePathOverlay
             key={travel.id}
-            points={travel.points}
+            points={points}
             tripConfig={tripConfig}
             soft
             continuous
             showDirectionArrows={showDirectionArrows}
             mapLatitudeDelta={mapLatitudeDelta}
-            color={travelColors.get(travel.id) ?? null}
+            color={color}
           />
         ))
       ) : stops.length === 0 && fallbackPoints.length > 0 ? (
@@ -107,6 +122,32 @@ export const DayJourneyOverlay = memo(function DayJourneyOverlay({
           soft
         />
       ) : null}
+
+      {connectors.map(connector => (
+        <Polyline
+          key={`${connector.key}-border`}
+          coordinates={connector.coordinates}
+          strokeColor={dayStoryRouteBorder(0.55)}
+          strokeWidth={VISIT_CONNECTOR_STROKE_WIDTH + 2.5}
+          lineCap="round"
+          lineJoin="round"
+          lineDashPattern={dash}
+          zIndex={2}
+        />
+      ))}
+      {connectors.map(connector => (
+        <Polyline
+          key={`${connector.key}-fill`}
+          coordinates={connector.coordinates}
+          strokeColor={dayStoryRouteFill(connector.color, 0.85)}
+          strokeWidth={VISIT_CONNECTOR_STROKE_WIDTH}
+          lineCap="round"
+          lineJoin="round"
+          lineDashPattern={dash}
+          zIndex={3}
+        />
+      ))}
+
       <DayStoryStopsOverlay
         stops={stops}
         savedPlaces={savedPlaces}

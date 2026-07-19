@@ -5,7 +5,6 @@ import { listSavedPlaces } from '@/db/repositories/saved-places';
 import { getDayRange } from '@/lib/day-utils';
 import type { HistoryData } from '@/lib/history-data-types';
 import { loadPlaceLookupContext } from '@/lib/place-lookup-context';
-import { getOnFootDetectionEnabled } from '@/lib/on-foot-detection-settings';
 import { prepareDayHistoryTimeline } from '@/lib/today-history';
 import { loadYesterdayLookbackPointsForToday } from '@/lib/today-lookback';
 import {
@@ -24,13 +23,12 @@ export async function buildTodayDisplayHistory(
   todayTripRows: readonly TripRow[] = [],
 ): Promise<HistoryData & { dayPointCount: number }> {
   const { start: dayStart, end: dayEnd } = getDayRange(dateKey);
-  const [savedPlaces, lookbackPoints, dayPoints, placeLookup, onFootDetectionEnabled] =
+  const [savedPlaces, lookbackPoints, dayPoints, placeLookup] =
     await Promise.all([
       listSavedPlaces(),
       loadYesterdayLookbackPointsForToday(dateKey, todayTripRows),
       getLocationPointsForDay(dateKey),
       loadPlaceLookupContext(),
-      getOnFootDetectionEnabled(),
     ]);
 
   const entries = prepareDayHistoryTimeline(
@@ -44,7 +42,6 @@ export async function buildTodayDisplayHistory(
       savedPlaces,
       placeLookupCache: placeLookup.placeLookupCache,
       placePois: placeLookup.placePois,
-      onFootDetectionEnabled,
     },
     true,
   );
@@ -69,13 +66,12 @@ export async function buildTodayTailDisplayHistory(
   const { start: dayStart, end: dayEnd } = getDayRange(dateKey);
   const tailStartMs = tailStart.getTime();
 
-  const [savedPlaces, lookbackPoints, dayPoints, placeLookup, onFootDetectionEnabled] =
+  const [savedPlaces, lookbackPoints, dayPoints, placeLookup] =
     await Promise.all([
       listSavedPlaces(),
       loadYesterdayLookbackPointsForToday(dateKey, todayTripRows),
       getLocationPointsForDay(dateKey),
       loadPlaceLookupContext(),
-      getOnFootDetectionEnabled(),
     ]);
 
   const dayPointsInRange = filterPointsInRange(
@@ -95,7 +91,6 @@ export async function buildTodayTailDisplayHistory(
       savedPlaces,
       placeLookupCache: placeLookup.placeLookupCache,
       placePois: placeLookup.placePois,
-      onFootDetectionEnabled,
     },
     true,
   );

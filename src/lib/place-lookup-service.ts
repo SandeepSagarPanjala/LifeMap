@@ -163,7 +163,10 @@ async function performPlaceLookup(
   if (existing?.lookupStatus === 'complete') {
     return existing;
   }
-  if (existing?.lookupStatus === 'failed') {
+  // Failed lookups used to return immediately — unlabeled stays then stayed in
+  // the place-cache backlog forever (Looking up places 1/1 every launch).
+  // Background catch-up may retry once; otherwise leave failed alone.
+  if (existing?.lookupStatus === 'failed' && !options?.bypassSessionBudget) {
     return existing;
   }
 

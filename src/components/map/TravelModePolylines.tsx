@@ -6,7 +6,9 @@ import {
   ROUTE_DIRECTION_ARROW_COLOR,
   ROUTE_DIRECTION_ARROW_REF_ZOOM_DELTA,
   ROUTE_DIRECTION_ARROW_STROKE_WIDTH,
-  TRAVEL_MODE_DASH_PATTERN,
+  TRAVEL_FOOT_BORDER_WIDTH,
+  TRAVEL_FOOT_DASH_PATTERN,
+  TRAVEL_FOOT_FILL_WIDTH,
 } from '@/lib/app-constants';
 import { downsampleMapCoordinates } from '@/lib/location-geo';
 import {
@@ -32,7 +34,7 @@ type TravelModePolylinesProps = {
   mapLatitudeDelta?: number;
 };
 
-/** Renders travel legs with solid vehicle strokes and dashed on-foot strokes. */
+/** Renders travel path polylines (solid drive, dashed closed walks). */
 export const TravelModePolylines = memo(function TravelModePolylines({
   legs,
   fill,
@@ -93,8 +95,6 @@ const ModeLegPolylines = memo(function ModeLegPolylines({
     () => downsampleMapCoordinates(leg.coordinates, maxPoints),
     [leg.coordinates, maxPoints],
   );
-  const dashPattern =
-    leg.style === 'dashed' ? [...TRAVEL_MODE_DASH_PATTERN] : undefined;
   const arrows = useMemo(() => {
     if (!showDirectionArrows) {
       return [];
@@ -109,13 +109,20 @@ const ModeLegPolylines = memo(function ModeLegPolylines({
     return null;
   }
 
+  const isDashed = leg.style === 'dashed';
+  // Walks: thin fine dashes (not the thick dual-stroke drive casing).
+  const strokeFillWidth = isDashed ? TRAVEL_FOOT_FILL_WIDTH : fillWidth;
+  const strokeBorderWidth = isDashed ? TRAVEL_FOOT_BORDER_WIDTH : borderWidth;
+  const dashPattern = isDashed ? [...TRAVEL_FOOT_DASH_PATTERN] : undefined;
+  const lineCap = isDashed ? 'butt' : 'round';
+
   return (
     <>
       <Polyline
         coordinates={coordinates}
         strokeColor={border}
-        strokeWidth={borderWidth}
-        lineCap="round"
+        strokeWidth={strokeBorderWidth}
+        lineCap={lineCap}
         lineJoin="round"
         lineDashPattern={dashPattern}
         zIndex={zBase}
@@ -123,8 +130,8 @@ const ModeLegPolylines = memo(function ModeLegPolylines({
       <Polyline
         coordinates={coordinates}
         strokeColor={fill}
-        strokeWidth={fillWidth}
-        lineCap="round"
+        strokeWidth={strokeFillWidth}
+        lineCap={lineCap}
         lineJoin="round"
         lineDashPattern={dashPattern}
         zIndex={zBase + 1}

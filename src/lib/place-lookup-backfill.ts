@@ -77,6 +77,28 @@ export function isStayMissingPlaceLabel(trip: TripRow): boolean {
   return true;
 }
 
+/**
+ * Address is present but nearest MapKit POI was never attached.
+ * Used by one-shot resolve paths — not the forever place-cache backlog
+ * (that queue only includes fully unlabeled stays).
+ */
+export function isStayMissingClosestPoi(trip: TripRow): boolean {
+  if (trip.kind !== 'stay') {
+    return false;
+  }
+  if (trip.poiId != null) {
+    return false;
+  }
+  return trip.placeKind === 'cache' && trip.placeId != null;
+}
+
+export function stayNeedsPlaceLabelWork(trip: TripRow): boolean {
+  // Background catch-up / banner: only fully unlabeled stays.
+  // Missing closest POI is repaired during resolve when POIs exist, not via
+  // a permanent backlog (which re-showed Looking up places 1/1 every launch).
+  return isStayMissingPlaceLabel(trip);
+}
+
 export function tripRowToBackfillStay(trip: TripRow): DetectedTrip {
   const resolved = resolvedPlaceFromTripRow(trip);
   return {
@@ -113,7 +135,7 @@ export function listStaysNeedingPlaceLookup(
   savedPlaces: readonly SavedPlaceRow[] = [],
 ): TripRow[] {
   return trips.filter(trip => {
-    if (!isStayMissingPlaceLabel(trip)) {
+    if (!stayNeedsPlaceLabelWork(trip)) {
       return false;
     }
     const stay = tripRowToBackfillStay(trip);

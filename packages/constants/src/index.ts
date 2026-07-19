@@ -41,22 +41,22 @@ export const TRIP_RADIUS_CHOICES = [20, 25, 50, 75, 100, 150] as const;
 export const SAVED_PLACE_MIN_DWELL_MINUTES = 1;
 
 /** Bump when visit/drive detection rules change — invalidates sealed day cache. */
-export const TRIP_DETECTION_VERSION = 17;
+export const TRIP_DETECTION_VERSION = 19;
 
 /** Bump when stored route/visit geometry rules change — invalidates fast load path. */
 export const TRIP_GEOMETRY_VERSION = 4;
 
-/**
- * Foot / walk / run legs shorter than this stay solid (or absorb into stay).
- * Tuned for typical parking→door walks (~40–70 m) while filtering curb GPS jitter.
- */
-export const TRAVEL_MODE_DASH_MIN_PATH_M = 50;
-/** Minimum duration for a foot leg to render as dashed. */
-export const TRAVEL_MODE_DASH_MIN_DURATION_MS = 45_000;
 /** Minimum activity confidence to trust motion activity over GPS speed alone. */
 export const TRAVEL_MODE_ACTIVITY_CONFIDENCE_MIN = 60;
-/** react-native-maps dash pattern for on-foot travel legs. */
-export const TRAVEL_MODE_DASH_PATTERN = [10, 8] as const;
+/** Look back this far when snapping stay start to park / first-after-vehicle. */
+export const STAY_BOUNDARY_LOOKBACK_MS = 5 * 60_000;
+/** Max distance from stay core when searching for approach park points. */
+export const STAY_BOUNDARY_LOOKBACK_M = 200;
+/**
+ * Trailing points farther than this fraction of stay radius from the core are
+ * candidates for departure-tail trim (fallback end).
+ */
+export const STAY_BOUNDARY_OUTBOUND_RADIUS_FRACTION = 0.55;
 
 // ——— Map layout ———
 
@@ -207,16 +207,6 @@ export const USER_COORDINATE_MIN_MOVE_METERS = 25;
 
 /** SDK distance filter while MOVING — every qualifying fix is saved. */
 export const TRACKING_DISTANCE_FILTER_METERS = 10;
-/** Tighter distance filter while on foot (when on-foot detection is enabled). */
-export const TRACKING_DISTANCE_FILTER_METERS_ON_FOOT = 5;
-
-export const SETTINGS_KEY_ON_FOOT_DETECTION_ENABLED =
-  'on_foot_detection_enabled';
-export const DEFAULT_ON_FOOT_DETECTION_ENABLED = true;
-/** Keep denser on-foot tracking through brief unknown/still SDK blips. */
-export const ON_FOOT_TRACKING_EXIT_HOLD_MS = 90_000;
-/** Speed ceiling when inferring foot mode from GPS during hold (m/s). */
-export const ON_FOOT_WALK_SPEED_MAX_MS = 3.5;
 
 export const SETTINGS_KEY_TRACKING_ENABLED = 'tracking_enabled';
 export const SETTINGS_KEY_TRACKING_MAX_RELIABILITY = 'tracking_max_reliability';
