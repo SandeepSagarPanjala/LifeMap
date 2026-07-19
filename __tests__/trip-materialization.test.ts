@@ -4,9 +4,11 @@ import {
   canReadDayFromMaterializedTrips,
 } from '@/lib/timeline-from-trips';
 import {
+  existingTripLabelCandidates,
   existingTripLabelsByEventKey,
   isClosedPlayableEntry,
   isImplausibleMaterializedTravel,
+  takePersistedTripLabel,
   todaySealNeedsPersist,
   todayStoredHistoryNeedsLiveTail,
   tripEventKey,
@@ -179,6 +181,62 @@ describe('tripLabelForPersist', () => {
       poiLabel: 'Walmart',
       poiCategory: 'MKPOICategoryStore',
     });
+  });
+});
+
+describe('takePersistedTripLabel', () => {
+  it('reattaches a user POI when stay start shifts within the match window', () => {
+    const oldStay = stay(1_000, 3_600_000);
+    const candidates = existingTripLabelCandidates([
+      makeTripRow({
+        id: 3,
+        eventKey: tripEventKey(oldStay),
+        kind: 'stay',
+        startAt: oldStay.startAt,
+        endAt: oldStay.endAt,
+        placeId: 12,
+        placeKind: 'cache',
+        placeLabel: '123 Main St',
+        poiId: 99,
+        poiLabel: "Chili's",
+      }),
+    ]);
+
+    const shiftedStart = 1_000 + 10 * 60 * 1000;
+    const taken = takePersistedTripLabel(candidates, {
+      eventKey: `stay:${shiftedStart}:3600000`,
+      kind: 'stay',
+      startAtMs: shiftedStart,
+    });
+
+    expect(taken?.poiId).toBe(99);
+    expect(taken?.poiLabel).toBe("Chili's");
+    expect(candidates).toHaveLength(0);
+  });
+
+  it('does not fuzzy-match address-only rows onto a different stay', () => {
+    const oldStay = stay(1_000, 3_600_000);
+    const candidates = existingTripLabelCandidates([
+      makeTripRow({
+        id: 3,
+        eventKey: tripEventKey(oldStay),
+        kind: 'stay',
+        startAt: oldStay.startAt,
+        endAt: oldStay.endAt,
+        placeId: 12,
+        placeKind: 'cache',
+        placeLabel: '123 Main St',
+        poiId: null,
+      }),
+    ]);
+
+    expect(
+      takePersistedTripLabel(candidates, {
+        eventKey: 'stay:600000:3600000',
+        kind: 'stay',
+        startAtMs: 600_000,
+      }),
+    ).toBeNull();
   });
 });
 

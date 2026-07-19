@@ -1,4 +1,5 @@
 import {
+  isStayMissingClosestPoi,
   isStayMissingPlaceLabel,
   listStaysNeedingPlaceLookup,
   mergeTripPlaceLabelAfterLookup,
@@ -73,6 +74,27 @@ describe('place-lookup-backfill', () => {
       false,
     );
     expect(isStayMissingPlaceLabel(tripRow({ kind: 'travel' }))).toBe(false);
+  });
+
+  it('detects cache stays that still need a nearest POI', () => {
+    expect(
+      isStayMissingClosestPoi(
+        tripRow({ placeId: 3, placeKind: 'cache', placeLabel: '123 Main' }),
+      ),
+    ).toBe(true);
+    expect(
+      isStayMissingClosestPoi(
+        tripRow({
+          placeId: 3,
+          placeKind: 'cache',
+          poiId: 9,
+          poiLabel: 'Store',
+        }),
+      ),
+    ).toBe(false);
+    expect(
+      isStayMissingClosestPoi(tripRow({ placeId: 2, placeKind: 'saved' })),
+    ).toBe(false);
   });
 
   it('lists qualifying unlabeled stays only', () => {

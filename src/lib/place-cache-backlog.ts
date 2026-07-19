@@ -1,7 +1,10 @@
 import { and, eq, isNull, or, sql } from 'drizzle-orm';
 
 import { listSavedPlaces } from '@/db/repositories/saved-places';
-import { findPlaceLookupNearAnchor } from '@/db/repositories/place-lookup-cache';
+import {
+  findPlaceLookupNearAnchor,
+  listPlaceLookupCacheRows,
+} from '@/db/repositories/place-lookup-cache';
 import { getTodayDateKey } from '@/lib/day-utils';
 import { buildTodayDisplayHistory } from '@/lib/today-live-history';
 import { getCurrentOpenVisit } from '@/lib/today-history';
@@ -11,7 +14,10 @@ import {
   shouldSkipPlaceLookupForStay,
 } from '@/lib/place-lookup-service';
 import { matchSavedPlaceForStay } from '@/lib/saved-places';
-import { isWithinPlaceLookupVenue } from '@/lib/place-lookup-venue';
+import {
+  findNearestPlaceLookupMatch,
+  isWithinPlaceLookupVenue,
+} from '@/lib/place-lookup-venue';
 import type { PlaceLookupRow } from '@/lib/place-lookup-types';
 import { listTripsForDay, type TripRow } from '@/db/repositories/trips';
 import { getDatabase } from '@/db/client';
@@ -33,7 +39,12 @@ export type PlaceCacheOpenVisitWork = {
 
 export type PlaceCacheWorkItem = PlaceCacheTripWork | PlaceCacheOpenVisitWork;
 
-function unlabeledStayTripConditions() {
+/**
+ * Only stays that still need an address fetch.
+ * Do NOT queue "has address, missing poi" forever — that caused Looking up
+ * places (1/1) on every launch when MapKit had no POI to attach.
+ */
+function placeCacheBacklogConditions() {
   return and(
     eq(trips.kind, 'stay'),
     isNull(trips.placeId),
@@ -47,7 +58,7 @@ export async function hasPlaceCacheBacklog(): Promise<boolean> {
   const rows = await db
     .select({ id: trips.id })
     .from(trips)
-    .where(unlabeledStayTripConditions())
+    .where(placeCacheBacklogConditions())
     .limit(1);
   if (rows.length > 0) {
     return true;
@@ -65,16 +76,34 @@ export async function listUnlabeledStayTripsForPlaceCache(): Promise<
       tripId: trips.id,
       eventKey: trips.eventKey,
       dateKey: trips.dateKey,
+      centroidLat: trips.centroidLat,
+      centroidLng: trips.centroidLng,
     })
     .from(trips)
-    .where(unlabeledStayTripConditions())
+    .where(placeCacheBacklogConditions())
     .orderBy(sql`${trips.dateKey} asc`, sql`${trips.startAt} asc`);
-  return rows.map(row => ({
-    kind: 'trip' as const,
-    tripId: row.tripId,
-    eventKey: row.eventKey,
-    dateKey: row.dateKey,
-  }));
+
+  const items: PlaceCacheTripWork[] = [];
+  // One cache load — avoid N× full-table scans via findPlaceLookupNearAnchor.
+  const cacheRows = await listPlaceLookupCacheRows();
+  for (const row of rows) {
+    // Skip anchors that already failed MapKit — retrying every launch only
+    // shows a stuck banner.
+    const cache = findNearestPlaceLookupMatch(
+      { lat: row.centroidLat, lng: row.centroidLng },
+      cacheRows,
+    );
+    if (cache?.lookupStatus === 'failed') {
+      continue;
+    }
+    items.push({
+      kind: 'trip',
+      tripId: row.tripId,
+      eventKey: row.eventKey,
+      dateKey: row.dateKey,
+    });
+  }
+  return items;
 }
 
 async function detectOpenVisitNeedingPlaceCache(): Promise<PlaceCacheOpenVisitWork | null> {
@@ -113,7 +142,11 @@ async function detectOpenVisitNeedingPlaceCache(): Promise<PlaceCacheOpenVisitWo
   }
   const anchor = { lat, lng };
   const cache = await findPlaceLookupNearAnchor(anchor);
-  if (cache?.lookupStatus === 'complete') {
+  // Complete: nothing to do. Failed: do not re-queue every launch.
+  if (
+    cache?.lookupStatus === 'complete' ||
+    cache?.lookupStatus === 'failed'
+  ) {
     return null;
   }
   return {

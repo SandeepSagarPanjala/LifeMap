@@ -1,27 +1,42 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Circle,
   CircleMarker,
   MapContainer,
+  Marker,
   Polyline,
   Popup,
   TileLayer,
   Tooltip,
   useMap,
+  useMapEvents,
 } from 'react-leaflet';
-import type { CircleMarker as LeafletCircleMarker } from 'leaflet';
-import type { LatLngBoundsExpression, LatLngTuple } from 'leaflet';
+import type {
+  LatLngBounds,
+  LatLngBoundsExpression,
+  LatLngTuple,
+  Marker as LeafletMarker,
+} from 'leaflet';
 
 import { formatTimestamp } from '../lib/export';
+import {
+  activityFillColor,
+  activityPointIcon,
+} from '../lib/activity-point-icon';
 import {
   DEFAULT_STOP_CONFIG,
   formatDuration,
   isMovingPoint,
+  splitTravelModeRuns,
   type Stop,
 } from '@lifemap/segmentation';
 import type { ParsedPoint } from '../types';
 
 const EARTH_RADIUS_M = 6_371_000;
+/** DivIcons are DOM-heavy — only use them when zoomed in. */
+const ACTIVITY_ICON_MIN_ZOOM = 16;
+/** Hard cap so a dense stay doesn't spawn hundreds of DOM markers. */
+const ACTIVITY_ICON_MAX_COUNT = 280;
 
 function distanceM(
   a: { lat: number; lng: number },
@@ -115,13 +130,13 @@ function SelectedMarkerPopup({
   point: ParsedPoint | null;
   enabled: boolean;
 }) {
-  const markerRef = useRef<LeafletCircleMarker | null>(null);
+  const markerRef = useRef<LeafletMarker | null>(null);
 
   useEffect(() => {
     if (!enabled || point == null) {
       return;
     }
-    markerRef.current?.bringToFront();
+    markerRef.current?.setZIndexOffset(1000);
   }, [enabled, point]);
 
   if (!enabled || point == null) {
@@ -129,17 +144,306 @@ function SelectedMarkerPopup({
   }
 
   return (
-    <CircleMarker
+    <Marker
       ref={markerRef}
-      center={[point.lat, point.lng]}
-      radius={11}
-      pathOptions={{
-        color: '#1c1c1e',
-        weight: 3,
-        fillColor: '#ff9500',
-        fillOpacity: 1,
-      }}
+      position={[point.lat, point.lng]}
+      icon={activityPointIcon({
+        activityType: point.activityType,
+        selected: true,
+      })}
+      zIndexOffset={1000}
+      interactive={false}
     />
+  );
+}
+
+function useActivityIconViewport(): {
+  showIcons: boolean;
+  bounds: LatLngBounds | null;
+} {
+  const map = useMap();
+  const [showIcons, setShowIcons] = useState(
+    () => map.getZoom() >= ACTIVITY_ICON_MIN_ZOOM,
+  );
+  const [bounds, setBounds] = useState<LatLngBounds | null>(() =>
+    map.getBounds().pad(0.12),
+  );
+
+  useMapEvents({
+    zoomend() {
+      setShowIcons(map.getZoom() >= ACTIVITY_ICON_MIN_ZOOM);
+      setBounds(map.getBounds().pad(0.12));
+    },
+    moveend() {
+      setBounds(map.getBounds().pad(0.12));
+    },
+  });
+
+  return { showIcons, bounds };
+}
+
+function PointHoverContent({
+  point,
+  moving,
+  mph,
+  distToStop,
+  isStopMember,
+  isStopStart,
+  isStopEnd,
+}: {
+  point: ParsedPoint;
+  moving: boolean;
+  mph: number | null;
+  distToStop: number | null;
+  isStopMember: boolean;
+  isStopStart: boolean;
+  isStopEnd: boolean;
+}) {
+  return (
+    <div className="popup">
+      {isStopStart ? (
+        <strong style={{ color: '#af52de' }}>Stay Started</strong>
+      ) : null}
+      {isStopEnd ? (
+        <strong style={{ color: '#000000' }}>Stop ended</strong>
+      ) : null}
+      <strong>#{point.id}</strong>
+      <div>{formatTimestamp(point.timestamp)}</div>
+      <div>
+        speed: {mph == null ? 'n/a' : `${mph.toFixed(1)} mph`}{' '}
+        <strong style={{ color: moving ? '#ff3b30' : '#34c759' }}>
+          {moving ? 'DRIVING' : 'stationary'}
+        </strong>
+      </div>
+      <div>
+        activity:{' '}
+        {point.activityType != null && point.activityType !== ''
+          ? point.activityType
+          : 'n/a'}
+        {point.activityConfidence != null
+          ? ` (${point.activityConfidence}%)`
+          : ''}
+        {point.isMoving != null
+          ? ` · isMoving=${point.isMoving ? 'true' : 'false'}`
+          : ''}
+      </div>
+      {distToStop != null ? (
+        <div>
+          {Math.round(distToStop)} m from stop center ·{' '}
+          {isStopMember ? 'in stop' : 'excluded'}
+        </div>
+      ) : null}
+      {!moving ? (
+        <div className="muted">
+          counts toward stop (≤ {DEFAULT_STOP_CONFIG.movingSpeedMps} m/s)
+        </div>
+      ) : (
+        <div className="muted">
+          kept in drive (≥ {DEFAULT_STOP_CONFIG.movingSpeedMps} m/s)
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ActivityPointsLayer({
+  points,
+  highlightedPointIds,
+  selectedId,
+  onSelectId,
+  focusSelected,
+  selectedStop,
+  stopStartId,
+  stopEndId,
+}: {
+  points: ParsedPoint[];
+  highlightedPointIds: ReadonlySet<number> | null;
+  selectedId: number | null;
+  onSelectId: (id: number) => void;
+  focusSelected: boolean;
+  selectedStop: Stop | null;
+  stopStartId: number | null;
+  stopEndId: number | null;
+}) {
+  const { showIcons, bounds } = useActivityIconViewport();
+
+  const iconPointIds = useMemo(() => {
+    if (!showIcons || bounds == null) {
+      return null;
+    }
+    const ids = new Set<number>();
+    for (const point of points) {
+      if (!bounds.contains([point.lat, point.lng])) {
+        continue;
+      }
+      ids.add(point.id);
+      if (ids.size >= ACTIVITY_ICON_MAX_COUNT) {
+        break;
+      }
+    }
+    // Always prefer icons for selected / stop-edge points when zoomed in.
+    for (const point of points) {
+      if (
+        point.id === selectedId ||
+        point.id === stopStartId ||
+        point.id === stopEndId
+      ) {
+        ids.add(point.id);
+      }
+    }
+    return ids;
+  }, [bounds, points, selectedId, showIcons, stopEndId, stopStartId]);
+
+  return (
+    <>
+      {points.map(point => {
+        const isSelected = point.id === selectedId;
+        const isMotionDeparture = point.source === 'motion_departure';
+        const isStopMember = highlightedPointIds?.has(point.id) ?? false;
+        const dimmed = highlightedPointIds != null && !isStopMember;
+        const moving = isMovingPoint(point, DEFAULT_STOP_CONFIG);
+        const mph =
+          point.speed == null ? null : Math.max(0, point.speed) * 2.237;
+        const distToStop =
+          selectedStop != null ? distanceM(selectedStop, point) : null;
+        const isStopStart = point.id === stopStartId;
+        const isStopEnd = point.id === stopEndId;
+        const useIcon = iconPointIds?.has(point.id) ?? false;
+
+        const hover = (
+          <Tooltip
+            permanent={isStopStart || isStopEnd}
+            direction="top"
+            offset={[0, useIcon ? -12 : isStopStart || isStopEnd ? -8 : -4]}
+            opacity={1}
+            className={
+              isStopStart
+                ? 'stop-edge-label start'
+                : isStopEnd
+                ? 'stop-edge-label end'
+                : undefined
+            }
+          >
+            <PointHoverContent
+              point={point}
+              moving={moving}
+              mph={mph}
+              distToStop={distToStop}
+              isStopMember={isStopMember}
+              isStopStart={isStopStart}
+              isStopEnd={isStopEnd}
+            />
+          </Tooltip>
+        );
+
+        const popup =
+          !focusSelected ? (
+            <Popup>
+              <div className="popup">
+                <strong>#{point.id}</strong>
+                <div>{formatTimestamp(point.timestamp)}</div>
+                <div>
+                  {point.lat.toFixed(5)}, {point.lng.toFixed(5)}
+                </div>
+                {point.accuracy != null ? (
+                  <div>±{point.accuracy.toFixed(0)} m</div>
+                ) : null}
+                <div>
+                  activity:{' '}
+                  {point.activityType != null && point.activityType !== ''
+                    ? point.activityType
+                    : 'n/a'}
+                  {point.activityConfidence != null
+                    ? ` (${point.activityConfidence}%)`
+                    : ''}
+                </div>
+                {point.source ? (
+                  <div className="muted">{point.source}</div>
+                ) : null}
+              </div>
+            </Popup>
+          ) : null;
+
+        if (useIcon) {
+          return (
+            <Marker
+              key={`icon-${point.id}`}
+              position={[point.lat, point.lng]}
+              icon={activityPointIcon({
+                activityType: point.activityType,
+                selected: isSelected,
+                stopMember: isStopMember,
+                dimmed,
+                stopStart: isStopStart,
+                stopEnd: isStopEnd,
+                motionDeparture: isMotionDeparture,
+              })}
+              zIndexOffset={
+                isStopStart || isStopEnd ? 600 : isSelected ? 500 : 0
+              }
+              eventHandlers={{
+                click: () => onSelectId(point.id),
+              }}
+            >
+              {hover}
+              {popup}
+            </Marker>
+          );
+        }
+
+        const fillColor = isStopStart
+          ? '#af52de'
+          : isStopEnd
+          ? '#000000'
+          : isSelected
+          ? '#ff9500'
+          : isStopMember
+          ? '#ff3b30'
+          : isMotionDeparture
+          ? '#ff9500'
+          : activityFillColor(point.activityType);
+
+        return (
+          <CircleMarker
+            key={`dot-${point.id}`}
+            center={[point.lat, point.lng]}
+            radius={
+              isStopStart || isStopEnd
+                ? 8
+                : isSelected
+                ? 8
+                : isStopMember
+                ? 6
+                : 5
+            }
+            pathOptions={{
+              color:
+                isStopStart || isStopEnd
+                  ? '#ffffff'
+                  : isSelected
+                  ? '#1c1c1e'
+                  : '#ffffff',
+              weight: isStopStart || isStopEnd ? 2.5 : isSelected ? 2.5 : 1.5,
+              fillColor,
+              fillOpacity:
+                isStopStart || isStopEnd
+                  ? 1
+                  : isSelected
+                  ? 1
+                  : dimmed
+                  ? 0.25
+                  : 0.85,
+            }}
+            eventHandlers={{
+              click: () => onSelectId(point.id),
+            }}
+          >
+            {hover}
+            {popup}
+          </CircleMarker>
+        );
+      })}
+    </>
   );
 }
 
@@ -179,32 +483,70 @@ export function PointsMap({
     };
   }, [stops]);
 
-  // Split the chronological track into solid (travel) and dashed (in-stop)
-  // segments. A segment is dashed only when both of its endpoints fall inside
-  // the SAME stop's time window — i.e. it is GPS scatter inside a stay.
-  const { travelSegments, inStopSegments } = useMemo(() => {
-    const sorted = [...points].sort(
-      (a, b) => a.at.getTime() - b.at.getTime() || a.id - b.id,
-    );
-    const travel: LatLngTuple[][] = [];
-    const inStop: LatLngTuple[][] = [];
-    for (let k = 0; k < sorted.length - 1; k += 1) {
-      const a = sorted[k]!;
-      const b = sorted[k + 1]!;
-      const segment: LatLngTuple[] = [
-        [a.lat, a.lng],
-        [b.lat, b.lng],
-      ];
-      const stopA = stopIdForTime(a.at.getTime());
-      const stopB = stopIdForTime(b.at.getTime());
-      if (stopA != null && stopA === stopB) {
-        inStop.push(segment);
-      } else {
-        travel.push(segment);
+  // Travel = between stops (drive paths only). Stay interiors use inStop
+  // scatter dashes — never on-foot walk dashes inside a visit.
+  const { travelSolidSegments, travelFootSegments, inStopSegments } =
+    useMemo(() => {
+      const sorted = [...points].sort(
+        (a, b) => a.at.getTime() - b.at.getTime() || a.id - b.id,
+      );
+      const travelRuns: ParsedPoint[][] = [];
+      const inStop: LatLngTuple[][] = [];
+      let currentTravel: ParsedPoint[] = [];
+
+      const flushTravel = () => {
+        if (currentTravel.length >= 2) {
+          travelRuns.push(currentTravel);
+        }
+        currentTravel = [];
+      };
+
+      for (let k = 0; k < sorted.length - 1; k += 1) {
+        const a = sorted[k]!;
+        const b = sorted[k + 1]!;
+        const stopA = stopIdForTime(a.at.getTime());
+        const stopB = stopIdForTime(b.at.getTime());
+        if (stopA != null && stopA === stopB) {
+          flushTravel();
+          inStop.push([
+            [a.lat, a.lng],
+            [b.lat, b.lng],
+          ]);
+          continue;
+        }
+        if (currentTravel.length === 0) {
+          currentTravel.push(a, b);
+        } else {
+          currentTravel.push(b);
+        }
       }
-    }
-    return { travelSegments: travel, inStopSegments: inStop };
-  }, [points, stopIdForTime]);
+      flushTravel();
+
+      const solid: LatLngTuple[][] = [];
+      const foot: LatLngTuple[][] = [];
+      for (const run of travelRuns) {
+        for (const modeRun of splitTravelModeRuns(run, { pathKind: 'drive' })) {
+          const coords: LatLngTuple[] = modeRun.points.map(p => [
+            p.lat,
+            p.lng,
+          ]);
+          if (coords.length < 2) {
+            continue;
+          }
+          if (modeRun.style === 'dashed') {
+            foot.push(coords);
+          } else {
+            solid.push(coords);
+          }
+        }
+      }
+
+      return {
+        travelSolidSegments: solid,
+        travelFootSegments: foot,
+        inStopSegments: inStop,
+      };
+    }, [points, stopIdForTime]);
 
   const selectedPoint = useMemo(
     () => points.find(p => p.id === selectedId) ?? null,
@@ -257,19 +599,30 @@ export function PointsMap({
       <FlyToSelected point={selectedPoint} enabled={focusSelected} />
       <FlyToStop stop={selectedStop} />
       <SelectedMarkerPopup point={selectedPoint} enabled={focusSelected} />
-      {travelSegments.length > 0 ? (
+      {travelSolidSegments.length > 0 ? (
         <Polyline
-          positions={travelSegments}
-          pathOptions={{ color: '#007aff', weight: 3, opacity: 0.55 }}
+          positions={travelSolidSegments}
+          pathOptions={{ color: '#8e8e93', weight: 2, opacity: 0.35 }}
+        />
+      ) : null}
+      {travelFootSegments.length > 0 ? (
+        <Polyline
+          positions={travelFootSegments}
+          pathOptions={{
+            color: '#8e8e93',
+            weight: 2.5,
+            opacity: 0.55,
+            dashArray: '6 8',
+          }}
         />
       ) : null}
       {inStopSegments.length > 0 ? (
         <Polyline
           positions={inStopSegments}
           pathOptions={{
-            color: '#007aff',
+            color: '#8e8e93',
             weight: 2,
-            opacity: 0.45,
+            opacity: 0.3,
             dashArray: '4 6',
           }}
         />
@@ -301,130 +654,16 @@ export function PointsMap({
           </Popup>
         </Circle>
       ))}
-      {points.map(point => {
-        const isSelected = point.id === selectedId;
-        const isMotionDeparture = point.source === 'motion_departure';
-        const isStopMember = highlightedPointIds?.has(point.id) ?? false;
-        const dimmed = highlightedPointIds != null && !isStopMember;
-        const moving = isMovingPoint(point, DEFAULT_STOP_CONFIG);
-        const mph =
-          point.speed == null ? null : Math.max(0, point.speed) * 2.237;
-        const distToStop =
-          selectedStop != null ? distanceM(selectedStop, point) : null;
-        const isStopStart = point.id === stopStartId;
-        const isStopEnd = point.id === stopEndId;
-        const fillColor = isStopStart
-          ? '#af52de'
-          : isStopEnd
-          ? '#000000'
-          : isSelected
-          ? '#ff9500'
-          : isStopMember
-          ? '#ff3b30'
-          : isMotionDeparture
-          ? '#ff9500'
-          : '#007aff';
-        return (
-          <CircleMarker
-            key={point.id}
-            center={[point.lat, point.lng]}
-            radius={
-              isStopStart || isStopEnd
-                ? 8
-                : isSelected
-                ? 8
-                : isStopMember
-                ? 6
-                : 5
-            }
-            pathOptions={{
-              color:
-                isStopStart || isStopEnd
-                  ? '#ffffff'
-                  : isSelected
-                  ? '#1c1c1e'
-                  : '#ffffff',
-              weight: isStopStart || isStopEnd ? 2.5 : isSelected ? 2.5 : 1.5,
-              fillColor,
-              fillOpacity:
-                isStopStart || isStopEnd
-                  ? 1
-                  : isSelected
-                  ? 1
-                  : dimmed
-                  ? 0.25
-                  : 0.85,
-            }}
-            eventHandlers={{
-              click: () => onSelectId(point.id),
-            }}
-          >
-            <Tooltip
-              permanent={isStopStart || isStopEnd}
-              direction="top"
-              offset={[0, isStopStart || isStopEnd ? -8 : -4]}
-              opacity={1}
-              className={
-                isStopStart
-                  ? 'stop-edge-label start'
-                  : isStopEnd
-                  ? 'stop-edge-label end'
-                  : undefined
-              }
-            >
-              <div className="popup">
-                {isStopStart ? (
-                  <strong style={{ color: '#af52de' }}>Stay Started</strong>
-                ) : null}
-                {isStopEnd ? (
-                  <strong style={{ color: '#000000' }}>Stop ended</strong>
-                ) : null}
-                <strong>#{point.id}</strong>
-                <div>{formatTimestamp(point.timestamp)}</div>
-                <div>
-                  speed: {mph == null ? 'n/a' : `${mph.toFixed(1)} mph`}{' '}
-                  <strong style={{ color: moving ? '#ff3b30' : '#34c759' }}>
-                    {moving ? 'DRIVING' : 'stationary'}
-                  </strong>
-                </div>
-                {distToStop != null ? (
-                  <div>
-                    {Math.round(distToStop)} m from stop center ·{' '}
-                    {isStopMember ? 'in stop' : 'excluded'}
-                  </div>
-                ) : null}
-                {!moving ? (
-                  <div className="muted">
-                    counts toward stop (≤ {DEFAULT_STOP_CONFIG.movingSpeedMps}{' '}
-                    m/s)
-                  </div>
-                ) : (
-                  <div className="muted">
-                    kept in drive (≥ {DEFAULT_STOP_CONFIG.movingSpeedMps} m/s)
-                  </div>
-                )}
-              </div>
-            </Tooltip>
-            {!focusSelected ? (
-              <Popup>
-                <div className="popup">
-                  <strong>#{point.id}</strong>
-                  <div>{formatTimestamp(point.timestamp)}</div>
-                  <div>
-                    {point.lat.toFixed(5)}, {point.lng.toFixed(5)}
-                  </div>
-                  {point.accuracy != null ? (
-                    <div>±{point.accuracy.toFixed(0)} m</div>
-                  ) : null}
-                  {point.source ? (
-                    <div className="muted">{point.source}</div>
-                  ) : null}
-                </div>
-              </Popup>
-            ) : null}
-          </CircleMarker>
-        );
-      })}
+      <ActivityPointsLayer
+        points={points}
+        highlightedPointIds={highlightedPointIds}
+        selectedId={selectedId}
+        onSelectId={onSelectId}
+        focusSelected={focusSelected}
+        selectedStop={selectedStop}
+        stopStartId={stopStartId}
+        stopEndId={stopEndId}
+      />
     </MapContainer>
   );
 }

@@ -5,34 +5,55 @@ import {
 } from '../src/lib/backup/backup-serialize';
 
 describe('backup export', () => {
-  it('extracts trip label overrides from trip rows', () => {
+  it('extracts user POI and saved-place overrides, not bare addresses', () => {
     const overrides = extractTripLabelOverrides([
       {
         eventKey: 'stay-1',
-        placeLabel: null,
-        placeId: null,
-        placeKind: null,
+        dateKey: '2026-07-12',
+        startAt: new Date(1_000),
+        placeLabel: '123 Main St',
+        placeId: 9,
+        placeKind: 'cache',
         selectedCandidateIndex: null,
+        poiId: null,
       },
       {
         eventKey: 'stay-2',
+        dateKey: '2026-07-12',
+        startAt: new Date(2_000),
         placeLabel: 'Coffee shop',
         placeId: 3,
         placeKind: 'cache',
         selectedCandidateIndex: null,
+        poiId: 42,
+        poiLabel: "Chili's",
       },
       {
         eventKey: 'stay-3',
+        dateKey: '2026-07-12',
+        startAt: new Date(3_000),
+        placeLabel: null,
+        placeId: 4,
+        placeKind: 'saved',
+        selectedCandidateIndex: null,
+        poiId: null,
+      },
+      {
+        eventKey: 'stay-4',
         placeLabel: null,
         placeId: 4,
         placeKind: 'cache',
         selectedCandidateIndex: 1,
+        poiId: null,
       },
     ]);
 
-    expect(overrides).toHaveLength(2);
+    expect(overrides).toHaveLength(3);
     expect(overrides[0]?.eventKey).toBe('stay-2');
-    expect(overrides[1]?.selectedCandidateIndex).toBe(1);
+    expect(overrides[0]?.poiId).toBe(42);
+    expect(overrides[0]?.startAtMs).toBe(2_000);
+    expect(overrides[1]?.placeKind).toBe('saved');
+    expect(overrides[2]?.selectedCandidateIndex).toBe(1);
   });
 });
 

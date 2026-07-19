@@ -3,6 +3,7 @@ import {
   getTravelDisplayPoints,
   getVisitInboundTravelPoints,
   isPlayableTimelineEntry,
+  stayAfterEntryIndex,
   stayBeforeEntryIndex,
   staysBeforeEntryIndex,
   type DayTimelineEntry,
@@ -46,6 +47,34 @@ function findNextStayAfter(
     }
   }
   return null;
+}
+
+/**
+ * Drive polyline for day browse — same points History uses for inbound into
+ * the next stay (travel + settled arrival tip).
+ */
+export function travelDisplayPointsForTimeline(
+  travel: DetectedTrip,
+  entries: readonly DayTimelineEntry[],
+  config: TripDetectionConfig,
+): LocationPointRow[] {
+  const travelIndex = entries.findIndex(entry => entry.id === travel.id);
+  if (travelIndex < 0) {
+    return getTravelDisplayPoints(travel, null, [], config);
+  }
+  const previousStay = stayBeforeEntryIndex(entries, travelIndex);
+  const nextStay = stayAfterEntryIndex(entries, travelIndex);
+  const priorStays = staysBeforeEntryIndex(entries, travelIndex);
+  if (nextStay != null) {
+    return getVisitInboundTravelPoints(
+      travel,
+      nextStay,
+      previousStay,
+      priorStays,
+      config,
+    );
+  }
+  return getTravelDisplayPoints(travel, previousStay, priorStays, config);
 }
 
 function playableTrips(entries: DayTimelineEntry[]): DetectedTrip[] {

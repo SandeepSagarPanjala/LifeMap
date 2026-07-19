@@ -9,10 +9,14 @@ import {
 } from '@/db/schema';
 import {
   getTripByEventKey,
+  listTripsForDay,
   updateTripCustomLabel,
   updateTripLabelSelection,
+  updateTripPoiSelection,
   updateTripSavedPlaceAssociation,
+  type TripRow,
 } from '@/db/repositories/trips';
+import { VISIT_LABEL_OVERRIDE_START_MATCH_MS } from '@/db/repositories/visit-label-overrides';
 import {
   getDefaultTripDetectionConfig,
   rebuildAllTrips,
@@ -288,7 +292,7 @@ export async function applyTripLabelOverrides(
 ): Promise<number> {
   let applied = 0;
   for (const override of overrides) {
-    const trip = await getTripByEventKey(override.eventKey);
+    const trip = await findTripForLabelOverride(override);
     if (!trip) {
       continue;
     }
@@ -299,6 +303,18 @@ export async function applyTripLabelOverrides(
         : override.placeKind === 'saved' && maps != null
         ? remapId(override.placeId, maps.savedPlaceMap)
         : override.placeId;
+
+    // User POI selection first — never clear it via custom-label paths.
+    if (override.poiId != null) {
+      await updateTripPoiSelection(
+        trip.id,
+        override.poiId,
+        override.poiLabel ?? undefined,
+        override.placeKind === 'cache' ? placeId : null,
+      );
+      applied += 1;
+      continue;
+    }
 
     if (override.placeLabel != null && override.placeLabel.trim().length > 0) {
       await updateTripCustomLabel(
@@ -336,6 +352,46 @@ export async function applyTripLabelOverrides(
     }
   }
   return applied;
+}
+
+async function findTripForLabelOverride(
+  override: TripLabelOverride,
+): Promise<TripRow | null> {
+  const exact = await getTripByEventKey(override.eventKey);
+  if (exact) {
+    return exact;
+  }
+  const dateKey = override.dateKey?.trim();
+  const startAtMs = override.startAtMs;
+  if (dateKey == null || dateKey.length === 0 || startAtMs == null) {
+    return null;
+  }
+  const dayTrips = await listTripsForDay(dateKey);
+  return matchStayTripByStart(dayTrips, startAtMs);
+}
+
+/** Nearest same-day stay whose start is within the visit-label match window. */
+export function matchStayTripByStart(
+  dayTrips: readonly TripRow[],
+  startAtMs: number,
+  windowMs: number = VISIT_LABEL_OVERRIDE_START_MATCH_MS,
+): TripRow | null {
+  let nearest: TripRow | null = null;
+  let nearestDelta = Number.POSITIVE_INFINITY;
+  for (const trip of dayTrips) {
+    if (trip.kind !== 'stay') {
+      continue;
+    }
+    const delta = Math.abs(trip.startAt.getTime() - startAtMs);
+    if (delta === 0) {
+      return trip;
+    }
+    if (delta <= windowMs && delta < nearestDelta) {
+      nearest = trip;
+      nearestDelta = delta;
+    }
+  }
+  return nearest;
 }
 
 export async function rebuildTripsAfterRestore(

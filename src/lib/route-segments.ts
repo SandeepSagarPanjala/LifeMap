@@ -101,12 +101,11 @@ export function buildDrawableRouteSegments(
 export function buildDrawableRouteModeLegs(
   points: LocationPointRow[],
   config: TripDetectionConfig,
-  options: { onFootDetection?: boolean } = {},
 ): TravelModeLeg[] {
   const groups = splitDrawablePointGroups(points, config);
   const legs: TravelModeLeg[] = [];
   for (const group of groups) {
-    legs.push(...buildTravelModeLegs(group, options));
+    legs.push(...buildTravelModeLegs(group));
   }
   return legs.filter(leg => leg.coordinates.length >= 2);
 }

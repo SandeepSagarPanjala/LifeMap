@@ -1,7 +1,6 @@
 import { memo, useMemo } from 'react';
 
 import { TravelModePolylines } from '@/components/map/TravelModePolylines';
-import { useOnFootDetectionEnabled } from '@/hooks/use-on-foot-detection-enabled';
 import type { LocationPointRow } from '@/db/repositories/location-days';
 import { buildDrawableRouteModeLegs } from '@/lib/route-segments';
 import { buildTravelModeLegs } from '@/lib/travel-mode-legs';
@@ -48,14 +47,12 @@ export const RoutePathOverlay = memo(function RoutePathOverlay({
   showDirectionArrows = false,
   mapLatitudeDelta = ROUTE_DIRECTION_ARROW_REF_ZOOM_DELTA,
 }: RoutePathOverlayProps) {
-  const onFootDetection = useOnFootDetectionEnabled();
   const legs = useMemo(() => {
-    const options = { onFootDetection };
     if (continuous) {
-      return buildTravelModeLegs(points, options);
+      return buildTravelModeLegs(points);
     }
-    return buildDrawableRouteModeLegs(points, tripConfig, options);
-  }, [continuous, onFootDetection, points, tripConfig]);
+    return buildDrawableRouteModeLegs(points, tripConfig);
+  }, [continuous, points, tripConfig]);
 
   if (legs.length === 0) {
     return null;

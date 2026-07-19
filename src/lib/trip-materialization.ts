@@ -3,6 +3,7 @@ import { differenceInMilliseconds, endOfDay, subDays } from 'date-fns';
 import { extractTripLabelOverrides } from '@/lib/backup/backup-export';
 import { applyTripLabelOverrides } from '@/lib/backup/backup-import';
 import {
+  getLocationPointsForDay,
   listDateKeysWithLocationDataBefore,
   type LocationPointRow,
 } from '@/db/repositories/location-days';
@@ -40,8 +41,8 @@ import {
   type TripRow,
 } from '@/db/repositories/trips';
 import {
-  deleteVisitLabelOverrideById,
   listVisitLabelOverridesForDay,
+  VISIT_LABEL_OVERRIDE_START_MATCH_MS,
 } from '@/db/repositories/visit-label-overrides';
 import {
   getDayRange,
@@ -63,7 +64,10 @@ import {
   attachCrossMidnightDepartureLabelStays,
 } from '@/lib/cross-midnight-history';
 import { splitEntriesForPastDaySeal } from '@/lib/past-day-seal-policy';
-import { buildTimelineFromStoredTrips } from '@/lib/timeline-from-trips';
+import {
+  buildTimelineFromStoredTrips,
+  hydrateTravelRoutesFromDayPoints,
+} from '@/lib/timeline-from-trips';
 import {
   flattenTimelinePoints,
   travelCentroidFromRoute,
@@ -110,23 +114,6 @@ export function isImplausibleMaterializedTravel(row: TripRow): boolean {
   }
   const avgKmh = row.distanceKm / hours;
   return avgKmh < MIN_IMPLAUSIBLE_DRIVE_AVG_KMH;
-}
-
-async function purgeMaterializedDayCache(
-  dateKey: string,
-  pointCount: number,
-): Promise<void> {
-  await deleteTripsForDay(dateKey);
-  await upsertMaterializedDay(dateKey, {
-    status: 'open',
-    detectionVersion: TRIP_DETECTION_VERSION,
-    tripCount: 0,
-    pointCount,
-    excludedCrossMidnightFromMs: null,
-    sealedAt: null,
-  });
-  clearHistoryDataCache();
-  notifyMaterializationUpdated();
 }
 
 export function tripEventKey(
@@ -179,6 +166,12 @@ export function isClosedPlayableEntry(
 
 export type PersistedTripLabel = ResolvedPlaceFields;
 
+export type PersistedTripLabelCandidate = PersistedTripLabel & {
+  eventKey: string;
+  kind: TripRow['kind'];
+  startAtMs: number;
+};
+
 function persistedLabelFromTripRow(row: TripRow): PersistedTripLabel {
   return resolvedPlaceFromTripRow(row);
 }
@@ -200,14 +193,97 @@ export function existingTripLabelsByEventKey(
   return map;
 }
 
+/**
+ * Mutable label pool for rematerialization. Prefer exact eventKey; otherwise
+ * match stays by start within {@link VISIT_LABEL_OVERRIDE_START_MATCH_MS}.
+ */
+export function existingTripLabelCandidates(
+  rows: readonly TripRow[],
+): PersistedTripLabelCandidate[] {
+  const candidates: PersistedTripLabelCandidate[] = [];
+  for (const row of rows) {
+    const label = persistedLabelFromTripRow(row);
+    const hasUserLabel =
+      label.poiId != null ||
+      label.placeKind === 'saved' ||
+      (label.placeId != null && label.placeKind != null);
+    if (!hasUserLabel && label.placeLabel == null) {
+      continue;
+    }
+    // Always keep rows with a user POI / saved place; address-only is fine for
+    // exact eventKey hits but must not steal another stay via fuzzy start.
+    candidates.push({
+      ...label,
+      eventKey: row.eventKey,
+      kind: row.kind,
+      startAtMs: row.startAt.getTime(),
+    });
+  }
+  return candidates;
+}
+
+export function takePersistedTripLabel(
+  candidates: PersistedTripLabelCandidate[],
+  args: {
+    eventKey: string;
+    kind: TripRow['kind'] | DetectedTrip['kind'];
+    startAtMs: number;
+  },
+  windowMs: number = VISIT_LABEL_OVERRIDE_START_MATCH_MS,
+): PersistedTripLabel | null {
+  const exactIndex = candidates.findIndex(
+    candidate => candidate.eventKey === args.eventKey,
+  );
+  if (exactIndex >= 0) {
+    const [exact] = candidates.splice(exactIndex, 1);
+    return exact ? stripCandidateMeta(exact) : null;
+  }
+
+  if (args.kind !== 'stay') {
+    return null;
+  }
+
+  let nearestIndex = -1;
+  let nearestDelta = Number.POSITIVE_INFINITY;
+  for (let index = 0; index < candidates.length; index += 1) {
+    const candidate = candidates[index]!;
+    if (candidate.kind !== 'stay' || candidate.poiId == null) {
+      // Fuzzy rematch is for user POI picks only — never reattach a bare address
+      // to a different stay when boundaries shift.
+      continue;
+    }
+    const delta = Math.abs(candidate.startAtMs - args.startAtMs);
+    if (delta <= windowMs && delta < nearestDelta) {
+      nearestIndex = index;
+      nearestDelta = delta;
+    }
+  }
+  if (nearestIndex < 0) {
+    return null;
+  }
+  const [nearest] = candidates.splice(nearestIndex, 1);
+  return nearest ? stripCandidateMeta(nearest) : null;
+}
+
+function stripCandidateMeta(
+  candidate: PersistedTripLabelCandidate,
+): PersistedTripLabel {
+  return {
+    placeLabel: candidate.placeLabel,
+    placeId: candidate.placeId,
+    placeKind: candidate.placeKind,
+    poiId: candidate.poiId,
+    poiLabel: candidate.poiLabel,
+    poiCategory: candidate.poiCategory,
+  };
+}
+
 export type DetectedTripLabels = ResolvedPlaceFields;
 
-export function tripLabelForPersist(
-  eventKey: string,
-  existingByEventKey: ReadonlyMap<string, PersistedTripLabel>,
+export function resolveTripLabelForPersist(
+  existing: PersistedTripLabel | null | undefined,
   detected?: DetectedTripLabels,
 ): PersistedTripLabel {
-  const existing = existingByEventKey.get(eventKey);
   const detectedPlace = tripPlaceFieldsFromResolved({
     placeLabel: detected?.placeLabel ?? null,
     placeId: detected?.placeId ?? null,
@@ -248,6 +324,17 @@ export function tripLabelForPersist(
   );
 }
 
+export function tripLabelForPersist(
+  eventKey: string,
+  existingByEventKey: ReadonlyMap<string, PersistedTripLabel>,
+  detected?: DetectedTripLabels,
+): PersistedTripLabel {
+  return resolveTripLabelForPersist(
+    existingByEventKey.get(eventKey),
+    detected,
+  );
+}
+
 export function getDefaultTripDetectionConfig(): TripDetectionConfig {
   return buildTripDetectionConfig(
     DEFAULT_TRIP_GAP_MINUTES,
@@ -266,6 +353,7 @@ function locationPointsToPersistPoints(
     locationPointId: point.id > 0 ? point.id : null,
     source: point.source ?? 'gps',
     momentId: null,
+    activityType: point.activityType ?? null,
   }));
 }
 
@@ -418,11 +506,14 @@ export async function loadHistoryFromStoredTrips(
   const rows = tripRows ?? (await listTripsForDay(dateKey));
   const markLastStayOpen = options.markLastStayOpen === true;
 
-  const [pointsByTripId, materializedDay] = await Promise.all([
+  const [pointsByTripId, materializedDay, dayGpsPoints] = await Promise.all([
     rows.length > 0
       ? listTripPointsForDay(dateKey)
       : Promise.resolve(new Map()),
     isToday ? Promise.resolve(null) : getMaterializedDay(dateKey),
+    // Same source as Point Explorer — trip_points alone lack dense activity for
+    // walk dashes / faithful drive shapes on sealed days.
+    getLocationPointsForDay(dateKey),
   ]);
 
   let entries =
@@ -465,13 +556,20 @@ export async function loadHistoryFromStoredTrips(
     entries = await attachCrossMidnightDepartureLabelStays(dateKey, entries);
   }
 
+  if (dayGpsPoints.length > 0) {
+    entries = hydrateTravelRoutesFromDayPoints(entries, dayGpsPoints);
+  }
+
   return {
     dateKey,
-    points: flattenTimelinePoints(
-      entries.filter((entry): entry is DetectedTrip =>
-        isPlayableTimelineEntry(entry),
-      ),
-    ),
+    points:
+      dayGpsPoints.length > 0
+        ? dayGpsPoints
+        : flattenTimelinePoints(
+            entries.filter((entry): entry is DetectedTrip =>
+              isPlayableTimelineEntry(entry),
+            ),
+          ),
     entries,
     range: { startAt: dayStart, endAt: rangeEnd },
   };
@@ -558,17 +656,16 @@ export async function loadHistoryForSelectedDay(
       getMaterializedDay(dateKey),
     ]);
 
-    if (
+    const detectionOutdated =
       materializedDay != null &&
-      materializedDay.detectionVersion < TRIP_DETECTION_VERSION &&
+      materializedDay.detectionVersion < TRIP_DETECTION_VERSION;
+
+    // Do not purge trips before rematerializing — persistClosedTripsIncremental
+    // needs existing stay POI picks to reattach when start/end (eventKey) shift.
+    if (
+      !detectionOutdated &&
       tripRows.length > 0
     ) {
-      await purgeMaterializedDayCache(dateKey, materializedDay.pointCount);
-      tripRows = [];
-      materializedDay = null;
-    }
-
-    if (tripRows.length > 0) {
       const canLoadFromStore = await pastDayCanLoadFromStore(dateKey, tripRows);
       if (canLoadFromStore) {
         return loadHistoryFromStoredTrips(
@@ -578,16 +675,6 @@ export async function loadHistoryForSelectedDay(
           detectionConfig,
         );
       }
-    }
-  }
-
-  if (options?.force) {
-    const materializedDay = await getMaterializedDay(dateKey);
-    if (
-      materializedDay != null &&
-      materializedDay.detectionVersion < TRIP_DETECTION_VERSION
-    ) {
-      await purgeMaterializedDayCache(dateKey, materializedDay.pointCount);
     }
   }
 
@@ -655,7 +742,7 @@ export async function persistClosedTripsIncremental(
   }
 
   const closedAt = new Date();
-  const existingLabels = existingTripLabelsByEventKey(existingTrips);
+  const existingLabelCandidates = existingTripLabelCandidates(existingTrips);
   const savedPlaces = await listSavedPlaces();
   const { start: dayStart, end: dayEnd } = getDayRange(dateKey);
   const [dayMoments, canonicalizeTravel, geometryFingerprint, listedOverrides] =
@@ -704,12 +791,17 @@ export async function persistClosedTripsIncremental(
 
     const centroid = tripCentroidForPersist(entry, savedPlaces);
     const eventKey = tripEventKey(entry);
+    const existingLabel = takePersistedTripLabel(existingLabelCandidates, {
+      eventKey,
+      kind: entry.kind,
+      startAtMs: entry.startAt.getTime(),
+    });
     const override =
       entry.kind === 'stay'
         ? takeVisitLabelOverrideForStart(dayOverrides, entry.startAt.getTime())
         : null;
     const labels = mergeOverrideIntoPersistLabel(
-      tripLabelForPersist(eventKey, existingLabels, {
+      resolveTripLabelForPersist(existingLabel, {
         placeLabel: entry.placeLabel ?? null,
         placeId: entry.placeId ?? null,
         placeKind: entry.placeKind ?? null,
@@ -745,9 +837,6 @@ export async function persistClosedTripsIncremental(
       momentRefs,
     });
     upserted += 1;
-    if (override != null) {
-      await deleteVisitLabelOverrideById(override.id);
-    }
     const geometry = geometryPointsForPersist(
       entry,
       centroid,

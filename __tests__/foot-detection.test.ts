@@ -24,9 +24,8 @@ function point(
   };
 }
 
-describe('isMovingPoint footDetectionEnabled', () => {
-  it('ignores confident on_foot when foot detection is disabled', () => {
-    const config = { ...DEFAULT_STOP_CONFIG, footDetectionEnabled: false };
+describe('isMovingPoint without foot detection', () => {
+  it('ignores confident on_foot below moving speed', () => {
     expect(
       isMovingPoint(
         point({
@@ -37,13 +36,12 @@ describe('isMovingPoint footDetectionEnabled', () => {
           isMoving: true,
           speed: 0.5,
         }),
-        config,
+        DEFAULT_STOP_CONFIG,
       ),
     ).toBe(false);
   });
 
-  it('still treats in_vehicle as moving when foot detection is disabled', () => {
-    const config = { ...DEFAULT_STOP_CONFIG, footDetectionEnabled: false };
+  it('still treats in_vehicle as moving', () => {
     expect(
       isMovingPoint(
         point({
@@ -53,7 +51,7 @@ describe('isMovingPoint footDetectionEnabled', () => {
           activityConfidence: 100,
           isMoving: true,
         }),
-        config,
+        DEFAULT_STOP_CONFIG,
       ),
     ).toBe(true);
   });

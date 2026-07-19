@@ -338,7 +338,7 @@ describe('segmentation detection (current algorithm)', () => {
       expect(timeline.some(entry => entry.kind === 'travel')).toBe(false);
     });
 
-    it('still emits a walk when confident on_foot leaves the stay radius', () => {
+    it('emits travel when a walk leaves the stay radius with moving speed', () => {
       const start = new Date('2026-07-16T16:00:00.000Z');
       const points: LocationPointRow[] = [];
       let id = 1;
@@ -366,7 +366,7 @@ describe('segmentation detection (current algorithm)', () => {
           batteryIsCharging: null,
         });
       }
-      // Walk ~180m east with confident on_foot (beyond radius+accuracy)
+      // Walk ~180m east at moving speed (beyond radius+accuracy)
       for (let step = 1; step <= 6; step += 1) {
         points.push({
           id: id++,
@@ -375,7 +375,7 @@ describe('segmentation detection (current algorithm)', () => {
           lng: HOME.lng + step * 0.00035,
           accuracy: 8,
           altitude: null,
-          speed: 1.4,
+          speed: 2.2,
           source: 'gps',
           heading: null,
           headingAccuracy: null,

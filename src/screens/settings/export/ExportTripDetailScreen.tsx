@@ -11,7 +11,6 @@ import {
   Alert,
   Pressable,
   ScrollView,
-  Share,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -34,6 +33,7 @@ import {
   labelFromTripRow,
   type ExportTripView,
 } from '@/lib/export-trip-view';
+import { shareJsonFile } from '@/lib/share-json-file';
 import type { RootStackParamList } from '@/navigation/types';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { APP_TIMEZONE } from '@/lib/timezone';
@@ -136,10 +136,10 @@ export function ExportTripDetailScreen() {
       return;
     }
     try {
-      await Share.share({
-        message: exportTripViewJson(tripView),
-        title: `trip-${tripView.id}-${tripView.dateKey}.json`,
-      });
+      await shareJsonFile(
+        `trip-${tripView.id}-${tripView.dateKey}.json`,
+        exportTripViewJson(tripView),
+      );
     } catch (error) {
       Alert.alert(
         'Could not share',

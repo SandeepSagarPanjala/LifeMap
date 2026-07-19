@@ -1,7 +1,6 @@
 import { memo, useMemo } from 'react';
 import { Polyline } from 'react-native-maps';
 
-import { useOnFootDetectionEnabled } from '@/hooks/use-on-foot-detection-enabled';
 import { DriveEndpointLabels } from '@/components/map/DriveEndpointLabels';
 import { TravelModePolylines } from '@/components/map/TravelModePolylines';
 import { TripPlaybackHead } from '@/components/map/TripPlaybackHead';
@@ -64,7 +63,6 @@ export const TripRouteOverlay = memo(function TripRouteOverlay({
   showDirectionArrows = false,
   mapLatitudeDelta,
 }: TripRouteOverlayProps) {
-  const onFootDetection = useOnFootDetectionEnabled();
   const polylineCap = emphasized
     ? MAX_EMPHASIZED_TRIP_POLYLINE_POINTS
     : MAX_MAP_POLYLINE_POINTS;
@@ -122,7 +120,7 @@ export const TripRouteOverlay = memo(function TripRouteOverlay({
   }, [anchorEndStay, coordinates, endLabel]);
 
   const modeLegs = useMemo(() => {
-    const legs = buildTravelModeLegs(points, { onFootDetection }).map(leg => ({
+    const legs = buildTravelModeLegs(points).map(leg => ({
       style: leg.style,
       coordinates: [...leg.coordinates],
     }));
@@ -154,7 +152,7 @@ export const TripRouteOverlay = memo(function TripRouteOverlay({
       last.coordinates = [...last.coordinates, routeEnd];
     }
     return legs;
-  }, [onFootDetection, points, routeEnd, routeStart]);
+  }, [points, routeEnd, routeStart]);
 
   if (coordinates.length < 1) {
     return null;

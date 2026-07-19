@@ -5,8 +5,12 @@ import type { PlaceKind } from '@/lib/trip-detection';
 import { getDatabase } from '../client';
 import { visitLabelOverrides } from '../schema';
 
-/** Match overrides when live detect slightly shifts stay start. */
-export const VISIT_LABEL_OVERRIDE_START_MATCH_MS = 5 * 60 * 1000;
+/**
+ * Match overrides when detection shifts stay start (algorithm bumps, activity
+ * edge snap). Wide enough for parking→walk handoff; consume-once prevents
+ * reuse across nearby stays.
+ */
+export const VISIT_LABEL_OVERRIDE_START_MATCH_MS = 45 * 60 * 1000;
 
 export type VisitLabelOverrideRow = {
   id: number;

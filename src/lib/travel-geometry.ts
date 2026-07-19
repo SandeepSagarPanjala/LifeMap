@@ -127,6 +127,7 @@ export function canonicalizeTravelGeometry(
     0,
     sorted.length - 1,
     ...findTurnAnchorIndices(sorted, minTurnDeg),
+    ...findActivityTransitionIndices(sorted),
   ]);
   const anchors = [...anchorSet].sort((a, b) => a - b);
 
@@ -141,6 +142,28 @@ export function canonicalizeTravelGeometry(
   }
 
   return sortedPoints([...byId.values()]);
+}
+
+/** Keep vehicle↔foot handoffs so walk dashes survive geometry simplify. */
+function findActivityTransitionIndices(
+  points: readonly LocationPointRow[],
+): number[] {
+  const indices: number[] = [];
+  for (let index = 1; index < points.length; index += 1) {
+    const prev = normalizeActivityKey(points[index - 1]?.activityType);
+    const next = normalizeActivityKey(points[index]?.activityType);
+    if (prev !== next) {
+      indices.push(index - 1, index);
+    }
+  }
+  return indices;
+}
+
+function normalizeActivityKey(
+  activityType: string | null | undefined,
+): string {
+  const trimmed = activityType?.trim().toLowerCase() ?? '';
+  return trimmed.length > 0 ? trimmed : 'missing';
 }
 
 function nearestPointByTimestamp(

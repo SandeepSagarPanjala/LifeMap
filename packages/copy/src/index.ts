@@ -124,11 +124,6 @@ export const APP_COPY = {
     backgroundPermissionNegative: 'Cancel',
     backgroundTracking: 'Background tracking',
     maximumReliability: 'Maximum reliability',
-    onFootDetection: 'On-foot detection',
-    onFootDetectionOn:
-      'Denser GPS while walking and dashed foot paths on the map.',
-    onFootDetectionOff:
-      'Drive-only tracking and map paths — walks are not distinguished.',
   },
 
   capture: {

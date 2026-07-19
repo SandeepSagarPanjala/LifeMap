@@ -1,6 +1,5 @@
 import { memo, useMemo } from 'react';
 
-import { useOnFootDetectionEnabled } from '@/hooks/use-on-foot-detection-enabled';
 import { TravelModePolylines } from '@/components/map/TravelModePolylines';
 import type { LocationPointRow } from '@/db/repositories/location-days';
 import { buildTravelModeLegs } from '@/lib/travel-mode-legs';
@@ -25,11 +24,7 @@ export const HistoryRoutePath = memo(function HistoryRoutePath({
   tone,
   pathKey,
 }: HistoryRoutePathProps) {
-  const onFootDetection = useOnFootDetectionEnabled();
-  const legs = useMemo(
-    () => buildTravelModeLegs(points, { onFootDetection }),
-    [onFootDetection, points],
-  );
+  const legs = useMemo(() => buildTravelModeLegs(points), [points]);
 
   if (legs.length === 0 || isSparseTravelRoute(points)) {
     return null;
