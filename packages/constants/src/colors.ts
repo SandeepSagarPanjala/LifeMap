@@ -95,9 +95,9 @@ export const VISIT_CONNECTOR_STROKE = 'rgba(0, 122, 255, 0.7)';
 export const VISIT_CONNECTOR_STROKE_WIDTH = 2;
 export const VISIT_CONNECTOR_DASH_PATTERN = [3, 5] as const;
 /** Fine dash for on-foot drive segments (thin stroke — not the thick drive casing). */
-export const TRAVEL_FOOT_DASH_PATTERN = [8, 4] as const;
-export const TRAVEL_FOOT_FILL_WIDTH = 2;
-export const TRAVEL_FOOT_BORDER_WIDTH = 3;
+export const TRAVEL_FOOT_DASH_PATTERN = [6, 4] as const;
+export const TRAVEL_FOOT_FILL_WIDTH = 2.5;
+export const TRAVEL_FOOT_BORDER_WIDTH = 2;
 
 export const HISTORY_PAST_ROUTE_FILL = 'rgba(142, 142, 147, 0.5)';
 export const HISTORY_PAST_ROUTE_BORDER = 'rgba(255, 255, 255, 0.35)';

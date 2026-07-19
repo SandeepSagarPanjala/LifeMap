@@ -1,5 +1,4 @@
 import { memo, useMemo } from 'react';
-import { Polyline } from 'react-native-maps';
 
 import { DriveEndpointLabels } from '@/components/map/DriveEndpointLabels';
 import { TravelModePolylines } from '@/components/map/TravelModePolylines';
@@ -18,7 +17,6 @@ import {
 } from '@/lib/app-constants';
 import {
   distanceKm,
-  downsampleMapCoordinates,
   type MapCoordinate,
   toDisplayMapCoordinates,
 } from '@/lib/location-geo';
@@ -84,14 +82,6 @@ export const TripRouteOverlay = memo(function TripRouteOverlay({
     }
     return getTripPlaybackFrame(points, playbackProgress, denseSamples);
   }, [denseSamples, playbackProgress, points]);
-
-  const playedCoordinates = useMemo(
-    () =>
-      frame?.pathCoordinates != null
-        ? downsampleMapCoordinates(frame.pathCoordinates, 240)
-        : [],
-    [frame?.pathCoordinates],
-  );
 
   const routeStart = useMemo((): MapCoordinate => {
     if (startLabel?.savedPlace) {
@@ -187,26 +177,7 @@ export const TripRouteOverlay = memo(function TripRouteOverlay({
         />
       ) : null}
 
-      {isPlaying && playedCoordinates.length > 0 ? (
-        <>
-          <Polyline
-            coordinates={playedCoordinates}
-            strokeColor={ROUTE_PATH_STORY_BORDER}
-            strokeWidth={ROUTE_PATH_BORDER_WIDTH}
-            lineCap="round"
-            lineJoin="round"
-            zIndex={3}
-          />
-          <Polyline
-            coordinates={playedCoordinates}
-            strokeColor={ROUTE_PATH_STORY_FILL}
-            strokeWidth={ROUTE_PATH_FILL_WIDTH}
-            lineCap="round"
-            lineJoin="round"
-            zIndex={4}
-          />
-        </>
-      ) : null}
+      {/* Full route stays stable; a growing solid overlay over dashes strobes on MapKit. */}
 
       {isPlaying && frame ? (
         <TripPlaybackHead

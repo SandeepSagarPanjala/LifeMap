@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Marker } from 'react-native-maps';
 import type { MapMarker } from 'react-native-maps';
 import { StyleSheet, Text, View } from 'react-native';
@@ -25,9 +25,14 @@ export function TripPlaybackHead({
   labelPlacement,
 }: TripPlaybackHeadProps) {
   const labelOffset = getPlaybackLabelCenterOffset(labelPlacement);
+  const timeLabel = format(timestamp, 'h:mm:ss a');
   const dotMarkerRef = useRef<MapMarker>(null);
   const labelMarkerRef = useRef<MapMarker>(null);
   const hasMountedRef = useRef(false);
+  // Keep Marker.coordinate stable after mount — prop updates fight
+  // animateMarkerToCoordinate and make the chip jitter.
+  const initialCoordinateRef = useRef(coordinate);
+  const [trackLabel, setTrackLabel] = useState(true);
 
   useEffect(() => {
     if (!hasMountedRef.current) {
@@ -45,11 +50,21 @@ export function TripPlaybackHead({
     );
   }, [coordinate]);
 
+  // Brief tracksViewChanges so the time text can update, then freeze (avoids
+  // continuous MapKit marker bitmap flicker).
+  useEffect(() => {
+    setTrackLabel(true);
+    const id = requestAnimationFrame(() => {
+      setTrackLabel(false);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [timeLabel]);
+
   return (
     <>
       <Marker
         ref={dotMarkerRef}
-        coordinate={coordinate}
+        coordinate={initialCoordinateRef.current}
         anchor={MARKER_ANCHOR}
         zIndex={11}
         tracksViewChanges={false}
@@ -62,14 +77,14 @@ export function TripPlaybackHead({
 
       <Marker
         ref={labelMarkerRef}
-        coordinate={coordinate}
+        coordinate={initialCoordinateRef.current}
         anchor={MARKER_ANCHOR}
         centerOffset={labelOffset}
         zIndex={10}
-        tracksViewChanges={false}
+        tracksViewChanges={trackLabel}
       >
         <View style={styles.timeChip}>
-          <Text style={styles.timeText}>{format(timestamp, 'h:mm:ss a')}</Text>
+          <Text style={styles.timeText}>{timeLabel}</Text>
         </View>
       </Marker>
     </>

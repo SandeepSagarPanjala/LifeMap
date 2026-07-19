@@ -51,6 +51,9 @@ function parsedToLocationRow(point: {
   altitude: number | null;
   speed: number | null;
   source: string;
+  activityType?: string | null;
+  activityConfidence?: number | null;
+  isMoving?: boolean | null;
 }): LocationPointRow | null {
   const timestamp = point.timestamp ?? point.at;
   if (timestamp == null) {
@@ -65,6 +68,10 @@ function parsedToLocationRow(point: {
     altitude: point.altitude,
     speed: point.speed,
     source: point.source,
+    // Required for walk dashes on live today travels (not only sealed trip_points).
+    activityType: point.activityType ?? null,
+    activityConfidence: point.activityConfidence ?? null,
+    isMoving: point.isMoving ?? null,
   });
 }
 

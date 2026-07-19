@@ -8,6 +8,7 @@ import {
   TRAVEL_MODE_ACTIVITY_CONFIDENCE_MIN,
 } from '@lifemap/constants';
 import {
+  isFootMotionActivity,
   isWheeledMotionActivity,
   normalizeMotionActivity,
 } from './activity';
@@ -296,7 +297,7 @@ function isSparseEndpointJump(points: ParsedPoint[]): boolean {
 
 /**
  * Brief unknown/accuracy teleports that leave and return near the same spot.
- * Keeps real vehicle legs.
+ * Keeps real vehicle legs and confident on-foot walks.
  */
 function isLowQualityStayTeleport(
   points: ParsedPoint[],
@@ -312,23 +313,28 @@ function isLowQualityStayTeleport(
     return false;
   }
   let hasWheeled = false;
+  let hasFoot = false;
   let accuracySum = 0;
   let accuracyN = 0;
   for (let i = 0; i < points.length; i += 1) {
     const point = points[i]!;
     const activity = normalizeMotionActivity(point.activityType);
     const confident =
-      point.activityConfidence != null &&
+      point.activityConfidence == null ||
       point.activityConfidence >= TRAVEL_MODE_ACTIVITY_CONFIDENCE_MIN;
     if (confident && isWheeledMotionActivity(activity)) {
       hasWheeled = true;
+    }
+    if (confident && isFootMotionActivity(activity)) {
+      hasFoot = true;
     }
     if (point.accuracy != null && point.accuracy > 0) {
       accuracySum += point.accuracy;
       accuracyN += 1;
     }
   }
-  if (hasWheeled) {
+  // Real travel modes — not indoor GPS flash.
+  if (hasWheeled || hasFoot) {
     return false;
   }
   const avgAccuracyM = accuracyN > 0 ? accuracySum / accuracyN : 0;
@@ -339,7 +345,24 @@ function isLowQualityStayTeleport(
   return returnedNearStart || pathWithinNoise;
 }
 
-/** A real drive needs motion/path evidence; loop-back routes can end near the start. */
+function hasConfidentFootTravel(points: readonly ParsedPoint[]): boolean {
+  for (const point of points) {
+    const activity = normalizeMotionActivity(point.activityType);
+    const confident =
+      point.activityConfidence == null ||
+      point.activityConfidence >= TRAVEL_MODE_ACTIVITY_CONFIDENCE_MIN;
+    if (confident && isFootMotionActivity(activity)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * A real travel needs motion/path evidence. Round-trips (Home→park→Home) count
+ * when there is confident foot activity or a substantial path — walking is
+ * often ~1 m/s so `isMovingPoint` (speed ≥ ~2 m/s) alone is not enough.
+ */
 function isRealDrive(
   points: ParsedPoint[],
   config: StopDetectionConfig,
@@ -354,6 +377,8 @@ function isRealDrive(
   const displacementM = haversineM(points[0]!, points[points.length - 1]!);
   const pathM = pathLengthM(points);
   const hasMoving = points.some(p => isMovingPoint(p, config));
+  const hasFoot = hasConfidentFootTravel(points);
+  const hasTravelEvidence = hasMoving || hasFoot;
   const durationMs =
     points[points.length - 1]!.at.getTime() - points[0]!.at.getTime();
   // Long elapsed time with almost no path is sparse geofence drift, not a drive.
@@ -361,19 +386,22 @@ function isRealDrive(
     return false;
   }
   // Short unknown/accuracy teleports near a stay (Home indoor GPS) are not drives.
-  // Real walks keep confident foot activity; real drives keep vehicle activity.
   if (isLowQualityStayTeleport(points, config, pathM, displacementM, durationMs)) {
     return false;
   }
-  // Round trips (leave and return near the same spot) still count when path is long.
-  if (hasMoving && pathM >= MIN_DRIVE_DISTANCE_M) {
+  // Round trips still count with foot/vehicle evidence + enough path.
+  if (hasTravelEvidence && pathM >= MIN_DRIVE_DISTANCE_M) {
     return true;
   }
-  // Prevent jitter loops near a stay from becoming Home→Home micro-drives.
+  // Long path without activity tags (sparse GPS walk) — still a trip.
+  if (pathM >= Math.max(MIN_DRIVE_DISTANCE_M * 5, config.radiusM * 2)) {
+    return true;
+  }
+  // Tiny leave/return with no travel evidence = stay jitter, not a drive.
   if (displacementM < config.radiusM) {
     return false;
   }
-  if (hasMoving) {
+  if (hasTravelEvidence) {
     return true;
   }
   return pathM >= MIN_DRIVE_DISTANCE_M;

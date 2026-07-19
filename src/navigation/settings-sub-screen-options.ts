@@ -15,8 +15,6 @@ export function settingsSubScreenOptions(
 
 export const DISTANCE_UNIT_LABELS = APP_COPY.settings.distanceUnits;
 
-export const PREFERRED_MAP_APP_LABELS = APP_COPY.settings.mapApps;
-
 export function accentThemeLabel(themeId: keyof typeof ACCENT_THEMES): string {
   return ACCENT_THEMES[themeId].name;
 }

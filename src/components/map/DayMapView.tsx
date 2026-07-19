@@ -1,15 +1,10 @@
 import { useMemo } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
-import MapView, {
-  Marker,
-  Polyline,
-  PROVIDER_DEFAULT,
-  PROVIDER_GOOGLE,
-} from 'react-native-maps';
+import MapView, { Marker, Polyline } from 'react-native-maps';
 
 import type { LocationPointRow } from '@/db/repositories/location-days';
 import { regionForCoordinates, toMapCoordinates } from '@/lib/location-geo';
-import { useAppStore } from '@/stores/app-store';
+import { mapProviderForPlatform } from '@/lib/map-provider';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 
 type DayMapViewProps = {
@@ -30,20 +25,12 @@ export function DayMapView({
   playbackIndex = null,
 }: DayMapViewProps) {
   const colors = useThemeColors();
-  const preferredMapApp = useAppStore(state => state.preferredMapApp);
   const coordinates = useMemo(() => toMapCoordinates(points), [points]);
   const initialRegion = useMemo(
     () => regionForCoordinates(coordinates),
     [coordinates],
   );
-  const provider = useMemo(() => {
-    // iOS needs additional Google Maps native setup; fallback to Apple provider
-    // to avoid runtime crashes when Google provider is selected in Settings.
-    if (Platform.OS === 'android' && preferredMapApp === 'google') {
-      return PROVIDER_GOOGLE;
-    }
-    return PROVIDER_DEFAULT;
-  }, [preferredMapApp]);
+  const provider = useMemo(() => mapProviderForPlatform(), []);
 
   const mapKey = useMemo(() => {
     if (points.length === 0) {

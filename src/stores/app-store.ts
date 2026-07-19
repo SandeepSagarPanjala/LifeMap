@@ -1,4 +1,3 @@
-import { Platform } from 'react-native';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -12,10 +11,6 @@ import {
 import type { TripDwellMinutes, TripRadiusMeters } from '@/lib/trip-settings';
 
 export type DistanceUnit = 'km' | 'mi';
-export type PreferredMapApp = 'google' | 'apple';
-
-const DEFAULT_PREFERRED_MAP_APP: PreferredMapApp =
-  Platform.OS === 'ios' ? 'apple' : 'google';
 
 type AppState = {
   hasCompletedPrivacyOnboarding: boolean;
@@ -23,7 +18,6 @@ type AppState = {
   slowSplashEnabled: boolean;
   devShowOnboarding: boolean;
   distanceUnit: DistanceUnit;
-  preferredMapApp: PreferredMapApp;
   tripDwellMinutes: TripDwellMinutes;
   tripDwellRadiusMeters: TripRadiusMeters;
   historyEarliestDateKey: string | null;
@@ -32,7 +26,6 @@ type AppState = {
   setSlowSplashEnabled: (enabled: boolean) => void;
   setDevShowOnboarding: (enabled: boolean) => void;
   setDistanceUnit: (unit: DistanceUnit) => void;
-  setPreferredMapApp: (app: PreferredMapApp) => void;
   setTripDwellMinutes: (minutes: TripDwellMinutes) => void;
   setTripDwellRadiusMeters: (meters: TripRadiusMeters) => void;
   setHistoryEarliestDateKey: (dateKey: string) => void;
@@ -44,7 +37,6 @@ function persistedAppState(state: AppState) {
     accentTheme: state.accentTheme,
     slowSplashEnabled: state.slowSplashEnabled,
     distanceUnit: state.distanceUnit,
-    preferredMapApp: state.preferredMapApp,
     tripDwellMinutes: state.tripDwellMinutes,
     tripDwellRadiusMeters: state.tripDwellRadiusMeters,
     historyEarliestDateKey: state.historyEarliestDateKey,
@@ -60,7 +52,6 @@ export const useAppStore = create<AppState>()(
       slowSplashEnabled: false,
       devShowOnboarding: false,
       distanceUnit: 'km',
-      preferredMapApp: DEFAULT_PREFERRED_MAP_APP,
       tripDwellMinutes: DEFAULT_TRIP_DWELL_MINUTES,
       tripDwellRadiusMeters: DEFAULT_TRIP_DWELL_RADIUS_METERS,
       historyEarliestDateKey: null,
@@ -75,7 +66,6 @@ export const useAppStore = create<AppState>()(
         set({ devShowOnboarding: enabled });
       },
       setDistanceUnit: unit => set({ distanceUnit: unit }),
-      setPreferredMapApp: app => set({ preferredMapApp: app }),
       setTripDwellMinutes: tripDwellMinutes => set({ tripDwellMinutes }),
       setTripDwellRadiusMeters: tripDwellRadiusMeters =>
         set({ tripDwellRadiusMeters }),

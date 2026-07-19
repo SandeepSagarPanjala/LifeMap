@@ -41,7 +41,7 @@ export const TRIP_RADIUS_CHOICES = [20, 25, 50, 75, 100, 150] as const;
 export const SAVED_PLACE_MIN_DWELL_MINUTES = 1;
 
 /** Bump when visit/drive detection rules change — invalidates sealed day cache. */
-export const TRIP_DETECTION_VERSION = 19;
+export const TRIP_DETECTION_VERSION = 20;
 
 /** Bump when stored route/visit geometry rules change — invalidates fast load path. */
 export const TRIP_GEOMETRY_VERSION = 4;
