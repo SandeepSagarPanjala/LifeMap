@@ -97,7 +97,7 @@ export function buildDrawableRouteSegments(
   );
 }
 
-/** Gap-safe groups, then solid travel-mode legs within each. */
+/** Gap-safe groups, then solid/dashed travel-mode legs within each. */
 export function buildDrawableRouteModeLegs(
   points: LocationPointRow[],
   config: TripDetectionConfig,
