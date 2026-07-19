@@ -1,7 +1,10 @@
 import { and, eq, isNull, or, sql } from 'drizzle-orm';
 
 import { listSavedPlaces } from '@/db/repositories/saved-places';
-import { findPlaceLookupNearAnchor } from '@/db/repositories/place-lookup-cache';
+import {
+  findPlaceLookupNearAnchor,
+  listPlaceLookupCacheRows,
+} from '@/db/repositories/place-lookup-cache';
 import { getTodayDateKey } from '@/lib/day-utils';
 import { buildTodayDisplayHistory } from '@/lib/today-live-history';
 import { getCurrentOpenVisit } from '@/lib/today-history';
@@ -11,7 +14,10 @@ import {
   shouldSkipPlaceLookupForStay,
 } from '@/lib/place-lookup-service';
 import { matchSavedPlaceForStay } from '@/lib/saved-places';
-import { isWithinPlaceLookupVenue } from '@/lib/place-lookup-venue';
+import {
+  findNearestPlaceLookupMatch,
+  isWithinPlaceLookupVenue,
+} from '@/lib/place-lookup-venue';
 import type { PlaceLookupRow } from '@/lib/place-lookup-types';
 import { listTripsForDay, type TripRow } from '@/db/repositories/trips';
 import { getDatabase } from '@/db/client';
@@ -78,13 +84,15 @@ export async function listUnlabeledStayTripsForPlaceCache(): Promise<
     .orderBy(sql`${trips.dateKey} asc`, sql`${trips.startAt} asc`);
 
   const items: PlaceCacheTripWork[] = [];
+  // One cache load — avoid N× full-table scans via findPlaceLookupNearAnchor.
+  const cacheRows = await listPlaceLookupCacheRows();
   for (const row of rows) {
     // Skip anchors that already failed MapKit — retrying every launch only
     // shows a stuck banner.
-    const cache = await findPlaceLookupNearAnchor({
-      lat: row.centroidLat,
-      lng: row.centroidLng,
-    });
+    const cache = findNearestPlaceLookupMatch(
+      { lat: row.centroidLat, lng: row.centroidLng },
+      cacheRows,
+    );
     if (cache?.lookupStatus === 'failed') {
       continue;
     }
