@@ -4,7 +4,6 @@ import {
   Animated,
   AppState,
   Easing,
-  Platform,
   useColorScheme,
   useWindowDimensions,
 } from 'react-native';
@@ -16,11 +15,7 @@ import {
 } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type MapView from 'react-native-maps';
-import {
-  PROVIDER_DEFAULT,
-  PROVIDER_GOOGLE,
-  type Region,
-} from 'react-native-maps';
+import { type Region } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { MomentRow, MomentType } from '@/db/repositories/moments';
@@ -128,6 +123,7 @@ import {
   visitPlaceSelectedCategory,
 } from '@/lib/place-lookup-types';
 import { buildMapAttributionInsets } from '@/lib/map-attribution-insets';
+import { mapProviderForPlatform } from '@/lib/map-provider';
 import {
   isBackgroundWorkBannerVisible,
   subscribeBackgroundWork,
@@ -170,7 +166,6 @@ export function useMapScreenController() {
   const tripDetectionConfig = useTripDetectionConfig();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
-  const preferredMapApp = useAppStore(state => state.preferredMapApp);
   const distanceUnit = useAppStore(state => state.distanceUnit);
   const todayKey = getTodayDateKey();
   const lastKnownTodayRef = useRef(todayKey);
@@ -594,10 +589,7 @@ export function useMapScreenController() {
     tripDetectionConfig.dwellRadiusMeters,
   ]);
 
-  const provider =
-    Platform.OS === 'android' && preferredMapApp === 'google'
-      ? PROVIDER_GOOGLE
-      : PROVIDER_DEFAULT;
+  const provider = mapProviderForPlatform();
 
   const historyPanelSlideDistance = useMemo(
     () =>

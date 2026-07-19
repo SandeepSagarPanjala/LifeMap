@@ -22,7 +22,6 @@ import { loadCachedStorageBreakdown } from '@/lib/settings-stats';
 import type { RootStackParamList } from '@/navigation/types';
 import {
   DISTANCE_UNIT_LABELS,
-  PREFERRED_MAP_APP_LABELS,
   accentThemeLabel,
 } from '@/navigation/settings-sub-screen-options';
 import { useAppStore } from '@/stores/app-store';
@@ -32,7 +31,6 @@ export function SettingsScreen() {
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const accentTheme = useAppStore(state => state.accentTheme);
   const distanceUnit = useAppStore(state => state.distanceUnit);
-  const preferredMapApp = useAppStore(state => state.preferredMapApp);
   const [storageSummary, setStorageSummary] = useState<string | undefined>();
   const [cachedPlacesSummary, setCachedPlacesSummary] = useState<
     string | undefined
@@ -133,12 +131,6 @@ export function SettingsScreen() {
             label="Distance unit"
             value={DISTANCE_UNIT_LABELS[distanceUnit]}
             onPress={() => navigation.navigate('DistanceUnitSettings')}
-          />
-          <SettingsGroupDivider />
-          <SettingsLinkRow
-            label="Preferred maps app"
-            value={PREFERRED_MAP_APP_LABELS[preferredMapApp]}
-            onPress={() => navigation.navigate('PreferredMapsSettings')}
           />
         </SettingsGroup>
 

@@ -1,17 +1,12 @@
 import { useMemo } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
-import MapView, {
-  Circle,
-  Marker,
-  PROVIDER_DEFAULT,
-  PROVIDER_GOOGLE,
-} from 'react-native-maps';
+import { StyleSheet, View } from 'react-native';
+import MapView, { Circle, Marker } from 'react-native-maps';
 
 import { Text } from '@/components/ui/text';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import type { PlacePoiRow } from '@/lib/place-lookup-types';
 import { regionForVenueRadius } from '@/lib/location-geo';
-import { useAppStore } from '@/stores/app-store';
+import { mapProviderForPlatform } from '@/lib/map-provider';
 
 const ANCHOR_PIN_COLOR = '#007AFF';
 const POI_PIN_COLOR = '#34C759';
@@ -31,14 +26,7 @@ export function CachedPlaceMapView({
   pois,
 }: CachedPlaceMapViewProps) {
   const colors = useThemeColors();
-  const preferredMapApp = useAppStore(state => state.preferredMapApp);
-
-  const provider = useMemo(() => {
-    if (Platform.OS === 'android' && preferredMapApp === 'google') {
-      return PROVIDER_GOOGLE;
-    }
-    return PROVIDER_DEFAULT;
-  }, [preferredMapApp]);
+  const provider = useMemo(() => mapProviderForPlatform(), []);
 
   const initialRegion = useMemo(
     () => regionForVenueRadius(anchor, venueRadiusMeters, 1.25),

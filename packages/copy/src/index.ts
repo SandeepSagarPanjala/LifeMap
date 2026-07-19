@@ -191,10 +191,6 @@ export const APP_COPY = {
       km: 'Kilometers',
       mi: 'Miles',
     },
-    mapApps: {
-      apple: 'Apple Maps',
-      google: 'Google Maps',
-    },
     driveMapRefresh: {
       tenSeconds: '10 seconds',
       thirtySeconds: '30 seconds',

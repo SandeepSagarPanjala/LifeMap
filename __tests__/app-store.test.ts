@@ -1,5 +1,3 @@
-import { Platform } from 'react-native';
-
 import { useAppStore } from '@/stores/app-store';
 
 describe('app-store', () => {
@@ -28,11 +26,6 @@ describe('app-store', () => {
   it('persists accent theme selection', () => {
     useAppStore.getState().setAccentTheme('amethyst');
     expect(useAppStore.getState().accentTheme).toBe('amethyst');
-  });
-
-  it('defaults preferred map app by platform', () => {
-    const expected = Platform.OS === 'ios' ? 'apple' : 'google';
-    expect(useAppStore.getState().preferredMapApp).toBe(expected);
   });
 
   it('stores history earliest date key', () => {

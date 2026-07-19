@@ -6,7 +6,6 @@ import {
   ROUTE_DIRECTION_ARROW_COLOR,
   ROUTE_DIRECTION_ARROW_REF_ZOOM_DELTA,
   ROUTE_DIRECTION_ARROW_STROKE_WIDTH,
-  TRAVEL_FOOT_BORDER_WIDTH,
   TRAVEL_FOOT_DASH_PATTERN,
   TRAVEL_FOOT_FILL_WIDTH,
 } from '@/lib/app-constants';
@@ -17,6 +16,9 @@ import {
   sampleRouteDirectionArrows,
 } from '@/lib/route-direction-arrows';
 import type { TravelModeLeg } from '@/lib/travel-mode-legs';
+
+/** Stable reference — a fresh array each render makes MapKit reset dash phase (flicker). */
+const FOOT_DASH_PATTERN = [...TRAVEL_FOOT_DASH_PATTERN];
 
 type TravelModePolylinesProps = {
   legs: readonly TravelModeLeg[];
@@ -110,32 +112,40 @@ const ModeLegPolylines = memo(function ModeLegPolylines({
   }
 
   const isDashed = leg.style === 'dashed';
-  // Walks: thin fine dashes (not the thick dual-stroke drive casing).
-  const strokeFillWidth = isDashed ? TRAVEL_FOOT_FILL_WIDTH : fillWidth;
-  const strokeBorderWidth = isDashed ? TRAVEL_FOOT_BORDER_WIDTH : borderWidth;
-  const dashPattern = isDashed ? [...TRAVEL_FOOT_DASH_PATTERN] : undefined;
-  const lineCap = isDashed ? 'butt' : 'round';
 
   return (
     <>
-      <Polyline
-        coordinates={coordinates}
-        strokeColor={border}
-        strokeWidth={strokeBorderWidth}
-        lineCap={lineCap}
-        lineJoin="round"
-        lineDashPattern={dashPattern}
-        zIndex={zBase}
-      />
-      <Polyline
-        coordinates={coordinates}
-        strokeColor={fill}
-        strokeWidth={strokeFillWidth}
-        lineCap={lineCap}
-        lineJoin="round"
-        lineDashPattern={dashPattern}
-        zIndex={zBase + 1}
-      />
+      {isDashed ? (
+        // Single thin dash — dual border+fill dashed strokes strobe on MapKit.
+        <Polyline
+          coordinates={coordinates}
+          strokeColor={fill}
+          strokeWidth={TRAVEL_FOOT_FILL_WIDTH}
+          lineCap="butt"
+          lineJoin="round"
+          lineDashPattern={FOOT_DASH_PATTERN}
+          zIndex={zBase + 1}
+        />
+      ) : (
+        <>
+          <Polyline
+            coordinates={coordinates}
+            strokeColor={border}
+            strokeWidth={borderWidth}
+            lineCap="round"
+            lineJoin="round"
+            zIndex={zBase}
+          />
+          <Polyline
+            coordinates={coordinates}
+            strokeColor={fill}
+            strokeWidth={fillWidth}
+            lineCap="round"
+            lineJoin="round"
+            zIndex={zBase + 1}
+          />
+        </>
+      )}
       {arrows.map((arrow, arrowIndex) => (
         <Fragment key={`${keyPrefix}-arrow-${arrowIndex}`}>
           <Polyline

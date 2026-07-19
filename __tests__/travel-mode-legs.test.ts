@@ -96,6 +96,19 @@ describe('buildTravelModeLegs', () => {
     expect(runs[1]?.points.map(p => p.id)).toEqual([2, 3, 4, 5]);
   });
 
+  it('dashes an entire on_foot travel (no vehicle points)', () => {
+    const legs = buildTravelModeLegs([
+      pointAt(1, 0, 33.25, -97.153, 'on_foot', 1.2),
+      pointAt(2, 3, 33.249, -97.1525, 'on_foot', 0.9),
+      pointAt(3, 6, 33.248, -97.1517, 'on_foot', 0.1),
+      pointAt(4, 9, 33.249, -97.152, 'on_foot', 1.0),
+      pointAt(5, 12, 33.25, -97.153, 'on_foot', 0.8),
+    ]);
+    expect(legs).toHaveLength(1);
+    expect(legs[0]?.style).toBe('dashed');
+    expect(legs[0]?.coordinates).toHaveLength(5);
+  });
+
   it('never dashes when pathKind is stay', () => {
     const legs = buildTravelModeLegs(
       [

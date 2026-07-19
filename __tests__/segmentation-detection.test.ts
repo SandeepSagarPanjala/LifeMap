@@ -543,6 +543,101 @@ describe('segmentation detection (current algorithm)', () => {
       expect(timeline.some(entry => entry.kind === 'travel')).toBe(false);
     });
 
+    it('keeps a Home→park→Home walk as a travel (confident on_foot, slow speed)', () => {
+      // Mirrors Jul 19: ~560 m round trip at walking speed (< 2 m/s).
+      const home = { lat: 33.25045, lng: -97.153 };
+      const park = { lat: 33.24801, lng: -97.15167 };
+      const specs: Array<{
+        minutes: number;
+        lat: number;
+        lng: number;
+        speed?: number | null;
+        activityType?: string | null;
+        activityConfidence?: number | null;
+      }> = [
+        { minutes: 0, ...home, activityType: 'still', activityConfidence: 100 },
+        { minutes: 10, ...home, activityType: 'still', activityConfidence: 100 },
+        {
+          minutes: 14,
+          ...home,
+          speed: 1.2,
+          activityType: 'on_foot',
+          activityConfidence: 100,
+        },
+        {
+          minutes: 17,
+          lat: 33.24924,
+          lng: -97.15254,
+          speed: 0.9,
+          activityType: 'on_foot',
+          activityConfidence: 100,
+        },
+        {
+          minutes: 20,
+          ...park,
+          speed: 0.1,
+          activityType: 'on_foot',
+          activityConfidence: 100,
+        },
+        {
+          minutes: 23,
+          lat: 33.24906,
+          lng: -97.15199,
+          speed: 1.0,
+          activityType: 'on_foot',
+          activityConfidence: 100,
+        },
+        {
+          minutes: 26,
+          ...home,
+          speed: 0.8,
+          activityType: 'on_foot',
+          activityConfidence: 100,
+        },
+        { minutes: 40, ...home, activityType: 'still', activityConfidence: 100 },
+      ];
+      const start = new Date('2026-07-19T05:00:00.000Z');
+      const points = specs.map((spec, index) => ({
+        ...makePoints(
+          [{ minutes: spec.minutes, lat: spec.lat, lng: spec.lng, speed: spec.speed }],
+          start,
+        )[0]!,
+        id: index + 1,
+        activityType: spec.activityType ?? null,
+        activityConfidence: spec.activityConfidence ?? null,
+        isMoving: true,
+      }));
+
+      const timeline = buildDayTimeline(
+        points,
+        buildTripDetectionConfig(10, 5, 75),
+      );
+      expect(timeline.map(entry => entry.kind)).toEqual([
+        'stay',
+        'travel',
+        'stay',
+      ]);
+      const walk = timeline[1];
+      expect(walk?.kind).toBe('travel');
+      if (walk?.kind === 'travel') {
+        expect(walk.distanceKm).toBeGreaterThan(0.3);
+        // Live today maps dash from DetectedTrip.points — activity must survive.
+        expect(
+          walk.points.some(
+            p => p.activityType === 'on_foot' && p.activityConfidence === 100,
+          ),
+        ).toBe(true);
+        expect(
+          walk.points.every(
+            p =>
+              p.activityType == null ||
+              p.activityType === 'on_foot' ||
+              p.activityType === 'still',
+          ),
+        ).toBe(true);
+      }
+    });
+
     it('does not emit a stay from a single GPS point', () => {
       const trips = detectTripsFromPoints(
         makePoints([{ minutes: 0, ...HOME }]),

@@ -1,17 +1,15 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import MapView, {
   Circle,
   Polyline,
-  PROVIDER_DEFAULT,
-  PROVIDER_GOOGLE,
   type Region,
 } from 'react-native-maps';
 
 import type { LocationPointRow } from '@/db/repositories/location-days';
 import { regionForCoordinates, toMapCoordinates } from '@/lib/location-geo';
+import { mapProviderForPlatform } from '@/lib/map-provider';
 import { DEFAULT_STOP_CONFIG, type Stop } from '@/lib/segmentation/stops';
-import { useAppStore } from '@/stores/app-store';
 
 const STOP_COLOR = '#ff3b30';
 const TRAVEL_COLOR = '#007aff';
@@ -135,19 +133,13 @@ export function BenchmarkMapView({
   variant = 'trips',
   className,
 }: BenchmarkMapViewProps) {
-  const preferredMapApp = useAppStore(state => state.preferredMapApp);
   const mapRef = useRef<MapView | null>(null);
   const coordinates = useMemo(() => toMapCoordinates(points), [points]);
   const initialRegion = useMemo(
     () => regionForCoordinates(coordinates),
     [coordinates],
   );
-  const provider = useMemo(() => {
-    if (Platform.OS === 'android' && preferredMapApp === 'google') {
-      return PROVIDER_GOOGLE;
-    }
-    return PROVIDER_DEFAULT;
-  }, [preferredMapApp]);
+  const provider = useMemo(() => mapProviderForPlatform(), []);
 
   const selectedStop = useMemo(
     () => stops.find(stop => stop.id === selectedStopId) ?? null,
