@@ -4,7 +4,6 @@ import {
   Animated,
   AppState,
   Easing,
-  Platform,
   useColorScheme,
   useWindowDimensions,
 } from 'react-native';
