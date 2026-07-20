@@ -86,7 +86,12 @@ async function applyOverrideIfNeeded(
   }
 
   const dateKey = toDateKey(stay.startAt);
-  const override = await loadVisitLabelOverrideForStay(dateKey, stay.startAt);
+  const anchor = resolveStayAnchor(stay);
+  const override = await loadVisitLabelOverrideForStay(
+    dateKey,
+    stay.startAt,
+    anchor,
+  );
   if (!override) {
     return fields;
   }
@@ -277,11 +282,18 @@ async function persistVisitPlacePoiSelection(args: {
     tripPlaceKind: resolved?.placeKind ?? null,
   });
 
+  // Stamp the stay anchor so the pick can re-attach by place (not just exact
+  // start) after a rebuild shifts the visit boundary.
+  const anchor = resolveStayAnchor(args.stay);
+
   // Always write override so silent-seal prune of early-inserted tail rows
   // cannot erase the user's pick before the visit is truly sealed.
   await upsertVisitLabelOverride({
     dateKey: args.dateKey,
     startAtMs: args.stay.startAt.getTime(),
+    endAtMs: args.stay.endAt.getTime(),
+    anchorLat: anchor.lat,
+    anchorLng: anchor.lng,
     poiId: args.poiId,
     poiLabel: args.poiLabel,
     placeId: cacheId,

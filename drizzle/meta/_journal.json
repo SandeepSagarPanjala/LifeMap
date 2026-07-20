@@ -232,6 +232,13 @@
       "when": 1788924000000,
       "tag": "0032_trip_points_activity",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1788925000000,
+      "tag": "0033_visit_label_override_anchor",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,6 @@
 import {
-  VISIT_LABEL_OVERRIDE_START_MATCH_MS,
   matchVisitLabelOverride,
+  matchVisitLabelOverrideForStay,
   type VisitLabelOverrideRow,
 } from '@/db/repositories/visit-label-overrides';
 import {
@@ -13,6 +13,7 @@ import {
   mergeOverrideIntoPersistLabel,
   shouldApplyVisitLabelOverride,
   takeVisitLabelOverrideForStart,
+  takeVisitLabelOverrideForStay,
   visitLabelOverrideToResolved,
 } from '@/lib/visit-label-override';
 import type { DetectedTrip } from '@/lib/trip-detection';
@@ -45,6 +46,9 @@ function override(
     id: partial.id ?? 1,
     dateKey: partial.dateKey ?? '2026-07-12',
     startAtMs: partial.startAtMs,
+    endAtMs: partial.endAtMs ?? null,
+    anchorLat: partial.anchorLat ?? null,
+    anchorLng: partial.anchorLng ?? null,
     poiId: partial.poiId,
     poiLabel: partial.poiLabel ?? 'Chili\'s',
     placeId: partial.placeId ?? 42,
@@ -62,22 +66,144 @@ describe('matchVisitLabelOverride', () => {
     expect(matchVisitLabelOverride(rows, 1_000)?.poiId).toBe(2);
   });
 
-  it('returns nearest start within the match window', () => {
+  it('does not match a different stay start even within 45 minutes', () => {
     const rows = [override({ startAtMs: 1_000, poiId: 9 })];
-    const near = 1_000 + VISIT_LABEL_OVERRIDE_START_MATCH_MS - 1;
-    expect(matchVisitLabelOverride(rows, near)?.poiId).toBe(9);
+    const eighteenMinutes = 1_000 + 18 * 60 * 1000;
+    expect(matchVisitLabelOverride(rows, eighteenMinutes)).toBeNull();
   });
 
-  it('returns null when start is outside the match window', () => {
-    const rows = [override({ startAtMs: 1_000, poiId: 9 })];
-    const far = 1_000 + VISIT_LABEL_OVERRIDE_START_MATCH_MS + 1;
-    expect(matchVisitLabelOverride(rows, far)).toBeNull();
-  });
-
-  it('still matches when algorithm shifts stay start by more than five minutes', () => {
+  it('does not match when start drifts by ten minutes', () => {
     const rows = [override({ startAtMs: 1_000, poiId: 9 })];
     const tenMinutes = 1_000 + 10 * 60 * 1000;
-    expect(matchVisitLabelOverride(rows, tenMinutes)?.poiId).toBe(9);
+    expect(matchVisitLabelOverride(rows, tenMinutes)).toBeNull();
+  });
+});
+
+describe('matchVisitLabelOverrideForStay', () => {
+  const VISHNU = { lat: 33.2, lng: -97.13 };
+
+  it('prefers an exact start match', () => {
+    const rows = [
+      override({
+        id: 1,
+        startAtMs: 1_000,
+        poiId: 2,
+        anchorLat: VISHNU.lat,
+        anchorLng: VISHNU.lng,
+      }),
+    ];
+    expect(
+      matchVisitLabelOverrideForStay(rows, {
+        startAtMs: 1_000,
+        anchorLat: VISHNU.lat,
+        anchorLng: VISHNU.lng,
+      })?.poiId,
+    ).toBe(2);
+  });
+
+  it('re-attaches by place when the start drifts', () => {
+    const rows = [
+      override({
+        id: 1,
+        startAtMs: 1_000,
+        poiId: 7,
+        anchorLat: VISHNU.lat,
+        anchorLng: VISHNU.lng,
+      }),
+    ];
+    // Same spot, start shifted by 12 minutes on rebuild.
+    const shifted = 1_000 + 12 * 60 * 1000;
+    expect(
+      matchVisitLabelOverrideForStay(rows, {
+        startAtMs: shifted,
+        anchorLat: VISHNU.lat + 0.0002,
+        anchorLng: VISHNU.lng - 0.0002,
+      })?.poiId,
+    ).toBe(7);
+  });
+
+  it('never re-attaches to a different venue', () => {
+    const rows = [
+      override({
+        id: 1,
+        startAtMs: 1_000,
+        poiId: 7,
+        anchorLat: VISHNU.lat,
+        anchorLng: VISHNU.lng,
+      }),
+    ];
+    // A stop ~1.5 km away must not steal the pick, even minutes later.
+    expect(
+      matchVisitLabelOverrideForStay(rows, {
+        startAtMs: 1_000 + 5 * 60 * 1000,
+        anchorLat: VISHNU.lat + 0.014,
+        anchorLng: VISHNU.lng,
+      }),
+    ).toBeNull();
+  });
+
+  it('does not spatially match legacy rows without an anchor', () => {
+    const rows = [override({ id: 1, startAtMs: 1_000, poiId: 7 })];
+    expect(
+      matchVisitLabelOverrideForStay(rows, {
+        startAtMs: 2_000,
+        anchorLat: VISHNU.lat,
+        anchorLng: VISHNU.lng,
+      }),
+    ).toBeNull();
+  });
+
+  it('picks the nearest start among same-place revisits', () => {
+    const rows = [
+      override({
+        id: 1,
+        startAtMs: 1_000,
+        poiId: 7,
+        anchorLat: VISHNU.lat,
+        anchorLng: VISHNU.lng,
+      }),
+      override({
+        id: 2,
+        startAtMs: 100_000,
+        poiId: 8,
+        anchorLat: VISHNU.lat,
+        anchorLng: VISHNU.lng,
+      }),
+    ];
+    expect(
+      matchVisitLabelOverrideForStay(rows, {
+        startAtMs: 95_000,
+        anchorLat: VISHNU.lat,
+        anchorLng: VISHNU.lng,
+      })?.poiId,
+    ).toBe(8);
+  });
+
+  it('consumes a stay match so a revisit cannot reuse it', () => {
+    const rows = [
+      override({
+        id: 7,
+        startAtMs: 1_000,
+        poiId: 99,
+        anchorLat: VISHNU.lat,
+        anchorLng: VISHNU.lng,
+      }),
+    ];
+    expect(
+      takeVisitLabelOverrideForStay(rows, {
+        startAtMs: 1_000 + 60_000,
+        anchorLat: VISHNU.lat,
+        anchorLng: VISHNU.lng,
+      })?.poiId,
+    ).toBe(99);
+    expect(rows).toHaveLength(0);
+    expect(
+      takeVisitLabelOverrideForStay(rows, {
+        startAtMs: 1_000 + 60_000,
+        anchorLat: VISHNU.lat,
+        anchorLng: VISHNU.lng,
+      }),
+    ).toBeNull();
   });
 });
 
@@ -182,20 +308,17 @@ describe('mergeOverrideIntoPersistLabel', () => {
     ).toBe(99);
   });
 
-  it('finds overrides when sealed start drifts slightly from open start', () => {
+  it('only finds overrides at the exact sealed start', () => {
     const rows = [override({ startAtMs: 1_000, poiId: 99 })];
-    expect(findVisitLabelOverrideForStart(rows, 1_000 + 30_000)?.poiId).toBe(
-      99,
-    );
+    expect(findVisitLabelOverrideForStart(rows, 1_000)?.poiId).toBe(99);
+    expect(findVisitLabelOverrideForStart(rows, 1_000 + 30_000)).toBeNull();
   });
 
-  it('consumes an override so a later nearby stay cannot reuse it', () => {
+  it('consumes an exact override so it cannot apply twice', () => {
     const rows = [override({ id: 7, startAtMs: 1_000, poiId: 99 })];
-    expect(takeVisitLabelOverrideForStart(rows, 1_000 + 30_000)?.poiId).toBe(
-      99,
-    );
+    expect(takeVisitLabelOverrideForStart(rows, 1_000)?.poiId).toBe(99);
     expect(rows).toHaveLength(0);
-    expect(takeVisitLabelOverrideForStart(rows, 1_000 + 60_000)).toBeNull();
+    expect(takeVisitLabelOverrideForStart(rows, 1_000)).toBeNull();
   });
 });
 

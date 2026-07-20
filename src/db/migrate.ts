@@ -280,6 +280,33 @@ export async function ensureMaterializedDayExcludedDriveColumn(
   }
 }
 
+/** Repair visit_label_overrides anchor columns when migration 0033 was skipped. */
+export async function ensureVisitLabelOverrideAnchorColumns(
+  sqlite: DB,
+): Promise<void> {
+  if (!(await tableExists(sqlite, 'visit_label_overrides'))) {
+    return;
+  }
+  if (!(await columnExists(sqlite, 'visit_label_overrides', 'end_at_ms'))) {
+    await executeMigrationStatement(
+      sqlite,
+      `ALTER TABLE visit_label_overrides ADD COLUMN end_at_ms integer`,
+    );
+  }
+  if (!(await columnExists(sqlite, 'visit_label_overrides', 'anchor_lat'))) {
+    await executeMigrationStatement(
+      sqlite,
+      `ALTER TABLE visit_label_overrides ADD COLUMN anchor_lat real`,
+    );
+  }
+  if (!(await columnExists(sqlite, 'visit_label_overrides', 'anchor_lng'))) {
+    await executeMigrationStatement(
+      sqlite,
+      `ALTER TABLE visit_label_overrides ADD COLUMN anchor_lng real`,
+    );
+  }
+}
+
 /** Repair materialized_days geometry column when migration 0014 was skipped. */
 export async function ensureMaterializedDayGeometryColumn(
   sqlite: DB,

@@ -16,7 +16,11 @@ import {
   updateTripSavedPlaceAssociation,
   type TripRow,
 } from '@/db/repositories/trips';
-import { VISIT_LABEL_OVERRIDE_START_MATCH_MS } from '@/db/repositories/visit-label-overrides';
+import {
+  upsertVisitLabelOverride,
+  VISIT_LABEL_OVERRIDE_START_MATCH_MS,
+} from '@/db/repositories/visit-label-overrides';
+import { toDateKey } from '@/lib/day-utils';
 import {
   getDefaultTripDetectionConfig,
   rebuildAllTrips,
@@ -312,6 +316,19 @@ export async function applyTripLabelOverrides(
         override.poiLabel ?? undefined,
         override.placeKind === 'cache' ? placeId : null,
       );
+      // Also repopulate the override table with the stay anchor so the pick
+      // survives future rebuilds (detection-first rebuild only keeps overrides).
+      await upsertVisitLabelOverride({
+        dateKey: toDateKey(trip.startAt),
+        startAtMs: trip.startAt.getTime(),
+        endAtMs: trip.endAt.getTime(),
+        anchorLat: trip.centroidLat,
+        anchorLng: trip.centroidLng,
+        poiId: override.poiId,
+        poiLabel: override.poiLabel ?? null,
+        placeId: override.placeKind === 'cache' ? placeId : null,
+        placeKind: override.placeKind === 'cache' ? 'cache' : null,
+      });
       applied += 1;
       continue;
     }
@@ -370,28 +387,21 @@ async function findTripForLabelOverride(
   return matchStayTripByStart(dayTrips, startAtMs);
 }
 
-/** Nearest same-day stay whose start is within the visit-label match window. */
+/** Exact same-day stay start only (no fuzzy window). */
 export function matchStayTripByStart(
   dayTrips: readonly TripRow[],
   startAtMs: number,
-  windowMs: number = VISIT_LABEL_OVERRIDE_START_MATCH_MS,
+  _windowMs: number = VISIT_LABEL_OVERRIDE_START_MATCH_MS,
 ): TripRow | null {
-  let nearest: TripRow | null = null;
-  let nearestDelta = Number.POSITIVE_INFINITY;
   for (const trip of dayTrips) {
     if (trip.kind !== 'stay') {
       continue;
     }
-    const delta = Math.abs(trip.startAt.getTime() - startAtMs);
-    if (delta === 0) {
+    if (trip.startAt.getTime() === startAtMs) {
       return trip;
     }
-    if (delta <= windowMs && delta < nearestDelta) {
-      nearest = trip;
-      nearestDelta = delta;
-    }
   }
-  return nearest;
+  return null;
 }
 
 export async function rebuildTripsAfterRestore(

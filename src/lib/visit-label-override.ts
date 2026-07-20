@@ -2,7 +2,9 @@ import {
   getVisitLabelOverride,
   listVisitLabelOverridesForDay,
   matchVisitLabelOverride,
+  matchVisitLabelOverrideForStay,
   type VisitLabelOverrideRow,
+  type VisitLabelOverrideStayAnchor,
 } from '@/db/repositories/visit-label-overrides';
 import type { ResolvedPlaceFields } from '@/lib/resolved-place';
 
@@ -41,8 +43,9 @@ export function shouldApplyVisitLabelOverride(args: {
 export async function loadVisitLabelOverrideForStay(
   dateKey: string,
   startAt: Date,
+  anchor?: { lat: number | null; lng: number | null } | null,
 ): Promise<VisitLabelOverrideRow | null> {
-  return getVisitLabelOverride(dateKey, startAt.getTime());
+  return getVisitLabelOverride(dateKey, startAt.getTime(), anchor);
 }
 
 export async function visitLabelOverridesByStartMs(
@@ -64,8 +67,7 @@ export function findVisitLabelOverrideForStart(
 }
 
 /**
- * Same match as {@link findVisitLabelOverrideForStart}, then remove the row so
- * a later stay in the same run cannot reuse it via fuzzy start matching.
+ * Exact-start match, then remove the row so it cannot apply twice in one seal.
  */
 export function takeVisitLabelOverrideForStart(
   overrides: VisitLabelOverrideRow[],
@@ -75,7 +77,26 @@ export function takeVisitLabelOverrideForStart(
   if (matched == null) {
     return null;
   }
-  const index = overrides.findIndex((row) => row.id === matched.id);
+  const index = overrides.findIndex(row => row.id === matched.id);
+  if (index >= 0) {
+    overrides.splice(index, 1);
+  }
+  return matched;
+}
+
+/**
+ * Stay-aware take: exact start first, else same-place (anchor-in-radius) on the
+ * same day. Consumed once so a revisit to the same place cannot reuse it.
+ */
+export function takeVisitLabelOverrideForStay(
+  overrides: VisitLabelOverrideRow[],
+  stay: VisitLabelOverrideStayAnchor,
+): VisitLabelOverrideRow | null {
+  const matched = matchVisitLabelOverrideForStay(overrides, stay);
+  if (matched == null) {
+    return null;
+  }
+  const index = overrides.findIndex(row => row.id === matched.id);
   if (index >= 0) {
     overrides.splice(index, 1);
   }
