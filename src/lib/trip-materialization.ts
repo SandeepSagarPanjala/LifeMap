@@ -86,6 +86,7 @@ import { getSealableTodayEntries } from '@/lib/today-seal-policy';
 import { syncTodayDisplay, syncTodayTrips } from '@/lib/today-sync';
 import {
   isPlayableTimelineEntry,
+  resolveStayAnchorForOverride,
   type DayTimelineEntry,
   type DetectedTrip,
   type TimelineGap,
@@ -786,6 +787,8 @@ export async function persistClosedTripsIncremental(
 
     const centroid = tripCentroidForPersist(entry, savedPlaces);
     const eventKey = tripEventKey(entry);
+    const overrideAnchor =
+      entry.kind === 'stay' ? resolveStayAnchorForOverride(entry) : null;
     // Detection is the source of truth each rebuild (saved place > nearby cache
     // + closest POI on iOS > address). The ONLY sticky layer is the user's
     // manual pick (visit_label_overrides), re-matched by exact start or by the
@@ -794,8 +797,8 @@ export async function persistClosedTripsIncremental(
       entry.kind === 'stay'
         ? takeVisitLabelOverrideForStay(dayOverrides, {
             startAtMs: entry.startAt.getTime(),
-            anchorLat: centroid.lat,
-            anchorLng: centroid.lng,
+            anchorLat: overrideAnchor?.lat ?? null,
+            anchorLng: overrideAnchor?.lng ?? null,
           })
         : null;
     const detectedLabels = tripPlaceFieldsFromResolved({

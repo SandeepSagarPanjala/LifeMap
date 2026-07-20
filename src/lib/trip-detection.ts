@@ -561,6 +561,23 @@ export function resolveStayAnchor(stay: DetectedTrip): {
   return { lat: first.lat, lng: first.lng };
 }
 
+/**
+ * Stay anchor for override spatial matching. Returns null when the stay has no
+ * real location (no detection anchor and no GPS points) so matching falls back
+ * to exact-start only — never the {0,0} Gulf-of-Guinea fallback.
+ */
+export function resolveStayAnchorForOverride(
+  stay: DetectedTrip,
+): { lat: number; lng: number } | null {
+  if (stay.anchorLat != null && stay.anchorLng != null) {
+    return { lat: stay.anchorLat, lng: stay.anchorLng };
+  }
+  if (stay.points.length === 0) {
+    return null;
+  }
+  return resolveStayAnchor(stay);
+}
+
 export function stayMapCentroid(stay: DetectedTrip): {
   latitude: number;
   longitude: number;

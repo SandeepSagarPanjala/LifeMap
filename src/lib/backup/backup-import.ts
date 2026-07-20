@@ -318,12 +318,13 @@ export async function applyTripLabelOverrides(
       );
       // Also repopulate the override table with the stay anchor so the pick
       // survives future rebuilds (detection-first rebuild only keeps overrides).
+      const hasCentroid = trip.centroidLat !== 0 || trip.centroidLng !== 0;
       await upsertVisitLabelOverride({
         dateKey: toDateKey(trip.startAt),
         startAtMs: trip.startAt.getTime(),
         endAtMs: trip.endAt.getTime(),
-        anchorLat: trip.centroidLat,
-        anchorLng: trip.centroidLng,
+        anchorLat: hasCentroid ? trip.centroidLat : null,
+        anchorLng: hasCentroid ? trip.centroidLng : null,
         poiId: override.poiId,
         poiLabel: override.poiLabel ?? null,
         placeId: override.placeKind === 'cache' ? placeId : null,

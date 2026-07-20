@@ -38,7 +38,7 @@ import {
   ensureTripForClosedStay,
   tripEventKey,
 } from '@/lib/trip-materialization';
-import { resolveStayAnchor } from '@/lib/trip-detection';
+import { resolveStayAnchor, resolveStayAnchorForOverride } from '@/lib/trip-detection';
 import {
   loadVisitLabelOverrideForStay,
   shouldApplyVisitLabelOverride,
@@ -86,7 +86,7 @@ async function applyOverrideIfNeeded(
   }
 
   const dateKey = toDateKey(stay.startAt);
-  const anchor = resolveStayAnchor(stay);
+  const anchor = resolveStayAnchorForOverride(stay);
   const override = await loadVisitLabelOverrideForStay(
     dateKey,
     stay.startAt,
@@ -284,7 +284,7 @@ async function persistVisitPlacePoiSelection(args: {
 
   // Stamp the stay anchor so the pick can re-attach by place (not just exact
   // start) after a rebuild shifts the visit boundary.
-  const anchor = resolveStayAnchor(args.stay);
+  const anchor = resolveStayAnchorForOverride(args.stay);
 
   // Always write override so silent-seal prune of early-inserted tail rows
   // cannot erase the user's pick before the visit is truly sealed.
@@ -292,8 +292,8 @@ async function persistVisitPlacePoiSelection(args: {
     dateKey: args.dateKey,
     startAtMs: args.stay.startAt.getTime(),
     endAtMs: args.stay.endAt.getTime(),
-    anchorLat: anchor.lat,
-    anchorLng: anchor.lng,
+    anchorLat: anchor?.lat ?? null,
+    anchorLng: anchor?.lng ?? null,
     poiId: args.poiId,
     poiLabel: args.poiLabel,
     placeId: cacheId,

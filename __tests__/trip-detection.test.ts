@@ -13,6 +13,8 @@ import {
   firstPlayableTimelineIndex,
   lastNavigableTimelineIndex,
   lastPlayableTimelineIndex,
+  resolveStayAnchor,
+  resolveStayAnchorForOverride,
 } from '../src/lib/trip-detection';
 import { buildTripDetectionConfig } from '../src/lib/trip-settings';
 import type { LocationPointRow } from '../src/db/repositories/location-days';
@@ -375,5 +377,36 @@ describe('isUserStillAtStay', () => {
     expect(isUserStillAtStay({ lat: 33.3, lng: -97.2 }, stay, config)).toBe(
       false,
     );
+  });
+});
+
+describe('resolveStayAnchorForOverride', () => {
+  it('returns null when the stay has no anchor and no points', () => {
+    const anchorless: DetectedTrip = {
+      id: 'stay-empty',
+      kind: 'stay',
+      points: [],
+      startAt: new Date('2026-06-03T08:00:00'),
+      endAt: new Date('2026-06-03T09:00:00'),
+      durationMs: 60 * 60_000,
+      distanceKm: 0,
+    };
+    expect(resolveStayAnchorForOverride(anchorless)).toBeNull();
+    expect(resolveStayAnchor(anchorless)).toEqual({ lat: 0, lng: 0 });
+  });
+
+  it('uses detection anchor when present', () => {
+    const anchored: DetectedTrip = {
+      id: 'stay-anchored',
+      kind: 'stay',
+      anchorLat: HOME.lat,
+      anchorLng: HOME.lng,
+      points: [],
+      startAt: new Date('2026-06-03T08:00:00'),
+      endAt: new Date('2026-06-03T09:00:00'),
+      durationMs: 60 * 60_000,
+      distanceKm: 0,
+    };
+    expect(resolveStayAnchorForOverride(anchored)).toEqual(HOME);
   });
 });

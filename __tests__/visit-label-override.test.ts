@@ -205,6 +205,25 @@ describe('matchVisitLabelOverrideForStay', () => {
       }),
     ).toBeNull();
   });
+
+  it('does not spatially match anchorless stays against legacy 0,0 overrides', () => {
+    const rows = [
+      override({
+        id: 1,
+        startAtMs: 1_000,
+        poiId: 7,
+        anchorLat: 0,
+        anchorLng: 0,
+      }),
+    ];
+    expect(
+      matchVisitLabelOverrideForStay(rows, {
+        startAtMs: 2_000,
+        anchorLat: null,
+        anchorLng: null,
+      }),
+    ).toBeNull();
+  });
 });
 
 describe('shouldApplyVisitLabelOverride', () => {
