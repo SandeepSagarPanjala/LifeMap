@@ -24,14 +24,26 @@ import { stayMeetsMinimumVisitDwell } from '@/lib/visit-dwell';
 
 const LOOKBACK_HOURS = 48;
 const LOOKAHEAD_HOURS = 48;
+/**
+ * Last point strictly before `dayStart`. `points` MUST be sorted ascending by
+ * timestamp (it is: the only caller passes `dedupeLocationPoints(...)` output),
+ * which lets this binary-search instead of scanning the full 96h window.
+ */
 function lastPointBefore(
   points: LocationPointRow[],
   dayStart: Date,
 ): LocationPointRow | null {
+  const target = dayStart.getTime();
+  let lo = 0;
+  let hi = points.length - 1;
   let last: LocationPointRow | null = null;
-  for (const point of points) {
-    if (point.timestamp.getTime() < dayStart.getTime()) {
-      last = point;
+  while (lo <= hi) {
+    const mid = (lo + hi) >>> 1;
+    if (points[mid]!.timestamp.getTime() < target) {
+      last = points[mid]!;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
     }
   }
   return last;

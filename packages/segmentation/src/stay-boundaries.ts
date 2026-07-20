@@ -333,12 +333,19 @@ export function refineStopBoundaries(
   stop: Stop,
   points: readonly ParsedPoint[],
   config: StopDetectionConfig = DEFAULT_CONFIG,
+  // Optional prebuilt point-id → index map. When refining many stops against the
+  // same point array, pass this once to avoid rebuilding the O(n) map per stop.
+  prebuiltIdxById?: ReadonlyMap<number, number>,
 ): Stop {
   if (stop.pointIds.length === 0 || points.length === 0) {
     return stop;
   }
-  const idxById = new Map<number, number>();
-  points.forEach((point, index) => idxById.set(point.id, index));
+  let idxById = prebuiltIdxById;
+  if (idxById == null) {
+    const built = new Map<number, number>();
+    points.forEach((point, index) => built.set(point.id, index));
+    idxById = built;
+  }
 
   const geoStartIdx = idxById.get(stop.pointIds[0]!);
   const geoEndIdx = idxById.get(stop.pointIds[stop.pointIds.length - 1]!);
@@ -383,7 +390,9 @@ export function refineAllStopBoundaries(
   const idxById = new Map<number, number>();
   points.forEach((point, index) => idxById.set(point.id, index));
 
-  const refined = stops.map(stop => refineStopBoundaries(stop, points, config));
+  const refined = stops.map(stop =>
+    refineStopBoundaries(stop, points, config, idxById),
+  );
   refined.sort(
     (a, b) => a.arrivedAt.getTime() - b.arrivedAt.getTime() || a.pointIds[0]! - b.pointIds[0]!,
   );

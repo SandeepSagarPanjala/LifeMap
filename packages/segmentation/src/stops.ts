@@ -340,7 +340,18 @@ export function detectStops(
   rawPoints: ParsedPoint[],
   config: StopDetectionConfig = DEFAULT_STOP_CONFIG,
 ): Stop[] {
-  const points = prepareTripPoints(rawPoints, config);
+  return detectStopsFromPrepared(prepareTripPoints(rawPoints, config), config);
+}
+
+/**
+ * Stay detection over points that have already been through `prepareTripPoints`.
+ * Lets callers that already prepared the points (e.g. `detectTrips`) avoid a
+ * redundant filter/sort/dedupe pass.
+ */
+export function detectStopsFromPrepared(
+  points: ParsedPoint[],
+  config: StopDetectionConfig = DEFAULT_STOP_CONFIG,
+): Stop[] {
   const stops: Stop[] = [];
   const n = points.length;
   let i = 0;

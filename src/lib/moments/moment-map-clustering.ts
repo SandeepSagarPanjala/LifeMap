@@ -83,16 +83,31 @@ export function partitionMomentMapPins(
   const clusteredIds = new Set<number>();
   const savedPlaceClusters: SavedPlaceMomentCluster[] = [];
 
-  for (const place of places) {
-    const atPlace = pins.filter(pin => {
-      const match = matchSavedPlaceForPoint(
-        { lat: pin.coordinate.latitude, lng: pin.coordinate.longitude },
-        places,
-      );
-      return match?.id === place.id;
-    });
+  // Match each pin to its saved place exactly once and bucket by place id.
+  // Previously each place re-scanned every pin and each pin re-scanned every
+  // place inside `matchSavedPlaceForPoint`, giving O(places^2 * pins). Pin
+  // ordering within a bucket is preserved (pins iterated in order).
+  const pinsByPlaceId = new Map<SavedPlaceRow['id'], MomentMapPin[]>();
+  for (const pin of pins) {
+    const match = matchSavedPlaceForPoint(
+      { lat: pin.coordinate.latitude, lng: pin.coordinate.longitude },
+      places,
+    );
+    if (match == null) {
+      continue;
+    }
+    const bucket = pinsByPlaceId.get(match.id);
+    if (bucket != null) {
+      bucket.push(pin);
+    } else {
+      pinsByPlaceId.set(match.id, [pin]);
+    }
+  }
 
-    if (atPlace.length === 0) {
+  for (const place of places) {
+    const atPlace = pinsByPlaceId.get(place.id);
+
+    if (atPlace == null || atPlace.length === 0) {
       continue;
     }
 

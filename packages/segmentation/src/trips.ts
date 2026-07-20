@@ -26,7 +26,7 @@ import {
 } from './saved-places';
 import {
   DEFAULT_STOP_CONFIG,
-  detectStops,
+  detectStopsFromPrepared,
   isMovingPoint,
   prepareTripPoints,
   type Stop,
@@ -961,7 +961,7 @@ export function detectTrips(
   options: { resolveClosestPoi?: boolean } = {},
 ): TripResult {
   const points = prepareTripPoints(rawPoints, config);
-  const baseStops = detectStops(rawPoints, config);
+  const baseStops = detectStopsFromPrepared(points, config);
   const occupiedPointIds = new Set<number>(
     baseStops.flatMap(stop => stop.pointIds),
   );

@@ -73,6 +73,11 @@ export function buildDayStoryStops(
   const savedPlacesById = new Map(savedPlaces.map(place => [place.id, place]));
   const groups: DayStoryStop[] = [];
   const keyToIndex = new Map<string, number>();
+  // Running centroid sums per group so a revisit merge stays O(1) instead of
+  // recomputing `stayMapCentroid` for every stay already in the group (which
+  // made a heavily-revisited place, e.g. Home, O(visits^2)).
+  const centroidLatSums: number[] = [];
+  const centroidLngSums: number[] = [];
 
   stayOnly.forEach((stay, index) => {
     const visitNumber = index + 1;
@@ -133,6 +138,8 @@ export function buildDayStoryStops(
         poiCategory: stay.poiCategory ?? null,
       };
       keyToIndex.set(key, groups.length);
+      centroidLatSums.push(centroid.latitude);
+      centroidLngSums.push(centroid.longitude);
       groups.push(stop);
       return;
     }
@@ -141,17 +148,12 @@ export function buildDayStoryStops(
     group.visitNumbers.push(visitNumber);
     group.stayIds.push(stay.id);
     group.stays.push(stay);
-    // Keep the pin on the average of visit GPS centroids.
-    let latSum = 0;
-    let lngSum = 0;
-    for (const groupedStay of group.stays) {
-      const c = stayMapCentroid(groupedStay);
-      latSum += c.latitude;
-      lngSum += c.longitude;
-    }
+    // Keep the pin on the average of visit GPS centroids (running mean).
+    centroidLatSums[groupIndex] += centroid.latitude;
+    centroidLngSums[groupIndex] += centroid.longitude;
     group.coordinate = {
-      latitude: latSum / group.stays.length,
-      longitude: lngSum / group.stays.length,
+      latitude: centroidLatSums[groupIndex]! / group.stays.length,
+      longitude: centroidLngSums[groupIndex]! / group.stays.length,
     };
     // Prefer a concrete POI pick (History / override) over the first closest-POI name.
     if (stay.poiId != null) {

@@ -84,9 +84,15 @@ export async function countCachesNeedingPoiCoordinateRefresh(): Promise<number> 
 
 export async function refreshPlacePoiCoordinatesForCache(
   cacheId: number,
+  // Batch callers already hold the row; passing it avoids reloading and scanning
+  // the entire cache table once per target (was O(targets * cacheRows)).
+  preloadedRow?: PlaceLookupRow,
 ): Promise<PlacePoiCoordinateRefreshCacheResult> {
-  const rows = await listPlaceLookupCacheRows();
-  const row = rows.find(entry => entry.id === cacheId);
+  let row = preloadedRow;
+  if (row == null) {
+    const rows = await listPlaceLookupCacheRows();
+    row = rows.find(entry => entry.id === cacheId);
+  }
   if (row == null || row.lookupStatus !== 'complete') {
     return { cacheId, status: 'skipped', updated: 0, inserted: 0 };
   }
@@ -179,7 +185,7 @@ export async function refreshAllPlacePoiCoordinates(options?: {
       addressLine: row.addressLine,
     });
 
-    const result = await refreshPlacePoiCoordinatesForCache(row.id);
+    const result = await refreshPlacePoiCoordinatesForCache(row.id, row);
     results.push(result);
 
     if (result.status === 'refreshed') {

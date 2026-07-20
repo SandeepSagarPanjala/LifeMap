@@ -310,6 +310,16 @@ export function App() {
     return uniqueDateKeys(allPoints);
   }, [allPoints, storedTripExport]);
 
+  // One O(N) pass so the date dropdown can look up counts in O(1) instead of
+  // filtering all points for every date option on every render (was O(dates * N)).
+  const pointCountByDateKey = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const point of allPoints) {
+      counts.set(point.dateKey, (counts.get(point.dateKey) ?? 0) + 1);
+    }
+    return counts;
+  }, [allPoints]);
+
   const isPlotUpload = storedTripExport != null;
 
   const filteredPoints = useMemo(() => {
@@ -1224,7 +1234,7 @@ export function App() {
                 {dateKeys.map(key => (
                   <option key={key} value={key}>
                     {formatDateLabel(key)} (
-                    {allPoints.filter(p => p.dateKey === key).length})
+                    {pointCountByDateKey.get(key) ?? 0})
                   </option>
                 ))}
               </select>
