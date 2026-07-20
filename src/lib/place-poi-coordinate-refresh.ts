@@ -88,7 +88,11 @@ export async function refreshPlacePoiCoordinatesForCache(
   // the entire cache table once per target (was O(targets * cacheRows)).
   preloadedRow?: PlaceLookupRow,
 ): Promise<PlacePoiCoordinateRefreshCacheResult> {
-  let row = preloadedRow;
+  // Ignore a preloaded row that does not belong to the requested cacheId: we
+  // read the anchor/radius from `row` but read/write POIs against `cacheId`, so
+  // a mismatch would refresh the wrong place's POIs. Fall back to a reload.
+  let row =
+    preloadedRow != null && preloadedRow.id === cacheId ? preloadedRow : undefined;
   if (row == null) {
     const rows = await listPlaceLookupCacheRows();
     row = rows.find(entry => entry.id === cacheId);
