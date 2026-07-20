@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -150,7 +150,9 @@ type CachedPlaceCardProps = {
   onOpenMap: (cacheId: number) => void;
 };
 
-function CachedPlaceCard({
+const EMPTY_POIS: PlacePoiRow[] = [];
+
+const CachedPlaceCard = memo(function CachedPlaceCard({
   row,
   pois,
   showDivider,
@@ -252,7 +254,7 @@ function CachedPlaceCard({
       </View>
     </>
   );
-}
+});
 
 export function CachedPlacesSettings() {
   const navigation =
@@ -532,7 +534,7 @@ export function CachedPlacesSettings() {
             <CachedPlaceCard
               key={row.id}
               row={row}
-              pois={poisByCacheId.get(row.id) ?? []}
+              pois={poisByCacheId.get(row.id) ?? EMPTY_POIS}
               showDivider={index > 0}
               onOpenMap={openCachedPlaceMap}
             />

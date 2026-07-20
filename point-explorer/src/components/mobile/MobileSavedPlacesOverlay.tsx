@@ -1,4 +1,5 @@
 import L from 'leaflet';
+import { memo, useMemo } from 'react';
 import { Marker } from 'react-leaflet';
 
 import type { SavedPlaceRow } from '../../types';
@@ -46,10 +47,19 @@ function savedPlaceMarkerIcon(place: SavedPlaceRow): L.DivIcon {
   });
 }
 
-export function MobileSavedPlacesOverlay({
+function MobileSavedPlacesOverlayComponent({
   places,
   hideMarkerPlaceId = null,
 }: MobileSavedPlacesOverlayProps) {
+  // Build DivIcons once per place set instead of recreating DOM every render.
+  const iconByPlaceId = useMemo(() => {
+    const map = new Map<number, L.DivIcon>();
+    for (const place of places) {
+      map.set(place.id, savedPlaceMarkerIcon(place));
+    }
+    return map;
+  }, [places]);
+
   if (places.length === 0) {
     return null;
   }
@@ -64,7 +74,7 @@ export function MobileSavedPlacesOverlay({
           <Marker
             key={place.id}
             position={[place.lat, place.lng]}
-            icon={savedPlaceMarkerIcon(place)}
+            icon={iconByPlaceId.get(place.id)}
             zIndexOffset={300}
           />
         );
@@ -72,3 +82,5 @@ export function MobileSavedPlacesOverlay({
     </>
   );
 }
+
+export const MobileSavedPlacesOverlay = memo(MobileSavedPlacesOverlayComponent);

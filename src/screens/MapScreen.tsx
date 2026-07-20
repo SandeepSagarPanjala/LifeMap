@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { View } from 'react-native';
 
 import { BackgroundWorkBanner } from '@/components/background-work/BackgroundWorkBanner';
@@ -8,14 +9,22 @@ import { MapScreenFloatingControls } from './map/MapScreenFloatingControls';
 import { MapDayLoadingOverlay } from '@/components/map/MapDayLoadingOverlay';
 import { MapScreenMap } from './map/MapScreenMap';
 import { MapScreenTopBar } from './map/MapScreenTopBar';
-import { useMapScreenController } from './map/use-map-screen-controller';
+import {
+  useMapScreenController,
+  type MapScreenController,
+} from './map/use-map-screen-controller';
 
-export function MapScreen() {
-  const controller = useMapScreenController();
-
+/**
+ * Chrome that must not re-render on route-playback progress ticks.
+ * Progress is only passed to MapScreenMap.
+ */
+const MapScreenChrome = memo(function MapScreenChrome({
+  controller,
+}: {
+  controller: MapScreenController;
+}) {
   return (
-    <View className="bg-background flex-1">
-      <MapScreenMap controller={controller} />
+    <>
       <MapDayLoadingOverlay visible={controller.historyBlockingLoader} />
       <MapScreenFloatingControls controller={controller} />
       <SavePlaceSheet
@@ -36,6 +45,20 @@ export function MapScreen() {
       <MapHistoryPanel controller={controller} />
       <MapScreenTopBar controller={controller} />
       <BackgroundWorkBanner />
+    </>
+  );
+});
+
+export function MapScreen() {
+  const { controller, playbackProgress } = useMapScreenController();
+
+  return (
+    <View className="bg-background flex-1">
+      <MapScreenMap
+        controller={controller}
+        playbackProgress={playbackProgress}
+      />
+      <MapScreenChrome controller={controller} />
     </View>
   );
 }

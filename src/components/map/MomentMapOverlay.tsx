@@ -1,3 +1,4 @@
+import { memo, useCallback, useMemo } from 'react';
 import { AudioLines, Camera, NotebookPen } from 'lucide-react-native';
 import { Marker } from 'react-native-maps';
 import { StyleSheet, Text, View } from 'react-native';
@@ -147,72 +148,104 @@ type MomentMapOverlayProps = {
   onPressPin?: (pin: MomentMapPin) => void;
 };
 
-export function MomentMapOverlay({ pins, onPressPin }: MomentMapOverlayProps) {
+type MomentMapMarkerProps = {
+  pin: MomentMapPin;
+  onPressPin?: (pin: MomentMapPin) => void;
+};
+
+/** Memoized leaf so a single pin change / re-render doesn't re-render all pins. */
+const MomentMapMarker = memo(function MomentMapMarker({
+  pin,
+  onPressPin,
+}: MomentMapMarkerProps) {
+  const { moment, coordinate, groupedMoments } = pin;
+  const grouped = groupedMoments != null && groupedMoments.length > 0;
+  const variant = momentCaptureVariant(moment.type);
+  const theme = CAPTURE_BUTTON_THEMES[variant];
+  const Icon =
+    variant === 'voice'
+      ? AudioLines
+      : variant === 'note'
+      ? NotebookPen
+      : Camera;
+  const activityEmoji =
+    moment.type === 'activity' ? moment.activityEmoji?.trim() : null;
+
+  const counts = useMemo(() => (grouped ? countsForPin(pin) : null), [
+    grouped,
+    pin,
+  ]);
+  const badgeStyle = useMemo(
+    () => [styles.badge, { backgroundColor: theme.badgeBg }],
+    [theme.badgeBg],
+  );
+  const handlePress = useCallback(() => {
+    onPressPin?.(pin);
+  }, [onPressPin, pin]);
+
+  return (
+    <Marker
+      coordinate={coordinate}
+      anchor={MARKER_ANCHOR}
+      zIndex={7}
+      tracksViewChanges={false}
+      onPress={onPressPin != null ? handlePress : undefined}
+    >
+      {grouped && counts != null ? (
+        <View style={styles.clusterColumn}>
+          <View style={styles.clusterBubble}>
+            <MomentCountsRow counts={counts} layout="stacked" dense />
+          </View>
+        </View>
+      ) : (
+        <View style={badgeStyle}>
+          {activityEmoji ? (
+            <Text style={styles.activityEmoji}>{activityEmoji}</Text>
+          ) : (
+            <Icon
+              size={CAPTURE_ICON_SIZE}
+              color={theme.icon}
+              strokeWidth={2.25}
+            />
+          )}
+        </View>
+      )}
+    </Marker>
+  );
+});
+
+function momentPinKey(pin: MomentMapPin): string {
+  const { moment, groupedMoments } = pin;
+  return groupedMoments != null && groupedMoments.length > 0
+    ? `moment-cluster-${[
+        moment.id,
+        ...groupedMoments.map(row => row.id),
+      ].join('-')}`
+    : `moment-${moment.id}`;
+}
+
+function MomentMapOverlayComponent({
+  pins,
+  onPressPin,
+}: MomentMapOverlayProps) {
   if (pins.length === 0) {
     return null;
   }
 
   return (
     <>
-      {pins.map(pin => {
-        const { moment, coordinate, groupedMoments } = pin;
-        const grouped = groupedMoments != null && groupedMoments.length > 0;
-        const variant = momentCaptureVariant(moment.type);
-        const theme = CAPTURE_BUTTON_THEMES[variant];
-        const Icon =
-          variant === 'voice'
-            ? AudioLines
-            : variant === 'note'
-            ? NotebookPen
-            : Camera;
-        const tappable = onPressPin != null;
-        const activityEmoji =
-          moment.type === 'activity' ? moment.activityEmoji?.trim() : null;
-        const pinKey = grouped
-          ? `moment-cluster-${[
-              moment.id,
-              ...groupedMoments.map(row => row.id),
-            ].join('-')}`
-          : `moment-${moment.id}`;
-
-        return (
-          <Marker
-            key={pinKey}
-            coordinate={coordinate}
-            anchor={MARKER_ANCHOR}
-            zIndex={7}
-            tracksViewChanges={false}
-            onPress={tappable ? () => onPressPin(pin) : undefined}
-          >
-            {grouped ? (
-              <View style={styles.clusterColumn}>
-                <View style={styles.clusterBubble}>
-                  <MomentCountsRow
-                    counts={countsForPin(pin)}
-                    layout="stacked"
-                    dense
-                  />
-                </View>
-              </View>
-            ) : (
-              <View style={[styles.badge, { backgroundColor: theme.badgeBg }]}>
-                {activityEmoji ? (
-                  <Text style={styles.activityEmoji}>{activityEmoji}</Text>
-                ) : (
-                  <Icon
-                    size={CAPTURE_ICON_SIZE}
-                    color={theme.icon}
-                    strokeWidth={2.25}
-                  />
-                )}
-              </View>
-            )}
-          </Marker>
-        );
-      })}
+      {pins.map(pin => (
+        <MomentMapMarker
+          key={momentPinKey(pin)}
+          pin={pin}
+          onPressPin={onPressPin}
+        />
+      ))}
     </>
   );
 }
+
+export const MomentMapOverlay = memo(MomentMapOverlayComponent);
 
 const styles = StyleSheet.create({
   badge: {

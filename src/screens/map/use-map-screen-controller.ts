@@ -46,7 +46,7 @@ import {
   shouldHideSavedPlaceMomentCluster,
   hasMomentCounts,
   firstMomentIndexOfType,
-  emptyMomentCounts,
+  EMPTY_MOMENT_COUNTS,
   type MomentCountType,
   type MomentCounts,
 } from '@/lib/moments/moment-counts';
@@ -158,6 +158,8 @@ import {
   mapStackButtonBottom,
   mapStackTotalHeight,
 } from './map-screen-constants';
+
+const EMPTY_MOMENT_ROWS: MomentRow[] = [];
 
 export function useMapScreenController() {
   const navigation =
@@ -338,6 +340,16 @@ export function useMapScreenController() {
   // Depend on the stable start/stop refs (not the whole `playback` object) so
   // progress ticks during playback don't recreate every navigation callback.
   const { start: startPlayback, stop: stopPlayback } = playback;
+  // Progress updates ~66ms while playing — keep it out of the controller bag so
+  // History panel / floating controls don't re-render on every tick.
+  const playbackControls = useMemo(
+    () => ({
+      isPlaying: playback.isPlaying,
+      start: playback.start,
+      stop: playback.stop,
+    }),
+    [playback.isPlaying, playback.start, playback.stop],
+  );
 
   const historyHasGpsData =
     historyData.entries.length > 0 || historyData.points.length > 0;
@@ -552,7 +564,7 @@ export function useMapScreenController() {
     historyDayLoaded;
   const currentVisitMomentCounts = useMemo((): MomentCounts => {
     if (!currentOpenVisit) {
-      return emptyMomentCounts();
+      return EMPTY_MOMENT_COUNTS;
     }
     return countMomentsForStayEntry(dayMoments, currentOpenVisit, {
       savedPlace: currentOpenVisitSavedPlace,
@@ -571,7 +583,7 @@ export function useMapScreenController() {
   ]);
   const currentVisitPreviewMoments = useMemo((): MomentRow[] => {
     if (!currentOpenVisit) {
-      return [];
+      return EMPTY_MOMENT_ROWS;
     }
     return filterMomentsForStayEntry(dayMoments, currentOpenVisit, {
       savedPlace: currentOpenVisitSavedPlace,
@@ -1165,11 +1177,12 @@ export function useMapScreenController() {
   }, []);
 
   const goToCurrentLocation = useCallback(() => {
-    if (!userCoordinate || !mapRef.current) {
+    const coordinate = userCoordinateRef.current;
+    if (!coordinate || !mapRef.current) {
       return;
     }
-    animateRecenterToUser(mapRef.current, userCoordinate, mapRegionRef.current);
-  }, [userCoordinate]);
+    animateRecenterToUser(mapRef.current, coordinate, mapRegionRef.current);
+  }, []);
 
   const applyUserCoordinate = useCallback(
     (coordinate: { latitude: number; longitude: number }) => {
@@ -1800,7 +1813,7 @@ export function useMapScreenController() {
     }, [handleSelectMapDate]),
   );
 
-  return useMemo(
+  const controller = useMemo(
     () => ({
       tripDetectionConfig,
       insets,
@@ -1908,7 +1921,7 @@ export function useMapScreenController() {
       savedPlaceMomentClusters,
       savePlaceCoordinate,
       userCoordinate,
-      playback,
+      playback: playbackControls,
       handleMapLongPress,
       closeSavePlaceSheet,
       handleSaveHomePlace,
@@ -2029,7 +2042,7 @@ export function useMapScreenController() {
       savedPlaceMomentClusters,
       savePlaceCoordinate,
       userCoordinate,
-      playback,
+      playbackControls,
       handleMapLongPress,
       closeSavePlaceSheet,
       handleSaveHomePlace,
@@ -2047,6 +2060,14 @@ export function useMapScreenController() {
       handleZoomVisit,
     ],
   );
+
+  return {
+    controller,
+    /** Isolated from `controller` so progress ticks don't invalidate panel memo. */
+    playbackProgress: playback.progress,
+  };
 }
 
-export type MapScreenController = ReturnType<typeof useMapScreenController>;
+export type MapScreenController = ReturnType<
+  typeof useMapScreenController
+>['controller'];

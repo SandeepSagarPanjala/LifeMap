@@ -16,10 +16,15 @@ import type { MapScreenController } from './use-map-screen-controller';
 
 type MapScreenMapProps = {
   controller: MapScreenController;
+  /** Kept outside controller so History UI isn't invalidated every ~66ms. */
+  playbackProgress: number | null;
 };
 
 export const MapScreenMap = memo(
-  function MapScreenMap({ controller }: MapScreenMapProps) {
+  function MapScreenMap({
+    controller,
+    playbackProgress,
+  }: MapScreenMapProps) {
     const {
       mapRef,
       mapInitialRegion,
@@ -187,7 +192,9 @@ export const MapScreenMap = memo(
               selectedEntryMomentCounts={selectedEntryMomentCounts}
               onPressSelectedEntryMoments={openSelectedEntryMomentsPreview}
               tripConfig={tripDetectionConfig}
-              playbackProgress={playback.isPlaying ? playback.progress : null}
+              playbackProgress={
+                playback.isPlaying ? playbackProgress : null
+              }
               showDirectionArrows={showRouteDirectionArrows}
               mapLatitudeDelta={routeDirectionMapLatitudeDelta}
             />
@@ -201,5 +208,6 @@ export const MapScreenMap = memo(
     );
   },
   (previous, next) =>
+    previous.playbackProgress === next.playbackProgress &&
     areMapScreenMapPropsEqual(previous.controller, next.controller),
 );

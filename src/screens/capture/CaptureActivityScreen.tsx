@@ -15,12 +15,14 @@ import { ACTIVITY_SHEET_HEIGHT_RATIO } from '@/navigation/activity-capture-scree
 import { useSheetCaptureClose } from '@/screens/sheets/use-sheet-capture-close';
 
 function CaptureActivityPanel({
+  refreshDayMoments,
   onBeginCreateFirst,
   onBeginCreate,
   onBeginEdit,
   reloadNonce,
   onRegisterClose,
 }: {
+  refreshDayMoments: () => Promise<void>;
   onBeginCreateFirst: () => void;
   onBeginCreate: () => void;
   onBeginEdit: (activity: ActivityRow) => void;
@@ -28,7 +30,6 @@ function CaptureActivityPanel({
   onRegisterClose: (close: () => void) => void;
 }) {
   const closeSheet = useNativeHalfSheetClose();
-  const { refreshDayMoments } = useDayMoments(getTodayDateKey());
 
   useEffect(() => {
     onRegisterClose(closeSheet);
@@ -120,6 +121,7 @@ export function CaptureActivityScreen() {
           heightRatio={ACTIVITY_SHEET_HEIGHT_RATIO}
         >
           <CaptureActivityPanel
+            refreshDayMoments={refreshDayMoments}
             reloadNonce={reloadNonce}
             onRegisterClose={registerClose}
             onBeginCreateFirst={handleBeginCreateFirst}

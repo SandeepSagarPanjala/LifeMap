@@ -1,5 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, View } from 'react-native';
+import { memo, useCallback, useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  View,
+  type ListRenderItem,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronRight } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -17,6 +23,45 @@ import {
 } from '@/lib/export-trip-view';
 import type { RootStackParamList } from '@/navigation/types';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+
+type TripDayRowProps = {
+  item: TripDaySummary;
+  iconColor: string;
+  onOpen: (dateKey: string) => void;
+};
+
+const TripDayRow = memo(function TripDayRow({
+  item,
+  iconColor,
+  onOpen,
+}: TripDayRowProps) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={() => onOpen(item.dateKey)}
+      className="border-border bg-card flex-row items-center rounded-2xl border px-4 py-3"
+    >
+      <View className="min-w-0 flex-1">
+        <Text className="text-sm font-semibold">
+          {formatExportDateKeyLabel(item.dateKey)}
+        </Text>
+        <Text variant="muted" className="mt-1 text-xs leading-4">
+          {item.tripCount.toLocaleString()} segment
+          {item.tripCount === 1 ? '' : 's'} ·{' '}
+          {exportTripKindSummary(
+            item.stayCount,
+            item.travelCount,
+            item.missingCount,
+          )}
+        </Text>
+        <Text variant="muted" className="mt-0.5 text-[11px]">
+          {item.dateKey}
+        </Text>
+      </View>
+      <Icon as={ChevronRight} size={18} color={iconColor} />
+    </Pressable>
+  );
+});
 
 export function ExportTripDaysScreen() {
   const navigation =
@@ -37,6 +82,26 @@ export function ExportTripDaysScreen() {
   useEffect(() => {
     void loadDays();
   }, [loadDays]);
+
+  const handleOpenDay = useCallback(
+    (dateKey: string) => {
+      navigation.navigate('ExportTripDetail', { dateKey, tripIndex: 0 });
+    },
+    [navigation],
+  );
+
+  const keyExtractor = useCallback((item: TripDaySummary) => item.dateKey, []);
+
+  const renderItem = useCallback<ListRenderItem<TripDaySummary>>(
+    ({ item }) => (
+      <TripDayRow
+        item={item}
+        iconColor={colors.mutedForeground}
+        onOpen={handleOpenDay}
+      />
+    ),
+    [colors.mutedForeground, handleOpenDay],
+  );
 
   return (
     <SafeAreaView className="bg-background flex-1" edges={['bottom']}>
@@ -63,43 +128,9 @@ export function ExportTripDaysScreen() {
       ) : (
         <FlatList
           data={days}
-          keyExtractor={item => item.dateKey}
+          keyExtractor={keyExtractor}
           contentContainerClassName="px-5 py-4 gap-2"
-          renderItem={({ item }) => (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() =>
-                navigation.navigate('ExportTripDetail', {
-                  dateKey: item.dateKey,
-                  tripIndex: 0,
-                })
-              }
-              className="border-border bg-card flex-row items-center rounded-2xl border px-4 py-3"
-            >
-              <View className="min-w-0 flex-1">
-                <Text className="text-sm font-semibold">
-                  {formatExportDateKeyLabel(item.dateKey)}
-                </Text>
-                <Text variant="muted" className="mt-1 text-xs leading-4">
-                  {item.tripCount.toLocaleString()} segment
-                  {item.tripCount === 1 ? '' : 's'} ·{' '}
-                  {exportTripKindSummary(
-                    item.stayCount,
-                    item.travelCount,
-                    item.missingCount,
-                  )}
-                </Text>
-                <Text variant="muted" className="mt-0.5 text-[11px]">
-                  {item.dateKey}
-                </Text>
-              </View>
-              <Icon
-                as={ChevronRight}
-                size={18}
-                color={colors.mutedForeground}
-              />
-            </Pressable>
-          )}
+          renderItem={renderItem}
         />
       )}
     </SafeAreaView>

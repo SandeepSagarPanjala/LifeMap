@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { MapCameraButton } from '@/components/map/MapCameraButton';
@@ -15,133 +16,134 @@ type MapScreenFloatingControlsProps = {
   controller: MapScreenController;
 };
 
-export function MapScreenFloatingControls({
-  controller,
-}: MapScreenFloatingControlsProps) {
-  const {
-    viewingToday,
-    historyPanelOpen,
-    locateButtonBottom,
-    settingsButtonBottom,
-    placesButtonBottom,
-    historyButtonBottom,
-    cameraButtonBottom,
-    voiceButtonBottom,
-    noteButtonBottom,
-    activityButtonBottom,
-    goToCurrentLocation,
-    openSavedPlaces,
-    handleToggleHistoryPanel,
-    handleCaptureCamera,
-    openCaptureVoice,
-    openCaptureActivity,
-    handleCaptureNote,
-    openSettings,
-    historyBadgeCount,
-    trackingGapWarning,
-    emptySelectedDayMessage,
-  } = controller;
+export const MapScreenFloatingControls = memo(
+  function MapScreenFloatingControls({
+    controller,
+  }: MapScreenFloatingControlsProps) {
+    const {
+      viewingToday,
+      historyPanelOpen,
+      locateButtonBottom,
+      settingsButtonBottom,
+      placesButtonBottom,
+      historyButtonBottom,
+      cameraButtonBottom,
+      voiceButtonBottom,
+      noteButtonBottom,
+      activityButtonBottom,
+      goToCurrentLocation,
+      openSavedPlaces,
+      handleToggleHistoryPanel,
+      handleCaptureCamera,
+      openCaptureVoice,
+      openCaptureActivity,
+      handleCaptureNote,
+      openSettings,
+      historyBadgeCount,
+      trackingGapWarning,
+      emptySelectedDayMessage,
+    } = controller;
 
-  const historyPanelActive = historyPanelOpen;
-  const showTodayControls = viewingToday && !historyPanelActive;
-  const showHistoryButton = !historyPanelActive;
-  const messageAnchorBottom = viewingToday
-    ? settingsButtonBottom + 64
-    : historyButtonBottom + 64;
+    const historyPanelActive = historyPanelOpen;
+    const showTodayControls = viewingToday && !historyPanelActive;
+    const showHistoryButton = !historyPanelActive;
+    const messageAnchorBottom = viewingToday
+      ? settingsButtonBottom + 64
+      : historyButtonBottom + 64;
 
-  return (
-    <View pointerEvents="box-none" style={styles.overlay}>
-      {showTodayControls ? (
-        <MapLocateButton
-          bottom={locateButtonBottom}
-          onPress={goToCurrentLocation}
-        />
-      ) : null}
-      {showHistoryButton ? (
-        <MapHistoryButton
-          bottom={historyButtonBottom}
-          active={historyPanelOpen}
-          eventCount={historyBadgeCount}
-          onPress={handleToggleHistoryPanel}
-        />
-      ) : null}
-      {showHistoryButton ? (
-        <MapSettingsButton bottom={settingsButtonBottom} onPress={openSettings} />
-      ) : null}
-      {showTodayControls ? (
-        <MapPlacesButton
-          bottom={placesButtonBottom}
-          onPress={openSavedPlaces}
-        />
-      ) : null}
-
-      {showTodayControls ? (
-        <>
-          <MapCameraButton
-            bottom={cameraButtonBottom}
-            onPress={handleCaptureCamera}
+    return (
+      <View pointerEvents="box-none" style={styles.overlay}>
+        {showTodayControls ? (
+          <MapLocateButton
+            bottom={locateButtonBottom}
+            onPress={goToCurrentLocation}
           />
-          <MapVoiceButton
-            bottom={voiceButtonBottom}
-            onPress={openCaptureVoice}
+        ) : null}
+        {showHistoryButton ? (
+          <MapHistoryButton
+            bottom={historyButtonBottom}
+            active={historyPanelOpen}
+            eventCount={historyBadgeCount}
+            onPress={handleToggleHistoryPanel}
           />
-          <MapNoteButton
-            bottom={noteButtonBottom}
-            onPress={handleCaptureNote}
+        ) : null}
+        {showHistoryButton ? (
+          <MapSettingsButton
+            bottom={settingsButtonBottom}
+            onPress={openSettings}
           />
-          <MapActivityButton
-            bottom={activityButtonBottom}
-            onPress={openCaptureActivity}
+        ) : null}
+        {showTodayControls ? (
+          <MapPlacesButton
+            bottom={placesButtonBottom}
+            onPress={openSavedPlaces}
           />
-        </>
-      ) : null}
+        ) : null}
 
-      {emptySelectedDayMessage && !historyPanelActive ? (
-        <View
-          style={{
-            position: 'absolute',
-            left: 16,
-            right: 16,
-            bottom: messageAnchorBottom,
-            backgroundColor: '#111827',
-            borderRadius: 12,
-            paddingHorizontal: 12,
-            paddingVertical: 10,
-          }}
-        >
-          <Text style={{ color: '#FFFFFF', fontSize: 13, textAlign: 'center' }}>
-            {emptySelectedDayMessage}
-          </Text>
-        </View>
-      ) : null}
+        {showTodayControls ? (
+          <>
+            <MapCameraButton
+              bottom={cameraButtonBottom}
+              onPress={handleCaptureCamera}
+            />
+            <MapVoiceButton
+              bottom={voiceButtonBottom}
+              onPress={openCaptureVoice}
+            />
+            <MapNoteButton
+              bottom={noteButtonBottom}
+              onPress={handleCaptureNote}
+            />
+            <MapActivityButton
+              bottom={activityButtonBottom}
+              onPress={openCaptureActivity}
+            />
+          </>
+        ) : null}
 
-      {trackingGapWarning &&
-      showTodayControls &&
-      !historyPanelActive &&
-      !emptySelectedDayMessage ? (
-        <View
-          style={{
-            position: 'absolute',
-            left: 16,
-            right: 16,
-            bottom: messageAnchorBottom,
-            backgroundColor: '#111827',
-            borderRadius: 12,
-            paddingHorizontal: 12,
-            paddingVertical: 10,
-          }}
-        >
-          <Text style={{ color: '#FFFFFF', fontSize: 13 }}>
-            {trackingGapWarning}. Tracking may have paused.
-          </Text>
-        </View>
-      ) : null}
-    </View>
-  );
-}
+        {emptySelectedDayMessage && !historyPanelActive ? (
+          <View style={[styles.messageBanner, { bottom: messageAnchorBottom }]}>
+            <Text style={styles.messageTextCentered}>
+              {emptySelectedDayMessage}
+            </Text>
+          </View>
+        ) : null}
+
+        {trackingGapWarning &&
+        showTodayControls &&
+        !historyPanelActive &&
+        !emptySelectedDayMessage ? (
+          <View style={[styles.messageBanner, { bottom: messageAnchorBottom }]}>
+            <Text style={styles.messageText}>
+              {trackingGapWarning}. Tracking may have paused.
+            </Text>
+          </View>
+        ) : null}
+      </View>
+    );
+  },
+);
 
 const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
+  },
+  messageBanner: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    backgroundColor: '#111827',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  messageText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+  },
+  messageTextCentered: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    textAlign: 'center',
   },
 });

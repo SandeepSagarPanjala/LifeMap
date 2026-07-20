@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { Marker } from 'react-native-maps';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -41,7 +41,7 @@ type StayDurationCalloutProps = {
   onPressMomentType?: (type: MomentCountType) => void;
 };
 
-export function StayDurationCallout({
+function StayDurationCalloutComponent({
   trip,
   savedPlace = null,
   nearbyPlaceLabel = null,
@@ -57,18 +57,24 @@ export function StayDurationCallout({
   const ongoing = isVisitOngoing(trip.endAt, now, {
     openThroughNow: trip.openThroughNow,
   });
-  const visitCoordinate = stayMapMarkerCoordinate(trip, { ongoing });
+  const visitCoordinate = useMemo(
+    () => stayMapMarkerCoordinate(trip, { ongoing }),
+    [trip, ongoing],
+  );
   const coordinate = anchorCoordinate ?? visitCoordinate;
   const counts = momentCounts;
   const showMomentCounts = counts != null && hasMomentCounts(counts);
   const livePuckLabel = !showVisitPin;
-  const visitBubbleCenterOffset =
-    bubbleHeight > 0
-      ? {
-          x: 0,
-          y: -(DOT_RING_SIZE / 2 + VISIT_BUBBLE_DOT_GAP + bubbleHeight / 2),
-        }
-      : { x: 0, y: -100 };
+  const visitBubbleCenterOffset = useMemo(
+    () =>
+      bubbleHeight > 0
+        ? {
+            x: 0,
+            y: -(DOT_RING_SIZE / 2 + VISIT_BUBBLE_DOT_GAP + bubbleHeight / 2),
+          }
+        : LIVE_PUCK_CENTER_OFFSET,
+    [bubbleHeight],
+  );
 
   useEffect(() => {
     if (!ongoing) {
@@ -175,6 +181,8 @@ export function StayDurationCallout({
     </>
   );
 }
+
+export const StayDurationCallout = memo(StayDurationCalloutComponent);
 
 const styles = StyleSheet.create({
   dotWrap: {

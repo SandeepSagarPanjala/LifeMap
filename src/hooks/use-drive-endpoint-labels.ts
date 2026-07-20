@@ -14,6 +14,15 @@ import {
 import type { DetectedTrip } from '@/lib/trip-detection';
 import { loadVisitPlaceDisplayForStay } from '@/lib/visit-place-label';
 
+/** Stable empty pair so MapScreenMap memo isn't busted on unrelated re-renders. */
+const EMPTY_DRIVE_ENDPOINT_LABELS: {
+  start: DriveEndpointLabel;
+  end: DriveEndpointLabel;
+} = {
+  start: EMPTY_DRIVE_ENDPOINT_LABEL,
+  end: EMPTY_DRIVE_ENDPOINT_LABEL,
+};
+
 async function enrichDriveEndpointLabel(
   stay: DetectedTrip,
   savedPlaces: readonly SavedPlaceRow[],
@@ -57,8 +66,11 @@ export function useDriveEndpointLabels(
     [nextStay, savedPlaces],
   );
 
-  const [start, setStart] = useState(startSync);
-  const [end, setEnd] = useState(endSync);
+  // Async enrichment only — sync path is derived to avoid an extra paint.
+  const [enrichedStart, setEnrichedStart] =
+    useState<DriveEndpointLabel | null>(null);
+  const [enrichedEnd, setEnrichedEnd] =
+    useState<DriveEndpointLabel | null>(null);
   const materializationRevision = useSyncExternalStore(
     subscribeMaterialization,
     getMaterializationRevision,
@@ -66,9 +78,9 @@ export function useDriveEndpointLabels(
   );
 
   useEffect(() => {
-    setStart(startSync);
-    setEnd(endSync);
-  }, [endSync, startSync]);
+    setEnrichedStart(null);
+    setEnrichedEnd(null);
+  }, [startSync, endSync]);
 
   // Always re-read non-saved endpoints from DB. Timeline stays can keep a
   // stale poiLabel after the user renames/selects a place; sync text alone
@@ -82,7 +94,7 @@ export function useDriveEndpointLabels(
     void enrichDriveEndpointLabel(previousStay, savedPlaces, startSync).then(
       label => {
         if (!cancelled) {
-          setStart(label);
+          setEnrichedStart(label);
         }
       },
     );
@@ -101,7 +113,7 @@ export function useDriveEndpointLabels(
     void enrichDriveEndpointLabel(nextStay, savedPlaces, endSync).then(
       label => {
         if (!cancelled) {
-          setEnd(label);
+          setEnrichedEnd(label);
         }
       },
     );
@@ -111,8 +123,20 @@ export function useDriveEndpointLabels(
     };
   }, [endSync, nextStay, savedPlaces, materializationRevision]);
 
-  return {
-    start: previousStay ? start : EMPTY_DRIVE_ENDPOINT_LABEL,
-    end: nextStay ? end : EMPTY_DRIVE_ENDPOINT_LABEL,
-  };
+  const resolvedStart = previousStay
+    ? (enrichedStart ?? startSync)
+    : EMPTY_DRIVE_ENDPOINT_LABEL;
+  const resolvedEnd = nextStay
+    ? (enrichedEnd ?? endSync)
+    : EMPTY_DRIVE_ENDPOINT_LABEL;
+
+  return useMemo(() => {
+    if (
+      resolvedStart === EMPTY_DRIVE_ENDPOINT_LABEL &&
+      resolvedEnd === EMPTY_DRIVE_ENDPOINT_LABEL
+    ) {
+      return EMPTY_DRIVE_ENDPOINT_LABELS;
+    }
+    return { start: resolvedStart, end: resolvedEnd };
+  }, [resolvedStart, resolvedEnd]);
 }

@@ -1,10 +1,11 @@
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   FlatList,
   Pressable,
   useColorScheme,
   useWindowDimensions,
   View,
+  type ListRenderItem,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native';
@@ -63,7 +64,8 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
     setActiveIndex(Math.min(Math.max(next, 0), ONBOARDING_SLIDES.length - 1));
   };
 
-  const renderSlide = ({ item }: { item: OnboardingSlideConfig }) => {
+  const renderSlide = useCallback<ListRenderItem<OnboardingSlideConfig>>(
+    ({ item }) => {
     const FallbackIcon =
       FALLBACK_ICONS[item.id as keyof typeof FALLBACK_ICONS] ?? Lock;
     const lottieSize = Math.min(width * 0.72, height * 0.32, 300);
@@ -129,7 +131,18 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
         </View>
       </View>
     );
-  };
+    },
+    [width, height, colors.accentForeground],
+  );
+
+  const getItemLayout = useCallback(
+    (_: ArrayLike<OnboardingSlideConfig> | null | undefined, index: number) => ({
+      length: width,
+      offset: width * index,
+      index,
+    }),
+    [width],
+  );
 
   return (
     <View className="flex-1">
@@ -167,11 +180,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
           showsHorizontalScrollIndicator={false}
           className="flex-1"
           onMomentumScrollEnd={onMomentumScrollEnd}
-          getItemLayout={(_, index) => ({
-            length: width,
-            offset: width * index,
-            index,
-          })}
+          getItemLayout={getItemLayout}
         />
 
         <View className="px-6 pb-16 pt-2">

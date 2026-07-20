@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { MapDateLabel } from '@/components/map/MapDateLabel';
@@ -7,7 +8,9 @@ type MapScreenTopBarProps = {
   controller: MapScreenController;
 };
 
-export function MapScreenTopBar({ controller }: MapScreenTopBarProps) {
+export const MapScreenTopBar = memo(function MapScreenTopBar({
+  controller,
+}: MapScreenTopBarProps) {
   const {
     insets,
     mapDateLabel,
@@ -42,7 +45,7 @@ export function MapScreenTopBar({ controller }: MapScreenTopBarProps) {
       ) : null}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   bar: {

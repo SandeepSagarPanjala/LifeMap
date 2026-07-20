@@ -1,3 +1,4 @@
+import { memo, useMemo } from 'react';
 import { Circle } from 'react-native-maps';
 
 import type { SavedPlaceRow } from '@/db/repositories/saved-places';
@@ -54,17 +55,16 @@ const STAY_TONE_COLORS: Record<
 };
 
 /** Orange translucent visit areas — no labels (details live in History). */
-export function StayAreasOverlay({
+function StayAreasOverlayComponent({
   stays,
   tripConfig,
   savedPlaces = [],
   emphasized = false,
   tone,
 }: StayAreasOverlayProps) {
-  const circles = buildStayMapCircles(
-    stays,
-    tripConfig.dwellRadiusMeters,
-    savedPlaces,
+  const circles = useMemo(
+    () => buildStayMapCircles(stays, tripConfig.dwellRadiusMeters, savedPlaces),
+    [stays, tripConfig.dwellRadiusMeters, savedPlaces],
   );
   const resolvedTone = tone ?? (emphasized ? 'emphasized' : 'default');
   const {
@@ -93,3 +93,5 @@ export function StayAreasOverlay({
     </>
   );
 }
+
+export const StayAreasOverlay = memo(StayAreasOverlayComponent);

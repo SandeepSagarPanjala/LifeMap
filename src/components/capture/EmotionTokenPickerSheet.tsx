@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import {
   Platform,
   Pressable,
   StyleSheet,
   View,
+  type ListRenderItem,
   useWindowDimensions,
 } from 'react-native';
 import { BottomSheetFlatList, BottomSheetView } from '@gorhom/bottom-sheet';
@@ -27,6 +28,7 @@ import {
 
 const GRID_COLUMNS = 4;
 const GRID_GAP = 12;
+const SNAP_POINTS = ['58%'];
 
 type PickerStep = 'emotion' | 'context';
 
@@ -41,7 +43,7 @@ type EmotionTokenPickerSheetProps = {
 
 type StickerShape = 'circle' | 'roundedSquare';
 
-function TokenPickerCell({
+const TokenPickerCell = memo(function TokenPickerCell({
   label,
   sticker,
   tint,
@@ -94,19 +96,23 @@ function TokenPickerCell({
       </Text>
     </Pressable>
   );
-}
+});
 
-function EmotionTokenCell({
+const EmotionTokenCell = memo(function EmotionTokenCell({
   token,
   selected,
   primaryColor,
-  onPress,
+  onSelect,
 }: {
   token: (typeof EMOTION_TOKENS)[number];
   selected: boolean;
   primaryColor: string;
-  onPress: () => void;
+  onSelect: (id: EmotionTokenId) => void;
 }) {
+  const handlePress = useCallback(() => {
+    onSelect(token.id);
+  }, [onSelect, token.id]);
+
   return (
     <TokenPickerCell
       label={token.label}
@@ -115,10 +121,38 @@ function EmotionTokenCell({
       selected={selected}
       primaryColor={primaryColor}
       stickerShape="circle"
-      onPress={onPress}
+      onPress={handlePress}
     />
   );
-}
+});
+
+const ContextTokenCell = memo(function ContextTokenCell({
+  token,
+  selected,
+  primaryColor,
+  onSelect,
+}: {
+  token: (typeof EMOTION_CONTEXT_TOKENS)[number];
+  selected: boolean;
+  primaryColor: string;
+  onSelect: (id: EmotionContextTokenId) => void;
+}) {
+  const handlePress = useCallback(() => {
+    onSelect(token.id);
+  }, [onSelect, token.id]);
+
+  return (
+    <TokenPickerCell
+      label={token.label}
+      sticker={token.sticker}
+      tint={token.tint}
+      selected={selected}
+      primaryColor={primaryColor}
+      stickerShape="roundedSquare"
+      onPress={handlePress}
+    />
+  );
+});
 
 export function EmotionTokenPickerSheet({
   visible,
@@ -151,29 +185,30 @@ export function EmotionTokenPickerSheet({
     }
   }, [selectedContextId, selectedEmotionId, visible]);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setStep('emotion');
     onClose();
-  };
+  }, [onClose]);
 
-  const handleEmotionSelect = (emotionId: EmotionTokenId) => {
+  const handleEmotionSelect = useCallback((emotionId: EmotionTokenId) => {
     setPendingEmotionId(emotionId);
     setStep('context');
-  };
+  }, []);
 
-  const handleContextSelect = (contextId: EmotionContextTokenId) => {
-    if (pendingEmotionId == null) {
-      return;
-    }
-    const emotion = getEmotionToken(pendingEmotionId);
-    const context = EMOTION_CONTEXT_TOKENS.find(
-      token => token.id === contextId,
-    )!;
-    onSelect({ emotion, context });
-    handleClose();
-  };
-
-  const snapPoints = ['58%'] as const;
+  const handleContextSelect = useCallback(
+    (contextId: EmotionContextTokenId) => {
+      if (pendingEmotionId == null) {
+        return;
+      }
+      const emotion = getEmotionToken(pendingEmotionId);
+      const context = EMOTION_CONTEXT_TOKENS.find(
+        token => token.id === contextId,
+      )!;
+      onSelect({ emotion, context });
+      handleClose();
+    },
+    [handleClose, onSelect, pendingEmotionId],
+  );
 
   const handleAnimate = useCallback(
     (_fromIndex: number, toIndex: number) => {
@@ -184,6 +219,38 @@ export function EmotionTokenPickerSheet({
     [onWillClose],
   );
 
+  const renderEmotionItem = useCallback<
+    ListRenderItem<(typeof EMOTION_TOKENS)[number]>
+  >(
+    ({ item }) => (
+      <View style={{ width: cellWidth }}>
+        <EmotionTokenCell
+          token={item}
+          selected={pendingEmotionId === item.id}
+          primaryColor={colors.primary}
+          onSelect={handleEmotionSelect}
+        />
+      </View>
+    ),
+    [cellWidth, colors.primary, handleEmotionSelect, pendingEmotionId],
+  );
+
+  const renderContextItem = useCallback<
+    ListRenderItem<(typeof EMOTION_CONTEXT_TOKENS)[number]>
+  >(
+    ({ item }) => (
+      <View style={{ width: cellWidth }}>
+        <ContextTokenCell
+          token={item}
+          selected={pendingContextId === item.id}
+          primaryColor={colors.primary}
+          onSelect={handleContextSelect}
+        />
+      </View>
+    ),
+    [cellWidth, colors.primary, handleContextSelect, pendingContextId],
+  );
+
   return (
     <AppBottomSheet
       visible={visible}
@@ -191,7 +258,7 @@ export function EmotionTokenPickerSheet({
       onAnimate={handleAnimate}
       dismissKeyboardOnClose={false}
       rawChildren
-      snapPoints={[...snapPoints]}
+      snapPoints={SNAP_POINTS}
     >
       <BottomSheetView
         style={[
@@ -215,16 +282,7 @@ export function EmotionTokenPickerSheet({
               contentContainerStyle={styles.gridContent}
               showsVerticalScrollIndicator={false}
               style={styles.grid}
-              renderItem={({ item }) => (
-                <View style={{ width: cellWidth }}>
-                  <EmotionTokenCell
-                    token={item}
-                    selected={pendingEmotionId === item.id}
-                    primaryColor={colors.primary}
-                    onPress={() => handleEmotionSelect(item.id)}
-                  />
-                </View>
-              )}
+              renderItem={renderEmotionItem}
             />
           </View>
         ) : pendingEmotion ? (
@@ -269,19 +327,7 @@ export function EmotionTokenPickerSheet({
               contentContainerStyle={styles.gridContent}
               showsVerticalScrollIndicator={false}
               style={styles.contextGrid}
-              renderItem={({ item }) => (
-                <View style={{ width: cellWidth }}>
-                  <TokenPickerCell
-                    label={item.label}
-                    sticker={item.sticker}
-                    tint={item.tint}
-                    selected={pendingContextId === item.id}
-                    primaryColor={colors.primary}
-                    stickerShape="roundedSquare"
-                    onPress={() => handleContextSelect(item.id)}
-                  />
-                </View>
-              )}
+              renderItem={renderContextItem}
             />
           </View>
         ) : null}
