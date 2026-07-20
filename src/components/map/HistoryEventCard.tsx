@@ -1,4 +1,5 @@
 import LottieView from 'lottie-react-native';
+import { memo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Play } from 'lucide-react-native';
 
@@ -106,7 +107,7 @@ function driveCardStatsLine(
   return formatTimelineStats(entry, distanceUnit).replace(/^Drive · /, '');
 }
 
-export function HistoryEventCard({
+export const HistoryEventCard = memo(function HistoryEventCard({
   entry,
   savedPlace = null,
   visitPlaceLabel = null,
@@ -298,7 +299,7 @@ export function HistoryEventCard({
       ) : null}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: {

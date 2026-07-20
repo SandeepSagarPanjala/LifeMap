@@ -34,13 +34,12 @@ function coordinatesEqual(
   );
 }
 
-function playbackEqual(
+function playbackControlsEqual(
   previous: MapScreenController['playback'],
   next: MapScreenController['playback'],
 ): boolean {
   return (
     previous.isPlaying === next.isPlaying &&
-    previous.progress === next.progress &&
     previous.start === next.start &&
     previous.stop === next.stop
   );
@@ -96,7 +95,7 @@ export function areMapScreenMapPropsEqual(
     previous.selectedEntryMomentCounts === next.selectedEntryMomentCounts &&
     previous.openSelectedEntryMomentsPreview ===
       next.openSelectedEntryMomentsPreview &&
-    playbackEqual(previous.playback, next.playback) &&
+    playbackControlsEqual(previous.playback, next.playback) &&
     previous.savedPlaces === next.savedPlaces &&
     previous.savedPlaceMomentClusters === next.savedPlaceMomentClusters
   );

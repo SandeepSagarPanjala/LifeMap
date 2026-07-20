@@ -4,6 +4,7 @@ import { Marker } from 'react-native-maps';
 
 /** Same blue as the system map user-location puck and locate button. */
 const MAP_USER_LOCATION_BLUE = '#007AFF';
+const MARKER_ANCHOR = { x: 0.5, y: 0.5 } as const;
 
 type UserLocationPuckProps = {
   coordinate: { latitude: number; longitude: number };
@@ -20,7 +21,7 @@ export const UserLocationPuck = memo(function UserLocationPuck({
   return (
     <Marker
       coordinate={coordinate}
-      anchor={{ x: 0.5, y: 0.5 }}
+      anchor={MARKER_ANCHOR}
       zIndex={20}
       tracksViewChanges={false}
       flat

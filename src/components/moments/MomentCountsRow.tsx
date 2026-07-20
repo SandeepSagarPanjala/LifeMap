@@ -5,6 +5,7 @@ import {
   NotebookPen,
   Video,
 } from 'lucide-react-native';
+import { memo, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
@@ -82,7 +83,7 @@ type MomentCountChipProps = {
   accessibilityLabel: string;
 };
 
-function MomentCountChip({
+const MomentCountChip = memo(function MomentCountChip({
   count,
   icon: Icon,
   theme,
@@ -160,9 +161,9 @@ function MomentCountChip({
       {chip}
     </Pressable>
   );
-}
+});
 
-export function MomentCountsRow({
+function MomentCountsRowComponent({
   counts,
   iconSize = CAPTURE_ICON_SIZE - 2,
   compact = false,
@@ -171,6 +172,19 @@ export function MomentCountsRow({
   onPress,
   onPressType,
 }: MomentCountsRowProps) {
+  // Stable per-type handlers so memoized chips don't re-render on every parent
+  // render just because a fresh inline closure was created.
+  const typeHandlers = useMemo(() => {
+    if (!onPressType) {
+      return null;
+    }
+    const handlers = {} as Record<MomentCountType, () => void>;
+    for (const definition of CHIP_DEFINITIONS) {
+      handlers[definition.type] = () => onPressType(definition.type);
+    }
+    return handlers;
+  }, [onPressType]);
+
   if (!hasMomentCounts(counts)) {
     return null;
   }
@@ -202,9 +216,7 @@ export function MomentCountsRow({
             compact={compact}
             dense={dense}
             layout={layout}
-            onPress={
-              onPressType ? () => onPressType(definition.type) : undefined
-            }
+            onPress={typeHandlers ? typeHandlers[definition.type] : undefined}
             accessibilityLabel={definition.accessibilityLabel}
           />
         );
@@ -232,6 +244,8 @@ export function MomentCountsRow({
     </Pressable>
   );
 }
+
+export const MomentCountsRow = memo(MomentCountsRowComponent);
 
 const styles = StyleSheet.create({
   row: {

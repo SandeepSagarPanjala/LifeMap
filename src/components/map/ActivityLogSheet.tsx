@@ -1,4 +1,5 @@
 import {
+  memo,
   useCallback,
   useEffect,
   useRef,
@@ -17,6 +18,7 @@ import {
   StyleSheet,
   View,
   useWindowDimensions,
+  type ListRenderItem,
 } from 'react-native';
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import DraggableFlatList, {
@@ -202,18 +204,22 @@ type ActivityLogSheetProps = {
   reloadNonce?: number;
 };
 
-function ActivityPickerCell({
+const ActivityPickerCell = memo(function ActivityPickerCell({
   activity,
   onPress,
 }: {
   activity: ActivityRow;
-  onPress: () => void;
+  onPress: (activity: ActivityRow) => void;
 }) {
+  const handlePress = useCallback(() => {
+    onPress(activity);
+  }, [activity, onPress]);
+
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`Log ${activity.label}`}
-      onPress={onPress}
+      onPress={handlePress}
       style={styles.tokenCell}
     >
       <View style={styles.tokenStickerWrap}>
@@ -226,7 +232,7 @@ function ActivityPickerCell({
       </Text>
     </Pressable>
   );
-}
+});
 
 export function ActivityForm({
   title,
@@ -392,24 +398,42 @@ export function ActivityLogSheet({
     onClose();
   };
 
-  const handleLogActivity = async (activity: ActivityRow) => {
-    if (loggingId != null) {
-      return;
-    }
-    setLoggingId(activity.id);
-    try {
-      await saveActivityMoment(activity);
-      await onLogged();
-      handleClose();
-    } catch (error) {
-      Alert.alert(
-        APP_COPY.alerts.couldNotLogActivity,
-        errorMessageOr(error, APP_COPY.common.pleaseTryAgain),
-      );
-    } finally {
-      setLoggingId(null);
-    }
-  };
+  const handleLogActivity = useCallback(
+    async (activity: ActivityRow) => {
+      if (loggingId != null) {
+        return;
+      }
+      setLoggingId(activity.id);
+      try {
+        await saveActivityMoment(activity);
+        await onLogged();
+        setMode('log');
+        onClose();
+      } catch (error) {
+        Alert.alert(
+          APP_COPY.alerts.couldNotLogActivity,
+          errorMessageOr(error, APP_COPY.common.pleaseTryAgain),
+        );
+      } finally {
+        setLoggingId(null);
+      }
+    },
+    [loggingId, onClose, onLogged],
+  );
+
+  const renderActivityCell = useCallback<ListRenderItem<ActivityRow>>(
+    ({ item }) => (
+      <View style={{ width: cellWidth }}>
+        <ActivityPickerCell activity={item} onPress={handleLogActivity} />
+      </View>
+    ),
+    [cellWidth, handleLogActivity],
+  );
+
+  const activityKeyExtractor = useCallback(
+    (item: ActivityRow) => String(item.id),
+    [],
+  );
 
   const handleReorderActivities = useCallback(
     async (data: ActivityRow[]) => {
@@ -479,22 +503,13 @@ export function ActivityLogSheet({
           ) : (
             <FlatList
               data={activities}
-              keyExtractor={item => String(item.id)}
+              keyExtractor={activityKeyExtractor}
               numColumns={GRID_COLUMNS}
               columnWrapperStyle={styles.gridRow}
               contentContainerStyle={styles.gridContent}
               showsVerticalScrollIndicator={false}
               style={styles.grid}
-              renderItem={({ item }) => (
-                <View style={{ width: cellWidth }}>
-                  <ActivityPickerCell
-                    activity={item}
-                    onPress={() => {
-                      void handleLogActivity(item);
-                    }}
-                  />
-                </View>
-              )}
+              renderItem={renderActivityCell}
             />
           )}
           <View style={styles.stepFooterPinned}>

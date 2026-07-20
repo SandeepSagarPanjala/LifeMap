@@ -1,6 +1,7 @@
 import {
   Component,
   Fragment,
+  useCallback,
   type ComponentType,
   type ErrorInfo,
   type ReactNode,
@@ -72,6 +73,26 @@ function ErrorFallback({
   );
 }
 
+function FeatureErrorFallback({
+  feature,
+  resetError,
+  onDismiss,
+}: {
+  feature: FeatureId;
+  resetError: () => void;
+  onDismiss?: () => void;
+}) {
+  const copy = FEATURE_COPY[feature];
+  return (
+    <ErrorFallback
+      resetError={resetError}
+      title={copy.title}
+      body={copy.body}
+      onDismiss={onDismiss}
+    />
+  );
+}
+
 function RootErrorFallback({ resetError }: { resetError: () => void }) {
   return (
     <ErrorFallback
@@ -125,28 +146,32 @@ export function FeatureErrorBoundary({
   children,
   onDismiss,
 }: FeatureErrorBoundaryProps) {
-  const copy = FEATURE_COPY[feature];
+  const handleError = useCallback(
+    (error: Error, errorInfo: ErrorInfo) => {
+      if (__DEV__) {
+        console.error(
+          `[ErrorBoundary:${feature}]`,
+          error,
+          errorInfo.componentStack,
+        );
+      }
+    },
+    [feature],
+  );
+
+  const renderFallback = useCallback(
+    ({ resetError }: { resetError: () => void }) => (
+      <FeatureErrorFallback
+        feature={feature}
+        resetError={resetError}
+        onDismiss={onDismiss}
+      />
+    ),
+    [feature, onDismiss],
+  );
 
   return (
-    <ReactErrorBoundary
-      onError={(error, errorInfo) => {
-        if (__DEV__) {
-          console.error(
-            `[ErrorBoundary:${feature}]`,
-            error,
-            errorInfo.componentStack,
-          );
-        }
-      }}
-      fallback={({ resetError }) => (
-        <ErrorFallback
-          resetError={resetError}
-          title={copy.title}
-          body={copy.body}
-          onDismiss={onDismiss}
-        />
-      )}
-    >
+    <ReactErrorBoundary onError={handleError} fallback={renderFallback}>
       {children}
     </ReactErrorBoundary>
   );
@@ -157,10 +182,12 @@ export function withFeatureErrorBoundary<P extends object>(
   feature: FeatureId,
   options?: { dismissible?: boolean },
 ) {
+  const dismissible = options?.dismissible === true;
+
   function Wrapped(props: P) {
     const navigation = useNavigation();
-    const onDismiss =
-      options?.dismissible === true ? () => navigation.goBack() : undefined;
+    const handleDismiss = useCallback(() => navigation.goBack(), [navigation]);
+    const onDismiss = dismissible ? handleDismiss : undefined;
 
     return (
       <FeatureErrorBoundary feature={feature} onDismiss={onDismiss}>

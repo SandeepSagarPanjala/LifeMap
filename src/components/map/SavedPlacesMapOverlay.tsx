@@ -1,6 +1,6 @@
 import { useMarkerTracksViewChanges } from '@/hooks/use-marker-tracks-view-changes';
 import { Marker } from 'react-native-maps';
-import { Fragment } from 'react';
+import { Fragment, memo, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { SavedPlaceIcon } from '@/components/map/SavedPlaceIcon';
@@ -31,6 +31,10 @@ const CLUSTER_MARKER_CENTER_OFFSET_Y = -(
   CLUSTER_ABOVE_BADGE_GAP +
   CLUSTER_EXTRA_LIFT
 );
+const CLUSTER_CENTER_OFFSET = {
+  x: 0,
+  y: CLUSTER_MARKER_CENTER_OFFSET_Y,
+} as const;
 const MARKER_LABEL_MAX_WIDTH = 84;
 
 export type SavedPlaceMomentClusterOnMap = {
@@ -47,14 +51,16 @@ type SavedPlacesMapOverlayProps = {
 };
 
 type SavedPlaceMomentClusterMarkerProps = {
-  coordinate: { latitude: number; longitude: number };
+  latitude: number;
+  longitude: number;
   counts: MomentCounts;
   onPress?: () => void;
 };
 
 /** Re-measures when moment counts change so width/position stay centered on Home. */
-function SavedPlaceMomentClusterMarker({
-  coordinate,
+const SavedPlaceMomentClusterMarker = memo(function SavedPlaceMomentClusterMarker({
+  latitude,
+  longitude,
   counts,
   onPress,
 }: SavedPlaceMomentClusterMarkerProps) {
@@ -68,12 +74,16 @@ function SavedPlaceMomentClusterMarker({
   ].join('-');
   const { tracksViewChanges, onLayout } =
     useMarkerTracksViewChanges(layoutSignature);
+  const coordinate = useMemo(
+    () => ({ latitude, longitude }),
+    [latitude, longitude],
+  );
 
   return (
     <Marker
       coordinate={coordinate}
       anchor={CLUSTER_MARKER_ANCHOR}
-      centerOffset={{ x: 0, y: CLUSTER_MARKER_CENTER_OFFSET_Y }}
+      centerOffset={CLUSTER_CENTER_OFFSET}
       zIndex={9}
       tracksViewChanges={tracksViewChanges}
       onPress={onPress}
@@ -85,26 +95,75 @@ function SavedPlaceMomentClusterMarker({
       </View>
     </Marker>
   );
-}
+});
 
-export function SavedPlacesMapOverlay({
+type SavedPlaceMarkerProps = {
+  place: SavedPlaceRow;
+};
+
+/** Memoized so a single place / cluster change doesn't re-render every saved pin. */
+const SavedPlaceMarker = memo(function SavedPlaceMarker({
+  place,
+}: SavedPlaceMarkerProps) {
+  const style = SAVED_PLACE_MAP_STYLE[place.kind];
+  const center = useMemo(
+    () => ({ latitude: place.lat, longitude: place.lng }),
+    [place.lat, place.lng],
+  );
+  const badgeStyle = useMemo(
+    () => [
+      styles.markerBadge,
+      { backgroundColor: style.badgeBg, borderColor: style.stroke },
+    ],
+    [style.badgeBg, style.stroke],
+  );
+  const labelPillStyle = useMemo(
+    () => [styles.labelPill, { borderColor: style.stroke }],
+    [style.stroke],
+  );
+
+  return (
+    <Marker
+      coordinate={center}
+      anchor={SAVED_PLACE_MARKER_ANCHOR}
+      zIndex={6}
+      tracksViewChanges={false}
+    >
+      <View style={styles.markerColumn} collapsable={false}>
+        <View style={badgeStyle}>
+          <SavedPlaceIcon kind={place.kind} size={16} color={style.icon} />
+        </View>
+        <View style={labelPillStyle}>
+          <Text
+            style={styles.labelText}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            {savedPlaceDisplayLabel(place)}
+          </Text>
+        </View>
+      </View>
+    </Marker>
+  );
+});
+
+function SavedPlacesMapOverlayComponent({
   places,
   hideMarkerPlaceId = null,
   momentClusters = [],
 }: SavedPlacesMapOverlayProps) {
+  const clusterByPlaceId = useMemo(
+    () => new Map(momentClusters.map(cluster => [cluster.placeId, cluster])),
+    [momentClusters],
+  );
+
   if (places.length === 0) {
     return null;
   }
 
-  const clusterByPlaceId = new Map(
-    momentClusters.map(cluster => [cluster.placeId, cluster]),
-  );
-
   return (
     <>
       {places.map(place => {
-        const style = SAVED_PLACE_MAP_STYLE[place.kind];
-        const center = { latitude: place.lat, longitude: place.lng };
         const showMarker = hideMarkerPlaceId !== place.id;
         const cluster = clusterByPlaceId.get(place.id);
         const showCluster = cluster != null;
@@ -117,62 +176,21 @@ export function SavedPlacesMapOverlay({
           <Fragment key={place.id}>
             {showCluster ? (
               <SavedPlaceMomentClusterMarker
-                key={[
-                  countMomentTypes(cluster.counts),
-                  cluster.counts.photo,
-                  cluster.counts.video,
-                  cluster.counts.voice,
-                  cluster.counts.note,
-                  cluster.counts.activity,
-                ].join('-')}
-                coordinate={center}
+                latitude={place.lat}
+                longitude={place.lng}
                 counts={cluster.counts}
                 onPress={cluster.onPress}
               />
             ) : null}
-            {showMarker ? (
-              <Marker
-                coordinate={center}
-                anchor={SAVED_PLACE_MARKER_ANCHOR}
-                zIndex={6}
-                tracksViewChanges={false}
-              >
-                <View style={styles.markerColumn} collapsable={false}>
-                  <View
-                    style={[
-                      styles.markerBadge,
-                      {
-                        backgroundColor: style.badgeBg,
-                        borderColor: style.stroke,
-                      },
-                    ]}
-                  >
-                    <SavedPlaceIcon
-                      kind={place.kind}
-                      size={16}
-                      color={style.icon}
-                    />
-                  </View>
-                  <View
-                    style={[styles.labelPill, { borderColor: style.stroke }]}
-                  >
-                    <Text
-                      style={styles.labelText}
-                      numberOfLines={1}
-                      ellipsizeMode="tail"
-                    >
-                      {savedPlaceDisplayLabel(place)}
-                    </Text>
-                  </View>
-                </View>
-              </Marker>
-            ) : null}
+            {showMarker ? <SavedPlaceMarker place={place} /> : null}
           </Fragment>
         );
       })}
     </>
   );
 }
+
+export const SavedPlacesMapOverlay = memo(SavedPlacesMapOverlayComponent);
 
 const styles = StyleSheet.create({
   markerColumn: {

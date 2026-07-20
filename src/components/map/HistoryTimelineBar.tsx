@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import {
   type LayoutChangeEvent,
   Pressable,
@@ -20,6 +20,7 @@ import { HISTORY_COLORS } from '@/lib/app-constants';
 import {
   buildHistoryDayRuler,
   historySegmentColor,
+  type HistoryDaySegment,
 } from '@/lib/history-timeline';
 
 const HORIZONTAL_PADDING = 16;
@@ -47,7 +48,70 @@ type HistoryTimelineBarProps = {
   onWrapToNextDay?: () => void;
 };
 
-export function HistoryTimelineBar({
+const TimelineSegmentButton = memo(function TimelineSegmentButton({
+  segment,
+  selected,
+  isFirst,
+  isLast,
+  onSelectIndex,
+}: {
+  segment: HistoryDaySegment;
+  selected: boolean;
+  isFirst: boolean;
+  isLast: boolean;
+  onSelectIndex: (index: number) => void;
+}) {
+  const color = historySegmentColor(segment.kind, selected);
+  const segmentHeight = selected
+    ? TRACK_HEIGHT + SELECTED_SEGMENT_LIFT * 2
+    : TRACK_HEIGHT;
+  const edgeRadius = segmentHeight / 2;
+  const handlePress = useCallback(() => {
+    onSelectIndex(segment.entryIndex);
+  }, [onSelectIndex, segment.entryIndex]);
+  const segmentStyle = useMemo(
+    () => [
+      styles.fill,
+      selected && styles.fillSelected,
+      {
+        left: segment.leftPx,
+        width: segment.widthPx,
+        top: selected ? -SELECTED_SEGMENT_LIFT : 0,
+        height: segmentHeight,
+        backgroundColor: color,
+        borderTopLeftRadius: isFirst ? edgeRadius : 0,
+        borderBottomLeftRadius: isFirst ? edgeRadius : 0,
+        borderTopRightRadius: isLast ? edgeRadius : 0,
+        borderBottomRightRadius: isLast ? edgeRadius : 0,
+        borderWidth: selected ? 2 : 0,
+        borderColor: selected
+          ? HISTORY_COLORS.segmentSelectedBorder
+          : 'transparent',
+      },
+    ],
+    [
+      color,
+      edgeRadius,
+      isFirst,
+      isLast,
+      segment.leftPx,
+      segment.widthPx,
+      segmentHeight,
+      selected,
+    ],
+  );
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      onPress={handlePress}
+      style={segmentStyle}
+    />
+  );
+});
+
+export const HistoryTimelineBar = memo(function HistoryTimelineBar({
   dateKey,
   entries,
   selectedIndex,
@@ -216,44 +280,16 @@ export function HistoryTimelineBar({
               pointerEvents="none"
               style={[styles.track, styles.fullWidth]}
             />
-            {ruler.segments.map((segment, segmentIndex) => {
-              const selected = segment.entryIndex === selectedIndex;
-              const color = historySegmentColor(segment.kind, selected);
-              const isFirst = segmentIndex === 0;
-              const isLast = segmentIndex === ruler.segments.length - 1;
-              const segmentHeight = selected
-                ? TRACK_HEIGHT + SELECTED_SEGMENT_LIFT * 2
-                : TRACK_HEIGHT;
-              const edgeRadius = segmentHeight / 2;
-
-              return (
-                <Pressable
-                  key={`${segment.entryIndex}-${segment.startAt.getTime()}`}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected }}
-                  onPress={() => onSelectIndex(segment.entryIndex)}
-                  style={[
-                    styles.fill,
-                    selected && styles.fillSelected,
-                    {
-                      left: segment.leftPx,
-                      width: segment.widthPx,
-                      top: selected ? -SELECTED_SEGMENT_LIFT : 0,
-                      height: segmentHeight,
-                      backgroundColor: color,
-                      borderTopLeftRadius: isFirst ? edgeRadius : 0,
-                      borderBottomLeftRadius: isFirst ? edgeRadius : 0,
-                      borderTopRightRadius: isLast ? edgeRadius : 0,
-                      borderBottomRightRadius: isLast ? edgeRadius : 0,
-                      borderWidth: selected ? 2 : 0,
-                      borderColor: selected
-                        ? HISTORY_COLORS.segmentSelectedBorder
-                        : 'transparent',
-                    },
-                  ]}
-                />
-              );
-            })}
+            {ruler.segments.map((segment, segmentIndex) => (
+              <TimelineSegmentButton
+                key={`${segment.entryIndex}-${segment.startAt.getTime()}`}
+                segment={segment}
+                selected={segment.entryIndex === selectedIndex}
+                isFirst={segmentIndex === 0}
+                isLast={segmentIndex === ruler.segments.length - 1}
+                onSelectIndex={onSelectIndex}
+              />
+            ))}
           </View>
         </View>
 
@@ -279,7 +315,7 @@ export function HistoryTimelineBar({
       </View>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   wrap: {

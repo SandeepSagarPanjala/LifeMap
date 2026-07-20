@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
 
 import { HistoryEventCard } from '@/components/map/HistoryEventCard';
@@ -15,7 +15,9 @@ type MapHistoryPanelProps = {
   controller: MapScreenController;
 };
 
-export function MapHistoryPanel({ controller }: MapHistoryPanelProps) {
+export const MapHistoryPanel = memo(function MapHistoryPanel({
+  controller,
+}: MapHistoryPanelProps) {
   const {
     historyPanelChromeVisible,
     historyPanelOpen,
@@ -178,7 +180,7 @@ export function MapHistoryPanel({ controller }: MapHistoryPanelProps) {
       )}
     </Animated.View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   host: {

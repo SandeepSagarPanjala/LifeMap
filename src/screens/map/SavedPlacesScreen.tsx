@@ -29,16 +29,19 @@ import { NATIVE_HALF_SHEET_HEIGHT_RATIO } from '@/lib/app-constants';
 import { useSheetCaptureClose } from '@/screens/sheets/use-sheet-capture-close';
 
 function SavedPlacesPanel({
+  places,
+  refreshSavedPlaces,
   onSelectPlace,
   onBeginEdit,
   onAddByAddress,
 }: {
+  places: SavedPlaceRow[];
+  refreshSavedPlaces: () => Promise<void>;
   onSelectPlace: (place: SavedPlaceRow) => void;
   onBeginEdit: (place: SavedPlaceRow) => void;
   onAddByAddress: () => void;
 }) {
   const closeSheet = useNativeHalfSheetClose();
-  const { places, refresh: refreshSavedPlaces } = useSavedPlaces();
   const addOptions = savedPlaceAddByAddressOptions(places);
 
   const handleDelete = async (place: SavedPlaceRow) => {
@@ -190,6 +193,8 @@ export function SavedPlacesScreen() {
           heightRatio={NATIVE_HALF_SHEET_HEIGHT_RATIO}
         >
           <SavedPlacesPanel
+            places={places}
+            refreshSavedPlaces={refreshSavedPlaces}
             onSelectPlace={handleSelectPlace}
             onBeginEdit={openEdit}
             onAddByAddress={() => setAddressSheetOpen(true)}

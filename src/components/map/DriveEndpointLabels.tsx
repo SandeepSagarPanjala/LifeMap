@@ -11,6 +11,8 @@ import { SAVED_PLACE_MAP_STYLE } from '@/lib/saved-places-map';
 import { formatTripClockTime } from '@/lib/trip-format';
 
 const MARKER_ANCHOR = { x: 0.5, y: 0.5 } as const;
+const START_CHIP_CENTER_OFFSET = { x: 0, y: -40 } as const;
+const FINISH_CHIP_CENTER_OFFSET = { x: 0, y: 44 } as const;
 const DOT_SIZE = 16;
 const DOT_RING_SIZE = 24;
 const FINISH_BADGE_SIZE = 24;
@@ -95,7 +97,7 @@ function StartMarker({ coordinate, time, label }: StartMarkerProps) {
       <Marker
         coordinate={coordinate}
         anchor={MARKER_ANCHOR}
-        centerOffset={{ x: 0, y: -40 }}
+        centerOffset={START_CHIP_CENTER_OFFSET}
         zIndex={13}
         tracksViewChanges={false}
       >
@@ -152,7 +154,7 @@ function FinishMarker({
       <Marker
         coordinate={coordinate}
         anchor={MARKER_ANCHOR}
-        centerOffset={{ x: 0, y: 44 }}
+        centerOffset={FINISH_CHIP_CENTER_OFFSET}
         zIndex={13}
         tracksViewChanges={false}
       >

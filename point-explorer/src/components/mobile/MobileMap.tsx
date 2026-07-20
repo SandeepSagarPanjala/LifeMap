@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { memo, useEffect, useMemo } from 'react';
 import {
   Circle,
   MapContainer,
@@ -51,6 +51,14 @@ function stayAreaStyle(selected: boolean) {
   };
 }
 
+// Stable style refs so Leaflet paths don't get a fresh options object per render.
+const SELECTED_STAY_AREA_STYLE = stayAreaStyle(true);
+const EMPHASIZED_ROUTE_STYLE = {
+  color: HISTORY_COLORS.travel,
+  weight: 5,
+  opacity: 0.95,
+};
+
 function toLatLng(points: readonly ParsedPoint[]): LatLngTuple[] {
   return points.map(point => [point.lat, point.lng] as LatLngTuple);
 }
@@ -81,7 +89,7 @@ function hideSavedPlaceMarkerId(
   return null;
 }
 
-export function MobileMap({
+function MobileMapComponent({
   entries,
   dayPoints,
   savedPlaces,
@@ -153,19 +161,12 @@ export function MobileMap({
         <Circle
           center={selectedStayCenter}
           radius={STAY_DWELL_RADIUS_METERS}
-          pathOptions={stayAreaStyle(true)}
+          pathOptions={SELECTED_STAY_AREA_STYLE}
         />
       ) : null}
 
       {emphasizedRoute != null ? (
-        <Polyline
-          positions={emphasizedRoute}
-          pathOptions={{
-            color: HISTORY_COLORS.travel,
-            weight: 5,
-            opacity: 0.95,
-          }}
-        />
+        <Polyline positions={emphasizedRoute} pathOptions={EMPHASIZED_ROUTE_STYLE} />
       ) : null}
 
       {driveEndpointEntry != null ? (
@@ -184,3 +185,5 @@ export function MobileMap({
     </MapContainer>
   );
 }
+
+export const MobileMap = memo(MobileMapComponent);

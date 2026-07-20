@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 
 import { HistoryRoutePath } from '@/components/map/HistoryRoutePath';
 import { StayAreasOverlay } from '@/components/map/StayAreasOverlay';
@@ -12,6 +12,7 @@ import type {
   MomentCounts,
 } from '@/lib/moments/moment-counts';
 import { matchSavedPlaceForStay } from '@/lib/saved-places';
+import type { DetectedTrip } from '@/lib/trip-detection';
 import type { TripDetectionConfig } from '@/lib/trip-settings';
 
 type HistoryDayMapOverlayProps = {
@@ -31,6 +32,13 @@ type HistoryDayMapOverlayProps = {
   showDirectionArrows?: boolean;
   mapLatitudeDelta?: number;
 };
+
+function useSingleStayList(stay: DetectedTrip | null | undefined) {
+  return useMemo(
+    () => (stay != null ? [stay] : null),
+    [stay],
+  );
+}
 
 /** All day drives/visits on the map; selected event keeps full detail and labels. */
 export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
@@ -54,7 +62,31 @@ export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
   const selectedIsSavedPlace =
     selected?.entry.kind === 'stay' &&
     (selectedSavedPlace != null ||
-      matchSavedPlaceForStay(selected.entry, [...savedPlaces]) != null);
+      matchSavedPlaceForStay(selected.entry, savedPlaces) != null);
+
+  const nextStayList = useSingleStayList(
+    plan.nextStay != null && plan.nextStay !== plan.selected?.arrivalVisit
+      ? plan.nextStay
+      : null,
+  );
+  const arrivalVisitList = useSingleStayList(
+    selected?.entry.kind === 'travel' &&
+      selected.arrivalVisit != null &&
+      !isPlaying
+      ? selected.arrivalVisit
+      : null,
+  );
+  const selectedStayList = useSingleStayList(
+    selected?.entry.kind === 'stay' && !isPlaying && !selectedIsSavedPlace
+      ? selected.entry
+      : null,
+  );
+  const arrivalVisitSavedPlace = useMemo(() => {
+    if (selected?.entry.kind !== 'travel' || selected.arrivalVisit == null) {
+      return null;
+    }
+    return matchSavedPlaceForStay(selected.arrivalVisit, savedPlaces);
+  }, [selected, savedPlaces]);
 
   return (
     <>
@@ -66,31 +98,26 @@ export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
           tone="future"
         />
       ) : null}
-      {plan.nextStay != null &&
-      plan.nextStay !== plan.selected?.arrivalVisit ? (
+      {nextStayList != null ? (
         <StayAreasOverlay
-          stays={[plan.nextStay]}
+          stays={nextStayList}
           tripConfig={tripConfig}
           savedPlaces={savedPlaces}
           tone="future"
         />
       ) : null}
 
-      {selected?.entry.kind === 'travel' &&
-      selected.arrivalVisit != null &&
-      !isPlaying ? (
+      {arrivalVisitList != null ? (
         <>
           <StayAreasOverlay
-            stays={[selected.arrivalVisit]}
+            stays={arrivalVisitList}
             tripConfig={tripConfig}
             savedPlaces={savedPlaces}
             tone="emphasized"
           />
           <StayDurationCallout
-            trip={selected.arrivalVisit}
-            savedPlace={matchSavedPlaceForStay(selected.arrivalVisit, [
-              ...savedPlaces,
-            ])}
+            trip={selected!.arrivalVisit!}
+            savedPlace={arrivalVisitSavedPlace}
           />
         </>
       ) : null}
@@ -148,17 +175,13 @@ export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
         />
       ) : null}
 
-      {selected?.entry.kind === 'stay' &&
-      !isPlaying &&
-      !selectedIsSavedPlace ? (
-        <>
-          <StayAreasOverlay
-            stays={[selected.entry]}
-            tripConfig={tripConfig}
-            savedPlaces={savedPlaces}
-            tone="emphasized"
-          />
-        </>
+      {selectedStayList != null ? (
+        <StayAreasOverlay
+          stays={selectedStayList}
+          tripConfig={tripConfig}
+          savedPlaces={savedPlaces}
+          tone="emphasized"
+        />
       ) : null}
 
       {selected?.entry.kind === 'stay' && !isPlaying ? (

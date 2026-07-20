@@ -14,7 +14,6 @@ import {
 import type { DayStoryStop } from '@/lib/day-story-stops';
 import { momentCountsForDayStoryStop } from '@/lib/day-story-moments';
 import {
-  emptyMomentCounts,
   hasMomentCounts,
   type MomentCountType,
   type MomentCounts,
@@ -33,6 +32,15 @@ import { SAVED_PLACE_MAP_STYLE } from '@/lib/saved-places-map';
 const NUMBER_BADGE_SIZE = 28;
 const MULTI_BADGE_SIZE = 22;
 const LABEL_MAX_WIDTH = 100;
+const MARKER_ANCHOR = { x: 0.5, y: 0.5 } as const;
+/** Stable fallback so a missing stop key doesn't break DayStoryStopMarker memo. */
+const EMPTY_MOMENT_COUNTS: MomentCounts = {
+  photo: 0,
+  video: 0,
+  voice: 0,
+  note: 0,
+  activity: 0,
+};
 
 type DayStoryStopsOverlayProps = {
   /** Prebuilt by the map controller — avoid rebuilding on every overlay mount. */
@@ -70,36 +78,58 @@ function VisitNumberBadges({
   }
   return (
     <View style={styles.multiBadgeRow}>
-      {numbers.map((n, index) => {
-        const badge = (
-          <View
-            style={[
-              styles.multiBadge,
-              { backgroundColor: dayStoryColorForVisit(n) },
-              index > 0 && styles.multiBadgeOverlap,
-            ]}
-          >
-            <Text style={styles.multiBadgeText}>{n}</Text>
-          </View>
-        );
-        if (onPressNumber == null) {
-          return <View key={n}>{badge}</View>;
-        }
-        return (
-          <Pressable
-            key={n}
-            accessibilityRole="button"
-            accessibilityLabel={`Open visit ${n} in history`}
-            hitSlop={6}
-            onPress={() => onPressNumber(n)}
-          >
-            {badge}
-          </Pressable>
-        );
-      })}
+      {numbers.map((n, index) => (
+        <VisitNumberBadge
+          key={n}
+          visitNumber={n}
+          index={index}
+          onPressNumber={onPressNumber}
+        />
+      ))}
     </View>
   );
 }
+
+const VisitNumberBadge = memo(function VisitNumberBadge({
+  visitNumber,
+  index,
+  onPressNumber,
+}: {
+  visitNumber: number;
+  index: number;
+  onPressNumber?: (visitNumber: number) => void;
+}) {
+  const handlePress = useCallback(() => {
+    onPressNumber?.(visitNumber);
+  }, [onPressNumber, visitNumber]);
+
+  const badge = (
+    <View
+      style={[
+        styles.multiBadge,
+        { backgroundColor: dayStoryColorForVisit(visitNumber) },
+        index > 0 && styles.multiBadgeOverlap,
+      ]}
+    >
+      <Text style={styles.multiBadgeText}>{visitNumber}</Text>
+    </View>
+  );
+
+  if (onPressNumber == null) {
+    return <View>{badge}</View>;
+  }
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Open visit ${visitNumber} in history`}
+      hitSlop={6}
+      onPress={handlePress}
+    >
+      {badge}
+    </Pressable>
+  );
+});
 
 function PlaceLabelRow({ stop }: { stop: DayStoryStop }) {
   const savedKind = stop.savedPlaceKind;
@@ -147,12 +177,10 @@ const DayStoryStopMarker = memo(function DayStoryStopMarker({
   const measuredW = cardSize.w > 0 ? cardSize.w : 72;
   const measuredH = cardSize.h > 0 ? cardSize.h : showMoments ? 44 : 22;
   const badgeRadius = stop.visitNumbers.length > 1 ? 18 : NUMBER_BADGE_SIZE / 2;
-  const cardOffset = dayStoryCardOffset(
-    cardSide,
-    measuredW,
-    measuredH,
-    badgeRadius,
-    8,
+  const cardOffset = useMemo(
+    () =>
+      dayStoryCardOffset(cardSide, measuredW, measuredH, badgeRadius, 8),
+    [cardSide, measuredW, measuredH, badgeRadius],
   );
   const badgeSignature = [stop.key, 'badge', stop.visitNumbers.join(',')].join(
     '|',
@@ -235,7 +263,7 @@ const DayStoryStopMarker = memo(function DayStoryStopMarker({
     <>
       <Marker
         coordinate={stop.coordinate}
-        anchor={{ x: 0.5, y: 0.5 }}
+        anchor={MARKER_ANCHOR}
         zIndex={stop.isHome ? 12 : 10}
         tracksViewChanges={badgeTracks.tracksViewChanges}
         onPress={
@@ -255,7 +283,7 @@ const DayStoryStopMarker = memo(function DayStoryStopMarker({
       </Marker>
       <Marker
         coordinate={stop.coordinate}
-        anchor={{ x: 0.5, y: 0.5 }}
+        anchor={MARKER_ANCHOR}
         centerOffset={cardOffset}
         zIndex={stop.isHome ? 11 : 9}
         tracksViewChanges={cardTracks.tracksViewChanges}
@@ -361,7 +389,7 @@ export const DayStoryStopsOverlay = memo(function DayStoryStopsOverlay({
             key={stop.key}
             stop={stop}
             momentCounts={
-              momentCountsByStopKey.get(stop.key) ?? emptyMomentCounts()
+              momentCountsByStopKey.get(stop.key) ?? EMPTY_MOMENT_COUNTS
             }
             cardSide={stop.isHome ? 'top' : cardSides.get(stop.key) ?? 'top'}
             onPressMomentType={

@@ -1,6 +1,8 @@
 import {
+  memo,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ElementRef,
@@ -160,7 +162,7 @@ type PhotoFilterStripProps = {
   disabled?: boolean;
 };
 
-function PhotoFilterStrip({
+const PhotoFilterStrip = memo(function PhotoFilterStrip({
   sourceUri,
   selectedFilter,
   onSelectFilter,
@@ -206,7 +208,7 @@ function PhotoFilterStrip({
       })}
     </View>
   );
-}
+});
 
 export function CapturePhotoScreen() {
   const navigation =
@@ -248,6 +250,12 @@ export function CapturePhotoScreen() {
 
   const photoOutput = usePhotoOutput();
   const videoOutput = useVideoOutput({ enableAudio: captureMode === 'video' });
+  // Stable outputs array so the live Camera doesn't get a new prop every render.
+  const cameraOutputs = useMemo(
+    () =>
+      captureMode === 'video' ? [photoOutput, videoOutput] : [photoOutput],
+    [captureMode, photoOutput, videoOutput],
+  );
   const exportShotRef = useRef<ElementRef<typeof ViewShot>>(null);
   const recorderRef = useRef<Recorder | null>(null);
   const recordingStartedAtRef = useRef(0);
@@ -915,9 +923,7 @@ export function CapturePhotoScreen() {
           isActive={
             phase === 'camera' && !cameraLeaving && !cameraBackgroundPaused
           }
-          outputs={
-            captureMode === 'video' ? [photoOutput, videoOutput] : [photoOutput]
-          }
+          outputs={cameraOutputs}
           mirrorMode="off"
           enableNativeZoomGesture
           onPreviewStarted={markCameraReady}

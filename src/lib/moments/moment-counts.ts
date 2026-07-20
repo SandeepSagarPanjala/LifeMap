@@ -32,6 +32,14 @@ export type TravelMomentMarker = {
   momentIds: number[];
 };
 
+export const EMPTY_MOMENT_COUNTS: MomentCounts = {
+  photo: 0,
+  video: 0,
+  voice: 0,
+  note: 0,
+  activity: 0,
+};
+
 export function emptyMomentCounts(): MomentCounts {
   return { photo: 0, video: 0, voice: 0, note: 0, activity: 0 };
 }

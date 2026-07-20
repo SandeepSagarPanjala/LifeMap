@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { ColorMatrix } from 'react-native-color-matrix-image-filters';
 import {
   Image,
@@ -28,14 +29,21 @@ export function FilteredCaptureImage({
   style,
   resizeMode = 'contain',
 }: FilteredCaptureImageProps) {
-  const matrix = getPhotoFilterMatrix(filterId);
-  const imageStyle = [
-    width != null && height != null ? { width, height } : null,
-    style,
-  ];
+  // Matrix concatenation is non-trivial; recompute only when the filter changes
+  // (this renders in the filter thumbnail strip, one per available filter).
+  const matrix = useMemo(() => getPhotoFilterMatrix(filterId), [filterId]);
+  const source = useMemo(() => ({ uri }), [uri]);
+  const sizeStyle = useMemo(
+    () => (width != null && height != null ? { width, height } : null),
+    [width, height],
+  );
+  const imageStyle = useMemo(
+    () => [sizeStyle, style],
+    [sizeStyle, style],
+  );
 
   const image = (
-    <Image source={{ uri }} style={imageStyle} resizeMode={resizeMode} />
+    <Image source={source} style={imageStyle} resizeMode={resizeMode} />
   );
 
   if (matrix == null) {
@@ -43,10 +51,7 @@ export function FilteredCaptureImage({
   }
 
   return (
-    <ColorMatrix
-      matrix={matrix}
-      style={width != null && height != null ? { width, height } : style}
-    >
+    <ColorMatrix matrix={matrix} style={sizeStyle ?? style}>
       {image}
     </ColorMatrix>
   );

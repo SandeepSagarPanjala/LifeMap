@@ -1,6 +1,8 @@
 import { Check, ChevronRight } from 'lucide-react-native';
-import type { ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { Pressable, Switch, View } from 'react-native';
+
+const SWITCH_TRACK_OFF = '#E5E5EA';
 
 import { Text } from '@/components/ui/text';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -113,6 +115,10 @@ export function SettingsIosToggle({
   footer,
 }: SettingsIosToggleProps) {
   const colors = useThemeColors();
+  const trackColor = useMemo(
+    () => ({ false: SWITCH_TRACK_OFF, true: colors.primary }),
+    [colors.primary],
+  );
 
   return (
     <View className="mt-2">
@@ -123,7 +129,7 @@ export function SettingsIosToggle({
           value={value}
           disabled={disabled || loading}
           onValueChange={onValueChange}
-          trackColor={{ false: '#E5E5EA', true: colors.primary }}
+          trackColor={trackColor}
           thumbColor="#FFFFFF"
           ios_backgroundColor="#E5E5EA"
         />
@@ -160,6 +166,10 @@ export function SettingsToggleRow({
   footer,
 }: SettingsToggleRowProps) {
   const colors = useThemeColors();
+  const trackColor = useMemo(
+    () => ({ false: SWITCH_TRACK_OFF, true: colors.primary }),
+    [colors.primary],
+  );
 
   return (
     <View className="px-4 py-3">
@@ -170,7 +180,7 @@ export function SettingsToggleRow({
           value={value}
           disabled={disabled || loading}
           onValueChange={onValueChange}
-          trackColor={{ false: '#E5E5EA', true: colors.primary }}
+          trackColor={trackColor}
           thumbColor="#FFFFFF"
           ios_backgroundColor="#E5E5EA"
         />

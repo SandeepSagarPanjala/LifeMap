@@ -12,6 +12,9 @@ import {
 } from '@/lib/trip-materialization-events';
 import { loadVisitPlaceDisplayForStay } from '@/lib/visit-place-label';
 
+/** Stable empty list so MapScreenMap memo isn't busted when day-story is off. */
+const EMPTY_DAY_STORY_STOPS: DayStoryStop[] = [];
+
 /**
  * Apply DB / visit-override resolution onto a timeline stay so day-story
  * matches History (timeline entries often keep the first closest-POI label).
@@ -70,11 +73,14 @@ export function useDayStoryStops(
     () =>
       enabled
         ? buildDayStoryStops(stays, savedPlaces, groupRadiusMeters)
-        : [],
+        : EMPTY_DAY_STORY_STOPS,
     [enabled, stays, savedPlaces, groupRadiusMeters],
   );
 
-  const [stops, setStops] = useState(syncStops);
+  // Async enrichment only — sync path is derived to avoid an extra paint.
+  const [enrichedStops, setEnrichedStops] = useState<DayStoryStop[] | null>(
+    null,
+  );
   const materializationRevision = useSyncExternalStore(
     subscribeMaterialization,
     getMaterializationRevision,
@@ -82,7 +88,7 @@ export function useDayStoryStops(
   );
 
   useEffect(() => {
-    setStops(syncStops);
+    setEnrichedStops(null);
   }, [syncStops]);
 
   useEffect(() => {
@@ -100,7 +106,9 @@ export function useDayStoryStops(
       if (cancelled) {
         return;
       }
-      setStops(buildDayStoryStops(enriched, savedPlaces, groupRadiusMeters));
+      setEnrichedStops(
+        buildDayStoryStops(enriched, savedPlaces, groupRadiusMeters),
+      );
     })();
 
     return () => {
@@ -114,5 +122,8 @@ export function useDayStoryStops(
     materializationRevision,
   ]);
 
-  return enabled ? stops : [];
+  if (!enabled) {
+    return EMPTY_DAY_STORY_STOPS;
+  }
+  return enrichedStops ?? syncStops;
 }

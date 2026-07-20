@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { APP_COPY } from '@/lib/app-copy';
 import {
   Alert,
@@ -430,16 +430,19 @@ function NoteMomentPage({
   contentInsetTop: number;
 }) {
   const moodLabel = moment.moodLabel?.trim();
-  const parsedMood = moodLabel ? parseEmotionMoodLabel(moodLabel) : null;
-  const emotionToken = parsedMood
-    ? getEmotionTokenByLabel(parsedMood.emotionLabel)
-    : null;
-  const contextToken = parsedMood?.contextLabel
-    ? getEmotionContextTokenByLabel(parsedMood.contextLabel)
-    : null;
+  const { parsedMood, emotionToken, contextToken } = useMemo(() => {
+    const parsed = moodLabel ? parseEmotionMoodLabel(moodLabel) : null;
+    return {
+      parsedMood: parsed,
+      emotionToken: parsed ? getEmotionTokenByLabel(parsed.emotionLabel) : null,
+      contextToken: parsed?.contextLabel
+        ? getEmotionContextTokenByLabel(parsed.contextLabel)
+        : null,
+    };
+  }, [moodLabel]);
   const voiceDuration = noteVoiceDurationLabel(moment);
   const voiceTheme = CAPTURE_BUTTON_THEMES.voice;
-  const photoPaths = notePhotoAttachmentPaths(moment);
+  const photoPaths = useMemo(() => notePhotoAttachmentPaths(moment), [moment]);
 
   return (
     <ScrollView
@@ -543,7 +546,7 @@ function VideoMomentPage({
   );
 }
 
-function MomentPagerPage({
+const MomentPagerPage = memo(function MomentPagerPage({
   moment,
   pageWidth,
   isActive,
@@ -555,9 +558,13 @@ function MomentPagerPage({
   pageWidth: number;
   isActive: boolean;
   isPlayingVoice: boolean;
-  onToggleVoice: () => void;
+  onToggleVoice: (moment: MomentRow) => void;
   noteContentInsetTop: number;
 }) {
+  const handleToggleVoice = useCallback(() => {
+    onToggleVoice(moment);
+  }, [moment, onToggleVoice]);
+
   return (
     <View style={[styles.page, { width: pageWidth }]}>
       {moment.type === 'photo' && moment.contentPath ? (
@@ -576,7 +583,7 @@ function MomentPagerPage({
         <VoiceMomentPage
           moment={moment}
           isPlaying={isPlayingVoice}
-          onToggle={onToggleVoice}
+          onToggle={handleToggleVoice}
         />
       ) : null}
 
@@ -584,7 +591,7 @@ function MomentPagerPage({
         <NoteMomentPage
           moment={moment}
           isPlayingVoice={isPlayingVoice}
-          onToggleVoice={onToggleVoice}
+          onToggleVoice={handleToggleVoice}
           contentInsetTop={noteContentInsetTop}
         />
       ) : null}
@@ -594,7 +601,7 @@ function MomentPagerPage({
       ) : null}
     </View>
   );
-}
+});
 
 function PaginationDots({
   count,
@@ -885,6 +892,13 @@ export function MomentPreviewViewer({
     [deletingMomentId, onDeleteMoment, playingVoiceId, stopVoice],
   );
 
+  const handleToggleVoice = useCallback(
+    (moment: MomentRow) => {
+      void toggleVoice(moment);
+    },
+    [toggleVoice],
+  );
+
   const renderPage = useCallback(
     ({ item, index }: { item: MomentRow; index: number }) => (
       <MomentPagerPage
@@ -892,14 +906,29 @@ export function MomentPreviewViewer({
         pageWidth={pageWidth}
         isActive={index === activeIndex}
         isPlayingVoice={playingVoiceId === item.id}
-        onToggleVoice={() => void toggleVoice(item)}
+        onToggleVoice={handleToggleVoice}
         noteContentInsetTop={noteContentInsetTop}
       />
     ),
-    [activeIndex, noteContentInsetTop, pageWidth, playingVoiceId, toggleVoice],
+    [
+      activeIndex,
+      handleToggleVoice,
+      noteContentInsetTop,
+      pageWidth,
+      playingVoiceId,
+    ],
   );
 
   const keyExtractor = useCallback((item: MomentRow) => String(item.id), []);
+
+  const getItemLayout = useCallback(
+    (_: ArrayLike<MomentRow> | null | undefined, index: number) => ({
+      length: pageWidth,
+      offset: pageWidth * index,
+      index,
+    }),
+    [pageWidth],
+  );
 
   const activePhotoVoice =
     activeMoment?.type === 'photo' && activeMoment.voiceAttachmentPath
@@ -920,11 +949,7 @@ export function MomentPreviewViewer({
         renderItem={renderPage}
         onScrollBeginDrag={handleScrollBeginDrag}
         onMomentumScrollEnd={handleMomentumScrollEnd}
-        getItemLayout={(_, index) => ({
-          length: pageWidth,
-          offset: pageWidth * index,
-          index,
-        })}
+        getItemLayout={getItemLayout}
       />
 
       <View

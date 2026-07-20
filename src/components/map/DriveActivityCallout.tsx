@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { Marker } from 'react-native-maps';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -21,7 +21,7 @@ type DriveActivityCalloutProps = {
   anchorCoordinate?: { latitude: number; longitude: number } | null;
 };
 
-export function DriveActivityCallout({
+function DriveActivityCalloutComponent({
   trip,
   startLabel,
   endLabel,
@@ -39,13 +39,16 @@ export function DriveActivityCallout({
     trip.durationMs,
     { openThroughNow: trip.openThroughNow, now },
   );
-  const bubbleCenterOffset =
-    bubbleHeight > 0
-      ? {
-          x: 0,
-          y: -(BUBBLE_DOT_GAP + bubbleHeight / 2),
-        }
-      : LIVE_PUCK_CENTER_OFFSET;
+  const bubbleCenterOffset = useMemo(
+    () =>
+      bubbleHeight > 0
+        ? {
+            x: 0,
+            y: -(BUBBLE_DOT_GAP + bubbleHeight / 2),
+          }
+        : LIVE_PUCK_CENTER_OFFSET,
+    [bubbleHeight],
+  );
   const showStart = hasDriveEndpointLabel(startLabel);
   const showEnd = endLabel != null && hasDriveEndpointLabel(endLabel);
   const { tracksViewChanges, onLayout: onMarkerLayout } =
@@ -116,6 +119,8 @@ export function DriveActivityCallout({
     </Marker>
   );
 }
+
+export const DriveActivityCallout = memo(DriveActivityCalloutComponent);
 
 const styles = StyleSheet.create({
   bubble: {

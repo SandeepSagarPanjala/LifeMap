@@ -3,7 +3,6 @@ import { useSyncExternalStore } from 'react';
 import { ProgressStrip } from '@/components/ui/ProgressStrip';
 import {
   getPlaceLookupCatchUpProgress,
-  getPlaceLookupCatchUpRevision,
   subscribePlaceLookupCatchUp,
 } from '@/lib/place-lookup-catch-up-events';
 import { abortPlaceLookupCatchUp } from '@/lib/place-lookup-catch-up';
@@ -13,11 +12,6 @@ export function PlaceLookupCatchUpRunner() {
     subscribePlaceLookupCatchUp,
     getPlaceLookupCatchUpProgress,
     getPlaceLookupCatchUpProgress,
-  );
-  useSyncExternalStore(
-    subscribePlaceLookupCatchUp,
-    getPlaceLookupCatchUpRevision,
-    getPlaceLookupCatchUpRevision,
   );
 
   if (progress == null || !progress.showStrip || progress.phase !== 'running') {
