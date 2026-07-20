@@ -19,24 +19,25 @@ export function MomentPreviewScreen() {
   const [moments, setMoments] = useState<MomentRow[]>(payload?.moments ?? []);
   const { places: savedPlaces } = useSavedPlaces();
   const distanceUnit = useAppStore(state => state.distanceUnit);
+  const previewEntry = payload?.previewEntry ?? null;
 
   const previewEntryContext = useMemo(() => {
-    if (!payload?.previewEntry) {
+    if (!previewEntry) {
       return null;
     }
     return buildMomentPreviewContextForEntry(
-      payload.previewEntry,
+      previewEntry,
       savedPlaces,
       distanceUnit,
     );
-  }, [distanceUnit, payload?.previewEntry, savedPlaces]);
+  }, [distanceUnit, previewEntry, savedPlaces]);
 
   const previewSavedPlace = useMemo(() => {
-    if (payload?.previewEntry?.kind !== 'stay') {
+    if (previewEntry?.kind !== 'stay') {
       return null;
     }
-    return matchSavedPlaceForStay(payload.previewEntry, savedPlaces);
-  }, [payload?.previewEntry, savedPlaces]);
+    return matchSavedPlaceForStay(previewEntry, savedPlaces);
+  }, [previewEntry, savedPlaces]);
 
   useEffect(() => {
     if (payload == null) {

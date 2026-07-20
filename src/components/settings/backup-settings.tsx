@@ -110,6 +110,7 @@ export function BackupSettings() {
     void refreshStatus();
   }, [refreshStatus]);
 
+  const cloudProviderLabel = status?.cloudProviderLabel;
   const performBackupNow = useCallback(async () => {
     setBackingUp(true);
     setProgress({ phase: 'exporting', message: 'Starting backup…' });
@@ -119,7 +120,7 @@ export function BackupSettings() {
       Alert.alert(
         'Backup complete',
         `Saved ${formatStorageBytes(result.totalBytes)} to ${
-          status?.cloudProviderLabel ?? 'cloud'
+          cloudProviderLabel ?? 'cloud'
         }.`,
       );
     } catch (error) {
@@ -128,7 +129,7 @@ export function BackupSettings() {
       setBackingUp(false);
       setProgress(null);
     }
-  }, [refreshStatus, status?.cloudProviderLabel]);
+  }, [cloudProviderLabel, refreshStatus]);
 
   const handleBackupNow = useCallback(async () => {
     const replacePrompt = await shouldPromptBeforeCloudBackupReplace();
@@ -138,7 +139,7 @@ export function BackupSettings() {
     }
 
     const { cloudBackup, localEstimateBytes } = replacePrompt;
-    const provider = status?.cloudProviderLabel ?? 'iCloud';
+    const provider = cloudProviderLabel ?? 'iCloud';
     const backupLabel = formatCloudBackupLabel(
       cloudBackup.exportedAt,
       cloudBackup.totalBytes,
@@ -167,7 +168,7 @@ export function BackupSettings() {
         { text: 'Cancel', style: 'cancel' },
       ],
     );
-  }, [navigation, performBackupNow, status?.cloudProviderLabel]);
+  }, [cloudProviderLabel, navigation, performBackupNow]);
 
   const handleExportToDrive = useCallback(async () => {
     setExportingToDrive(true);
