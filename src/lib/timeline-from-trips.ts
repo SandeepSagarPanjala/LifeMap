@@ -234,24 +234,58 @@ export function isRawGpsDayPoints(
   );
 }
 
+/**
+ * Precomputed, reusable inputs for resolving day-GPS routes across many trips.
+ * Sorting the playable trips and the (potentially ~50k) day points once here
+ * avoids re-sorting them for every travel entry during route hydration.
+ */
+type RouteHydrationContext = {
+  pseudoRows: TripRow[];
+  indexById: Map<string, number>;
+  sortedPoints: LocationPointRow[];
+};
+
+function buildRouteHydrationContext(
+  playableTrips: DetectedTrip[],
+  dayPoints: readonly LocationPointRow[],
+): RouteHydrationContext {
+  const sorted = [...playableTrips].sort(
+    (a, b) => a.startAt.getTime() - b.startAt.getTime(),
+  );
+  const pseudoRows = sorted.map(toPseudoTripRow);
+  const indexById = new Map<string, number>();
+  sorted.forEach((entry, index) => indexById.set(entry.id, index));
+  const sortedPoints = [...dayPoints].sort(
+    (a, b) => a.timestamp.getTime() - b.timestamp.getTime(),
+  );
+  return { pseudoRows, indexById, sortedPoints };
+}
+
+function collectRoutePointsWithContext(
+  trip: DetectedTrip,
+  context: RouteHydrationContext,
+): LocationPointRow[] {
+  const index = context.indexById.get(trip.id);
+  if (index == null) {
+    return [];
+  }
+  const bounds = tripPointBounds(
+    context.pseudoRows[index]!,
+    index,
+    context.pseudoRows,
+  );
+  return collectPointsForBounds(context.sortedPoints, bounds, 0).points;
+}
+
 function collectRoutePointsForTrip(
   trip: DetectedTrip,
   playableTrips: DetectedTrip[],
   dayPoints: readonly LocationPointRow[],
 ): LocationPointRow[] {
-  const sorted = [...playableTrips].sort(
-    (a, b) => a.startAt.getTime() - b.startAt.getTime(),
+  return collectRoutePointsWithContext(
+    trip,
+    buildRouteHydrationContext(playableTrips, dayPoints),
   );
-  const index = sorted.findIndex(candidate => candidate.id === trip.id);
-  if (index < 0) {
-    return [];
-  }
-  const sortedPoints = [...dayPoints].sort(
-    (a, b) => a.timestamp.getTime() - b.timestamp.getTime(),
-  );
-  const pseudoRows = sorted.map(toPseudoTripRow);
-  const bounds = tripPointBounds(toPseudoTripRow(trip), index, pseudoRows);
-  return collectPointsForBounds(sortedPoints, bounds, 0).points;
 }
 
 /** Map routes should follow saved GPS — not the simplified trip_points cache. */
@@ -289,13 +323,25 @@ export function hydrateTravelRoutesFromDayPoints(
     isPlayableTimelineEntry(entry),
   );
 
+  // Build the sorted trip/point context a single time, then reuse it for every
+  // travel entry. `dayPoints` is already known to be raw GPS here, mirroring the
+  // `resolveRoutePointsForPlayableTrip` decision (day GPS wins when it yields a
+  // usable polyline, otherwise fall back to the stored trip points).
+  const context = buildRouteHydrationContext(playable, dayPoints);
+
   return entries.map(entry => {
     if (!isPlayableTimelineEntry(entry) || entry.kind !== 'travel') {
       return entry;
     }
-    const resolved = resolveRoutePointsForPlayableTrip(entry, playable, [
-      ...dayPoints,
-    ]);
+    const fromDay = collectRoutePointsWithContext(entry, context);
+    let resolved: LocationPointRow[];
+    if (fromDay.length >= 2) {
+      resolved = fromDay;
+    } else if (entry.points.length > 0) {
+      resolved = entry.points;
+    } else {
+      resolved = fromDay;
+    }
     if (resolved.length === 0) {
       return entry;
     }

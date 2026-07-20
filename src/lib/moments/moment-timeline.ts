@@ -100,10 +100,27 @@ export function nearestPointCoordinateAtTime(
   }
 
   const timestampMs = momentTimestamp.getTime();
+  // `sorted` is time-ascending, so the closest fix is either the last point
+  // before the target or the first point at/after it. Binary-search the
+  // boundary instead of scanning all points. Ties resolve to the earlier index
+  // (strict `<`), matching the previous linear scan.
+  let lo = 0;
+  let hi = sorted.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1;
+    if (sorted[mid]!.timestamp.getTime() < timestampMs) {
+      lo = mid + 1;
+    } else {
+      hi = mid;
+    }
+  }
   let best = sorted[0]!;
-  let bestDelta = Math.abs(best.timestamp.getTime() - timestampMs);
-  for (let i = 1; i < sorted.length; i += 1) {
-    const candidate = sorted[i]!;
+  let bestDelta = Infinity;
+  for (const idx of [lo - 1, lo]) {
+    if (idx < 0 || idx >= sorted.length) {
+      continue;
+    }
+    const candidate = sorted[idx]!;
     const delta = Math.abs(candidate.timestamp.getTime() - timestampMs);
     if (delta < bestDelta) {
       best = candidate;

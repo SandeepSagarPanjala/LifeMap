@@ -92,26 +92,48 @@ function douglasPeucker(
   points: LocationPointRow[],
   epsilonM: number,
 ): LocationPointRow[] {
-  if (points.length <= 2) {
+  const n = points.length;
+  if (n <= 2) {
     return points;
   }
-  const start = points[0]!;
-  const end = points[points.length - 1]!;
-  let maxDist = 0;
-  let maxIndex = 0;
-  for (let i = 1; i < points.length - 1; i += 1) {
-    const dist = pointLineDistanceM(points[i]!, start, end);
-    if (dist > maxDist) {
-      maxDist = dist;
-      maxIndex = i;
+  // Iterative Douglas–Peucker over index ranges. Avoids the recursive
+  // `.slice()`/spread of the classic form (which copies O(n) per level, up to
+  // O(n^2) total on unbalanced splits). Output is identical: endpoints are
+  // always kept, interior points are kept only when their perpendicular
+  // distance exceeds epsilon, and first-max tie-breaking is preserved.
+  const keep = new Uint8Array(n);
+  keep[0] = 1;
+  keep[n - 1] = 1;
+  const stack: Array<[number, number]> = [[0, n - 1]];
+  while (stack.length > 0) {
+    const [startIdx, endIdx] = stack.pop()!;
+    if (endIdx - startIdx < 2) {
+      continue;
+    }
+    const start = points[startIdx]!;
+    const end = points[endIdx]!;
+    let maxDist = 0;
+    let maxIndex = -1;
+    for (let i = startIdx + 1; i < endIdx; i += 1) {
+      const dist = pointLineDistanceM(points[i]!, start, end);
+      if (dist > maxDist) {
+        maxDist = dist;
+        maxIndex = i;
+      }
+    }
+    if (maxDist > epsilonM && maxIndex !== -1) {
+      keep[maxIndex] = 1;
+      stack.push([startIdx, maxIndex]);
+      stack.push([maxIndex, endIdx]);
     }
   }
-  if (maxDist <= epsilonM) {
-    return [start, end];
+  const result: LocationPointRow[] = [];
+  for (let i = 0; i < n; i += 1) {
+    if (keep[i]) {
+      result.push(points[i]!);
+    }
   }
-  const left = douglasPeucker(points.slice(0, maxIndex + 1), epsilonM);
-  const right = douglasPeucker(points.slice(maxIndex), epsilonM);
-  return [...left.slice(0, -1), ...right];
+  return result;
 }
 
 function momentsInStayWindow(

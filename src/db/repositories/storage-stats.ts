@@ -224,21 +224,26 @@ export async function getAppStorageBreakdown(): Promise<AppStorageBreakdown> {
     );
   } catch {
     if (allMoments.length > 0) {
+      // Single pass to tally count/bytes per type instead of filtering the full
+      // moment list once for each type (was O(types * moments)).
+      const byType = new Map<MomentType, { count: number; bytes: number }>();
+      for (const moment of allMoments) {
+        const entry = byType.get(moment.type) ?? { count: 0, bytes: 0 };
+        entry.count += 1;
+        entry.bytes += moment.contentBytes ?? 0;
+        byType.set(moment.type, entry);
+      }
       momentItems = MOMENT_STORAGE_TYPE_ORDER.flatMap(type => {
-        const typed = allMoments.filter(moment => moment.type === type);
-        if (typed.length === 0) {
+        const entry = byType.get(type);
+        if (entry == null || entry.count === 0) {
           return [];
         }
-        const bytes = typed.reduce(
-          (sum, moment) => sum + (moment.contentBytes ?? 0),
-          0,
-        );
         return [
           {
             key: `moments-${type}`,
             label: momentTypeLabel(type),
-            count: typed.length,
-            bytes,
+            count: entry.count,
+            bytes: entry.bytes,
             category: 'moment' as const,
           },
         ];
