@@ -46,6 +46,12 @@ describe('routeDirectionArrowSizeForZoom', () => {
     const farther = routeDirectionArrowSizeForZoom(0.08);
     expect(farther).toBeGreaterThan(atRef);
   });
+
+  it('clamps far-out zoom so arrows do not grow without bound', () => {
+    const atClamp = routeDirectionArrowSizeForZoom(0.35);
+    const wayOut = routeDirectionArrowSizeForZoom(0.5);
+    expect(wayOut).toBeCloseTo(atClamp, 5);
+  });
 });
 
 describe('destinationPoint', () => {

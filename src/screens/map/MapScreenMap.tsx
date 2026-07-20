@@ -8,6 +8,7 @@ import { HistoryDayMapOverlay } from '@/components/map/HistoryDayMapOverlay';
 import { MomentMapOverlay } from '@/components/map/MomentMapOverlay';
 import { SavedPlacesMapOverlay } from '@/components/map/SavedPlacesMapOverlay';
 import { StayDurationCallout } from '@/components/map/StayDurationCallout';
+import { UserLocationPuck } from '@/components/map/UserLocationPuck';
 import { isVisitPlaceLabelConfirmed, visitPlaceSelectedCategory } from '@/lib/place-lookup-types';
 
 import { areMapScreenMapPropsEqual } from './map-screen-map-props';
@@ -29,7 +30,6 @@ export const MapScreenMap = memo(
       showUserLocation,
       onRegionChange,
       onRegionChangeComplete,
-      handleUserLocation,
       showDayJourney,
       dayMomentMapPins,
       historyMomentMapPins,
@@ -78,9 +78,10 @@ export const MapScreenMap = memo(
         mapPadding={mapPadding}
         legalLabelInsets={mapAttributionInsets.legalLabelInsets}
         appleLogoInsets={mapAttributionInsets.appleLogoInsets}
-        showsUserLocation={showUserLocation}
+        // Custom UserLocationPuck only — MapKit's showsUserLocation draws a
+        // giant GPS accuracy halo (the blue flash on History exit).
+        showsUserLocation={false}
         showsMyLocationButton={false}
-        userLocationPriority="high"
         userInterfaceStyle={colorScheme === 'dark' ? 'dark' : 'light'}
         followsUserLocation={false}
         scrollEnabled
@@ -89,9 +90,11 @@ export const MapScreenMap = memo(
         rotateEnabled
         onRegionChange={onRegionChange}
         onRegionChangeComplete={onRegionChangeComplete}
-        onUserLocationChange={handleUserLocation}
         onLongPress={handleMapLongPress}
       >
+        {showUserLocation && userCoordinate != null ? (
+          <UserLocationPuck coordinate={userCoordinate} />
+        ) : null}
         <SavedPlacesMapOverlay
           places={mapSavedPlaces}
           momentClusters={savedPlaceMomentClusters}

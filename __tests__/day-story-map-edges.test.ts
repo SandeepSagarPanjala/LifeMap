@@ -67,6 +67,7 @@ function stopOf(stay: DetectedTrip, n: number): DayStoryStop {
     coordinate: { latitude: stay.anchorLat!, longitude: stay.anchorLng! },
     label: `V${n}`,
     isHome: false,
+    savedPlaceKind: null,
     savedPlaceId: null,
     poiId: null,
     poiCategory: null,

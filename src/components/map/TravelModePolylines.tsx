@@ -106,6 +106,10 @@ const ModeLegPolylines = memo(function ModeLegPolylines({
       spacingM: routeDirectionArrowSpacingForZoom(mapLatitudeDelta),
     });
   }, [coordinates, mapLatitudeDelta, showDirectionArrows]);
+  // Coarse remount key — MapKit can keep stretched paths after big zoom jumps.
+  const arrowSizeKey = Math.round(
+    routeDirectionArrowSizeForZoom(mapLatitudeDelta) / 5,
+  );
 
   if (coordinates.length < 2) {
     return null;
@@ -147,7 +151,7 @@ const ModeLegPolylines = memo(function ModeLegPolylines({
         </>
       )}
       {arrows.map((arrow, arrowIndex) => (
-        <Fragment key={`${keyPrefix}-arrow-${arrowIndex}`}>
+        <Fragment key={`${keyPrefix}-arrow-${arrowIndex}-${arrowSizeKey}`}>
           <Polyline
             coordinates={arrow.shaft}
             strokeColor={ROUTE_DIRECTION_ARROW_COLOR}
