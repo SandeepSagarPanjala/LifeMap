@@ -182,10 +182,105 @@ describe('tripLabelForPersist', () => {
       poiCategory: 'MKPOICategoryStore',
     });
   });
+
+  it('lets a detected saved place win over a stale auto closest-POI (Vishnu revisit)', () => {
+    const eventKey = tripEventKey(stay(1_000, 2_000));
+    // Old row auto-bound a far cache + closest POI at this revisit.
+    const existing = existingTripLabelsByEventKey([
+      makeTripRow({
+        id: 3,
+        eventKey,
+        kind: 'stay',
+        startAt: new Date(1_000),
+        endAt: new Date(2_000),
+        placeId: 34,
+        placeKind: 'cache',
+        placeLabel: '2421 Louise St',
+        poiId: 775,
+        poiLabel: 'Chili\'s',
+        poiCategory: 'MKPOICategoryRestaurant',
+      }),
+    ]);
+
+    // Detection now geofences the saved place (Vishnu = saved id 5).
+    expect(
+      tripLabelForPersist(eventKey, existing, {
+        placeKind: 'saved',
+        placeId: 5,
+        placeLabel: 'Vishnu',
+        poiId: null,
+        poiLabel: null,
+        poiCategory: null,
+      }),
+    ).toEqual({
+      placeLabel: 'Vishnu',
+      placeId: 5,
+      placeKind: 'saved',
+      poiId: null,
+      poiLabel: null,
+      poiCategory: null,
+    });
+  });
+
+  it('keeps an existing saved link when detection saved differs (override re-applies later)', () => {
+    const eventKey = tripEventKey(stay(1_000, 2_000));
+    const existing = existingTripLabelsByEventKey([
+      makeTripRow({
+        id: 3,
+        eventKey,
+        kind: 'stay',
+        startAt: new Date(1_000),
+        endAt: new Date(2_000),
+        placeId: 7,
+        placeKind: 'saved',
+        placeLabel: 'Work',
+      }),
+    ]);
+
+    expect(
+      tripLabelForPersist(eventKey, existing, {
+        placeKind: 'saved',
+        placeId: 5,
+        placeLabel: 'Vishnu',
+        poiId: null,
+        poiLabel: null,
+        poiCategory: null,
+      }).placeId,
+    ).toBe(7);
+  });
 });
 
 describe('takePersistedTripLabel', () => {
-  it('reattaches a user POI when stay start shifts within the match window', () => {
+  it('reattaches a user POI only when eventKey matches exactly', () => {
+    const oldStay = stay(1_000, 3_600_000);
+    const eventKey = tripEventKey(oldStay);
+    const candidates = existingTripLabelCandidates([
+      makeTripRow({
+        id: 3,
+        eventKey,
+        kind: 'stay',
+        startAt: oldStay.startAt,
+        endAt: oldStay.endAt,
+        placeId: 12,
+        placeKind: 'cache',
+        placeLabel: '123 Main St',
+        poiId: 99,
+        poiLabel: "Chili's",
+      }),
+    ]);
+
+    const taken = takePersistedTripLabel(candidates, {
+      eventKey,
+      kind: 'stay',
+      startAtMs: oldStay.startAt.getTime(),
+    });
+
+    expect(taken?.poiId).toBe(99);
+    expect(taken?.poiLabel).toBe("Chili's");
+    expect(candidates).toHaveLength(0);
+  });
+
+  it('does not fuzzy-match a user POI onto a different stay start', () => {
     const oldStay = stay(1_000, 3_600_000);
     const candidates = existingTripLabelCandidates([
       makeTripRow({
@@ -203,15 +298,14 @@ describe('takePersistedTripLabel', () => {
     ]);
 
     const shiftedStart = 1_000 + 10 * 60 * 1000;
-    const taken = takePersistedTripLabel(candidates, {
-      eventKey: `stay:${shiftedStart}:3600000`,
-      kind: 'stay',
-      startAtMs: shiftedStart,
-    });
-
-    expect(taken?.poiId).toBe(99);
-    expect(taken?.poiLabel).toBe("Chili's");
-    expect(candidates).toHaveLength(0);
+    expect(
+      takePersistedTripLabel(candidates, {
+        eventKey: `stay:${shiftedStart}:3600000`,
+        kind: 'stay',
+        startAtMs: shiftedStart,
+      }),
+    ).toBeNull();
+    expect(candidates).toHaveLength(1);
   });
 
   it('does not fuzzy-match address-only rows onto a different stay', () => {

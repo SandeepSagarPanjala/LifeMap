@@ -1,14 +1,25 @@
 import { useCallback, useState } from 'react';
 import { APP_COPY, errorMessageOr } from '@/lib/app-copy';
 import { format } from 'date-fns';
-import { ActivityIndicator, Alert, Modal, Pressable, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  InteractionManager,
+  Modal,
+  Pressable,
+  View,
+} from 'react-native';
 
+import { HistoryDatePickerSheet } from '@/components/map/HistoryDatePickerSheet';
 import { Text } from '@/components/ui/text';
 import { useTripDetectionConfig } from '@/hooks/use-trip-detection-config';
-import { parseDateKey } from '@/lib/day-utils';
+import { EXPORT_SHARE_DELAY_MS } from '@/lib/app-constants';
+import { getTodayDateKey, parseDateKey } from '@/lib/day-utils';
 import { clearHistoryDataCache } from '@/lib/history-data-cache';
 import {
   rebuildAllTrips,
+  rebuildPastDayTrips,
+  rebuildTodayTrips,
   type RebuildPastTripsProgress,
 } from '@/lib/trip-materialization';
 import { refreshTodayOnForeground } from '@/lib/today-refresh-scheduler';
@@ -19,6 +30,8 @@ export function TripRebuildSettings() {
   const [progress, setProgress] = useState<RebuildPastTripsProgress | null>(
     null,
   );
+  const [dayPickerVisible, setDayPickerVisible] = useState(false);
+  const [selectedDayKey, setSelectedDayKey] = useState(getTodayDateKey());
 
   const runRebuild = useCallback(async () => {
     setRebuilding(true);
@@ -43,6 +56,46 @@ export function TripRebuildSettings() {
     }
   }, [detectionConfig]);
 
+  const runRebuildDay = useCallback(
+    async (dateKey: string) => {
+      const todayKey = getTodayDateKey();
+      const isToday = dateKey === todayKey;
+      setRebuilding(true);
+      setProgress({
+        phase: isToday ? 'today' : 'past',
+        completed: 0,
+        total: 0,
+        dateKey,
+      });
+      try {
+        const tripsSaved = isToday
+          ? await rebuildTodayTrips(detectionConfig)
+          : await rebuildPastDayTrips(dateKey, detectionConfig);
+        clearHistoryDataCache();
+        refreshTodayOnForeground();
+        const dayLabel = format(parseDateKey(dateKey), 'MMM d, yyyy');
+        const segments = tripsSaved.toLocaleString();
+        Alert.alert(
+          'Day rebuilt',
+          isToday
+            ? `Saved ${segments} trip segments for today (live tail not persisted).`
+            : `Saved ${segments} trip segments for ${dayLabel}.`,
+        );
+      } catch (error) {
+        Alert.alert(
+          isToday
+            ? APP_COPY.alerts.couldNotRebuildToday
+            : APP_COPY.alerts.couldNotRebuildTrips,
+          errorMessageOr(error),
+        );
+      } finally {
+        setRebuilding(false);
+        setProgress(null);
+      }
+    },
+    [detectionConfig],
+  );
+
   const confirmRebuild = () => {
     Alert.alert(
       'Rebuild trips?',
@@ -60,6 +113,27 @@ export function TripRebuildSettings() {
     );
   };
 
+  const confirmRebuildDay = (dateKey: string) => {
+    const dayLabel = format(parseDateKey(dateKey), 'MMM d, yyyy');
+    const isToday = dateKey === getTodayDateKey();
+    Alert.alert(
+      'Rebuild this day?',
+      isToday
+        ? `This rebuilds today’s settled visits and drives from GPS. The live tail stays on the map and is not written to the database.\n\nRaw location points are not deleted.`
+        : `This rebuilds visits and drives from GPS for ${dayLabel} only. Other days are left unchanged.\n\nRaw location points are not deleted.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Rebuild day',
+          style: 'destructive',
+          onPress: () => {
+            void runRebuildDay(dateKey);
+          },
+        },
+      ],
+    );
+  };
+
   const progressRatio =
     progress != null && progress.total > 0
       ? Math.min(1, progress.completed / progress.total)
@@ -69,8 +143,8 @@ export function TripRebuildSettings() {
     progress?.phase === 'today'
       ? 'Today'
       : progress?.dateKey
-      ? format(parseDateKey(progress.dateKey), 'MMM d, yyyy')
-      : 'Preparing…';
+        ? format(parseDateKey(progress.dateKey), 'MMM d, yyyy')
+        : 'Preparing…';
 
   return (
     <>
@@ -92,6 +166,41 @@ export function TripRebuildSettings() {
           <Text className="text-primary-foreground font-medium">Rebuild</Text>
         </Pressable>
       </View>
+
+      <View className="bg-card border-border mt-2 rounded-xl border px-4 py-4">
+        <Text variant="muted" className="text-sm leading-5">
+          Rebuild visits and drives for a single day from GPS. Choose any past
+          day, or today to re-seal the settled prefix.
+        </Text>
+
+        <Pressable
+          accessibilityRole="button"
+          disabled={rebuilding}
+          onPress={() => setDayPickerVisible(true)}
+          className={`bg-primary mt-4 items-center rounded-full px-4 py-3 ${
+            rebuilding ? 'opacity-50' : ''
+          }`}
+        >
+          <Text className="text-primary-foreground font-medium">
+            Rebuild day
+          </Text>
+        </Pressable>
+      </View>
+
+      <HistoryDatePickerSheet
+        visible={dayPickerVisible}
+        selectedDateKey={selectedDayKey}
+        onSelectDate={dateKey => {
+          setSelectedDayKey(dateKey);
+          setDayPickerVisible(false);
+          setTimeout(() => {
+            InteractionManager.runAfterInteractions(() => {
+              confirmRebuildDay(dateKey);
+            });
+          }, EXPORT_SHARE_DELAY_MS);
+        }}
+        onClose={() => setDayPickerVisible(false)}
+      />
 
       <Modal visible={rebuilding} transparent animationType="fade">
         <View className="flex-1 items-center justify-center bg-black/50 px-6">

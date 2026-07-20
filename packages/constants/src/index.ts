@@ -115,8 +115,8 @@ export const ROUTE_DIRECTION_ARROWS_MIN_PATH_M = 40;
 /** Skip placing an arrow on a segment shorter than this (unstable bearing). */
 export const ROUTE_DIRECTION_ARROWS_MIN_SEGMENT_M = 8;
 /**
- * Safety ceiling only (native polyline cost). Count is otherwise
- * floor(pathLength / spacing) — long drives are not stuck at 24.
+ * Safety ceiling only (native polyline cost). Day browse draws every travel —
+ * keep this modest so History close does not mount hundreds of arrow polylines.
  */
 export const ROUTE_DIRECTION_ARROWS_PERF_MAX = 120;
 /** Arrow length in meters at the reference zoom (scales with latitudeDelta). */
@@ -130,9 +130,9 @@ export const ROUTE_DIRECTION_ARROW_MAX_ZOOM_DELTA = 0.35;
 /** Clamp zoom used for arrow scaling (very close in). */
 export const ROUTE_DIRECTION_ARROW_MIN_ZOOM_DELTA = 0.0012;
 
-export const HISTORY_DAY_LOAD_DEBOUNCE_MS = 300;
-/** Today + one browsed past day — avoids evicting today when opening history. */
-export const HISTORY_DATA_CACHE_MAX_ENTRIES = 2;
+export const HISTORY_DAY_LOAD_DEBOUNCE_MS = 120;
+/** Today + several browsed days — past-day taps should not evict Today. */
+export const HISTORY_DATA_CACHE_MAX_ENTRIES = 5;
 
 export const NATIVE_HALF_SHEET_HEIGHT_RATIO = 0.5;
 export const HISTORY_DATE_PICKER_HEIGHT_RATIO = 0.55;

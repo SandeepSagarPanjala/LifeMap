@@ -10,6 +10,7 @@ import {
   repairLocationPointsDedupeUniqueIndex,
   ensureTripPointMetadataColumns,
   ensureTripSegmentMetadataColumns,
+  ensureVisitLabelOverrideAnchorColumns,
 } from './migrate';
 import { getOrCreateDatabaseKey } from './keychain';
 
@@ -59,6 +60,7 @@ async function initDatabase(): Promise<{ db: Database; sqlite: DB }> {
   await ensureMomentsWithoutLocationColumns(sqlite);
   await ensureMaterializedDayGeometryColumn(sqlite);
   await ensureMaterializedDayExcludedDriveColumn(sqlite);
+  await ensureVisitLabelOverrideAnchorColumns(sqlite);
   await repairLocationPointsDedupeUniqueIndex(sqlite);
 
   return { db, sqlite };

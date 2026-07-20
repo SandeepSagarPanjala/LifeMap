@@ -116,6 +116,60 @@ describe('buildDayStoryStops', () => {
     ]);
   });
 
+  it('tags Home / Work / favorite stops with savedPlaceKind', () => {
+    const work: SavedPlaceRow = {
+      id: 2,
+      kind: 'work',
+      label: 'Office',
+      lat: 33.24,
+      lng: -97.15,
+      radiusMeters: 150,
+      addressLine: null,
+      active: true,
+      createdAt: new Date(),
+    };
+    const favorite: SavedPlaceRow = {
+      id: 3,
+      kind: 'favorite',
+      label: 'Vishnu',
+      lat: 33.22,
+      lng: -97.13,
+      radiusMeters: 150,
+      addressLine: null,
+      active: true,
+      createdAt: new Date(),
+    };
+    const stops = buildDayStoryStops(
+      [
+        stay('h', '2026-07-10T08:00:00.000Z', 33.23, -97.16, {
+          placeKind: 'saved',
+          placeId: 1,
+          placeLabel: 'Home',
+        }),
+        stay('w', '2026-07-10T10:00:00.000Z', 33.24, -97.15, {
+          placeKind: 'saved',
+          placeId: 2,
+          placeLabel: 'Office',
+        }),
+        stay('f', '2026-07-10T12:00:00.000Z', 33.22, -97.13, {
+          placeKind: 'saved',
+          placeId: 3,
+          placeLabel: 'Vishnu',
+        }),
+      ],
+      [home, work, favorite],
+    );
+    expect(stops.find(stop => stop.label === 'Home')?.savedPlaceKind).toBe(
+      'home',
+    );
+    expect(stops.find(stop => stop.label === 'Office')?.savedPlaceKind).toBe(
+      'work',
+    );
+    expect(stops.find(stop => stop.label === 'Vishnu')?.savedPlaceKind).toBe(
+      'favorite',
+    );
+  });
+
   it('pins Home on GPS stay location, not a distant saved-place coordinate', () => {
     const distantHome: SavedPlaceRow = {
       ...home,

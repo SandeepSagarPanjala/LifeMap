@@ -1,4 +1,7 @@
-import type { SavedPlaceRow } from '@/db/repositories/saved-places';
+import type {
+  SavedPlaceKind,
+  SavedPlaceRow,
+} from '@/db/repositories/saved-places';
 import { distanceKm } from '@/lib/location-geo';
 import { visitDisplayLabel } from '@/lib/place-lookup-types';
 import { savedPlaceDisplayLabel } from '@/lib/saved-places';
@@ -16,6 +19,8 @@ export type DayStoryStop = {
   coordinate: { latitude: number; longitude: number };
   label: string;
   isHome: boolean;
+  /** Present when this stop is a saved Home / Work / favorite. */
+  savedPlaceKind: SavedPlaceKind | null;
   savedPlaceId: number | null;
   poiId: number | null;
   poiCategory: string | null;
@@ -128,6 +133,7 @@ export function buildDayStoryStops(
         coordinate: centroid,
         label: stayLabel(stay, savedPlacesById),
         isHome: saved?.kind === 'home',
+        savedPlaceKind: saved?.kind ?? null,
         savedPlaceId: saved?.id ?? null,
         poiId: stay.poiId ?? null,
         poiCategory: stay.poiCategory ?? null,

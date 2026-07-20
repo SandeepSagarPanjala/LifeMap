@@ -301,6 +301,12 @@ ALTER TABLE \`location_points\` ADD COLUMN \`battery_is_charging\` integer;`;
 
 const m0032 = `ALTER TABLE \`trip_points\` ADD COLUMN \`activity_type\` text;`;
 
+const m0033 = `ALTER TABLE \`visit_label_overrides\` ADD COLUMN \`end_at_ms\` integer;
+--> statement-breakpoint
+ALTER TABLE \`visit_label_overrides\` ADD COLUMN \`anchor_lat\` real;
+--> statement-breakpoint
+ALTER TABLE \`visit_label_overrides\` ADD COLUMN \`anchor_lng\` real;`;
+
 export default {
   journal,
   migrations: {
@@ -337,5 +343,6 @@ export default {
     m0030,
     m0031,
     m0032,
+    m0033,
   },
 };

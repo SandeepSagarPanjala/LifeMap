@@ -8,7 +8,7 @@ import {
 describe('database migrations', () => {
   it('loads bundled sqlite migrations in journal order', () => {
     const prepared = prepareMigrations();
-    expect(prepared).toHaveLength(33);
+    expect(prepared).toHaveLength(34);
     expect(prepared[0]?.tag).toBe('0000_init');
     expect(prepared[0]?.sql[0]).toContain('CREATE TABLE `location_points`');
     expect(prepared[6]?.tag).toBe('0006_moments_mood');
@@ -39,6 +39,8 @@ describe('database migrations', () => {
     expect(prepared[31]?.sql.join('\n')).toContain('activity_type');
     expect(prepared[32]?.tag).toBe('0032_trip_points_activity');
     expect(prepared[32]?.sql[0]).toContain('activity_type');
+    expect(prepared[33]?.tag).toBe('0033_visit_label_override_anchor');
+    expect(prepared[33]?.sql.join('\n')).toContain('anchor_lat');
   });
 
   it('detects whether a migration is already applied', async () => {

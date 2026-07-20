@@ -10,6 +10,7 @@ import { PLACE_LOOKUP_VENUE_RADIUS_M } from '@/lib/app-constants';
 import {
   findNearestPlaceLookupMatch,
   isWithinPlaceLookupVenue,
+  reconcileCachePlaceLabelForStayAnchor,
 } from '@/lib/place-lookup-venue';
 import { resolveVisitPlaceDisplay } from '@/lib/place-lookup-display';
 import { isVisitPlaceLabelConfirmed } from '@/lib/place-lookup-types';
@@ -182,6 +183,75 @@ describe('place lookup venue matching', () => {
     const anchor = { lat: 33.21, lng: -97.13 };
     const cached = placeRow(33.22, -97.15);
     expect(findNearestPlaceLookupMatch(anchor, [cached])).toBeNull();
+  });
+});
+
+describe('reconcileCachePlaceLabelForStayAnchor', () => {
+  it('keeps a cache placeId that is near the stay', () => {
+    const cache = placeRow(33.19285, -97.09993, {
+      id: 53,
+      addressLine: '1800 S Loop 288',
+      venueRadiusMeters: 250,
+    });
+    const cacheById = new Map([[53, cache]]);
+    const labels = {
+      placeLabel: '1800 S Loop 288',
+      placeId: 53,
+      placeKind: 'cache' as const,
+      poiId: 1,
+      poiLabel: "Buc-ee's",
+      poiCategory: null,
+    };
+    expect(
+      reconcileCachePlaceLabelForStayAnchor(
+        labels,
+        { lat: 33.19288, lng: -97.09979 },
+        cacheById,
+        labels,
+      ),
+    ).toEqual(labels);
+  });
+
+  it('replaces a far placeId with detection at the stay (Stop 3/4 case)', () => {
+    const loop288 = placeRow(33.19285, -97.09993, {
+      id: 53,
+      addressLine: '1800 S Loop 288',
+      venueRadiusMeters: 250,
+    });
+    const i35 = placeRow(33.17949, -97.10244, {
+      id: 59,
+      addressLine: '2800 S I-35 E Frontage Rd',
+      venueRadiusMeters: 100,
+    });
+    const cacheById = new Map([
+      [53, loop288],
+      [59, i35],
+    ]);
+    const stolen = {
+      placeLabel: '1800 S Loop 288',
+      placeId: 59,
+      placeKind: 'cache' as const,
+      poiId: 766,
+      poiLabel: 'Wrong POI',
+      poiCategory: null,
+    };
+    const detected = {
+      placeLabel: '1800 S Loop 288',
+      placeId: 53,
+      placeKind: 'cache' as const,
+      poiId: 100,
+      poiLabel: "Buc-ee's",
+      poiCategory: null,
+    };
+
+    expect(
+      reconcileCachePlaceLabelForStayAnchor(
+        stolen,
+        { lat: 33.19288, lng: -97.09979 },
+        cacheById,
+        detected,
+      ),
+    ).toEqual(detected);
   });
 });
 

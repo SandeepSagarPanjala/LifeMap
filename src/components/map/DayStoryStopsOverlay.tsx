@@ -28,6 +28,7 @@ import { SavedPlaceIcon } from '@/components/map/SavedPlaceIcon';
 import { VisitPlaceKindIcon } from '@/components/map/VisitPlaceKindIcon';
 import { MomentCountsRow } from '@/components/moments/MomentCountsRow';
 import { useMarkerTracksViewChanges } from '@/hooks/use-marker-tracks-view-changes';
+import { SAVED_PLACE_MAP_STYLE } from '@/lib/saved-places-map';
 
 const NUMBER_BADGE_SIZE = 28;
 const MULTI_BADGE_SIZE = 22;
@@ -101,10 +102,15 @@ function VisitNumberBadges({
 }
 
 function PlaceLabelRow({ stop }: { stop: DayStoryStop }) {
+  const savedKind = stop.savedPlaceKind;
   return (
     <View style={styles.labelRow}>
-      {stop.isHome ? (
-        <SavedPlaceIcon kind="home" size={11} color="#FF9500" />
+      {savedKind != null ? (
+        <SavedPlaceIcon
+          kind={savedKind}
+          size={11}
+          color={SAVED_PLACE_MAP_STYLE[savedKind].icon}
+        />
       ) : (
         <VisitPlaceKindIcon
           pinned={stop.poiId != null}

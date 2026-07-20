@@ -61,7 +61,6 @@ export function areMapScreenMapPropsEqual(
     previous.showUserLocation === next.showUserLocation &&
     previous.onRegionChange === next.onRegionChange &&
     previous.onRegionChangeComplete === next.onRegionChangeComplete &&
-    previous.handleUserLocation === next.handleUserLocation &&
     previous.showDayJourney === next.showDayJourney &&
     previous.showRouteDirectionArrows === next.showRouteDirectionArrows &&
     previous.routeDirectionMapLatitudeDelta ===

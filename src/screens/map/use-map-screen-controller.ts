@@ -257,6 +257,23 @@ export function useMapScreenController() {
   const mapGestureActiveRef = useRef(false);
   /** latitudeDelta at the start of the current drag/pinch (for zoom vs pan). */
   const mapGestureStartDeltaRef = useRef<number | null>(null);
+  /**
+   * Keep arrow ground-size in sync with camera target. Programmatic
+   * animateToRegion often skips onRegionChangeComplete — without this,
+   * day/history fits leave a large delta and arrows look giant on Today.
+   */
+  const commitMapRegion = useCallback((region: Region) => {
+    mapRegionRef.current = region;
+    const prevDelta = routeDirectionMapLatitudeDeltaRef.current;
+    const zoomChanged =
+      Math.abs(region.latitudeDelta - prevDelta) / Math.max(prevDelta, 1e-6) >=
+      0.04;
+    if (!zoomChanged) {
+      return;
+    }
+    routeDirectionMapLatitudeDeltaRef.current = region.latitudeDelta;
+    setRouteDirectionMapLatitudeDelta(region.latitudeDelta);
+  }, []);
   const fitHistoryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const userCoordinateRef = useRef<MapUserCoordinate | null>(null);
   const lastUserCoordinateRefreshMsRef = useRef(0);
@@ -308,16 +325,19 @@ export function useMapScreenController() {
               MAP_USER_ZOOM_DELTA,
             );
             mapRef.current.animateToRegion(region, 400);
-            mapRegionRef.current = region;
+            commitMapRegion(region);
             needsDefaultCenterRef.current = false;
           }
         }
       }
     });
     return () => subscription.remove();
-  }, [selectedDateKey, syncSelectedDateKeyForTodayRoll]);
+  }, [commitMapRegion, selectedDateKey, syncSelectedDateKeyForTodayRoll]);
 
   const playback = useTripPlayback();
+  // Depend on the stable start/stop refs (not the whole `playback` object) so
+  // progress ticks during playback don't recreate every navigation callback.
+  const { start: startPlayback, stop: stopPlayback } = playback;
 
   const historyHasGpsData =
     historyData.entries.length > 0 || historyData.points.length > 0;
@@ -519,15 +539,17 @@ export function useMapScreenController() {
 
   useEffect(() => {
     setHistoryPanelContentHeight(null);
-  }, [
-    selectedHistoryIndex,
-    selectedDateKey,
-    showPlaceLabelCard,
-    historyEventCardHasMoments,
-  ]);
+    // Intentionally omit selectedHistoryIndex — resetting height on every scrub
+    // step thrashs mapPadding and makes event-arrow navigation feel laggy.
+  }, [selectedDateKey, showPlaceLabelCard, historyEventCardHasMoments]);
 
+  // Wait for History chrome to finish closing so day-story routes do not flash
+  // over the still-zoomed-out History camera. (User puck has no accuracy ring.)
   const showDayJourney =
-    !historyPanelOpen && !playback.isPlaying && historyDayLoaded;
+    !historyPanelOpen &&
+    !historyPanelChromeVisible &&
+    !playback.isPlaying &&
+    historyDayLoaded;
   const currentVisitMomentCounts = useMemo((): MomentCounts => {
     if (!currentOpenVisit) {
       return emptyMomentCounts();
@@ -1042,7 +1064,7 @@ export function useMapScreenController() {
       if (index < 0) {
         return;
       }
-      playback.stop();
+      stopPlayback();
       setSelectedHistoryIndex(index);
       if (!historyPanelOpen) {
         setHistoryPanelChromeVisible(true);
@@ -1050,7 +1072,7 @@ export function useMapScreenController() {
         setHistoryPanelOpen(true);
       }
     },
-    [historyEntries, historyPanelOpen, historyPanelY, playback],
+    [historyEntries, historyPanelOpen, historyPanelY, stopPlayback],
   );
 
   const openCurrentVisitMomentsPreview = useCallback(
@@ -1149,15 +1171,8 @@ export function useMapScreenController() {
     animateRecenterToUser(mapRef.current, userCoordinate, mapRegionRef.current);
   }, [userCoordinate]);
 
-  const handleUserLocation = useCallback(
-    (event: {
-      nativeEvent: { coordinate?: { latitude: number; longitude: number } };
-    }) => {
-      const coordinate = event.nativeEvent.coordinate;
-      if (!coordinate) {
-        return;
-      }
-
+  const applyUserCoordinate = useCallback(
+    (coordinate: { latitude: number; longitude: number }) => {
       if (
         shouldRefreshUserCoordinate(
           userCoordinateRef.current,
@@ -1175,26 +1190,98 @@ export function useMapScreenController() {
       }
       hasCenteredOnOpenRef.current = true;
       const region = centerMapOnUser(mapRef.current, coordinate, true);
-      mapRegionRef.current = region;
+      commitMapRegion(region);
     },
-    [],
+    [commitMapRegion],
   );
 
-  const fitSelectedHistoryNow = useCallback(() => {
-    if (!mapRef.current || !selectedPlayable) {
-      return;
-    }
-    const selectedMap = historyMapPlan.selected;
-    const routePoints =
-      selectedPlayable.kind === 'travel'
-        ? selectedMap?.travelPoints ?? selectedPlayable.points
-        : selectedMap?.inboundPoints != null
-        ? [...selectedMap.inboundPoints, ...selectedPlayable.points]
-        : selectedPlayable.points;
-    const region = regionForCoordinates(toMapCoordinates(routePoints));
-    mapRef.current.animateToRegion(region, 400);
-    mapRegionRef.current = region;
-  }, [historyMapPlan.selected, selectedPlayable]);
+  // Live puck from BackgroundGeolocation — not MapKit showsUserLocation (that
+  // draws the giant blue GPS accuracy halo on History exit / poor indoor fix).
+  useEffect(() => {
+    let cancelled = false;
+    let subscription: { remove: () => void } | null = null;
+
+    void (async () => {
+      try {
+        const BackgroundGeolocation = (
+          await import('react-native-background-geolocation')
+        ).default;
+        const { isSampleLocation } = await import(
+          '@/location/location-persist-pipeline'
+        );
+
+        if (cancelled) {
+          return;
+        }
+
+        try {
+          const { HEARTBEAT_CURRENT_POSITION_REQUEST } = await import(
+            '@/lib/motion-tracking-policy'
+          );
+          const current = await BackgroundGeolocation.getCurrentPosition(
+            HEARTBEAT_CURRENT_POSITION_REQUEST,
+          );
+          if (
+            !cancelled &&
+            current?.coords != null &&
+            Number.isFinite(current.coords.latitude) &&
+            Number.isFinite(current.coords.longitude)
+          ) {
+            applyUserCoordinate({
+              latitude: current.coords.latitude,
+              longitude: current.coords.longitude,
+            });
+          }
+        } catch {
+          // Tracking may be off or permission pending — bootstrap region covers it.
+        }
+
+        if (cancelled) {
+          return;
+        }
+
+        subscription = BackgroundGeolocation.onLocation(location => {
+          if (isSampleLocation(location)) {
+            return;
+          }
+          const { latitude, longitude } = location.coords;
+          if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+            return;
+          }
+          applyUserCoordinate({ latitude, longitude });
+        });
+      } catch {
+        // Native module unavailable in some test / early-boot paths.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      subscription?.remove();
+    };
+  }, [applyUserCoordinate]);
+
+  const fitSelectedHistoryNow = useCallback(
+    (animated = false) => {
+      if (!mapRef.current || !selectedPlayable) {
+        return;
+      }
+      const selectedMap = historyMapPlan.selected;
+      const routePoints =
+        selectedPlayable.kind === 'travel'
+          ? selectedMap?.travelPoints ?? selectedPlayable.points
+          : selectedMap?.inboundPoints != null
+            ? [...selectedMap.inboundPoints, ...selectedPlayable.points]
+            : selectedPlayable.points;
+      const region = regionForCoordinates(toMapCoordinates(routePoints));
+      // Scrub jumps instantly; playback keeps a short ease. Sync arrow zoom so
+      // chevrons on the selected trip are sized for this trip's camera; the
+      // coarse arrowSizeKey keeps sub-threshold deltas from remounting.
+      mapRef.current.animateToRegion(region, animated ? 280 : 0);
+      commitMapRegion(region);
+    },
+    [commitMapRegion, historyMapPlan.selected, selectedPlayable],
+  );
 
   const scheduleFitSelectedHistory = useCallback(
     (immediate = false) => {
@@ -1203,13 +1290,11 @@ export function useMapScreenController() {
         fitHistoryTimerRef.current = null;
       }
       if (immediate) {
-        fitSelectedHistoryNow();
+        fitSelectedHistoryNow(true);
         return;
       }
-      fitHistoryTimerRef.current = setTimeout(() => {
-        fitHistoryTimerRef.current = null;
-        fitSelectedHistoryNow();
-      }, 280);
+      // Event-arrow scrub: no 280ms debounce — camera follows the selection now.
+      fitSelectedHistoryNow(false);
     },
     [fitSelectedHistoryNow],
   );
@@ -1218,12 +1303,12 @@ export function useMapScreenController() {
     (index: number) => {
       setSelectedHistoryIndex(prev => {
         if (prev !== index) {
-          playback.stop();
+          stopPlayback();
         }
         return index;
       });
     },
-    [playback],
+    [stopPlayback],
   );
 
   const openHistoryDatePicker = useCallback(() => {
@@ -1235,18 +1320,18 @@ export function useMapScreenController() {
     (dateKey: string) => {
       setSelectedDateKey(clampDateKeyToHistoryBounds(dateKey));
       setSelectedHistoryIndex(-1);
-      playback.stop();
+      stopPlayback();
     },
-    [playback],
+    [stopPlayback],
   );
 
   const handleHistoryDateKeyChange = useCallback(
     (dateKey: string) => {
       setSelectedDateKey(clampDateKeyToHistoryBounds(dateKey));
       setSelectedHistoryIndex(-1);
-      playback.stop();
+      stopPlayback();
     },
-    [playback],
+    [stopPlayback],
   );
 
   const goToTodayOnPanelClosedRef = useRef(() => {});
@@ -1261,7 +1346,7 @@ export function useMapScreenController() {
       pendingGoToTodayRef.current = true;
       void preloadTodayHistory();
       setHistoryPanelOpen(false);
-      playback.stop();
+      stopPlayback();
       return;
     }
     handleHistoryDateKeyChange(todayKey);
@@ -1269,15 +1354,15 @@ export function useMapScreenController() {
     handleHistoryDateKeyChange,
     historyPanelChromeVisible,
     historyPanelOpen,
-    playback,
+    stopPlayback,
     todayKey,
   ]);
 
   const closeHistoryPanel = useCallback(() => {
     setHistoryPanelOpen(false);
     setPlaceLabelEditStay(null);
-    playback.stop();
-  }, [playback]);
+    stopPlayback();
+  }, [stopPlayback]);
 
   const goToPrevDay = useCallback(() => {
     if (!canGoPrevDay) {
@@ -1314,19 +1399,19 @@ export function useMapScreenController() {
         pendingHistoryEdgeSelectRef.current = 'first';
         setSelectedHistoryIndex(firstNavigableTimelineIndex(historyEntries));
       } else {
-        playback.stop();
+        stopPlayback();
       }
       return next;
     });
-  }, [historyEntries, historyPanelY, playback]);
+  }, [historyEntries, historyPanelY, stopPlayback]);
 
   const handlePlayHistory = useCallback(() => {
     if (!selectedPlayable || selectedPlayable.kind !== 'travel') {
       return;
     }
     scheduleFitSelectedHistory(true);
-    playback.start(getTripPlaybackDurationMs(selectedPlayable.durationMs));
-  }, [playback, scheduleFitSelectedHistory, selectedPlayable]);
+    startPlayback(getTripPlaybackDurationMs(selectedPlayable.durationMs));
+  }, [startPlayback, scheduleFitSelectedHistory, selectedPlayable]);
 
   const handleMapLongPress = useCallback(
     (event: {
@@ -1428,9 +1513,9 @@ export function useMapScreenController() {
       VISIT_MAX_ZOOM_DELTA,
     );
     mapRef.current.animateToRegion(region, 400);
-    mapRegionRef.current = region;
+    commitMapRegion(region);
     needsDefaultCenterRef.current = false;
-  }, []);
+  }, [commitMapRegion]);
 
   useEffect(() => {
     const focusPlaceId = route.params?.focusPlaceId;
@@ -1467,8 +1552,8 @@ export function useMapScreenController() {
       VISIT_MAX_ZOOM_DELTA,
     );
     mapRef.current.animateToRegion(region, 400);
-    mapRegionRef.current = region;
-  }, [selectedPlayable]);
+    commitMapRegion(region);
+  }, [commitMapRegion, selectedPlayable]);
 
   useEffect(() => {
     const opening = historyPanelOpen && !historyPanelOpenRef.current;
@@ -1515,8 +1600,20 @@ export function useMapScreenController() {
   useEffect(() => {
     if (!historyPanelOpen && viewingToday) {
       needsDefaultCenterRef.current = true;
+      // Day/history fits leave a large delta; reset before DayJourney paints
+      // so arrows are not sized for the previous zoomed-out camera.
+      commitMapRegion(
+        regionAroundCoordinate(
+          {
+            latitude: mapRegionRef.current.latitude,
+            longitude: mapRegionRef.current.longitude,
+          },
+          MAP_USER_ZOOM_DELTA,
+          MAP_USER_ZOOM_DELTA,
+        ),
+      );
     }
-  }, [historyPanelOpen, viewingToday, selectedDateKey]);
+  }, [commitMapRegion, historyPanelOpen, viewingToday, selectedDateKey]);
 
   useEffect(() => {
     if (!historyLoading && viewingToday && !historyPanelOpen) {
@@ -1560,7 +1657,7 @@ export function useMapScreenController() {
         MAP_USER_ZOOM_DELTA,
       );
       mapRef.current.animateToRegion(region, 400);
-      mapRegionRef.current = region;
+      commitMapRegion(region);
       return;
     }
 
@@ -1570,8 +1667,9 @@ export function useMapScreenController() {
     }
     const region = regionForCoordinates(coordinates);
     mapRef.current.animateToRegion(region, 400);
-    mapRegionRef.current = region;
+    commitMapRegion(region);
   }, [
+    commitMapRegion,
     historyBlockingLoader,
     historyData.points,
     historyPanelOpen,
@@ -1764,6 +1862,8 @@ export function useMapScreenController() {
       showDayJourney,
       showSavedPlaceMarkersOnMap,
       mapSavedPlaces,
+      // Hide only while pinch-zooming; History shows chevrons on the selected
+      // trip while scrubbing (the coarse arrowSizeKey limits remount flicker).
       showRouteDirectionArrows: !mapGestureActive,
       routeDirectionMapLatitudeDelta,
       onRegionChange,
@@ -1809,7 +1909,6 @@ export function useMapScreenController() {
       savePlaceCoordinate,
       userCoordinate,
       playback,
-      handleUserLocation,
       handleMapLongPress,
       closeSavePlaceSheet,
       handleSaveHomePlace,
@@ -1931,7 +2030,6 @@ export function useMapScreenController() {
       savePlaceCoordinate,
       userCoordinate,
       playback,
-      handleUserLocation,
       handleMapLongPress,
       closeSavePlaceSheet,
       handleSaveHomePlace,

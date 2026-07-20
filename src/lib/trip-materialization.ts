@@ -40,10 +40,9 @@ import {
   upsertTrip,
   type TripRow,
 } from '@/db/repositories/trips';
-import {
-  listVisitLabelOverridesForDay,
-  VISIT_LABEL_OVERRIDE_START_MATCH_MS,
-} from '@/db/repositories/visit-label-overrides';
+import { listPlaceLookupCacheRows } from '@/db/repositories/place-lookup-cache';
+import { listVisitLabelOverridesForDay } from '@/db/repositories/visit-label-overrides';
+import { reconcileCachePlaceLabelForStayAnchor } from '@/lib/place-lookup-venue';
 import {
   getDayRange,
   getTodayDateKey,
@@ -53,7 +52,7 @@ import {
 import type { HistoryData } from '@/lib/history-data-types';
 import {
   mergeOverrideIntoPersistLabel,
-  takeVisitLabelOverrideForStart,
+  takeVisitLabelOverrideForStay,
 } from '@/lib/visit-label-override';
 import { clearHistoryDataCache } from '@/lib/history-data-cache';
 import { isCurrentHistoryDayLoad } from '@/lib/history-load-generation';
@@ -87,6 +86,7 @@ import { getSealableTodayEntries } from '@/lib/today-seal-policy';
 import { syncTodayDisplay, syncTodayTrips } from '@/lib/today-sync';
 import {
   isPlayableTimelineEntry,
+  resolveStayAnchorForOverride,
   type DayTimelineEntry,
   type DetectedTrip,
   type TimelineGap,
@@ -194,8 +194,9 @@ export function existingTripLabelsByEventKey(
 }
 
 /**
- * Mutable label pool for rematerialization. Prefer exact eventKey; otherwise
- * match stays by start within {@link VISIT_LABEL_OVERRIDE_START_MATCH_MS}.
+ * Mutable label pool for rematerialization — exact eventKey only.
+ * Fuzzy start matching was removed so nearby-in-time stays cannot inherit
+ * each other's placeId / POI.
  */
 export function existingTripLabelCandidates(
   rows: readonly TripRow[],
@@ -210,8 +211,6 @@ export function existingTripLabelCandidates(
     if (!hasUserLabel && label.placeLabel == null) {
       continue;
     }
-    // Always keep rows with a user POI / saved place; address-only is fine for
-    // exact eventKey hits but must not steal another stay via fuzzy start.
     candidates.push({
       ...label,
       eventKey: row.eventKey,
@@ -229,40 +228,15 @@ export function takePersistedTripLabel(
     kind: TripRow['kind'] | DetectedTrip['kind'];
     startAtMs: number;
   },
-  windowMs: number = VISIT_LABEL_OVERRIDE_START_MATCH_MS,
 ): PersistedTripLabel | null {
   const exactIndex = candidates.findIndex(
     candidate => candidate.eventKey === args.eventKey,
   );
-  if (exactIndex >= 0) {
-    const [exact] = candidates.splice(exactIndex, 1);
-    return exact ? stripCandidateMeta(exact) : null;
-  }
-
-  if (args.kind !== 'stay') {
+  if (exactIndex < 0) {
     return null;
   }
-
-  let nearestIndex = -1;
-  let nearestDelta = Number.POSITIVE_INFINITY;
-  for (let index = 0; index < candidates.length; index += 1) {
-    const candidate = candidates[index]!;
-    if (candidate.kind !== 'stay' || candidate.poiId == null) {
-      // Fuzzy rematch is for user POI picks only — never reattach a bare address
-      // to a different stay when boundaries shift.
-      continue;
-    }
-    const delta = Math.abs(candidate.startAtMs - args.startAtMs);
-    if (delta <= windowMs && delta < nearestDelta) {
-      nearestIndex = index;
-      nearestDelta = delta;
-    }
-  }
-  if (nearestIndex < 0) {
-    return null;
-  }
-  const [nearest] = candidates.splice(nearestIndex, 1);
-  return nearest ? stripCandidateMeta(nearest) : null;
+  const [exact] = candidates.splice(exactIndex, 1);
+  return exact ? stripCandidateMeta(exact) : null;
 }
 
 function stripCandidateMeta(
@@ -292,6 +266,20 @@ export function resolveTripLabelForPersist(
     poiLabel: detected?.poiLabel ?? null,
     poiCategory: detected?.poiCategory ?? null,
   });
+
+  // A freshly detected saved place (geofence = user ground truth) always wins
+  // over a stale auto cache / closest-POI / address label. Explicit per-visit
+  // user picks live in visit_label_overrides and are re-applied after this in
+  // mergeOverrideIntoPersistLabel, so a manual choice still takes precedence.
+  // Skip when the existing link is already saved (may be a user-changed saved
+  // place, which the override step likewise preserves).
+  if (
+    detectedPlace.placeKind === 'saved' &&
+    detectedPlace.placeId != null &&
+    existing?.placeKind !== 'saved'
+  ) {
+    return detectedPlace;
+  }
 
   if (existing?.poiId != null) {
     return {
@@ -742,18 +730,26 @@ export async function persistClosedTripsIncremental(
   }
 
   const closedAt = new Date();
-  const existingLabelCandidates = existingTripLabelCandidates(existingTrips);
   const savedPlaces = await listSavedPlaces();
   const { start: dayStart, end: dayEnd } = getDayRange(dateKey);
-  const [dayMoments, canonicalizeTravel, geometryFingerprint, listedOverrides] =
-    await Promise.all([
-      getMomentsForDay(dayStart, dayEnd),
-      isCanonicalTravelGeometryEnabled(),
-      getGeometryPersistFingerprint(),
-      listVisitLabelOverridesForDay(dateKey),
-    ]);
-  // Mutable: each consumed override is removed so fuzzy matching cannot reuse it.
+  const [
+    dayMoments,
+    canonicalizeTravel,
+    geometryFingerprint,
+    listedOverrides,
+    placeLookupRows,
+  ] = await Promise.all([
+    getMomentsForDay(dayStart, dayEnd),
+    isCanonicalTravelGeometryEnabled(),
+    getGeometryPersistFingerprint(),
+    listVisitLabelOverridesForDay(dateKey),
+    listPlaceLookupCacheRows(),
+  ]);
+  // Mutable: each consumed override is removed so it cannot apply twice.
   const dayOverrides = [...listedOverrides];
+  const placeLookupById = new Map(
+    placeLookupRows.map(row => [row.id, row] as const),
+  );
 
   if (options.fullReplace) {
     await deleteTripsForDay(dateKey);
@@ -791,25 +787,33 @@ export async function persistClosedTripsIncremental(
 
     const centroid = tripCentroidForPersist(entry, savedPlaces);
     const eventKey = tripEventKey(entry);
-    const existingLabel = takePersistedTripLabel(existingLabelCandidates, {
-      eventKey,
-      kind: entry.kind,
-      startAtMs: entry.startAt.getTime(),
-    });
+    const overrideAnchor =
+      entry.kind === 'stay' ? resolveStayAnchorForOverride(entry) : null;
+    // Detection is the source of truth each rebuild (saved place > nearby cache
+    // + closest POI on iOS > address). The ONLY sticky layer is the user's
+    // manual pick (visit_label_overrides), re-matched by exact start or by the
+    // same place on the same day — never a stale auto label from the old row.
     const override =
       entry.kind === 'stay'
-        ? takeVisitLabelOverrideForStart(dayOverrides, entry.startAt.getTime())
+        ? takeVisitLabelOverrideForStay(dayOverrides, {
+            startAtMs: entry.startAt.getTime(),
+            anchorLat: overrideAnchor?.lat ?? null,
+            anchorLng: overrideAnchor?.lng ?? null,
+          })
         : null;
-    const labels = mergeOverrideIntoPersistLabel(
-      resolveTripLabelForPersist(existingLabel, {
-        placeLabel: entry.placeLabel ?? null,
-        placeId: entry.placeId ?? null,
-        placeKind: entry.placeKind ?? null,
-        poiId: entry.poiId ?? null,
-        poiLabel: entry.poiLabel ?? null,
-        poiCategory: entry.poiCategory ?? null,
-      }),
-      override,
+    const detectedLabels = tripPlaceFieldsFromResolved({
+      placeLabel: entry.placeLabel ?? null,
+      placeId: entry.placeId ?? null,
+      placeKind: entry.placeKind ?? null,
+      poiId: entry.poiId ?? null,
+      poiLabel: entry.poiLabel ?? null,
+      poiCategory: entry.poiCategory ?? null,
+    });
+    const labels = reconcileCachePlaceLabelForStayAnchor(
+      mergeOverrideIntoPersistLabel(detectedLabels, override),
+      centroid,
+      placeLookupById,
+      detectedLabels,
     );
     const momentRefs = buildMomentRefsForSegment(
       dayMoments,

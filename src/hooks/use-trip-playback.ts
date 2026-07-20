@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { TRIP_PLAYBACK_DURATION_MS } from '@/lib/app-constants';
 
@@ -71,10 +71,17 @@ export function useTripPlayback(onFinished?: () => void) {
 
   useEffect(() => () => stop(), [stop]);
 
-  return {
-    progress,
-    isPlaying: progress != null,
-    start,
-    stop,
-  };
+  // Stable reference — a fresh object literal each render recreates every
+  // consumer callback that lists `playback` in its deps, cascading a full
+  // re-render of the map tree (MapScreenMap's memo comparator checks those
+  // callbacks by reference).
+  return useMemo(
+    () => ({
+      progress,
+      isPlaying: progress != null,
+      start,
+      stop,
+    }),
+    [progress, start, stop],
+  );
 }
