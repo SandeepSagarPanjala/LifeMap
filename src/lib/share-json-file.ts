@@ -7,8 +7,11 @@ import ReactNativeBlobUtil from 'react-native-blob-util';
  */
 function copyTextToClipboard(content: string): void {
   const { Clipboard } = require('react-native') as {
-    Clipboard: { setString: (value: string) => void };
+    Clipboard?: { setString?: (value: string) => void };
   };
+  if (typeof Clipboard?.setString !== 'function') {
+    throw new Error('Clipboard is unavailable on this build.');
+  }
   Clipboard.setString(content);
 }
 
@@ -63,7 +66,13 @@ export async function shareJsonFile(
                 Alert.alert('Copied', 'JSON copied to the clipboard.');
               }, 300);
             } catch (error) {
-              reject(error);
+              resolve();
+              setTimeout(() => {
+                Alert.alert(
+                  'Copy unavailable',
+                  'Clipboard is not available on this build. Use Share file instead.',
+                );
+              }, 300);
             }
           },
         },

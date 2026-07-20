@@ -24,19 +24,32 @@ describe('historyDataCache', () => {
     resetHistoryDataCacheForTests();
   });
 
-  it('keeps the two most recently viewed days', () => {
-    const firstKey = historyCacheKey('2026-06-01', config);
-    const secondKey = historyCacheKey('2026-06-02', config);
-    const thirdKey = historyCacheKey('2026-06-03', config);
+  it('evicts the oldest day when cache exceeds max entries', () => {
+    const keys = Array.from(
+      { length: HISTORY_DATA_CACHE_MAX_ENTRIES + 1 },
+      (_, index) => {
+        const day = String(index + 1).padStart(2, '0');
+        const dateKey = `2026-06-${day}`;
+        return {
+          cacheKey: historyCacheKey(dateKey, config),
+          dateKey,
+        };
+      },
+    );
 
-    historyDataCache.write(firstKey, sampleData('2026-06-01'), '1:1');
-    historyDataCache.write(secondKey, sampleData('2026-06-02'), '2:2');
-    historyDataCache.write(thirdKey, sampleData('2026-06-03'), '3:3');
+    for (const [index, item] of keys.entries()) {
+      historyDataCache.write(
+        item.cacheKey,
+        sampleData(item.dateKey),
+        `${index + 1}:${index + 1}`,
+      );
+    }
 
-    expect(historyDataCache.peek(firstKey)).toBeNull();
-    expect(historyDataCache.peek(secondKey)?.dateKey).toBe('2026-06-02');
-    expect(historyDataCache.peek(thirdKey)?.dateKey).toBe('2026-06-03');
-    expect(HISTORY_DATA_CACHE_MAX_ENTRIES).toBe(2);
+    const [oldest, ...remaining] = keys;
+    expect(historyDataCache.peek(oldest!.cacheKey)).toBeNull();
+    for (const item of remaining) {
+      expect(historyDataCache.peek(item.cacheKey)?.dateKey).toBe(item.dateKey);
+    }
   });
 
   it('keeps today when the user browses one other day', () => {

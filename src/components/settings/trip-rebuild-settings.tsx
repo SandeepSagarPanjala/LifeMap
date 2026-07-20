@@ -192,6 +192,7 @@ export function TripRebuildSettings() {
         selectedDateKey={selectedDayKey}
         onSelectDate={dateKey => {
           setSelectedDayKey(dateKey);
+          setDayPickerVisible(false);
           setTimeout(() => {
             InteractionManager.runAfterInteractions(() => {
               confirmRebuildDay(dateKey);
