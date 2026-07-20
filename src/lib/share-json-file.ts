@@ -65,7 +65,7 @@ export async function shareJsonFile(
               setTimeout(() => {
                 Alert.alert('Copied', 'JSON copied to the clipboard.');
               }, 300);
-            } catch (error) {
+            } catch {
               resolve();
               setTimeout(() => {
                 Alert.alert(
