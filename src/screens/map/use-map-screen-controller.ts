@@ -86,6 +86,14 @@ import {
 import { useAppStore } from '@/stores/app-store';
 import { regionForCoordinates, toMapCoordinates } from '@/lib/location-geo';
 import {
+  BACKGROUND_WORK_BANNER_BODY_HEIGHT,
+  MAP_HISTORY_DATE_NAV_ABOVE_PANEL_GAP,
+  MAP_HISTORY_FLOATING_CONTROLS_GAP,
+  MAP_HISTORY_PANEL_CLOSE_MS,
+  MAP_LOCATE_BUTTON_BOTTOM_GAP,
+  MAP_SETTINGS_TOP_GAP,
+  MAP_STACK_BUTTON_GAP,
+  MAP_STACK_BUTTON_SIZE,
   MAP_USER_ZOOM_DELTA,
   MAX_SAVED_PLACES,
   RECENTER_FRESH_CACHE_MS,
@@ -152,16 +160,6 @@ import {
   resolveMapBootstrapRegion,
 } from '@/lib/map-bootstrap-region';
 
-import {
-  MAP_HISTORY_DATE_NAV_ABOVE_PANEL_GAP,
-  MAP_HISTORY_FLOATING_CONTROLS_GAP,
-  MAP_HISTORY_PANEL_CLOSE_MS,
-  MAP_LOCATE_BUTTON_BOTTOM_GAP,
-  MAP_SETTINGS_TOP_GAP,
-  MAP_STACK_BUTTON_GAP,
-  MAP_STACK_BUTTON_SIZE,
-  BACKGROUND_WORK_BANNER_BODY_HEIGHT,
-} from '@/lib/app-constants';
 import {
   MAP_FALLBACK_REGION,
   mapHistoryPanelContentHeight,
