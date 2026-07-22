@@ -289,6 +289,8 @@ export function useMapScreenController() {
   const fitHistoryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const userCoordinateRef = useRef<MapUserCoordinate | null>(null);
   const lastUserCoordinateRefreshMsRef = useRef(0);
+  /** Only the latest locate-button press may apply getCurrentPosition results. */
+  const recenterRequestIdRef = useRef(0);
   const historyPanelY = useRef(new Animated.Value(400)).current;
   const historyPanelOpenRef = useRef(false);
   const pendingGoToTodayRef = useRef(false);
@@ -1192,6 +1194,8 @@ export function useMapScreenController() {
       return;
     }
 
+    const requestId = ++recenterRequestIdRef.current;
+
     // Instant feedback only when the cached puck fix is genuinely recent. While
     // driving the cache can lag near home, so a stale fix must not win — we wait
     // for the fresh read below instead of flying to the wrong place first.
@@ -1208,6 +1212,9 @@ export function useMapScreenController() {
         const current = await BackgroundGeolocation.getCurrentPosition(
           RECENTER_CURRENT_POSITION_REQUEST,
         );
+        if (requestId !== recenterRequestIdRef.current) {
+          return;
+        }
         const latitude = current?.coords?.latitude;
         const longitude = current?.coords?.longitude;
         if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
@@ -1223,6 +1230,9 @@ export function useMapScreenController() {
           animateRecenterToUser(mapRef.current, fresh, mapRegionRef.current);
         }
       } catch {
+        if (requestId !== recenterRequestIdRef.current) {
+          return;
+        }
         // GPS unavailable / timed out — fall back to the last known coordinate.
         const fallback = userCoordinateRef.current;
         if (fallback && mapRef.current) {
