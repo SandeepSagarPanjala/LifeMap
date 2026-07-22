@@ -194,6 +194,12 @@ export const MAX_DEPARTURE_ACCURACY_METERS = 75;
 /** Stopping threshold for heartbeat getCurrentPosition (m) — see CurrentPositionRequest. */
 export const HEARTBEAT_DESIRED_ACCURACY_METERS = 25;
 
+/** Stopping threshold for the on-demand recenter fix (m) — tighter for accuracy. */
+export const RECENTER_DESIRED_ACCURACY_METERS = 10;
+
+/** A cached puck coordinate newer than this is fresh enough for instant recenter. */
+export const RECENTER_FRESH_CACHE_MS = 5_000;
+
 /** Max plausible speed between consecutive saved points when drawing a line (m/s). ~200 km/h */
 export const MAX_PLAUSIBLE_SPEED_MS = 55;
 

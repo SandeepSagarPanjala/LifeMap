@@ -87,6 +87,7 @@ import { useAppStore } from '@/stores/app-store';
 import { regionForCoordinates, toMapCoordinates } from '@/lib/location-geo';
 import {
   MAP_USER_ZOOM_DELTA,
+  RECENTER_FRESH_CACHE_MS,
   ROUTE_DIRECTION_ARROW_REF_ZOOM_DELTA,
   VISIT_MAX_ZOOM_DELTA,
 } from '@/lib/app-constants';
@@ -97,6 +98,15 @@ import {
 } from '@/lib/map-location-utils';
 import { getTripPlaybackDurationMs } from '@/lib/trip-playback';
 import { isVisitOngoing } from '@/lib/trip-format';
+import BackgroundGeolocation from 'react-native-background-geolocation';
+import {
+  isLocationLike,
+  isSampleLocation,
+} from '@/location/location-persist-pipeline';
+import {
+  HEARTBEAT_CURRENT_POSITION_REQUEST,
+  RECENTER_CURRENT_POSITION_REQUEST,
+} from '@/lib/motion-tracking-policy';
 import { MAX_SAVED_PLACES } from '@/lib/app-constants';
 import {
   canAddSavedPlace,
@@ -1177,11 +1187,49 @@ export function useMapScreenController() {
   }, []);
 
   const goToCurrentLocation = useCallback(() => {
-    const coordinate = userCoordinateRef.current;
-    if (!coordinate || !mapRef.current) {
+    const map = mapRef.current;
+    if (!map) {
       return;
     }
-    animateRecenterToUser(mapRef.current, coordinate, mapRegionRef.current);
+
+    // Instant feedback only when the cached puck fix is genuinely recent. While
+    // driving the cache can lag near home, so a stale fix must not win — we wait
+    // for the fresh read below instead of flying to the wrong place first.
+    const cached = userCoordinateRef.current;
+    const cacheAgeMs = Date.now() - lastUserCoordinateRefreshMsRef.current;
+    if (cached && cacheAgeMs <= RECENTER_FRESH_CACHE_MS) {
+      animateRecenterToUser(map, cached, mapRegionRef.current);
+    }
+
+    // Always request a fresh, high-accuracy fix so recenter lands on the true
+    // current location (Google-Maps-style), regardless of puck throttling.
+    void (async () => {
+      try {
+        const current = await BackgroundGeolocation.getCurrentPosition(
+          RECENTER_CURRENT_POSITION_REQUEST,
+        );
+        const latitude = current?.coords?.latitude;
+        const longitude = current?.coords?.longitude;
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+          return;
+        }
+        const fresh = { latitude, longitude };
+        // Force-refresh the puck + recenter target, bypassing the throttle so a
+        // stale near-home fix can never override this user-requested fix.
+        lastUserCoordinateRefreshMsRef.current = Date.now();
+        userCoordinateRef.current = fresh;
+        setUserCoordinate(fresh);
+        if (mapRef.current) {
+          animateRecenterToUser(mapRef.current, fresh, mapRegionRef.current);
+        }
+      } catch {
+        // GPS unavailable / timed out — fall back to the last known coordinate.
+        const fallback = userCoordinateRef.current;
+        if (fallback && mapRef.current) {
+          animateRecenterToUser(mapRef.current, fallback, mapRegionRef.current);
+        }
+      }
+    })();
   }, []);
 
   const applyUserCoordinate = useCallback(
@@ -1214,57 +1262,53 @@ export function useMapScreenController() {
     let cancelled = false;
     let subscription: { remove: () => void } | null = null;
 
+    // Register synchronously so no fixes are missed during the initial
+    // getCurrentPosition await below. A throw inside this callback propagates
+    // back through the native TurboModule invocation and aborts the whole app
+    // (SIGABRT via objc_exception_rethrow), so it must never throw. The SDK can
+    // emit locations without a `coords` object; guard before destructuring.
+    try {
+      subscription = BackgroundGeolocation.onLocation(
+        location => {
+          try {
+            if (isSampleLocation(location) || !isLocationLike(location)) {
+              return;
+            }
+            const { latitude, longitude } = location.coords;
+            if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+              return;
+            }
+            applyUserCoordinate({ latitude, longitude });
+          } catch {
+            // Never let a bad location payload crash the app.
+          }
+        },
+        () => {
+          // onLocation error callback — tracking off / no fix. Ignored here.
+        },
+      );
+    } catch {
+      // Native module unavailable in some test / early-boot paths.
+    }
+
     void (async () => {
       try {
-        const BackgroundGeolocation = (
-          await import('react-native-background-geolocation')
-        ).default;
-        const { isSampleLocation } = await import(
-          '@/location/location-persist-pipeline'
+        const current = await BackgroundGeolocation.getCurrentPosition(
+          HEARTBEAT_CURRENT_POSITION_REQUEST,
         );
-
-        if (cancelled) {
-          return;
+        if (
+          !cancelled &&
+          current?.coords != null &&
+          Number.isFinite(current.coords.latitude) &&
+          Number.isFinite(current.coords.longitude)
+        ) {
+          applyUserCoordinate({
+            latitude: current.coords.latitude,
+            longitude: current.coords.longitude,
+          });
         }
-
-        try {
-          const { HEARTBEAT_CURRENT_POSITION_REQUEST } = await import(
-            '@/lib/motion-tracking-policy'
-          );
-          const current = await BackgroundGeolocation.getCurrentPosition(
-            HEARTBEAT_CURRENT_POSITION_REQUEST,
-          );
-          if (
-            !cancelled &&
-            current?.coords != null &&
-            Number.isFinite(current.coords.latitude) &&
-            Number.isFinite(current.coords.longitude)
-          ) {
-            applyUserCoordinate({
-              latitude: current.coords.latitude,
-              longitude: current.coords.longitude,
-            });
-          }
-        } catch {
-          // Tracking may be off or permission pending — bootstrap region covers it.
-        }
-
-        if (cancelled) {
-          return;
-        }
-
-        subscription = BackgroundGeolocation.onLocation(location => {
-          if (isSampleLocation(location)) {
-            return;
-          }
-          const { latitude, longitude } = location.coords;
-          if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-            return;
-          }
-          applyUserCoordinate({ latitude, longitude });
-        });
       } catch {
-        // Native module unavailable in some test / early-boot paths.
+        // Tracking may be off or permission pending — bootstrap region covers it.
       }
     })();
 
