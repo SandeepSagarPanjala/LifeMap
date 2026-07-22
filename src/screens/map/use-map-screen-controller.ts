@@ -87,6 +87,7 @@ import { useAppStore } from '@/stores/app-store';
 import { regionForCoordinates, toMapCoordinates } from '@/lib/location-geo';
 import {
   MAP_USER_ZOOM_DELTA,
+  MAX_SAVED_PLACES,
   RECENTER_FRESH_CACHE_MS,
   ROUTE_DIRECTION_ARROW_REF_ZOOM_DELTA,
   VISIT_MAX_ZOOM_DELTA,
@@ -107,7 +108,6 @@ import {
   HEARTBEAT_CURRENT_POSITION_REQUEST,
   RECENTER_CURRENT_POSITION_REQUEST,
 } from '@/lib/motion-tracking-policy';
-import { MAX_SAVED_PLACES } from '@/lib/app-constants';
 import {
   canAddSavedPlace,
   matchSavedPlaceForStay,
