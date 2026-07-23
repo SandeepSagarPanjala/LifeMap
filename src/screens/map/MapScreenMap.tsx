@@ -103,6 +103,7 @@ export const MapScreenMap = memo(
         <SavedPlacesMapOverlay
           places={mapSavedPlaces}
           momentClusters={savedPlaceMomentClusters}
+          mapLatitudeDelta={routeDirectionMapLatitudeDelta}
           hideMarkerPlaceId={
             showHistoryMap
               ? selectedSavedPlace?.id ??

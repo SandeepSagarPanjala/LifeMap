@@ -11,12 +11,16 @@ import {
   type MomentCounts,
 } from '@/lib/moments/moment-counts';
 import { savedPlaceDisplayLabel } from '@/lib/saved-places';
-import { SAVED_PLACE_MAP_STYLE } from '@/lib/saved-places-map';
-import { HISTORY_COLORS } from '@/lib/app-constants';
+import {
+  SAVED_PLACE_MAP_STYLE,
+  shouldShowSavedPlaceAsDot,
+} from '@/lib/saved-places-map';
+import { HISTORY_COLORS, MAP_USER_ZOOM_DELTA } from '@/lib/app-constants';
 
-/** Geographic point stays on the home/work badge center — never changes with zoom. */
+/** Geographic point stays on the badge/dot center — same for both modes. */
 const SAVED_PLACE_MARKER_ANCHOR = { x: 0.5, y: 0.3 } as const;
 const MARKER_BADGE_SIZE = 32;
+const MARKER_DOT_SIZE = 12;
 const MARKER_LABEL_GAP = 3;
 const MARKER_LABEL_BLOCK_HEIGHT = 18;
 const MARKER_COLUMN_HEIGHT =
@@ -48,6 +52,8 @@ type SavedPlacesMapOverlayProps = {
   /** Hide the map pin when the callout label already shows this place. */
   hideMarkerPlaceId?: number | null;
   momentClusters?: SavedPlaceMomentClusterOnMap[];
+  /** Current map latitudeDelta — collapses favorite/work to dots when zoomed out. */
+  mapLatitudeDelta?: number;
 };
 
 type SavedPlaceMomentClusterMarkerProps = {
@@ -99,11 +105,13 @@ const SavedPlaceMomentClusterMarker = memo(function SavedPlaceMomentClusterMarke
 
 type SavedPlaceMarkerProps = {
   place: SavedPlaceRow;
+  asDot: boolean;
 };
 
 /** Memoized so a single place / cluster change doesn't re-render every saved pin. */
 const SavedPlaceMarker = memo(function SavedPlaceMarker({
   place,
+  asDot,
 }: SavedPlaceMarkerProps) {
   const style = SAVED_PLACE_MAP_STYLE[place.kind];
   const center = useMemo(
@@ -121,15 +129,52 @@ const SavedPlaceMarker = memo(function SavedPlaceMarker({
     () => [styles.labelPill, { borderColor: style.stroke }],
     [style.stroke],
   );
+  const dotStyle = useMemo(
+    () => [styles.markerDot, { backgroundColor: style.icon }],
+    [style.icon],
+  );
+  const { tracksViewChanges, onLayout } = useMarkerTracksViewChanges(
+    asDot ? 'dot' : 'detailed',
+  );
+
+  if (asDot) {
+    return (
+      <Marker
+        coordinate={center}
+        anchor={SAVED_PLACE_MARKER_ANCHOR}
+        zIndex={6}
+        tracksViewChanges={tracksViewChanges}
+      >
+        {/*
+          Same column size + anchor as the detailed marker so the geographic
+          point stays on the badge center when collapsing to a dot.
+        */}
+        <View
+          style={styles.markerColumn}
+          collapsable={false}
+          onLayout={onLayout}
+        >
+          <View style={styles.badgeSlot}>
+            <View style={dotStyle} />
+          </View>
+          <View style={styles.labelSpacer} />
+        </View>
+      </Marker>
+    );
+  }
 
   return (
     <Marker
       coordinate={center}
       anchor={SAVED_PLACE_MARKER_ANCHOR}
       zIndex={6}
-      tracksViewChanges={false}
+      tracksViewChanges={tracksViewChanges}
     >
-      <View style={styles.markerColumn} collapsable={false}>
+      <View
+        style={styles.markerColumn}
+        collapsable={false}
+        onLayout={onLayout}
+      >
         <View style={badgeStyle}>
           <SavedPlaceIcon kind={place.kind} size={16} color={style.icon} />
         </View>
@@ -151,6 +196,7 @@ function SavedPlacesMapOverlayComponent({
   places,
   hideMarkerPlaceId = null,
   momentClusters = [],
+  mapLatitudeDelta = MAP_USER_ZOOM_DELTA,
 }: SavedPlacesMapOverlayProps) {
   const clusterByPlaceId = useMemo(
     () => new Map(momentClusters.map(cluster => [cluster.placeId, cluster])),
@@ -167,6 +213,7 @@ function SavedPlacesMapOverlayComponent({
         const showMarker = hideMarkerPlaceId !== place.id;
         const cluster = clusterByPlaceId.get(place.id);
         const showCluster = cluster != null;
+        const asDot = shouldShowSavedPlaceAsDot(place.kind, mapLatitudeDelta);
 
         if (!showMarker && !showCluster) {
           return null;
@@ -182,7 +229,9 @@ function SavedPlacesMapOverlayComponent({
                 onPress={cluster.onPress}
               />
             ) : null}
-            {showMarker ? <SavedPlaceMarker place={place} /> : null}
+            {showMarker ? (
+              <SavedPlaceMarker place={place} asDot={asDot} />
+            ) : null}
           </Fragment>
         );
       })}
@@ -196,6 +245,29 @@ const styles = StyleSheet.create({
   markerColumn: {
     alignItems: 'center',
     width: MARKER_LABEL_MAX_WIDTH,
+  },
+  badgeSlot: {
+    width: MARKER_BADGE_SIZE,
+    height: MARKER_BADGE_SIZE,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  labelSpacer: {
+    marginTop: MARKER_LABEL_GAP,
+    height: MARKER_LABEL_BLOCK_HEIGHT,
+    width: 1,
+  },
+  markerDot: {
+    width: MARKER_DOT_SIZE,
+    height: MARKER_DOT_SIZE,
+    borderRadius: MARKER_DOT_SIZE / 2,
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.5,
+    elevation: 2,
   },
   clusterBubble: {
     backgroundColor: '#FFFFFF',
