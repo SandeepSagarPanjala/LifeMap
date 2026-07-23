@@ -116,10 +116,28 @@ function serializeLocationPoint(
   };
 }
 
-function serializeLocationPoints(
-  rows: Array<typeof locationPoints.$inferSelect>,
-): unknown[] {
-  return rows.map(serializeLocationPoint);
+/** UTF-8 byte length without requiring TextEncoder (not always present on RN). */
+function utf8ByteLength(value: string): number {
+  if (typeof TextEncoder !== 'undefined') {
+    return new TextEncoder().encode(value).length;
+  }
+  // Fallback: count UTF-8 bytes manually.
+  let bytes = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    if (code <= 0x7f) {
+      bytes += 1;
+    } else if (code <= 0x7ff) {
+      bytes += 2;
+    } else if (code >= 0xd800 && code <= 0xdbff) {
+      // Surrogate pair
+      bytes += 4;
+      index += 1;
+    } else {
+      bytes += 3;
+    }
+  }
+  return bytes;
 }
 
 function serializeSavedPlaces(
@@ -407,7 +425,7 @@ async function writeJsonArrayFile(
   if (items.length <= JSON_ARRAY_WRITE_CHUNK) {
     const contents = JSON.stringify(items);
     await fs.writeFile(path, contents, 'utf8');
-    return new TextEncoder().encode(contents).length;
+    return utf8ByteLength(contents);
   }
 
   const stream = await fs.writeStream(path, 'utf8', false);
@@ -418,7 +436,7 @@ async function writeJsonArrayFile(
     const body = slice.map(item => JSON.stringify(item)).join(',');
     const piece = (index === 0 ? '' : ',') + body;
     await stream.write(piece);
-    bytes += new TextEncoder().encode(piece).length;
+    bytes += utf8ByteLength(piece);
     onChunk?.(Math.min(index + slice.length, items.length), items.length);
     await yieldToUi();
   }
@@ -465,7 +483,7 @@ async function streamLocationPointsToJsonFile(
     const piece = (first ? '' : ',') + parts.join(',');
     first = false;
     await stream.write(piece);
-    bytes += new TextEncoder().encode(piece).length;
+    bytes += utf8ByteLength(piece);
     written += rows.length;
     onChunk?.(written, Math.max(total, written));
     await yieldToUi();
@@ -686,7 +704,7 @@ export async function writeBackupBundleToDirectory(
 
   const writeText = async (path: string, contents: string, message: string) => {
     await fs.writeFile(path, contents, 'utf8');
-    writtenBytes += new TextEncoder().encode(contents).length;
+    writtenBytes += utf8ByteLength(contents);
     report(message, 'exporting');
     await yieldToUi();
   };

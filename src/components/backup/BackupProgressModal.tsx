@@ -208,6 +208,7 @@ export function useAutoBackupDelay(
   const onElapsedRef = useRef(onElapsed);
   onElapsedRef.current = onElapsed;
   const finishedRef = useRef(false);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (!active) {
@@ -220,29 +221,48 @@ export function useAutoBackupDelay(
     setRemainingMs(AUTO_BACKUP_DELAY_MS);
     const startedAt = Date.now();
     const intervalId = setInterval(() => {
+      if (finishedRef.current) {
+        clearInterval(intervalId);
+        return;
+      }
       const left = Math.max(0, AUTO_BACKUP_DELAY_MS - (Date.now() - startedAt));
       setRemainingMs(left);
-      if (left <= 0 && !finishedRef.current) {
+      if (left <= 0) {
         finishedRef.current = true;
         clearInterval(intervalId);
         onElapsedRef.current();
       }
     }, 100);
+    intervalRef.current = intervalId;
 
-    return () => clearInterval(intervalId);
+    return () => {
+      clearInterval(intervalId);
+      if (intervalRef.current === intervalId) {
+        intervalRef.current = null;
+      }
+    };
   }, [active]);
+
+  const stopInterval = () => {
+    if (intervalRef.current != null) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  };
 
   const startNow = () => {
     if (finishedRef.current) {
       return;
     }
     finishedRef.current = true;
+    stopInterval();
     setRemainingMs(0);
     onElapsedRef.current();
   };
 
   const cancel = () => {
     finishedRef.current = true;
+    stopInterval();
     setRemainingMs(AUTO_BACKUP_DELAY_MS);
   };
 
