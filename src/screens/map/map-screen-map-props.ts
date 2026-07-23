@@ -64,6 +64,7 @@ export function areMapScreenMapPropsEqual(
     previous.showRouteDirectionArrows === next.showRouteDirectionArrows &&
     previous.routeDirectionMapLatitudeDelta ===
       next.routeDirectionMapLatitudeDelta &&
+    previous.mapUiLatitudeDelta === next.mapUiLatitudeDelta &&
     previous.mapSavedPlaces === next.mapSavedPlaces &&
     previous.dayMomentMapPins === next.dayMomentMapPins &&
     previous.historyMomentMapPins === next.historyMomentMapPins &&

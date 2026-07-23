@@ -219,6 +219,10 @@ export function useMapScreenController() {
   const [clusterMomentsOnMap, setClusterMomentsOnMap] = useState(false);
   const [routeDirectionMapLatitudeDelta, setRouteDirectionMapLatitudeDelta] =
     useState(ROUTE_DIRECTION_ARROW_REF_ZOOM_DELTA);
+  /** Unthrottled zoom for UI thresholds (saved-place dots, etc.). */
+  const [mapUiLatitudeDelta, setMapUiLatitudeDelta] = useState(
+    ROUTE_DIRECTION_ARROW_REF_ZOOM_DELTA,
+  );
   /** Hide geographic arrows while pinching zoom — they only resize on settle. */
   const [mapGestureActive, setMapGestureActive] = useState(false);
 
@@ -264,6 +268,7 @@ export function useMapScreenController() {
   const routeDirectionMapLatitudeDeltaRef = useRef(
     ROUTE_DIRECTION_ARROW_REF_ZOOM_DELTA,
   );
+  const mapUiLatitudeDeltaRef = useRef(ROUTE_DIRECTION_ARROW_REF_ZOOM_DELTA);
   const mapGestureActiveRef = useRef(false);
   /** latitudeDelta at the start of the current drag/pinch (for zoom vs pan). */
   const mapGestureStartDeltaRef = useRef<number | null>(null);
@@ -274,6 +279,12 @@ export function useMapScreenController() {
    */
   const commitMapRegion = useCallback((region: Region) => {
     mapRegionRef.current = region;
+    if (
+      Math.abs(region.latitudeDelta - mapUiLatitudeDeltaRef.current) >= 1e-9
+    ) {
+      mapUiLatitudeDeltaRef.current = region.latitudeDelta;
+      setMapUiLatitudeDelta(region.latitudeDelta);
+    }
     const prevDelta = routeDirectionMapLatitudeDeltaRef.current;
     const zoomChanged =
       Math.abs(region.latitudeDelta - prevDelta) / Math.max(prevDelta, 1e-6) >=
@@ -309,6 +320,8 @@ export function useMapScreenController() {
       mapRegionRef.current = region;
       routeDirectionMapLatitudeDeltaRef.current = region.latitudeDelta;
       setRouteDirectionMapLatitudeDelta(region.latitudeDelta);
+      mapUiLatitudeDeltaRef.current = region.latitudeDelta;
+      setMapUiLatitudeDelta(region.latitudeDelta);
       if (!isWorldFallbackRegion(region)) {
         bootstrapCoordinateRef.current = coordinateFromRegion(region);
         needsDefaultCenterRef.current = true;
@@ -1164,6 +1177,13 @@ export function useMapScreenController() {
     mapRegionRef.current = region;
     mapGestureStartDeltaRef.current = null;
 
+    if (
+      Math.abs(region.latitudeDelta - mapUiLatitudeDeltaRef.current) >= 1e-9
+    ) {
+      mapUiLatitudeDeltaRef.current = region.latitudeDelta;
+      setMapUiLatitudeDelta(region.latitudeDelta);
+    }
+
     const nextClusterMoments = shouldClusterMomentsOnMap(region.latitudeDelta);
     if (nextClusterMoments !== clusterMomentsOnMapRef.current) {
       clusterMomentsOnMapRef.current = nextClusterMoments;
@@ -1931,6 +1951,7 @@ export function useMapScreenController() {
       // trip while scrubbing (the coarse arrowSizeKey limits remount flicker).
       showRouteDirectionArrows: !mapGestureActive,
       routeDirectionMapLatitudeDelta,
+      mapUiLatitudeDelta,
       onRegionChange,
       onRegionChangeComplete,
       currentVisitMomentCounts,
@@ -2053,6 +2074,7 @@ export function useMapScreenController() {
       mapSavedPlaces,
       mapGestureActive,
       routeDirectionMapLatitudeDelta,
+      mapUiLatitudeDelta,
       onRegionChange,
       onRegionChangeComplete,
       currentVisitMomentCounts,

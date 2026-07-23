@@ -429,19 +429,22 @@ async function writeJsonArrayFile(
   }
 
   const stream = await fs.writeStream(path, 'utf8', false);
-  await stream.write('[');
   let bytes = 1;
-  for (let index = 0; index < items.length; index += JSON_ARRAY_WRITE_CHUNK) {
-    const slice = items.slice(index, index + JSON_ARRAY_WRITE_CHUNK);
-    const body = slice.map(item => JSON.stringify(item)).join(',');
-    const piece = (index === 0 ? '' : ',') + body;
-    await stream.write(piece);
-    bytes += utf8ByteLength(piece);
-    onChunk?.(Math.min(index + slice.length, items.length), items.length);
-    await yieldToUi();
+  try {
+    await stream.write('[');
+    for (let index = 0; index < items.length; index += JSON_ARRAY_WRITE_CHUNK) {
+      const slice = items.slice(index, index + JSON_ARRAY_WRITE_CHUNK);
+      const body = slice.map(item => JSON.stringify(item)).join(',');
+      const piece = (index === 0 ? '' : ',') + body;
+      await stream.write(piece);
+      bytes += utf8ByteLength(piece);
+      onChunk?.(Math.min(index + slice.length, items.length), items.length);
+      await yieldToUi();
+    }
+    await stream.write(']');
+  } finally {
+    await stream.close().catch(() => undefined);
   }
-  await stream.write(']');
-  await stream.close();
   return bytes + 1;
 }
 
@@ -456,41 +459,45 @@ async function streamLocationPointsToJsonFile(
   const db = await getDatabase();
   const total = await countLocationPoints();
   const stream = await ReactNativeBlobUtil.fs.writeStream(path, 'utf8', false);
-  await stream.write('[');
 
   let bytes = 1;
   let written = 0;
   let lastId = 0;
   let first = true;
 
-  while (true) {
-    const rows = await db
-      .select()
-      .from(locationPoints)
-      .where(gt(locationPoints.id, lastId))
-      .orderBy(asc(locationPoints.id))
-      .limit(LOCATION_POINT_PAGE_SIZE);
+  try {
+    await stream.write('[');
 
-    if (rows.length === 0) {
-      break;
+    while (true) {
+      const rows = await db
+        .select()
+        .from(locationPoints)
+        .where(gt(locationPoints.id, lastId))
+        .orderBy(asc(locationPoints.id))
+        .limit(LOCATION_POINT_PAGE_SIZE);
+
+      if (rows.length === 0) {
+        break;
+      }
+
+      const parts: string[] = [];
+      for (const row of rows) {
+        parts.push(JSON.stringify(serializeLocationPoint(row)));
+        lastId = row.id;
+      }
+      const piece = (first ? '' : ',') + parts.join(',');
+      first = false;
+      await stream.write(piece);
+      bytes += utf8ByteLength(piece);
+      written += rows.length;
+      onChunk?.(written, Math.max(total, written));
+      await yieldToUi();
     }
 
-    const parts: string[] = [];
-    for (const row of rows) {
-      parts.push(JSON.stringify(serializeLocationPoint(row)));
-      lastId = row.id;
-    }
-    const piece = (first ? '' : ',') + parts.join(',');
-    first = false;
-    await stream.write(piece);
-    bytes += utf8ByteLength(piece);
-    written += rows.length;
-    onChunk?.(written, Math.max(total, written));
-    await yieldToUi();
+    await stream.write(']');
+  } finally {
+    await stream.close().catch(() => undefined);
   }
-
-  await stream.write(']');
-  await stream.close();
   return { bytes: bytes + 1, count: written };
 }
 
@@ -621,10 +628,10 @@ export async function prepareBackupBundle(
     0.9,
   );
 
-  report('Gathering photos and voice notes', 0.8);
+  report('Gathering photos and voice notes', 0.91);
   await yieldToUi();
   const mediaFiles = await collectMomentMediaFiles(message => {
-    report(message, 0.85);
+    report(message, 0.93);
   });
   report('Gathering photos and voice notes', 0.95);
   await yieldToUi();
