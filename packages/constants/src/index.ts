@@ -101,6 +101,11 @@ export const MAP_STACK_BUTTON_RIGHT = 16;
 export const BACKGROUND_WORK_BANNER_BODY_HEIGHT = 64;
 
 export const MAP_USER_ZOOM_DELTA = 0.01;
+/**
+ * Favorite/work stay as icon + label until zoomed out past this latitudeDelta
+ * (~5× default recenter). Farther out they become colored dots. Home stays detailed.
+ */
+export const SAVED_PLACE_DETAILED_MAX_ZOOM_DELTA = 0.05;
 export const VISIT_MAX_ZOOM_DELTA = 0.0008;
 export const MAX_MAP_POLYLINE_POINTS = 320;
 export const MAX_EMPHASIZED_TRIP_POLYLINE_POINTS = 500;

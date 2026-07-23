@@ -63,6 +63,10 @@ export type BackupProgressPhase =
 export type BackupProgress = {
   phase: BackupProgressPhase;
   message: string;
+  /** Unitless step progress (restore / weighted phases). */
   completed?: number;
   total?: number;
+  /** Byte progress for backup export/upload UI. */
+  completedBytes?: number;
+  totalBytes?: number;
 };

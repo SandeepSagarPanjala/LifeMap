@@ -1,4 +1,4 @@
-import { asc, sql } from 'drizzle-orm';
+import { asc, gt, sql } from 'drizzle-orm';
 import ReactNativeBlobUtil from 'react-native-blob-util';
 
 import { getDatabase } from '@/db/client';
@@ -90,10 +90,10 @@ function serializeActivities(
   }));
 }
 
-function serializeLocationPoints(
-  rows: Array<typeof locationPoints.$inferSelect>,
-): unknown[] {
-  return rows.map(row => ({
+function serializeLocationPoint(
+  row: typeof locationPoints.$inferSelect,
+): unknown {
+  return {
     id: row.id,
     timestamp: iso(row.timestamp),
     lat: row.lat,
@@ -113,7 +113,31 @@ function serializeLocationPoints(
     uuid: row.uuid,
     batteryLevel: row.batteryLevel,
     batteryIsCharging: row.batteryIsCharging,
-  }));
+  };
+}
+
+/** UTF-8 byte length without requiring TextEncoder (not always present on RN). */
+function utf8ByteLength(value: string): number {
+  if (typeof TextEncoder !== 'undefined') {
+    return new TextEncoder().encode(value).length;
+  }
+  // Fallback: count UTF-8 bytes manually.
+  let bytes = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    if (code <= 0x7f) {
+      bytes += 1;
+    } else if (code <= 0x7ff) {
+      bytes += 2;
+    } else if (code >= 0xd800 && code <= 0xdbff) {
+      // Surrogate pair
+      bytes += 4;
+      index += 1;
+    } else {
+      bytes += 3;
+    }
+  }
+  return bytes;
 }
 
 function serializeSavedPlaces(
@@ -282,13 +306,16 @@ function parseStartAtMs(record: Record<string, unknown>): number | null {
   return null;
 }
 
-async function collectMomentMediaFiles(): Promise<BackupMediaFile[]> {
+async function collectMomentMediaFiles(
+  onProgress?: (message: string) => void,
+): Promise<BackupMediaFile[]> {
   const momentRows = await getAllMoments();
   const docs = getDocumentDirectory();
   const seen = new Set<string>();
   const files: BackupMediaFile[] = [];
 
-  for (const moment of momentRows) {
+  for (let index = 0; index < momentRows.length; index += 1) {
+    const moment = momentRows[index]!;
     const paths = new Set<string>();
     for (const path of notePhotoAttachmentPaths(moment)) {
       paths.add(path);
@@ -324,50 +351,297 @@ async function collectMomentMediaFiles(): Promise<BackupMediaFile[]> {
         bytes: Number(stat.size ?? 0),
       });
     }
+
+    if (index > 0 && index % 25 === 0) {
+      onProgress?.(
+        `Gathering photos and voice notes (${index}/${momentRows.length})`,
+      );
+      await yieldToUi();
+    }
   }
 
   return files;
 }
 
+const TABLE_EXPORT_LABELS: Record<BackupTableName, string> = {
+  activities: 'Preparing activities',
+  location_points: 'Preparing location history',
+  saved_places: 'Preparing saved places',
+  place_lookup_cache: 'Preparing place lookups',
+  moments: 'Preparing memories',
+  settings: 'Preparing settings',
+  trips: 'Preparing visits and drives',
+};
+
+const TABLE_SAVE_LABELS: Record<BackupTableName, string> = {
+  activities: 'Saving activities',
+  location_points: 'Saving location history',
+  saved_places: 'Saving saved places',
+  place_lookup_cache: 'Saving place lookups',
+  moments: 'Saving memories',
+  settings: 'Saving settings',
+  trips: 'Saving visits and drives',
+};
+
+const LOCATION_POINT_PAGE_SIZE = 25_000;
+const JSON_ARRAY_WRITE_CHUNK = 1_000;
+
+export type BackupByteProgressRange = {
+  baseCompletedBytes: number;
+  phaseSpanBytes: number;
+  totalBytes: number;
+};
+
+function bytesForPhaseFraction(
+  range: BackupByteProgressRange | undefined,
+  fraction: number,
+): { completedBytes?: number; totalBytes?: number } {
+  if (range == null) {
+    return {};
+  }
+  const clamped = Math.min(1, Math.max(0, fraction));
+  return {
+    completedBytes:
+      range.baseCompletedBytes + Math.round(range.phaseSpanBytes * clamped),
+    totalBytes: range.totalBytes,
+  };
+}
+
+async function countLocationPoints(): Promise<number> {
+  const db = await getDatabase();
+  const rows = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(locationPoints);
+  return Number(rows[0]?.count ?? 0);
+}
+
+/** Write a JSON array without one giant stringify that freezes the JS thread. */
+async function writeJsonArrayFile(
+  path: string,
+  items: unknown[],
+  onChunk?: (done: number, total: number) => void,
+): Promise<number> {
+  const fs = ReactNativeBlobUtil.fs;
+  if (items.length <= JSON_ARRAY_WRITE_CHUNK) {
+    const contents = JSON.stringify(items);
+    await fs.writeFile(path, contents, 'utf8');
+    return utf8ByteLength(contents);
+  }
+
+  const stream = await fs.writeStream(path, 'utf8', false);
+  let bytes = 1;
+  try {
+    await stream.write('[');
+    for (let index = 0; index < items.length; index += JSON_ARRAY_WRITE_CHUNK) {
+      const slice = items.slice(index, index + JSON_ARRAY_WRITE_CHUNK);
+      const body = slice.map(item => JSON.stringify(item)).join(',');
+      const piece = (index === 0 ? '' : ',') + body;
+      await stream.write(piece);
+      bytes += utf8ByteLength(piece);
+      onChunk?.(Math.min(index + slice.length, items.length), items.length);
+      await yieldToUi();
+    }
+    await stream.write(']');
+  } finally {
+    await stream.close().catch(() => undefined);
+  }
+  return bytes + 1;
+}
+
+/**
+ * Stream location history from SQLite → JSON in pages so backup does not load
+ * the entire table into memory or block the UI for minutes.
+ */
+async function streamLocationPointsToJsonFile(
+  path: string,
+  onChunk?: (done: number, total: number) => void,
+): Promise<{ bytes: number; count: number }> {
+  const db = await getDatabase();
+  const total = await countLocationPoints();
+  const stream = await ReactNativeBlobUtil.fs.writeStream(path, 'utf8', false);
+
+  let bytes = 1;
+  let written = 0;
+  let lastId = 0;
+  let first = true;
+
+  try {
+    await stream.write('[');
+
+    while (true) {
+      const rows = await db
+        .select()
+        .from(locationPoints)
+        .where(gt(locationPoints.id, lastId))
+        .orderBy(asc(locationPoints.id))
+        .limit(LOCATION_POINT_PAGE_SIZE);
+
+      if (rows.length === 0) {
+        break;
+      }
+
+      const parts: string[] = [];
+      for (const row of rows) {
+        parts.push(JSON.stringify(serializeLocationPoint(row)));
+        lastId = row.id;
+      }
+      const piece = (first ? '' : ',') + parts.join(',');
+      first = false;
+      await stream.write(piece);
+      bytes += utf8ByteLength(piece);
+      written += rows.length;
+      onChunk?.(written, Math.max(total, written));
+      await yieldToUi();
+    }
+
+    await stream.write(']');
+  } finally {
+    await stream.close().catch(() => undefined);
+  }
+  return { bytes: bytes + 1, count: written };
+}
+
 export async function prepareBackupBundle(
   appVersion: string,
+  onProgress?: (progress: BackupProgress) => void,
+  progressRange?: BackupByteProgressRange,
 ): Promise<PreparedBackupBundle> {
   const db = await getDatabase();
-  const [
-    activityRows,
-    locationPointRows,
-    savedPlaceRows,
-    placeLookupRows,
-    momentRows,
-    settingRows,
-    tripRows,
-  ] = await Promise.all([
-    db
-      .select()
-      .from(activities)
-      .orderBy(asc(activities.sortOrder), asc(activities.id)),
-    db.select().from(locationPoints).orderBy(asc(locationPoints.timestamp)),
-    db.select().from(savedPlaces).orderBy(asc(savedPlaces.createdAt)),
-    db.select().from(placeLookupCache).orderBy(asc(placeLookupCache.id)),
-    db.select().from(moments).orderBy(asc(moments.timestamp)),
-    db.select().from(settings).orderBy(asc(settings.key)),
-    db.select().from(trips).orderBy(asc(trips.startAt)),
-  ]);
-
-  const tables: BackupBundleTables = {
-    activities: serializeActivities(activityRows),
-    location_points: serializeLocationPoints(locationPointRows),
-    saved_places: serializeSavedPlaces(savedPlaceRows),
-    place_lookup_cache: serializePlaceLookupCache(placeLookupRows),
-    moments: serializeMoments(momentRows),
-    settings: serializeSettings(settingRows),
-    trips: serializeTrips(tripRows),
+  const report = (message: string, fraction: number) => {
+    onProgress?.({
+      phase: 'exporting',
+      message,
+      ...bytesForPhaseFraction(progressRange, fraction),
+    });
   };
 
-  const mediaFiles = await collectMomentMediaFiles();
+  report('Preparing your map data', 0);
+  await yieldToUi();
+
+  report(TABLE_EXPORT_LABELS.activities, 0.05);
+  await yieldToUi();
+  const activityRows = await db
+    .select()
+    .from(activities)
+    .orderBy(asc(activities.sortOrder), asc(activities.id));
+
+  // Count only — full location history is streamed to disk during write.
+  report(TABLE_EXPORT_LABELS.location_points, 0.1);
+  await yieldToUi();
+  const locationPointCount = await countLocationPoints();
+  report(
+    `Preparing location history (${locationPointCount.toLocaleString()} points)`,
+    0.2,
+  );
+  await yieldToUi();
+
+  report(TABLE_EXPORT_LABELS.saved_places, 0.25);
+  await yieldToUi();
+  const savedPlaceRows = await db
+    .select()
+    .from(savedPlaces)
+    .orderBy(asc(savedPlaces.createdAt));
+
+  report(TABLE_EXPORT_LABELS.place_lookup_cache, 0.35);
+  await yieldToUi();
+  const placeLookupRows = await db
+    .select()
+    .from(placeLookupCache)
+    .orderBy(asc(placeLookupCache.id));
+
+  report(TABLE_EXPORT_LABELS.moments, 0.45);
+  await yieldToUi();
+  const momentRows = await db
+    .select()
+    .from(moments)
+    .orderBy(asc(moments.timestamp));
+
+  report(TABLE_EXPORT_LABELS.settings, 0.55);
+  await yieldToUi();
+  const settingRows = await db
+    .select()
+    .from(settings)
+    .orderBy(asc(settings.key));
+
+  report(TABLE_EXPORT_LABELS.trips, 0.6);
+  await yieldToUi();
+  const tripRows = await db.select().from(trips).orderBy(asc(trips.startAt));
+
+  report('Packaging your map data', 0.7);
+  await yieldToUi();
+  const tables: BackupBundleTables = {
+    activities: serializeActivities(activityRows),
+    // Streamed during write — keeping millions of rows here freezes the app.
+    location_points: [],
+    saved_places: serializeSavedPlaces(savedPlaceRows),
+    place_lookup_cache: [],
+    moments: [],
+    settings: serializeSettings(settingRows),
+    trips: [],
+  };
+
+  // Serialize larger tables in slices so React can keep painting progress.
+  const serializeChunked = async <T,>(
+    rows: T[],
+    serialize: (rows: T[]) => unknown[],
+    message: string,
+    startFraction: number,
+    endFraction: number,
+  ): Promise<unknown[]> => {
+    const chunkSize = 400;
+    const out: unknown[] = [];
+    for (let index = 0; index < rows.length; index += chunkSize) {
+      const slice = rows.slice(index, index + chunkSize);
+      out.push(...serialize(slice));
+      const fraction =
+        startFraction +
+        ((endFraction - startFraction) * Math.min(index + chunkSize, rows.length)) /
+          Math.max(rows.length, 1);
+      report(
+        `${message} (${Math.min(index + chunkSize, rows.length).toLocaleString()}/${rows.length.toLocaleString()})`,
+        fraction,
+      );
+      await yieldToUi();
+    }
+    return out;
+  };
+
+  tables.place_lookup_cache = await serializeChunked(
+    placeLookupRows,
+    serializePlaceLookupCache,
+    'Preparing place lookups',
+    0.7,
+    0.78,
+  );
+  tables.moments = await serializeChunked(
+    momentRows,
+    serializeMoments,
+    'Preparing memories',
+    0.78,
+    0.86,
+  );
+  tables.trips = await serializeChunked(
+    tripRows,
+    serializeTrips,
+    'Preparing visits and drives',
+    0.86,
+    0.9,
+  );
+
+  report('Gathering photos and voice notes', 0.91);
+  await yieldToUi();
+  const mediaFiles = await collectMomentMediaFiles(message => {
+    report(message, 0.93);
+  });
+  report('Gathering photos and voice notes', 0.95);
+  await yieldToUi();
+
   const mediaBytes = mediaFiles.reduce((sum, file) => sum + file.bytes, 0);
   const tableCounts = BACKUP_TABLE_NAMES.reduce((counts, tableName) => {
-    counts[tableName] = tables[tableName].length;
+    counts[tableName] =
+      tableName === 'location_points'
+        ? locationPointCount
+        : tables[tableName].length;
     return counts;
   }, {} as Record<BackupTableName, number>);
 
@@ -383,6 +657,7 @@ export async function prepareBackupBundle(
     totalBytes: mediaBytes,
   };
 
+  report('Preparing your map data', 1);
   return {
     manifest,
     tables,
@@ -394,32 +669,103 @@ export async function prepareBackupBundle(
 export async function writeBackupBundleToDirectory(
   bundle: PreparedBackupBundle,
   directoryPath: string,
-): Promise<void> {
+  onProgress?: (progress: BackupProgress) => void,
+  progressRange?: BackupByteProgressRange,
+): Promise<number> {
   const fs = ReactNativeBlobUtil.fs;
   await ensureDirectory(`${directoryPath}/db`);
   await ensureDirectory(`${directoryPath}/media`);
 
-  await fs.writeFile(
+  const locationPointCount = bundle.manifest.tableCounts.location_points ?? 0;
+  const estimatedDbBytes =
+    locationPointCount * 96 +
+    Object.entries(bundle.manifest.tableCounts).reduce((sum, [name, count]) => {
+      if (name === 'location_points') {
+        return sum;
+      }
+      return sum + Math.max(count, 0) * 180;
+    }, 0) +
+    64_000;
+  const estimatedWriteTotal = Math.max(
+    bundle.mediaFiles.reduce((sum, file) => sum + file.bytes, 0) +
+      estimatedDbBytes,
+    1,
+  );
+
+  let writtenBytes = 0;
+
+  const report = (
+    message: string,
+    phase: BackupProgress['phase'],
+    fractionOverride?: number,
+  ) => {
+    const fraction =
+      fractionOverride ??
+      Math.min(0.99, writtenBytes / Math.max(estimatedWriteTotal, 1));
+    onProgress?.({
+      phase,
+      message,
+      ...bytesForPhaseFraction(progressRange, fraction),
+    });
+  };
+
+  const writeText = async (path: string, contents: string, message: string) => {
+    await fs.writeFile(path, contents, 'utf8');
+    writtenBytes += utf8ByteLength(contents);
+    report(message, 'exporting');
+    await yieldToUi();
+  };
+
+  await writeText(
     `${directoryPath}/manifest.json`,
     JSON.stringify(bundle.manifest, null, 2),
-    'utf8',
+    'Saving backup summary',
   );
 
   for (const tableName of BACKUP_TABLE_NAMES) {
-    await fs.writeFile(
-      `${directoryPath}/db/${tableName}.json`,
-      JSON.stringify(bundle.tables[tableName], null, 0),
-      'utf8',
-    );
+    const filePath = `${directoryPath}/db/${tableName}.json`;
+    if (tableName === 'location_points') {
+      report(TABLE_SAVE_LABELS.location_points, 'exporting');
+      await yieldToUi();
+      const streamed = await streamLocationPointsToJsonFile(
+        filePath,
+        (done, total) => {
+          const tableFraction = done / Math.max(total, 1);
+          // Location history is the bulk of DB work — map into write progress.
+          const dbShare = estimatedDbBytes / Math.max(estimatedWriteTotal, 1);
+          report(
+            `Saving location history (${done.toLocaleString()}/${total.toLocaleString()})`,
+            'exporting',
+            Math.min(0.85, tableFraction * dbShare + 0.05),
+          );
+        },
+      );
+      writtenBytes += streamed.bytes;
+      continue;
+    }
+
+    const rows = bundle.tables[tableName];
+    report(TABLE_SAVE_LABELS[tableName], 'exporting');
+    await yieldToUi();
+    const bytes = await writeJsonArrayFile(filePath, rows, (done, total) => {
+      report(
+        `${TABLE_SAVE_LABELS[tableName]} (${done.toLocaleString()}/${total.toLocaleString()})`,
+        'exporting',
+      );
+    });
+    writtenBytes += bytes;
+    report(TABLE_SAVE_LABELS[tableName], 'exporting');
+    await yieldToUi();
   }
 
-  await fs.writeFile(
+  await writeText(
     `${directoryPath}/db/trip_overrides.json`,
     JSON.stringify(bundle.tripOverrides, null, 0),
-    'utf8',
+    'Saving visit labels',
   );
 
-  for (const file of bundle.mediaFiles) {
+  for (let index = 0; index < bundle.mediaFiles.length; index += 1) {
+    const file = bundle.mediaFiles[index]!;
     const destination = `${directoryPath}/media/${file.relativePath.replace(
       /^moments\//,
       '',
@@ -429,7 +775,21 @@ export async function writeBackupBundleToDirectory(
       await ensureDirectory(destinationDir);
     }
     await fs.cp(file.absolutePath, destination);
+    writtenBytes += file.bytes;
+    report(
+      `Copying memories (${index + 1}/${bundle.mediaFiles.length})`,
+      'copying_media',
+    );
+    await yieldToUi();
   }
+
+  onProgress?.({
+    phase: 'copying_media',
+    message: 'Copying memories',
+    ...bytesForPhaseFraction(progressRange, 1),
+  });
+
+  return writtenBytes;
 }
 
 const TABLE_READ_LABELS: Record<BackupTableName, string> = {

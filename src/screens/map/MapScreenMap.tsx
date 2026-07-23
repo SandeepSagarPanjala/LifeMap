@@ -68,6 +68,7 @@ export const MapScreenMap = memo(
       dayMoments,
       showRouteDirectionArrows,
       routeDirectionMapLatitudeDelta,
+      mapUiLatitudeDelta,
     } = controller;
 
     if (mapInitialRegion == null) {
@@ -103,6 +104,7 @@ export const MapScreenMap = memo(
         <SavedPlacesMapOverlay
           places={mapSavedPlaces}
           momentClusters={savedPlaceMomentClusters}
+          mapLatitudeDelta={mapUiLatitudeDelta}
           hideMarkerPlaceId={
             showHistoryMap
               ? selectedSavedPlace?.id ??

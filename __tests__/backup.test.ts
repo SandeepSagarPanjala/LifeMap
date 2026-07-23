@@ -71,8 +71,13 @@ describe('backup settings', () => {
     const { isBackupDue } = require('../src/lib/backup/backup-settings');
     const now = new Date('2026-06-21T12:00:00.000Z');
     const yesterday = new Date('2026-06-20T11:00:00.000Z');
+    const eightDaysAgo = new Date('2026-06-13T12:00:00.000Z');
+    const thirtyOneDaysAgo = new Date('2026-05-21T12:00:00.000Z');
     expect(isBackupDue('off', yesterday, now)).toBe(false);
     expect(isBackupDue('daily', yesterday, now)).toBe(true);
     expect(isBackupDue('weekly', yesterday, now)).toBe(false);
+    expect(isBackupDue('weekly', eightDaysAgo, now)).toBe(true);
+    expect(isBackupDue('monthly', eightDaysAgo, now)).toBe(false);
+    expect(isBackupDue('monthly', thirtyOneDaysAgo, now)).toBe(true);
   });
 });

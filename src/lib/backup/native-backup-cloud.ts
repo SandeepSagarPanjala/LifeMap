@@ -33,7 +33,26 @@ function withTimeout<T>(
   ]);
 }
 
+export function withTimeoutReject<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  message: string,
+): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    if (timeoutId != null) {
+      clearTimeout(timeoutId);
+    }
+  });
+}
+
 export { withTimeout };
+
+/** Large media backups can take a while on slow iCloud links. */
+export const BACKUP_UPLOAD_TIMEOUT_MS = 10 * 60 * 1000;
 
 function getAndroidBackupDirectory(slot: string): string {
   return `${ReactNativeBlobUtil.fs.dirs.DocumentDir}/${ANDROID_BACKUP_ROOT}/${slot}`;
@@ -210,14 +229,22 @@ export async function getCloudBackupMetadataForOperation(): Promise<CloudBackupM
 export async function uploadBackupDirectory(
   localDirectoryPath: string,
 ): Promise<void> {
-  if (Platform.OS === 'ios') {
-    if (!nativeModule?.uploadBackupDirectory) {
-      throw new Error('iCloud backup is not available on this build.');
+  const upload = async () => {
+    if (Platform.OS === 'ios') {
+      if (!nativeModule?.uploadBackupDirectory) {
+        throw new Error('iCloud backup is not available on this build.');
+      }
+      await nativeModule.uploadBackupDirectory(localDirectoryPath);
+      return;
     }
-    await nativeModule.uploadBackupDirectory(localDirectoryPath);
-    return;
-  }
-  await androidUploadBackupDirectory(localDirectoryPath);
+    await androidUploadBackupDirectory(localDirectoryPath);
+  };
+
+  await withTimeoutReject(
+    upload(),
+    BACKUP_UPLOAD_TIMEOUT_MS,
+    `Backup timed out while uploading to ${getCloudProviderLabel()}. Try again on Wi‑Fi.`,
+  );
 }
 
 export async function downloadBackupDirectory(

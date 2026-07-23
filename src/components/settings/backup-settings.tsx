@@ -43,7 +43,12 @@ import {
 import type { BackupProgress } from '@/lib/backup/backup-types';
 import { formatStorageBytes } from '@/lib/format-storage';
 
-const SCHEDULE_OPTIONS: BackupAutoSchedule[] = ['off', 'daily', 'weekly'];
+const SCHEDULE_OPTIONS: BackupAutoSchedule[] = [
+  'off',
+  'daily',
+  'weekly',
+  'monthly',
+];
 
 function formatBackupTimestamp(value: Date | string | null): string {
   if (!value) {

@@ -13,7 +13,10 @@ import {
   matchSavedPlaceForTripEndpoint,
   normalizeSavedPlaceLabel,
 } from '../src/lib/saved-places';
-import { shouldShowSavedPlaceCircles } from '../src/lib/saved-places-map';
+import {
+  shouldShowSavedPlaceAsDot,
+  shouldShowSavedPlaceCircles,
+} from '../src/lib/saved-places-map';
 import type { DetectedTrip } from '../src/lib/trip-detection';
 
 function place(
@@ -265,5 +268,23 @@ describe('saved places map circles', () => {
 
   it('hides circles when zoomed far out', () => {
     expect(shouldShowSavedPlaceCircles(0.05)).toBe(false);
+  });
+});
+
+describe('saved places map dots', () => {
+  it('never collapses home to a dot', () => {
+    expect(shouldShowSavedPlaceAsDot('home', 0.2)).toBe(false);
+    expect(shouldShowSavedPlaceAsDot('home', 0.005)).toBe(false);
+  });
+
+  it('keeps favorite and work detailed near default zoom', () => {
+    expect(shouldShowSavedPlaceAsDot('favorite', 0.01)).toBe(false);
+    expect(shouldShowSavedPlaceAsDot('work', 0.04)).toBe(false);
+    expect(shouldShowSavedPlaceAsDot('favorite', 0.05)).toBe(false);
+  });
+
+  it('collapses favorite and work to dots only when zoomed out further', () => {
+    expect(shouldShowSavedPlaceAsDot('favorite', 0.051)).toBe(true);
+    expect(shouldShowSavedPlaceAsDot('work', 0.08)).toBe(true);
   });
 });
