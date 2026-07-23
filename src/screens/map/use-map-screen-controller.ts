@@ -94,6 +94,7 @@ import {
   MAP_SETTINGS_TOP_GAP,
   MAP_STACK_BUTTON_GAP,
   MAP_STACK_BUTTON_SIZE,
+  MAP_RIGHT_STACK_COUNT,
   MAP_USER_ZOOM_DELTA,
   MAX_SAVED_PLACES,
   RECENTER_FRESH_CACHE_MS,
@@ -683,6 +684,7 @@ export function useMapScreenController() {
   const voiceButtonBottom = mapStackButtonBottom(stackBaseBottom, 1);
   const noteButtonBottom = mapStackButtonBottom(stackBaseBottom, 2);
   const activityButtonBottom = mapStackButtonBottom(stackBaseBottom, 3);
+  const youButtonBottom = mapStackButtonBottom(stackBaseBottom, 4);
 
   const dateNavAnchorBottom = stackBaseBottom;
 
@@ -692,7 +694,15 @@ export function useMapScreenController() {
     MAP_STACK_BUTTON_SIZE,
     MAP_STACK_BUTTON_GAP,
   );
-  const floatingControlsClearance = stackBaseBottom + leftStackHeight + 16;
+  const rightStackHeight = viewingToday
+    ? mapStackTotalHeight(
+        MAP_RIGHT_STACK_COUNT,
+        MAP_STACK_BUTTON_SIZE,
+        MAP_STACK_BUTTON_GAP,
+      )
+    : 0;
+  const floatingControlsClearance =
+    stackBaseBottom + Math.max(leftStackHeight, rightStackHeight) + 16;
 
   const backgroundWorkBannerVisible = useSyncExternalStore(
     subscribeBackgroundWork,
@@ -1580,6 +1590,10 @@ export function useMapScreenController() {
     navigation.navigate('Settings');
   }, [navigation]);
 
+  const openYou = useCallback(() => {
+    navigation.navigate('You');
+  }, [navigation]);
+
   const openCaptureVoice = useCallback(() => {
     navigation.navigate('CaptureVoice');
   }, [navigation]);
@@ -1904,6 +1918,7 @@ export function useMapScreenController() {
       voiceButtonBottom,
       noteButtonBottom,
       activityButtonBottom,
+      youButtonBottom,
       openCaptureVoice,
       openCaptureActivity,
       handleCaptureCamera,
@@ -2002,6 +2017,7 @@ export function useMapScreenController() {
       handleSaveFavoritePlace,
       openSavedPlaces,
       openSettings,
+      openYou,
       goToCurrentLocation,
       openHistoryDatePicker,
       handleSelectMapDate,
@@ -2029,6 +2045,7 @@ export function useMapScreenController() {
       voiceButtonBottom,
       noteButtonBottom,
       activityButtonBottom,
+      youButtonBottom,
       openCaptureVoice,
       openCaptureActivity,
       handleCaptureCamera,
@@ -2124,6 +2141,7 @@ export function useMapScreenController() {
       handleSaveFavoritePlace,
       openSavedPlaces,
       openSettings,
+      openYou,
       goToCurrentLocation,
       openHistoryDatePicker,
       handleSelectMapDate,

@@ -16,9 +16,9 @@ describe('map stack layout', () => {
     expect(mapStackButtonBottom(20, 3)).toBe(176);
   });
 
-  it('uses matching layout for left nav and right capture stacks', () => {
+  it('keeps left nav shorter than the right capture + You stack', () => {
     expect(MAP_LEFT_STACK_COUNT).toBe(4);
-    expect(MAP_RIGHT_STACK_COUNT).toBe(4);
+    expect(MAP_RIGHT_STACK_COUNT).toBe(5);
     expect(
       mapStackTotalHeight(
         MAP_LEFT_STACK_COUNT,
@@ -32,6 +32,6 @@ describe('map stack layout', () => {
         MAP_STACK_BUTTON_SIZE,
         MAP_STACK_BUTTON_GAP,
       ),
-    ).toBe(200);
+    ).toBe(252);
   });
 });

@@ -9,6 +9,7 @@ import { MapSettingsButton } from '@/components/map/MapSettingsButton';
 import { MapPlacesButton } from '@/components/map/MapPlacesButton';
 import { MapActivityButton } from '@/components/map/MapActivityButton';
 import { MapVoiceButton } from '@/components/map/MapVoiceButton';
+import { MapYouButton } from '@/components/map/MapYouButton';
 
 import type { MapScreenController } from './use-map-screen-controller';
 
@@ -31,6 +32,7 @@ export const MapScreenFloatingControls = memo(
       voiceButtonBottom,
       noteButtonBottom,
       activityButtonBottom,
+      youButtonBottom,
       goToCurrentLocation,
       openSavedPlaces,
       handleToggleHistoryPanel,
@@ -39,6 +41,7 @@ export const MapScreenFloatingControls = memo(
       openCaptureActivity,
       handleCaptureNote,
       openSettings,
+      openYou,
       historyBadgeCount,
       trackingGapWarning,
       emptySelectedDayMessage,
@@ -98,6 +101,7 @@ export const MapScreenFloatingControls = memo(
               bottom={activityButtonBottom}
               onPress={openCaptureActivity}
             />
+            <MapYouButton bottom={youButtonBottom} onPress={openYou} />
           </>
         ) : null}
 
