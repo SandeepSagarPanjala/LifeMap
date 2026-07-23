@@ -235,6 +235,7 @@ export const APP_COPY = {
     restoring: 'Restoring LifeMap',
     scheduleDaily: 'Daily',
     scheduleWeekly: 'Weekly',
+    scheduleMonthly: 'Monthly',
     scheduleOff: 'Off',
   },
 } as const;

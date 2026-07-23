@@ -10,14 +10,6 @@ import {
 } from './backup-export';
 import { hasLocalUserData } from './backup-clear';
 import {
-  getBackupStagingDirectory,
-  getCloudBackupMetadataForOperation,
-  getCloudProviderLabel,
-  isCloudBackupAvailable,
-  uploadBackupDirectory,
-} from './native-backup-cloud';
-import {
-  computeDirectoryBytes,
   prepareEmptyDirectory,
   removeDirectoryRecursive,
 } from './backup-fs';
@@ -25,8 +17,19 @@ import {
   getBackupAutoSchedule,
   isBackupDue,
   getBackupLastAt,
+  markBackupInProgress,
+  clearBackupInProgress,
   recordBackupCompletion,
+  recordBackupSkip,
+  clearInterruptedBackupIfNeeded,
 } from './backup-settings';
+import {
+  getBackupStagingDirectory,
+  getCloudBackupMetadataForOperation,
+  getCloudProviderLabel,
+  isCloudBackupAvailable,
+  uploadBackupDirectory,
+} from './native-backup-cloud';
 import type { BackupProgress, CloudBackupMetadata } from './backup-types';
 
 export type BackupStatus = {
@@ -113,18 +116,59 @@ export async function shouldPromptBeforeCloudBackupReplace(): Promise<{
   return { cloudBackup, localEstimateBytes: localBaselineBytes };
 }
 
+/**
+ * Local prepare/write is ~half the work; cloud upload is the other half when
+ * we cannot stream native upload bytes.
+ */
+function reportProgress(
+  onProgress: ((progress: BackupProgress) => void) | undefined,
+  progress: BackupProgress,
+): void {
+  onProgress?.(progress);
+}
+
 export async function runBackupNow(
   onProgress?: (progress: BackupProgress) => void,
 ): Promise<{ totalBytes: number }> {
-  onProgress?.({ phase: 'exporting', message: 'Exporting your data…' });
-  const bundle = await prepareBackupBundle(await getAppVersionLabel());
+  await markBackupInProgress();
   const stagingPath = getBackupStagingDirectory();
+
   try {
+    const estimatedBytes = Math.max(await estimateLocalBackupBytes(), 1);
+    const prepareSpan = Math.round(estimatedBytes * 0.3);
+    const writeSpan = Math.max(estimatedBytes - prepareSpan, 1);
+
+    reportProgress(onProgress, {
+      phase: 'exporting',
+      message: 'Preparing your map data',
+      completedBytes: 0,
+      totalBytes: estimatedBytes,
+    });
+
+    const bundle = await prepareBackupBundle(
+      await getAppVersionLabel(),
+      onProgress,
+      {
+        baseCompletedBytes: 0,
+        phaseSpanBytes: prepareSpan,
+        totalBytes: estimatedBytes,
+      },
+    );
+
     await prepareEmptyDirectory(stagingPath);
 
-    onProgress?.({ phase: 'copying_media', message: 'Copying memories…' });
-    await writeBackupBundleToDirectory(bundle, stagingPath);
-    const totalBytes = await computeDirectoryBytes(stagingPath);
+    const writtenBytes = await writeBackupBundleToDirectory(
+      bundle,
+      stagingPath,
+      onProgress,
+      {
+        baseCompletedBytes: prepareSpan,
+        phaseSpanBytes: writeSpan,
+        totalBytes: estimatedBytes,
+      },
+    );
+
+    const totalBytes = Math.max(writtenBytes, 1);
     bundle.manifest.totalBytes = totalBytes;
 
     await ReactNativeBlobUtil.fs.writeFile(
@@ -133,30 +177,64 @@ export async function runBackupNow(
       'utf8',
     );
 
-    onProgress?.({
+    const provider = getCloudProviderLabel();
+    reportProgress(onProgress, {
       phase: 'uploading',
-      message: `Uploading to ${getCloudProviderLabel()}…`,
+      message: `Uploading to ${provider}`,
+      completedBytes: Math.round(totalBytes * 0.92),
+      totalBytes,
     });
-    await uploadBackupDirectory(stagingPath);
+
+    // Soft progress while native upload has no byte callbacks.
+    let uploadTick = 0;
+    const uploadPulse = setInterval(() => {
+      uploadTick += 1;
+      const pulsed = Math.min(
+        totalBytes - 1,
+        Math.round(totalBytes * (0.92 + Math.min(uploadTick, 20) * 0.003)),
+      );
+      reportProgress(onProgress, {
+        phase: 'uploading',
+        message: `Uploading to ${provider}`,
+        completedBytes: pulsed,
+        totalBytes,
+      });
+    }, 1_000);
+
+    try {
+      await uploadBackupDirectory(stagingPath);
+    } finally {
+      clearInterval(uploadPulse);
+    }
+
+    reportProgress(onProgress, {
+      phase: 'uploading',
+      message: 'Backup complete',
+      completedBytes: totalBytes,
+      totalBytes,
+    });
+
     await recordBackupCompletion(totalBytes);
-    const { hasLocalUserData } = await import('./backup-clear');
     const { markRestoreCompleted } = await import('./backup-install-state');
     if (await hasLocalUserData()) {
       await markRestoreCompleted();
     }
 
     return { totalBytes };
+  } catch (error) {
+    await clearBackupInProgress().catch(() => undefined);
+    throw error;
   } finally {
     await removeDirectoryRecursive(stagingPath).catch(() => undefined);
   }
 }
 
-export async function maybeRunScheduledBackup(
-  onProgress?: (progress: BackupProgress) => void,
-): Promise<boolean> {
+export async function isScheduledBackupDue(): Promise<boolean> {
   if (Platform.OS !== 'ios' && Platform.OS !== 'android') {
     return false;
   }
+
+  await clearInterruptedBackupIfNeeded();
 
   const schedule = await getBackupAutoSchedule();
   const lastAt = await getBackupLastAt();
@@ -164,14 +242,28 @@ export async function maybeRunScheduledBackup(
     return false;
   }
 
-  const hasData = await hasLocalUserData();
-  if (!hasData) {
+  return hasLocalUserData();
+}
+
+export async function skipScheduledBackup(): Promise<void> {
+  await recordBackupSkip();
+}
+
+export async function maybeRunScheduledBackup(
+  onProgress?: (progress: BackupProgress) => void,
+): Promise<boolean> {
+  if (!(await isScheduledBackupDue())) {
     return false;
   }
 
-  onProgress?.({ phase: 'exporting', message: 'Starting automatic backup…' });
-  await runBackupNow(onProgress);
-  return true;
+  try {
+    await runBackupNow(onProgress);
+    return true;
+  } catch {
+    // Don't leave the user stuck retrying every foreground — skip this window.
+    await recordBackupSkip().catch(() => undefined);
+    return false;
+  }
 }
 
 export async function isWiFiConnected(): Promise<boolean> {

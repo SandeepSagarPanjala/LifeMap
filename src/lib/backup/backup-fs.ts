@@ -63,6 +63,6 @@ export async function computeDirectoryBytes(
 
 export async function yieldToUi(): Promise<void> {
   await new Promise<void>(resolve => {
-    setImmediate(resolve);
+    setTimeout(resolve, 0);
   });
 }

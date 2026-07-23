@@ -15,6 +15,7 @@ import { getAppVersionLabel } from '@/lib/app-version';
 import { formatStorageBytes } from '@/lib/format-storage';
 
 import {
+  estimateLocalBackupBytes,
   prepareBackupBundle,
   readBackupBundleFromDirectory,
   writeBackupBundleToDirectory,
@@ -67,14 +68,39 @@ function getDriveRestoreStagingPath(): string {
 export async function exportBackupToDrive(
   onProgress?: (progress: BackupProgress | null) => void,
 ): Promise<{ totalBytes: number }> {
-  onProgress?.({ phase: 'exporting', message: 'Exporting your data…' });
-  const bundle = await prepareBackupBundle(await getAppVersionLabel());
+  const estimatedBytes = Math.max(await estimateLocalBackupBytes(), 1);
+  const prepareSpan = Math.round(estimatedBytes * 0.3);
+  const writeSpan = Math.max(estimatedBytes - prepareSpan, 1);
+
+  onProgress?.({
+    phase: 'exporting',
+    message: 'Preparing your map data',
+    completedBytes: 0,
+    totalBytes: estimatedBytes,
+  });
+  const bundle = await prepareBackupBundle(
+    await getAppVersionLabel(),
+    progress => onProgress?.(progress),
+    {
+      baseCompletedBytes: 0,
+      phaseSpanBytes: prepareSpan,
+      totalBytes: estimatedBytes,
+    },
+  );
   const stagingPath = getBackupStagingDirectory();
   await prepareEmptyDirectory(stagingPath);
 
-  onProgress?.({ phase: 'copying_media', message: 'Copying memories…' });
-  await writeBackupBundleToDirectory(bundle, stagingPath);
-  const totalBytes = await computeDirectoryBytes(stagingPath);
+  const writtenBytes = await writeBackupBundleToDirectory(
+    bundle,
+    stagingPath,
+    progress => onProgress?.(progress),
+    {
+      baseCompletedBytes: prepareSpan,
+      phaseSpanBytes: writeSpan,
+      totalBytes: estimatedBytes,
+    },
+  );
+  const totalBytes = Math.max(writtenBytes, await computeDirectoryBytes(stagingPath), 1);
   bundle.manifest.totalBytes = totalBytes;
 
   await ReactNativeBlobUtil.fs.writeFile(
@@ -87,7 +113,12 @@ export async function exportBackupToDrive(
   const zipPath = `${ReactNativeBlobUtil.fs.dirs.CacheDir}/${filename}`;
 
   try {
-    onProgress?.({ phase: 'uploading', message: 'Creating backup file…' });
+    onProgress?.({
+      phase: 'uploading',
+      message: 'Creating backup file',
+      completedBytes: Math.round(totalBytes * 0.95),
+      totalBytes,
+    });
     if (await ReactNativeBlobUtil.fs.exists(zipPath)) {
       await ReactNativeBlobUtil.fs.unlink(zipPath);
     }
