@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type ComponentRef } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 
@@ -40,6 +40,7 @@ export function ProfileEditSheet({
   onSave,
 }: ProfileEditSheetProps) {
   const colors = useThemeColors();
+  const nameInputRef = useRef<ComponentRef<typeof BottomSheetTextInput>>(null);
   const [name, setName] = useState(initialName);
   const [gender, setGender] = useState<ProfileGender | null>(initialGender);
 
@@ -49,6 +50,15 @@ export function ProfileEditSheet({
       setGender(initialGender);
     }
   }, [initialGender, initialName, visible]);
+
+  // Gorhom needs the sheet presented before focus() works — same as ActivityFormSheet.
+  useEffect(() => {
+    if (!visible || nameLocked) {
+      return;
+    }
+    const timer = setTimeout(() => nameInputRef.current?.focus(), 400);
+    return () => clearTimeout(timer);
+  }, [nameLocked, visible]);
 
   const confirmAndSave = () => {
     const cleaned = sanitizeDisplayNameInput(name);
@@ -101,7 +111,7 @@ export function ProfileEditSheet({
 
       <Text className="mt-4 text-sm font-medium">First name or nickname</Text>
       <BottomSheetTextInput
-        autoFocus={!nameLocked}
+        ref={nameInputRef}
         editable={!nameLocked}
         value={name}
         onChangeText={text => setName(sanitizeDisplayNameInput(text))}

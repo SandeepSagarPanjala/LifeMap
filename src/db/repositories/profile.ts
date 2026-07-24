@@ -9,7 +9,6 @@ import {
 } from '@/lib/profile/display-name';
 import {
   friendCodeFromUserId,
-  isFriendCode,
 } from '@/lib/profile/friend-code';
 import {
   PROFILE_SETTING_KEYS,
@@ -30,13 +29,14 @@ export async function ensureUserId(): Promise<string> {
 }
 
 export async function ensureFriendCode(userId: string): Promise<string> {
+  const expected = friendCodeFromUserId(userId);
   const existing = await getSetting(PROFILE_SETTING_KEYS.friendCode);
-  if (existing && isFriendCode(existing)) {
+  // Recompute when missing or out of sync with userId (derived-from-id contract).
+  if (existing === expected) {
     return existing;
   }
-  const friendCode = friendCodeFromUserId(userId);
-  await setSetting(PROFILE_SETTING_KEYS.friendCode, friendCode);
-  return friendCode;
+  await setSetting(PROFILE_SETTING_KEYS.friendCode, expected);
+  return expected;
 }
 
 export async function loadProfile(): Promise<UserProfile> {
