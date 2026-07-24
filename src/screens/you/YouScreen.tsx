@@ -8,9 +8,7 @@ import {
   type LucideIcon,
 } from 'lucide-react-native';
 import {
-  createContext,
   useCallback,
-  useContext,
   useLayoutEffect,
   useMemo,
   useState,
@@ -18,11 +16,11 @@ import {
 import { Modal, Pressable, View } from 'react-native';
 import {
   createBottomTabNavigator,
-  type BottomTabBarButtonProps,
   type BottomTabScreenProps,
 } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { LiquidGlassTabBar } from '@/components/you/LiquidGlassTabBar';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -41,14 +39,6 @@ type TabBarIconProps = {
   color: string;
   size: number;
 };
-
-const MoreMenuContext = createContext<{
-  moreOpen: boolean;
-  openMore: () => void;
-}>({
-  moreOpen: false,
-  openMore: () => undefined,
-});
 
 function ProfileTabIcon({ color, size }: TabBarIconProps) {
   return <Icon as={UserRound} size={size} color={color} />;
@@ -181,25 +171,7 @@ function MoreMenuSheet({
   );
 }
 
-function MoreTabBarButton(props: BottomTabBarButtonProps) {
-  const { moreOpen, openMore } = useContext(MoreMenuContext);
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="More"
-      accessibilityState={{ expanded: moreOpen }}
-      onPress={openMore}
-      className="flex-1 items-center justify-center"
-      style={props.style}
-    >
-      {props.children}
-    </Pressable>
-  );
-}
-
 export function YouScreen() {
-  const colors = useThemeColors();
   const [moreOpen, setMoreOpen] = useState(false);
 
   const openMore = useCallback(() => {
@@ -210,33 +182,23 @@ export function YouScreen() {
     setMoreOpen(false);
   }, []);
 
-  const moreMenuValue = useMemo(
-    () => ({ moreOpen, openMore }),
-    [moreOpen, openMore],
-  );
-
   const screenOptions = useMemo(
     () => ({
       headerShown: false,
-      tabBarActiveTintColor: colors.primary,
-      tabBarInactiveTintColor: colors.mutedForeground,
-      tabBarStyle: {
-        backgroundColor: colors.card,
-        borderTopColor: colors.border,
-        borderTopWidth: 1,
-        paddingTop: 4,
-      },
-      tabBarLabelStyle: {
-        fontSize: 10,
-        fontWeight: '600' as const,
-      },
     }),
-    [colors],
+    [],
+  );
+
+  const renderTabBar = useCallback(
+    (props: React.ComponentProps<typeof LiquidGlassTabBar>) => (
+      <LiquidGlassTabBar {...props} />
+    ),
+    [],
   );
 
   return (
-    <MoreMenuContext.Provider value={moreMenuValue}>
-      <Tab.Navigator screenOptions={screenOptions}>
+    <>
+      <Tab.Navigator screenOptions={screenOptions} tabBar={renderTabBar}>
         {PRIMARY_TABS.map(tab => (
           <Tab.Screen
             key={tab.name}
@@ -260,12 +222,12 @@ export function YouScreen() {
           options={{
             tabBarLabel: 'More',
             tabBarIcon: MoreTabIcon,
-            tabBarButton: MoreTabBarButton,
+            tabBarBadge: '',
           }}
         />
       </Tab.Navigator>
 
       <MoreMenuSheet visible={moreOpen} onClose={closeMore} />
-    </MoreMenuContext.Provider>
+    </>
   );
 }

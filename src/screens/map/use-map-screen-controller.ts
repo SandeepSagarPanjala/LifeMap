@@ -5,7 +5,6 @@ import {
   AppState,
   Easing,
   useColorScheme,
-  useWindowDimensions,
 } from 'react-native';
 import {
   useNavigation,
@@ -91,10 +90,11 @@ import {
   MAP_HISTORY_FLOATING_CONTROLS_GAP,
   MAP_HISTORY_PANEL_CLOSE_MS,
   MAP_LOCATE_BUTTON_BOTTOM_GAP,
+  MAP_MOMENTS_BAR_HEIGHT,
+  MAP_SETTINGS_SIZE,
   MAP_SETTINGS_TOP_GAP,
   MAP_STACK_BUTTON_GAP,
   MAP_STACK_BUTTON_SIZE,
-  MAP_RIGHT_STACK_COUNT,
   MAP_USER_ZOOM_DELTA,
   MAX_SAVED_PLACES,
   RECENTER_FRESH_CACHE_MS,
@@ -141,7 +141,6 @@ import {
   visitPlaceDefaultLabel,
   visitPlaceSelectedCategory,
 } from '@/lib/place-lookup-types';
-import { buildMapAttributionInsets } from '@/lib/map-attribution-insets';
 import { mapProviderForPlatform } from '@/lib/map-provider';
 import {
   isBackgroundWorkBannerVisible,
@@ -665,44 +664,39 @@ export function useMapScreenController() {
     historyPanelChromeHeight() +
     MAP_HISTORY_DATE_NAV_ABOVE_PANEL_GAP +
     resolvedHistoryPanelContentHeight;
-  const stackBaseBottom = historyPanelOpen
+  // Moments glass bar is bottom-center. Date text sits just above it.
+  // History / search share the glass row; places sits above history; locate
+  // sits above search — same column gap as the in-stack spacing.
+  const showMomentsBar = viewingToday && !historyPanelOpen;
+  const momentsBarBottom = insets.bottom + MAP_LOCATE_BUTTON_BOTTOM_GAP;
+  const rowBaseBottom = historyPanelOpen
     ? historyPanelBottom + MAP_HISTORY_FLOATING_CONTROLS_GAP
-    : insets.bottom + MAP_LOCATE_BUTTON_BOTTOM_GAP;
+    : showMomentsBar
+      ? momentsBarBottom +
+        (MAP_MOMENTS_BAR_HEIGHT - MAP_STACK_BUTTON_SIZE) / 2
+      : insets.bottom + MAP_LOCATE_BUTTON_BOTTOM_GAP;
 
-  const locateButtonBottom = mapStackButtonBottom(stackBaseBottom, 0);
-  const historyButtonBottom = mapStackButtonBottom(
-    stackBaseBottom,
-    viewingToday ? 1 : 0,
-  );
-  const placesButtonBottom = mapStackButtonBottom(stackBaseBottom, 2);
-  const settingsButtonBottom = mapStackButtonBottom(
-    stackBaseBottom,
-    viewingToday ? 3 : 1,
-  );
+  // Left: history (glass row) → places above. Right: search (in bar) → locate above.
+  const historyButtonBottom = rowBaseBottom;
+  const placesButtonBottom = mapStackButtonBottom(rowBaseBottom, 1);
+  const locateButtonBottom = mapStackButtonBottom(rowBaseBottom, 1);
+  const settingsButtonTop = insets.top + MAP_SETTINGS_TOP_GAP;
 
-  const cameraButtonBottom = mapStackButtonBottom(stackBaseBottom, 0);
-  const voiceButtonBottom = mapStackButtonBottom(stackBaseBottom, 1);
-  const noteButtonBottom = mapStackButtonBottom(stackBaseBottom, 2);
-  const activityButtonBottom = mapStackButtonBottom(stackBaseBottom, 3);
-  const youButtonBottom = mapStackButtonBottom(stackBaseBottom, 4);
+  const dateNavAnchorBottom = rowBaseBottom;
 
-  const dateNavAnchorBottom = stackBaseBottom;
-
-  const leftStackButtonCount = viewingToday ? 4 : 2;
-  const leftStackHeight = mapStackTotalHeight(
-    leftStackButtonCount,
+  const rightStackButtonCount = viewingToday ? 1 : 0;
+  const rightStackHeight = mapStackTotalHeight(
+    rightStackButtonCount,
     MAP_STACK_BUTTON_SIZE,
     MAP_STACK_BUTTON_GAP,
   );
-  const rightStackHeight = viewingToday
-    ? mapStackTotalHeight(
-        MAP_RIGHT_STACK_COUNT,
-        MAP_STACK_BUTTON_SIZE,
-        MAP_STACK_BUTTON_GAP,
-      )
-    : 0;
+  const leftStackHeight = mapStackTotalHeight(
+    viewingToday ? 2 : 1,
+    MAP_STACK_BUTTON_SIZE,
+    MAP_STACK_BUTTON_GAP,
+  );
   const floatingControlsClearance =
-    stackBaseBottom + Math.max(leftStackHeight, rightStackHeight) + 16;
+    rowBaseBottom + Math.max(leftStackHeight, rightStackHeight) + 16;
 
   const backgroundWorkBannerVisible = useSyncExternalStore(
     subscribeBackgroundWork,
@@ -715,22 +709,13 @@ export function useMapScreenController() {
       top:
         insets.top +
         MAP_SETTINGS_TOP_GAP +
+        MAP_SETTINGS_SIZE +
         (backgroundWorkBannerVisible ? BACKGROUND_WORK_BANNER_BODY_HEIGHT : 0),
       right: 12,
       bottom: floatingControlsClearance,
       left: 12,
     }),
     [floatingControlsClearance, insets.top, backgroundWorkBannerVisible],
-  );
-
-  const { width: screenWidth } = useWindowDimensions();
-  const mapAttributionInsets = useMemo(
-    () =>
-      buildMapAttributionInsets({
-        screenWidth,
-        dateNavBottom: dateNavAnchorBottom,
-      }),
-    [screenWidth, dateNavAnchorBottom],
   );
 
   const scrubOnEvent = historyScrubOnEvent;
@@ -1909,16 +1894,12 @@ export function useMapScreenController() {
       mapInitialRegion,
       provider,
       mapPadding,
-      mapAttributionInsets,
       locateButtonBottom,
-      settingsButtonBottom,
+      settingsButtonTop,
       placesButtonBottom,
       historyButtonBottom,
-      cameraButtonBottom,
-      voiceButtonBottom,
-      noteButtonBottom,
-      activityButtonBottom,
-      youButtonBottom,
+      showMomentsBar,
+      momentsBarBottom,
       openCaptureVoice,
       openCaptureActivity,
       handleCaptureCamera,
@@ -2036,16 +2017,12 @@ export function useMapScreenController() {
       mapInitialRegion,
       provider,
       mapPadding,
-      mapAttributionInsets,
       locateButtonBottom,
-      settingsButtonBottom,
+      settingsButtonTop,
       placesButtonBottom,
       historyButtonBottom,
-      cameraButtonBottom,
-      voiceButtonBottom,
-      noteButtonBottom,
-      activityButtonBottom,
-      youButtonBottom,
+      showMomentsBar,
+      momentsBarBottom,
       openCaptureVoice,
       openCaptureActivity,
       handleCaptureCamera,

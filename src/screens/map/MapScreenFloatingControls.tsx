@@ -1,15 +1,11 @@
 import { memo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { MapCameraButton } from '@/components/map/MapCameraButton';
 import { MapHistoryButton } from '@/components/map/MapHistoryButton';
 import { MapLocateButton } from '@/components/map/MapLocateButton';
-import { MapNoteButton } from '@/components/map/MapNoteButton';
+import { MapMomentsGlassBar } from '@/components/map/MapMomentsGlassBar';
 import { MapSettingsButton } from '@/components/map/MapSettingsButton';
 import { MapPlacesButton } from '@/components/map/MapPlacesButton';
-import { MapActivityButton } from '@/components/map/MapActivityButton';
-import { MapVoiceButton } from '@/components/map/MapVoiceButton';
-import { MapYouButton } from '@/components/map/MapYouButton';
 
 import type { MapScreenController } from './use-map-screen-controller';
 
@@ -25,14 +21,15 @@ export const MapScreenFloatingControls = memo(
       viewingToday,
       historyPanelOpen,
       locateButtonBottom,
-      settingsButtonBottom,
+      settingsButtonTop,
       placesButtonBottom,
       historyButtonBottom,
-      cameraButtonBottom,
-      voiceButtonBottom,
-      noteButtonBottom,
-      activityButtonBottom,
-      youButtonBottom,
+      showMomentsBar,
+      momentsBarBottom,
+      mapDateLabel,
+      canGoPrevDay,
+      goToPrevDay,
+      openHistoryDatePicker,
       goToCurrentLocation,
       openSavedPlaces,
       handleToggleHistoryPanel,
@@ -50,12 +47,17 @@ export const MapScreenFloatingControls = memo(
     const historyPanelActive = historyPanelOpen;
     const showTodayControls = viewingToday && !historyPanelActive;
     const showHistoryButton = !historyPanelActive;
+    const showSettingsButton = !historyPanelActive;
     const messageAnchorBottom = viewingToday
-      ? settingsButtonBottom + 64
+      ? placesButtonBottom + 64
       : historyButtonBottom + 64;
 
     return (
       <View pointerEvents="box-none" style={styles.overlay}>
+        {showSettingsButton ? (
+          <MapSettingsButton top={settingsButtonTop} onPress={openSettings} />
+        ) : null}
+
         {showTodayControls ? (
           <MapLocateButton
             bottom={locateButtonBottom}
@@ -66,14 +68,8 @@ export const MapScreenFloatingControls = memo(
           <MapHistoryButton
             bottom={historyButtonBottom}
             active={historyPanelOpen}
-            eventCount={historyBadgeCount}
+            showDot={historyBadgeCount > 0}
             onPress={handleToggleHistoryPanel}
-          />
-        ) : null}
-        {showHistoryButton ? (
-          <MapSettingsButton
-            bottom={settingsButtonBottom}
-            onPress={openSettings}
           />
         ) : null}
         {showTodayControls ? (
@@ -83,26 +79,19 @@ export const MapScreenFloatingControls = memo(
           />
         ) : null}
 
-        {showTodayControls ? (
-          <>
-            <MapCameraButton
-              bottom={cameraButtonBottom}
-              onPress={handleCaptureCamera}
-            />
-            <MapVoiceButton
-              bottom={voiceButtonBottom}
-              onPress={openCaptureVoice}
-            />
-            <MapNoteButton
-              bottom={noteButtonBottom}
-              onPress={handleCaptureNote}
-            />
-            <MapActivityButton
-              bottom={activityButtonBottom}
-              onPress={openCaptureActivity}
-            />
-            <MapYouButton bottom={youButtonBottom} onPress={openYou} />
-          </>
+        {showMomentsBar ? (
+          <MapMomentsGlassBar
+            bottom={momentsBarBottom}
+            dateLabel={mapDateLabel}
+            canGoPrev={canGoPrevDay}
+            onPrevDay={goToPrevDay}
+            onPressDate={openHistoryDatePicker}
+            onCamera={handleCaptureCamera}
+            onVoice={openCaptureVoice}
+            onNote={handleCaptureNote}
+            onActivity={openCaptureActivity}
+            onYou={openYou}
+          />
         ) : null}
 
         {emptySelectedDayMessage && !historyPanelActive ? (

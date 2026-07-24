@@ -1,42 +1,28 @@
 import { Settings } from 'lucide-react-native';
-import { Pressable, StyleSheet } from 'react-native';
 
+import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import {
+  MAP_SETTINGS_SIZE,
+  MAP_STACK_BUTTON_RIGHT,
+} from '@/lib/app-constants';
 
 type MapSettingsButtonProps = {
-  bottom: number;
+  top: number;
   onPress: () => void;
 };
 
-export function MapSettingsButton({ bottom, onPress }: MapSettingsButtonProps) {
+export function MapSettingsButton({ top, onPress }: MapSettingsButtonProps) {
   const colors = useThemeColors();
 
   return (
-    <Pressable
-      accessibilityRole="button"
+    <MapGlassCircleButton
       accessibilityLabel="Settings"
       onPress={onPress}
-      style={[styles.button, { bottom }]}
+      size={MAP_SETTINGS_SIZE}
+      style={{ position: 'absolute', top, right: MAP_STACK_BUTTON_RIGHT }}
     >
       <Settings size={22} color={colors.primary} strokeWidth={2.25} />
-    </Pressable>
+    </MapGlassCircleButton>
   );
 }
-
-const styles = StyleSheet.create({
-  button: {
-    position: 'absolute',
-    left: 16,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-});

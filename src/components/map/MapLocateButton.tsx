@@ -1,4 +1,7 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+
+import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
+import { MAP_STACK_BUTTON_RIGHT } from '@/lib/app-constants';
 
 /** Same blue as the system map user-location puck and drive accents. */
 const MAP_USER_LOCATION_BLUE = '#007AFF';
@@ -19,38 +22,22 @@ function MapUserLocationIcon() {
 
 export function MapLocateButton({ bottom, onPress }: MapLocateButtonProps) {
   return (
-    <Pressable
-      accessibilityRole="button"
+    <MapGlassCircleButton
       accessibilityLabel="Go to current location"
       onPress={onPress}
-      style={[styles.button, { bottom }]}
+      style={{ position: 'absolute', bottom, right: MAP_STACK_BUTTON_RIGHT }}
     >
       <MapUserLocationIcon />
-    </Pressable>
+    </MapGlassCircleButton>
   );
 }
 
 const styles = StyleSheet.create({
-  button: {
-    position: 'absolute',
-    left: 16,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 4,
-  },
   puckRing: {
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255,255,255,0.92)',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',

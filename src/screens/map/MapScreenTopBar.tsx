@@ -8,6 +8,10 @@ type MapScreenTopBarProps = {
   controller: MapScreenController;
 };
 
+/**
+ * Past-day resting date navigation (prev / date pill / next + close).
+ * On today the date + prev live in the moments bottom chrome instead.
+ */
 export const MapScreenTopBar = memo(function MapScreenTopBar({
   controller,
 }: MapScreenTopBarProps) {
@@ -16,6 +20,7 @@ export const MapScreenTopBar = memo(function MapScreenTopBar({
     mapDateLabel,
     viewingToday,
     historyPanelChromeVisible,
+    showMomentsBar,
     dateNavAnchorBottom,
     canGoPrevDay,
     canGoNextDay,
@@ -24,7 +29,8 @@ export const MapScreenTopBar = memo(function MapScreenTopBar({
     goToToday,
     openHistoryDatePicker,
   } = controller;
-  const showRestingDateNav = !historyPanelChromeVisible;
+  const showRestingDateNav =
+    !historyPanelChromeVisible && !showMomentsBar && !viewingToday;
 
   return (
     <View pointerEvents="box-none" style={styles.bar}>
@@ -33,7 +39,7 @@ export const MapScreenTopBar = memo(function MapScreenTopBar({
           label={mapDateLabel}
           topInset={insets.top}
           showNavigation
-          showCloseButton={!viewingToday}
+          showCloseButton
           anchorBottom={dateNavAnchorBottom}
           canGoPrev={canGoPrevDay}
           canGoNext={canGoNextDay}

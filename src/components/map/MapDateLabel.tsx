@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight, X } from 'lucide-react-native';
 import {
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -8,7 +9,9 @@ import {
   type ViewStyle,
 } from 'react-native';
 
+import { GlassSurface } from '@/components/glass/GlassSurface';
 import { MapCircleButton } from '@/components/map/MapCircleButton';
+import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import {
   MAP_SETTINGS_SIZE,
@@ -51,15 +54,17 @@ export function MapDateLabel({
   const colors = useThemeColors();
   const top = topInset + MAP_SETTINGS_TOP_GAP;
 
-  if (!showNavigation) {
-    const pill = (
-      <View style={styles.pill}>
+  const glassPill = (
+    <View style={styles.pillShadow}>
+      <GlassSurface style={styles.pill}>
         <Text style={styles.label} numberOfLines={1}>
           {label}
         </Text>
-      </View>
-    );
+      </GlassSurface>
+    </View>
+  );
 
+  if (!showNavigation) {
     return (
       <View
         pointerEvents="box-none"
@@ -73,10 +78,10 @@ export function MapDateLabel({
             accessibilityLabel="Choose date"
             onPress={onPressLabel}
           >
-            {pill}
+            {glassPill}
           </Pressable>
         ) : (
-          pill
+          glassPill
         )}
       </View>
     );
@@ -106,7 +111,7 @@ export function MapDateLabel({
         style={[styles.dateRow, !showCloseButton && styles.dateRowWithoutClose]}
         pointerEvents="box-none"
       >
-        <MapCircleButton
+        <MapGlassCircleButton
           accessibilityLabel="Previous day"
           disabled={!canGoPrev}
           onPress={() => onPrev?.()}
@@ -117,21 +122,17 @@ export function MapDateLabel({
             strokeWidth={2.5}
             opacity={canGoPrev ? 1 : 0.35}
           />
-        </MapCircleButton>
+        </MapGlassCircleButton>
 
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Choose date"
           onPress={onPressLabel}
         >
-          <View style={styles.pill}>
-            <Text style={styles.label} numberOfLines={1}>
-              {label}
-            </Text>
-          </View>
+          {glassPill}
         </Pressable>
 
-        <MapCircleButton
+        <MapGlassCircleButton
           accessibilityLabel="Next day"
           disabled={!canGoNext}
           onPress={() => onNext?.()}
@@ -142,7 +143,7 @@ export function MapDateLabel({
             strokeWidth={2.5}
             opacity={canGoNext ? 1 : 0.35}
           />
-        </MapCircleButton>
+        </MapGlassCircleButton>
       </View>
     </View>
   );
@@ -172,21 +173,26 @@ const styles = StyleSheet.create({
   dateRowWithoutClose: {
     marginTop: 0,
   },
+  pillShadow: {
+    borderRadius: MAP_STACK_BUTTON_SIZE / 2,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.14,
+        shadowRadius: 8,
+      },
+      android: { elevation: 5 },
+    }),
+  },
   pill: {
     height: MAP_STACK_BUTTON_SIZE,
     flexShrink: 0,
-    backgroundColor: '#FFFFFF',
     borderRadius: MAP_STACK_BUTTON_SIZE / 2,
     paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#E5E5EA',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 4,
+    overflow: 'hidden',
   },
   label: {
     fontSize: 14,

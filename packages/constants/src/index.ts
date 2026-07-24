@@ -71,7 +71,7 @@ export const MAP_FALLBACK_REGION = {
 export const MAP_SETTINGS_TOP_GAP = 8;
 export const MAP_SETTINGS_SIZE = 44;
 export const MAP_SETTINGS_STACK_GAP = 8;
-export const MAP_LOCATE_BUTTON_BOTTOM_GAP = 20;
+export const MAP_LOCATE_BUTTON_BOTTOM_GAP = 8;
 /** Full history panel when address + event + timeline are visible. */
 export const MAP_HISTORY_PANEL_HEIGHT = 308;
 export const MAP_HISTORY_TIMELINE_HEIGHT = 72;
@@ -96,6 +96,16 @@ export const MAP_LEFT_STACK_COUNT = 4;
 export const MAP_RIGHT_STACK_COUNT = 5;
 export const MAP_STACK_BUTTON_LEFT = 16;
 export const MAP_STACK_BUTTON_RIGHT = 16;
+/** Liquid Glass moments bar pinned to the bottom-center of the map. */
+export const MAP_MOMENTS_BAR_HEIGHT = 46;
+/** Gap between the moments bar and the controls lifted above it. */
+export const MAP_MOMENTS_BAR_GAP = 12;
+/** Clickable date label sitting under the moments bar. */
+export const MAP_MOMENTS_DATE_LABEL_HEIGHT = 20;
+/** Gap between the moments bar bottom edge and the date label. */
+export const MAP_MOMENTS_DATE_LABEL_GAP = 6;
+/** Horizontal gap between the glass pill and its flanking prev/search buttons. */
+export const MAP_MOMENTS_SIDE_BTN_GAP = 10;
 
 /** Visible body below the status bar for the background-work banner. */
 export const BACKGROUND_WORK_BANNER_BODY_HEIGHT = 64;

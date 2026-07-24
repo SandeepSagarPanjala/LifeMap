@@ -1,46 +1,62 @@
 import { History } from 'lucide-react-native';
-import { Pressable, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-
-import { MAP_STACK_BUTTON_LEFT } from '@/lib/app-constants';
-import { mapStackButtonStyles } from './map-stack-button-styles';
+import {
+  MAP_STACK_BUTTON_LEFT,
+  MAP_STACK_BUTTON_SIZE,
+} from '@/lib/app-constants';
 
 type MapHistoryButtonProps = {
   bottom: number;
   active: boolean;
-  eventCount: number;
+  /** Red notification dot (no count) when there is history to notice. */
+  showDot?: boolean;
   onPress: () => void;
 };
 
 export function MapHistoryButton({
   bottom,
   active,
-  eventCount,
+  showDot = false,
   onPress,
 }: MapHistoryButtonProps) {
   const colors = useThemeColors();
-  const badgeLabel = eventCount > 99 ? '99+' : String(eventCount);
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={
-        eventCount > 0 ? `Show ${eventCount} history events` : 'Show history'
-      }
-      onPress={onPress}
-      style={[
-        mapStackButtonStyles.button,
-        { bottom, left: MAP_STACK_BUTTON_LEFT },
-        active && mapStackButtonStyles.buttonSoftBlue,
-      ]}
+    <View
+      pointerEvents="box-none"
+      style={[styles.wrap, { bottom, left: MAP_STACK_BUTTON_LEFT }]}
     >
-      <History size={22} color={colors.primary} strokeWidth={2.25} />
-      {eventCount > 0 ? (
-        <View style={mapStackButtonStyles.badge}>
-          <Text style={mapStackButtonStyles.badgeText}>{badgeLabel}</Text>
-        </View>
-      ) : null}
-    </Pressable>
+      <MapGlassCircleButton
+        accessibilityLabel="Show history"
+        onPress={onPress}
+        active={active}
+      >
+        <History size={22} color={colors.primary} strokeWidth={2.25} />
+      </MapGlassCircleButton>
+      {showDot ? <View pointerEvents="none" style={styles.dot} /> : null}
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  wrap: {
+    position: 'absolute',
+    width: MAP_STACK_BUTTON_SIZE,
+    height: MAP_STACK_BUTTON_SIZE,
+  },
+  dot: {
+    position: 'absolute',
+    top: 9,
+    right: 9,
+    width: 10,
+    height: 10,
+    borderRadius: 6,
+    backgroundColor: '#FF3B30',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+    zIndex: 2,
+  },
+});
