@@ -6,7 +6,7 @@ import {
 } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useColorScheme } from 'react-native';
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, type ComponentType } from 'react';
 
 import type { RootStackParamList } from '@/navigation/types';
 import { withFeatureErrorBoundary } from '@/components/error-boundary';
@@ -32,7 +32,6 @@ import { CachedPlacesSettingsScreen } from '@/screens/settings/CachedPlacesSetti
 import { CachedPlaceMapScreen } from '@/screens/settings/CachedPlaceMapScreen';
 import { StorageSettingsScreen } from '@/screens/settings/StorageSettingsScreen';
 import { ThemeSettingsScreen } from '@/screens/settings/ThemeSettingsScreen';
-import { YouScreen } from '@/screens/you/YouScreen';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { setWidgetNavigationRef } from '@/lib/widget/widget-deep-link';
 import { activityCaptureScreenOptions } from '@/navigation/activity-capture-screen-options';
@@ -41,6 +40,18 @@ import { settingsSubScreenOptions } from '@/navigation/settings-sub-screen-optio
 import { voiceCaptureScreenOptions } from '@/navigation/voice-capture-screen-options';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+/** Lazy — avoid pulling Phosphor/You at RootNavigator first paint (inlineRequires). */
+function getYouScreen(): ComponentType {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  return require('@/screens/you/YouScreen').YouScreen;
+}
+
+function getGalleryDayJourneyScreen(): ComponentType {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  return require('@/screens/gallery/GalleryDayJourneyScreen')
+    .GalleryDayJourneyScreen;
+}
 
 const MapScreenWithBoundary = withFeatureErrorBoundary(MapScreen, 'map');
 const CapturePhotoScreenWithBoundary = withFeatureErrorBoundary(
@@ -214,8 +225,17 @@ export function RootNavigator() {
           }}
         />
         <Stack.Screen
+          name="GalleryDayJourney"
+          getComponent={getGalleryDayJourneyScreen}
+          options={{
+            headerShown: false,
+            presentation: 'modal',
+            animation: 'slide_from_bottom',
+          }}
+        />
+        <Stack.Screen
           name="You"
-          component={YouScreen}
+          getComponent={getYouScreen}
           options={{
             headerShown: false,
             presentation: 'card',

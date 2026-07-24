@@ -2,7 +2,7 @@ import { getSetting, setSetting } from '@/db/repositories/settings';
 import {
   DEFAULT_AVATAR_ID,
   isAvatarId,
-} from '@/lib/profile/avatar-catalog';
+} from '@/lib/profile/avatar-ids';
 import {
   isValidDisplayName,
   sanitizeDisplayNameInput,

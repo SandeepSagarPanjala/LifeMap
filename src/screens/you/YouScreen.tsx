@@ -1,11 +1,8 @@
 import { Construction } from 'lucide-react-native';
-import {
-  Image,
-  MapTrifold,
-  Trophy,
-  UserCircle,
-  type Icon as PhosphorIcon,
-} from 'phosphor-react-native';
+import { Image } from 'phosphor-react-native/src/icons/Image';
+import { MapTrifold } from 'phosphor-react-native/src/icons/MapTrifold';
+import { Trophy } from 'phosphor-react-native/src/icons/Trophy';
+import { UserCircle } from 'phosphor-react-native/src/icons/UserCircle';
 import {
   useCallback,
   useMemo,
@@ -23,6 +20,7 @@ import { LiquidGlassTabBar } from '@/components/you/LiquidGlassTabBar';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import type { PhosphorIcon } from '@/lib/profile/phosphor-icon';
 import { ProfileScreen } from '@/screens/you/ProfileScreen';
 
 export type YouTabParamList = {
@@ -96,6 +94,16 @@ function YouTabPlaceholder({
   return <UnderDevelopmentPanel title={route.name} />;
 }
 
+/**
+ * Lazy so FlashList + gallery DB stack are not evaluated on first You open
+ * (Metro inlineRequires would otherwise pull them in with YouScreen).
+ */
+function GalleryTabScreen() {
+  const GalleryScreen =
+    require('@/screens/you/GalleryScreen').GalleryScreen as ComponentType;
+  return <GalleryScreen />;
+}
+
 const TABS: {
   name: YouTabName;
   label: string;
@@ -113,7 +121,7 @@ const TABS: {
     name: 'Gallery',
     label: 'Gallery',
     tabBarIcon: GalleryTabIcon,
-    component: YouTabPlaceholder,
+    component: GalleryTabScreen,
   },
   {
     name: 'Insights',
@@ -144,6 +152,7 @@ export function YouScreen() {
   const screenOptions = useMemo(
     () => ({
       headerShown: false,
+      lazy: true,
     }),
     [],
   );

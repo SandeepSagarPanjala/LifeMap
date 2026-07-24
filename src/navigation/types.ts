@@ -23,6 +23,7 @@ export type RootStackParamList = {
   HistoryDatePicker: undefined;
   SavedPlaces: undefined;
   MomentPreview: undefined;
+  GalleryDayJourney: { dateKey: string };
   Benchmark: undefined;
   You: undefined;
 };

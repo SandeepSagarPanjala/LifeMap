@@ -1,11 +1,9 @@
-import {
-  GenderFemale,
-  GenderMale,
-  GenderNonbinary,
-  Question,
-  type Icon as PhosphorIcon,
-} from 'phosphor-react-native';
+import { GenderFemale } from 'phosphor-react-native/src/icons/GenderFemale';
+import { GenderMale } from 'phosphor-react-native/src/icons/GenderMale';
+import { GenderNonbinary } from 'phosphor-react-native/src/icons/GenderNonbinary';
+import { Question } from 'phosphor-react-native/src/icons/Question';
 
+import type { PhosphorIcon } from '@/lib/profile/phosphor-icon';
 import type { ProfileGender } from '@/lib/profile/types';
 
 /** Classic gender symbols — use with Phosphor `weight="duotone"`. */

@@ -268,6 +268,10 @@ export const IMAGE_COMPRESS_MAX_DIMENSION = 2048;
 export const IMAGE_COMPRESS_QUALITY = 0.78;
 export const IMAGE_COMPRESS_FORMAT = 'jpeg' as const;
 
+/** Gallery grid thumbnails — sized for 3-up @3x (~120–140pt tiles). */
+export const MOMENT_THUMBNAIL_MAX_DIMENSION = 512;
+export const MOMENT_THUMBNAIL_QUALITY = 0.82;
+
 export const VOICE_MAX_DURATION_MS = 5 * 60_000;
 export const VOICE_CONTENT_FORMAT = 'aac' as const;
 

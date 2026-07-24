@@ -6,6 +6,7 @@ import {
 } from '@/lib/history-data-cache';
 import { loadHistoryForDayCoalesced } from '@/lib/history-day-load';
 import { ensureHistoryCalendarBounds } from '@/lib/history-calendar-bounds';
+import { getDayHistoryFingerprint } from '@/lib/history-fingerprint';
 import { getCurrentTripDetectionConfig } from '@/lib/trip-detection-config';
 import { markTodayPreloadedForMountSkip } from '@/lib/today-preload-coordination';
 
@@ -27,4 +28,27 @@ export async function preloadTodayHistory(): Promise<void> {
   const result = await loadHistoryForDayCoalesced(todayKey, detectionConfig);
   historyDataCache.write(cacheKey, result, TODAY_LIVE_FINGERPRINT);
   markTodayPreloadedForMountSkip(cacheKey);
+}
+
+/**
+ * Fire-and-forget warm for gallery map-pin press-in.
+ * Coalesces with any in-flight load for the same day.
+ */
+export function warmHistoryForDay(dateKey: string): void {
+  const detectionConfig = getCurrentTripDetectionConfig();
+  const cacheKey = historyCacheKey(dateKey, detectionConfig);
+  if (historyDataCache.has(cacheKey)) {
+    return;
+  }
+  void (async () => {
+    const result = await loadHistoryForDayCoalesced(dateKey, detectionConfig);
+    if (historyDataCache.has(cacheKey)) {
+      return;
+    }
+    const fingerprint =
+      dateKey === getTodayDateKey()
+        ? TODAY_LIVE_FINGERPRINT
+        : await getDayHistoryFingerprint(dateKey);
+    historyDataCache.write(cacheKey, result, fingerprint);
+  })();
 }

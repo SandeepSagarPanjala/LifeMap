@@ -165,6 +165,10 @@ export async function migrationAlreadyApplied(
       return columnExists(sqlite, 'location_points', 'activity_type');
     case '0032_trip_points_activity':
       return columnExists(sqlite, 'trip_points', 'activity_type');
+    case '0033_visit_label_override_anchor':
+      return columnExists(sqlite, 'visit_label_overrides', 'anchor_lat');
+    case '0034_moment_thumbnail_path':
+      return columnExists(sqlite, 'moments', 'thumbnail_path');
     default:
       return false;
   }
@@ -276,6 +280,21 @@ export async function ensureMaterializedDayExcludedDriveColumn(
     await executeMigrationStatement(
       sqlite,
       `ALTER TABLE materialized_days ADD COLUMN excluded_cross_midnight_from_ms integer`,
+    );
+  }
+}
+
+/** Repair moments.thumbnail_path when migration 0034 was skipped. */
+export async function ensureMomentThumbnailPathColumn(
+  sqlite: DB,
+): Promise<void> {
+  if (!(await tableExists(sqlite, 'moments'))) {
+    return;
+  }
+  if (!(await columnExists(sqlite, 'moments', 'thumbnail_path'))) {
+    await executeMigrationStatement(
+      sqlite,
+      `ALTER TABLE moments ADD COLUMN thumbnail_path text`,
     );
   }
 }
@@ -429,6 +448,7 @@ const MOMENTS_COLUMNS_WITHOUT_LOCATION = [
   'type',
   'timestamp',
   'content_path',
+  'thumbnail_path',
   'voice_attachment_path',
   'voice_attachment_bytes',
   'voice_duration_sec',
@@ -486,6 +506,7 @@ export async function rebuildMomentsTableWithoutLocationColumns(
         type text NOT NULL,
         timestamp integer NOT NULL,
         content_path text,
+        thumbnail_path text,
         voice_attachment_path text,
         voice_attachment_bytes integer,
         voice_duration_sec integer,

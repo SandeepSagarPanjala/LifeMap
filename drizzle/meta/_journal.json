@@ -239,6 +239,13 @@
       "when": 1788925000000,
       "tag": "0033_visit_label_override_anchor",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1788926000000,
+      "tag": "0034_moment_thumbnail_path",
+      "breakpoints": true
     }
   ]
 }

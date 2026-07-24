@@ -1,11 +1,5 @@
 import { useCallback, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ProfileAvatarPickerSheet } from '@/components/you/ProfileAvatarPickerSheet';
@@ -27,7 +21,7 @@ const AVATAR_SIZE = 120;
 export function ProfileScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
-  const { profile, loading, updateProfile } = useProfile();
+  const { profile, updateProfile } = useProfile();
   const [editOpen, setEditOpen] = useState(false);
   const [avatarOpen, setAvatarOpen] = useState(false);
 
@@ -43,6 +37,7 @@ export function ProfileScreen() {
   const nameLocked = Boolean(profile?.displayName);
   const genderLocked = Boolean(profile?.gender);
   const identityLocked = nameLocked && genderLocked;
+  const showSkeleton = profile == null;
 
   const onSaveEdit = useCallback(
     async (next: {
@@ -67,6 +62,9 @@ export function ProfileScreen() {
   );
 
   const onPressName = useCallback(() => {
+    if (showSkeleton) {
+      return;
+    }
     if (identityLocked) {
       Alert.alert(
         'Can’t change this',
@@ -75,15 +73,7 @@ export function ProfileScreen() {
       return;
     }
     setEditOpen(true);
-  }, [identityLocked]);
-
-  if (loading && !profile) {
-    return (
-      <View style={[styles.centered, { backgroundColor: colors.background }]}>
-        <ActivityIndicator color={colors.primary} />
-      </View>
-    );
-  }
+  }, [identityLocked, showSkeleton]);
 
   return (
     <View
@@ -100,6 +90,7 @@ export function ProfileScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Change avatar"
+          disabled={showSkeleton}
           onPress={() => setAvatarOpen(true)}
           style={[
             styles.avatarRing,
@@ -109,85 +100,122 @@ export function ProfileScreen() {
             },
           ]}
         >
-          <AvatarIcon size={56} color={colors.primary} weight="duotone" />
+          {showSkeleton ? (
+            <View
+              style={[
+                styles.avatarSkeleton,
+                { backgroundColor: colors.border },
+              ]}
+            />
+          ) : (
+            <AvatarIcon size={56} color={colors.primary} weight="duotone" />
+          )}
         </Pressable>
 
         <View style={styles.identityBlock}>
-          {profile?.friendCode ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Friend code ${profile.friendCode}`}
-              onPress={() => {
-                Alert.alert(
-                  'Your code',
-                  `${formatFriendCode(profile.friendCode)}\n\nShare this 8-digit code so friends can find you later. Your private ID stays on this device.`,
-                );
-              }}
-              hitSlop={8}
-            >
-              <Text
-                style={[styles.friendCode, { color: colors.mutedForeground }]}
-              >
-                {formatFriendCode(profile.friendCode)}
-              </Text>
-            </Pressable>
-          ) : null}
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={
-              identityLocked ? 'Name and gender are locked' : 'Edit profile'
-            }
-            onPress={onPressName}
-            hitSlop={8}
-            style={styles.nameHit}
-          >
-            <View style={styles.nameRow}>
-              {GenderIcon ? (
-                <GenderIcon
-                  size={22}
-                  color={colors.primary}
-                  weight="duotone"
-                />
-              ) : null}
-              <Text
+          {showSkeleton ? (
+            <>
+              <View
                 style={[
-                  styles.name,
-                  {
-                    color: profile?.displayName
-                      ? colors.foreground
-                      : colors.mutedForeground,
-                  },
+                  styles.skeletonLine,
+                  styles.skeletonCode,
+                  { backgroundColor: colors.border },
                 ]}
+              />
+              <View
+                style={[
+                  styles.skeletonLine,
+                  styles.skeletonName,
+                  { backgroundColor: colors.border },
+                ]}
+              />
+            </>
+          ) : (
+            <>
+              {profile?.friendCode ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Friend code ${profile.friendCode}`}
+                  onPress={() => {
+                    Alert.alert(
+                      'Your code',
+                      `${formatFriendCode(profile.friendCode)}\n\nShare this 8-digit code so friends can find you later. Your private ID stays on this device.`,
+                    );
+                  }}
+                  hitSlop={8}
+                >
+                  <Text
+                    style={[
+                      styles.friendCode,
+                      { color: colors.mutedForeground },
+                    ]}
+                  >
+                    {formatFriendCode(profile.friendCode)}
+                  </Text>
+                </Pressable>
+              ) : null}
+
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={
+                  identityLocked ? 'Name and gender are locked' : 'Edit profile'
+                }
+                onPress={onPressName}
+                hitSlop={8}
+                style={styles.nameHit}
               >
-                {profile?.displayName
-                  ? profile.displayName.toUpperCase()
-                  : 'Add Name'}
-              </Text>
-            </View>
-          </Pressable>
+                <View style={styles.nameRow}>
+                  {GenderIcon ? (
+                    <GenderIcon
+                      size={22}
+                      color={colors.primary}
+                      weight="duotone"
+                    />
+                  ) : null}
+                  <Text
+                    style={[
+                      styles.name,
+                      {
+                        color: profile?.displayName
+                          ? colors.foreground
+                          : colors.mutedForeground,
+                      },
+                    ]}
+                  >
+                    {profile?.displayName
+                      ? profile.displayName.toUpperCase()
+                      : 'Add Name'}
+                  </Text>
+                </View>
+              </Pressable>
+            </>
+          )}
         </View>
       </View>
 
-      <ProfileEditSheet
-        visible={editOpen}
-        initialName={profile?.displayName ?? ''}
-        initialGender={profile?.gender ?? null}
-        nameLocked={nameLocked}
-        genderLocked={genderLocked}
-        onClose={() => setEditOpen(false)}
-        onSave={next => {
-          void onSaveEdit(next);
-        }}
-      />
-      <ProfileAvatarPickerSheet
-        visible={avatarOpen}
-        selectedId={profile?.avatarId ?? avatar.id}
-        onClose={() => setAvatarOpen(false)}
-        onSelect={id => {
-          void onSelectAvatar(id);
-        }}
-      />
+      {editOpen ? (
+        <ProfileEditSheet
+          visible={editOpen}
+          initialName={profile?.displayName ?? ''}
+          initialGender={profile?.gender ?? null}
+          nameLocked={nameLocked}
+          genderLocked={genderLocked}
+          onClose={() => setEditOpen(false)}
+          onSave={next => {
+            void onSaveEdit(next);
+          }}
+        />
+      ) : null}
+      {avatarOpen ? (
+        <ProfileAvatarPickerSheet
+          visible={avatarOpen}
+          selectedId={profile?.avatarId ?? avatar.id}
+          onClose={() => setAvatarOpen(false)}
+          onSelect={id => {
+            void onSelectAvatar(id);
+          }}
+        />
+      ) : null}
     </View>
   );
 }
@@ -196,11 +224,6 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     paddingHorizontal: 24,
-  },
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   hero: {
     alignItems: 'center',
@@ -217,6 +240,23 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatarSkeleton: {
+    width: '100%',
+    height: '100%',
+  },
+  skeletonLine: {
+    borderRadius: 6,
+  },
+  skeletonCode: {
+    width: 120,
+    height: 16,
+    marginBottom: 6,
+  },
+  skeletonName: {
+    width: 160,
+    height: 28,
   },
   friendCode: {
     fontSize: 15,

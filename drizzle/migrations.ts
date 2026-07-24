@@ -307,6 +307,8 @@ ALTER TABLE \`visit_label_overrides\` ADD COLUMN \`anchor_lat\` real;
 --> statement-breakpoint
 ALTER TABLE \`visit_label_overrides\` ADD COLUMN \`anchor_lng\` real;`;
 
+const m0034 = `ALTER TABLE \`moments\` ADD COLUMN \`thumbnail_path\` text;`;
+
 export default {
   journal,
   migrations: {
@@ -344,5 +346,6 @@ export default {
     m0031,
     m0032,
     m0033,
+    m0034,
   },
 };

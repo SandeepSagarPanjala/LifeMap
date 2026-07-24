@@ -112,6 +112,27 @@ export async function listTripsForDay(dateKey: string): Promise<TripRow[]> {
   return rows.map(mapJoinedRow);
 }
 
+/** Batch load trips for gallery / multi-day UIs (one query). */
+export async function listTripsForDateKeys(
+  dateKeys: readonly string[],
+): Promise<TripRow[]> {
+  if (dateKeys.length === 0) {
+    return [];
+  }
+  const db = await getDatabase();
+  const rows = await db
+    .select(tripWithPoiSelect)
+    .from(trips)
+    .leftJoin(placePois, eq(trips.poiId, placePois.id))
+    .where(inArray(trips.dateKey, [...dateKeys]))
+    .orderBy(
+      asc(trips.dateKey),
+      asc(trips.segmentOrder),
+      asc(trips.startAt),
+    );
+  return rows.map(mapJoinedRow);
+}
+
 export type TripDaySummary = {
   dateKey: string;
   tripCount: number;

@@ -17,6 +17,7 @@ import {
   persistFileToMomentSandbox,
 } from '@/lib/moments/moment-storage';
 import { normalizeCameraPhoto } from '@/lib/moments/normalize-camera-photo';
+import { scheduleMomentThumbnailGeneration } from '@/lib/moments/schedule-moment-thumbnail';
 
 const CAMERA_OPTIONS: CameraOptions = {
   mediaType: 'photo',
@@ -157,7 +158,7 @@ export async function savePhotoMoment(
   }
 
   try {
-    return await insertMoment({
+    const row = await insertMoment({
       type: 'photo',
       timestamp: new Date(),
       contentPath: sandboxFile.contentPath,
@@ -169,6 +170,8 @@ export async function savePhotoMoment(
       voiceAttachmentBytes,
       voiceDurationSec,
     });
+    scheduleMomentThumbnailGeneration(row);
+    return row;
   } catch (error) {
     await deleteMomentContentFile(sandboxFile.contentPath).catch(
       () => undefined,
