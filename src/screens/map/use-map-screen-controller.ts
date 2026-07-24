@@ -225,6 +225,12 @@ export function useMapScreenController() {
   );
   /** Hide geographic arrows while pinching zoom — they only resize on settle. */
   const [mapGestureActive, setMapGestureActive] = useState(false);
+  /**
+   * After fitting today's trips overview, hide the red half until the user
+   * recenters (blue) — another fit is a no-op while already zoomed out.
+   */
+  const [todayTripsOverviewActive, setTodayTripsOverviewActive] =
+    useState(false);
 
   const {
     places: savedPlaces,
@@ -389,6 +395,17 @@ export function useMapScreenController() {
     }
     return countHistoryTimelineEvents(historyEntries);
   }, [historyDayLoaded, historyEntries]);
+  /** Blue/red split locate — only while not already in today's trips overview. */
+  const showLocateFitSplit =
+    viewingToday && historyBadgeCount > 1 && !todayTripsOverviewActive;
+
+  // Drop overview mode when the split is no longer eligible.
+  useEffect(() => {
+    if (!viewingToday || historyBadgeCount <= 1) {
+      setTodayTripsOverviewActive(false);
+    }
+  }, [viewingToday, historyBadgeCount]);
+
   const emptySelectedDayMessage = useMemo(() => {
     if (!historyDayLoaded || historyHasGpsData || historyPanelOpen) {
       return null;
@@ -1207,6 +1224,9 @@ export function useMapScreenController() {
       return;
     }
 
+    // Leaving trips overview → restore blue/red split when eligible.
+    setTodayTripsOverviewActive(false);
+
     const requestId = ++recenterRequestIdRef.current;
 
     // Instant feedback only when the cached puck fix is genuinely recent. While
@@ -1254,6 +1274,23 @@ export function useMapScreenController() {
       }
     })();
   }, []);
+
+  /** Zoom out to frame all of today's tracked points (past-day overview camera). */
+  const fitTodayTrips = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) {
+      return;
+    }
+    const coordinates = toMapCoordinates(historyData.points);
+    if (coordinates.length === 0) {
+      return;
+    }
+    const region = regionForCoordinates(coordinates);
+    map.animateToRegion(region, 400);
+    commitMapRegion(region);
+    // Already zoomed to trips — full blue locate until user recenters.
+    setTodayTripsOverviewActive(true);
+  }, [commitMapRegion, historyData.points]);
 
   const applyUserCoordinate = useCallback(
     (coordinate: { latitude: number; longitude: number }) => {
@@ -1916,6 +1953,7 @@ export function useMapScreenController() {
       dayStoryStops,
       historyMapPlan,
       historyBadgeCount,
+      showLocateFitSplit,
       trackingGapWarning,
       emptySelectedDayMessage,
       viewingToday,
@@ -2000,6 +2038,7 @@ export function useMapScreenController() {
       openSettings,
       openYou,
       goToCurrentLocation,
+      fitTodayTrips,
       openHistoryDatePicker,
       handleSelectMapDate,
       handleHistoryDateKeyChange,
@@ -2039,6 +2078,7 @@ export function useMapScreenController() {
       dayStoryStops,
       historyMapPlan,
       historyBadgeCount,
+      showLocateFitSplit,
       trackingGapWarning,
       emptySelectedDayMessage,
       viewingToday,
@@ -2120,6 +2160,7 @@ export function useMapScreenController() {
       openSettings,
       openYou,
       goToCurrentLocation,
+      fitTodayTrips,
       openHistoryDatePicker,
       handleSelectMapDate,
       handleHistoryDateKeyChange,

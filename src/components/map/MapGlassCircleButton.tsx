@@ -20,6 +20,8 @@ type MapGlassCircleButtonProps = {
   style?: StyleProp<ViewStyle>;
   /** Soft blue wash when the control is "on" (e.g. history panel open). */
   active?: boolean;
+  /** Soft tint wash for close / warning controls. */
+  tint?: 'none' | 'danger' | 'warning';
   children: ReactNode;
 };
 
@@ -34,8 +36,18 @@ export function MapGlassCircleButton({
   size = MAP_STACK_BUTTON_SIZE,
   style,
   active = false,
+  tint = 'none',
   children,
 }: MapGlassCircleButtonProps) {
+  const washStyle =
+    tint === 'danger'
+      ? styles.dangerWash
+      : tint === 'warning'
+        ? styles.warningWash
+        : active
+          ? styles.activeWash
+          : null;
+
   return (
     <Pressable
       accessibilityRole="button"
@@ -67,7 +79,9 @@ export function MapGlassCircleButton({
               },
             ]}
           >
-            {active ? <View pointerEvents="none" style={styles.activeWash} /> : null}
+            {washStyle ? (
+              <View pointerEvents="none" style={washStyle} />
+            ) : null}
             <View style={styles.content}>{children}</View>
           </GlassSurface>
         </View>
@@ -105,5 +119,13 @@ const styles = StyleSheet.create({
   activeWash: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,122,255,0.18)',
+  },
+  dangerWash: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(224,53,43,0.16)',
+  },
+  warningWash: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255,149,0,0.18)',
   },
 });

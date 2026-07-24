@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 
 import { GlassSurface } from '@/components/glass/GlassSurface';
-import { MapCircleButton } from '@/components/map/MapCircleButton';
 import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import {
@@ -52,12 +51,13 @@ export function MapDateLabel({
   onPressLabel,
 }: MapDateLabelProps) {
   const colors = useThemeColors();
+  const accent = colors.primary;
   const top = topInset + MAP_SETTINGS_TOP_GAP;
 
   const glassPill = (
     <View style={styles.pillShadow}>
       <GlassSurface style={styles.pill}>
-        <Text style={styles.label} numberOfLines={1}>
+        <Text style={[styles.label, { color: accent }]} numberOfLines={1}>
           {label}
         </Text>
       </GlassSurface>
@@ -98,13 +98,13 @@ export function MapDateLabel({
       style={[styles.navWrap, positionStyle]}
     >
       {showCloseButton ? (
-        <MapCircleButton
+        <MapGlassCircleButton
           accessibilityLabel="Return to today"
-          variant="softRed"
+          tint="danger"
           onPress={() => onClose?.()}
         >
           <X size={20} color={MAP_CLOSE_ICON_COLOR} strokeWidth={2.5} />
-        </MapCircleButton>
+        </MapGlassCircleButton>
       ) : null}
 
       <View
@@ -118,7 +118,7 @@ export function MapDateLabel({
         >
           <ChevronLeft
             size={22}
-            color={colors.primary}
+            color={accent}
             strokeWidth={2.5}
             opacity={canGoPrev ? 1 : 0.35}
           />
@@ -139,7 +139,7 @@ export function MapDateLabel({
         >
           <ChevronRight
             size={22}
-            color={colors.primary}
+            color={accent}
             strokeWidth={2.5}
             opacity={canGoNext ? 1 : 0.35}
           />
@@ -197,7 +197,6 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1C1C1E',
     textAlign: 'center',
   },
 });

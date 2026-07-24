@@ -31,6 +31,7 @@ export const MapScreenFloatingControls = memo(
       goToPrevDay,
       openHistoryDatePicker,
       goToCurrentLocation,
+      fitTodayTrips,
       openSavedPlaces,
       handleToggleHistoryPanel,
       handleCaptureCamera,
@@ -40,6 +41,7 @@ export const MapScreenFloatingControls = memo(
       openSettings,
       openYou,
       historyBadgeCount,
+      showLocateFitSplit,
       trackingGapWarning,
       emptySelectedDayMessage,
     } = controller;
@@ -61,7 +63,9 @@ export const MapScreenFloatingControls = memo(
         {showTodayControls ? (
           <MapLocateButton
             bottom={locateButtonBottom}
-            onPress={goToCurrentLocation}
+            split={showLocateFitSplit}
+            onPressLocate={goToCurrentLocation}
+            onPressFitTrips={fitTodayTrips}
           />
         ) : null}
         {showHistoryButton ? (

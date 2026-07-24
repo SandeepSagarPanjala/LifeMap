@@ -22,9 +22,13 @@ const DOT_SIZE = 18;
 const DOT_RING_SIZE = 28;
 const DOT_ANCHOR = { x: 0.5, y: 0.5 } as const;
 const BUBBLE_ANCHOR = { x: 0.5, y: 0.5 } as const;
-const LIVE_PUCK_ANCHOR = { x: 0.5, y: 1 } as const;
-/** Lift label above the system user-location puck (bottom-anchored). */
+/** Fallback until onLayout measures the bubble (live map). */
 const LIVE_PUCK_CENTER_OFFSET = { x: 0, y: -100 } as const;
+/**
+ * Clearance from the bubble bottom to the user-location puck center.
+ * Kept constant whether or not moment counts expand the card.
+ */
+const LIVE_PUCK_BUBBLE_GAP = 22;
 const VISIT_BUBBLE_DOT_GAP = 4;
 
 type StayDurationCalloutProps = {
@@ -65,6 +69,18 @@ function StayDurationCalloutComponent({
   const counts = momentCounts;
   const showMomentCounts = counts != null && hasMomentCounts(counts);
   const livePuckLabel = !showVisitPin;
+  // Center-anchor + half-height offset so the gap from the *bottom* of the
+  // card to the blue puck stays the same whether moment counts are shown.
+  const livePuckBubbleCenterOffset = useMemo(
+    () =>
+      bubbleHeight > 0
+        ? {
+            x: 0,
+            y: -(LIVE_PUCK_BUBBLE_GAP + bubbleHeight / 2),
+          }
+        : LIVE_PUCK_CENTER_OFFSET,
+    [bubbleHeight],
+  );
   const visitBubbleCenterOffset = useMemo(
     () =>
       bubbleHeight > 0
@@ -167,13 +183,15 @@ function StayDurationCalloutComponent({
 
       <Marker
         coordinate={coordinate}
-        anchor={livePuckLabel ? LIVE_PUCK_ANCHOR : BUBBLE_ANCHOR}
+        anchor={BUBBLE_ANCHOR}
         centerOffset={
-          livePuckLabel ? LIVE_PUCK_CENTER_OFFSET : visitBubbleCenterOffset
+          livePuckLabel ? livePuckBubbleCenterOffset : visitBubbleCenterOffset
         }
         zIndex={12}
         tracksViewChanges={
-          !livePuckLabel && bubbleHeight === 0 && tracksViewChanges
+          livePuckLabel
+            ? tracksViewChanges
+            : bubbleHeight === 0 && tracksViewChanges
         }
       >
         {bubble}
