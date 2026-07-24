@@ -1,86 +1,76 @@
+import { Construction } from 'lucide-react-native';
 import {
-  Boxes,
-  ChartNoAxesCombined,
-  Construction,
-  Images,
-  Menu,
-  UserRound,
-  type LucideIcon,
-} from 'lucide-react-native';
+  Image,
+  MapTrifold,
+  Trophy,
+  UserCircle,
+  type Icon as PhosphorIcon,
+} from 'phosphor-react-native';
 import {
   useCallback,
   useMemo,
-  useState,
   type ComponentProps,
+  type ComponentType,
   type ReactElement,
 } from 'react';
-import { Modal, Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import {
   createBottomTabNavigator,
   type BottomTabScreenProps,
 } from '@react-navigation/bottom-tabs';
-import { useFocusEffect } from '@react-navigation/native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { LiquidGlassTabBar } from '@/components/you/LiquidGlassTabBar';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { ProfileScreen } from '@/screens/you/ProfileScreen';
 
 export type YouTabParamList = {
   Profile: undefined;
   Gallery: undefined;
   Insights: undefined;
-  Batches: undefined;
-  More: undefined;
+  Achievements: undefined;
 };
 
-type YouPrimaryTab = keyof Omit<YouTabParamList, 'More'>;
+type YouTabName = keyof YouTabParamList;
 
 type TabBarIconProps = {
   color: string;
   size: number;
+  focused: boolean;
 };
 
-function ProfileTabIcon({ color, size }: TabBarIconProps) {
-  return <Icon as={UserRound} size={size} color={color} />;
+/** Phosphor: regular when idle, duotone when active. */
+function TabIcon({
+  as: IconComponent,
+  color,
+  size,
+  focused,
+}: TabBarIconProps & { as: PhosphorIcon }) {
+  return (
+    <IconComponent
+      size={size}
+      color={color}
+      weight={focused ? 'duotone' : 'regular'}
+    />
+  );
 }
 
-function GalleryTabIcon({ color, size }: TabBarIconProps) {
-  return <Icon as={Images} size={size} color={color} />;
+function ProfileTabIcon(props: TabBarIconProps) {
+  return <TabIcon as={UserCircle} {...props} />;
 }
 
-function InsightsTabIcon({ color, size }: TabBarIconProps) {
-  return <Icon as={ChartNoAxesCombined} size={size} color={color} />;
+function GalleryTabIcon(props: TabBarIconProps) {
+  return <TabIcon as={Image} {...props} />;
 }
 
-function BatchesTabIcon({ color, size }: TabBarIconProps) {
-  return <Icon as={Boxes} size={size} color={color} />;
+function InsightsTabIcon(props: TabBarIconProps) {
+  return <TabIcon as={MapTrifold} {...props} />;
 }
 
-function MoreTabIcon({ color, size }: TabBarIconProps) {
-  return <Icon as={Menu} size={size} color={color} />;
+function AchievementsTabIcon(props: TabBarIconProps) {
+  return <TabIcon as={Trophy} {...props} />;
 }
-
-const PRIMARY_TABS: {
-  name: YouPrimaryTab;
-  label: string;
-  tabBarIcon: (props: TabBarIconProps) => ReactElement;
-}[] = [
-  { name: 'Profile', label: 'Profile', tabBarIcon: ProfileTabIcon },
-  { name: 'Gallery', label: 'Gallery', tabBarIcon: GalleryTabIcon },
-  { name: 'Insights', label: 'Insights', tabBarIcon: InsightsTabIcon },
-  { name: 'Batches', label: 'Batches', tabBarIcon: BatchesTabIcon },
-];
-
-/** Grow this list as new You pages are added — they appear in the More menu. */
-const OVERFLOW_ITEMS: {
-  id: string;
-  label: string;
-  icon: LucideIcon;
-}[] = [];
-
-const Tab = createBottomTabNavigator<YouTabParamList>();
 
 function UnderDevelopmentPanel({ title }: { title: string }) {
   const colors = useThemeColors();
@@ -102,90 +92,55 @@ function UnderDevelopmentPanel({ title }: { title: string }) {
 
 function YouTabPlaceholder({
   route,
-  navigation,
 }: BottomTabScreenProps<YouTabParamList>) {
-  useFocusEffect(
-    useCallback(() => {
-      navigation.getParent()?.setOptions({ title: route.name });
-    }, [navigation, route.name]),
-  );
-
   return <UnderDevelopmentPanel title={route.name} />;
 }
 
-function MoreMenuSheet({
-  visible,
-  onClose,
-}: {
-  visible: boolean;
-  onClose: () => void;
-}) {
-  const colors = useThemeColors();
-  const insets = useSafeAreaInsets();
+const TABS: {
+  name: YouTabName;
+  label: string;
+  tabBarIcon: (props: TabBarIconProps) => ReactElement;
+  // Tab.Screen accepts route props; keep loose so placeholders + Profile share one list.
+  component: ComponentType<any>;
+}[] = [
+  {
+    name: 'Profile',
+    label: 'Profile',
+    tabBarIcon: ProfileTabIcon,
+    component: ProfileScreen,
+  },
+  {
+    name: 'Gallery',
+    label: 'Gallery',
+    tabBarIcon: GalleryTabIcon,
+    component: YouTabPlaceholder,
+  },
+  {
+    name: 'Insights',
+    label: 'Insights',
+    tabBarIcon: InsightsTabIcon,
+    component: YouTabPlaceholder,
+  },
+  {
+    name: 'Achievements',
+    label: 'Achievements',
+    tabBarIcon: AchievementsTabIcon,
+    component: YouTabPlaceholder,
+  },
+];
 
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Dismiss menu"
-        onPress={onClose}
-        className="flex-1 justify-end bg-black/35"
-      >
-        <Pressable
-          onPress={event => event.stopPropagation()}
-          className="border-border bg-card mx-3 overflow-hidden rounded-2xl border"
-          style={{ marginBottom: Math.max(insets.bottom, 12) + 56 }}
-        >
-          <View className="border-border border-b px-4 py-3">
-            <Text className="text-sm font-semibold">More</Text>
-          </View>
+const Tab = createBottomTabNavigator<YouTabParamList>();
 
-          {OVERFLOW_ITEMS.length === 0 ? (
-            <View className="px-4 py-5">
-              <Text variant="muted" className="text-center">
-                More pages coming soon
-              </Text>
-            </View>
-          ) : (
-            OVERFLOW_ITEMS.map(item => (
-              <Pressable
-                key={item.id}
-                accessibilityRole="button"
-                accessibilityLabel={item.label}
-                onPress={onClose}
-                className="border-border flex-row items-center gap-3 border-b px-4 py-3.5 active:bg-muted/50"
-              >
-                <Icon
-                  as={item.icon}
-                  size={20}
-                  color={colors.mutedForeground}
-                />
-                <Text className="flex-1 text-base">{item.label}</Text>
-              </Pressable>
-            ))
-          )}
-        </Pressable>
-      </Pressable>
-    </Modal>
-  );
+const YOU_TAB_NAMES = new Set<string>(TABS.map(tab => tab.name));
+
+/** Survives You screen unmount so reopen restores the last tab. */
+let lastYouTab: YouTabName = 'Profile';
+
+function readLastYouTab(): YouTabName {
+  return YOU_TAB_NAMES.has(lastYouTab) ? lastYouTab : 'Profile';
 }
 
 export function YouScreen() {
-  const [moreOpen, setMoreOpen] = useState(false);
-
-  const openMore = useCallback(() => {
-    setMoreOpen(true);
-  }, []);
-
-  const closeMore = useCallback(() => {
-    setMoreOpen(false);
-  }, []);
-
   const screenOptions = useMemo(
     () => ({
       headerShown: false,
@@ -200,38 +155,40 @@ export function YouScreen() {
     [],
   );
 
+  const onTabStateChange = useCallback(
+    (event: {
+      data: { state?: { index: number; routes: { name: string }[] } };
+    }) => {
+      const navState = event.data.state;
+      if (!navState) {
+        return;
+      }
+      const routeName = navState.routes[navState.index]?.name;
+      if (routeName && YOU_TAB_NAMES.has(routeName)) {
+        lastYouTab = routeName as YouTabName;
+      }
+    },
+    [],
+  );
+
   return (
-    <>
-      <Tab.Navigator screenOptions={screenOptions} tabBar={renderTabBar}>
-        {PRIMARY_TABS.map(tab => (
-          <Tab.Screen
-            key={tab.name}
-            name={tab.name}
-            component={YouTabPlaceholder}
-            options={{
-              tabBarLabel: tab.label,
-              tabBarIcon: tab.tabBarIcon,
-            }}
-          />
-        ))}
+    <Tab.Navigator
+      initialRouteName={readLastYouTab()}
+      screenOptions={screenOptions}
+      tabBar={renderTabBar}
+      screenListeners={{ state: onTabStateChange }}
+    >
+      {TABS.map(tab => (
         <Tab.Screen
-          name="More"
-          component={YouTabPlaceholder}
-          listeners={{
-            tabPress: event => {
-              event.preventDefault();
-              openMore();
-            },
-          }}
+          key={tab.name}
+          name={tab.name}
+          component={tab.component}
           options={{
-            tabBarLabel: 'More',
-            tabBarIcon: MoreTabIcon,
-            tabBarBadge: '',
+            tabBarLabel: tab.label,
+            tabBarIcon: tab.tabBarIcon,
           }}
         />
-      </Tab.Navigator>
-
-      <MoreMenuSheet visible={moreOpen} onClose={closeMore} />
-    </>
+      ))}
+    </Tab.Navigator>
   );
 }

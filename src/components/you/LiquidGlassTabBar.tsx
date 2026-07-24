@@ -1,24 +1,22 @@
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { useEffect } from 'react';
-import { Platform, Pressable, StyleSheet, useColorScheme, View } from 'react-native';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
+import { X } from 'lucide-react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GlassSurface } from '@/components/glass/GlassSurface';
+import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import {
+  MAP_MOMENTS_BAR_GAP,
+  MAP_MOMENTS_BAR_HEIGHT,
+  MAP_MOMENTS_SIDE_BTN_GAP,
+  MAP_STACK_BUTTON_SIZE,
+} from '@/lib/app-constants';
 
-const TAB_SIZE = 54;
-const BAR_HEIGHT = 54;
-const H_PADDING = 6;
-const HIGHLIGHT_HEIGHT = BAR_HEIGHT - 12;
-const HIGHLIGHT_WIDTH = 46;
-const ICON_SIZE = 23;
-
-const SPRING = { damping: 18, stiffness: 220, mass: 0.7 } as const;
+/** Match MapMomentsGlassBar tab geometry. */
+const TAB_SIZE = 44;
+const ICON_SIZE = 22;
+const H_PADDING = 4;
 
 export function LiquidGlassTabBar({
   state,
@@ -27,88 +25,77 @@ export function LiquidGlassTabBar({
 }: BottomTabBarProps) {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
-  const scheme = useColorScheme();
-  const dark = scheme === 'dark';
+  const accent = colors.primary;
 
-  const translateX = useSharedValue(state.index * TAB_SIZE);
-
-  useEffect(() => {
-    translateX.value = withSpring(state.index * TAB_SIZE, SPRING);
-  }, [state.index, translateX]);
-
-  const highlightStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value }],
-  }));
+  const onClose = () => {
+    const parent = navigation.getParent();
+    if (parent?.canGoBack()) {
+      parent.goBack();
+      return;
+    }
+    navigation.goBack();
+  };
 
   return (
     <View
       pointerEvents="box-none"
-      style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 12) }]}
+      style={[
+        styles.wrap,
+        { paddingBottom: Math.max(insets.bottom, MAP_MOMENTS_BAR_GAP) },
+      ]}
     >
-      <View style={styles.shadowWrap}>
-        <GlassSurface style={styles.pill}>
-          <Animated.View
-            pointerEvents="none"
-            style={[styles.highlightWrap, highlightStyle]}
-          >
-            <View
-              style={[
-                styles.highlight,
-                {
-                  backgroundColor: dark
-                    ? 'rgba(255,255,255,0.14)'
-                    : 'rgba(255,255,255,0.5)',
-                },
-              ]}
-            />
-          </Animated.View>
+      <View style={styles.row}>
+        <View style={styles.shadowWrap}>
+          <GlassSurface style={styles.pill}>
+            {state.routes.map((route, index) => {
+              const { options } = descriptors[route.key];
+              const isFocused = state.index === index;
+              const label = options.tabBarAccessibilityLabel ?? route.name;
+              const color = isFocused ? accent : colors.mutedForeground;
 
-          {state.routes.map((route, index) => {
-            const { options } = descriptors[route.key];
-            const isFocused = state.index === index;
-            const label = options.tabBarAccessibilityLabel ?? route.name;
-            const showDot =
-              options.tabBarBadge !== undefined && options.tabBarBadge !== null;
-            const iconColor = dark ? '#F5F5F7' : '#1C1C1E';
-            const color = isFocused ? iconColor : colors.mutedForeground;
+              const onPress = () => {
+                const event = navigation.emit({
+                  type: 'tabPress',
+                  target: route.key,
+                  canPreventDefault: true,
+                });
+                if (!isFocused && !event.defaultPrevented) {
+                  navigation.navigate(route.name, route.params);
+                }
+              };
 
-            const onPress = () => {
-              const event = navigation.emit({
-                type: 'tabPress',
-                target: route.key,
-                canPreventDefault: true,
-              });
-              if (!isFocused && !event.defaultPrevented) {
-                navigation.navigate(route.name, route.params);
-              }
-            };
+              const onLongPress = () => {
+                navigation.emit({ type: 'tabLongPress', target: route.key });
+              };
 
-            const onLongPress = () => {
-              navigation.emit({ type: 'tabLongPress', target: route.key });
-            };
-
-            return (
-              <Pressable
-                key={route.key}
-                accessibilityRole="button"
-                accessibilityState={isFocused ? { selected: true } : {}}
-                accessibilityLabel={label}
-                onPress={onPress}
-                onLongPress={onLongPress}
-                style={styles.tab}
-              >
-                <View style={styles.iconWrap}>
+              return (
+                <Pressable
+                  key={route.key}
+                  accessibilityRole="button"
+                  accessibilityState={isFocused ? { selected: true } : {}}
+                  accessibilityLabel={label}
+                  onPress={onPress}
+                  onLongPress={onLongPress}
+                  style={styles.tab}
+                >
                   {options.tabBarIcon?.({
                     focused: isFocused,
                     color,
                     size: ICON_SIZE,
                   })}
-                  {showDot ? <View style={styles.dot} /> : null}
-                </View>
-              </Pressable>
-            );
-          })}
-        </GlassSurface>
+                </Pressable>
+              );
+            })}
+          </GlassSurface>
+        </View>
+
+        <MapGlassCircleButton
+          accessibilityLabel="Close"
+          onPress={onClose}
+          style={styles.closeButton}
+        >
+          <X size={20} color={accent} strokeWidth={2.25} />
+        </MapGlassCircleButton>
       </View>
     </View>
   );
@@ -122,14 +109,19 @@ const styles = StyleSheet.create({
     bottom: 0,
     alignItems: 'center',
   },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: MAP_MOMENTS_SIDE_BTN_GAP,
+  },
   shadowWrap: {
-    borderRadius: BAR_HEIGHT / 2,
+    borderRadius: MAP_MOMENTS_BAR_HEIGHT / 2,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.14,
-        shadowRadius: 12,
+        shadowOpacity: 0.16,
+        shadowRadius: 14,
       },
       android: { elevation: 10 },
     }),
@@ -137,42 +129,19 @@ const styles = StyleSheet.create({
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: BAR_HEIGHT,
+    height: MAP_MOMENTS_BAR_HEIGHT,
     paddingHorizontal: H_PADDING,
-    borderRadius: BAR_HEIGHT / 2,
+    borderRadius: MAP_MOMENTS_BAR_HEIGHT / 2,
     overflow: 'hidden',
-  },
-  highlightWrap: {
-    position: 'absolute',
-    left: H_PADDING,
-    top: (BAR_HEIGHT - HIGHLIGHT_HEIGHT) / 2,
-    width: TAB_SIZE,
-    height: HIGHLIGHT_HEIGHT,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  highlight: {
-    width: HIGHLIGHT_WIDTH,
-    height: HIGHLIGHT_HEIGHT,
-    borderRadius: HIGHLIGHT_HEIGHT / 2,
   },
   tab: {
     width: TAB_SIZE,
-    height: BAR_HEIGHT,
+    height: MAP_MOMENTS_BAR_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  iconWrap: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dot: {
-    position: 'absolute',
-    top: -3,
-    right: -5,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FF3B30',
+  closeButton: {
+    width: MAP_STACK_BUTTON_SIZE,
+    height: MAP_STACK_BUTTON_SIZE,
   },
 });

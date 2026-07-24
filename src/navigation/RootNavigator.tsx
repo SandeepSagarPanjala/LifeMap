@@ -217,8 +217,7 @@ export function RootNavigator() {
           name="You"
           component={YouScreen}
           options={{
-            title: 'Profile',
-            headerBackTitle: 'Map',
+            headerShown: false,
             presentation: 'card',
           }}
         />

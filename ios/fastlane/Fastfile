@@ -25,7 +25,13 @@ platform :ios do
 
   desc "Bump iOS build number (CURRENT_PROJECT_VERSION)"
   lane :bump_build do
-    increment_build_number(xcodeproj: XCODEPROJ)
+    # skip_info_plist: agvtool without `-all` — only bumps CURRENT_PROJECT_VERSION in
+    # the xcodeproj. With `-all` (default), it hardcodes CFBundleVersion in every
+    # Info.plist and breaks $(CURRENT_PROJECT_VERSION) for app + widget targets.
+    increment_build_number(
+      xcodeproj: XCODEPROJ,
+      skip_info_plist: true,
+    )
   end
 
   private_lane :connect_api_key do
