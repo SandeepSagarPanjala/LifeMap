@@ -54,7 +54,7 @@ pnpm ios:beta
 This lane:
 
 1. `pnpm install` + `pod install`
-2. Bumps **build number** (`CURRENT_PROJECT_VERSION`)
+2. Bumps **build number** (`CURRENT_PROJECT_VERSION` in the Xcode project only — Info.plist keeps `$(CURRENT_PROJECT_VERSION)`)
 3. Builds **Release** IPA
 4. Uploads to **TestFlight**
 
