@@ -99,6 +99,7 @@ function YouTabPlaceholder({
  * (Metro inlineRequires would otherwise pull them in with YouScreen).
  */
 function GalleryTabScreen() {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const GalleryScreen =
     require('@/screens/you/GalleryScreen').GalleryScreen as ComponentType;
   return <GalleryScreen />;
