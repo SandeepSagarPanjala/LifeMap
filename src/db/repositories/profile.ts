@@ -64,6 +64,7 @@ export type ProfilePatch = {
 
 export async function saveProfile(patch: ProfilePatch): Promise<UserProfile> {
   const current = await loadProfile();
+  let { displayName, gender, avatarId } = current;
 
   if (patch.displayName !== undefined) {
     // Name can only be set once; letters only, max 12.
@@ -71,6 +72,7 @@ export async function saveProfile(patch: ProfilePatch): Promise<UserProfile> {
       const cleaned = sanitizeDisplayNameInput(patch.displayName ?? '');
       if (cleaned && isValidDisplayName(cleaned)) {
         await setSetting(PROFILE_SETTING_KEYS.displayName, cleaned);
+        displayName = cleaned;
       }
     }
   }
@@ -78,6 +80,7 @@ export async function saveProfile(patch: ProfilePatch): Promise<UserProfile> {
     // Gender can only be set once.
     if (!current.gender && patch.gender) {
       await setSetting(PROFILE_SETTING_KEYS.gender, patch.gender);
+      gender = patch.gender;
     }
   }
   if (patch.avatarId !== undefined) {
@@ -85,7 +88,14 @@ export async function saveProfile(patch: ProfilePatch): Promise<UserProfile> {
       ? patch.avatarId
       : DEFAULT_AVATAR_ID;
     await setSetting(PROFILE_SETTING_KEYS.avatarId, next);
+    avatarId = next;
   }
 
-  return loadProfile();
+  return {
+    userId: current.userId,
+    friendCode: current.friendCode,
+    displayName,
+    gender,
+    avatarId,
+  };
 }
