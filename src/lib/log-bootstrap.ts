@@ -97,7 +97,16 @@ export function beginBootstrapTrace(label = 'foreground_resume'): void {
   traceLabel = label;
   traceStartMs = performance.now();
   traceFinished = false;
-  logBootstrap('bootstrap-trace', label, 'begin', { sinceTraceMs: 0 });
+  // Use a fixed 0ms prefix — recomputing elapsed can already be 1ms on slow CI.
+  if (bootstrapConsoleLoggingEnabled) {
+    console.log(
+      `[${formatBootstrapLogTime()}] [fg+0ms]`,
+      'bootstrap-trace',
+      label,
+      'begin',
+      { sinceTraceMs: 0 },
+    );
+  }
 }
 
 /** Milestone relative to the active trace (for grep). */

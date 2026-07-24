@@ -30,7 +30,6 @@ export const MapScreenMap = memo(
       mapInitialRegion,
       provider,
       mapPadding,
-      mapAttributionInsets,
       colorScheme,
       showUserLocation,
       onRegionChange,
@@ -82,8 +81,6 @@ export const MapScreenMap = memo(
         provider={provider}
         initialRegion={mapInitialRegion}
         mapPadding={mapPadding}
-        legalLabelInsets={mapAttributionInsets.legalLabelInsets}
-        appleLogoInsets={mapAttributionInsets.appleLogoInsets}
         // Custom UserLocationPuck only — MapKit's showsUserLocation draws a
         // giant GPS accuracy halo (the blue flash on History exit).
         showsUserLocation={false}

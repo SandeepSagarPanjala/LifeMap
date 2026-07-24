@@ -5,7 +5,6 @@ import {
   AppState,
   Easing,
   useColorScheme,
-  useWindowDimensions,
 } from 'react-native';
 import {
   useNavigation,
@@ -91,6 +90,8 @@ import {
   MAP_HISTORY_FLOATING_CONTROLS_GAP,
   MAP_HISTORY_PANEL_CLOSE_MS,
   MAP_LOCATE_BUTTON_BOTTOM_GAP,
+  MAP_MOMENTS_BAR_HEIGHT,
+  MAP_SETTINGS_SIZE,
   MAP_SETTINGS_TOP_GAP,
   MAP_STACK_BUTTON_GAP,
   MAP_STACK_BUTTON_SIZE,
@@ -140,7 +141,6 @@ import {
   visitPlaceDefaultLabel,
   visitPlaceSelectedCategory,
 } from '@/lib/place-lookup-types';
-import { buildMapAttributionInsets } from '@/lib/map-attribution-insets';
 import { mapProviderForPlatform } from '@/lib/map-provider';
 import {
   isBackgroundWorkBannerVisible,
@@ -225,6 +225,12 @@ export function useMapScreenController() {
   );
   /** Hide geographic arrows while pinching zoom — they only resize on settle. */
   const [mapGestureActive, setMapGestureActive] = useState(false);
+  /**
+   * After fitting today's trips overview, hide the red half until the user
+   * recenters (blue) — another fit is a no-op while already zoomed out.
+   */
+  const [todayTripsOverviewActive, setTodayTripsOverviewActive] =
+    useState(false);
 
   const {
     places: savedPlaces,
@@ -389,6 +395,17 @@ export function useMapScreenController() {
     }
     return countHistoryTimelineEvents(historyEntries);
   }, [historyDayLoaded, historyEntries]);
+  /** Blue/red split locate — only while not already in today's trips overview. */
+  const showLocateFitSplit =
+    viewingToday && historyBadgeCount > 1 && !todayTripsOverviewActive;
+
+  // Drop overview mode when the split is no longer eligible.
+  useEffect(() => {
+    if (!viewingToday || historyBadgeCount <= 1) {
+      setTodayTripsOverviewActive(false);
+    }
+  }, [viewingToday, historyBadgeCount]);
+
   const emptySelectedDayMessage = useMemo(() => {
     if (!historyDayLoaded || historyHasGpsData || historyPanelOpen) {
       return null;
@@ -664,35 +681,39 @@ export function useMapScreenController() {
     historyPanelChromeHeight() +
     MAP_HISTORY_DATE_NAV_ABOVE_PANEL_GAP +
     resolvedHistoryPanelContentHeight;
-  const stackBaseBottom = historyPanelOpen
+  // Moments glass bar is bottom-center. Date text sits just above it.
+  // History / search share the glass row; places sits above history; locate
+  // sits above search — same column gap as the in-stack spacing.
+  const showMomentsBar = viewingToday && !historyPanelOpen;
+  const momentsBarBottom = insets.bottom + MAP_LOCATE_BUTTON_BOTTOM_GAP;
+  const rowBaseBottom = historyPanelOpen
     ? historyPanelBottom + MAP_HISTORY_FLOATING_CONTROLS_GAP
-    : insets.bottom + MAP_LOCATE_BUTTON_BOTTOM_GAP;
+    : showMomentsBar
+      ? momentsBarBottom +
+        (MAP_MOMENTS_BAR_HEIGHT - MAP_STACK_BUTTON_SIZE) / 2
+      : insets.bottom + MAP_LOCATE_BUTTON_BOTTOM_GAP;
 
-  const locateButtonBottom = mapStackButtonBottom(stackBaseBottom, 0);
-  const historyButtonBottom = mapStackButtonBottom(
-    stackBaseBottom,
-    viewingToday ? 1 : 0,
-  );
-  const placesButtonBottom = mapStackButtonBottom(stackBaseBottom, 2);
-  const settingsButtonBottom = mapStackButtonBottom(
-    stackBaseBottom,
-    viewingToday ? 3 : 1,
-  );
+  // Left: history (glass row) → places above. Right: search (in bar) → locate above.
+  const historyButtonBottom = rowBaseBottom;
+  const placesButtonBottom = mapStackButtonBottom(rowBaseBottom, 1);
+  const locateButtonBottom = mapStackButtonBottom(rowBaseBottom, 1);
+  const settingsButtonTop = insets.top + MAP_SETTINGS_TOP_GAP;
 
-  const cameraButtonBottom = mapStackButtonBottom(stackBaseBottom, 0);
-  const voiceButtonBottom = mapStackButtonBottom(stackBaseBottom, 1);
-  const noteButtonBottom = mapStackButtonBottom(stackBaseBottom, 2);
-  const activityButtonBottom = mapStackButtonBottom(stackBaseBottom, 3);
+  const dateNavAnchorBottom = rowBaseBottom;
 
-  const dateNavAnchorBottom = stackBaseBottom;
-
-  const leftStackButtonCount = viewingToday ? 4 : 2;
-  const leftStackHeight = mapStackTotalHeight(
-    leftStackButtonCount,
+  const rightStackButtonCount = viewingToday ? 1 : 0;
+  const rightStackHeight = mapStackTotalHeight(
+    rightStackButtonCount,
     MAP_STACK_BUTTON_SIZE,
     MAP_STACK_BUTTON_GAP,
   );
-  const floatingControlsClearance = stackBaseBottom + leftStackHeight + 16;
+  const leftStackHeight = mapStackTotalHeight(
+    viewingToday ? 2 : 1,
+    MAP_STACK_BUTTON_SIZE,
+    MAP_STACK_BUTTON_GAP,
+  );
+  const floatingControlsClearance =
+    rowBaseBottom + Math.max(leftStackHeight, rightStackHeight) + 16;
 
   const backgroundWorkBannerVisible = useSyncExternalStore(
     subscribeBackgroundWork,
@@ -705,22 +726,13 @@ export function useMapScreenController() {
       top:
         insets.top +
         MAP_SETTINGS_TOP_GAP +
+        MAP_SETTINGS_SIZE +
         (backgroundWorkBannerVisible ? BACKGROUND_WORK_BANNER_BODY_HEIGHT : 0),
       right: 12,
       bottom: floatingControlsClearance,
       left: 12,
     }),
     [floatingControlsClearance, insets.top, backgroundWorkBannerVisible],
-  );
-
-  const { width: screenWidth } = useWindowDimensions();
-  const mapAttributionInsets = useMemo(
-    () =>
-      buildMapAttributionInsets({
-        screenWidth,
-        dateNavBottom: dateNavAnchorBottom,
-      }),
-    [screenWidth, dateNavAnchorBottom],
   );
 
   const scrubOnEvent = historyScrubOnEvent;
@@ -1212,6 +1224,9 @@ export function useMapScreenController() {
       return;
     }
 
+    // Leaving trips overview → restore blue/red split when eligible.
+    setTodayTripsOverviewActive(false);
+
     const requestId = ++recenterRequestIdRef.current;
 
     // Instant feedback only when the cached puck fix is genuinely recent. While
@@ -1259,6 +1274,23 @@ export function useMapScreenController() {
       }
     })();
   }, []);
+
+  /** Zoom out to frame all of today's tracked points (past-day overview camera). */
+  const fitTodayTrips = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) {
+      return;
+    }
+    const coordinates = toMapCoordinates(historyData.points);
+    if (coordinates.length === 0) {
+      return;
+    }
+    const region = regionForCoordinates(coordinates);
+    map.animateToRegion(region, 400);
+    commitMapRegion(region);
+    // Already zoomed to trips — full blue locate until user recenters.
+    setTodayTripsOverviewActive(true);
+  }, [commitMapRegion, historyData.points]);
 
   const applyUserCoordinate = useCallback(
     (coordinate: { latitude: number; longitude: number }) => {
@@ -1580,6 +1612,10 @@ export function useMapScreenController() {
     navigation.navigate('Settings');
   }, [navigation]);
 
+  const openYou = useCallback(() => {
+    navigation.navigate('You');
+  }, [navigation]);
+
   const openCaptureVoice = useCallback(() => {
     navigation.navigate('CaptureVoice');
   }, [navigation]);
@@ -1895,15 +1931,12 @@ export function useMapScreenController() {
       mapInitialRegion,
       provider,
       mapPadding,
-      mapAttributionInsets,
       locateButtonBottom,
-      settingsButtonBottom,
+      settingsButtonTop,
       placesButtonBottom,
       historyButtonBottom,
-      cameraButtonBottom,
-      voiceButtonBottom,
-      noteButtonBottom,
-      activityButtonBottom,
+      showMomentsBar,
+      momentsBarBottom,
       openCaptureVoice,
       openCaptureActivity,
       handleCaptureCamera,
@@ -1920,6 +1953,7 @@ export function useMapScreenController() {
       dayStoryStops,
       historyMapPlan,
       historyBadgeCount,
+      showLocateFitSplit,
       trackingGapWarning,
       emptySelectedDayMessage,
       viewingToday,
@@ -2002,7 +2036,9 @@ export function useMapScreenController() {
       handleSaveFavoritePlace,
       openSavedPlaces,
       openSettings,
+      openYou,
       goToCurrentLocation,
+      fitTodayTrips,
       openHistoryDatePicker,
       handleSelectMapDate,
       handleHistoryDateKeyChange,
@@ -2020,15 +2056,12 @@ export function useMapScreenController() {
       mapInitialRegion,
       provider,
       mapPadding,
-      mapAttributionInsets,
       locateButtonBottom,
-      settingsButtonBottom,
+      settingsButtonTop,
       placesButtonBottom,
       historyButtonBottom,
-      cameraButtonBottom,
-      voiceButtonBottom,
-      noteButtonBottom,
-      activityButtonBottom,
+      showMomentsBar,
+      momentsBarBottom,
       openCaptureVoice,
       openCaptureActivity,
       handleCaptureCamera,
@@ -2045,6 +2078,7 @@ export function useMapScreenController() {
       dayStoryStops,
       historyMapPlan,
       historyBadgeCount,
+      showLocateFitSplit,
       trackingGapWarning,
       emptySelectedDayMessage,
       viewingToday,
@@ -2124,7 +2158,9 @@ export function useMapScreenController() {
       handleSaveFavoritePlace,
       openSavedPlaces,
       openSettings,
+      openYou,
       goToCurrentLocation,
+      fitTodayTrips,
       openHistoryDatePicker,
       handleSelectMapDate,
       handleHistoryDateKeyChange,

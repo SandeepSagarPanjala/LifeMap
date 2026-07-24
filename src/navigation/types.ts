@@ -24,6 +24,7 @@ export type RootStackParamList = {
   SavedPlaces: undefined;
   MomentPreview: undefined;
   Benchmark: undefined;
+  You: undefined;
 };
 
 export type RootStackScreenProps<T extends keyof RootStackParamList> =

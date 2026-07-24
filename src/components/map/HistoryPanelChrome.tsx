@@ -1,8 +1,9 @@
 import { ChevronLeft, ChevronRight, X } from 'lucide-react-native';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { MapCircleButton } from '@/components/map/MapCircleButton';
-import { CAPTURE_BUTTON_THEMES } from '@/components/map/map-capture-button-theme';
+import { GlassSurface } from '@/components/glass/GlassSurface';
+import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 import {
   MAP_DATE_NAV_ROW_GAP,
   MAP_SETTINGS_SIZE,
@@ -11,7 +12,6 @@ import {
 
 const MAP_CLOSE_ICON_COLOR = '#E0352B';
 const MAP_WARNING_CLOSE_ICON_COLOR = '#FF9500';
-const HISTORY_NAV_ICON_COLOR = CAPTURE_BUTTON_THEMES.camera.icon;
 
 type HistoryPanelChromeProps = {
   viewingToday: boolean;
@@ -34,7 +34,9 @@ export function HistoryPanelChrome({
   onClose,
   onPressLabel,
 }: HistoryPanelChromeProps) {
-  const closeVariant = viewingToday ? 'softRed' : 'softWarning';
+  const colors = useThemeColors();
+  const accent = colors.primary;
+  const closeTint = viewingToday ? 'danger' : 'warning';
   const closeIconColor = viewingToday
     ? MAP_CLOSE_ICON_COLOR
     : MAP_WARNING_CLOSE_ICON_COLOR;
@@ -48,56 +50,56 @@ export function HistoryPanelChrome({
       }
       style={styles.wrap}
     >
-      <MapCircleButton
+      <MapGlassCircleButton
         accessibilityLabel={
           viewingToday ? 'Close history' : 'Close day history'
         }
-        variant={closeVariant}
+        tint={closeTint}
         onPress={onClose}
       >
         <X size={20} color={closeIconColor} strokeWidth={2.5} />
-      </MapCircleButton>
+      </MapGlassCircleButton>
 
       <View style={styles.dateRow} pointerEvents="box-none">
-        <MapCircleButton
+        <MapGlassCircleButton
           accessibilityLabel="Previous day"
           disabled={!canGoPrev}
-          variant="capture"
           onPress={() => onPrev?.()}
         >
           <ChevronLeft
             size={22}
-            color={HISTORY_NAV_ICON_COLOR}
+            color={accent}
             strokeWidth={2.5}
             opacity={canGoPrev ? 1 : 0.35}
           />
-        </MapCircleButton>
+        </MapGlassCircleButton>
 
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Choose date"
           onPress={onPressLabel}
         >
-          <View style={styles.pill}>
-            <Text style={styles.label} numberOfLines={1}>
-              {label}
-            </Text>
+          <View style={styles.pillShadow}>
+            <GlassSurface style={styles.pill}>
+              <Text style={[styles.label, { color: accent }]} numberOfLines={1}>
+                {label}
+              </Text>
+            </GlassSurface>
           </View>
         </Pressable>
 
-        <MapCircleButton
+        <MapGlassCircleButton
           accessibilityLabel="Next day"
           disabled={!canGoNext}
-          variant="capture"
           onPress={() => onNext?.()}
         >
           <ChevronRight
             size={22}
-            color={HISTORY_NAV_ICON_COLOR}
+            color={accent}
             strokeWidth={2.5}
             opacity={canGoNext ? 1 : 0.35}
           />
-        </MapCircleButton>
+        </MapGlassCircleButton>
       </View>
     </View>
   );
@@ -113,26 +115,30 @@ const styles = StyleSheet.create({
     gap: 12,
     marginTop: MAP_DATE_NAV_ROW_GAP,
   },
+  pillShadow: {
+    borderRadius: MAP_STACK_BUTTON_SIZE / 2,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.14,
+        shadowRadius: 8,
+      },
+      android: { elevation: 5 },
+    }),
+  },
   pill: {
     height: MAP_STACK_BUTTON_SIZE,
     flexShrink: 0,
-    backgroundColor: '#FFFFFF',
     borderRadius: MAP_STACK_BUTTON_SIZE / 2,
     paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#E5E5EA',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 4,
+    overflow: 'hidden',
   },
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1C1C1E',
     textAlign: 'center',
   },
 });

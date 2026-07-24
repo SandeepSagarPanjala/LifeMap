@@ -32,6 +32,7 @@ import { CachedPlacesSettingsScreen } from '@/screens/settings/CachedPlacesSetti
 import { CachedPlaceMapScreen } from '@/screens/settings/CachedPlaceMapScreen';
 import { StorageSettingsScreen } from '@/screens/settings/StorageSettingsScreen';
 import { ThemeSettingsScreen } from '@/screens/settings/ThemeSettingsScreen';
+import { YouScreen } from '@/screens/you/YouScreen';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { setWidgetNavigationRef } from '@/lib/widget/widget-deep-link';
 import { activityCaptureScreenOptions } from '@/navigation/activity-capture-screen-options';
@@ -210,6 +211,15 @@ export function RootNavigator() {
             headerShown: false,
             presentation: 'fullScreenModal',
             animation: 'none',
+          }}
+        />
+        <Stack.Screen
+          name="You"
+          component={YouScreen}
+          options={{
+            title: 'Profile',
+            headerBackTitle: 'Map',
+            presentation: 'card',
           }}
         />
       </Stack.Navigator>
