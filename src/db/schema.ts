@@ -57,6 +57,7 @@ export const moments = sqliteTable(
     }).notNull(),
     timestamp: integer('timestamp', { mode: 'timestamp' }).notNull(),
     contentPath: text('content_path'),
+    thumbnailPath: text('thumbnail_path'),
     voiceAttachmentPath: text('voice_attachment_path'),
     voiceAttachmentBytes: integer('voice_attachment_bytes'),
     voiceDurationSec: integer('voice_duration_sec'),

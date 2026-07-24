@@ -1,30 +1,33 @@
+import { Alien } from 'phosphor-react-native/src/icons/Alien';
+import { Bicycle } from 'phosphor-react-native/src/icons/Bicycle';
+import { Cat } from 'phosphor-react-native/src/icons/Cat';
+import { Coffee } from 'phosphor-react-native/src/icons/Coffee';
+import { Dog } from 'phosphor-react-native/src/icons/Dog';
+import { Ghost } from 'phosphor-react-native/src/icons/Ghost';
+import { Heart } from 'phosphor-react-native/src/icons/Heart';
+import { Leaf } from 'phosphor-react-native/src/icons/Leaf';
+import { Moon } from 'phosphor-react-native/src/icons/Moon';
+import { MusicNote } from 'phosphor-react-native/src/icons/MusicNote';
+import { Rocket } from 'phosphor-react-native/src/icons/Rocket';
+import { Smiley } from 'phosphor-react-native/src/icons/Smiley';
+import { Sparkle } from 'phosphor-react-native/src/icons/Sparkle';
+import { Star } from 'phosphor-react-native/src/icons/Star';
+import { Sun } from 'phosphor-react-native/src/icons/Sun';
+import { UserCircle } from 'phosphor-react-native/src/icons/UserCircle';
+import type { PhosphorIcon } from '@/lib/profile/phosphor-icon';
+
 import {
-  Alien,
-  Bicycle,
-  Cat,
-  Coffee,
-  Dog,
-  Ghost,
-  Heart,
-  Leaf,
-  Moon,
-  MusicNote,
-  Rocket,
-  Smiley,
-  Sparkle,
-  Star,
-  Sun,
-  UserCircle,
-  type Icon as PhosphorIcon,
-} from 'phosphor-react-native';
+  DEFAULT_AVATAR_ID,
+  isAvatarId,
+} from '@/lib/profile/avatar-ids';
+
+export { DEFAULT_AVATAR_ID, isAvatarId } from '@/lib/profile/avatar-ids';
 
 export type AvatarCatalogEntry = {
   id: string;
   label: string;
   Icon: PhosphorIcon;
 };
-
-export const DEFAULT_AVATAR_ID = 'user_circle';
 
 /** Starter pack — grow this list (or load remote packs) without schema changes. */
 export const AVATAR_CATALOG: readonly AvatarCatalogEntry[] = [
@@ -48,12 +51,8 @@ export const AVATAR_CATALOG: readonly AvatarCatalogEntry[] = [
 
 const BY_ID = new Map(AVATAR_CATALOG.map(entry => [entry.id, entry]));
 
-export function isAvatarId(value: string): boolean {
-  return BY_ID.has(value);
-}
-
 export function getAvatar(id: string | null | undefined): AvatarCatalogEntry {
-  if (id && BY_ID.has(id)) {
+  if (id && isAvatarId(id) && BY_ID.has(id)) {
     return BY_ID.get(id)!;
   }
   return BY_ID.get(DEFAULT_AVATAR_ID)!;

@@ -1,6 +1,7 @@
 import type { SavedPlaceRow } from '@/db/repositories/saved-places';
 import { findContainingTimelineEntry } from '@/lib/moments/moment-timeline';
 import { formatDistance, type DistanceUnit } from '@/lib/location-geo';
+import { visitDisplayLabel } from '@/lib/place-lookup-types';
 import {
   matchSavedPlaceForStay,
   savedPlaceDisplayLabel,
@@ -37,6 +38,58 @@ function formatMomentPreviewStats(
   return formatTimelineStats(entry, distanceUnit);
 }
 
+function stayPlaceLabelFromEntry(
+  entry: DetectedTrip,
+  savedPlaces: readonly SavedPlaceRow[],
+): string | null {
+  const savedPlace = matchSavedPlaceForStay(entry, savedPlaces);
+  if (savedPlace != null) {
+    return savedPlaceDisplayLabel(savedPlace);
+  }
+  // History priority: POI/saved label → street address → nothing.
+  return visitDisplayLabel({
+    placeKind: entry.placeKind ?? null,
+    placeLabel: entry.placeLabel ?? null,
+    poiLabel: entry.poiLabel ?? null,
+  });
+}
+
+function drivePlaceLabelFromEntries(
+  entry: DayTimelineEntry,
+  allEntries: readonly DayTimelineEntry[],
+  savedPlaces: readonly SavedPlaceRow[],
+): string | null {
+  const tripIndex = allEntries.findIndex(
+    candidate => candidate.id === entry.id,
+  );
+  if (tripIndex < 0) {
+    return null;
+  }
+  let from: DetectedTrip | null = null;
+  for (let index = tripIndex - 1; index >= 0; index -= 1) {
+    const candidate = allEntries[index];
+    if (candidate?.kind === 'stay') {
+      from = candidate;
+      break;
+    }
+  }
+  let to: DetectedTrip | null = null;
+  for (let index = tripIndex + 1; index < allEntries.length; index += 1) {
+    const candidate = allEntries[index];
+    if (candidate?.kind === 'stay') {
+      to = candidate;
+      break;
+    }
+  }
+  const fromLabel =
+    from != null ? stayPlaceLabelFromEntry(from, savedPlaces) : null;
+  const toLabel = to != null ? stayPlaceLabelFromEntry(to, savedPlaces) : null;
+  if (fromLabel && toLabel) {
+    return `${fromLabel} to ${toLabel}`;
+  }
+  return fromLabel ?? toLabel;
+}
+
 export function resolveMomentPreviewContext(
   momentTimestamp: Date,
   entries: DayTimelineEntry[],
@@ -53,6 +106,7 @@ export function resolveMomentPreviewContext(
     savedPlaces,
     distanceUnit,
     now,
+    entries,
   );
 }
 
@@ -61,9 +115,9 @@ export function buildMomentPreviewContextForEntry(
   savedPlaces: readonly SavedPlaceRow[],
   distanceUnit: DistanceUnit = 'mi',
   now: Date = new Date(),
+  allEntries: readonly DayTimelineEntry[] = [],
 ): MomentPreviewContext {
   if (entry.kind === 'stay') {
-    const savedPlace = matchSavedPlaceForStay(entry, savedPlaces);
     const visit = formatStayVisitLabel(
       entry.startAt,
       entry.endAt,
@@ -73,20 +127,22 @@ export function buildMomentPreviewContextForEntry(
     return {
       entryKind: 'stay',
       kindLabel: 'Visit',
-      placeLabel:
-        savedPlace != null
-          ? savedPlaceDisplayLabel(savedPlace)
-          : entry.placeLabel ?? null,
+      placeLabel: stayPlaceLabelFromEntry(entry, savedPlaces),
       timeLabel: visit.title,
       statsLabel: visit.subtitle,
       entryId: entry.id,
     };
   }
 
+  const placeLabel =
+    entry.kind === 'travel'
+      ? drivePlaceLabelFromEntries(entry, allEntries, savedPlaces)
+      : null;
+
   return {
     entryKind: entry.kind,
     kindLabel: formatTimelineKindLabel(entry),
-    placeLabel: null,
+    placeLabel,
     timeLabel: formatTripTimeRange(entry.startAt, entry.endAt),
     statsLabel: formatMomentPreviewStats(entry, distanceUnit),
     entryId: entry.id,
@@ -120,6 +176,9 @@ export function formatMomentPreviewContextLine(
   }
   if (context.entryKind === 'stay') {
     return 'Visit';
+  }
+  if (context.entryKind === 'travel' && place) {
+    return `Drive · ${place}`;
   }
   if (context.entryKind === 'travel') {
     return 'Drive';

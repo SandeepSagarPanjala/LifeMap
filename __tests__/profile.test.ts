@@ -1,3 +1,18 @@
+jest.mock('@/lib/profile/avatar-catalog', () => {
+  const { DEFAULT_AVATAR_ID, isAvatarId } = jest.requireActual(
+    '@/lib/profile/avatar-ids',
+  );
+  return {
+    DEFAULT_AVATAR_ID,
+    isAvatarId,
+    getAvatar: (id: string | null | undefined) => ({
+      id: id && isAvatarId(id) ? id : DEFAULT_AVATAR_ID,
+      label: 'Mock',
+      Icon: () => null,
+    }),
+  };
+});
+
 import { generateUuidV4 } from '@/lib/secure-random';
 import {
   DEFAULT_AVATAR_ID,

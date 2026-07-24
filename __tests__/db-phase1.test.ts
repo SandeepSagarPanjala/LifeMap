@@ -13,6 +13,7 @@ jest.mock('../src/db/migrate', () => ({
   ensureTripPointMetadataColumns: jest.fn().mockResolvedValue(undefined),
   ensureMomentsMoodColumns: jest.fn().mockResolvedValue(undefined),
   ensureMomentsWithoutLocationColumns: jest.fn().mockResolvedValue(undefined),
+  ensureMomentThumbnailPathColumn: jest.fn().mockResolvedValue(undefined),
   ensureMaterializedDayGeometryColumn: jest.fn().mockResolvedValue(undefined),
   ensureVisitLabelOverrideAnchorColumns: jest.fn().mockResolvedValue(undefined),
   ensureMaterializedDayExcludedDriveColumn: jest

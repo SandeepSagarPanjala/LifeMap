@@ -99,7 +99,7 @@ describe('moment preview context', () => {
     expect(context).toMatchObject({
       entryKind: 'travel',
       kindLabel: 'Drive',
-      placeLabel: null,
+      placeLabel: 'Kroger',
       entryId: 'travel-1',
     });
     expect(context?.statsLabel).toBe('5.0 mi · 20 min');

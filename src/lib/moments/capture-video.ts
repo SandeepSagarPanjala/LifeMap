@@ -6,6 +6,7 @@ import { saveMomentToGallery } from '@/lib/moments/capture-photo';
 import { compressMomentVideo } from '@/lib/moments/compress-video';
 import { VIDEO_CONTENT_FORMAT } from '@/lib/app-constants';
 import { persistFileToMomentSandbox } from '@/lib/moments/moment-storage';
+import { scheduleMomentThumbnailGeneration } from '@/lib/moments/schedule-moment-thumbnail';
 
 const MIN_VIDEO_DURATION_MS = 500;
 const MOMENT_VIDEO_FILE_EXTENSION = 'mp4';
@@ -58,7 +59,7 @@ export async function saveVideoMoment(
   );
 
   try {
-    return await insertMoment({
+    const row = await insertMoment({
       type: 'video',
       timestamp: new Date(),
       contentPath: sandboxFile.contentPath,
@@ -66,6 +67,8 @@ export async function saveVideoMoment(
       contentFormat: VIDEO_CONTENT_FORMAT,
       caption: caption?.trim() || null,
     });
+    scheduleMomentThumbnailGeneration(row);
+    return row;
   } catch (error) {
     const { deleteMomentContentFile } = await import(
       '@/lib/moments/moment-storage'

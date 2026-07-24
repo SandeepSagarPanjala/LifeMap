@@ -37,6 +37,7 @@ export function makeMoment(
   return {
     finishedAt: null,
     contentPath: null,
+    thumbnailPath: null,
     voiceAttachmentPath: null,
     voiceAttachmentBytes: null,
     voiceDurationSec: null,

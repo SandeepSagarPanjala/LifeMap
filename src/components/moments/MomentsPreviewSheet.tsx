@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { APP_COPY } from '@/lib/app-copy';
 import {
   Alert,
@@ -28,12 +28,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MomentVideoPlayer } from '@/components/capture/MomentVideoPlayer';
 import { ResizeMode } from 'react-native-video';
-import { SavedPlaceIcon } from '@/components/map/SavedPlaceIcon';
 import { CAPTURE_BUTTON_THEMES } from '@/components/map/map-capture-button-theme';
 import { MomentPreviewImage } from '@/components/moments/MomentPreviewImage';
 import { Text } from '@/components/ui/text';
 import type { MomentRow } from '@/db/repositories/moments';
 import type { SavedPlaceRow } from '@/db/repositories/saved-places';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 import type { MomentPreviewContext } from '@/lib/moments/moment-preview-context';
 import {
   formatMomentVoiceDuration,
@@ -61,9 +61,14 @@ export type MomentPreviewViewerProps = {
   initialIndex?: number;
   previewEntryContext?: MomentPreviewContext | null;
   previewSavedPlace?: SavedPlaceRow | null;
+  /** Per-moment place labels (gallery / trip-resolved). */
+  placeLabelsByMomentId?: ReadonlyMap<number, string> | null;
   suspendAudio?: boolean;
   onClose: () => void;
   onDeleteMoment: (momentId: number) => Promise<void>;
+  onActiveIndexChange?: (index: number) => void;
+  /** When set, shift active index (and scroll) by `delta` — used after prepending days. */
+  prependShift?: { id: number; delta: number } | null;
 };
 
 type MomentsPreviewSheetProps = MomentPreviewViewerProps & {
@@ -190,59 +195,62 @@ function MomentTypeIcon({
 function MomentInfoHeader({
   moment,
   previewEntryContext,
-  previewSavedPlace,
+  placeLabelsByMomentId,
+  previewSavedPlace: _previewSavedPlace,
 }: {
   moment: MomentRow;
   previewEntryContext?: MomentPreviewContext | null;
+  placeLabelsByMomentId?: ReadonlyMap<number, string> | null;
   previewSavedPlace?: SavedPlaceRow | null;
 }) {
+  const colors = useThemeColors();
   const storedPlaceLabel = moment.placeLabel?.trim() || null;
+  const resolvedPlaceLabel =
+    placeLabelsByMomentId?.get(moment.id)?.trim() || null;
   const contextPlaceLabel = previewEntryContext?.placeLabel?.trim() || null;
-  const placeLabel = storedPlaceLabel ?? contextPlaceLabel;
+  const placeLabel =
+    storedPlaceLabel ?? resolvedPlaceLabel ?? contextPlaceLabel;
+  const caption =
+    (moment.type === 'photo' || moment.type === 'video') &&
+    moment.caption?.trim()
+      ? moment.caption.trim()
+      : null;
 
   return (
     <View style={styles.infoHeader}>
-      <View style={styles.infoTopRow}>
-        <MomentTypeIcon moment={moment} size={16} />
-        <Text style={styles.infoTime}>
+      <View
+        style={[
+          styles.metaPill,
+          {
+            backgroundColor: colors.primary,
+          },
+        ]}
+      >
+        <MomentTypeIcon moment={moment} size={14} />
+        <Text style={[styles.metaTime, { color: colors.primaryForeground }]}>
           {formatTripClockTime(moment.timestamp)}
         </Text>
+        {placeLabel ? (
+          <>
+            <View
+              style={[
+                styles.metaDot,
+                { backgroundColor: colors.primaryForeground },
+              ]}
+            />
+            <Text
+              style={[styles.metaPlace, { color: colors.primaryForeground }]}
+              numberOfLines={1}
+            >
+              {placeLabel}
+            </Text>
+          </>
+        ) : null}
       </View>
 
-      {previewEntryContext ? (
-        <View style={styles.infoContext}>
-          <View style={styles.infoPlaceLine}>
-            <Text style={styles.infoKind}>{previewEntryContext.kindLabel}</Text>
-            {previewSavedPlace ? (
-              <View style={styles.infoPlaceRow}>
-                <SavedPlaceIcon kind={previewSavedPlace.kind} size={14} />
-                <Text style={styles.infoPlace} numberOfLines={1}>
-                  {placeLabel}
-                </Text>
-              </View>
-            ) : placeLabel ? (
-              <Text style={styles.infoPlace} numberOfLines={1}>
-                {placeLabel}
-              </Text>
-            ) : null}
-          </View>
-          <Text style={styles.infoStats}>
-            {previewEntryContext.timeLabel} · {previewEntryContext.statsLabel}
-          </Text>
-        </View>
-      ) : placeLabel ? (
-        <Text style={styles.infoPlace} numberOfLines={1}>
-          {placeLabel}
-        </Text>
-      ) : null}
-      {moment.type === 'photo' && moment.caption?.trim() ? (
-        <Text style={styles.infoCaption} numberOfLines={3}>
-          {moment.caption.trim()}
-        </Text>
-      ) : null}
-      {moment.type === 'video' && moment.caption?.trim() ? (
-        <Text style={styles.infoCaption} numberOfLines={3}>
-          {moment.caption.trim()}
+      {caption ? (
+        <Text style={styles.infoCaption} numberOfLines={2}>
+          {caption}
         </Text>
       ) : null}
     </View>
@@ -603,25 +611,54 @@ const MomentPagerPage = memo(function MomentPagerPage({
   );
 });
 
+/** Windowed pager: a few dots left/right of the active one (not one per moment). */
 function PaginationDots({
   count,
   activeIndex,
+  accentColor,
 }: {
   count: number;
   activeIndex: number;
+  accentColor: string;
 }) {
   if (count <= 1) {
     return null;
   }
 
+  const SIDE = 2;
+  const windowSize = Math.min(count, SIDE * 2 + 1);
+  let start = Math.max(0, activeIndex - SIDE);
+  let end = start + windowSize - 1;
+  if (end > count - 1) {
+    end = count - 1;
+    start = Math.max(0, end - windowSize + 1);
+  }
+
+  const indices: number[] = [];
+  for (let i = start; i <= end; i += 1) {
+    indices.push(i);
+  }
+
   return (
-    <View style={styles.dotsRow}>
-      {Array.from({ length: count }, (_, index) => (
-        <View
-          key={index}
-          style={[styles.dot, index === activeIndex ? styles.dotActive : null]}
-        />
-      ))}
+    <View
+      style={styles.dotsRow}
+      accessibilityLabel={`Moment ${activeIndex + 1} of ${count}`}
+    >
+      {start > 0 ? <View style={[styles.dot, styles.dotEdge]} /> : null}
+      {indices.map(index => {
+        const active = index === activeIndex;
+        return (
+          <View
+            key={index}
+            style={[
+              styles.dot,
+              active ? styles.dotActive : null,
+              active ? { backgroundColor: accentColor } : null,
+            ]}
+          />
+        );
+      })}
+      {end < count - 1 ? <View style={[styles.dot, styles.dotEdge]} /> : null}
     </View>
   );
 }
@@ -631,10 +668,14 @@ export function MomentPreviewViewer({
   initialIndex = 0,
   previewEntryContext = null,
   previewSavedPlace = null,
+  placeLabelsByMomentId = null,
   suspendAudio = false,
   onClose,
   onDeleteMoment,
+  onActiveIndexChange,
+  prependShift = null,
 }: MomentPreviewViewerProps) {
+  const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const pageWidth = Dimensions.get('window').width;
 
@@ -649,6 +690,9 @@ export function MomentPreviewViewer({
   const autoPlayGenerationRef = useRef(0);
   const lastAutoPlayedKeyRef = useRef<string | null>(null);
   const aliveRef = useRef(true);
+  const syncedInitialIndexRef = useRef<number | null>(null);
+  const lastPrependShiftIdRef = useRef<number | null>(null);
+  const activeIndexRef = useRef(0);
 
   const activeMoment = moments[activeIndex] ?? null;
 
@@ -764,11 +808,18 @@ export function MomentPreviewViewer({
   }, [stopVoice, suspendAudio]);
 
   useEffect(() => {
+    // Only re-sync when initialIndex changes — not when moments.length grows
+    // from cross-day prefetch (that would jump the pager).
+    if (syncedInitialIndexRef.current === initialIndex) {
+      return;
+    }
+    syncedInitialIndexRef.current = initialIndex;
     lastAutoPlayedKeyRef.current = null;
     const index = Math.max(
       0,
       Math.min(initialIndex, Math.max(0, moments.length - 1)),
     );
+    activeIndexRef.current = index;
     setActiveIndex(index);
     pagerRef.current?.scrollToOffset({
       offset: index * pageWidth,
@@ -776,9 +827,29 @@ export function MomentPreviewViewer({
     });
   }, [initialIndex, moments.length, pageWidth]);
 
+  // Apply prepend scroll correction before paint so FlatList never flashes
+  // older-day index 0 (which used to re-trigger edge prefetch and skip days).
+  useLayoutEffect(() => {
+    if (!prependShift || prependShift.delta <= 0) {
+      return;
+    }
+    if (lastPrependShiftIdRef.current === prependShift.id) {
+      return;
+    }
+    lastPrependShiftIdRef.current = prependShift.id;
+    const next = activeIndexRef.current + prependShift.delta;
+    activeIndexRef.current = next;
+    setActiveIndex(next);
+    pagerRef.current?.scrollToOffset({
+      offset: next * pageWidth,
+      animated: false,
+    });
+  }, [prependShift, pageWidth]);
+
   useEffect(() => {
     if (activeIndex >= moments.length) {
       const nextIndex = Math.max(0, moments.length - 1);
+      activeIndexRef.current = nextIndex;
       setActiveIndex(nextIndex);
       pagerRef.current?.scrollToOffset({
         offset: nextIndex * pageWidth,
@@ -786,6 +857,7 @@ export function MomentPreviewViewer({
       });
     }
   }, [activeIndex, moments.length, pageWidth]);
+
 
   useEffect(() => {
     if (moments.length === 0) {
@@ -817,13 +889,17 @@ export function MomentPreviewViewer({
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
       const index = Math.round(event.nativeEvent.contentOffset.x / pageWidth);
       const clamped = Math.max(0, Math.min(index, moments.length - 1));
-      if (clamped === activeIndex) {
+      if (clamped === activeIndexRef.current) {
         return;
       }
       void stopVoice();
+      activeIndexRef.current = clamped;
       setActiveIndex(clamped);
+      // Only notify on user-driven settles — not programmatic prepend shifts
+      // (those used to re-fire edge prefetch and skip 2–3 days).
+      onActiveIndexChange?.(clamped);
     },
-    [activeIndex, moments.length, pageWidth, stopVoice],
+    [moments.length, onActiveIndexChange, pageWidth, stopVoice],
   );
 
   const handleScrollBeginDrag = useCallback(() => {
@@ -964,6 +1040,7 @@ export function MomentPreviewViewer({
             <MomentInfoHeader
               moment={activeMoment}
               previewEntryContext={previewEntryContext}
+              placeLabelsByMomentId={placeLabelsByMomentId}
               previewSavedPlace={previewSavedPlace}
             />
           ) : null}
@@ -979,10 +1056,11 @@ export function MomentPreviewViewer({
               onPress={() => confirmDeleteMoment(activeMoment)}
               style={[
                 styles.topDeleteButton,
+                { backgroundColor: 'rgba(0,0,0,0.45)' },
                 deletingMomentId === activeMoment.id ? styles.disabled : null,
               ]}
             >
-              <Trash2 size={20} color="#FF453A" strokeWidth={2.25} />
+              <Trash2 size={18} color="#FF453A" strokeWidth={2.25} />
             </Pressable>
           ) : null}
         </View>
@@ -1007,16 +1085,23 @@ export function MomentPreviewViewer({
           <View style={[styles.bottomRowSide, styles.bottomRowSideLeft]}>
             <View style={styles.bottomRowBalance} />
           </View>
-          <PaginationDots count={moments.length} activeIndex={activeIndex} />
+          <PaginationDots
+            count={moments.length}
+            activeIndex={activeIndex}
+            accentColor={colors.primary}
+          />
           <View style={[styles.bottomRowSide, styles.bottomRowSideRight]}>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Close moments"
               onPress={closeViewer}
               hitSlop={8}
-              style={styles.chromeIconButton}
+              style={[
+                styles.chromeIconButton,
+                { backgroundColor: 'rgba(0,0,0,0.45)' },
+              ]}
             >
-              <X size={22} color="#FFFFFF" strokeWidth={2.25} />
+              <X size={20} color="#FFFFFF" strokeWidth={2.25} />
             </Pressable>
           </View>
         </View>
@@ -1126,56 +1211,71 @@ const styles = StyleSheet.create({
   infoHeader: {
     flex: 1,
     minWidth: 0,
-    gap: 4,
+    gap: 8,
   },
-  infoTopRow: {
+  metaPill: {
+    alignSelf: 'flex-start',
+    maxWidth: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    paddingLeft: 6,
+    paddingRight: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
   },
-  infoTime: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  infoContext: {
-    gap: 2,
-  },
-  infoPlaceLine: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  infoKind: {
-    color: 'rgba(255,255,255,0.65)',
-    fontSize: 10,
-    fontWeight: '600',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-  },
-  infoPlaceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  infoPlace: {
-    flexShrink: 1,
-    color: '#FFFFFF',
+  metaTime: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
   },
-  infoStats: {
-    color: 'rgba(255,255,255,0.72)',
-    fontSize: 12,
-    fontWeight: '500',
+  metaDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    opacity: 0.55,
+  },
+  metaPlace: {
+    flexShrink: 1,
+    fontSize: 13,
+    fontWeight: '600',
   },
   infoCaption: {
-    marginTop: 8,
-    color: '#FFFFFF',
+    color: 'rgba(255,255,255,0.92)',
     fontSize: 14,
     fontWeight: '500',
-    lineHeight: 20,
+    lineHeight: 19,
+    textShadowColor: 'rgba(0,0,0,0.55)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  dotsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.32)',
+  },
+  dotEdge: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  dotActive: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FFFFFF',
   },
   typeOrb: {
     width: 28,
@@ -1395,24 +1495,6 @@ const styles = StyleSheet.create({
   notePhoto: {
     borderRadius: 12,
     backgroundColor: '#111111',
-  },
-  dotsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.28)',
-  },
-  dotActive: {
-    backgroundColor: '#FFFFFF',
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
   },
   disabled: {
     opacity: 0.45,

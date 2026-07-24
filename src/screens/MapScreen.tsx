@@ -1,8 +1,9 @@
-import { memo } from 'react';
-import { View } from 'react-native';
+import { memo, useEffect } from 'react';
+import { InteractionManager, View } from 'react-native';
 
 import { BackgroundWorkBanner } from '@/components/background-work/BackgroundWorkBanner';
 import { SavePlaceSheet } from '@/components/map/SavePlaceSheet';
+import { warmYouScreen } from '@/lib/you/warm-you-screen';
 
 import { MapHistoryPanel } from './map/MapHistoryPanel';
 import { MapScreenFloatingControls } from './map/MapScreenFloatingControls';
@@ -51,6 +52,13 @@ const MapScreenChrome = memo(function MapScreenChrome({
 
 export function MapScreen() {
   const { controller, playbackProgress } = useMapScreenController();
+
+  useEffect(() => {
+    const task = InteractionManager.runAfterInteractions(() => {
+      warmYouScreen();
+    });
+    return () => task.cancel();
+  }, []);
 
   return (
     <View className="bg-background flex-1">
