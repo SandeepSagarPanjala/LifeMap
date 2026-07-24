@@ -9,15 +9,17 @@ import {
 } from 'lucide-react-native';
 import {
   useCallback,
-  useLayoutEffect,
   useMemo,
   useState,
+  type ComponentProps,
+  type ReactElement,
 } from 'react';
 import { Modal, Pressable, View } from 'react-native';
 import {
   createBottomTabNavigator,
   type BottomTabScreenProps,
 } from '@react-navigation/bottom-tabs';
+import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { LiquidGlassTabBar } from '@/components/you/LiquidGlassTabBar';
@@ -63,7 +65,7 @@ function MoreTabIcon({ color, size }: TabBarIconProps) {
 const PRIMARY_TABS: {
   name: YouPrimaryTab;
   label: string;
-  tabBarIcon: (props: TabBarIconProps) => React.ReactElement;
+  tabBarIcon: (props: TabBarIconProps) => ReactElement;
 }[] = [
   { name: 'Profile', label: 'Profile', tabBarIcon: ProfileTabIcon },
   { name: 'Gallery', label: 'Gallery', tabBarIcon: GalleryTabIcon },
@@ -102,9 +104,11 @@ function YouTabPlaceholder({
   route,
   navigation,
 }: BottomTabScreenProps<YouTabParamList>) {
-  useLayoutEffect(() => {
-    navigation.getParent()?.setOptions({ title: route.name });
-  }, [navigation, route.name]);
+  useFocusEffect(
+    useCallback(() => {
+      navigation.getParent()?.setOptions({ title: route.name });
+    }, [navigation, route.name]),
+  );
 
   return <UnderDevelopmentPanel title={route.name} />;
 }
@@ -190,7 +194,7 @@ export function YouScreen() {
   );
 
   const renderTabBar = useCallback(
-    (props: React.ComponentProps<typeof LiquidGlassTabBar>) => (
+    (props: ComponentProps<typeof LiquidGlassTabBar>) => (
       <LiquidGlassTabBar {...props} />
     ),
     [],

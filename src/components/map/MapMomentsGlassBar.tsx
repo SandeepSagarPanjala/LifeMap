@@ -76,7 +76,7 @@ export const MapMomentsGlassBar = memo(function MapMomentsGlassBar({
   const colors = useThemeColors();
   const accent = colors.primary;
 
-  // Right → left: Camera, Voice, Activity, Diary, You
+  // Left → right: You, Diary, Activity, Voice, Camera
   const actions: MomentAction[] = [
     { key: 'you', icon: LayoutGrid, label: 'Open You', onPress: onYou },
     { key: 'note', icon: Book, label: 'Open diary', onPress: onNote },
