@@ -41,14 +41,20 @@ export function warmHistoryForDay(dateKey: string): void {
     return;
   }
   void (async () => {
-    const result = await loadHistoryForDayCoalesced(dateKey, detectionConfig);
-    if (historyDataCache.has(cacheKey)) {
-      return;
+    try {
+      const result = await loadHistoryForDayCoalesced(dateKey, detectionConfig);
+      if (historyDataCache.has(cacheKey)) {
+        return;
+      }
+      const fingerprint =
+        dateKey === getTodayDateKey()
+          ? TODAY_LIVE_FINGERPRINT
+          : await getDayHistoryFingerprint(dateKey);
+      historyDataCache.write(cacheKey, result, fingerprint);
+    } catch (error) {
+      if (__DEV__) {
+        console.warn('[history] warmHistoryForDay failed', dateKey, error);
+      }
     }
-    const fingerprint =
-      dateKey === getTodayDateKey()
-        ? TODAY_LIVE_FINGERPRINT
-        : await getDayHistoryFingerprint(dateKey);
-    historyDataCache.write(cacheKey, result, fingerprint);
   })();
 }

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, isNull, lt, lte, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, gte, isNull, lt, lte, or, sql } from 'drizzle-orm';
 
 import { deleteMomentContentFile } from '@/lib/moments/moment-storage';
 import { parseNotePhotoAttachments } from '@/lib/moments/note-photo-attachments';
@@ -293,6 +293,7 @@ export async function getMomentsForDateKeys(
 
 export async function listMomentsMissingThumbnails(
   limit = 50,
+  afterId = 0,
 ): Promise<MomentRow[]> {
   const db = await getDatabase();
   const rows = await db
@@ -302,6 +303,7 @@ export async function listMomentsMissingThumbnails(
       and(
         or(eq(moments.type, 'photo'), eq(moments.type, 'video')),
         isNull(moments.thumbnailPath),
+        gt(moments.id, afterId),
       ),
     )
     .orderBy(asc(moments.id))

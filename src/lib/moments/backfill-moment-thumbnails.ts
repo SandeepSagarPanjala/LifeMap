@@ -30,15 +30,17 @@ export async function backfillMomentThumbnails(
   const total = await countMomentsMissingThumbnails();
   let done = 0;
   let failed = 0;
+  let afterId = 0;
   onProgress?.({ done, total, failed });
 
   while (done + failed < total) {
-    const batch = await listMomentsMissingThumbnails(BATCH_SIZE);
+    const batch = await listMomentsMissingThumbnails(BATCH_SIZE, afterId);
     if (batch.length === 0) {
       break;
     }
 
     for (const moment of batch) {
+      afterId = moment.id;
       try {
         if (!moment.contentPath) {
           failed += 1;
