@@ -56,6 +56,7 @@
     "lottie-react-native": "^7.3.8",
     "lucide-react-native": "^1.17.0",
     "nativewind": "^4.2.4",
+    "phosphor-react-native": "^3.0.6",
     "react": "19.2.3",
     "react-native": "0.84.1",
     "react-native-background-geolocation": "^5.1.1",
