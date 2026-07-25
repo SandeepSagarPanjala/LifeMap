@@ -15,7 +15,7 @@ import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import type { RootStackParamList } from '@/navigation/types';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import { backfillMomentPhotoTags } from '@/lib/moments/backfill-moment-tags';
+import { backfillMomentTags } from '@/lib/moments/backfill-moment-tags';
 import { backfillMomentThumbnails } from '@/lib/moments/backfill-moment-thumbnails';
 import { useAppStore } from '@/stores/app-store';
 import { countMomentsMissingThumbnails } from '@/db/repositories/moments';
@@ -118,7 +118,7 @@ export function DevSettings() {
     setTagBackfillBusy(true);
     setTagBackfillLabel('Checking…');
     try {
-      const result = await backfillMomentPhotoTags(progress => {
+      const result = await backfillMomentTags(progress => {
         setTagBackfillLabel(
           `${progress.done + progress.failed + progress.skipped}/${progress.total}`,
         );

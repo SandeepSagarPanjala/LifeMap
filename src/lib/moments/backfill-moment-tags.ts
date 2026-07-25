@@ -15,12 +15,15 @@ import {
 } from '@/lib/moments/moment-media-uri';
 import { serializeMomentTagsJson } from '@/lib/moments/moment-tags';
 
-export type PhotoTagBackfillProgress = {
+export type MomentTagBackfillProgress = {
   done: number;
   total: number;
   failed: number;
   skipped: number;
 };
+
+/** @deprecated Prefer MomentTagBackfillProgress. */
+export type PhotoTagBackfillProgress = MomentTagBackfillProgress;
 
 const BATCH_SIZE = 10;
 
@@ -43,17 +46,10 @@ async function resolveVideoDurationMs(
   }
 }
 
-async function labelMomentTags(moment: MomentRow): Promise<string[]> {
-  if (!moment.contentPath) {
-    return [];
-  }
-  const existingPath = await resolveExistingMomentContentPath(
-    moment.contentPath,
-  );
-  if (!existingPath) {
-    return [];
-  }
-
+async function labelMomentTags(
+  moment: MomentRow,
+  existingPath: string,
+): Promise<string[]> {
   if (moment.type === 'video') {
     const videoUri = momentVideoUri(existingPath);
     const durationMs = await resolveVideoDurationMs(videoUri);
@@ -72,9 +68,9 @@ async function labelMomentTags(moment: MomentRow): Promise<string[]> {
  * Label photo/video moments that have no tags yet (on-device Vision / ML Kit).
  * Videos sample three frames. Dev Tools only — new captures tag at review time.
  */
-export async function backfillMomentPhotoTags(
-  onProgress?: (progress: PhotoTagBackfillProgress) => void,
-): Promise<PhotoTagBackfillProgress> {
+export async function backfillMomentTags(
+  onProgress?: (progress: MomentTagBackfillProgress) => void,
+): Promise<MomentTagBackfillProgress> {
   const total = await countPhotoMomentsMissingTags();
   let done = 0;
   let failed = 0;
@@ -105,7 +101,7 @@ export async function backfillMomentPhotoTags(
           continue;
         }
 
-        const tags = await labelMomentTags(moment);
+        const tags = await labelMomentTags(moment, existingPath);
         if (tags.length === 0) {
           // Persist empty so we don't retry forever on unlabeled scenes.
           await updateMomentTagsJson(moment.id, '[]');
@@ -128,3 +124,6 @@ export async function backfillMomentPhotoTags(
 
   return { done, total, failed, skipped };
 }
+
+/** @deprecated Prefer backfillMomentTags. */
+export const backfillMomentPhotoTags = backfillMomentTags;

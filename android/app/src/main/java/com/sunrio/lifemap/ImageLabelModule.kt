@@ -19,6 +19,17 @@ class ImageLabelModule(reactContext: ReactApplicationContext) :
 
   override fun getName(): String = "ImageLabelModule"
 
+  override fun invalidate() {
+    executor.shutdownNow()
+    super.invalidate()
+  }
+
+  @Suppress("DEPRECATION")
+  override fun onCatalystInstanceDestroy() {
+    executor.shutdownNow()
+    super.onCatalystInstanceDestroy()
+  }
+
   @ReactMethod
   fun labelImage(
     uri: String,

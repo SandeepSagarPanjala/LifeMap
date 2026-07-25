@@ -20,9 +20,15 @@ function toFileUri(path: string): string {
 }
 
 async function deleteTempFrame(path: string): Promise<void> {
-  const absolute = path.startsWith('file://')
-    ? decodeURIComponent(path.slice('file://'.length))
-    : path;
+  let absolute = path;
+  if (path.startsWith('file://')) {
+    const withoutScheme = path.slice('file://'.length);
+    try {
+      absolute = decodeURIComponent(withoutScheme);
+    } catch {
+      absolute = withoutScheme;
+    }
+  }
   try {
     const exists = await ReactNativeBlobUtil.fs.exists(absolute);
     if (exists) {

@@ -27,10 +27,15 @@ const nativeModule = NativeModules.ImageLabelModule as
 const DEFAULT_MIN_CONFIDENCE = 0;
 
 function toFilePath(uri: string): string {
-  if (uri.startsWith('file://')) {
-    return decodeURIComponent(uri.slice('file://'.length));
+  if (!uri.startsWith('file://')) {
+    return uri;
   }
-  return uri;
+  const withoutScheme = uri.slice('file://'.length);
+  try {
+    return decodeURIComponent(withoutScheme);
+  } catch {
+    return withoutScheme;
+  }
 }
 
 /**
