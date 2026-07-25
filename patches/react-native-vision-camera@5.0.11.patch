@@ -25,10 +25,21 @@ index d0a2f67c0a0bf77fafd8fc7a05faf44ced120764..5a383ce75cc6ca4c6171afc839c67a13
    }
  }
 diff --git a/ios/Hybrid Objects/HybridCameraSession.swift b/ios/Hybrid Objects/HybridCameraSession.swift
-index b7b0c3cf3cecd28e9abea5404ba02f7301362716..cf587ef3f7da95d8a9d3e3704e7f41b47a12db57 100644
+index b7b0c3cf3cecd28e9abea5404ba02f7301362716..d85a39dc5dd7378243fdfe558a79f0848a0e26b5 100644
 --- a/ios/Hybrid Objects/HybridCameraSession.swift	
 +++ b/ios/Hybrid Objects/HybridCameraSession.swift	
-@@ -29,6 +29,36 @@ final class HybridCameraSession: HybridCameraSessionSpec {
+@@ -10,7 +10,9 @@ import NitroModules
+ 
+ final class HybridCameraSession: HybridCameraSessionSpec {
+   let session: AVCaptureSession
+-  private static let queue: DispatchQueue = DispatchQueue(
++  // Also used by `HybridCameraPreviewOutput.deinit` to order the preview layer's
++  // release of the session after this session's teardown.
++  static let queue: DispatchQueue = DispatchQueue(
+     label: "com.margelo.camera.session",
+     qos: .userInteractive,
+     attributes: [],
+@@ -29,6 +31,36 @@ final class HybridCameraSession: HybridCameraSessionSpec {
      super.init()
    }
  
@@ -66,10 +77,10 @@ index b7b0c3cf3cecd28e9abea5404ba02f7301362716..cf587ef3f7da95d8a9d3e3704e7f41b4
      return session.isRunning
    }
 diff --git a/ios/Hybrid Objects/Outputs/HybridCameraPreviewOutput.swift b/ios/Hybrid Objects/Outputs/HybridCameraPreviewOutput.swift
-index bc95c1f6d366217ab99e07b2fd9f31471253ef1d..f81b4a4a500b72d19ba6e3f0564ad968d83a470a 100644
+index bc95c1f6d366217ab99e07b2fd9f31471253ef1d..d83a83d752addaf49132b95630aeff99d55f83d1 100644
 --- a/ios/Hybrid Objects/Outputs/HybridCameraPreviewOutput.swift	
 +++ b/ios/Hybrid Objects/Outputs/HybridCameraPreviewOutput.swift	
-@@ -50,6 +50,19 @@ final class HybridCameraPreviewOutput: HybridCameraPreviewOutputSpec, NativePrev
+@@ -50,6 +50,31 @@ final class HybridCameraPreviewOutput: HybridCameraPreviewOutputSpec, NativePrev
  
    deinit {
      orientationManager.stopOrientationUpdates()
@@ -79,7 +90,19 @@ index bc95c1f6d366217ab99e07b2fd9f31471253ef1d..f81b4a4a500b72d19ba6e3f0564ad968
 +    // See https://github.com/mrousavy/react-native-vision-camera/issues/4026
 +    let layer = previewLayer
 +    let detach = {
++      // The preview layer holds a strong reference to the session, and it may be
++      // the last one. Hand that reference to the session queue before clearing it
++      // so `setSession(nil)` can never run `-[AVCaptureSession dealloc]` inline on
++      // the main thread. Releasing it on the session queue also orders the dealloc
++      // after `HybridCameraSession.deinit`'s teardown, so the session is always
++      // empty by the time AVFoundation detaches its outputs.
++      let session = layer.session
 +      layer.session = nil
++      if let session {
++        HybridCameraSession.queue.async {
++          withExtendedLifetime(session) {}
++        }
++      }
 +    }
 +    if Thread.isMainThread {
 +      detach()

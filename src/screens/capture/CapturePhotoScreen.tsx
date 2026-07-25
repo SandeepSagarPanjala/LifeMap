@@ -29,7 +29,6 @@ import {
   RefreshCw,
   RotateCcw,
   RotateCw,
-  Square,
   Type,
   X,
   Zap,
@@ -39,6 +38,7 @@ import {
   Play,
 } from 'lucide-react-native';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import { GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Camera,
@@ -47,11 +47,16 @@ import {
   useMicrophonePermission,
   usePhotoOutput,
   useVideoOutput,
+  type CameraSessionConfig,
+  type Constraint,
+  type DeviceFilter,
   type Recorder,
 } from 'react-native-vision-camera';
 import { ResizeMode, type VideoRef } from 'react-native-video';
 import ViewShot from 'react-native-view-shot';
 
+import { CameraFocusIndicator } from '@/components/capture/CameraFocusIndicator';
+import { CameraZoomBar } from '@/components/capture/CameraZoomBar';
 import { FilteredCaptureImage } from '@/components/capture/FilteredCaptureImage';
 import { MomentVideoPlayer } from '@/components/capture/MomentVideoPlayer';
 import { VoiceMemoSheet } from '@/components/map/VoiceMemoSheet';
@@ -76,6 +81,27 @@ import {
 } from '@/lib/moments/photo-filters';
 import type { RootStackParamList } from '@/navigation/types';
 import { releaseVoiceRecordingSession } from '@/lib/voice-audio-session';
+import { useCameraControls } from './use-camera-controls';
+
+/**
+ * Ask for the multi-lens virtual device so the 0.5x/2x/3x optical lenses are
+ * part of the session - the default filter would pick the plain wide-angle
+ * camera, which can only zoom digitally.
+ */
+const BACK_LENS_FILTER: DeviceFilter = {
+  physicalDevices: ['ultra-wide-angle', 'wide-angle', 'telephoto'],
+};
+
+/**
+ * Frame rate the capture session is locked to.
+ *
+ * Without an explicit FPS constraint VisionCamera leaves the frame duration
+ * untouched, so iOS is free to stretch exposure in dim scenes - indoors that
+ * means frames exposed for an eighth of a second, which is what smears the
+ * preview whenever the phone pans. Locking min/max frame duration caps exposure
+ * at 1/30s: sharper motion for slightly more sensor noise.
+ */
+const CAPTURE_TARGET_FPS = 30;
 
 const CAMERA_AUDIO_RELEASE_MS = 400;
 const CAMERA_STOP_RELEASE_MS = 2500;
@@ -241,6 +267,7 @@ export function CapturePhotoScreen() {
   const [capturing, setCapturing] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [recordingPaused, setRecordingPaused] = useState(false);
   const [recordingMs, setRecordingMs] = useState(0);
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<{
@@ -256,9 +283,49 @@ export function CapturePhotoScreen() {
       captureMode === 'video' ? [photoOutput, videoOutput] : [photoOutput],
     [captureMode, photoOutput, videoOutput],
   );
+  // VisionCamera appends one resolution bias per output after these, so
+  // anything listed here outranks resolution when it picks a format. The photo
+  // bias is repeated first on purpose: still resolution stays the top priority,
+  // and everything below only breaks ties between formats that can already
+  // deliver it.
+  const cameraConstraints = useMemo<Constraint[]>(() => {
+    const constraints: Constraint[] = [
+      { resolutionBias: photoOutput },
+      { fps: CAPTURE_TARGET_FPS },
+      // Handheld preview shake, smoothed with the low-latency algorithm so the
+      // viewfinder stays in sync with the phone.
+      { previewStabilizationMode: 'preview-optimized' },
+    ];
+    if (captureMode === 'video') {
+      constraints.push({ videoStabilizationMode: 'standard' });
+    }
+    return constraints;
+  }, [captureMode, photoOutput]);
+
+  const handleSessionConfigSelected = useCallback(
+    (config: CameraSessionConfig) => {
+      if (!__DEV__) {
+        return;
+      }
+      // Which format the constraints actually resolved to is device-specific,
+      // so log it rather than assume the negotiation went our way.
+      console.log('[camera] session config', {
+        fps: config.selectedFPS,
+        previewStabilization: config.selectedPreviewStabilizationMode,
+        videoStabilization: config.selectedVideoStabilizationMode,
+        pixelFormat: config.nativePixelFormat,
+        autoFocusSystem: config.autoFocusSystem,
+        isBinned: config.isBinned,
+      });
+    },
+    [],
+  );
   const exportShotRef = useRef<ElementRef<typeof ViewShot>>(null);
   const recorderRef = useRef<Recorder | null>(null);
-  const recordingStartedAtRef = useRef(0);
+  // Recording time is tracked in segments so pauses don't inflate the duration:
+  // whatever earlier segments captured, plus the segment that is running now.
+  const recordedBeforePauseRef = useRef(0);
+  const segmentStartedAtRef = useRef(0);
   const recordingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
     null,
   );
@@ -279,7 +346,18 @@ export function CapturePhotoScreen() {
   const [reviewPlaybackPaused, setReviewPlaybackPaused] = useState(false);
   const [reviewVideoEnded, setReviewVideoEnded] = useState(false);
   const reviewVideoRef = useRef<VideoRef>(null);
-  const device = useCameraDevice(cameraPosition);
+  const device = useCameraDevice(
+    cameraPosition,
+    cameraPosition === 'back' ? BACK_LENS_FILTER : undefined,
+  );
+  const {
+    zoomRange,
+    zoom: cameraZoom,
+    gesture: cameraGesture,
+    focusPoint,
+    selectDisplayZoom,
+    restoreZoom,
+  } = useCameraControls(device, !cameraLeaving);
 
   const markCameraReady = useCallback(() => {
     if (cameraReadyFallbackRef.current != null) {
@@ -288,6 +366,11 @@ export function CapturePhotoScreen() {
     }
     setCameraReady(true);
   }, []);
+
+  const handleCameraStarted = useCallback(() => {
+    markCameraReady();
+    restoreZoom();
+  }, [markCameraReady, restoreZoom]);
 
   const markCameraNotReady = useCallback(() => {
     setCameraReady(false);
@@ -473,11 +556,28 @@ export function CapturePhotoScreen() {
     }
   }, []);
 
+  const recordedDurationMs = useCallback(() => {
+    const runningSegmentMs =
+      segmentStartedAtRef.current === 0
+        ? 0
+        : Date.now() - segmentStartedAtRef.current;
+    return Math.max(0, recordedBeforePauseRef.current + runningSegmentMs);
+  }, []);
+
+  const startRecordingTimer = useCallback(() => {
+    clearRecordingTimer();
+    recordingIntervalRef.current = setInterval(() => {
+      setRecordingMs(recordedDurationMs());
+    }, 250);
+  }, [clearRecordingTimer, recordedDurationMs]);
+
   const resetRecordingState = useCallback(() => {
     clearRecordingTimer();
     recorderRef.current = null;
-    recordingStartedAtRef.current = 0;
+    recordedBeforePauseRef.current = 0;
+    segmentStartedAtRef.current = 0;
     setIsRecording(false);
+    setRecordingPaused(false);
     setRecordingMs(0);
   }, [clearRecordingTimer]);
 
@@ -665,10 +765,7 @@ export function CapturePhotoScreen() {
 
   const finishVideoRecording = useCallback(
     (filePath: string) => {
-      const durationMs = Math.max(
-        0,
-        Date.now() - recordingStartedAtRef.current,
-      );
+      const durationMs = recordedDurationMs();
       resetRecordingState();
 
       if (isVideoRecordingTooShort(durationMs)) {
@@ -686,7 +783,7 @@ export function CapturePhotoScreen() {
         durationMs,
       });
     },
-    [beginCameraShutdownForReview, resetRecordingState],
+    [beginCameraShutdownForReview, recordedDurationMs, resetRecordingState],
   );
 
   const handleVideoRecordingError = useCallback(
@@ -696,6 +793,21 @@ export function CapturePhotoScreen() {
     },
     [resetRecordingState],
   );
+
+  const handleRecordingPaused = useCallback(() => {
+    // Bank the segment that just ended so the timer holds still while paused.
+    recordedBeforePauseRef.current = recordedDurationMs();
+    segmentStartedAtRef.current = 0;
+    clearRecordingTimer();
+    setRecordingMs(recordedBeforePauseRef.current);
+    setRecordingPaused(true);
+  }, [clearRecordingTimer, recordedDurationMs]);
+
+  const handleRecordingResumed = useCallback(() => {
+    segmentStartedAtRef.current = Date.now();
+    setRecordingPaused(false);
+    startRecordingTimer();
+  }, [startRecordingTimer]);
 
   const handleStartVideoRecording = useCallback(async () => {
     if (cameraLeavingRef.current || capturing || isRecording) {
@@ -719,16 +831,20 @@ export function CapturePhotoScreen() {
         maxDuration: VIDEO_MAX_DURATION_MS / 1000,
       });
       recorderRef.current = recorder;
-      recordingStartedAtRef.current = Date.now();
+      recordedBeforePauseRef.current = 0;
+      segmentStartedAtRef.current = Date.now();
       setRecordingMs(0);
       setIsRecording(true);
-      recordingIntervalRef.current = setInterval(() => {
-        setRecordingMs(Date.now() - recordingStartedAtRef.current);
-      }, 250);
+      setRecordingPaused(false);
+      startRecordingTimer();
 
       await recorder.startRecording(
         filePath => finishVideoRecording(filePath),
         error => handleVideoRecordingError(error),
+        // The recorder confirms pause/resume asynchronously, so the UI follows
+        // these callbacks rather than the button press.
+        handleRecordingPaused,
+        handleRecordingResumed,
       );
     } catch (error) {
       resetRecordingState();
@@ -742,13 +858,37 @@ export function CapturePhotoScreen() {
   }, [
     capturing,
     finishVideoRecording,
+    handleRecordingPaused,
+    handleRecordingResumed,
     handleVideoRecordingError,
     hasMicPermission,
     isRecording,
     requestMicPermission,
     resetRecordingState,
+    startRecordingTimer,
     videoOutput,
   ]);
+
+  const handleToggleRecordingPause = useCallback(async () => {
+    const recorder = recorderRef.current;
+    if (cameraLeavingRef.current || !isRecording || recorder == null) {
+      return;
+    }
+    try {
+      if (recordingPaused) {
+        await recorder.resumeRecording();
+      } else {
+        await recorder.pauseRecording();
+      }
+    } catch (error) {
+      Alert.alert(
+        recordingPaused
+          ? APP_COPY.alerts.couldNotResumeRecording
+          : APP_COPY.alerts.couldNotPauseRecording,
+        errorMessageOr(error),
+      );
+    }
+  }, [isRecording, recordingPaused]);
 
   const handleStopVideoRecording = useCallback(async () => {
     if (
@@ -916,22 +1056,46 @@ export function CapturePhotoScreen() {
 
     return (
       <View style={styles.root}>
-        <Camera
-          key={`${cameraPosition}-${captureMode}`}
-          style={StyleSheet.absoluteFill}
-          device={device}
-          isActive={
-            phase === 'camera' && !cameraLeaving && !cameraBackgroundPaused
-          }
-          outputs={cameraOutputs}
-          mirrorMode="off"
-          enableNativeZoomGesture
-          onPreviewStarted={markCameraReady}
-          onStarted={markCameraReady}
-          onPreviewStopped={handlePreviewStopped}
-          onInterruptionStarted={markCameraNotReady}
-          onInterruptionEnded={markCameraReady}
-        />
+        {/*
+          The pinch handler wraps the preview instead of covering it so that
+          taps still reach the Camera's own tap-to-focus recognizer underneath.
+
+          No `key` on the Camera on purpose: VisionCamera reconfigures the live
+          AVCaptureSession when `device`/`outputs` change. Remounting instead
+          would leave the outgoing session and the incoming one briefly sharing
+          the same photo/video outputs, which crashes AVFoundation on teardown.
+        */}
+        <GestureDetector gesture={cameraGesture}>
+          <View style={styles.cameraGestureLayer} collapsable={false}>
+            <Camera
+              style={StyleSheet.absoluteFill}
+              device={device}
+              isActive={
+                phase === 'camera' && !cameraLeaving && !cameraBackgroundPaused
+              }
+              outputs={cameraOutputs}
+              constraints={cameraConstraints}
+              onSessionConfigSelected={handleSessionConfigSelected}
+              zoom={cameraZoom}
+              enableNativeTapToFocusGesture
+              // Selfies behave like a mirror: the preview and the saved
+              // photo/video are both flipped, so moving left moves left and
+              // what you framed is what you keep.
+              mirrorMode={cameraPosition === 'front' ? 'on' : 'off'}
+              // The capture UI is portrait-locked, so follow the interface
+              // instead of the physical device - otherwise tilting the phone
+              // rotates the captured file away from the framing shown in the
+              // preview.
+              orientationSource="interface"
+              onPreviewStarted={markCameraReady}
+              onStarted={handleCameraStarted}
+              onPreviewStopped={handlePreviewStopped}
+              onInterruptionStarted={markCameraNotReady}
+              onInterruptionEnded={markCameraReady}
+            />
+            <CameraFocusIndicator point={focusPoint} />
+          </View>
+        </GestureDetector>
 
         <View
           pointerEvents="box-none"
@@ -943,8 +1107,18 @@ export function CapturePhotoScreen() {
           <View style={styles.cameraTopRow}>
             <View style={styles.cameraTopSpacer} />
             {isRecording ? (
-              <View style={styles.recordingTimerPill}>
-                <View style={styles.recordingDot} />
+              <View
+                style={[
+                  styles.recordingTimerPill,
+                  recordingPaused ? styles.recordingTimerPillPaused : null,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.recordingDot,
+                    recordingPaused ? styles.recordingDotPaused : null,
+                  ]}
+                />
                 <Text style={styles.recordingTimerText}>
                   {formatVoiceDurationMs(recordingMs)}
                 </Text>
@@ -980,6 +1154,13 @@ export function CapturePhotoScreen() {
           </View>
 
           <View style={styles.cameraBottomSection}>
+          <CameraZoomBar
+            zoomRange={zoomRange}
+            zoom={cameraZoom}
+            onSelect={selectDisplayZoom}
+            disabled={cameraLeaving}
+          />
+
             <View style={styles.modeSwitchRow}>
               <Pressable
                 accessibilityRole="button"
@@ -1024,7 +1205,38 @@ export function CapturePhotoScreen() {
             </View>
 
             <View style={styles.cameraBottomRow}>
-              <View style={styles.cameraSideSlot} />
+              <View style={styles.cameraSideSlot}>
+                {isRecording ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      recordingPaused ? 'Resume recording' : 'Pause recording'
+                    }
+                    disabled={cameraLeaving}
+                    onPress={() => void handleToggleRecordingPause()}
+                    style={[
+                      styles.recordingPauseButton,
+                      cameraLeaving ? styles.disabled : null,
+                    ]}
+                  >
+                    {recordingPaused ? (
+                      <Play
+                        size={22}
+                        color="#FFFFFF"
+                        fill="#FFFFFF"
+                        strokeWidth={0}
+                      />
+                    ) : (
+                      <Pause
+                        size={22}
+                        color="#FFFFFF"
+                        fill="#FFFFFF"
+                        strokeWidth={0}
+                      />
+                    )}
+                  </Pressable>
+                ) : null}
+              </View>
               {captureMode === 'photo' ? (
                 <Pressable
                   accessibilityRole="button"
@@ -1059,14 +1271,7 @@ export function CapturePhotoScreen() {
                   ]}
                 >
                   {isRecording ? (
-                    <View style={styles.shutterStopIcon}>
-                      <Square
-                        size={22}
-                        color="#FFFFFF"
-                        fill="#FFFFFF"
-                        strokeWidth={0}
-                      />
-                    </View>
+                    <View style={styles.shutterStopIcon} />
                   ) : capturing ? (
                     <ActivityIndicator color="#FF3B30" />
                   ) : (
@@ -1482,6 +1687,9 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.75)',
     fontSize: 15,
   },
+  cameraGestureLayer: {
+    ...StyleSheet.absoluteFillObject,
+  },
   cameraOverlay: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'space-between',
@@ -1710,11 +1918,17 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     backgroundColor: 'rgba(255,59,48,0.85)',
   },
+  recordingTimerPillPaused: {
+    backgroundColor: 'rgba(28,28,30,0.75)',
+  },
   recordingDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: '#FFFFFF',
+  },
+  recordingDotPaused: {
+    backgroundColor: 'rgba(255,255,255,0.45)',
   },
   recordingTimerText: {
     color: '#FFFFFF',
@@ -1723,10 +1937,22 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   cameraSideSlot: {
-    width: 44,
-    height: 44,
+    width: 56,
+    height: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recordingPauseButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(28,28,30,0.75)',
   },
   cameraRightControls: {
+    // Matches the left slot so the shutter stays centered in the row.
+    width: 56,
     alignItems: 'center',
     gap: 12,
   },
@@ -1760,8 +1986,8 @@ const styles = StyleSheet.create({
     opacity: 0.72,
   },
   shutterButtonRecording: {
-    borderColor: '#FF3B30',
-    backgroundColor: 'rgba(255,59,48,0.15)',
+    borderColor: 'rgba(255,255,255,0.16)',
+    backgroundColor: 'rgba(28,28,30,0.75)',
   },
   shutterRecordIcon: {
     width: 58,
@@ -1770,11 +1996,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF3B30',
   },
   shutterStopIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 34,
+    height: 34,
+    borderRadius: 9,
     backgroundColor: '#FF3B30',
   },
   savingOverlay: {

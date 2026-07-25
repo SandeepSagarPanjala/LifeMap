@@ -38,6 +38,8 @@ export const APP_COPY = {
     couldNotRecordVideo: 'Could not record video',
     couldNotStartRecording: 'Could not start recording',
     couldNotStopRecording: 'Could not stop recording',
+    couldNotPauseRecording: 'Could not pause recording',
+    couldNotResumeRecording: 'Could not resume recording',
     couldNotPlayRecording: 'Could not play recording',
     couldNotSaveVoiceMemo: 'Could not save voice memo',
     couldNotPlayVoiceMemo: 'Could not play voice memo',
