@@ -124,6 +124,9 @@ dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
 
+    // On-device scene labels for photo moments (downloads model via Play Services).
+    implementation("com.google.android.gms:play-services-mlkit-image-labeling:16.0.8")
+
     androidTestImplementation('com.wix:detox:+')
     androidTestImplementation('androidx.test:runner:1.6.2')
     androidTestImplementation('androidx.test:rules:1.6.1')

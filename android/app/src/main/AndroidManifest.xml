@@ -25,6 +25,10 @@
       <meta-data
         android:name="com.transistorsoft.locationmanager.license"
         android:value="${transistorLicense}" />
+      <!-- Download ML Kit image labeling model at install / idle. -->
+      <meta-data
+        android:name="com.google.mlkit.vision.DEPENDENCIES"
+        android:value="ica" />
       <activity
         android:name=".MainActivity"
         android:label="@string/app_name"

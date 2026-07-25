@@ -18,6 +18,7 @@ import {
 } from '@/lib/moments/moment-storage';
 import { normalizeCameraPhoto } from '@/lib/moments/normalize-camera-photo';
 import { scheduleMomentThumbnailGeneration } from '@/lib/moments/schedule-moment-thumbnail';
+import { serializeMomentTagsJson } from '@/lib/moments/moment-tags';
 
 const CAMERA_OPTIONS: CameraOptions = {
   mediaType: 'photo',
@@ -114,6 +115,7 @@ export async function savePhotoMoment(
   sourceBytes: number | null,
   caption?: string | null,
   voiceAttachment?: { uri: string; durationMs: number } | null,
+  tags?: readonly string[] | null,
 ): Promise<MomentRow> {
   try {
     await saveCaptureToPhotoLibrary(sourceUri);
@@ -166,6 +168,7 @@ export async function savePhotoMoment(
       sourceBytes,
       contentFormat: IMAGE_COMPRESS_FORMAT,
       caption: caption?.trim() || null,
+      tagsJson: serializeMomentTagsJson(tags),
       voiceAttachmentPath,
       voiceAttachmentBytes,
       voiceDurationSec,

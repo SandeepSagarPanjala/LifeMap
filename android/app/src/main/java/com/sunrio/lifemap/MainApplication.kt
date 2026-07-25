@@ -17,6 +17,7 @@ class MainApplication : Application(), ReactApplication {
           add(PlaceLookupPackage())
           add(AppVersionPackage())
           add(VoiceAudioSessionPackage())
+          add(ImageLabelPackage())
         },
     )
   }

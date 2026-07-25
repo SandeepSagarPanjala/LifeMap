@@ -33,14 +33,23 @@ describe('capture-video', () => {
 
   it('saves compressed video moments with optional caption', async () => {
     const onProgress = jest.fn();
+    const { insertMoment } = jest.requireMock('@/db/repositories/moments') as {
+      insertMoment: jest.Mock;
+    };
     const moment = await saveVideoMoment(
       'file:///tmp/video.mp4',
       2_500,
       '  Beach day ',
       onProgress,
+      ['Lake', 'Water'],
     );
     expect(moment.type).toBe('video');
     expect(moment.caption).toBe('Beach day');
     expect(onProgress).toHaveBeenCalled();
+    expect(insertMoment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tagsJson: JSON.stringify(['Lake', 'Water']),
+      }),
+    );
   });
 });

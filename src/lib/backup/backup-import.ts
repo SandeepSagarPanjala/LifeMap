@@ -239,6 +239,8 @@ async function importMoments(
         typeof record.photoAttachmentsJson === 'string'
           ? record.photoAttachmentsJson
           : null,
+      tagsJson:
+        typeof record.tagsJson === 'string' ? record.tagsJson : null,
       textBody: parseOptionalString(record.textBody),
       caption: parseOptionalString(record.caption),
       title: parseOptionalString(record.title),

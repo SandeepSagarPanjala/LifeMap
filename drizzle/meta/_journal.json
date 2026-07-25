@@ -246,6 +246,13 @@
       "when": 1788926000000,
       "tag": "0034_moment_thumbnail_path",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1788927000000,
+      "tag": "0035_moment_tags_json",
+      "breakpoints": true
     }
   ]
 }

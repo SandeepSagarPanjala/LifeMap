@@ -309,6 +309,8 @@ ALTER TABLE \`visit_label_overrides\` ADD COLUMN \`anchor_lng\` real;`;
 
 const m0034 = `ALTER TABLE \`moments\` ADD COLUMN \`thumbnail_path\` text;`;
 
+const m0035 = `ALTER TABLE \`moments\` ADD COLUMN \`tags_json\` text;`;
+
 export default {
   journal,
   migrations: {
@@ -347,5 +349,6 @@ export default {
     m0032,
     m0033,
     m0034,
+    m0035,
   },
 };
