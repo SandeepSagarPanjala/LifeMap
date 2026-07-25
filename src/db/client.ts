@@ -6,6 +6,7 @@ import {
   ensureMaterializedDayGeometryColumn,
   ensureMaterializedDayExcludedDriveColumn,
   ensureMomentThumbnailPathColumn,
+  ensureMomentTagsJsonColumn,
   ensureMomentsMoodColumns,
   ensureMomentsWithoutLocationColumns,
   repairLocationPointsDedupeUniqueIndex,
@@ -60,6 +61,7 @@ async function initDatabase(): Promise<{ db: Database; sqlite: DB }> {
   await ensureMomentsMoodColumns(sqlite);
   await ensureMomentsWithoutLocationColumns(sqlite);
   await ensureMomentThumbnailPathColumn(sqlite);
+  await ensureMomentTagsJsonColumn(sqlite);
   await ensureMaterializedDayGeometryColumn(sqlite);
   await ensureMaterializedDayExcludedDriveColumn(sqlite);
   await ensureVisitLabelOverrideAnchorColumns(sqlite);

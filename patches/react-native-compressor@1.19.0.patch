@@ -1,0 +1,73 @@
+diff --git a/android/src/main/java/com/reactnativecompressor/Utils/createVideoThumbnail.kt b/android/src/main/java/com/reactnativecompressor/Utils/createVideoThumbnail.kt
+index 35a0138cb49613abdb201f4d2c1bdd69e7f87823..9c7ab8a4f7e9996ba6489de35d1d53c7500cdf42 100644
+--- a/android/src/main/java/com/reactnativecompressor/Utils/createVideoThumbnail.kt
++++ b/android/src/main/java/com/reactnativecompressor/Utils/createVideoThumbnail.kt
+@@ -63,13 +63,14 @@ class CreateVideoThumbnailClass(private val reactContext: ReactApplicationContex
+ 
+         val headers: Map<String, String> = if (options.hasKey("headers")) options.getMap("headers")!!.toHashMap() as Map<String, String> else HashMap<String, String>()
+         val quality = if (options.hasKey("quality")) (options.getDouble("quality") * 100).toInt().coerceIn(0, 100) else DEFAULT_THUMBNAIL_QUALITY
++        val timeMs = if (options.hasKey("timeMs")) options.getDouble("timeMs").toInt().coerceAtLeast(0) else 0
+         val fileName = if (TextUtils.isEmpty(cacheName)) "thumb-" + UUID.randomUUID().toString() else "$cacheName.$format"
+         var fOut: OutputStream? = null
+ 
+         try {
+             val file = File(cacheDir, fileName)
+             val context = weakContext.get()
+-            val image = getBitmapAtTime(context, filePath, 0, headers)
++            val image = getBitmapAtTime(context, filePath, timeMs, headers)
+             file.createNewFile()
+             fOut = FileOutputStream(file)
+ 
+diff --git a/ios/Utils/CreateVideoThumbnail.swift b/ios/Utils/CreateVideoThumbnail.swift
+index 9282b92394f71e32df6a80a6fb201c9a54924ff7..ff325c9e34fd316c45a86de5c99c58850f217bab 100644
+--- a/ios/Utils/CreateVideoThumbnail.swift
++++ b/ios/Utils/CreateVideoThumbnail.swift
+@@ -55,8 +55,9 @@ class CreateVideoThumbnail: NSObject {
+         return
+       }
+       let quality = Self.normalizedQuality(options["quality"])
++      let timeMs = Self.normalizedTimeMs(options["timeMs"])
+       let asset = AVURLAsset(url: vidURL, options: ["AVURLAssetHTTPHeaderFieldsKey": headers])
+-      generateThumbImage(asset: asset, atTime: 0, completion: { thumbnail in
++      generateThumbImage(asset: asset, atTime: timeMs, completion: { thumbnail in
+         // Generate thumbnail
+         guard let data = thumbnail.jpegData(compressionQuality: quality) else {
+           reject("CreateVideoThumbnail", "Unable to encode video thumbnail", nil)
+@@ -109,6 +110,11 @@ class CreateVideoThumbnail: NSObject {
+     return CGFloat(min(max(rawValue, 0), 1))
+   }
+ 
++  private static func normalizedTimeMs(_ value: Any?) -> Int {
++    let rawValue = (value as? NSNumber)?.doubleValue ?? 0
++    return max(0, Int(rawValue.rounded()))
++  }
++
+   func generateThumbImage(asset: AVURLAsset, atTime timeStamp: Int, completion: @escaping (UIImage) -> Void, failure: @escaping (Error) -> Void) {
+     let generator = AVAssetImageGenerator(asset: asset)
+     generator.appliesPreferredTrackTransform = true
+diff --git a/lib/typescript/src/utils/index.d.ts b/lib/typescript/src/utils/index.d.ts
+index ae9dc48082efadd8d3016c0e679d387389b4c335..3a6694102ca98cc373153a0c776ae2bc88b960cc 100644
+--- a/lib/typescript/src/utils/index.d.ts
++++ b/lib/typescript/src/utils/index.d.ts
+@@ -18,6 +18,8 @@ type createVideoThumbnailType = (fileUrl: string, options?: {
+         [key: string]: string;
+     };
+     quality?: number;
++    /** Frame time in milliseconds from the start of the video. */
++    timeMs?: number;
+ }) => Promise<{
+     path: string;
+     size: number;
+diff --git a/src/utils/index.tsx b/src/utils/index.tsx
+index 56482f722bc88e5bb77701092dabee5b3e91872f..6b49e4e077003ad7478ef8f7ff0a09e0879b9167 100644
+--- a/src/utils/index.tsx
++++ b/src/utils/index.tsx
+@@ -30,6 +30,8 @@ type createVideoThumbnailType = (
+   options?: {
+     headers?: { [key: string]: string };
+     quality?: number;
++    /** Frame time in milliseconds from the start of the video. */
++    timeMs?: number;
+   },
+ ) => Promise<{
+   path: string;

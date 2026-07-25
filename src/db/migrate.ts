@@ -169,6 +169,8 @@ export async function migrationAlreadyApplied(
       return columnExists(sqlite, 'visit_label_overrides', 'anchor_lat');
     case '0034_moment_thumbnail_path':
       return columnExists(sqlite, 'moments', 'thumbnail_path');
+    case '0035_moment_tags_json':
+      return columnExists(sqlite, 'moments', 'tags_json');
     default:
       return false;
   }
@@ -295,6 +297,19 @@ export async function ensureMomentThumbnailPathColumn(
     await executeMigrationStatement(
       sqlite,
       `ALTER TABLE moments ADD COLUMN thumbnail_path text`,
+    );
+  }
+}
+
+/** Repair moments.tags_json when migration 0035 was skipped. */
+export async function ensureMomentTagsJsonColumn(sqlite: DB): Promise<void> {
+  if (!(await tableExists(sqlite, 'moments'))) {
+    return;
+  }
+  if (!(await columnExists(sqlite, 'moments', 'tags_json'))) {
+    await executeMigrationStatement(
+      sqlite,
+      `ALTER TABLE moments ADD COLUMN tags_json text`,
     );
   }
 }
@@ -453,6 +468,7 @@ const MOMENTS_COLUMNS_WITHOUT_LOCATION = [
   'voice_attachment_bytes',
   'voice_duration_sec',
   'photo_attachments_json',
+  'tags_json',
   'text_body',
   'caption',
   'place_label',
@@ -511,6 +527,7 @@ export async function rebuildMomentsTableWithoutLocationColumns(
         voice_attachment_bytes integer,
         voice_duration_sec integer,
         photo_attachments_json text,
+        tags_json text,
         text_body text,
         caption text,
         place_label text,

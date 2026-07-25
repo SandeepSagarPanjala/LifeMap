@@ -6,6 +6,7 @@ import { saveMomentToGallery } from '@/lib/moments/capture-photo';
 import { compressMomentVideo } from '@/lib/moments/compress-video';
 import { VIDEO_CONTENT_FORMAT } from '@/lib/app-constants';
 import { persistFileToMomentSandbox } from '@/lib/moments/moment-storage';
+import { serializeMomentTagsJson } from '@/lib/moments/moment-tags';
 import { scheduleMomentThumbnailGeneration } from '@/lib/moments/schedule-moment-thumbnail';
 
 const MIN_VIDEO_DURATION_MS = 500;
@@ -25,6 +26,7 @@ export async function saveVideoMoment(
   durationMs: number,
   caption?: string | null,
   onProgress?: (update: SaveVideoMomentProgress) => void,
+  tags?: readonly string[] | null,
 ): Promise<MomentRow> {
   if (isVideoRecordingTooShort(durationMs)) {
     throw new Error('Video is too short to save.');
@@ -66,6 +68,7 @@ export async function saveVideoMoment(
       contentBytes: sandboxFile.contentBytes,
       contentFormat: VIDEO_CONTENT_FORMAT,
       caption: caption?.trim() || null,
+      tagsJson: serializeMomentTagsJson(tags),
     });
     scheduleMomentThumbnailGeneration(row);
     return row;

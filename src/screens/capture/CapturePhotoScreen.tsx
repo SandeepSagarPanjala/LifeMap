@@ -59,9 +59,16 @@ import { CameraFocusIndicator } from '@/components/capture/CameraFocusIndicator'
 import { CameraZoomBar } from '@/components/capture/CameraZoomBar';
 import { FilteredCaptureImage } from '@/components/capture/FilteredCaptureImage';
 import { MomentVideoPlayer } from '@/components/capture/MomentVideoPlayer';
+import {
+  PhotoTagsBar,
+  type PhotoTagsStatus,
+} from '@/components/capture/PhotoTagsBar';
 import { VoiceMemoSheet } from '@/components/map/VoiceMemoSheet';
 import { CAPTURE_BUTTON_THEMES } from '@/components/map/map-capture-button-theme';
 import { savePhotoMoment } from '@/lib/moments/capture-photo';
+import { labelPhotoTags } from '@/lib/moments/image-label-native';
+import { labelVideoTags } from '@/lib/moments/label-video-tags';
+import type { PhotoTagCandidate } from '@/lib/moments/moment-tags';
 import {
   isVideoRecordingTooShort,
   saveVideoMoment,
@@ -259,6 +266,10 @@ export function CapturePhotoScreen() {
   const [flashMode, setFlashMode] = useState<CaptureFlashMode>('off');
   const [captionText, setCaptionText] = useState('');
   const [captionInputOpen, setCaptionInputOpen] = useState(false);
+  const [sceneTags, setSceneTags] = useState<PhotoTagCandidate[]>([]);
+  const [sceneTagsStatus, setSceneTagsStatus] =
+    useState<PhotoTagsStatus>('idle');
+  const [reviewChromeVisible, setReviewChromeVisible] = useState(true);
   const [voiceUri, setVoiceUri] = useState<string | null>(null);
   const [voiceDurationMs, setVoiceDurationMs] = useState(0);
   const [voicePlaying, setVoicePlaying] = useState(false);
@@ -610,6 +621,62 @@ export function CapturePhotoScreen() {
     }
   }, [draft?.kind, draft?.sourceUri, phase]);
 
+  const reviewPhotoUri =
+    phase === 'review' && draft?.kind === 'photo' ? draft.sourceUri : null;
+  const reviewVideoUri =
+    phase === 'review' && draft?.kind === 'video' ? draft.sourceUri : null;
+  const reviewVideoDurationMs =
+    phase === 'review' && draft?.kind === 'video' ? draft.durationMs : null;
+
+  useEffect(() => {
+    if (!reviewPhotoUri) {
+      return;
+    }
+    let cancelled = false;
+    setSceneTags([]);
+    setSceneTagsStatus('loading');
+    void labelPhotoTags(reviewPhotoUri).then(tags => {
+      if (cancelled) {
+        return;
+      }
+      setSceneTags(tags);
+      setSceneTagsStatus('ready');
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [reviewPhotoUri]);
+
+  useEffect(() => {
+    if (!reviewVideoUri || reviewVideoDurationMs == null) {
+      return;
+    }
+    let cancelled = false;
+    setSceneTags([]);
+    setSceneTagsStatus('loading');
+    void labelVideoTags(reviewVideoUri, reviewVideoDurationMs).then(tags => {
+      if (cancelled) {
+        return;
+      }
+      setSceneTags(tags);
+      setSceneTagsStatus('ready');
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [reviewVideoDurationMs, reviewVideoUri]);
+
+  const handleRemoveSceneTag = useCallback((tag: string) => {
+    setSceneTags(current => current.filter(item => item.label !== tag));
+  }, []);
+
+  const handleToggleReviewChrome = useCallback(() => {
+    if (saving || captionInputOpen) {
+      return;
+    }
+    setReviewChromeVisible(current => !current);
+  }, [captionInputOpen, saving]);
+
   const handleReplayReviewVideo = useCallback(() => {
     reviewVideoRef.current?.seek(0);
     setReviewVideoEnded(false);
@@ -622,9 +689,15 @@ export function CapturePhotoScreen() {
 
   const handleOpenVoiceSheet = useCallback(() => {
     void (async () => {
+      setReviewChromeVisible(true);
       await releaseVoiceRecordingSession().catch(() => undefined);
       setVoiceSheetOpen(true);
     })();
+  }, []);
+
+  const handleOpenCaption = useCallback(() => {
+    setReviewChromeVisible(true);
+    setCaptionInputOpen(true);
   }, []);
 
   useEffect(() => {
@@ -731,6 +804,9 @@ export function CapturePhotoScreen() {
     setRotationSteps(0);
     setCaptionText('');
     setCaptionInputOpen(false);
+    setSceneTags([]);
+    setSceneTagsStatus('idle');
+    setReviewChromeVisible(true);
     setPhase('camera');
   }, [clearCameraCloseTimeout, clearVoice, resetRecordingState]);
 
@@ -982,6 +1058,7 @@ export function CapturePhotoScreen() {
           null,
           captionText,
           voiceUri ? { uri: voiceUri, durationMs: voiceDurationMs } : null,
+          sceneTags.map(tag => tag.label),
         );
       } else {
         await saveVideoMoment(
@@ -991,6 +1068,7 @@ export function CapturePhotoScreen() {
           update => {
             setSaveStatus(update);
           },
+          sceneTags.map(tag => tag.label),
         );
       }
       try {
@@ -1016,6 +1094,7 @@ export function CapturePhotoScreen() {
     captionText,
     draft,
     navigation,
+    sceneTags,
     rotationSteps,
     saving,
     selectedFilter,
@@ -1389,6 +1468,20 @@ export function CapturePhotoScreen() {
           </View>
         )}
 
+        {isPhotoDraft ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={
+              reviewChromeVisible
+                ? 'Hide controls to view photo'
+                : 'Show controls'
+            }
+            disabled={saving || captionInputOpen}
+            onPress={handleToggleReviewChrome}
+            style={styles.reviewPhotoTapTarget}
+          />
+        ) : null}
+
         {saving ? (
           <View style={styles.savingOverlay}>
             <ActivityIndicator color="#FFFFFF" size="large" />
@@ -1403,7 +1496,24 @@ export function CapturePhotoScreen() {
           </View>
         ) : null}
 
+        {reviewChromeVisible || captionInputOpen ? (
         <View pointerEvents="box-none" style={styles.reviewRoot}>
+          {(isPhotoDraft || draft.kind === 'video') ? (
+            <View
+              pointerEvents="box-none"
+              style={[
+                styles.reviewTagsDock,
+                { paddingTop: insets.top + 10 },
+              ]}
+            >
+              <PhotoTagsBar
+                tags={sceneTags}
+                status={sceneTagsStatus}
+                disabled={saving}
+                onRemoveTag={handleRemoveSceneTag}
+              />
+            </View>
+          ) : null}
           {captionInputOpen ? (
             <Pressable
               accessibilityRole="button"
@@ -1467,7 +1577,7 @@ export function CapturePhotoScreen() {
                         accessibilityRole="button"
                         accessibilityLabel="Edit photo text"
                         disabled={saving}
-                        onPress={() => setCaptionInputOpen(true)}
+                        onPress={handleOpenCaption}
                         style={[
                           styles.captionPreviewBody,
                           saving ? styles.disabled : null,
@@ -1533,7 +1643,7 @@ export function CapturePhotoScreen() {
                     accessibilityRole="button"
                     accessibilityLabel="Add optional text"
                     disabled={saving}
-                    onPress={() => setCaptionInputOpen(true)}
+                    onPress={handleOpenCaption}
                     style={[
                       styles.sideToolButton,
                       saving ? styles.disabled : null,
@@ -1633,6 +1743,7 @@ export function CapturePhotoScreen() {
             </View>
           </KeyboardAvoidingView>
         </View>
+        ) : null}
 
         <VoiceMemoSheet
           visible={voiceSheetOpen}
@@ -1697,6 +1808,18 @@ const styles = StyleSheet.create({
   reviewRoot: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'flex-end',
+    zIndex: 2,
+  },
+  reviewPhotoTapTarget: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1,
+  },
+  reviewTagsDock: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 2,
   },
   reviewSideToolsDock: {
     paddingHorizontal: 12,

@@ -62,6 +62,8 @@ export const moments = sqliteTable(
     voiceAttachmentBytes: integer('voice_attachment_bytes'),
     voiceDurationSec: integer('voice_duration_sec'),
     photoAttachmentsJson: text('photo_attachments_json'),
+    /** JSON string array of scene tags (max 8), e.g. ["Lake","Outdoors"]. */
+    tagsJson: text('tags_json'),
     textBody: text('text_body'),
     caption: text('caption'),
     placeLabel: text('place_label'),

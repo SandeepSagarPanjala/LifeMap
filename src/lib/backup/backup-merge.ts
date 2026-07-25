@@ -506,6 +506,8 @@ async function mergeMoments(
         typeof record.photoAttachmentsJson === 'string'
           ? record.photoAttachmentsJson
           : null,
+      tagsJson:
+        typeof record.tagsJson === 'string' ? record.tagsJson : null,
       textBody,
       caption: parseOptionalString(record.caption),
       title: parseOptionalString(record.title),

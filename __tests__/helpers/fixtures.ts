@@ -42,6 +42,7 @@ export function makeMoment(
     voiceAttachmentBytes: null,
     voiceDurationSec: null,
     photoAttachmentsJson: null,
+    tagsJson: null,
     textBody: null,
     caption: null,
     title: null,

@@ -183,6 +183,7 @@ function serializeMoments(rows: Array<typeof moments.$inferSelect>): unknown[] {
     voiceAttachmentBytes: row.voiceAttachmentBytes,
     voiceDurationSec: row.voiceDurationSec,
     photoAttachmentsJson: row.photoAttachmentsJson,
+    tagsJson: row.tagsJson,
     textBody: row.textBody,
     caption: row.caption,
     title: row.title,

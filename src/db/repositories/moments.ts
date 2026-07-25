@@ -3,6 +3,7 @@ import { and, asc, desc, eq, gt, gte, isNull, lt, lte, or, sql } from 'drizzle-o
 import { deleteMomentContentFile } from '@/lib/moments/moment-storage';
 import { parseNotePhotoAttachments } from '@/lib/moments/note-photo-attachments';
 import { sanitizePhotoAttachmentsJson } from '@/lib/db/json-blobs';
+import { sanitizeMomentTagsJson } from '@/lib/moments/moment-tags';
 import { getDayRange, toDateKey } from '@/lib/day-utils';
 
 import { getDatabase } from '../client';
@@ -21,6 +22,7 @@ export type MomentRow = {
   voiceAttachmentBytes: number | null;
   voiceDurationSec: number | null;
   photoAttachmentsJson: string | null;
+  tagsJson: string | null;
   textBody: string | null;
   caption: string | null;
   title: string | null;
@@ -52,6 +54,7 @@ export type NewMoment = {
   voiceAttachmentBytes?: number | null;
   voiceDurationSec?: number | null;
   photoAttachmentsJson?: string | null;
+  tagsJson?: string | null;
   contentBytes?: number | null;
   sourceBytes?: number | null;
   contentFormat?: string | null;
@@ -75,6 +78,7 @@ function mapRow(row: typeof moments.$inferSelect): MomentRow {
     photoAttachmentsJson: sanitizePhotoAttachmentsJson(
       row.photoAttachmentsJson,
     ),
+    tagsJson: sanitizeMomentTagsJson(row.tagsJson),
     textBody: row.textBody ?? null,
     caption: row.caption ?? null,
     title: row.title ?? null,
@@ -114,6 +118,7 @@ export async function insertMoment(input: NewMoment): Promise<MomentRow> {
       photoAttachmentsJson: sanitizePhotoAttachmentsJson(
         input.photoAttachmentsJson ?? null,
       ),
+      tagsJson: sanitizeMomentTagsJson(input.tagsJson ?? null),
       contentBytes: input.contentBytes ?? null,
       sourceBytes: input.sourceBytes ?? null,
       contentFormat: input.contentFormat ?? null,
@@ -290,6 +295,65 @@ export async function getMomentsForDateKeys(
 
   return rows.map(mapRow).filter(row => allowed.has(toDateKey(row.timestamp)));
 }
+
+export async function updateMomentTagsJson(
+  id: number,
+  tagsJson: string | null,
+): Promise<void> {
+  const db = await getDatabase();
+  const existing = await getMomentById(id);
+  // Explicit `[]` means "labeled, nothing found" so backfill won't retry.
+  const next =
+    tagsJson === '[]' ? '[]' : sanitizeMomentTagsJson(tagsJson);
+  await db
+    .update(moments)
+    .set({ tagsJson: next })
+    .where(eq(moments.id, id));
+  if (existing) {
+    notifyMomentChange(existing.timestamp);
+  }
+}
+
+export async function listMomentsMissingTags(
+  limit = 50,
+  afterId = 0,
+): Promise<MomentRow[]> {
+  const db = await getDatabase();
+  const rows = await db
+    .select()
+    .from(moments)
+    .where(
+      and(
+        or(eq(moments.type, 'photo'), eq(moments.type, 'video')),
+        or(isNull(moments.tagsJson), eq(moments.tagsJson, '')),
+        gt(moments.id, afterId),
+      ),
+    )
+    .orderBy(asc(moments.id))
+    .limit(limit);
+  return rows.map(mapRow);
+}
+
+export async function countMomentsMissingTags(): Promise<number> {
+  const db = await getDatabase();
+  const [row] = await db
+    .select({
+      count: sql<number>`cast(count(*) as integer)`,
+    })
+    .from(moments)
+    .where(
+      and(
+        or(eq(moments.type, 'photo'), eq(moments.type, 'video')),
+        or(isNull(moments.tagsJson), eq(moments.tagsJson, '')),
+      ),
+    );
+  return row?.count ?? 0;
+}
+
+/** @deprecated Prefer listMomentsMissingTags. */
+export const listPhotoMomentsMissingTags = listMomentsMissingTags;
+/** @deprecated Prefer countMomentsMissingTags. */
+export const countPhotoMomentsMissingTags = countMomentsMissingTags;
 
 export async function listMomentsMissingThumbnails(
   limit = 50,

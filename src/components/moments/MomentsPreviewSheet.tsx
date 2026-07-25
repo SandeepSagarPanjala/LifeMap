@@ -40,6 +40,7 @@ import {
   momentHasVoiceAttachment,
   resolveMomentVoiceContentPath,
 } from '@/lib/moments/moment-voice';
+import { parseMomentTagsJson } from '@/lib/moments/moment-tags';
 import { notePhotoAttachmentPaths } from '@/lib/moments/note-photo-attachments';
 import { getEmotionContextTokenByLabel } from '@/lib/moments/emotion-context-tokens';
 import {
@@ -215,6 +216,10 @@ function MomentInfoHeader({
     moment.caption?.trim()
       ? moment.caption.trim()
       : null;
+  const tags =
+    moment.type === 'photo' || moment.type === 'video'
+      ? parseMomentTagsJson(moment.tagsJson)
+      : [];
 
   return (
     <View style={styles.infoHeader}>
@@ -252,6 +257,18 @@ function MomentInfoHeader({
         <Text style={styles.infoCaption} numberOfLines={2}>
           {caption}
         </Text>
+      ) : null}
+
+      {tags.length > 0 ? (
+        <View style={styles.infoTags}>
+          {tags.map(tag => (
+            <View key={tag} style={styles.infoTagChip}>
+              <Text style={styles.infoTagLabel} numberOfLines={1}>
+                {tag}
+              </Text>
+            </View>
+          ))}
+        </View>
       ) : null}
     </View>
   );
@@ -560,6 +577,7 @@ const MomentPagerPage = memo(function MomentPagerPage({
   isActive,
   isPlayingVoice,
   onToggleVoice,
+  onToggleChrome,
   noteContentInsetTop,
 }: {
   moment: MomentRow;
@@ -567,6 +585,7 @@ const MomentPagerPage = memo(function MomentPagerPage({
   isActive: boolean;
   isPlayingVoice: boolean;
   onToggleVoice: (moment: MomentRow) => void;
+  onToggleChrome: () => void;
   noteContentInsetTop: number;
 }) {
   const handleToggleVoice = useCallback(() => {
@@ -576,15 +595,29 @@ const MomentPagerPage = memo(function MomentPagerPage({
   return (
     <View style={[styles.page, { width: pageWidth }]}>
       {moment.type === 'photo' && moment.contentPath ? (
-        <MomentPreviewImage
-          contentPath={moment.contentPath}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Toggle photo controls"
+          onPress={onToggleChrome}
           style={styles.photoPage}
-          resizeMode="cover"
-        />
+        >
+          <MomentPreviewImage
+            contentPath={moment.contentPath}
+            style={styles.photoPage}
+            resizeMode="cover"
+          />
+        </Pressable>
       ) : null}
 
       {moment.type === 'video' && moment.contentPath ? (
-        <VideoMomentPage moment={moment} isActive={isActive} />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Toggle video controls"
+          onPress={onToggleChrome}
+          style={styles.photoPage}
+        >
+          <VideoMomentPage moment={moment} isActive={isActive} />
+        </Pressable>
       ) : null}
 
       {moment.type === 'voice' ? (
@@ -683,6 +716,7 @@ export function MomentPreviewViewer({
   const [playingVoiceId, setPlayingVoiceId] = useState<number | null>(null);
   const [deletingMomentId, setDeletingMomentId] = useState<number | null>(null);
   const [noteContentInsetTop, setNoteContentInsetTop] = useState(112);
+  const [chromeVisible, setChromeVisible] = useState(true);
   const pagerRef = useRef<FlatList<MomentRow>>(null);
   const playerRef = useRef<ReturnType<
     typeof createVoiceRecorderSession
@@ -975,6 +1009,10 @@ export function MomentPreviewViewer({
     [toggleVoice],
   );
 
+  const handleToggleChrome = useCallback(() => {
+    setChromeVisible(current => !current);
+  }, []);
+
   const renderPage = useCallback(
     ({ item, index }: { item: MomentRow; index: number }) => (
       <MomentPagerPage
@@ -983,11 +1021,13 @@ export function MomentPreviewViewer({
         isActive={index === activeIndex}
         isPlayingVoice={playingVoiceId === item.id}
         onToggleVoice={handleToggleVoice}
+        onToggleChrome={handleToggleChrome}
         noteContentInsetTop={noteContentInsetTop}
       />
     ),
     [
       activeIndex,
+      handleToggleChrome,
       handleToggleVoice,
       noteContentInsetTop,
       pageWidth,
@@ -1028,6 +1068,7 @@ export function MomentPreviewViewer({
         getItemLayout={getItemLayout}
       />
 
+      {chromeVisible ? (
       <View
         pointerEvents="box-none"
         onLayout={event => {
@@ -1065,7 +1106,9 @@ export function MomentPreviewViewer({
           ) : null}
         </View>
       </View>
+      ) : null}
 
+      {chromeVisible ? (
       <View
         pointerEvents="box-none"
         style={[styles.bottomChrome, { paddingBottom: insets.bottom + 16 }]}
@@ -1106,6 +1149,7 @@ export function MomentPreviewViewer({
           </View>
         </View>
       </View>
+      ) : null}
     </View>
   );
 }
@@ -1248,6 +1292,22 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.55)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
+  },
+  infoTags: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  infoTagChip: {
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  infoTagLabel: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '600',
   },
   dotsRow: {
     flexDirection: 'row',

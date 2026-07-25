@@ -14,6 +14,8 @@
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
 		A1B2C3D61A68108700A75B9A /* PlaceLookupModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D41A68108700A75B9A /* PlaceLookupModule.swift */; };
 		A1B2C3D71A68108700A75B9A /* PlaceLookupModule.m in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D51A68108700A75B9A /* PlaceLookupModule.m */; };
+		IMG0MOD1A68108700A75B9A /* ImageLabelModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = IMG0FR01A68108700A75B9A /* ImageLabelModule.swift */; };
+		IMG0MOD2A68108700A75B9A /* ImageLabelModule.m in Sources */ = {isa = PBXBuildFile; fileRef = IMG0FR02A68108700A75B9A /* ImageLabelModule.m */; };
 		B2C3D4E61A68108700A75B9A /* LifeMapDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E51A68108700A75B9A /* LifeMapDatabase.swift */; };
 		B2C3D4E81A68108700A75B9A /* LocationWakeCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E71A68108700A75B9A /* LocationWakeCoordinator.swift */; };
 		B2C3D4EA1A68108700A75B9A /* LocationPersistModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E91A68108700A75B9A /* LocationPersistModule.swift */; };
@@ -85,6 +87,8 @@
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = LifeMap/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		A1B2C3D41A68108700A75B9A /* PlaceLookupModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PlaceLookupModule.swift; path = LifeMap/PlaceLookupModule.swift; sourceTree = "<group>"; };
 		A1B2C3D51A68108700A75B9A /* PlaceLookupModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PlaceLookupModule.m; path = LifeMap/PlaceLookupModule.m; sourceTree = "<group>"; };
+		IMG0FR01A68108700A75B9A /* ImageLabelModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ImageLabelModule.swift; path = LifeMap/ImageLabelModule.swift; sourceTree = "<group>"; };
+		IMG0FR02A68108700A75B9A /* ImageLabelModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = ImageLabelModule.m; path = LifeMap/ImageLabelModule.m; sourceTree = "<group>"; };
 		B2C3D4E51A68108700A75B9A /* LifeMapDatabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LifeMapDatabase.swift; path = LifeMap/LifeMapDatabase.swift; sourceTree = "<group>"; };
 		B2C3D4E71A68108700A75B9A /* LocationWakeCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocationWakeCoordinator.swift; path = LifeMap/LocationWakeCoordinator.swift; sourceTree = "<group>"; };
 		B2C3D4E91A68108700A75B9A /* LocationPersistModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocationPersistModule.swift; path = LifeMap/LocationPersistModule.swift; sourceTree = "<group>"; };
@@ -146,6 +150,8 @@
 				761780EC2CA45674006654EE /* AppDelegate.swift */,
 				A1B2C3D41A68108700A75B9A /* PlaceLookupModule.swift */,
 				A1B2C3D51A68108700A75B9A /* PlaceLookupModule.m */,
+				IMG0FR01A68108700A75B9A /* ImageLabelModule.swift */,
+				IMG0FR02A68108700A75B9A /* ImageLabelModule.m */,
 				BKP0FR01A68108700A75B9A /* BackupCloudModule.swift */,
 				BKP0FR02A68108700A75B9A /* BackupCloudModule.m */,
 				E5F6A7B61A68108700A75B9A /* AppVersionModule.swift */,
@@ -452,6 +458,8 @@
 				761780ED2CA45674006654EE /* AppDelegate.swift in Sources */,
 				A1B2C3D61A68108700A75B9A /* PlaceLookupModule.swift in Sources */,
 				A1B2C3D71A68108700A75B9A /* PlaceLookupModule.m in Sources */,
+				IMG0MOD1A68108700A75B9A /* ImageLabelModule.swift in Sources */,
+				IMG0MOD2A68108700A75B9A /* ImageLabelModule.m in Sources */,
 				BKP0MOD1A68108700A75B9A /* BackupCloudModule.swift in Sources */,
 				BKP0MOD2A68108700A75B9A /* BackupCloudModule.m in Sources */,
 				E5F6A7B81A68108700A75B9A /* AppVersionModule.swift in Sources */,
