@@ -314,7 +314,7 @@ export async function updateMomentTagsJson(
   }
 }
 
-export async function listPhotoMomentsMissingTags(
+export async function listMomentsMissingTags(
   limit = 50,
   afterId = 0,
 ): Promise<MomentRow[]> {
@@ -334,7 +334,7 @@ export async function listPhotoMomentsMissingTags(
   return rows.map(mapRow);
 }
 
-export async function countPhotoMomentsMissingTags(): Promise<number> {
+export async function countMomentsMissingTags(): Promise<number> {
   const db = await getDatabase();
   const [row] = await db
     .select({
@@ -349,6 +349,11 @@ export async function countPhotoMomentsMissingTags(): Promise<number> {
     );
   return row?.count ?? 0;
 }
+
+/** @deprecated Prefer listMomentsMissingTags. */
+export const listPhotoMomentsMissingTags = listMomentsMissingTags;
+/** @deprecated Prefer countMomentsMissingTags. */
+export const countPhotoMomentsMissingTags = countMomentsMissingTags;
 
 export async function listMomentsMissingThumbnails(
   limit = 50,

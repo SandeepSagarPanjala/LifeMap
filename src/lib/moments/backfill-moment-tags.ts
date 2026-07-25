@@ -1,8 +1,8 @@
 import { getVideoMetaData } from 'react-native-compressor';
 
 import {
-  countPhotoMomentsMissingTags,
-  listPhotoMomentsMissingTags,
+  countMomentsMissingTags,
+  listMomentsMissingTags,
   updateMomentTagsJson,
   type MomentRow,
 } from '@/db/repositories/moments';
@@ -71,7 +71,7 @@ async function labelMomentTags(
 export async function backfillMomentTags(
   onProgress?: (progress: MomentTagBackfillProgress) => void,
 ): Promise<MomentTagBackfillProgress> {
-  const total = await countPhotoMomentsMissingTags();
+  const total = await countMomentsMissingTags();
   let done = 0;
   let failed = 0;
   let skipped = 0;
@@ -79,7 +79,7 @@ export async function backfillMomentTags(
   onProgress?.({ done, total, failed, skipped });
 
   while (done + failed + skipped < total) {
-    const batch = await listPhotoMomentsMissingTags(BATCH_SIZE, afterId);
+    const batch = await listMomentsMissingTags(BATCH_SIZE, afterId);
     if (batch.length === 0) {
       break;
     }

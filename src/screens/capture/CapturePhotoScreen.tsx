@@ -266,8 +266,8 @@ export function CapturePhotoScreen() {
   const [flashMode, setFlashMode] = useState<CaptureFlashMode>('off');
   const [captionText, setCaptionText] = useState('');
   const [captionInputOpen, setCaptionInputOpen] = useState(false);
-  const [photoTags, setPhotoTags] = useState<PhotoTagCandidate[]>([]);
-  const [photoTagsStatus, setPhotoTagsStatus] =
+  const [sceneTags, setSceneTags] = useState<PhotoTagCandidate[]>([]);
+  const [sceneTagsStatus, setSceneTagsStatus] =
     useState<PhotoTagsStatus>('idle');
   const [reviewChromeVisible, setReviewChromeVisible] = useState(true);
   const [voiceUri, setVoiceUri] = useState<string | null>(null);
@@ -633,14 +633,14 @@ export function CapturePhotoScreen() {
       return;
     }
     let cancelled = false;
-    setPhotoTags([]);
-    setPhotoTagsStatus('loading');
+    setSceneTags([]);
+    setSceneTagsStatus('loading');
     void labelPhotoTags(reviewPhotoUri).then(tags => {
       if (cancelled) {
         return;
       }
-      setPhotoTags(tags);
-      setPhotoTagsStatus('ready');
+      setSceneTags(tags);
+      setSceneTagsStatus('ready');
     });
     return () => {
       cancelled = true;
@@ -652,22 +652,22 @@ export function CapturePhotoScreen() {
       return;
     }
     let cancelled = false;
-    setPhotoTags([]);
-    setPhotoTagsStatus('loading');
+    setSceneTags([]);
+    setSceneTagsStatus('loading');
     void labelVideoTags(reviewVideoUri, reviewVideoDurationMs).then(tags => {
       if (cancelled) {
         return;
       }
-      setPhotoTags(tags);
-      setPhotoTagsStatus('ready');
+      setSceneTags(tags);
+      setSceneTagsStatus('ready');
     });
     return () => {
       cancelled = true;
     };
   }, [reviewVideoDurationMs, reviewVideoUri]);
 
-  const handleRemovePhotoTag = useCallback((tag: string) => {
-    setPhotoTags(current => current.filter(item => item.label !== tag));
+  const handleRemoveSceneTag = useCallback((tag: string) => {
+    setSceneTags(current => current.filter(item => item.label !== tag));
   }, []);
 
   const handleToggleReviewChrome = useCallback(() => {
@@ -804,8 +804,8 @@ export function CapturePhotoScreen() {
     setRotationSteps(0);
     setCaptionText('');
     setCaptionInputOpen(false);
-    setPhotoTags([]);
-    setPhotoTagsStatus('idle');
+    setSceneTags([]);
+    setSceneTagsStatus('idle');
     setReviewChromeVisible(true);
     setPhase('camera');
   }, [clearCameraCloseTimeout, clearVoice, resetRecordingState]);
@@ -1058,7 +1058,7 @@ export function CapturePhotoScreen() {
           null,
           captionText,
           voiceUri ? { uri: voiceUri, durationMs: voiceDurationMs } : null,
-          photoTags.map(tag => tag.label),
+          sceneTags.map(tag => tag.label),
         );
       } else {
         await saveVideoMoment(
@@ -1068,7 +1068,7 @@ export function CapturePhotoScreen() {
           update => {
             setSaveStatus(update);
           },
-          photoTags.map(tag => tag.label),
+          sceneTags.map(tag => tag.label),
         );
       }
       try {
@@ -1094,7 +1094,7 @@ export function CapturePhotoScreen() {
     captionText,
     draft,
     navigation,
-    photoTags,
+    sceneTags,
     rotationSteps,
     saving,
     selectedFilter,
@@ -1507,10 +1507,10 @@ export function CapturePhotoScreen() {
               ]}
             >
               <PhotoTagsBar
-                tags={photoTags}
-                status={photoTagsStatus}
+                tags={sceneTags}
+                status={sceneTagsStatus}
                 disabled={saving}
-                onRemoveTag={handleRemovePhotoTag}
+                onRemoveTag={handleRemoveSceneTag}
               />
             </View>
           ) : null}
