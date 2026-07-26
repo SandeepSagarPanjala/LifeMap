@@ -708,13 +708,18 @@ export function CapturePhotoScreen() {
   }, []);
 
   const clearVoice = useCallback(async () => {
-    await voicePlayerRef.current.stopPreview();
+    const uri = voiceUri;
     setVoicePlaying(false);
-    if (voiceUri) {
-      await deleteMomentContentFile(voiceUri);
-    }
     setVoiceUri(null);
     setVoiceDurationMs(0);
+    try {
+      await voicePlayerRef.current.stopPreview();
+      if (uri) {
+        await deleteMomentContentFile(uri);
+      }
+    } catch {
+      // Best-effort — preview/file may already be gone.
+    }
   }, [voiceUri]);
 
   const runCloseCleanup = useCallback(async () => {
