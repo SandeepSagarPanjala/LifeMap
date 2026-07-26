@@ -53,6 +53,9 @@ export function NativeHalfSheetShell({
     }
     didOpenRef.current = true;
     closingRef.current = false;
+    const notifyOpened = () => {
+      onOpenedRef.current?.();
+    };
     backdropOpacity.value = 0;
     sheetTranslateY.value = sheetHeight;
     backdropOpacity.value = withTiming(1, { duration: BACKDROP_FADE_MS });
@@ -63,8 +66,8 @@ export function NativeHalfSheetShell({
         easing: Easing.out(Easing.cubic),
       },
       finished => {
-        if (finished && onOpenedRef.current) {
-          runOnJS(onOpenedRef.current)();
+        if (finished) {
+          runOnJS(notifyOpened)();
         }
       },
     );
