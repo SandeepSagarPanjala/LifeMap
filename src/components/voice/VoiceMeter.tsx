@@ -37,7 +37,7 @@ export function VoiceLiveMeter({
     const id = setInterval(() => {
       const sample = Math.max(
         BAR_MIN_SCALE,
-        Math.min(1, levelRef.current || BAR_MIN_SCALE),
+        Math.min(1, levelRef.current ?? BAR_MIN_SCALE),
       );
       const prev = historyRef.current;
       const next = new Array<number>(LIVE_BAR_COUNT);

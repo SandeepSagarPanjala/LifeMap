@@ -89,7 +89,11 @@ function App() {
         return;
       }
 
-      await BootSplash.hide({ fade: true });
+      try {
+        await BootSplash.hide({ fade: true });
+      } catch {
+        // Continue startup even if the native splash module fails to hide.
+      }
     })();
 
     return () => {
