@@ -3,6 +3,7 @@ import React
 import React_RCTAppDelegate
 import ReactAppDependencyProvider
 import BackgroundTasks
+import RNBootSplash
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -112,5 +113,12 @@ class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {
 #else
     Bundle.main.url(forResource: "main", withExtension: "jsbundle")
 #endif
+  }
+
+  /// Keep native BootSplash visible until JS calls `BootSplash.hide()`.
+  /// Not marked `override` — New Arch exposes this via an incomplete `RCTRootView`
+  /// forward-decl that Swift cannot override cleanly.
+  @objc func customizeRootView(_ rootView: UIView) {
+    RNBootSplash.initWithStoryboard("BootSplash", rootView: rootView)
   }
 }

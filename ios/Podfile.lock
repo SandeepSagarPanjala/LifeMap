@@ -2309,6 +2309,28 @@ PODS:
     - ReactNativeDependencies
     - TSLocationManager (~> 4.1.0)
     - Yoga
+  - RNBootSplash (7.3.2):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
   - RNGestureHandler (3.0.0):
     - hermes-engine
     - RCTRequired
@@ -2790,6 +2812,7 @@ DEPENDENCIES:
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
   - ReactNativeDependencies (from `../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec`)
   - RNBackgroundGeolocation (from `../node_modules/react-native-background-geolocation`)
+  - RNBootSplash (from `../node_modules/react-native-bootsplash`)
   - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
   - RNKeychain (from `../node_modules/react-native-keychain`)
   - RNReanimated (from `../node_modules/react-native-reanimated`)
@@ -2994,6 +3017,8 @@ EXTERNAL SOURCES:
     :podspec: "../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec"
   RNBackgroundGeolocation:
     :path: "../node_modules/react-native-background-geolocation"
+  RNBootSplash:
+    :path: "../node_modules/react-native-bootsplash"
   RNGestureHandler:
     :path: "../node_modules/react-native-gesture-handler"
   RNKeychain:
@@ -3110,6 +3135,7 @@ SPEC CHECKSUMS:
   ReactCommon: 309419492d417c4cbb87af06f67735afa40ecb9d
   ReactNativeDependencies: dc9f6fff588cce4d4c78702ca7c82ff4202099e8
   RNBackgroundGeolocation: c79e8f7b187522805baf849a04e0b554b564a4b9
+  RNBootSplash: 456331a52cfe22475bd37af928a8d700efc9606e
   RNGestureHandler: 0d11f2db07ad290163036896cb2a2a922150d355
   RNKeychain: 91be81cd32b30c7d4c2569dcad29b472d9b93982
   RNReanimated: bfe71d65ce0aa482eeeae790d5db7838f2c025b0

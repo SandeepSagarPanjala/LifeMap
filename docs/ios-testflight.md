@@ -16,7 +16,7 @@ Debug builds from `pnpm ios` are for **development only**.
 4. **TransistorSoft license** for **Release** background GPS (Debug works without it)
    - Copy `ios/Config/Secrets.xcconfig.example` → `ios/Config/Secrets.xcconfig` and paste your iOS JWT
    - Copy `android/transistor-license.properties.example` → `android/transistor-license.properties` for Android
-   - Trial expires **2026-07-13** — both files are gitignored
+   - Trial expired **2026-07-13** (`max_build_stamp`). An expired key shows a native **LICENSE VALIDATION FAILURE** banner on TestFlight and can leave the app stuck on the splash — renew the JWT before shipping any Release build. Debug still runs without a valid key.
 
 ## One-time Fastlane setup (your Mac)
 
@@ -111,7 +111,7 @@ Also needs distribution certificate + provisioning profile in CI (see workflow c
 | Metro                  | Required         | No              |
 | JS bundle              | From Mac         | Embedded        |
 | `__DEV__`              | true             | false           |
-| Background GPS license | Not required     | **Required**    |
+| Background GPS license | Not required     | **Required** (expired trial hangs startup) |
 | Who tests              | Developers       | You + QA        |
 
 ## Android (later)

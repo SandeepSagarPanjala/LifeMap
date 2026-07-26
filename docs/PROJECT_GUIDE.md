@@ -1030,7 +1030,7 @@ inspect the resulting geometry on a map.
 ```mermaid
 flowchart TD
   START["App launches"] --> SENTRY["initSentry()"]
-  SENTRY --> SPLASH["AnimatedSplashScreen"]
+  SENTRY --> SPLASH["BootSplash.hide in App"]
   SPLASH --> ONB{"privacy onboarding<br/>completed?"}
   ONB -- no --> SLIDES["OnboardingScreen"]
   ONB -- yes --> BOOT["AppBootstrap"]

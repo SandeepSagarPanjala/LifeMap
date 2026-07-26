@@ -9,9 +9,11 @@
 /* Begin PBXBuildFile section */
 		0C80B921A6F3F58F76C31292 /* libPods-LifeMap.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5DCACB8F33CDC322A6C60F78 /* libPods-LifeMap.a */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
+		377AE740C0064F5CABAA4DF9 /* BootSplash.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 131463DD1F564FA1B4067F32 /* BootSplash.storyboard */; };
 		3942CC750AC601641664379E /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		83DA7245AC48434CAE3A2724 /* Colors.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D4837FADD91344068AFF8BDE /* Colors.xcassets */; };
 		A1B2C3D61A68108700A75B9A /* PlaceLookupModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D41A68108700A75B9A /* PlaceLookupModule.swift */; };
 		A1B2C3D71A68108700A75B9A /* PlaceLookupModule.m in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D51A68108700A75B9A /* PlaceLookupModule.m */; };
 		B2C3D4E61A68108700A75B9A /* LifeMapDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E51A68108700A75B9A /* LifeMapDatabase.swift */; };
@@ -76,6 +78,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		131463DD1F564FA1B4067F32 /* BootSplash.storyboard */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = BootSplash.storyboard; path = LifeMap/BootSplash.storyboard; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* LifeMap.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LifeMap.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = LifeMap/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = LifeMap/Info.plist; sourceTree = "<group>"; };
@@ -96,6 +99,7 @@
 		C1A2B3C41A680F5B00A75B9A /* LifeMap.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = LifeMap.debug.xcconfig; path = Config/LifeMap.debug.xcconfig; sourceTree = "<group>"; };
 		C1A2B3C51A680F5B00A75B9A /* LifeMap.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = LifeMap.release.xcconfig; path = Config/LifeMap.release.xcconfig; sourceTree = "<group>"; };
 		C3D4E5F51A68108700A75B9A /* LifeMapTransistorSafe.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = LifeMapTransistorSafe.m; path = LifeMap/LifeMapTransistorSafe.m; sourceTree = "<group>"; };
+		D4837FADD91344068AFF8BDE /* Colors.xcassets */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = folder.assetcatalog; name = Colors.xcassets; path = LifeMap/Colors.xcassets; sourceTree = "<group>"; };
 		D4E5F6A61A68108700A75B9A /* LifeMapNativePersistLoop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LifeMapNativePersistLoop.swift; path = LifeMap/LifeMapNativePersistLoop.swift; sourceTree = "<group>"; };
 		E5F6A7B61A68108700A75B9A /* AppVersionModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppVersionModule.swift; path = LifeMap/AppVersionModule.swift; sourceTree = "<group>"; };
 		E5F6A7B71A68108700A75B9A /* AppVersionModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = AppVersionModule.m; path = LifeMap/AppVersionModule.m; sourceTree = "<group>"; };
@@ -173,6 +177,8 @@
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
+				131463DD1F564FA1B4067F32 /* BootSplash.storyboard */,
+				D4837FADD91344068AFF8BDE /* Colors.xcassets */,
 			);
 			name = LifeMap;
 			sourceTree = "<group>";
@@ -349,6 +355,8 @@
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3942CC750AC601641664379E /* PrivacyInfo.xcprivacy in Resources */,
+				377AE740C0064F5CABAA4DF9 /* BootSplash.storyboard in Resources */,
+				83DA7245AC48434CAE3A2724 /* Colors.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
