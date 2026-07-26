@@ -14,7 +14,7 @@ flowchart TD
   B --> C[initSentry]
   B --> D[App first render]
   D --> E[AppBootstrap effects]
-  D --> F[AnimatedSplashScreen]
+  D --> F[BootSplash.hide (App.tsx)]
   F --> G{Onboarding done?}
   G -->|No| H[OnboardingScreen]
   G -->|Yes| I[RootNavigator → MapScreen]
@@ -81,7 +81,7 @@ flowchart TD
 
 | Condition                            | Screen       | Component              | File                                             |
 | ------------------------------------ | ------------ | ---------------------- | ------------------------------------------------ |
-| `isSplashVisible === true` (initial) | `splash`     | `AnimatedSplashScreen` | `src/components/splash/AnimatedSplashScreen.tsx` |
+| `isAppReady === false` (initial) | — | Native BootSplash | `react-native-bootsplash` + `App.tsx` useEffect |
 | Splash done + onboarding needed      | `onboarding` | `OnboardingScreen`     | `src/screens/OnboardingScreen.tsx`               |
 | Splash done + onboarding complete    | `main`       | `RootNavigator`        | `src/navigation/RootNavigator.tsx`               |
 
@@ -166,17 +166,16 @@ Singleton: `initPromise` — only runs once per process unless reset in tests.
 
 ## Phase 5 — Splash screen
 
-**File:** `src/components/splash/AnimatedSplashScreen.tsx` → `export function AnimatedSplashScreen`
+**File:** `App.tsx` → BootSplash hide `useEffect`
 
-| Step | Function                             | Purpose                                                            |
-| ---- | ------------------------------------ | ------------------------------------------------------------------ |
-| 1    | Subtitle fade animation              | `Animated.timing(subtitleOpacity, …)`                              |
-| 2    | `ensureDatabaseReady()`              | Overlaps with `AppBootstrap` DB open (same singleton)              |
-| 3    | `splashAnimationDurationMs(elapsed)` | `src/components/splash/splash-timing.ts` — minimum splash duration |
-| 4    | Underline scale animation            | `Animated.timing(underlineScale, …)`                               |
-| 5    | `onFinish()`                         | `App.tsx` → `handleSplashFinish()` → `setSplashVisible(false)`     |
+Same pattern as the [react-native-bootsplash](https://www.npmjs.com/package/react-native-bootsplash) docs: await startup work (`ensureDatabaseReady`), mount the next screen under the native splash, then `BootSplash.hide({ fade: true })`.
 
-**UI children:** `SplashBackground`, `SplashBrandTitle` (`src/components/splash/`).
+| Step | Function                | Purpose                                               |
+| ---- | ----------------------- | ----------------------------------------------------- |
+| 1    | `ensureDatabaseReady()` | Shared singleton with `AppBootstrap`                  |
+| 2    | `setAppReady(true)`     | Mount onboarding/main under still-visible BootSplash  |
+| 3    | wait for next paint     | Avoid blank flash before hide                         |
+| 4    | `BootSplash.hide()`     | Fade away the native splash image                     |
 
 ---
 
@@ -301,10 +300,10 @@ No `App`, `AppBootstrap`, splash, or map code runs on this path.
 | `initSentry`                   | `src/lib/sentry/init-sentry.ts`                   | `App.tsx` (module scope)                           |
 | `App`                          | `App.tsx`                                         | `AppRegistry.registerComponent`                    |
 | `AppBootstrap`                 | `src/components/AppBootstrap.tsx`                 | `App.tsx` render                                   |
-| `ensureDatabaseReady`          | `src/location/bootstrap.ts`                       | `AppBootstrap`, `AnimatedSplashScreen`, data layer |
+| `ensureDatabaseReady`          | `src/location/bootstrap.ts`                       | `AppBootstrap`, `App.tsx` BootSplash gate, data layer |
 | `bootstrapLocationTracking`    | `src/location/bootstrap.ts`                       | `AppBootstrap.runTrackingBootstrap`                |
 | `startWidgetDeepLinkListening` | `src/lib/widget/widget-deep-link.ts`              | `App.tsx` `useEffect`                              |
-| `AnimatedSplashScreen`         | `src/components/splash/AnimatedSplashScreen.tsx`  | `App.tsx` when `activeScreen === 'splash'`         |
+| `BootSplash.hide`              | `react-native-bootsplash`                         | `App.tsx` cold-start `useEffect`                   |
 | `OnboardingScreen`             | `src/screens/OnboardingScreen.tsx`                | `App.tsx` when onboarding required                 |
 | `RootNavigator`                | `src/navigation/RootNavigator.tsx`                | `App.tsx` when `activeScreen === 'main'`           |
 | `useMapScreenController`       | `src/screens/map/use-map-screen-controller.ts`    | `MapScreen`                                        |

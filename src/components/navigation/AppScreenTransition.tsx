@@ -6,7 +6,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 
-export type AppScreenKey = 'splash' | 'onboarding' | 'main';
+export type AppScreenKey = 'onboarding' | 'main';
 
 type AppScreenTransitionProps = {
   screenKey: AppScreenKey;
@@ -19,18 +19,10 @@ export function AppScreenTransition({
 }: AppScreenTransitionProps) {
   const { width } = useWindowDimensions();
   const slideFromRight = Math.min(width * 0.28, 140);
-  const opacity = useRef(
-    new Animated.Value(screenKey === 'splash' ? 1 : 0),
-  ).current;
+  const opacity = useRef(new Animated.Value(0)).current;
   const translateX = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (screenKey === 'splash') {
-      opacity.setValue(1);
-      translateX.setValue(0);
-      return;
-    }
-
     opacity.setValue(0.92);
     translateX.setValue(slideFromRight);
 

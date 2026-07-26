@@ -78,6 +78,14 @@ jest.mock('react-native-gesture-handler', () => {
 
 jest.mock('lottie-react-native', () => 'LottieView');
 
+jest.mock('react-native-bootsplash', () => ({
+  __esModule: true,
+  default: {
+    hide: jest.fn(() => Promise.resolve()),
+    isVisible: jest.fn(() => false),
+  },
+}));
+
 jest.mock('@shopify/flash-list', () => {
   const { FlatList } = require('react-native');
   return { FlashList: FlatList };

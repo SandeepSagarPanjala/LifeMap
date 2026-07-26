@@ -708,13 +708,18 @@ export function CapturePhotoScreen() {
   }, []);
 
   const clearVoice = useCallback(async () => {
-    await voicePlayerRef.current.stopPreview();
+    const uri = voiceUri;
     setVoicePlaying(false);
-    if (voiceUri) {
-      await deleteMomentContentFile(voiceUri);
-    }
     setVoiceUri(null);
     setVoiceDurationMs(0);
+    try {
+      await voicePlayerRef.current.stopPreview();
+      if (uri) {
+        await deleteMomentContentFile(uri);
+      }
+    } catch {
+      // Best-effort — preview/file may already be gone.
+    }
   }, [voiceUri]);
 
   const runCloseCleanup = useCallback(async () => {
@@ -807,6 +812,8 @@ export function CapturePhotoScreen() {
     setSceneTags([]);
     setSceneTagsStatus('idle');
     setReviewChromeVisible(true);
+    setSaving(false);
+    setSaveStatus(null);
     setPhase('camera');
   }, [clearCameraCloseTimeout, clearVoice, resetRecordingState]);
 
@@ -1077,8 +1084,8 @@ export function CapturePhotoScreen() {
         // Preview may not be active; saving already succeeded.
       }
       setVoicePlaying(false);
-      allowScreenRemoveRef.current = true;
-      navigation.goBack();
+      // Stay in camera so the user can capture more; X closes when done.
+      handleRetake();
     } catch (error) {
       Alert.alert(
         draft.kind === 'photo'
@@ -1093,7 +1100,7 @@ export function CapturePhotoScreen() {
   }, [
     captionText,
     draft,
-    navigation,
+    handleRetake,
     sceneTags,
     rotationSteps,
     saving,
@@ -1702,7 +1709,7 @@ export function CapturePhotoScreen() {
                 <View style={styles.reviewActionsRow}>
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel="Close without saving"
+                    accessibilityLabel="Close camera"
                     disabled={saving}
                     onPress={handleClose}
                     style={[styles.iconButton, saving ? styles.disabled : null]}
@@ -1723,7 +1730,9 @@ export function CapturePhotoScreen() {
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={
-                      isPhotoDraft ? 'Save photo' : 'Save video'
+                      isPhotoDraft
+                        ? 'Save photo and take another'
+                        : 'Save video and record another'
                     }
                     disabled={saving}
                     onPress={() => void handleSave()}

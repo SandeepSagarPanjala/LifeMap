@@ -1,10 +1,11 @@
-/** iOS AVAudioRecorder averagePower is dBFS (~-160 silence, 0 max). */
+/** iOS AVAudioRecorder average/peak power is dBFS (~-160 silence, 0 max). */
 export function normalizeVoiceMetering(db: number | undefined): number {
   if (db == null || !Number.isFinite(db)) {
-    return 0.1;
+    return 0.04;
   }
-  const normalized = (db + 50) / 50;
-  return Math.max(0.08, Math.min(1, normalized));
+  // Speech often lands around -40…-15; map that into a lively 0..1 range.
+  const normalized = (db + 55) / 45;
+  return Math.max(0.04, Math.min(1, normalized));
 }
 
 /** Lightweight fixed-shape bars for playback (no sample history needed). */

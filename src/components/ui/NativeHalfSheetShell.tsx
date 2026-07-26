@@ -25,6 +25,8 @@ type NativeHalfSheetShellProps = {
   heightRatio?: number;
   /** When false, backdrop taps are ignored (e.g. gorhom overlay is open). */
   backdropDismissEnabled?: boolean;
+  /** Fires once after the open slide finishes. */
+  onOpened?: () => void;
 };
 
 /** Full-width bottom panel; backdrop fades in, sheet slides up. */
@@ -33,23 +35,42 @@ export function NativeHalfSheetShell({
   onClose,
   heightRatio = 0.5,
   backdropDismissEnabled = true,
+  onOpened,
 }: NativeHalfSheetShellProps) {
   const { height: windowHeight } = useWindowDimensions();
   const sheetHeight = windowHeight * heightRatio;
   const closingRef = useRef(false);
+  const didOpenRef = useRef(false);
+  const onOpenedRef = useRef(onOpened);
+  onOpenedRef.current = onOpened;
 
   const backdropOpacity = useSharedValue(0);
   const sheetTranslateY = useSharedValue(sheetHeight);
 
   useEffect(() => {
+    if (didOpenRef.current) {
+      return;
+    }
+    didOpenRef.current = true;
     closingRef.current = false;
+    const notifyOpened = () => {
+      onOpenedRef.current?.();
+    };
     backdropOpacity.value = 0;
     sheetTranslateY.value = sheetHeight;
     backdropOpacity.value = withTiming(1, { duration: BACKDROP_FADE_MS });
-    sheetTranslateY.value = withTiming(0, {
-      duration: SHEET_SLIDE_MS,
-      easing: Easing.out(Easing.cubic),
-    });
+    sheetTranslateY.value = withTiming(
+      0,
+      {
+        duration: SHEET_SLIDE_MS,
+        easing: Easing.out(Easing.cubic),
+      },
+      finished => {
+        if (finished) {
+          runOnJS(notifyOpened)();
+        }
+      },
+    );
   }, [backdropOpacity, sheetHeight, sheetTranslateY]);
 
   const finishClose = useCallback(() => {
