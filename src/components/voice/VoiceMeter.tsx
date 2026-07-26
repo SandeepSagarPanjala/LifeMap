@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type MutableRefObject } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 
 const LIVE_BAR_COUNT = 28;
@@ -11,7 +11,7 @@ const SAMPLE_MS = 48;
 
 type VoiceLiveMeterProps = {
   /** Latest mic level 0..1 — updated via ref so the sheet does not re-render. */
-  levelRef: React.MutableRefObject<number>;
+  levelRef: MutableRefObject<number>;
   accentColor?: string;
 };
 
