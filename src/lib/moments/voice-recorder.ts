@@ -25,7 +25,7 @@ import {
 
 const START_RECORDING_MAX_ATTEMPTS = 3;
 const START_RECORDING_RETRY_DELAY_MS = 350;
-const NATIVE_PROGRESS_POLL_MS = 100;
+const NATIVE_PROGRESS_POLL_MS = 50;
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => {
@@ -157,7 +157,7 @@ export function createVoiceRecorderSession(
   };
 
   const attachRecordListener = () => {
-    sound.setSubscriptionDuration(0.1);
+    sound.setSubscriptionDuration(0.05);
     sound.addRecordBackListener(handleRecordProgress);
   };
 
@@ -359,7 +359,7 @@ export function createVoiceRecorderSession(
         return;
       }
       removeListenersSafely();
-      sound.setSubscriptionDuration(0.1);
+      sound.setSubscriptionDuration(0.05);
       sound.addPlayBackListener(handlePlaybackProgress);
       sound.addPlaybackEndListener(handlePlaybackEnded);
       if (disposed) {

@@ -36,7 +36,8 @@ class VoiceRecorderModule: RCTEventEmitter {
       recorder.updateMeters()
       resolver([
         "currentPosition": Int(recorder.currentTime * 1000),
-        "currentMetering": recorder.averagePower(forChannel: 0),
+        "currentMetering": recorder.averagePower(forChannel: 0) * 0.35
+          + recorder.peakPower(forChannel: 0) * 0.65,
         "isRecording": true,
       ])
     }
@@ -179,7 +180,7 @@ class VoiceRecorderModule: RCTEventEmitter {
   private func startProgressTimer() {
     stopProgressTimer()
     emitProgress()
-    let timer = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
+    let timer = Timer(timeInterval: 0.05, repeats: true) { [weak self] _ in
       self?.emitProgress()
     }
     progressTimer = timer
@@ -191,11 +192,15 @@ class VoiceRecorderModule: RCTEventEmitter {
       return
     }
     recorder.updateMeters()
+    let average = recorder.averagePower(forChannel: 0)
+    let peak = recorder.peakPower(forChannel: 0)
+    // Peak keeps speech lively; a little average keeps it from looking jumpy.
+    let metering = average * 0.35 + peak * 0.65
     sendEvent(
       withName: "VoiceRecorderProgress",
       body: [
         "currentPosition": Int(recorder.currentTime * 1000),
-        "currentMetering": recorder.averagePower(forChannel: 0),
+        "currentMetering": metering,
       ],
     )
   }

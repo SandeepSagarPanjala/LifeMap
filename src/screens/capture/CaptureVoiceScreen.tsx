@@ -17,10 +17,12 @@ function CaptureVoicePanel({
   onBeginPreview,
   onRegisterClose,
   recordingRestartNonce,
+  canAutoStart,
 }: {
   onBeginPreview: (draft: VoiceMemoPreviewDraft) => void;
   onRegisterClose: (close: () => void) => void;
   recordingRestartNonce: number;
+  canAutoStart: boolean;
 }) {
   const closeSheet = useNativeHalfSheetClose();
 
@@ -33,6 +35,8 @@ function CaptureVoicePanel({
       embedded
       visible
       instantPresent
+      startRecordingOnOpen
+      canAutoStart={canAutoStart}
       onBeginPreview={onBeginPreview}
       restartNonce={recordingRestartNonce}
       onClose={closeSheet}
@@ -50,6 +54,7 @@ export function CaptureVoiceScreen() {
     useState<VoiceMemoPreviewDraft | null>(null);
   const [previewSheetOpen, setPreviewSheetOpen] = useState(false);
   const [recordingRestartNonce, setRecordingRestartNonce] = useState(0);
+  const [sheetOpened, setSheetOpened] = useState(false);
 
   const registerClose = useCallback((close: () => void) => {
     closeShellRef.current = close;
@@ -91,6 +96,7 @@ export function CaptureVoiceScreen() {
       >
         <NativeHalfSheetShell
           onClose={finishClose}
+          onOpened={() => setSheetOpened(true)}
           backdropDismissEnabled={!previewSheetOpen}
           heightRatio={VOICE_SHEET_HEIGHT_RATIO}
         >
@@ -98,6 +104,7 @@ export function CaptureVoiceScreen() {
             onRegisterClose={registerClose}
             onBeginPreview={handleBeginPreview}
             recordingRestartNonce={recordingRestartNonce}
+            canAutoStart={sheetOpened}
           />
         </NativeHalfSheetShell>
       </View>

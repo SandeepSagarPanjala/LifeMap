@@ -5,8 +5,8 @@ import {
 
 describe('normalizeVoiceMetering', () => {
   it('maps silence and loud levels into 0-1', () => {
-    expect(normalizeVoiceMetering(-50)).toBeCloseTo(0.08, 2);
-    expect(normalizeVoiceMetering(-25)).toBeCloseTo(0.5, 2);
+    expect(normalizeVoiceMetering(-55)).toBeCloseTo(0.04, 2);
+    expect(normalizeVoiceMetering(-32.5)).toBeCloseTo(0.5, 2);
     expect(normalizeVoiceMetering(0)).toBe(1);
   });
 });

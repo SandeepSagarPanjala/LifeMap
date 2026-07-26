@@ -10,7 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { AudioLines, Mic, Pause, Play, Square } from 'lucide-react-native';
+import { AudioLines, Pause, Play } from 'lucide-react-native';
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 
@@ -40,6 +40,8 @@ import {
 } from '@/lib/moments/voice-recorder';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+const VOICE_RECORD_RED = '#FF3B30';
+
 type VoiceMemoPhase = 'idle' | 'recording' | 'preview' | 'saving';
 
 export type VoiceMemoSaveTarget = 'moment' | 'diary' | 'photo';
@@ -53,6 +55,8 @@ type VoiceMemoSheetProps = {
   onWillClose?: () => void;
   /** When true, begin recording as soon as the sheet opens. Default: tap mic (Voice Memos style). */
   startRecordingOnOpen?: boolean;
+  /** Gate for auto-start (e.g. wait until slide animation finishes). Default true. */
+  canAutoStart?: boolean;
   snapPoints?: (string | number)[];
   instantPresent?: boolean;
   /** Render inside SheetFlowScreen panel — skips gorhom (instant open). */
@@ -71,6 +75,7 @@ export function VoiceMemoSheet({
   onDiaryAttach,
   onWillClose,
   startRecordingOnOpen = false,
+  canAutoStart = true,
   snapPoints,
   instantPresent = false,
   embedded = false,
@@ -86,7 +91,6 @@ export function VoiceMemoSheet({
   const [durationMs, setDurationMs] = useState(0);
   const [previewPath, setPreviewPath] = useState<string | null>(null);
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
-  const [liveLevel, setLiveLevel] = useState(0.12);
   const [playbackPositionMs, setPlaybackPositionMs] = useState(0);
   const [noteText, setNoteText] = useState('');
   const [noteFocused, setNoteFocused] = useState(false);
@@ -103,11 +107,11 @@ export function VoiceMemoSheet({
   const durationMsRef = useRef(0);
   const previewPathRef = useRef<string | null>(null);
   const phaseRef = useRef<VoiceMemoPhase>('idle');
+  const liveLevelRef = useRef(0.04);
   const sheetRef = useRef<BottomSheetModal>(null);
   const restoreSheetAfterKeyboardRef = useRef(false);
 
   const paintDurationRef = useRef<(ms: number) => void>(() => {});
-  const paintLiveLevelRef = useRef<(level: number) => void>(() => {});
   const paintPlaybackRef = useRef<(ms: number) => void>(() => {});
 
   useEffect(() => {
@@ -130,9 +134,6 @@ export function VoiceMemoSheet({
     paintDurationRef.current = throttleVoiceUi((ms: number) => {
       setDurationMs(ms);
     }, 250);
-    paintLiveLevelRef.current = throttleVoiceUi((level: number) => {
-      setLiveLevel(level);
-    }, 120);
     paintPlaybackRef.current = throttleVoiceUi((ms: number) => {
       setPlaybackPositionMs(ms);
     }, 150);
@@ -145,7 +146,7 @@ export function VoiceMemoSheet({
     setDurationMs(0);
     setPreviewPath(null);
     setIsPlayingPreview(false);
-    setLiveLevel(0.12);
+    liveLevelRef.current = 0.04;
     setPlaybackPositionMs(0);
     setNoteText('');
     setNoteFocused(false);
@@ -230,7 +231,7 @@ export function VoiceMemoSheet({
         if (!aliveRef.current) {
           return;
         }
-        paintLiveLevelRef.current(normalizeVoiceMetering(meteringDb));
+        liveLevelRef.current = normalizeVoiceMetering(meteringDb);
       },
       onPlaybackProgress: (positionMs, totalMs) => {
         if (!aliveRef.current) {
@@ -349,7 +350,7 @@ export function VoiceMemoSheet({
         setIsPlayingPreview(false);
         setDurationMs(0);
         durationMsRef.current = 0;
-        setLiveLevel(0.12);
+        liveLevelRef.current = 0.04;
         setPlaybackPositionMs(0);
         await session.startRecording();
         if (!aliveRef.current || !visibleRef.current) {
@@ -394,7 +395,12 @@ export function VoiceMemoSheet({
   }, [visible]);
 
   const tryAutoStartRecording = useCallback(() => {
-    if (!visible || !startRecordingOnOpen || autoStartAttemptedRef.current) {
+    if (
+      !visible ||
+      !startRecordingOnOpen ||
+      !canAutoStart ||
+      autoStartAttemptedRef.current
+    ) {
       return;
     }
     if (phaseRef.current !== 'idle') {
@@ -402,7 +408,7 @@ export function VoiceMemoSheet({
     }
     autoStartAttemptedRef.current = true;
     void startRecordingRef.current();
-  }, [startRecordingOnOpen, visible]);
+  }, [canAutoStart, startRecordingOnOpen, visible]);
 
   const handleTogglePreview = async () => {
     if (!previewPath || !recorderRef.current) {
@@ -506,7 +512,7 @@ export function VoiceMemoSheet({
     durationMsRef.current = 0;
     setIsPlayingPreview(false);
     setPlaybackPositionMs(0);
-    setLiveLevel(0.12);
+    liveLevelRef.current = 0.04;
   }, [restartNonce, visible]);
 
   const NoteInput = embedded ? TextInput : BottomSheetTextInput;
@@ -559,43 +565,47 @@ export function VoiceMemoSheet({
         ) : null}
       </View>
 
-      {phase === 'recording' ? (
-        <VoiceLiveMeter level={liveLevel} accentColor="#FF9500" />
-      ) : null}
+      <View style={styles.meterSlot}>
+        {phase === 'recording' ? (
+          <VoiceLiveMeter
+            levelRef={liveLevelRef}
+            accentColor={VOICE_RECORD_RED}
+          />
+        ) : null}
 
-      {phase === 'preview' && !useExternalPreview ? (
-        <VoicePlaybackMeter
-          progress={playbackProgress}
-          isPlaying={isPlayingPreview}
-          accentColor="#FF9500"
-        />
-      ) : null}
+        {phase === 'preview' && !useExternalPreview ? (
+          <VoicePlaybackMeter
+            progress={playbackProgress}
+            isPlaying={isPlayingPreview}
+            accentColor={VOICE_RECORD_RED}
+          />
+        ) : null}
+      </View>
 
       <View style={styles.controls}>
         {phase === 'idle' ? (
-          startRecordingOnOpen && !autoStartFailed && !manualStartOnly ? (
-            <View style={styles.savingRow}>
-              <ActivityIndicator color={colors.primary} />
-              <Text variant="muted">Starting recorder…</Text>
+          <View style={styles.manualStartBlock}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Start recording"
+              disabled={
+                startRecordingOnOpen && !autoStartFailed && !manualStartOnly
+              }
+              onPress={() => void handleStartRecording()}
+              style={styles.recordButton}
+            >
+              <View style={styles.recordInner} />
+            </Pressable>
+            <View style={styles.controlCaption}>
+              {!startRecordingOnOpen ||
+              autoStartFailed ||
+              manualStartOnly ? (
+                <Text variant="muted" className="text-xs text-center">
+                  Tap to record
+                </Text>
+              ) : null}
             </View>
-          ) : (
-            <View style={styles.manualStartBlock}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Start recording"
-                onPress={() => void handleStartRecording()}
-                style={[
-                  styles.primaryCircle,
-                  { backgroundColor: voiceTheme.badgeBg },
-                ]}
-              >
-                <Mic size={28} color={voiceTheme.icon} strokeWidth={2.25} />
-              </Pressable>
-              <Text variant="muted" className="text-xs text-center">
-                Tap the mic to record
-              </Text>
-            </View>
-          )
+          </View>
         ) : null}
 
         {phase === 'recording' ? (
@@ -603,17 +613,9 @@ export function VoiceMemoSheet({
             accessibilityRole="button"
             accessibilityLabel="Stop recording"
             onPress={() => void handleStopRecording()}
-            style={[
-              styles.primaryCircle,
-              { backgroundColor: voiceTheme.badgeBg },
-            ]}
+            style={styles.stopButton}
           >
-            <Square
-              size={24}
-              color={voiceTheme.icon}
-              strokeWidth={2.25}
-              fill={voiceTheme.icon}
-            />
+            <View style={styles.stopSquare} />
           </Pressable>
         ) : null}
 
@@ -693,7 +695,7 @@ export function VoiceMemoSheet({
         style={[
           styles.embeddedRoot,
           {
-            paddingBottom: Math.max(insets.bottom, 16),
+            paddingBottom: Math.max(insets.bottom, 12),
           },
         ]}
       >
@@ -732,9 +734,9 @@ const styles = StyleSheet.create({
   },
   timerRow: {
     alignItems: 'center',
-    gap: 8,
-    marginTop: 16,
-    marginBottom: 8,
+    gap: 6,
+    marginTop: 12,
+    marginBottom: 4,
   },
   recordingBadge: {
     flexDirection: 'row',
@@ -745,7 +747,12 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#EF4444',
+    backgroundColor: VOICE_RECORD_RED,
+  },
+  meterSlot: {
+    minHeight: 28,
+    justifyContent: 'center',
+    marginBottom: 2,
   },
   controls: {
     alignItems: 'center',
@@ -754,19 +761,49 @@ const styles = StyleSheet.create({
   },
   manualStartBlock: {
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
-  primaryCircle: {
+  recordButton: {
     width: 72,
     height: 72,
     borderRadius: 36,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 4,
+    shadowOpacity: 0.16,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  recordInner: {
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+    backgroundColor: VOICE_RECORD_RED,
+  },
+  stopButton: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.16,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  stopSquare: {
+    width: 26,
+    height: 26,
+    borderRadius: 6,
+    backgroundColor: VOICE_RECORD_RED,
+  },
+  controlCaption: {
+    minHeight: 16,
+    justifyContent: 'center',
   },
   secondaryCircle: {
     width: 56,

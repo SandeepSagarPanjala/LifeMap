@@ -15,7 +15,9 @@ platform :ios do
   desc "Install JS dependencies and CocoaPods"
   lane :prepare do
     Dir.chdir(PROJECT_ROOT) do
-      sh("pnpm install --frozen-lockfile")
+      # pnpm may need to recreate node_modules (e.g. after patchedDependencies
+      # changes). Without a TTY it aborts unless CI=true.
+      sh("CI=true pnpm install --frozen-lockfile")
     end
     cocoapods(
       podfile: File.expand_path("../Podfile", __dir__),

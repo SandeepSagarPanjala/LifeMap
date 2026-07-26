@@ -151,7 +151,7 @@ export const HISTORY_DATA_CACHE_MAX_ENTRIES = 5;
 
 export const NATIVE_HALF_SHEET_HEIGHT_RATIO = 0.5;
 export const HISTORY_DATE_PICKER_HEIGHT_RATIO = 0.55;
-export const VOICE_SHEET_HEIGHT_RATIO = 0.38;
+export const VOICE_SHEET_HEIGHT_RATIO = 0.34;
 
 // ——— Trip playback & geometry ———
 
