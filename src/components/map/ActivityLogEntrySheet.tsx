@@ -334,7 +334,7 @@ export function ActivityLogEntrySheet({
           })()}
           onChangeText={text => {
             const mins = Number(text.replace(/[^0-9]/g, ''));
-            if (!Number.isFinite(mins) || text.trim() === '') {
+            if (!Number.isFinite(mins) || text.trim() === '' || mins <= 0) {
               setFieldValue(field.id, undefined);
               return;
             }

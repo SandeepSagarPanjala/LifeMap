@@ -76,21 +76,23 @@ const ActivityEmojiPicker = forwardRef<
   ref,
 ) {
   const emojiKeyboard = useEmojiKeyboard();
+  const emojiKeyboardRef = useRef(emojiKeyboard);
+  emojiKeyboardRef.current = emojiKeyboard;
 
   useEffect(() => {
-    return () => emojiKeyboard.dismiss();
-    // Only dismiss on unmount — hook returns a fresh object each render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      emojiKeyboardRef.current.dismiss();
+    };
   }, []);
 
   useImperativeHandle(
     ref,
     () => ({
       open: () => {
-        emojiKeyboard.open();
+        emojiKeyboardRef.current.open();
       },
     }),
-    [emojiKeyboard],
+    [],
   );
 
   const openPicker = useCallback(() => {
@@ -99,8 +101,8 @@ const ActivityEmojiPicker = forwardRef<
     }
     const delay =
       !swapKeyboardOnPick && Platform.OS === 'ios' ? 80 : 0;
-    setTimeout(() => emojiKeyboard.open(), delay);
-  }, [emojiKeyboard, swapKeyboardOnPick]);
+    setTimeout(() => emojiKeyboardRef.current.open(), delay);
+  }, [swapKeyboardOnPick]);
 
   const handleEmojiSelected = useCallback(
     (value: string) => {

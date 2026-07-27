@@ -56,7 +56,7 @@ export function ActivityFormSheet({
       setLabel(request.activity.label);
       setFields(request.activity.fields);
     } else if (request != null) {
-      setEmoji('❓');
+      setEmoji('');
       setLabel('');
       setFields([]);
     }
