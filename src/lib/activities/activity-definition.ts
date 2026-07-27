@@ -135,9 +135,70 @@ export function parseActivityValuesJson(
     if (parsed == null || typeof parsed !== 'object' || Array.isArray(parsed)) {
       return {};
     }
-    return parsed as ActivityValuesMap;
+    const result: ActivityValuesMap = {};
+    for (const [fieldId, entry] of Object.entries(
+      parsed as Record<string, unknown>,
+    )) {
+      const normalized = normalizeStoredValue(entry);
+      if (normalized != null) {
+        result[fieldId] = normalized;
+      }
+    }
+    return result;
   } catch {
     return {};
+  }
+}
+
+function normalizeStoredValue(value: unknown): ActivityFieldValue | null {
+  if (value == null || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+  const record = value as Record<string, unknown>;
+  switch (record.type) {
+    case 'photo':
+    case 'scan': {
+      if (typeof record.uri !== 'string' || !record.uri.trim()) {
+        return null;
+      }
+      return { type: record.type, uri: record.uri.trim() };
+    }
+    case 'money': {
+      if (typeof record.amount !== 'number' || !Number.isFinite(record.amount)) {
+        return null;
+      }
+      return { type: 'money', amount: record.amount };
+    }
+    case 'number': {
+      if (typeof record.value !== 'number' || !Number.isFinite(record.value)) {
+        return null;
+      }
+      return { type: 'number', value: record.value };
+    }
+    case 'text':
+    case 'choice': {
+      if (typeof record.value !== 'string') {
+        return null;
+      }
+      return { type: record.type, value: record.value };
+    }
+    case 'duration': {
+      if (
+        typeof record.seconds !== 'number' ||
+        !Number.isFinite(record.seconds)
+      ) {
+        return null;
+      }
+      return { type: 'duration', seconds: record.seconds };
+    }
+    case 'toggle': {
+      if (typeof record.value !== 'boolean') {
+        return null;
+      }
+      return { type: 'toggle', value: record.value };
+    }
+    default:
+      return null;
   }
 }
 

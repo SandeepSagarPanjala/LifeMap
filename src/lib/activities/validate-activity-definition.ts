@@ -263,7 +263,7 @@ export function validateActivityDefinition(
   return {
     ok: true,
     definition: {
-      schemaVersion: ACTIVITY_SCHEMA_VERSION,
+      schemaVersion,
       name,
       emoji,
       fields,
