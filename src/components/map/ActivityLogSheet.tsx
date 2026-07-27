@@ -94,10 +94,13 @@ const ActivityEmojiPicker = forwardRef<
   );
 
   const openPicker = useCallback(() => {
-    Keyboard.dismiss();
-    const delay = Platform.OS === 'ios' ? 80 : 0;
+    if (!swapKeyboardOnPick) {
+      Keyboard.dismiss();
+    }
+    const delay =
+      !swapKeyboardOnPick && Platform.OS === 'ios' ? 80 : 0;
     setTimeout(() => emojiKeyboard.open(), delay);
-  }, [emojiKeyboard]);
+  }, [emojiKeyboard, swapKeyboardOnPick]);
 
   const handleEmojiSelected = useCallback(
     (value: string) => {

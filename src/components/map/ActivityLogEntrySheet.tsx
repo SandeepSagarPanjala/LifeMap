@@ -7,11 +7,11 @@ import {
   ScrollView,
   StyleSheet,
   Switch,
-  TextInput,
   View,
 } from 'react-native';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import type { BottomSheetModal } from '@gorhom/bottom-sheet';
+import { BottomSheetTextInput as TextInput } from '@gorhom/bottom-sheet';
 import { launchImageLibrary } from 'react-native-image-picker';
 
 import { ActivityFieldCameraModal } from '@/components/map/ActivityFieldCameraModal';
