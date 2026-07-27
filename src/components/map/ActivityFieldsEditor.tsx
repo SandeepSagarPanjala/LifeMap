@@ -141,9 +141,9 @@ function slugifyFieldId(label: string, used: Set<string>): string {
 }
 
 function toRows(fields: ActivityFieldDefinition[]): FieldRow[] {
-  return fields.map((field, index) => ({
+  return fields.map(field => ({
     ...field,
-    key: `${field.id}-${index}`,
+    key: field.id,
   }));
 }
 

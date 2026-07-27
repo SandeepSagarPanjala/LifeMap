@@ -47,8 +47,14 @@ function formatMoneyInput(amount: number | null): string {
 }
 
 function parseMoneyInput(text: string): number | null {
-  const cleaned = text.replace(/[^0-9.]/g, '');
-  if (!cleaned) {
+  let cleaned = text.replace(/[^0-9.]/g, '');
+  const firstDot = cleaned.indexOf('.');
+  if (firstDot >= 0) {
+    cleaned =
+      cleaned.slice(0, firstDot + 1) +
+      cleaned.slice(firstDot + 1).replace(/\./g, '');
+  }
+  if (!cleaned || cleaned === '.') {
     return null;
   }
   const value = Number(cleaned);
