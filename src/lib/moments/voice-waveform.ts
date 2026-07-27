@@ -22,11 +22,11 @@ export function generateStaticWaveformBars(
   });
 }
 
-export type ThrottledVoiceUiFn<T extends (...args: never[]) => void> = T & {
+export type ThrottledVoiceUiFn<T extends (...args: any[]) => void> = T & {
   cancel: () => void;
 };
 
-export function throttleVoiceUi<T extends (...args: never[]) => void>(
+export function throttleVoiceUi<T extends (...args: any[]) => void>(
   fn: T,
   intervalMs: number,
 ): ThrottledVoiceUiFn<T> {

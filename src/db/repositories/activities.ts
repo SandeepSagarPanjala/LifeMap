@@ -117,16 +117,21 @@ export async function updateActivity(
   id: number,
   input: NewActivity,
 ): Promise<ActivityRow | null> {
+  const existing = await getActivityById(id);
+  if (existing == null) {
+    return null;
+  }
   const db = await getDatabase();
-  const fields = input.fields ?? [];
+  const fields = input.fields ?? existing.fields;
   const rows = await db
     .update(activities)
     .set({
       emoji: input.emoji.trim(),
       label: input.label.trim(),
-      schemaVersion: input.schemaVersion ?? ACTIVITY_SCHEMA_VERSION,
-      source: input.source ?? 'blank',
-      templateId: input.templateId ?? null,
+      schemaVersion: input.schemaVersion ?? existing.schemaVersion,
+      source: input.source ?? existing.source,
+      templateId:
+        input.templateId !== undefined ? input.templateId : existing.templateId,
       definitionJson: serializeActivityFieldsJson(fields),
     })
     .where(eq(activities.id, id))

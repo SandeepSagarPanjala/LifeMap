@@ -1,4 +1,5 @@
 import {
+  parseActivityCatalogYaml,
   parseActivityYaml,
   stringifyActivityYaml,
 } from '../src/lib/activities/parse-activity-yaml';
@@ -74,6 +75,64 @@ fields:
     expect(parsed.definition.fields).toHaveLength(3);
     const again = parseActivityYaml(stringifyActivityYaml(parsed.definition));
     expect(again.ok).toBe(true);
+  });
+});
+
+describe('parseActivityCatalogYaml', () => {
+  it('parses a catalog with multiple activities', () => {
+    const yaml = `
+schemaVersion: 1
+activities:
+  - schemaVersion: 1
+    id: gym
+    name: Gym
+    emoji: "🏋️"
+    fields: []
+  - schemaVersion: 1
+    name: Coffee
+    emoji: "☕"
+    fields:
+      - id: amount
+        type: money
+        label: Amount
+        required: true
+`;
+    const parsed = parseActivityCatalogYaml(yaml);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) {
+      return;
+    }
+    expect(parsed.catalog.schemaVersion).toBe(1);
+    expect(parsed.catalog.activities).toHaveLength(2);
+    expect(parsed.catalog.activities[0]?.templateId).toBe('gym');
+    expect(parsed.catalog.activities[1]?.name).toBe('Coffee');
+  });
+
+  it('rejects catalogs without an activities list', () => {
+    const parsed = parseActivityCatalogYaml('schemaVersion: 1\nname: Solo\n');
+    expect(parsed.ok).toBe(false);
+    if (!parsed.ok) {
+      expect(parsed.error).toMatch(/activities list/i);
+    }
+  });
+
+  it('prefixes per-activity validation errors', () => {
+    const yaml = `
+activities:
+  - schemaVersion: 1
+    name: Broken
+    emoji: "❌"
+    fields:
+      - id: 123bad
+        type: text
+        label: Note
+        required: false
+`;
+    const parsed = parseActivityCatalogYaml(yaml);
+    expect(parsed.ok).toBe(false);
+    if (!parsed.ok) {
+      expect(parsed.error).toMatch(/^Activity 1:/);
+    }
   });
 });
 

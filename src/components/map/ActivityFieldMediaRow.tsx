@@ -95,7 +95,7 @@ function DiagonalSplitMediaControl({
   const iconScale = MEDIA_ICON_SIZE / 256;
   const cameraNudge = -8;
   const libraryNudge = 8;
-  const safeId = fieldId.replace(/[^a-zA-Z0-9]/g, '');
+  const safeId = fieldId.replace(/[^a-zA-Z0-9_]/g, '_');
   const topLeftClipId = `media-tl-${safeId}`;
   const bottomRightClipId = `media-br-${safeId}`;
 
