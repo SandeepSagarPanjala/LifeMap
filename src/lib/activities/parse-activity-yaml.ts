@@ -90,6 +90,7 @@ export function parseActivityCatalogYaml(
     return { ok: false, error: 'Catalog must include an activities list.' };
   }
   const activities: ActivityDefinition[] = [];
+  const seenTemplateIds = new Set<string>();
   for (let index = 0; index < list.length; index += 1) {
     const result = validateActivityDefinition(list[index]);
     if (!result.ok) {
@@ -97,6 +98,16 @@ export function parseActivityCatalogYaml(
         ok: false,
         error: `Activity ${index + 1}: ${result.error}`,
       };
+    }
+    const templateId = result.definition.templateId;
+    if (templateId != null) {
+      if (seenTemplateIds.has(templateId)) {
+        return {
+          ok: false,
+          error: `Activity ${index + 1}: duplicate template id "${templateId}".`,
+        };
+      }
+      seenTemplateIds.add(templateId);
     }
     activities.push(result.definition);
   }

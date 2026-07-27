@@ -134,6 +134,27 @@ activities:
       expect(parsed.error).toMatch(/^Activity 1:/);
     }
   });
+
+  it('rejects duplicate template ids', () => {
+    const yaml = `
+activities:
+  - schemaVersion: 1
+    id: gym
+    name: Gym
+    emoji: "🏋️"
+    fields: []
+  - schemaVersion: 1
+    id: gym
+    name: Gym Again
+    emoji: "🏋️"
+    fields: []
+`;
+    const parsed = parseActivityCatalogYaml(yaml);
+    expect(parsed.ok).toBe(false);
+    if (!parsed.ok) {
+      expect(parsed.error).toMatch(/duplicate template id/i);
+    }
+  });
 });
 
 describe('parseAmountFromOcrText', () => {
