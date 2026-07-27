@@ -86,11 +86,18 @@ function validateField(
     }
   }
 
+  if (record.required != null && typeof record.required !== 'boolean') {
+    return {
+      ok: false,
+      error: `Field "${id}" required must be true or false.`,
+    };
+  }
+
   const field: ActivityFieldDefinition = {
     id,
     type: record.type,
     label,
-    required: Boolean(record.required),
+    required: record.required === true,
   };
 
   if (record.type === 'choice') {
