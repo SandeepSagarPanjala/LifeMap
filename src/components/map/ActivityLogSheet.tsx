@@ -78,9 +78,14 @@ const ActivityEmojiPicker = forwardRef<
   const emojiKeyboard = useEmojiKeyboard();
   const emojiKeyboardRef = useRef(emojiKeyboard);
   emojiKeyboardRef.current = emojiKeyboard;
+  const openPickerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     return () => {
+      if (openPickerTimerRef.current != null) {
+        clearTimeout(openPickerTimerRef.current);
+        openPickerTimerRef.current = null;
+      }
       emojiKeyboardRef.current.dismiss();
     };
   }, []);
@@ -99,9 +104,15 @@ const ActivityEmojiPicker = forwardRef<
     if (!swapKeyboardOnPick) {
       Keyboard.dismiss();
     }
+    if (openPickerTimerRef.current != null) {
+      clearTimeout(openPickerTimerRef.current);
+    }
     const delay =
       !swapKeyboardOnPick && Platform.OS === 'ios' ? 80 : 0;
-    setTimeout(() => emojiKeyboardRef.current.open(), delay);
+    openPickerTimerRef.current = setTimeout(() => {
+      openPickerTimerRef.current = null;
+      emojiKeyboardRef.current.open();
+    }, delay);
   }, [swapKeyboardOnPick]);
 
   const handleEmojiSelected = useCallback(

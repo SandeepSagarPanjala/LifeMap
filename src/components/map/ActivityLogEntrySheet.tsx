@@ -72,6 +72,14 @@ export function ActivityLogEntrySheet({
   const [scanningFieldId, setScanningFieldId] = useState<string | null>(null);
   const [captureField, setCaptureField] =
     useState<ActivityFieldDefinition | null>(null);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     setValues({});
@@ -102,6 +110,9 @@ export function ActivityLogEntrySheet({
       setScanningFieldId(target.id);
       try {
         const stored = await persistActivityImage(uri);
+        if (!mountedRef.current) {
+          return;
+        }
         if (target.type === 'photo') {
           setFieldValue(target.id, { type: 'photo', uri: stored });
           return;
@@ -110,6 +121,9 @@ export function ActivityLogEntrySheet({
         if (target.extract === 'amount' && target.fillField) {
           const absolute = resolveMomentContentPath(stored);
           const amount = await extractAmountFromImage(absolute);
+          if (!mountedRef.current) {
+            return;
+          }
           if (amount != null) {
             setFieldValue(target.fillField, {
               type: 'money',
@@ -123,12 +137,17 @@ export function ActivityLogEntrySheet({
           }
         }
       } catch (error) {
+        if (!mountedRef.current) {
+          return;
+        }
         Alert.alert(
           APP_COPY.alerts.couldNotSaveActivity,
           errorMessageOr(error, APP_COPY.common.pleaseTryAgain),
         );
       } finally {
-        setScanningFieldId(null);
+        if (mountedRef.current) {
+          setScanningFieldId(null);
+        }
       }
     },
     [setFieldValue],
