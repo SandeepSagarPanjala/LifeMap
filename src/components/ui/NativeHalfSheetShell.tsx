@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 import Animated, {
   Easing,
@@ -43,6 +43,7 @@ export function NativeHalfSheetShell({
   const didOpenRef = useRef(false);
   const onOpenedRef = useRef(onOpened);
   onOpenedRef.current = onOpened;
+  const [isClosing, setIsClosing] = useState(false);
 
   const backdropOpacity = useSharedValue(0);
   const sheetTranslateY = useSharedValue(sheetHeight);
@@ -53,6 +54,7 @@ export function NativeHalfSheetShell({
     }
     didOpenRef.current = true;
     closingRef.current = false;
+    setIsClosing(false);
     const notifyOpened = () => {
       onOpenedRef.current?.();
     };
@@ -79,10 +81,13 @@ export function NativeHalfSheetShell({
   }, [onClose]);
 
   const requestClose = useCallback(() => {
-    if (!backdropDismissEnabled || closingRef.current) {
+    if (closingRef.current) {
       return;
     }
     closingRef.current = true;
+    // Stop intercepting touches as soon as close starts so a failed/pop-blocked
+    // navigation can never leave an invisible full-screen blocker over the map.
+    setIsClosing(true);
     backdropOpacity.value = withTiming(0, { duration: BACKDROP_FADE_MS });
     sheetTranslateY.value = withTiming(
       sheetHeight,
@@ -93,13 +98,14 @@ export function NativeHalfSheetShell({
         }
       },
     );
-  }, [
-    backdropOpacity,
-    backdropDismissEnabled,
-    finishClose,
-    sheetHeight,
-    sheetTranslateY,
-  ]);
+  }, [backdropOpacity, finishClose, sheetHeight, sheetTranslateY]);
+
+  const handleBackdropPress = useCallback(() => {
+    if (!backdropDismissEnabled) {
+      return;
+    }
+    requestClose();
+  }, [backdropDismissEnabled, requestClose]);
 
   const backdropStyle = useAnimatedStyle(() => ({
     opacity: backdropOpacity.value,
@@ -111,12 +117,15 @@ export function NativeHalfSheetShell({
 
   return (
     <NativeHalfSheetCloseContext.Provider value={requestClose}>
-      <Animated.View style={styles.root}>
+      <Animated.View
+        pointerEvents={isClosing ? 'none' : 'auto'}
+        style={styles.root}
+      >
         <Animated.View style={[styles.backdrop, backdropStyle]}>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Dismiss sheet"
-            onPress={requestClose}
+            onPress={handleBackdropPress}
             style={styles.backdropTap}
           />
         </Animated.View>

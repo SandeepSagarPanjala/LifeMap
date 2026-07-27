@@ -15,6 +15,7 @@ jest.mock('../src/db/migrate', () => ({
   ensureMomentsWithoutLocationColumns: jest.fn().mockResolvedValue(undefined),
   ensureMomentThumbnailPathColumn: jest.fn().mockResolvedValue(undefined),
   ensureMomentTagsJsonColumn: jest.fn().mockResolvedValue(undefined),
+  ensureActivityDefinitionColumns: jest.fn().mockResolvedValue(undefined),
   ensureMaterializedDayGeometryColumn: jest.fn().mockResolvedValue(undefined),
   ensureVisitLabelOverrideAnchorColumns: jest.fn().mockResolvedValue(undefined),
   ensureMaterializedDayExcludedDriveColumn: jest

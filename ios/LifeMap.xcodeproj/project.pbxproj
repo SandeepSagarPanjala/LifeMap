@@ -30,6 +30,8 @@
 		F6A7B8CA1A68108700A75B9A /* VoiceAudioSessionModule.m in Sources */ = {isa = PBXBuildFile; fileRef = F6A7B8C81A68108700A75B9A /* VoiceAudioSessionModule.m */; };
 		IMG0MOD1A68108700A75B9A /* ImageLabelModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = IMG0FR01A68108700A75B9A /* ImageLabelModule.swift */; };
 		IMG0MOD2A68108700A75B9A /* ImageLabelModule.m in Sources */ = {isa = PBXBuildFile; fileRef = IMG0FR02A68108700A75B9A /* ImageLabelModule.m */; };
+		OCR0MOD1A68108700A75B9A /* TextRecognizeModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = OCR0FR01A68108700A75B9A /* TextRecognizeModule.swift */; };
+		OCR0MOD2A68108700A75B9A /* TextRecognizeModule.m in Sources */ = {isa = PBXBuildFile; fileRef = OCR0FR02A68108700A75B9A /* TextRecognizeModule.m */; };
 		VRC0MOD3A68108700A75B9A /* VoiceRecorderModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = VRC0MOD1A68108700A75B9A /* VoiceRecorderModule.swift */; };
 		VRC0MOD4A68108700A75B9A /* VoiceRecorderModule.m in Sources */ = {isa = PBXBuildFile; fileRef = VRC0MOD2A68108700A75B9A /* VoiceRecorderModule.m */; };
 		WGT0BLD1A68108700A75B9A /* WidgetSnapshotBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = WGT0FR09A68108700A75B9A /* WidgetSnapshotBuilder.swift */; };
@@ -108,6 +110,8 @@
 		F6A7B8C81A68108700A75B9A /* VoiceAudioSessionModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = VoiceAudioSessionModule.m; path = LifeMap/VoiceAudioSessionModule.m; sourceTree = "<group>"; };
 		IMG0FR01A68108700A75B9A /* ImageLabelModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ImageLabelModule.swift; path = LifeMap/ImageLabelModule.swift; sourceTree = "<group>"; };
 		IMG0FR02A68108700A75B9A /* ImageLabelModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = ImageLabelModule.m; path = LifeMap/ImageLabelModule.m; sourceTree = "<group>"; };
+		OCR0FR01A68108700A75B9A /* TextRecognizeModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TextRecognizeModule.swift; path = LifeMap/TextRecognizeModule.swift; sourceTree = "<group>"; };
+		OCR0FR02A68108700A75B9A /* TextRecognizeModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = TextRecognizeModule.m; path = LifeMap/TextRecognizeModule.m; sourceTree = "<group>"; };
 		VRC0MOD1A68108700A75B9A /* VoiceRecorderModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VoiceRecorderModule.swift; path = LifeMap/VoiceRecorderModule.swift; sourceTree = "<group>"; };
 		VRC0MOD2A68108700A75B9A /* VoiceRecorderModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = VoiceRecorderModule.m; path = LifeMap/VoiceRecorderModule.m; sourceTree = "<group>"; };
 		WGT0FR01A68108700A75B9A /* WidgetSnapshotModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WidgetSnapshotModule.swift; path = LifeMap/WidgetSnapshotModule.swift; sourceTree = "<group>"; };
@@ -156,6 +160,8 @@
 				A1B2C3D51A68108700A75B9A /* PlaceLookupModule.m */,
 				IMG0FR01A68108700A75B9A /* ImageLabelModule.swift */,
 				IMG0FR02A68108700A75B9A /* ImageLabelModule.m */,
+				OCR0FR01A68108700A75B9A /* TextRecognizeModule.swift */,
+				OCR0FR02A68108700A75B9A /* TextRecognizeModule.m */,
 				BKP0FR01A68108700A75B9A /* BackupCloudModule.swift */,
 				BKP0FR02A68108700A75B9A /* BackupCloudModule.m */,
 				E5F6A7B61A68108700A75B9A /* AppVersionModule.swift */,
@@ -468,6 +474,8 @@
 				A1B2C3D71A68108700A75B9A /* PlaceLookupModule.m in Sources */,
 				IMG0MOD1A68108700A75B9A /* ImageLabelModule.swift in Sources */,
 				IMG0MOD2A68108700A75B9A /* ImageLabelModule.m in Sources */,
+				OCR0MOD1A68108700A75B9A /* TextRecognizeModule.swift in Sources */,
+				OCR0MOD2A68108700A75B9A /* TextRecognizeModule.m in Sources */,
 				BKP0MOD1A68108700A75B9A /* BackupCloudModule.swift in Sources */,
 				BKP0MOD2A68108700A75B9A /* BackupCloudModule.m in Sources */,
 				E5F6A7B81A68108700A75B9A /* AppVersionModule.swift in Sources */,

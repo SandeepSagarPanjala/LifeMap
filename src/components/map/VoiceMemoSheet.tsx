@@ -33,6 +33,7 @@ import { saveVoiceMoment } from '@/lib/moments/capture-voice';
 import {
   normalizeVoiceMetering,
   throttleVoiceUi,
+  type ThrottledVoiceUiFn,
 } from '@/lib/moments/voice-waveform';
 import {
   createVoiceRecorderSession,
@@ -111,8 +112,13 @@ export function VoiceMemoSheet({
   const sheetRef = useRef<BottomSheetModal>(null);
   const restoreSheetAfterKeyboardRef = useRef(false);
 
-  const paintDurationRef = useRef<(ms: number) => void>(() => {});
-  const paintPlaybackRef = useRef<(ms: number) => void>(() => {});
+  const paintDurationRef = useRef<ThrottledVoiceUiFn<(ms: number) => void>>(
+    throttleVoiceUi(() => {}, 250),
+  );
+  const paintPlaybackRef = useRef<ThrottledVoiceUiFn<(ms: number) => void>>(
+    throttleVoiceUi(() => {}, 150),
+  );
+  const recordingActiveRef = useRef(false);
 
   useEffect(() => {
     durationMsRef.current = durationMs;
@@ -137,9 +143,16 @@ export function VoiceMemoSheet({
     paintPlaybackRef.current = throttleVoiceUi((ms: number) => {
       setPlaybackPositionMs(ms);
     }, 150);
+    return () => {
+      paintDurationRef.current.cancel();
+      paintPlaybackRef.current.cancel();
+    };
   }, []);
 
   const resetDraft = useCallback(async () => {
+    recordingActiveRef.current = false;
+    paintDurationRef.current.cancel();
+    paintPlaybackRef.current.cancel();
     await recorderRef.current?.stopPreview();
     await recorderRef.current?.discardRecording(previewPathRef.current);
     setPhase('idle');
@@ -215,7 +228,7 @@ export function VoiceMemoSheet({
     aliveRef.current = true;
     const session = createVoiceRecorderSession({
       onDurationMs: ms => {
-        if (!aliveRef.current) {
+        if (!aliveRef.current || !recordingActiveRef.current) {
           return;
         }
         durationMsRef.current = ms;
@@ -276,6 +289,8 @@ export function VoiceMemoSheet({
     if (!recorderRef.current) {
       return;
     }
+    recordingActiveRef.current = false;
+    paintDurationRef.current.cancel();
     try {
       const result = await recorderRef.current.stopRecording();
       setDurationMs(result.durationMs);
@@ -313,6 +328,8 @@ export function VoiceMemoSheet({
         getVoiceRecordingErrorMessage(error),
       );
       setPhase('idle');
+      setDurationMs(0);
+      durationMsRef.current = 0;
     }
   }, [onBeginPreview, useExternalPreview]);
 
@@ -348,12 +365,15 @@ export function VoiceMemoSheet({
         setManualStartOnly(false);
         setPreviewPath(null);
         setIsPlayingPreview(false);
+        paintDurationRef.current.cancel();
         setDurationMs(0);
         durationMsRef.current = 0;
         liveLevelRef.current = 0.04;
         setPlaybackPositionMs(0);
+        recordingActiveRef.current = true;
         await session.startRecording();
         if (!aliveRef.current || !visibleRef.current) {
+          recordingActiveRef.current = false;
           try {
             await session.discardRecording();
           } catch {
@@ -364,6 +384,7 @@ export function VoiceMemoSheet({
         setPhase('recording');
         return true;
       } catch (error) {
+        recordingActiveRef.current = false;
         if (!aliveRef.current) {
           return false;
         }
@@ -507,6 +528,8 @@ export function VoiceMemoSheet({
     autoStartAttemptedRef.current = true;
     setAutoStartFailed(false);
     setManualStartOnly(true);
+    recordingActiveRef.current = false;
+    paintDurationRef.current.cancel();
     setPhase('idle');
     setDurationMs(0);
     durationMsRef.current = 0;

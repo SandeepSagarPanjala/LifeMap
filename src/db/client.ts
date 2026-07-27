@@ -3,6 +3,7 @@ import { drizzle } from 'drizzle-orm/op-sqlite';
 
 import {
   runMigrations,
+  ensureActivityDefinitionColumns,
   ensureMaterializedDayGeometryColumn,
   ensureMaterializedDayExcludedDriveColumn,
   ensureMomentThumbnailPathColumn,
@@ -62,6 +63,7 @@ async function initDatabase(): Promise<{ db: Database; sqlite: DB }> {
   await ensureMomentsWithoutLocationColumns(sqlite);
   await ensureMomentThumbnailPathColumn(sqlite);
   await ensureMomentTagsJsonColumn(sqlite);
+  await ensureActivityDefinitionColumns(sqlite);
   await ensureMaterializedDayGeometryColumn(sqlite);
   await ensureMaterializedDayExcludedDriveColumn(sqlite);
   await ensureVisitLabelOverrideAnchorColumns(sqlite);

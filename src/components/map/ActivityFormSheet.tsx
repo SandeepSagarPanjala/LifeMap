@@ -18,6 +18,8 @@ import {
   updateActivity,
   type ActivityRow,
 } from '@/db/repositories/activities';
+import type { ActivityFieldDefinition } from '@/lib/activities/activity-definition';
+import { validateActivityDefinition } from '@/lib/activities/validate-activity-definition';
 import { saveActivityMoment } from '@/lib/moments/capture-activity';
 
 export type ActivityFormRequest =
@@ -41,28 +43,23 @@ export function ActivityFormSheet({
 }: ActivityFormSheetProps) {
   const sheetRef = useRef<BottomSheetModal>(null);
   const labelInputRef = useRef<ComponentRef<typeof BottomSheetTextInput>>(null);
+  const openEmojiRef = useRef<{ open: () => void } | null>(null);
   const [emoji, setEmoji] = useState('');
   const [label, setLabel] = useState('');
+  const [fields, setFields] = useState<ActivityFieldDefinition[]>([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (request?.kind === 'edit') {
       setEmoji(request.activity.emoji);
       setLabel(request.activity.label);
+      setFields(request.activity.fields);
     } else if (request != null) {
-      setEmoji('');
+      setEmoji('❓');
       setLabel('');
+      setFields([]);
     }
     setSaving(false);
-  }, [request]);
-
-  // Gorhom needs the sheet presented before focus() works — same as CaptureNoteScreen.
-  useEffect(() => {
-    if (request == null) {
-      return;
-    }
-    const timer = setTimeout(() => labelInputRef.current?.focus(), 400);
-    return () => clearTimeout(timer);
   }, [request]);
 
   const dismissKeyboard = useCallback(() => {
@@ -80,42 +77,74 @@ export function ActivityFormSheet({
     onClose();
   }, [dismissKeyboard, onClose]);
 
-  const focusLabelInput = useCallback(() => {
-    labelInputRef.current?.focus();
-  }, []);
+  const isCreateFlow =
+    request?.kind === 'create' || request?.kind === 'create-first';
 
   const handleSheetAnimate = useCallback(
     (fromIndex: number, toIndex: number) => {
-      if (toIndex >= 0 && fromIndex < 0) {
-        focusLabelInput();
+      if (toIndex >= 0 && fromIndex < 0 && isCreateFlow) {
+        // Open with the sheet rise — retry next frame if native picker isn't ready yet.
+        openEmojiRef.current?.open();
+        requestAnimationFrame(() => openEmojiRef.current?.open());
       }
       if (toIndex === -1) {
         dismissKeyboard();
       }
     },
-    [dismissKeyboard, focusLabelInput],
+    [dismissKeyboard, isCreateFlow],
   );
 
   const handleSubmit = useCallback(async () => {
     if (request == null || saving) {
       return;
     }
+    const validated = validateActivityDefinition({
+      schemaVersion: 1,
+      name: label,
+      emoji,
+      fields,
+    });
+    if (!validated.ok) {
+      Alert.alert('Invalid activity', validated.error);
+      return;
+    }
     setSaving(true);
     try {
       if (request.kind === 'create-first') {
-        const created = await createActivity({ emoji, label });
-        await saveActivityMoment(created);
-        onSaved();
-        onLoggedAndClose();
-        return;
-      }
-      if (request.kind === 'create') {
-        await createActivity({ emoji, label });
+        const created = await createActivity({
+          emoji: validated.definition.emoji,
+          label: validated.definition.name,
+          fields: validated.definition.fields,
+          source: 'blank',
+        });
+        if (created.fields.length === 0) {
+          await saveActivityMoment(created);
+          onSaved();
+          onLoggedAndClose();
+          return;
+        }
         onSaved();
         requestClose();
         return;
       }
-      await updateActivity(request.activity.id, { emoji, label });
+      if (request.kind === 'create') {
+        await createActivity({
+          emoji: validated.definition.emoji,
+          label: validated.definition.name,
+          fields: validated.definition.fields,
+          source: 'blank',
+        });
+        onSaved();
+        requestClose();
+        return;
+      }
+      await updateActivity(request.activity.id, {
+        emoji: validated.definition.emoji,
+        label: validated.definition.name,
+        fields: validated.definition.fields,
+        source: request.activity.source,
+        templateId: request.activity.templateId,
+      });
       onSaved();
       requestClose();
     } catch (error) {
@@ -126,16 +155,16 @@ export function ActivityFormSheet({
     } finally {
       setSaving(false);
     }
-  }, [emoji, label, onLoggedAndClose, onSaved, request, requestClose, saving]);
-
-  const title =
-    request?.kind === 'create-first'
-      ? 'Add your first activity'
-      : request?.kind === 'create'
-      ? 'New activity'
-      : request?.kind === 'edit'
-      ? 'Edit activity'
-      : '';
+  }, [
+    emoji,
+    fields,
+    label,
+    onLoggedAndClose,
+    onSaved,
+    request,
+    requestClose,
+    saving,
+  ]);
 
   const submitLabel = request?.kind === 'create-first' ? 'Save & log' : 'Save';
   const showBack = request?.kind === 'create' || request?.kind === 'edit';
@@ -156,10 +185,13 @@ export function ActivityFormSheet({
           instantPresent
           stackBehavior="push"
           enableDynamicSizing
-          keyboardBehavior="interactive"
+          keyboardBehavior="extend"
           keyboardBlurBehavior="restore"
           dismissKeyboardOnClose
-          footerPadding={12}
+          keyboardAware
+          enableContentPanningGesture={false}
+          enablePanDownToClose
+          footerPadding={0}
         >
           {request != null ? (
             <ActivityForm
@@ -169,15 +201,18 @@ export function ActivityFormSheet({
                   : request.kind
               }
               compactFooter
-              title={title}
+              autoFocusEmoji={isCreateFlow}
               emoji={emoji}
               label={label}
+              fields={fields}
               saving={saving}
               submitLabel={submitLabel}
               labelInputRef={labelInputRef}
+              openEmojiRef={openEmojiRef}
               onBack={showBack ? requestClose : undefined}
               onChangeEmoji={setEmoji}
               onChangeLabel={setLabel}
+              onChangeFields={setFields}
               onSubmit={() => {
                 void handleSubmit();
               }}

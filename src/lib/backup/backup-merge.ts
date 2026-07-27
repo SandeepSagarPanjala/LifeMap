@@ -198,6 +198,13 @@ async function mergeActivities(rows: unknown[]): Promise<IdMap> {
           'activities.createdAt',
         ),
         archivedAt: parseIsoDate(record.archivedAt),
+        schemaVersion: parseOptionalNumber(record.schemaVersion) ?? 1,
+        source: parseOptionalString(record.source) ?? 'blank',
+        templateId: parseOptionalString(record.templateId),
+        definitionJson:
+          typeof record.definitionJson === 'string'
+            ? record.definitionJson
+            : '[]',
       })
       .returning({ id: activities.id });
     const newId = inserted[0]!.id;
@@ -523,6 +530,10 @@ async function mergeMoments(
       activityId: remapId(parseOptionalNumber(record.activityId), activityMap),
       activityEmoji: parseOptionalString(record.activityEmoji),
       activityLabel: parseOptionalString(record.activityLabel),
+      activityValuesJson:
+        typeof record.activityValuesJson === 'string'
+          ? record.activityValuesJson
+          : null,
     });
   }
 }

@@ -68,6 +68,8 @@ type AppBottomSheetProps = {
   /** Return true to keep the sheet open (e.g. dismiss keyboard first). */
   onBackdropPress?: () => boolean;
   enablePanDownToClose?: boolean;
+  /** When false, only the handle pans the sheet (needed for nested drag-reorder lists). */
+  enableContentPanningGesture?: boolean;
   /** Present without waiting an extra animation frame — use on dedicated sheet screens. */
   instantPresent?: boolean;
   bottomSheetRef?: React.RefObject<BottomSheetModalType | null>;
@@ -101,6 +103,7 @@ export function AppBottomSheet({
   onAnimate,
   onBackdropPress,
   enablePanDownToClose = true,
+  enableContentPanningGesture = true,
   instantPresent = false,
   bottomSheetRef,
   onClosing,
@@ -129,21 +132,35 @@ export function AppBottomSheet({
   useEffect(() => {
     if (visible) {
       suppressDismissRef.current = true;
-      const present = () => {
-        ref.current?.present();
+      let cancelled = false;
+      const present = (attemptsLeft: number) => {
+        if (cancelled) {
+          return;
+        }
+        if (ref.current == null) {
+          if (attemptsLeft <= 0) {
+            suppressDismissRef.current = false;
+            return;
+          }
+          requestAnimationFrame(() => present(attemptsLeft - 1));
+          return;
+        }
+        ref.current.present();
         isOpenRef.current = true;
         didNotifyCloseRef.current = false;
         setIsClosing(false);
         suppressDismissRef.current = false;
       };
       if (instantPresent) {
-        present();
+        present(4);
         return () => {
+          cancelled = true;
           suppressDismissRef.current = false;
         };
       }
-      const frame = requestAnimationFrame(present);
+      const frame = requestAnimationFrame(() => present(4));
       return () => {
+        cancelled = true;
         cancelAnimationFrame(frame);
         suppressDismissRef.current = false;
       };
@@ -153,10 +170,18 @@ export function AppBottomSheet({
       return;
     }
 
+    // Keep suppress armed until after dismiss can fire synchronously, otherwise
+    // onDismiss may call onClose again (or get dropped inconsistently).
     suppressDismissRef.current = true;
     ref.current?.dismiss();
     isOpenRef.current = false;
-    suppressDismissRef.current = false;
+    const clearSuppress = requestAnimationFrame(() => {
+      suppressDismissRef.current = false;
+    });
+    return () => {
+      cancelAnimationFrame(clearSuppress);
+      suppressDismissRef.current = false;
+    };
     // instantPresent is read only when `visible` becomes true; omit from deps to
     // avoid re-present/dismiss if the prop reference changes while open.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
@@ -286,9 +311,10 @@ export function AppBottomSheet({
     () => ({
       paddingHorizontal: 20,
       paddingTop: 4,
+      // Keep keyboard inset even when footerPadding is 0 (sticky footers).
       paddingBottom:
-        footerPadding ??
-        Math.max(insets.bottom, 16) + (keyboardAware ? keyboardInset : 0),
+        (footerPadding ?? Math.max(insets.bottom, 16)) +
+        (keyboardAware ? keyboardInset : 0),
     }),
     [footerPadding, insets.bottom, keyboardAware, keyboardInset],
   );
@@ -323,6 +349,7 @@ export function AppBottomSheet({
       onAnimate={handleAnimate}
       backdropComponent={renderBackdrop}
       enablePanDownToClose={enablePanDownToClose}
+      enableContentPanningGesture={enableContentPanningGesture}
       enableBlurKeyboardOnGesture={enableBlurKeyboardOnGesture}
       keyboardBehavior={keyboardBehavior}
       keyboardBlurBehavior={keyboardBlurBehavior}

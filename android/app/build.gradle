@@ -126,6 +126,7 @@ dependencies {
 
     // On-device scene labels for photo moments (downloads model via Play Services).
     implementation("com.google.android.gms:play-services-mlkit-image-labeling:16.0.8")
+    implementation("com.google.android.gms:play-services-mlkit-text-recognition:19.0.1")
 
     androidTestImplementation('com.wix:detox:+')
     androidTestImplementation('androidx.test:runner:1.6.2')

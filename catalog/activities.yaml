@@ -1,0 +1,101 @@
+schemaVersion: 1
+activities:
+  - schemaVersion: 1
+    id: gym
+    name: Gym
+    emoji: "🏋️"
+    fields: []
+
+  - schemaVersion: 1
+    id: gym-lite
+    name: Gym · Lite
+    emoji: "🏋️"
+    fields:
+      - id: duration
+        type: duration
+        label: Duration
+        required: false
+      - id: note
+        type: text
+        label: Note
+        required: false
+
+  - schemaVersion: 1
+    id: gym-session
+    name: Gym · Session
+    emoji: "🏋️"
+    fields:
+      - id: focus
+        type: choice
+        label: Focus
+        required: true
+        options:
+          - Back
+          - Chest
+          - Legs
+          - Arms
+          - Full body
+      - id: duration
+        type: duration
+        label: Duration
+        required: false
+      - id: note
+        type: text
+        label: Note
+        required: false
+
+  - schemaVersion: 1
+    id: junk-food-spend
+    name: Junk Food
+    emoji: "🍔"
+    fields:
+      - id: food_photo
+        type: photo
+        label: Food
+        required: false
+      - id: receipt
+        type: scan
+        label: Bill
+        required: false
+        extract: amount
+        fillField: amount
+      - id: amount
+        type: money
+        label: Amount
+        required: true
+
+  - schemaVersion: 1
+    id: coffee
+    name: Coffee
+    emoji: "☕"
+    fields: []
+
+  - schemaVersion: 1
+    id: walk
+    name: Walk
+    emoji: "🚶"
+    fields:
+      - id: duration
+        type: duration
+        label: Duration
+        required: false
+
+  - schemaVersion: 1
+    id: water
+    name: Water
+    emoji: "💧"
+    fields:
+      - id: glasses
+        type: number
+        label: Glasses
+        required: false
+
+  - schemaVersion: 1
+    id: meds
+    name: Medication
+    emoji: "💊"
+    fields:
+      - id: taken
+        type: toggle
+        label: Taken
+        required: true
