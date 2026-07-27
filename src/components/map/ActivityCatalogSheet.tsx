@@ -106,10 +106,11 @@ export function ActivityCatalogSheet({
     fetchAbortRef.current = controller;
     setBusy(true);
     setCatalogError(null);
-    const timer = setTimeout(
-      () => controller.abort(),
-      ACTIVITY_CATALOG_FETCH_TIMEOUT_MS,
-    );
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, ACTIVITY_CATALOG_FETCH_TIMEOUT_MS);
     try {
       const response = await fetch(ACTIVITY_CATALOG_URL, {
         signal: controller.signal,
@@ -131,6 +132,10 @@ export function ActivityCatalogSheet({
       setSelected(new Set());
     } catch (error) {
       if (controller.signal.aborted) {
+        if (timedOut) {
+          setCatalogError('Catalog download timed out. Try again.');
+          setCatalog([]);
+        }
         return;
       }
       setCatalogError(
@@ -144,8 +149,6 @@ export function ActivityCatalogSheet({
       clearTimeout(timer);
       if (fetchAbortRef.current === controller) {
         fetchAbortRef.current = null;
-      }
-      if (!controller.signal.aborted) {
         setBusy(false);
       }
     }

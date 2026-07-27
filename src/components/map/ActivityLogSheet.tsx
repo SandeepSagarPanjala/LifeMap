@@ -118,6 +118,8 @@ const ActivityEmojiPicker = forwardRef<
   const handleEmojiSelected = useCallback(
     (value: string) => {
       onChangeEmoji(value);
+      // Always dismiss the emoji keyboard; create flow then focuses Label.
+      emojiKeyboardRef.current.dismiss();
       onEmojiPicked?.();
     },
     [onChangeEmoji, onEmojiPicked],
