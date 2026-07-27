@@ -86,7 +86,7 @@ export function CaptureVoiceScreen() {
 
   const finishClose = useCallback(() => {
     if (previewSheetOpenRef.current) {
-      return;
+      return false;
     }
     navigationClose();
   }, [navigationClose]);

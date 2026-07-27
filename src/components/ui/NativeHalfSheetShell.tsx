@@ -20,7 +20,8 @@ const SHEET_SLIDE_MS = 280;
 
 type NativeHalfSheetShellProps = {
   children: ReactNode;
-  onClose: () => void;
+  /** Return `false` to cancel close and reopen the sheet (e.g. overlay still open). */
+  onClose: () => boolean | void;
   /** Fraction of screen height, e.g. 0.5 = half sheet. */
   heightRatio?: number;
   /** When false, backdrop taps are ignored (e.g. gorhom overlay is open). */
@@ -75,13 +76,25 @@ export function NativeHalfSheetShell({
     );
   }, [backdropOpacity, sheetHeight, sheetTranslateY]);
 
-  const finishClose = useCallback(() => {
+  const reopenSheet = useCallback(() => {
     closingRef.current = false;
-    onClose();
-    // Parent may intentionally no-op (e.g. overlay still open). Restore
-    // interactivity so we never leave a permanent invisible touch blocker.
     setIsClosing(false);
-  }, [onClose]);
+    backdropOpacity.value = withTiming(1, { duration: BACKDROP_FADE_MS });
+    sheetTranslateY.value = withTiming(0, {
+      duration: SHEET_SLIDE_MS,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [backdropOpacity, sheetTranslateY]);
+
+  const finishClose = useCallback(() => {
+    const closed = onClose();
+    if (closed === false) {
+      reopenSheet();
+      return;
+    }
+    closingRef.current = false;
+    // Screen is popping; keep passthrough until unmount.
+  }, [onClose, reopenSheet]);
 
   const requestClose = useCallback(() => {
     if (closingRef.current) {
