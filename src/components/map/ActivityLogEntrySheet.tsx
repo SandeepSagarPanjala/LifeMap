@@ -146,7 +146,9 @@ export function ActivityLogEntrySheet({
         );
       } finally {
         if (mountedRef.current) {
-          setScanningFieldId(null);
+          setScanningFieldId(current =>
+            current === target.id ? null : current,
+          );
         }
       }
     },

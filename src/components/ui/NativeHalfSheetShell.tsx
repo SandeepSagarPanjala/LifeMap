@@ -78,6 +78,9 @@ export function NativeHalfSheetShell({
   const finishClose = useCallback(() => {
     closingRef.current = false;
     onClose();
+    // Parent may intentionally no-op (e.g. overlay still open). Restore
+    // interactivity so we never leave a permanent invisible touch blocker.
+    setIsClosing(false);
   }, [onClose]);
 
   const requestClose = useCallback(() => {
