@@ -39,6 +39,7 @@ export function ActivityCatalogSheet({
   onInstalled,
 }: ActivityCatalogSheetProps) {
   const sheetRef = useRef<BottomSheetModal>(null);
+  const fetchAbortRef = useRef<AbortController | null>(null);
   const [mode, setMode] = useState<Mode>('menu');
   const [yamlText, setYamlText] = useState('');
   const [busy, setBusy] = useState(false);
@@ -48,6 +49,8 @@ export function ActivityCatalogSheet({
 
   useEffect(() => {
     if (!visible) {
+      fetchAbortRef.current?.abort();
+      fetchAbortRef.current = null;
       setMode('menu');
       setYamlText('');
       setBusy(false);
@@ -56,6 +59,13 @@ export function ActivityCatalogSheet({
       setSelected(new Set());
     }
   }, [visible]);
+
+  useEffect(() => {
+    return () => {
+      fetchAbortRef.current?.abort();
+      fetchAbortRef.current = null;
+    };
+  }, []);
 
   const handleDismissed = useCallback(() => {
     onClose();
@@ -91,9 +101,11 @@ export function ActivityCatalogSheet({
   }, [installDefinition, onInstalled, yamlText]);
 
   const loadCatalog = useCallback(async () => {
+    fetchAbortRef.current?.abort();
+    const controller = new AbortController();
+    fetchAbortRef.current = controller;
     setBusy(true);
     setCatalogError(null);
-    const controller = new AbortController();
     const timer = setTimeout(
       () => controller.abort(),
       ACTIVITY_CATALOG_FETCH_TIMEOUT_MS,
@@ -106,6 +118,9 @@ export function ActivityCatalogSheet({
         throw new Error(`Catalog HTTP ${response.status}`);
       }
       const text = await response.text();
+      if (controller.signal.aborted) {
+        return;
+      }
       const parsed = parseActivityCatalogYaml(text);
       if (!parsed.ok) {
         setCatalogError(parsed.error);
@@ -115,6 +130,9 @@ export function ActivityCatalogSheet({
       setCatalog(parsed.catalog.activities);
       setSelected(new Set());
     } catch (error) {
+      if (controller.signal.aborted) {
+        return;
+      }
       setCatalogError(
         errorMessageOr(
           error,
@@ -124,7 +142,12 @@ export function ActivityCatalogSheet({
       setCatalog([]);
     } finally {
       clearTimeout(timer);
-      setBusy(false);
+      if (fetchAbortRef.current === controller) {
+        fetchAbortRef.current = null;
+      }
+      if (!controller.signal.aborted) {
+        setBusy(false);
+      }
     }
   }, []);
 

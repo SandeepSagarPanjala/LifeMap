@@ -42,6 +42,7 @@ import type {
 import type { PhosphorIcon } from '@/lib/profile/phosphor-icon';
 
 const ACTIVITY_TINT = '#F0FDF4';
+/** Builder UX cap (stricter than ACTIVITY_MAX_FIELDS used by YAML/catalog). */
 const MAX_FIELDS = 5;
 const MAX_PHOTO_FIELDS = 2;
 const MAX_SCAN_FIELDS = 2;

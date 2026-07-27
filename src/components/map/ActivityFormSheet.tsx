@@ -19,6 +19,7 @@ import {
   type ActivityRow,
 } from '@/db/repositories/activities';
 import type { ActivityFieldDefinition } from '@/lib/activities/activity-definition';
+import { ACTIVITY_SCHEMA_VERSION } from '@/lib/activities/activity-definition';
 import { validateActivityDefinition } from '@/lib/activities/validate-activity-definition';
 import { saveActivityMoment } from '@/lib/moments/capture-activity';
 
@@ -99,7 +100,7 @@ export function ActivityFormSheet({
       return;
     }
     const validated = validateActivityDefinition({
-      schemaVersion: 1,
+      schemaVersion: ACTIVITY_SCHEMA_VERSION,
       name: label,
       emoji,
       fields,
