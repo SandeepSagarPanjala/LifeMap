@@ -28,7 +28,7 @@ import DraggableFlatList, {
   ScaleDecorator,
   type RenderItemParams,
 } from 'react-native-draggable-flatlist';
-import { ChevronLeft, GripVertical, Pencil, Plus, Trash2 } from 'lucide-react-native';
+import { ChevronLeft, Download, GripVertical, Pencil, Plus, Trash2 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   SystemEmojiPicker,
@@ -443,7 +443,7 @@ export function ActivityLogSheet({
   onBeginCreate,
   onBeginEdit,
   onBeginStructuredLog,
-  onBeginCatalog: _onBeginCatalog,
+  onBeginCatalog,
   reloadNonce = 0,
 }: ActivityLogSheetProps) {
   const colors = useThemeColors();
@@ -681,6 +681,42 @@ export function ActivityLogSheet({
               <ChevronLeft size={20} color="#1C1C1E" strokeWidth={2.25} />
               <Text style={styles.backLabel}>Back</Text>
             </Pressable>
+            <View style={styles.manageHeaderActions}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Install activity templates"
+                onPress={onBeginCatalog}
+                hitSlop={4}
+                style={[
+                  styles.headerAction,
+                  { backgroundColor: ACTIVITY_TINT },
+                ]}
+              >
+                <Download size={15} color={colors.primary} strokeWidth={2.25} />
+                <Text
+                  style={[styles.headerActionLabel, { color: colors.primary }]}
+                >
+                  Templates
+                </Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Add activity"
+                onPress={onBeginCreate}
+                hitSlop={4}
+                style={[
+                  styles.headerAction,
+                  { backgroundColor: ACTIVITY_TINT },
+                ]}
+              >
+                <Plus size={16} color={colors.primary} strokeWidth={2.5} />
+                <Text
+                  style={[styles.headerActionLabel, { color: colors.primary }]}
+                >
+                  Add
+                </Text>
+              </Pressable>
+            </View>
           </View>
 
           <ActivityManageList
@@ -898,6 +934,15 @@ const styles = StyleSheet.create({
   },
   manageHeader: {
     flexShrink: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  manageHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   manageList: {
     flex: 1,

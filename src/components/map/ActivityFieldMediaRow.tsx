@@ -102,7 +102,22 @@ function DiagonalSplitMediaControl({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Add ${label}: camera or photo library`}
+      accessibilityLabel={`Add ${label}`}
+      accessibilityHint="Opens camera by default. Use accessibility actions for camera or photo library."
+      accessibilityActions={[
+        { name: 'openCamera', label: 'Open camera' },
+        { name: 'openLibrary', label: 'Open photo library' },
+      ]}
+      onAccessibilityAction={event => {
+        const action = event.nativeEvent.actionName;
+        if (action === 'openCamera' || action === 'activate') {
+          onOpenCamera();
+          return;
+        }
+        if (action === 'openLibrary') {
+          onOpenLibrary();
+        }
+      }}
       onPress={event => {
         const { locationX, locationY } = event.nativeEvent;
         const diagonalY = size - locationX;
