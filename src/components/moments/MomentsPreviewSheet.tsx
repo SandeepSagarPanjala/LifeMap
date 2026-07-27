@@ -351,6 +351,8 @@ function formatActivityFieldDisplay(
     case 'photo':
     case 'scan':
       return null;
+    default:
+      return null;
   }
 }
 
@@ -372,6 +374,8 @@ function fallbackFieldLabel(value: ActivityFieldValue): string {
       return 'Photo';
     case 'scan':
       return 'Bill';
+    default:
+      return 'Field';
   }
 }
 

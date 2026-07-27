@@ -205,14 +205,14 @@ export function ActivityLogEntrySheet({
     setSaving(true);
     try {
       await saveActivityMoment(activity, values);
+      // Parent may close the capture screen (unmounting this sheet). Avoid
+      // dismiss/setState after a successful log that navigates away.
       await onLogged();
-      sheetRef.current?.dismiss();
     } catch (error) {
       Alert.alert(
         APP_COPY.alerts.couldNotLogActivity,
         errorMessageOr(error, APP_COPY.common.pleaseTryAgain),
       );
-    } finally {
       setSaving(false);
     }
   }, [activity, fields, onLogged, saving, values]);

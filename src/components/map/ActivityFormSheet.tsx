@@ -166,7 +166,10 @@ export function ActivityFormSheet({
     saving,
   ]);
 
-  const submitLabel = request?.kind === 'create-first' ? 'Save & log' : 'Save';
+  const submitLabel =
+    request?.kind === 'create-first' && fields.length === 0
+      ? 'Save & log'
+      : 'Save';
   const showBack = request?.kind === 'create' || request?.kind === 'edit';
 
   return (
