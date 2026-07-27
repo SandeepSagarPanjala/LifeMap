@@ -104,7 +104,7 @@ function normalizeStoredField(
     id: String(raw.id ?? ''),
     type,
     label: String(raw.label ?? ''),
-    required: Boolean(raw.required),
+    required: raw.required === true,
   };
   if (Array.isArray(raw.options)) {
     field.options = raw.options.map(String);

@@ -152,13 +152,13 @@ export function AppBottomSheet({
         suppressDismissRef.current = false;
       };
       if (instantPresent) {
-        present(4);
+        present(24);
         return () => {
           cancelled = true;
           suppressDismissRef.current = false;
         };
       }
-      const frame = requestAnimationFrame(() => present(4));
+      const frame = requestAnimationFrame(() => present(24));
       return () => {
         cancelled = true;
         cancelAnimationFrame(frame);
