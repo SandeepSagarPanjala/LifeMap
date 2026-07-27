@@ -253,6 +253,13 @@
       "when": 1788927000000,
       "tag": "0035_moment_tags_json",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1788928000000,
+      "tag": "0036_activity_definitions",
+      "breakpoints": true
     }
   ]
 }

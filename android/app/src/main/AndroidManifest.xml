@@ -27,7 +27,7 @@
 
     <meta-data
       android:name="com.google.mlkit.vision.DEPENDENCIES"
-      android:value="ica" />
+      android:value="ica,ocr" />
     <activity
       android:name=".MainActivity"
       android:label="@string/app_name"

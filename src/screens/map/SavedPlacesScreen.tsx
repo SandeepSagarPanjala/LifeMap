@@ -95,7 +95,7 @@ export function SavedPlacesScreen() {
 
   const finishClose = useCallback(() => {
     if (editSheetOpen || addressSheetOpen) {
-      return;
+      return false;
     }
     const focusPlaceId = pendingFocusPlaceIdRef.current;
     pendingFocusPlaceIdRef.current = null;

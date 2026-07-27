@@ -22,10 +22,14 @@ export function generateStaticWaveformBars(
   });
 }
 
-export function throttleVoiceUi<T extends (...args: never[]) => void>(
+export type ThrottledVoiceUiFn<T extends (...args: any[]) => void> = T & {
+  cancel: () => void;
+};
+
+export function throttleVoiceUi<T extends (...args: any[]) => void>(
   fn: T,
   intervalMs: number,
-): T {
+): ThrottledVoiceUiFn<T> {
   let lastAt = 0;
   let trailing: Parameters<T> | null = null;
   let timer: ReturnType<typeof setTimeout> | null = null;
@@ -40,7 +44,7 @@ export function throttleVoiceUi<T extends (...args: never[]) => void>(
     fn(...args);
   };
 
-  return ((...args: Parameters<T>) => {
+  const throttled = ((...args: Parameters<T>) => {
     const now = Date.now();
     trailing = args;
     if (now - lastAt >= intervalMs) {
@@ -58,5 +62,15 @@ export function throttleVoiceUi<T extends (...args: never[]) => void>(
       timer = null;
       flush();
     }, intervalMs - (now - lastAt));
-  }) as T;
+  }) as ThrottledVoiceUiFn<T>;
+
+  throttled.cancel = () => {
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
+    }
+    trailing = null;
+  };
+
+  return throttled;
 }

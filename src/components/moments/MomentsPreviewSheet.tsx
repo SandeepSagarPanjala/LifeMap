@@ -4,6 +4,7 @@ import {
   Alert,
   Dimensions,
   FlatList,
+  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -34,7 +35,18 @@ import { Text } from '@/components/ui/text';
 import type { MomentRow } from '@/db/repositories/moments';
 import type { SavedPlaceRow } from '@/db/repositories/saved-places';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { parseActivityValuesJson } from '@/lib/activities/activity-definition';
+import type {
+  ActivityFieldDefinition,
+  ActivityFieldValue,
+} from '@/lib/activities/activity-definition';
+import { getActivityById } from '@/db/repositories/activities';
 import type { MomentPreviewContext } from '@/lib/moments/moment-preview-context';
+import {
+  momentImageUri,
+  momentVideoUri,
+  resolveExistingMomentContentPath,
+} from '@/lib/moments/moment-media-uri';
 import {
   formatMomentVoiceDuration,
   momentHasVoiceAttachment,
@@ -47,10 +59,6 @@ import {
   getEmotionTokenByLabel,
   parseEmotionMoodLabel,
 } from '@/lib/moments/emotion-tokens';
-import {
-  momentVideoUri,
-  resolveExistingMomentContentPath,
-} from '@/lib/moments/moment-media-uri';
 import {
   createVoiceRecorderSession,
   getVoiceRecordingErrorMessage,
@@ -317,19 +325,247 @@ function VoiceMomentPage({
   );
 }
 
+function formatActivityFieldDisplay(
+  value: ActivityFieldValue,
+): string | null {
+  switch (value.type) {
+    case 'money':
+      return `$${value.amount.toFixed(2)}`;
+    case 'number':
+      return String(value.value);
+    case 'text': {
+      const trimmed = value.value.trim();
+      return trimmed.length > 0 ? trimmed : null;
+    }
+    case 'choice':
+      return value.value;
+    case 'duration': {
+      const mins = Math.round(value.seconds / 60);
+      if (!Number.isFinite(mins) || mins <= 0) {
+        return null;
+      }
+      return mins === 1 ? '1 min' : `${mins} min`;
+    }
+    case 'toggle':
+      return value.value ? 'Yes' : 'No';
+    case 'photo':
+    case 'scan':
+      return null;
+    default:
+      return null;
+  }
+}
+
+function fallbackFieldLabel(value: ActivityFieldValue): string {
+  switch (value.type) {
+    case 'money':
+      return 'Amount';
+    case 'number':
+      return 'Number';
+    case 'text':
+      return 'Note';
+    case 'choice':
+      return 'Choice';
+    case 'duration':
+      return 'Duration';
+    case 'toggle':
+      return 'Toggle';
+    case 'photo':
+      return 'Photo';
+    case 'scan':
+      return 'Bill';
+    default:
+      return 'Field';
+  }
+}
+
+const ACTIVITY_THUMB_SIZE = 88;
+const ACTIVITY_THUMB_GAP = 10;
+
 function ActivityMomentPage({ moment }: { moment: MomentRow }) {
   const theme = CAPTURE_BUTTON_THEMES.activity;
+  const insets = useSafeAreaInsets();
   const emoji = moment.activityEmoji?.trim() || '✨';
   const label = moment.activityLabel?.trim() || 'Activity';
+  const values = parseActivityValuesJson(moment.activityValuesJson);
+  const [fieldDefs, setFieldDefs] = useState<ActivityFieldDefinition[]>([]);
+  const [previewUri, setPreviewUri] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setFieldDefs([]);
+    if (moment.activityId == null) {
+      return;
+    }
+    void getActivityById(moment.activityId).then(row => {
+      if (!active || row == null) {
+        return;
+      }
+      setFieldDefs(row.fields ?? []);
+    });
+    return () => {
+      active = false;
+    };
+  }, [moment.activityId]);
+
+  const labelByFieldId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const field of fieldDefs) {
+      map.set(field.id, field.label);
+    }
+    return map;
+  }, [fieldDefs]);
+
+  const mediaItems = useMemo(() => {
+    const items: Array<{ fieldId: string; label: string; uri: string }> = [];
+    for (const [fieldId, value] of Object.entries(values) as Array<
+      [string, ActivityFieldValue]
+    >) {
+      if (value.type !== 'photo' && value.type !== 'scan') {
+        continue;
+      }
+      items.push({
+        fieldId,
+        label: labelByFieldId.get(fieldId) ?? fallbackFieldLabel(value),
+        uri: value.uri,
+      });
+    }
+    return items;
+  }, [labelByFieldId, values]);
+
+  const detailRows = useMemo(() => {
+    const rows: Array<{ fieldId: string; label: string; text: string }> = [];
+    const orderedIds =
+      fieldDefs.length > 0
+        ? fieldDefs.map(field => field.id)
+        : Object.keys(values);
+
+    for (const fieldId of orderedIds) {
+      const value = values[fieldId];
+      if (value == null) {
+        continue;
+      }
+      const text = formatActivityFieldDisplay(value);
+      if (text == null) {
+        continue;
+      }
+      rows.push({
+        fieldId,
+        label: labelByFieldId.get(fieldId) ?? fallbackFieldLabel(value),
+        text,
+      });
+    }
+
+    // Include any leftover values not in the current definition order.
+    for (const [fieldId, value] of Object.entries(values) as Array<
+      [string, ActivityFieldValue]
+    >) {
+      if (rows.some(row => row.fieldId === fieldId)) {
+        continue;
+      }
+      const text = formatActivityFieldDisplay(value);
+      if (text == null) {
+        continue;
+      }
+      rows.push({
+        fieldId,
+        label: labelByFieldId.get(fieldId) ?? fallbackFieldLabel(value),
+        text,
+      });
+    }
+
+    return rows;
+  }, [fieldDefs, labelByFieldId, values]);
+
+  const hasDetails = mediaItems.length > 0 || detailRows.length > 0;
 
   return (
     <View style={styles.activityPage}>
-      <View
-        style={[styles.activitySticker, { backgroundColor: theme.badgeBg }]}
+      <ScrollView
+        contentContainerStyle={styles.activityScrollContent}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
       >
-        <Text style={styles.activityEmoji}>{emoji}</Text>
-      </View>
-      <Text style={styles.activityLabel}>{label}</Text>
+        <View
+          style={[
+            styles.activitySticker,
+            hasDetails ? styles.activityStickerCompact : null,
+            { backgroundColor: theme.badgeBg },
+          ]}
+        >
+          <Text
+            style={[
+              styles.activityEmoji,
+              hasDetails ? styles.activityEmojiCompact : null,
+            ]}
+          >
+            {emoji}
+          </Text>
+        </View>
+        <Text style={styles.activityLabel}>{label}</Text>
+
+        {mediaItems.length > 0 ? (
+          <View style={styles.activityThumbRow}>
+            {mediaItems.map(item => (
+              <Pressable
+                key={item.fieldId}
+                accessibilityRole="button"
+                accessibilityLabel={`View ${item.label}`}
+                onPress={() => setPreviewUri(item.uri)}
+                style={styles.activityThumbWrap}
+              >
+                <MomentPreviewImage
+                  contentPath={item.uri}
+                  style={styles.activityThumb}
+                  resizeMode="cover"
+                />
+                <Text style={styles.activityThumbLabel} numberOfLines={1}>
+                  {item.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+
+        {detailRows.length > 0 ? (
+          <View style={styles.activityDetails}>
+            {detailRows.map(row => (
+              <View key={row.fieldId} style={styles.activityDetailRow}>
+                <Text style={styles.activityDetailLabel}>{row.label}</Text>
+                <Text style={styles.activityDetailValue}>{row.text}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+      </ScrollView>
+
+      <Modal
+        visible={previewUri != null}
+        animationType="fade"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setPreviewUri(null)}
+      >
+        <View style={styles.activityFullPreviewRoot}>
+          {previewUri != null ? (
+            <Image
+              source={{ uri: momentImageUri(previewUri) }}
+              style={styles.activityFullPreviewImage}
+              resizeMode="cover"
+            />
+          ) : null}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Close preview"
+            onPress={() => setPreviewUri(null)}
+            style={[
+              styles.activityFullPreviewClose,
+              { bottom: insets.bottom + 20 },
+            ]}
+          >
+            <X size={22} color="#FFFFFF" strokeWidth={2.25} />
+          </Pressable>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1352,9 +1588,13 @@ const styles = StyleSheet.create({
   },
   activityPage: {
     flex: 1,
+    paddingHorizontal: 24,
+  },
+  activityScrollContent: {
+    flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 24,
+    paddingVertical: 24,
     gap: 14,
   },
   activitySticker: {
@@ -1364,15 +1604,94 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  activityStickerCompact: {
+    width: 88,
+    height: 88,
+    borderRadius: 22,
+  },
   activityEmoji: {
     fontSize: 56,
     lineHeight: 62,
     textAlign: 'center',
   },
+  activityEmojiCompact: {
+    fontSize: 42,
+    lineHeight: 48,
+  },
   activityLabel: {
     color: '#FFFFFF',
     fontSize: 24,
     fontWeight: '700',
+    textAlign: 'center',
+  },
+  activityThumbRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: ACTIVITY_THUMB_GAP,
+    marginTop: 4,
+  },
+  activityThumbWrap: {
+    width: ACTIVITY_THUMB_SIZE,
+    alignItems: 'center',
+    gap: 6,
+  },
+  activityThumb: {
+    width: ACTIVITY_THUMB_SIZE,
+    height: ACTIVITY_THUMB_SIZE,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  activityThumbLabel: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+    maxWidth: ACTIVITY_THUMB_SIZE,
+  },
+  activityDetails: {
+    alignSelf: 'stretch',
+    gap: 10,
+    marginTop: 4,
+    paddingHorizontal: 8,
+  },
+  activityDetailRow: {
+    gap: 2,
+  },
+  activityDetailLabel: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  activityDetailValue: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  activityFullPreviewRoot: {
+    flex: 1,
+    backgroundColor: '#000000',
+  },
+  activityFullPreviewImage: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  activityFullPreviewClose: {
+    position: 'absolute',
+    right: 20,
+    zIndex: 2,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  activityMoney: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 18,
+    fontWeight: '600',
     textAlign: 'center',
   },
   voicePlayButton: {

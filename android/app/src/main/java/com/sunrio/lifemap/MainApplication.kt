@@ -18,6 +18,7 @@ class MainApplication : Application(), ReactApplication {
           add(AppVersionPackage())
           add(VoiceAudioSessionPackage())
           add(ImageLabelPackage())
+          add(TextRecognizePackage())
         },
     )
   }

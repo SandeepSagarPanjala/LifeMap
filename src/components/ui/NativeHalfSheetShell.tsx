@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 import Animated, {
   Easing,
@@ -20,7 +20,8 @@ const SHEET_SLIDE_MS = 280;
 
 type NativeHalfSheetShellProps = {
   children: ReactNode;
-  onClose: () => void;
+  /** Return `false` to cancel close and reopen the sheet (e.g. overlay still open). */
+  onClose: () => boolean | void;
   /** Fraction of screen height, e.g. 0.5 = half sheet. */
   heightRatio?: number;
   /** When false, backdrop taps are ignored (e.g. gorhom overlay is open). */
@@ -43,6 +44,7 @@ export function NativeHalfSheetShell({
   const didOpenRef = useRef(false);
   const onOpenedRef = useRef(onOpened);
   onOpenedRef.current = onOpened;
+  const [isClosing, setIsClosing] = useState(false);
 
   const backdropOpacity = useSharedValue(0);
   const sheetTranslateY = useSharedValue(sheetHeight);
@@ -53,6 +55,7 @@ export function NativeHalfSheetShell({
     }
     didOpenRef.current = true;
     closingRef.current = false;
+    setIsClosing(false);
     const notifyOpened = () => {
       onOpenedRef.current?.();
     };
@@ -73,16 +76,34 @@ export function NativeHalfSheetShell({
     );
   }, [backdropOpacity, sheetHeight, sheetTranslateY]);
 
-  const finishClose = useCallback(() => {
+  const reopenSheet = useCallback(() => {
     closingRef.current = false;
-    onClose();
-  }, [onClose]);
+    setIsClosing(false);
+    backdropOpacity.value = withTiming(1, { duration: BACKDROP_FADE_MS });
+    sheetTranslateY.value = withTiming(0, {
+      duration: SHEET_SLIDE_MS,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [backdropOpacity, sheetTranslateY]);
+
+  const finishClose = useCallback(() => {
+    const closed = onClose();
+    if (closed === false) {
+      reopenSheet();
+      return;
+    }
+    closingRef.current = false;
+    // Screen is popping; keep passthrough until unmount.
+  }, [onClose, reopenSheet]);
 
   const requestClose = useCallback(() => {
-    if (!backdropDismissEnabled || closingRef.current) {
+    if (closingRef.current) {
       return;
     }
     closingRef.current = true;
+    // Stop intercepting touches as soon as close starts so a failed/pop-blocked
+    // navigation can never leave an invisible full-screen blocker over the map.
+    setIsClosing(true);
     backdropOpacity.value = withTiming(0, { duration: BACKDROP_FADE_MS });
     sheetTranslateY.value = withTiming(
       sheetHeight,
@@ -93,13 +114,14 @@ export function NativeHalfSheetShell({
         }
       },
     );
-  }, [
-    backdropOpacity,
-    backdropDismissEnabled,
-    finishClose,
-    sheetHeight,
-    sheetTranslateY,
-  ]);
+  }, [backdropOpacity, finishClose, sheetHeight, sheetTranslateY]);
+
+  const handleBackdropPress = useCallback(() => {
+    if (!backdropDismissEnabled) {
+      return;
+    }
+    requestClose();
+  }, [backdropDismissEnabled, requestClose]);
 
   const backdropStyle = useAnimatedStyle(() => ({
     opacity: backdropOpacity.value,
@@ -111,12 +133,15 @@ export function NativeHalfSheetShell({
 
   return (
     <NativeHalfSheetCloseContext.Provider value={requestClose}>
-      <Animated.View style={styles.root}>
+      <Animated.View
+        pointerEvents={isClosing ? 'none' : 'auto'}
+        style={styles.root}
+      >
         <Animated.View style={[styles.backdrop, backdropStyle]}>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Dismiss sheet"
-            onPress={requestClose}
+            onPress={handleBackdropPress}
             style={styles.backdropTap}
           />
         </Animated.View>

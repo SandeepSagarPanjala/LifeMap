@@ -30,6 +30,11 @@ describe('capture activity', () => {
       sortOrder: 0,
       createdAt: new Date('2026-06-08T12:00:00.000Z'),
       archivedAt: null,
+      schemaVersion: 1,
+      source: 'blank' as const,
+      templateId: null,
+      definitionJson: '[]',
+      fields: [],
     };
     mockedInsertMoment.mockResolvedValue({
       id: 99,

@@ -37,6 +37,7 @@ export type MomentRow = {
   activityId: number | null;
   activityEmoji: string | null;
   activityLabel: string | null;
+  activityValuesJson: string | null;
 };
 
 export type NewMoment = {
@@ -62,6 +63,7 @@ export type NewMoment = {
   activityId?: number | null;
   activityEmoji?: string | null;
   activityLabel?: string | null;
+  activityValuesJson?: string | null;
 };
 
 function mapRow(row: typeof moments.$inferSelect): MomentRow {
@@ -93,6 +95,7 @@ function mapRow(row: typeof moments.$inferSelect): MomentRow {
     activityId: row.activityId ?? null,
     activityEmoji: row.activityEmoji ?? null,
     activityLabel: row.activityLabel ?? null,
+    activityValuesJson: row.activityValuesJson ?? null,
   };
 }
 
@@ -125,6 +128,7 @@ export async function insertMoment(input: NewMoment): Promise<MomentRow> {
       activityId: input.activityId ?? null,
       activityEmoji: input.activityEmoji ?? null,
       activityLabel: input.activityLabel ?? null,
+      activityValuesJson: input.activityValuesJson ?? null,
     })
     .returning();
 

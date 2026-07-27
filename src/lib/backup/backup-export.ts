@@ -87,6 +87,10 @@ function serializeActivities(
     sortOrder: row.sortOrder,
     createdAt: iso(row.createdAt),
     archivedAt: iso(row.archivedAt),
+    schemaVersion: row.schemaVersion,
+    source: row.source,
+    templateId: row.templateId,
+    definitionJson: row.definitionJson,
   }));
 }
 
@@ -198,6 +202,7 @@ function serializeMoments(rows: Array<typeof moments.$inferSelect>): unknown[] {
     activityId: row.activityId,
     activityEmoji: row.activityEmoji,
     activityLabel: row.activityLabel,
+    activityValuesJson: row.activityValuesJson,
   }));
 }
 

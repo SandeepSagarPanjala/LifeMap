@@ -34,6 +34,10 @@ export function makeLocationPoint(
 export function makeMoment(
   partial: Partial<MomentRow> & Pick<MomentRow, 'id' | 'type' | 'timestamp'>,
 ): MomentRow {
+  const {
+    activityValuesJson: activityValuesJsonPartial,
+    ...rest
+  } = partial;
   return {
     finishedAt: null,
     contentPath: null,
@@ -57,7 +61,8 @@ export function makeMoment(
     activityId: null,
     activityEmoji: null,
     activityLabel: null,
-    ...partial,
+    activityValuesJson: activityValuesJsonPartial ?? null,
+    ...rest,
   };
 }
 

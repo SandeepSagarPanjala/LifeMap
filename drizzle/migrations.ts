@@ -311,6 +311,16 @@ const m0034 = `ALTER TABLE \`moments\` ADD COLUMN \`thumbnail_path\` text;`;
 
 const m0035 = `ALTER TABLE \`moments\` ADD COLUMN \`tags_json\` text;`;
 
+const m0036 = `ALTER TABLE \`activities\` ADD \`schema_version\` integer DEFAULT 1 NOT NULL;
+--> statement-breakpoint
+ALTER TABLE \`activities\` ADD \`source\` text DEFAULT 'blank' NOT NULL;
+--> statement-breakpoint
+ALTER TABLE \`activities\` ADD \`template_id\` text;
+--> statement-breakpoint
+ALTER TABLE \`activities\` ADD \`definition_json\` text DEFAULT '[]' NOT NULL;
+--> statement-breakpoint
+ALTER TABLE \`moments\` ADD \`activity_values_json\` text;`;
+
 export default {
   journal,
   migrations: {
@@ -350,5 +360,6 @@ export default {
     m0033,
     m0034,
     m0035,
+    m0036,
   },
 };

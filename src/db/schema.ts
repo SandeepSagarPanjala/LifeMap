@@ -46,6 +46,10 @@ export const activities = sqliteTable('activities', {
   sortOrder: integer('sort_order').notNull().default(0),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
   archivedAt: integer('archived_at', { mode: 'timestamp' }),
+  schemaVersion: integer('schema_version').notNull().default(1),
+  source: text('source').notNull().default('blank'),
+  templateId: text('template_id'),
+  definitionJson: text('definition_json').notNull().default('[]'),
 });
 
 export const moments = sqliteTable(
@@ -81,6 +85,7 @@ export const moments = sqliteTable(
     activityId: integer('activity_id').references(() => activities.id),
     activityEmoji: text('activity_emoji'),
     activityLabel: text('activity_label'),
+    activityValuesJson: text('activity_values_json'),
   },
   table => ({
     timestampIdx: index('moments_timestamp_idx').on(table.timestamp),

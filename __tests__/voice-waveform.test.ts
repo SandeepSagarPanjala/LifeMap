@@ -1,6 +1,7 @@
 import {
   generateStaticWaveformBars,
   normalizeVoiceMetering,
+  throttleVoiceUi,
 } from '../src/lib/moments/voice-waveform';
 
 describe('normalizeVoiceMetering', () => {
@@ -18,5 +19,30 @@ describe('generateStaticWaveformBars', () => {
     expect(first).toHaveLength(20);
     expect(second).toEqual(first);
     expect(Math.max(...first)).toBeLessThanOrEqual(1);
+  });
+});
+
+describe('throttleVoiceUi', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('cancel drops a pending trailing paint', () => {
+    const fn = jest.fn();
+    const throttled = throttleVoiceUi(fn, 250);
+
+    throttled(1000);
+    expect(fn).toHaveBeenCalledTimes(1);
+
+    throttled(20000);
+    throttled.cancel();
+    jest.advanceTimersByTime(250);
+
+    expect(fn).toHaveBeenCalledTimes(1);
+    expect(fn).toHaveBeenLastCalledWith(1000);
   });
 });

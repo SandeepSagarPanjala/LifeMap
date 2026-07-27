@@ -1,5 +1,15 @@
 import { asc, eq, isNull, sql } from 'drizzle-orm';
 
+import {
+  ACTIVITY_SCHEMA_VERSION,
+  serializeActivityFieldsJson,
+  type ActivityDefinition,
+  type ActivityDefinitionSource,
+  type ActivityFieldDefinition,
+  definitionFromActivityRow,
+  parseActivityFieldsJson,
+} from '@/lib/activities/activity-definition';
+
 import { getDatabase } from '../client';
 import { activities } from '../schema';
 
@@ -10,14 +20,31 @@ export type ActivityRow = {
   sortOrder: number;
   createdAt: Date;
   archivedAt: Date | null;
+  schemaVersion: number;
+  source: ActivityDefinitionSource;
+  templateId: string | null;
+  definitionJson: string;
+  fields: ActivityFieldDefinition[];
 };
 
 export type NewActivity = {
   emoji: string;
   label: string;
+  fields?: ActivityFieldDefinition[];
+  source?: ActivityDefinitionSource;
+  templateId?: string | null;
+  schemaVersion?: number;
 };
 
+function mapSource(value: string | null | undefined): ActivityDefinitionSource {
+  if (value === 'yaml' || value === 'catalog' || value === 'blank') {
+    return value;
+  }
+  return 'blank';
+}
+
 function mapRow(row: typeof activities.$inferSelect): ActivityRow {
+  const definitionJson = row.definitionJson ?? '[]';
   return {
     id: row.id,
     emoji: row.emoji,
@@ -25,7 +52,16 @@ function mapRow(row: typeof activities.$inferSelect): ActivityRow {
     sortOrder: row.sortOrder,
     createdAt: row.createdAt,
     archivedAt: row.archivedAt ?? null,
+    schemaVersion: row.schemaVersion ?? ACTIVITY_SCHEMA_VERSION,
+    source: mapSource(row.source),
+    templateId: row.templateId ?? null,
+    definitionJson,
+    fields: parseActivityFieldsJson(definitionJson),
   };
+}
+
+export function activityRowToDefinition(row: ActivityRow): ActivityDefinition {
+  return definitionFromActivityRow(row);
 }
 
 export async function listActiveActivities(): Promise<ActivityRow[]> {
@@ -46,6 +82,7 @@ export async function createActivity(input: NewActivity): Promise<ActivityRow> {
     })
     .from(activities);
   const sortOrder = Number(maxRow?.maxOrder ?? -1) + 1;
+  const fields = input.fields ?? [];
   const rows = await db
     .insert(activities)
     .values({
@@ -53,21 +90,49 @@ export async function createActivity(input: NewActivity): Promise<ActivityRow> {
       label: input.label.trim(),
       sortOrder,
       createdAt: new Date(),
+      schemaVersion: input.schemaVersion ?? ACTIVITY_SCHEMA_VERSION,
+      source: input.source ?? 'blank',
+      templateId: input.templateId ?? null,
+      definitionJson: serializeActivityFieldsJson(fields),
     })
     .returning();
   return mapRow(rows[0]!);
+}
+
+export async function createActivityFromDefinition(
+  definition: ActivityDefinition,
+  source: ActivityDefinitionSource = 'yaml',
+): Promise<ActivityRow> {
+  return createActivity({
+    emoji: definition.emoji,
+    label: definition.name,
+    fields: definition.fields,
+    source,
+    templateId: definition.templateId ?? null,
+    schemaVersion: definition.schemaVersion,
+  });
 }
 
 export async function updateActivity(
   id: number,
   input: NewActivity,
 ): Promise<ActivityRow | null> {
+  const existing = await getActivityById(id);
+  if (existing == null) {
+    return null;
+  }
   const db = await getDatabase();
+  const fields = input.fields ?? existing.fields;
   const rows = await db
     .update(activities)
     .set({
       emoji: input.emoji.trim(),
       label: input.label.trim(),
+      schemaVersion: input.schemaVersion ?? existing.schemaVersion,
+      source: input.source ?? existing.source,
+      templateId:
+        input.templateId !== undefined ? input.templateId : existing.templateId,
+      definitionJson: serializeActivityFieldsJson(fields),
     })
     .where(eq(activities.id, id))
     .returning();

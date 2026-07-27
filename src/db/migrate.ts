@@ -171,6 +171,11 @@ export async function migrationAlreadyApplied(
       return columnExists(sqlite, 'moments', 'thumbnail_path');
     case '0035_moment_tags_json':
       return columnExists(sqlite, 'moments', 'tags_json');
+    case '0036_activity_definitions':
+      return (
+        (await columnExists(sqlite, 'activities', 'definition_json')) &&
+        (await columnExists(sqlite, 'moments', 'activity_values_json'))
+      );
     default:
       return false;
   }
@@ -311,6 +316,46 @@ export async function ensureMomentTagsJsonColumn(sqlite: DB): Promise<void> {
       sqlite,
       `ALTER TABLE moments ADD COLUMN tags_json text`,
     );
+  }
+}
+
+/** Repair activity definition columns when migration 0036 was skipped. */
+export async function ensureActivityDefinitionColumns(
+  sqlite: DB,
+): Promise<void> {
+  if (await tableExists(sqlite, 'activities')) {
+    if (!(await columnExists(sqlite, 'activities', 'schema_version'))) {
+      await executeMigrationStatement(
+        sqlite,
+        `ALTER TABLE activities ADD COLUMN schema_version integer DEFAULT 1 NOT NULL`,
+      );
+    }
+    if (!(await columnExists(sqlite, 'activities', 'source'))) {
+      await executeMigrationStatement(
+        sqlite,
+        `ALTER TABLE activities ADD COLUMN source text DEFAULT 'blank' NOT NULL`,
+      );
+    }
+    if (!(await columnExists(sqlite, 'activities', 'template_id'))) {
+      await executeMigrationStatement(
+        sqlite,
+        `ALTER TABLE activities ADD COLUMN template_id text`,
+      );
+    }
+    if (!(await columnExists(sqlite, 'activities', 'definition_json'))) {
+      await executeMigrationStatement(
+        sqlite,
+        `ALTER TABLE activities ADD COLUMN definition_json text DEFAULT '[]' NOT NULL`,
+      );
+    }
+  }
+  if (await tableExists(sqlite, 'moments')) {
+    if (!(await columnExists(sqlite, 'moments', 'activity_values_json'))) {
+      await executeMigrationStatement(
+        sqlite,
+        `ALTER TABLE moments ADD COLUMN activity_values_json text`,
+      );
+    }
   }
 }
 

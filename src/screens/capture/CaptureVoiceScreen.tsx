@@ -50,6 +50,7 @@ export function CaptureVoiceScreen() {
   const { refreshDayMoments } = useDayMoments(getTodayDateKey());
   const closeShellRef = useRef<(() => void) | null>(null);
   const savedAndClosingRef = useRef(false);
+  const previewSheetOpenRef = useRef(false);
   const [previewDraft, setPreviewDraft] =
     useState<VoiceMemoPreviewDraft | null>(null);
   const [previewSheetOpen, setPreviewSheetOpen] = useState(false);
@@ -61,11 +62,13 @@ export function CaptureVoiceScreen() {
   }, []);
 
   const handleBeginPreview = useCallback((draft: VoiceMemoPreviewDraft) => {
+    previewSheetOpenRef.current = true;
     setPreviewDraft(draft);
     setPreviewSheetOpen(true);
   }, []);
 
   const handlePreviewDismissed = useCallback(() => {
+    previewSheetOpenRef.current = false;
     setPreviewSheetOpen(false);
     setPreviewDraft(null);
     if (savedAndClosingRef.current) {
@@ -82,11 +85,11 @@ export function CaptureVoiceScreen() {
   }, [refreshDayMoments]);
 
   const finishClose = useCallback(() => {
-    if (previewSheetOpen) {
-      return;
+    if (previewSheetOpenRef.current) {
+      return false;
     }
     navigationClose();
-  }, [navigationClose, previewSheetOpen]);
+  }, [navigationClose]);
 
   return (
     <View style={styles.root} pointerEvents="box-none">
