@@ -120,13 +120,17 @@ const PICKER_OPTIONS: {
 type FieldRow = ActivityFieldDefinition & { key: string };
 
 function slugifyFieldId(label: string, used: Set<string>): string {
-  const base =
+  let base =
     label
       .trim()
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '_')
       .replace(/^_+|_+$/g, '')
       .slice(0, 40) || 'field';
+  // FIELD_ID_PATTERN requires a leading lowercase letter.
+  if (!/^[a-z]/.test(base)) {
+    base = `f_${base}`.slice(0, 40);
+  }
   let candidate = base;
   let index = 2;
   while (used.has(candidate)) {

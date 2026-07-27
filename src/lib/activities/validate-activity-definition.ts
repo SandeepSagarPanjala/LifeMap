@@ -44,7 +44,7 @@ function validateField(
   if (!FIELD_ID_PATTERN.test(id)) {
     return {
       ok: false,
-      error: `Field id "${id}" must be lowercase letters, numbers, and underscores.`,
+      error: `Field id "${id}" must start with a lowercase letter and use only lowercase letters, numbers, and underscores.`,
     };
   }
   if (allIds.has(id)) {

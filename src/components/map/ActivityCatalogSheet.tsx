@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { APP_COPY, errorMessageOr } from '@/lib/app-copy';
 import {
   ActivityIndicator,
@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import type { BottomSheetModal } from '@gorhom/bottom-sheet';
-import { useRef } from 'react';
 
 import { AppBottomSheet } from '@/components/ui/app-bottom-sheet';
 import { Text } from '@/components/ui/text';
@@ -94,16 +93,15 @@ export function ActivityCatalogSheet({
   const loadCatalog = useCallback(async () => {
     setBusy(true);
     setCatalogError(null);
+    const controller = new AbortController();
+    const timer = setTimeout(
+      () => controller.abort(),
+      ACTIVITY_CATALOG_FETCH_TIMEOUT_MS,
+    );
     try {
-      const controller = new AbortController();
-      const timer = setTimeout(
-        () => controller.abort(),
-        ACTIVITY_CATALOG_FETCH_TIMEOUT_MS,
-      );
       const response = await fetch(ACTIVITY_CATALOG_URL, {
         signal: controller.signal,
       });
-      clearTimeout(timer);
       if (!response.ok) {
         throw new Error(`Catalog HTTP ${response.status}`);
       }
@@ -125,6 +123,7 @@ export function ActivityCatalogSheet({
       );
       setCatalog([]);
     } finally {
+      clearTimeout(timer);
       setBusy(false);
     }
   }, []);
