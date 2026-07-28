@@ -1,6 +1,7 @@
 import { useCallback, type ReactNode } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -11,6 +12,7 @@ import {
   MAP_MOMENTS_BAR_HEIGHT,
   MAP_STACK_BUTTON_SIZE,
 } from '@/lib/app-constants';
+import type { RootStackParamList } from '@/navigation/types';
 
 export function settingsBottomChromePadding(bottomInset: number): number {
   return (
@@ -35,9 +37,11 @@ export function SettingsScreenLayout({
   children,
   scroll = true,
 }: SettingsScreenLayoutProps) {
-  const navigation = useNavigation();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
+  const topPad = Math.max(insets.top, 12);
   const bottomPad = settingsBottomChromePadding(insets.bottom);
 
   const handleClose = useCallback(() => {
@@ -45,6 +49,7 @@ export function SettingsScreenLayout({
       navigation.goBack();
       return;
     }
+    navigation.navigate('Map');
   }, [navigation]);
 
   return (
@@ -55,7 +60,7 @@ export function SettingsScreenLayout({
           contentContainerStyle={[
             styles.scrollContent,
             {
-              paddingTop: Math.max(insets.top, 12),
+              paddingTop: topPad,
               paddingBottom: bottomPad,
             },
           ]}
@@ -65,7 +70,12 @@ export function SettingsScreenLayout({
           {children}
         </ScrollView>
       ) : (
-        <View style={[styles.fill, { paddingBottom: bottomPad }]}>
+        <View
+          style={[
+            styles.fill,
+            { paddingTop: topPad, paddingBottom: bottomPad },
+          ]}
+        >
           {children}
         </View>
       )}
