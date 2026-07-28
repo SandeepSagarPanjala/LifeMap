@@ -53,7 +53,9 @@ export function SettingsScreen() {
   const handleClose = useCallback(() => {
     if (navigation.canGoBack()) {
       navigation.goBack();
+      return;
     }
+    navigation.navigate('Map');
   }, [navigation]);
 
   useFocusEffect(

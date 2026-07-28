@@ -18,7 +18,7 @@ type AppScreenTransitionProps = {
  *
  * Do NOT animate `opacity` here. Liquid Glass (`UIGlassEffect`) caches a broken
  * backdrop when any ancestor mounts near opacity 0 / fades up — map chrome then
- * stays flat until a full-screen navigation remounts it. Experiment apps without
+ * stays flat until a full-screen navigation remounts it. Example apps without
  * this wrapper get correct glass on cold start over MKMapView.
  */
 export function AppScreenTransition({
