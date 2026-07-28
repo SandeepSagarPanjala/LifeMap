@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -23,14 +23,9 @@ export function CaptureActivityScreen() {
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const navigationClose = useSheetCaptureClose();
   const { refreshDayMoments } = useDayMoments(getTodayDateKey());
-  const closeShellRef = useRef<(() => void) | null>(null);
 
   const [reloadNonce, setReloadNonce] = useState(0);
   const [shellClosed, setShellClosed] = useState(false);
-
-  const registerClose = useCallback((close: () => void) => {
-    closeShellRef.current = close;
-  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -71,7 +66,6 @@ export function CaptureActivityScreen() {
           <CaptureActivityList
             refreshDayMoments={refreshDayMoments}
             reloadNonce={reloadNonce}
-            onRegisterClose={registerClose}
             onBeginCreateFirst={handleBeginCreateFirst}
             onBeginManage={handleBeginManage}
             onBeginStructuredLog={handleBeginStructuredLog}
@@ -88,20 +82,14 @@ function CaptureActivityList({
   onBeginManage,
   onBeginStructuredLog,
   reloadNonce,
-  onRegisterClose,
 }: {
   refreshDayMoments: () => Promise<void>;
   onBeginCreateFirst: () => void;
   onBeginManage: () => void;
   onBeginStructuredLog: (activity: ActivityRow) => void;
   reloadNonce: number;
-  onRegisterClose: (close: () => void) => void;
 }) {
   const closeSheet = useNativeHalfSheetClose();
-
-  useEffect(() => {
-    onRegisterClose(closeSheet);
-  }, [closeSheet, onRegisterClose]);
 
   return (
     <View style={styles.panel}>

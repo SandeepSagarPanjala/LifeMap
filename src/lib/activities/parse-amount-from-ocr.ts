@@ -70,7 +70,9 @@ export function parseAmountFromOcrText(text: string): number | null {
   }
 
   // 3) Line-oriented: "Total" on one line, money on the next (common for Vision).
-  const lines = scrubbed.split(/\r?\n/).map(line => line.trim());
+  // Keep untrimmed lines so hit.index stays in the same coordinate space as
+  // lastSubtotalIndex (computed on scrubbed).
+  const rawLines = scrubbed.split(/\r?\n/);
   const isTotalLine = (line: string) =>
     new RegExp(`\\b${totalLabel}\\b`, 'i').test(line);
   const isNoiseLine = (line: string) =>
@@ -90,10 +92,11 @@ export function parseAmountFromOcrText(text: string): number | null {
   };
 
   let lineOffset = 0;
-  for (let i = 0; i < lines.length; i += 1) {
-    const line = lines[i]!;
+  for (let i = 0; i < rawLines.length; i += 1) {
+    const rawLine = rawLines[i]!;
+    const line = rawLine.trim();
     const lineIndex = lineOffset;
-    lineOffset += line.length + 1;
+    lineOffset += rawLine.length + 1;
     if (!line || !isTotalLine(line)) {
       continue;
     }
@@ -101,8 +104,12 @@ export function parseAmountFromOcrText(text: string): number | null {
     let amountIndex = lineIndex;
     if (amounts.length === 0) {
       for (let look = 1; look <= 2; look += 1) {
-        const next = lines[i + look];
-        if (next == null || !next) {
+        const nextRaw = rawLines[i + look];
+        if (nextRaw == null) {
+          continue;
+        }
+        const next = nextRaw.trim();
+        if (!next) {
           continue;
         }
         if (isTotalLine(next) || isNoiseLine(next)) {
@@ -110,7 +117,7 @@ export function parseAmountFromOcrText(text: string): number | null {
         }
         amounts = amountsOn(next);
         if (amounts.length > 0) {
-          amountIndex = lineIndex + line.length + 1;
+          amountIndex = lineIndex + rawLine.length + 1;
           break;
         }
       }
@@ -138,7 +145,7 @@ export function parseAmountFromOcrText(text: string): number | null {
   const looksLikeBillBreakdown =
     /\bsubtotal\b/i.test(scrubbed) ||
     new RegExp(`\\b(?:${billNoiseLabel})\\b`, 'i').test(scrubbed) ||
-    lines.filter(line => /[$€£₹]/.test(line)).length >= 3;
+    rawLines.filter(line => /[$€£₹]/.test(line)).length >= 3;
 
   if (looksLikeBillBreakdown) {
     return null;
