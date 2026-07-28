@@ -10,7 +10,7 @@ import {
 import { MapPin, Pencil, Trash2, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { GlassSurface } from '@/components/glass/GlassSurface';
+import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
 import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
 import { SavedPlaceIcon } from '@/components/map/SavedPlaceIcon';
 import { SavedPlacesEmptyState } from '@/components/map/SavedPlacesEmptyState';
@@ -200,7 +200,7 @@ export function SavedPlacesSheet({
       >
         <View style={styles.barRow}>
           <View style={styles.shadowWrap}>
-            <GlassSurface style={styles.pill}>
+            <AdaptiveGlassSurface style={styles.pill}>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Add saved place by address"
@@ -216,7 +216,7 @@ export function SavedPlacesSheet({
                   Add by address
                 </Text>
               </Pressable>
-            </GlassSurface>
+            </AdaptiveGlassSurface>
           </View>
 
           <MapGlassCircleButton

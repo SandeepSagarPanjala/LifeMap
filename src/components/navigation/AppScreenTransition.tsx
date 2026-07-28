@@ -13,41 +13,38 @@ type AppScreenTransitionProps = {
   children: React.ReactNode;
 };
 
+/**
+ * Soft enter for onboarding ↔ main.
+ *
+ * Do NOT animate `opacity` here. Liquid Glass (`UIGlassEffect`) caches a broken
+ * backdrop when any ancestor mounts near opacity 0 / fades up — map chrome then
+ * stays flat until a full-screen navigation remounts it. Experiment apps without
+ * this wrapper get correct glass on cold start over MKMapView.
+ */
 export function AppScreenTransition({
   screenKey,
   children,
 }: AppScreenTransitionProps) {
   const { width } = useWindowDimensions();
   const slideFromRight = Math.min(width * 0.28, 140);
-  const opacity = useRef(new Animated.Value(0)).current;
   const translateX = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    opacity.setValue(0.92);
     translateX.setValue(slideFromRight);
 
-    Animated.parallel([
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 400,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(translateX, {
-        toValue: 0,
-        duration: 420,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [opacity, screenKey, slideFromRight, translateX]);
+    Animated.timing(translateX, {
+      toValue: 0,
+      duration: 420,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [screenKey, slideFromRight, translateX]);
 
   return (
     <Animated.View
       style={[
         styles.fill,
         {
-          opacity,
           transform: [{ translateX }],
         },
       ]}

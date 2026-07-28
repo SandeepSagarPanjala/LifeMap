@@ -2,6 +2,7 @@ import { useCallback, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 
+import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
 import { getTodayDateKey, shiftDateKey } from '@/lib/day-utils';
 import { HISTORY_COLORS } from '@/lib/app-constants';
 import { formatHistoryDayNavLabel } from '@/lib/history-timeline';
@@ -48,62 +49,62 @@ export function HistoryDayNav({
 
   return (
     <View style={styles.wrap}>
-      <View style={styles.group}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Previous day"
-          disabled={!canGoPrevDay}
-          onPress={goPrevDay}
-          style={({ pressed }) => [
-            styles.sideBtn,
-            !canGoPrevDay && styles.sideBtnDisabled,
-            pressed && canGoPrevDay ? styles.btnPressed : null,
-          ]}
-        >
-          <ChevronLeft
-            size={18}
-            color={ICON_COLOR}
-            strokeWidth={2.5}
-            opacity={canGoPrevDay ? 1 : 0.35}
-          />
-        </Pressable>
+      <View style={styles.groupShadow}>
+        <AdaptiveGlassSurface effect="regular" style={styles.group}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Previous day"
+            disabled={!canGoPrevDay}
+            onPress={goPrevDay}
+            style={({ pressed }) => [
+              styles.sideBtn,
+              pressed && canGoPrevDay ? styles.btnPressed : null,
+            ]}
+          >
+            <ChevronLeft
+              size={18}
+              color={ICON_COLOR}
+              strokeWidth={2.5}
+              opacity={canGoPrevDay ? 1 : 0.35}
+            />
+          </Pressable>
 
-        <View style={styles.divider} />
+          <View style={styles.divider} />
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`${dayLabel}, choose date`}
-          onPress={onOpenDatePicker}
-          style={({ pressed }) => [
-            styles.centerBtn,
-            pressed ? styles.btnPressed : null,
-          ]}
-        >
-          <Text style={styles.centerLabel} numberOfLines={1}>
-            {dayLabel}
-          </Text>
-        </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${dayLabel}, choose date`}
+            onPress={onOpenDatePicker}
+            style={({ pressed }) => [
+              styles.centerBtn,
+              pressed ? styles.btnPressed : null,
+            ]}
+          >
+            <Text style={styles.centerLabel} numberOfLines={1}>
+              {dayLabel}
+            </Text>
+          </Pressable>
 
-        <View style={styles.divider} />
+          <View style={styles.divider} />
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Next day"
-          disabled={!canGoNextDay}
-          onPress={goNextDay}
-          style={({ pressed }) => [
-            styles.sideBtn,
-            !canGoNextDay && styles.sideBtnDisabled,
-            pressed && canGoNextDay ? styles.btnPressed : null,
-          ]}
-        >
-          <ChevronRight
-            size={18}
-            color={ICON_COLOR}
-            strokeWidth={2.5}
-            opacity={canGoNextDay ? 1 : 0.35}
-          />
-        </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Next day"
+            disabled={!canGoNextDay}
+            onPress={goNextDay}
+            style={({ pressed }) => [
+              styles.sideBtn,
+              pressed && canGoNextDay ? styles.btnPressed : null,
+            ]}
+          >
+            <ChevronRight
+              size={18}
+              color={ICON_COLOR}
+              strokeWidth={2.5}
+              opacity={canGoNextDay ? 1 : 0.35}
+            />
+          </Pressable>
+        </AdaptiveGlassSurface>
       </View>
     </View>
   );
@@ -115,36 +116,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 8,
   },
-  group: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+  groupShadow: {
     borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#E5E5EA',
-    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.14,
     shadowRadius: 8,
     elevation: 5,
   },
+  group: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
   sideBtn: {
     minWidth: 52,
     height: 40,
     paddingHorizontal: 14,
-    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  sideBtnDisabled: {
-    opacity: 0.45,
   },
   centerBtn: {
     minWidth: 120,
     height: 40,
     paddingHorizontal: 28,
-    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -158,10 +154,10 @@ const styles = StyleSheet.create({
     width: StyleSheet.hairlineWidth,
     height: 22,
     alignSelf: 'center',
-    backgroundColor: '#E5E5EA',
+    backgroundColor: 'rgba(60,60,67,0.18)',
     marginHorizontal: 6,
   },
   btnPressed: {
-    backgroundColor: '#F2F2F7',
+    backgroundColor: 'rgba(120,120,128,0.12)',
   },
 });

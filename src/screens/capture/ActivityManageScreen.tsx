@@ -15,7 +15,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Plus, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { GlassSurface } from '@/components/glass/GlassSurface';
+import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
 import { ActivityManageList } from '@/components/map/ActivityManageList';
 import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
 import {
@@ -185,7 +185,7 @@ export function ActivityManageScreen() {
       >
         <View style={styles.barRow}>
           <View style={styles.shadowWrap}>
-            <GlassSurface style={styles.pill}>
+            <AdaptiveGlassSurface style={styles.pill}>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Add activity"
@@ -197,7 +197,7 @@ export function ActivityManageScreen() {
                   Add Activity
                 </Text>
               </Pressable>
-            </GlassSurface>
+            </AdaptiveGlassSurface>
           </View>
 
           <MapGlassCircleButton

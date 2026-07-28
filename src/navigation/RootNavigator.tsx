@@ -116,8 +116,7 @@ export function RootNavigator() {
           name="Settings"
           component={SettingsScreen}
           options={{
-            title: 'Settings',
-            headerBackTitle: 'Map',
+            headerShown: false,
             presentation: 'card',
           }}
         />

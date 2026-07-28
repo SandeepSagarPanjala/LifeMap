@@ -19,7 +19,7 @@ import { X } from 'lucide-react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { GlassSurface } from '@/components/glass/GlassSurface';
+import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
 import { ActivityFieldCameraModal } from '@/components/map/ActivityFieldCameraModal';
 import {
   ActivityFieldMediaRow,
@@ -573,7 +573,7 @@ export function ActivityLogEntryPanel({
         >
           <View style={styles.barRow}>
             <View style={styles.shadowWrap}>
-              <GlassSurface style={styles.pill}>
+              <AdaptiveGlassSurface style={styles.pill}>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Save activity"
@@ -594,7 +594,7 @@ export function ActivityLogEntryPanel({
                     </Text>
                   )}
                 </Pressable>
-              </GlassSurface>
+              </AdaptiveGlassSurface>
             </View>
 
             <MapGlassCircleButton

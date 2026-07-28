@@ -31,7 +31,7 @@ import {
   X,
 } from 'lucide-react-native';
 
-import { GlassSurface } from '@/components/glass/GlassSurface';
+import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
 import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
 import { AppBottomSheet } from '@/components/ui/app-bottom-sheet';
 import { Text } from '@/components/ui/text';
@@ -126,7 +126,7 @@ function GlassActionBar({
         ) : null}
 
         <View style={styles.shadowWrap}>
-          <GlassSurface style={styles.pill}>
+          <AdaptiveGlassSurface style={styles.pill}>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={primaryAccessibilityLabel}
@@ -152,7 +152,7 @@ function GlassActionBar({
                 </>
               )}
             </Pressable>
-          </GlassSurface>
+          </AdaptiveGlassSurface>
         </View>
 
         <MapGlassCircleButton

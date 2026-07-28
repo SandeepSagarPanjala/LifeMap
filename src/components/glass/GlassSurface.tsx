@@ -22,12 +22,13 @@ let uid = 0;
  * A lightweight, fully JS/GPU-composited "glass" surface that approximates Apple's
  * Liquid Glass look without any native module.
  *
- * Why not a real backdrop blur / UIVisualEffectView? Both Apple's Liquid Glass
- * (`@callstack/liquid-glass`) and `UIVisualEffectView`-based blurs cannot sample the
- * live `MKMapView` (react-native-maps) Metal surface, so over the map they either
- * render flat or require a navigation "prime" hack. This surface avoids all of that:
- * it's a translucent fill + a specular top-edge highlight + a soft vertical sheen,
- * which reads as frosted glass over any content and costs almost nothing to render.
+ * Prefer {@link AdaptiveGlassSurface} at call sites when you want real iOS 26
+ * Liquid Glass with this component as the fallback.
+ *
+ * Why keep this fallback? Unsupported OS / Low Power / Reduce Transparency,
+ * and Android. On iOS 26+ with Liquid Glass available, prefer
+ * {@link AdaptiveGlassSurface} — do not wrap it in opacity fades (that breaks
+ * sampling over the map).
  *
  * Layers (bottom -> top):
  *   1. translucent base fill + hairline border (set here)

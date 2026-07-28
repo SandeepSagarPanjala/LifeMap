@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
@@ -85,15 +85,12 @@ import {
 import { useAppStore } from '@/stores/app-store';
 import { regionForCoordinates, toMapCoordinates } from '@/lib/location-geo';
 import {
-  BACKGROUND_WORK_BANNER_BODY_HEIGHT,
   MAP_HISTORY_DATE_NAV_ABOVE_PANEL_GAP,
   MAP_HISTORY_FLOATING_CONTROLS_GAP,
   MAP_HISTORY_PANEL_CLOSE_MS,
   MAP_LOCATE_BUTTON_BOTTOM_GAP,
   MAP_MOMENTS_BAR_HEIGHT,
-  MAP_SETTINGS_SIZE,
   MAP_SETTINGS_TOP_GAP,
-  MAP_STACK_BUTTON_GAP,
   MAP_STACK_BUTTON_SIZE,
   MAP_USER_ZOOM_DELTA,
   MAX_SAVED_PLACES,
@@ -142,10 +139,6 @@ import {
   visitPlaceSelectedCategory,
 } from '@/lib/place-lookup-types';
 import { mapProviderForPlatform } from '@/lib/map-provider';
-import {
-  isBackgroundWorkBannerVisible,
-  subscribeBackgroundWork,
-} from '@/lib/background-work-events';
 import { setBackgroundWorkMapFocused } from '@/lib/background-work-pause';
 import type { RootStackParamList } from '@/navigation/types';
 import {
@@ -164,7 +157,6 @@ import {
   MAP_FALLBACK_REGION,
   mapHistoryPanelContentHeight,
   mapStackButtonBottom,
-  mapStackTotalHeight,
 } from './map-screen-constants';
 
 const EMPTY_MOMENT_ROWS: MomentRow[] = [];
@@ -592,7 +584,7 @@ export function useMapScreenController() {
   useEffect(() => {
     setHistoryPanelContentHeight(null);
     // Intentionally omit selectedHistoryIndex — resetting height on every scrub
-    // step thrashs mapPadding and makes event-arrow navigation feel laggy.
+    // step thrashs panel layout and makes event-arrow navigation feel laggy.
   }, [selectedDateKey, showPlaceLabelCard, historyEventCardHasMoments]);
 
   // Wait for History chrome to finish closing so day-story routes do not flash
@@ -700,40 +692,6 @@ export function useMapScreenController() {
   const settingsButtonTop = insets.top + MAP_SETTINGS_TOP_GAP;
 
   const dateNavAnchorBottom = rowBaseBottom;
-
-  const rightStackButtonCount = viewingToday ? 1 : 0;
-  const rightStackHeight = mapStackTotalHeight(
-    rightStackButtonCount,
-    MAP_STACK_BUTTON_SIZE,
-    MAP_STACK_BUTTON_GAP,
-  );
-  const leftStackHeight = mapStackTotalHeight(
-    viewingToday ? 2 : 1,
-    MAP_STACK_BUTTON_SIZE,
-    MAP_STACK_BUTTON_GAP,
-  );
-  const floatingControlsClearance =
-    rowBaseBottom + Math.max(leftStackHeight, rightStackHeight) + 16;
-
-  const backgroundWorkBannerVisible = useSyncExternalStore(
-    subscribeBackgroundWork,
-    isBackgroundWorkBannerVisible,
-    isBackgroundWorkBannerVisible,
-  );
-
-  const mapPadding = useMemo(
-    () => ({
-      top:
-        insets.top +
-        MAP_SETTINGS_TOP_GAP +
-        MAP_SETTINGS_SIZE +
-        (backgroundWorkBannerVisible ? BACKGROUND_WORK_BANNER_BODY_HEIGHT : 0),
-      right: 12,
-      bottom: floatingControlsClearance,
-      left: 12,
-    }),
-    [floatingControlsClearance, insets.top, backgroundWorkBannerVisible],
-  );
 
   const scrubOnEvent = historyScrubOnEvent;
 
@@ -1930,7 +1888,6 @@ export function useMapScreenController() {
       mapRef,
       mapInitialRegion,
       provider,
-      mapPadding,
       locateButtonBottom,
       settingsButtonTop,
       placesButtonBottom,
@@ -2055,7 +2012,6 @@ export function useMapScreenController() {
       mapRef,
       mapInitialRegion,
       provider,
-      mapPadding,
       locateButtonBottom,
       settingsButtonTop,
       placesButtonBottom,

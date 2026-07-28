@@ -3,6 +3,7 @@ import { memo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Play } from 'lucide-react-native';
 
+import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
 import { DriveRouteStrip } from '@/components/map/DriveRouteStrip';
 import { SavedPlaceIcon } from '@/components/map/SavedPlaceIcon';
 import { VisitPlaceKindIcon } from '@/components/map/VisitPlaceKindIcon';
@@ -147,11 +148,13 @@ export const HistoryEventCard = memo(function HistoryEventCard({
       ? 'Your timeline fills in from install to now as LifeMap saves locations.'
       : 'Your timeline fills in as LifeMap saves locations.';
     return (
-      <View style={styles.card}>
-        <Text className="font-medium">{title}</Text>
-        <Text variant="muted" className="mt-1 text-sm">
-          {subtitle}
-        </Text>
+      <View style={styles.cardShadow}>
+        <AdaptiveGlassSurface effect="regular" style={styles.card}>
+          <Text className="font-medium">{title}</Text>
+          <Text variant="muted" className="mt-1 text-sm">
+            {subtitle}
+          </Text>
+        </AdaptiveGlassSurface>
       </View>
     );
   }
@@ -172,17 +175,21 @@ export const HistoryEventCard = memo(function HistoryEventCard({
     momentCounts != null && hasMomentCounts(momentCounts);
 
   return (
-    <View style={[styles.card, isGap && styles.cardGap]}>
-      {showMomentCounts ? (
-        <View style={styles.momentSection}>
-          <MomentCountsRow
-            counts={momentCounts!}
-            onPressType={onPressMomentType}
-            layout="stacked"
-          />
-          <View style={styles.momentDivider} />
-        </View>
-      ) : null}
+    <View style={styles.cardShadow}>
+      <AdaptiveGlassSurface
+        effect="regular"
+        style={[styles.card, isGap && styles.cardGap]}
+      >
+        {showMomentCounts ? (
+          <View style={styles.momentSection}>
+            <MomentCountsRow
+              counts={momentCounts!}
+              onPressType={onPressMomentType}
+              layout="stacked"
+            />
+            <View style={styles.momentDivider} />
+          </View>
+        ) : null}
       {!isStay && !isTravel ? (
         <Text variant="muted" className="text-xs uppercase tracking-wide">
           Gap
@@ -297,28 +304,31 @@ export const HistoryEventCard = memo(function HistoryEventCard({
           <Play size={20} color="#FFFFFF" fill="#FFFFFF" />
         </Pressable>
       ) : null}
+    </AdaptiveGlassSurface>
     </View>
   );
 });
 
 const styles = StyleSheet.create({
-  card: {
+  cardShadow: {
     marginHorizontal: 16,
-    backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    minHeight: 88,
-    overflow: 'visible',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
   },
+  card: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    minHeight: 88,
+  },
   cardGap: {
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: 'rgba(60,60,67,0.18)',
     borderStyle: 'dashed',
   },
   momentSection: {
@@ -327,7 +337,7 @@ const styles = StyleSheet.create({
   },
   momentDivider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: '#E5E5EA',
+    backgroundColor: 'rgba(60,60,67,0.18)',
   },
   eventTitleRow: {
     flexDirection: 'row',

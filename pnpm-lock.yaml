@@ -16,6 +16,9 @@ importers:
 
   .:
     dependencies:
+      '@callstack/liquid-glass':
+        specifier: ^0.8.0
+        version: 0.8.0(react-native@0.84.1(@babel/core@7.29.7)(@react-native-community/cli@20.1.0(typescript@5.9.3))(@react-native/metro-config@0.84.1(@babel/core@7.29.7))(@types/react@19.2.15)(react@19.2.3))(react@19.2.3)
       '@date-fns/tz':
         specifier: ^1.5.0
         version: 1.5.0
@@ -1002,6 +1005,12 @@ packages:
 
   '@bcoe/v8-coverage@0.2.3':
     resolution: {integrity: sha512-0hYQ8SB4Db5zvZB4axdMHGwEaQjkZzFjQiN9LVYvIFB2nSUHW9tYpxWriPrWDASIxiaXax83REcLxuSdnGPZtw==}
+
+  '@callstack/liquid-glass@0.8.0':
+    resolution: {integrity: sha512-yRtZamuf0WaNkqgqzjeuM8EpzpxLsjx8o+8yzhmFVqxiIMM5KJ9nYwKpicNHZ7+JTv5mJCxfQ62jSvC3VrUTSA==}
+    peerDependencies:
+      react: '*'
+      react-native: '*'
 
   '@colors/colors@1.6.0':
     resolution: {integrity: sha512-Ir+AOibqzrIsL6ajt3Rz3LskB7OiMVHqltZmspbW/TJuTVuyOMirVqAkjfY6JISiLHgyNqicAC8AyHHGzNd/dA==}
@@ -7021,6 +7030,11 @@ snapshots:
       '@babel/helper-validator-identifier': 7.29.7
 
   '@bcoe/v8-coverage@0.2.3': {}
+
+  '@callstack/liquid-glass@0.8.0(react-native@0.84.1(@babel/core@7.29.7)(@react-native-community/cli@20.1.0(typescript@5.9.3))(@react-native/metro-config@0.84.1(@babel/core@7.29.7))(@types/react@19.2.15)(react@19.2.3))(react@19.2.3)':
+    dependencies:
+      react: 19.2.3
+      react-native: 0.84.1(@babel/core@7.29.7)(@react-native-community/cli@20.1.0(typescript@5.9.3))(@react-native/metro-config@0.84.1(@babel/core@7.29.7))(@types/react@19.2.15)(react@19.2.3)
 
   '@colors/colors@1.6.0': {}
 

@@ -21,7 +21,7 @@ import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { GlassSurface } from '@/components/glass/GlassSurface';
+import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
 import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
 import { VoicePlaybackMeter } from '@/components/voice/VoiceMeter';
 import { Text } from '@/components/ui/text';
@@ -322,7 +322,7 @@ export function VoiceMemoPreviewSheet({
                 </MapGlassCircleButton>
 
                 <View style={styles.shadowWrap}>
-                  <GlassSurface style={styles.pill}>
+                  <AdaptiveGlassSurface style={styles.pill}>
                     <Pressable
                       accessibilityRole="button"
                       accessibilityLabel="Save voice memo"
@@ -355,7 +355,7 @@ export function VoiceMemoPreviewSheet({
                         </>
                       )}
                     </Pressable>
-                  </GlassSurface>
+                  </AdaptiveGlassSurface>
                 </View>
 
                 <MapGlassCircleButton

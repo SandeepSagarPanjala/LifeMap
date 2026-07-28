@@ -16,7 +16,7 @@ import {
   View,
 } from 'react-native';
 
-import { GlassSurface } from '@/components/glass/GlassSurface';
+import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
 import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import {
@@ -120,7 +120,7 @@ export const MapMomentsGlassBar = memo(function MapMomentsGlassBar({
 
       <View pointerEvents="box-none" style={[styles.pillRow, { bottom }]}>
         <View style={styles.shadowWrap}>
-          <GlassSurface style={styles.pill}>
+          <AdaptiveGlassSurface style={styles.pill}>
             {actions.map(action => {
               const ActionIcon = action.icon;
 
@@ -136,7 +136,7 @@ export const MapMomentsGlassBar = memo(function MapMomentsGlassBar({
                 </Pressable>
               );
             })}
-          </GlassSurface>
+          </AdaptiveGlassSurface>
         </View>
       </View>
 
