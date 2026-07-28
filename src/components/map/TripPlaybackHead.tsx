@@ -4,6 +4,7 @@ import type { MapMarker } from 'react-native-maps';
 import { StyleSheet, Text, View } from 'react-native';
 import { format } from 'date-fns';
 
+import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
 import type { MapCoordinate } from '@/lib/location-geo';
 import { PLAYBACK_MARKER_FRAME_MS } from '@/lib/app-constants';
 import {
@@ -83,8 +84,10 @@ export function TripPlaybackHead({
         zIndex={10}
         tracksViewChanges={trackLabel}
       >
-        <View style={styles.timeChip}>
-          <Text style={styles.timeText}>{timeLabel}</Text>
+        <View style={styles.timeChipShadow}>
+          <AdaptiveGlassSurface effect="regular" style={styles.timeChip}>
+            <Text style={styles.timeText}>{timeLabel}</Text>
+          </AdaptiveGlassSurface>
         </View>
       </Marker>
     </>
@@ -113,16 +116,19 @@ const styles = StyleSheet.create({
     borderWidth: 2.5,
     borderColor: '#FFFFFF',
   },
-  timeChip: {
-    backgroundColor: '#FFFFFF',
+  timeChipShadow: {
     borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.15,
     shadowRadius: 3,
     elevation: 3,
+  },
+  timeChip: {
+    borderRadius: 8,
+    overflow: 'hidden',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
   timeText: {
     fontSize: 13,

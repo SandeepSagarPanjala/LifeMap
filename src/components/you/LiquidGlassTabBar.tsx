@@ -3,7 +3,7 @@ import { X } from 'lucide-react-native';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { GlassSurface } from '@/components/glass/GlassSurface';
+import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
 import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import {
@@ -46,7 +46,7 @@ export function LiquidGlassTabBar({
     >
       <View style={styles.row}>
         <View style={styles.shadowWrap}>
-          <GlassSurface style={styles.pill}>
+          <AdaptiveGlassSurface style={styles.pill}>
             {state.routes.map((route, index) => {
               const { options } = descriptors[route.key];
               const isFocused = state.index === index;
@@ -86,7 +86,7 @@ export function LiquidGlassTabBar({
                 </Pressable>
               );
             })}
-          </GlassSurface>
+          </AdaptiveGlassSurface>
         </View>
 
         <MapGlassCircleButton

@@ -8,7 +8,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import { GlassSurface } from '@/components/glass/GlassSurface';
+import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
 import { MAP_STACK_BUTTON_SIZE } from '@/lib/app-constants';
 
 type MapGlassCircleButtonProps = {
@@ -26,8 +26,10 @@ type MapGlassCircleButtonProps = {
 };
 
 /**
- * Circular map control that uses the same frosted `GlassSurface` as the
- * moments bar — keeps every floating map button visually consistent.
+ * Circular map control that uses the same glass surface as the moments bar.
+ *
+ * Press/disabled feedback must not set `opacity` on an ancestor of Liquid Glass —
+ * that breaks UIGlassEffect sampling for the rest of the session.
  */
 export function MapGlassCircleButton({
   accessibilityLabel,
@@ -65,11 +67,10 @@ export function MapGlassCircleButton({
               width: size,
               height: size,
               borderRadius: size / 2,
-              opacity: disabled ? 0.45 : pressed ? 0.85 : 1,
             },
           ]}
         >
-          <GlassSurface
+          <AdaptiveGlassSurface
             style={[
               styles.surface,
               {
@@ -82,8 +83,16 @@ export function MapGlassCircleButton({
             {washStyle ? (
               <View pointerEvents="none" style={washStyle} />
             ) : null}
-            <View style={styles.content}>{children}</View>
-          </GlassSurface>
+            <View
+              style={[
+                styles.content,
+                disabled ? styles.contentDisabled : null,
+                pressed && !disabled ? styles.contentPressed : null,
+              ]}
+            >
+              {children}
+            </View>
+          </AdaptiveGlassSurface>
         </View>
       )}
     </Pressable>
@@ -115,6 +124,12 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  contentDisabled: {
+    opacity: 0.45,
+  },
+  contentPressed: {
+    opacity: 0.85,
   },
   activeWash: {
     ...StyleSheet.absoluteFillObject,

@@ -29,7 +29,7 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmotionTokenPickerSheet } from '@/components/capture/EmotionTokenPickerSheet';
-import { GlassSurface } from '@/components/glass/GlassSurface';
+import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
 import { CAPTURE_BUTTON_THEMES } from '@/components/map/map-capture-button-theme';
 import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
 import { VoiceMemoSheet } from '@/components/map/VoiceMemoSheet';
@@ -535,7 +535,7 @@ export function CaptureNoteScreen() {
               </MapGlassCircleButton>
 
               <View style={styles.shadowWrap}>
-                <GlassSurface style={styles.pill}>
+                <AdaptiveGlassSurface style={styles.pill}>
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel="Attach photo from library"
@@ -615,7 +615,7 @@ export function CaptureNoteScreen() {
                       />
                     )}
                   </Pressable>
-                </GlassSurface>
+                </AdaptiveGlassSurface>
               </View>
 
               <MapGlassCircleButton

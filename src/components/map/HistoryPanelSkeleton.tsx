@@ -1,16 +1,19 @@
 import { StyleSheet, View } from 'react-native';
 
+import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
 import { SkeletonPulse } from '@/components/ui/skeleton-pulse';
 
 /** Placeholder while history data / map layers prepare — panel opens instantly. */
 export function HistoryPanelSkeleton() {
   return (
     <View style={styles.wrap}>
-      <View style={styles.card}>
-        <SkeletonPulse style={styles.kindLine} />
-        <SkeletonPulse style={styles.titleLine} />
-        <SkeletonPulse style={styles.subtitleLine} />
-        <SkeletonPulse style={styles.actionButton} />
+      <View style={styles.cardShadow}>
+        <AdaptiveGlassSurface effect="regular" style={styles.card}>
+          <SkeletonPulse style={styles.kindLine} />
+          <SkeletonPulse style={styles.titleLine} />
+          <SkeletonPulse style={styles.subtitleLine} />
+          <SkeletonPulse style={styles.actionButton} />
+        </AdaptiveGlassSurface>
       </View>
 
       <View style={styles.timeline}>
@@ -34,19 +37,23 @@ const styles = StyleSheet.create({
   wrap: {
     gap: 0,
   },
-  card: {
+  cardShadow: {
     minHeight: 118,
     marginHorizontal: 16,
     marginBottom: 8,
     borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
+  },
+  card: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    minHeight: 118,
   },
   kindLine: {
     width: 48,

@@ -1,7 +1,7 @@
 import { ChevronLeft, ChevronRight, X } from 'lucide-react-native';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { GlassSurface } from '@/components/glass/GlassSurface';
+import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
 import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import {
@@ -80,11 +80,11 @@ export function HistoryPanelChrome({
           onPress={onPressLabel}
         >
           <View style={styles.pillShadow}>
-            <GlassSurface style={styles.pill}>
+            <AdaptiveGlassSurface style={styles.pill}>
               <Text style={[styles.label, { color: accent }]} numberOfLines={1}>
                 {label}
               </Text>
-            </GlassSurface>
+            </AdaptiveGlassSurface>
           </View>
         </Pressable>
 

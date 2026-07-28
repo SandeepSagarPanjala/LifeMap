@@ -9,7 +9,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import { GlassSurface } from '@/components/glass/GlassSurface';
+import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
 import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import {
@@ -56,11 +56,11 @@ export function MapDateLabel({
 
   const glassPill = (
     <View style={styles.pillShadow}>
-      <GlassSurface style={styles.pill}>
+      <AdaptiveGlassSurface style={styles.pill}>
         <Text style={[styles.label, { color: accent }]} numberOfLines={1}>
           {label}
         </Text>
-      </GlassSurface>
+      </AdaptiveGlassSurface>
     </View>
   );
 

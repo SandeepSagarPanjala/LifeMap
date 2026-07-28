@@ -12,6 +12,7 @@ import { useSyncExternalStore } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/ui/text';
+import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import {
   ACCENT_THEMES,
@@ -192,20 +193,28 @@ export function BackgroundWorkBanner() {
     >
       <View
         style={[
-          styles.card,
+          styles.cardShadow,
           {
-            backgroundColor: colors.card,
-            borderColor: softPrimaryFill(tokens.primary, 0.35),
             shadowColor: colors.primary,
             minHeight: BACKGROUND_WORK_BANNER_BODY_HEIGHT - BANNER_TOP_GAP,
           },
         ]}
       >
+        <AdaptiveGlassSurface
+          effect="regular"
+          tintColor={softPrimaryFill(tokens.primary, 0.35)}
+          style={[
+            styles.card,
+            {
+              borderColor: softPrimaryFill(tokens.primary, 0.35),
+            },
+          ]}
+        >
         <View
           pointerEvents="none"
           style={[
             styles.wash,
-            { backgroundColor: softPrimaryFill(tokens.primary, 0.2) },
+            { backgroundColor: softPrimaryFill(tokens.primary, 0.12) },
           ]}
         />
 
@@ -275,6 +284,7 @@ export function BackgroundWorkBanner() {
             </Animated.View>
           </View>
         ) : null}
+        </AdaptiveGlassSurface>
       </View>
     </View>
   );
@@ -289,6 +299,13 @@ const styles = StyleSheet.create({
     zIndex: 100,
     elevation: 100,
   },
+  cardShadow: {
+    borderRadius: 16,
+    shadowOpacity: 0.22,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
+  },
   card: {
     borderRadius: 16,
     borderWidth: 1,
@@ -297,10 +314,6 @@ const styles = StyleSheet.create({
     paddingBottom: 11,
     gap: 9,
     overflow: 'hidden',
-    shadowOpacity: 0.22,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 8,
   },
   wash: {
     ...StyleSheet.absoluteFillObject,

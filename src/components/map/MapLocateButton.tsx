@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import Svg, { Circle, ClipPath, Defs, G, Path } from 'react-native-svg';
 
-import { GlassSurface } from '@/components/glass/GlassSurface';
+import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
 import { MAP_STACK_BUTTON_RIGHT, MAP_STACK_BUTTON_SIZE } from '@/lib/app-constants';
 
 /** Same blue as the system map user-location puck. */
@@ -79,12 +79,14 @@ export function MapLocateButton({
         style={[styles.wrap, { bottom }]}
       >
         {({ pressed }) => (
-          <View style={[styles.shadow, pressed && styles.pressed]}>
-            <GlassSurface style={styles.surface}>
-              <View style={styles.puckRing}>
+          <View style={styles.shadow}>
+            <AdaptiveGlassSurface style={styles.surface}>
+              <View
+                style={[styles.puckRing, pressed ? styles.contentPressed : null]}
+              >
                 <View style={styles.puckCore} />
               </View>
-            </GlassSurface>
+            </AdaptiveGlassSurface>
           </View>
         )}
       </Pressable>
@@ -109,30 +111,32 @@ export function MapLocateButton({
       onLayout={onLayout}
     >
       {({ pressed }) => (
-        <View style={[styles.shadow, pressed && styles.pressed]}>
-          <GlassSurface style={styles.surface}>
-            <Svg width={size} height={size} pointerEvents="none">
-              {/* White ring around the split puck. */}
-              <Circle
-                cx={r}
-                cy={r}
-                r={puckOuterR}
-                fill="#FFFFFF"
-                stroke="rgba(0,0,0,0.08)"
-                strokeWidth={0.5}
-              />
-              {/* Blue / red only on the center dot. */}
-              <Defs>
-                <ClipPath id="puckCoreClip">
-                  <Circle cx={r} cy={r} r={puckCoreR} />
-                </ClipPath>
-              </Defs>
-              <G clipPath="url(#puckCoreClip)">
-                <Path d={puckBluePath} fill={MAP_USER_LOCATION_BLUE} />
-                <Path d={puckRedPath} fill={MAP_TRIPS_OVERVIEW_RED} />
-              </G>
-            </Svg>
-          </GlassSurface>
+        <View style={styles.shadow}>
+          <AdaptiveGlassSurface style={styles.surface}>
+            <View style={pressed ? styles.contentPressed : null}>
+              <Svg width={size} height={size} pointerEvents="none">
+                {/* White ring around the split puck. */}
+                <Circle
+                  cx={r}
+                  cy={r}
+                  r={puckOuterR}
+                  fill="#FFFFFF"
+                  stroke="rgba(0,0,0,0.08)"
+                  strokeWidth={0.5}
+                />
+                {/* Blue / red only on the center dot. */}
+                <Defs>
+                  <ClipPath id="puckCoreClip">
+                    <Circle cx={r} cy={r} r={puckCoreR} />
+                  </ClipPath>
+                </Defs>
+                <G clipPath="url(#puckCoreClip)">
+                  <Path d={puckBluePath} fill={MAP_USER_LOCATION_BLUE} />
+                  <Path d={puckRedPath} fill={MAP_TRIPS_OVERVIEW_RED} />
+                </G>
+              </Svg>
+            </View>
+          </AdaptiveGlassSurface>
         </View>
       )}
     </Pressable>
@@ -160,7 +164,7 @@ const styles = StyleSheet.create({
       android: { elevation: 5 },
     }),
   },
-  pressed: {
+  contentPressed: {
     opacity: 0.85,
   },
   surface: {

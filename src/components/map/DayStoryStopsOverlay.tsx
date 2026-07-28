@@ -23,6 +23,7 @@ import { memo, useCallback, useMemo, useRef, useState } from 'react';
 import { Marker } from 'react-native-maps';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
 import { SavedPlaceIcon } from '@/components/map/SavedPlaceIcon';
 import { VisitPlaceKindIcon } from '@/components/map/VisitPlaceKindIcon';
 import { MomentCountsRow } from '@/components/moments/MomentCountsRow';
@@ -171,7 +172,8 @@ const DayStoryStopMarker = memo(function DayStoryStopMarker({
 }) {
   const showMoments = hasMomentCounts(momentCounts);
   const visitColor = dayStoryColorForVisit(stop.visitNumbers[0] ?? 1);
-  const labelBackground = dayStoryCardFill(visitColor, 0.14);
+  // Soft pastel tint — full visit colors read too dark on Liquid Glass.
+  const labelTint = dayStoryCardFill(visitColor, 0.22);
   const [cardSize, setCardSize] = useState({ w: 0, h: 0 });
   // Fallback until onLayout — rough pill size so first paint isn't on the badge.
   const measuredW = cardSize.w > 0 ? cardSize.w : 72;
@@ -226,36 +228,45 @@ const DayStoryStopMarker = memo(function DayStoryStopMarker({
 
   // History opens from the label Pressable only — not Marker.onPress.
   // Moments share this Marker; Marker.onPress would also fire on cam taps.
+  const labelInner = (
+    <AdaptiveGlassSurface
+      effect="regular"
+      tintColor={labelTint}
+      style={styles.labelCard}
+    >
+      <PlaceLabelRow stop={stop} />
+    </AdaptiveGlassSurface>
+  );
+
   const labelCard =
     onPressStay != null ? (
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`Open ${stop.label} in history`}
         onPress={handlePressStop}
-        style={[styles.labelCard, { backgroundColor: labelBackground }]}
+        style={styles.labelCardShadow}
         collapsable={false}
       >
-        <PlaceLabelRow stop={stop} />
+        {labelInner}
       </Pressable>
     ) : (
-      <View
-        style={[styles.labelCard, { backgroundColor: labelBackground }]}
-        collapsable={false}
-      >
-        <PlaceLabelRow stop={stop} />
+      <View style={styles.labelCardShadow} collapsable={false}>
+        {labelInner}
       </View>
     );
 
   const momentsCard = showMoments ? (
-    <View style={styles.momentsCard} collapsable={false}>
-      <MomentCountsRow
-        counts={momentCounts}
-        layout="inline"
-        compact
-        dense
-        iconSize={12}
-        onPressType={onPressMomentType}
-      />
+    <View style={styles.momentsCardShadow} collapsable={false}>
+      <AdaptiveGlassSurface effect="regular" style={styles.momentsCard}>
+        <MomentCountsRow
+          counts={momentCounts}
+          layout="inline"
+          compact
+          dense
+          iconSize={12}
+          onPressType={onPressMomentType}
+        />
+      </AdaptiveGlassSurface>
     </View>
   ) : null;
 
@@ -411,28 +422,35 @@ const styles = StyleSheet.create({
     gap: 4,
     maxWidth: LABEL_MAX_WIDTH + 24,
   },
-  momentsCard: {
-    backgroundColor: '#FFFFFF',
+  momentsCardShadow: {
     borderRadius: 8,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.12,
     shadowRadius: 3,
     elevation: 3,
   },
-  labelCard: {
-    backgroundColor: '#FFFFFF',
+  momentsCard: {
+    borderRadius: 8,
+    overflow: 'hidden',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+  },
+  labelCardShadow: {
     borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
     maxWidth: LABEL_MAX_WIDTH + 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.14,
     shadowRadius: 5,
     elevation: 4,
+  },
+  labelCard: {
+    borderRadius: 10,
+    overflow: 'hidden',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    maxWidth: LABEL_MAX_WIDTH + 16,
   },
   numberBadge: {
     width: NUMBER_BADGE_SIZE,

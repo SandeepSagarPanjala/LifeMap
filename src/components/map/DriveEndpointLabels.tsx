@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { CheckeredFlagIcon } from '@/components/map/CheckeredFlagIcon';
 import { DriveEndpointPlaceRow } from '@/components/map/DriveEndpointPlaceRow';
+import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
 import { SavedPlaceIcon } from '@/components/map/SavedPlaceIcon';
 import type { DriveEndpointLabel } from '@/lib/drive-endpoint-label';
 import type { MapCoordinate } from '@/lib/location-geo';
@@ -36,17 +37,19 @@ type EndpointChipProps = {
 
 function EndpointChip({ caption, time, label }: EndpointChipProps) {
   return (
-    <View style={styles.chip}>
-      <Text style={styles.caption}>{caption}</Text>
-      <Text style={styles.timeText}>{formatTripClockTime(time)}</Text>
-      {label ? (
-        <DriveEndpointPlaceRow
-          label={label}
-          iconSize={12}
-          textStyle={styles.placeName}
-          numberOfLines={2}
-        />
-      ) : null}
+    <View style={styles.chipShadow}>
+      <AdaptiveGlassSurface effect="regular" style={styles.chip}>
+        <Text style={styles.caption}>{caption}</Text>
+        <Text style={styles.timeText}>{formatTripClockTime(time)}</Text>
+        {label ? (
+          <DriveEndpointPlaceRow
+            label={label}
+            iconSize={12}
+            textStyle={styles.placeName}
+            numberOfLines={2}
+          />
+        ) : null}
+      </AdaptiveGlassSurface>
     </View>
   );
 }
@@ -239,18 +242,21 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 4,
   },
-  chip: {
-    backgroundColor: '#FFFFFF',
+  chipShadow: {
     borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    alignItems: 'center',
-    maxWidth: 200,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.14,
     shadowRadius: 4,
     elevation: 4,
+  },
+  chip: {
+    borderRadius: 10,
+    overflow: 'hidden',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    alignItems: 'center',
+    maxWidth: 200,
   },
   caption: {
     fontSize: 10,

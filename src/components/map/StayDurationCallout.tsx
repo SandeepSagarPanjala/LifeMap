@@ -2,6 +2,7 @@ import { memo, useEffect, useMemo, useState } from 'react';
 import { Marker } from 'react-native-maps';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
 import { SavedPlaceIcon } from '@/components/map/SavedPlaceIcon';
 import { VisitPlaceKindIcon } from '@/components/map/VisitPlaceKindIcon';
 import { MomentCountsRow } from '@/components/moments/MomentCountsRow';
@@ -112,7 +113,7 @@ function StayDurationCalloutComponent({
 
   const bubble = (
     <View
-      style={styles.bubble}
+      style={styles.bubbleShadow}
       collapsable={false}
       onLayout={event => {
         onMarkerLayout();
@@ -122,46 +123,48 @@ function StayDurationCalloutComponent({
         }
       }}
     >
-      {showMomentCounts ? (
-        <>
-          <MomentCountsRow
-            counts={counts!}
-            onPressType={onPressMomentType}
-            layout="stacked"
-          />
-          <View style={styles.divider} />
-        </>
-      ) : null}
-
-      <View style={styles.body}>
-        {savedPlace ? (
-          <View style={styles.placeRow}>
-            <SavedPlaceIcon kind={savedPlace.kind} size={16} />
-            <Text style={styles.placeLabel} numberOfLines={1}>
-              {savedPlaceDisplayLabel(savedPlace)}
-            </Text>
-          </View>
-        ) : nearbyPlaceLabel ? (
-          <View style={styles.placeRow}>
-            <VisitPlaceKindIcon
-              pinned={nearbyPlacePinned}
-              category={nearbyPlaceCategory}
-              size={nearbyPlacePinned ? 12 : 14}
+      <AdaptiveGlassSurface effect="regular" style={styles.bubble}>
+        {showMomentCounts ? (
+          <>
+            <MomentCountsRow
+              counts={counts!}
+              onPressType={onPressMomentType}
+              layout="stacked"
             />
-            <Text style={styles.placeLabel} numberOfLines={1}>
-              {nearbyPlaceLabel}
-            </Text>
-          </View>
+            <View style={styles.divider} />
+          </>
         ) : null}
 
-        <Text style={styles.timeLine} numberOfLines={2}>
-          {visit.title}
-        </Text>
-        <Text style={styles.durationLine}>{visit.subtitle}</Text>
-        {visit.statusLine ? (
-          <Text style={styles.statusLine}>{visit.statusLine}</Text>
-        ) : null}
-      </View>
+        <View style={styles.body}>
+          {savedPlace ? (
+            <View style={styles.placeRow}>
+              <SavedPlaceIcon kind={savedPlace.kind} size={16} />
+              <Text style={styles.placeLabel} numberOfLines={1}>
+                {savedPlaceDisplayLabel(savedPlace)}
+              </Text>
+            </View>
+          ) : nearbyPlaceLabel ? (
+            <View style={styles.placeRow}>
+              <VisitPlaceKindIcon
+                pinned={nearbyPlacePinned}
+                category={nearbyPlaceCategory}
+                size={nearbyPlacePinned ? 12 : 14}
+              />
+              <Text style={styles.placeLabel} numberOfLines={1}>
+                {nearbyPlaceLabel}
+              </Text>
+            </View>
+          ) : null}
+
+          <Text style={styles.timeLine} numberOfLines={2}>
+            {visit.title}
+          </Text>
+          <Text style={styles.durationLine}>{visit.subtitle}</Text>
+          {visit.statusLine ? (
+            <Text style={styles.statusLine}>{visit.statusLine}</Text>
+          ) : null}
+        </View>
+      </AdaptiveGlassSurface>
     </View>
   );
 
@@ -229,22 +232,25 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 4,
   },
-  bubble: {
-    backgroundColor: '#FFFFFF',
+  bubbleShadow: {
     borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    maxWidth: 260,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.14,
     shadowRadius: 8,
     elevation: 5,
+  },
+  bubble: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    maxWidth: 260,
     gap: 8,
   },
   divider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: '#E5E5EA',
+    backgroundColor: 'rgba(60,60,67,0.18)',
   },
   body: {
     gap: 2,

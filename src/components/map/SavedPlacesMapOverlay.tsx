@@ -3,6 +3,7 @@ import { Marker } from 'react-native-maps';
 import { Fragment, memo, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
 import { SavedPlaceIcon } from '@/components/map/SavedPlaceIcon';
 import { MomentCountsRow } from '@/components/moments/MomentCountsRow';
 import type { SavedPlaceRow } from '@/db/repositories/saved-places';
@@ -95,8 +96,10 @@ const SavedPlaceMomentClusterMarker = memo(function SavedPlaceMomentClusterMarke
       onPress={onPress}
     >
       <View collapsable={false} onLayout={onLayout}>
-        <View style={styles.clusterBubble}>
-          <MomentCountsRow counts={counts} layout="stacked" dense />
+        <View style={styles.clusterBubbleShadow}>
+          <AdaptiveGlassSurface effect="regular" style={styles.clusterBubble}>
+            <MomentCountsRow counts={counts} layout="stacked" dense />
+          </AdaptiveGlassSurface>
         </View>
       </View>
     </Marker>
@@ -178,14 +181,19 @@ const SavedPlaceMarker = memo(function SavedPlaceMarker({
         <View style={badgeStyle}>
           <SavedPlaceIcon kind={place.kind} size={16} color={style.icon} />
         </View>
-        <View style={labelPillStyle}>
-          <Text
-            style={styles.labelText}
-            numberOfLines={1}
-            ellipsizeMode="tail"
+        <View style={styles.labelPillShadow}>
+          <AdaptiveGlassSurface
+            effect="regular"
+            style={labelPillStyle}
           >
-            {savedPlaceDisplayLabel(place)}
-          </Text>
+            <Text
+              style={styles.labelText}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {savedPlaceDisplayLabel(place)}
+            </Text>
+          </AdaptiveGlassSurface>
         </View>
       </View>
     </Marker>
@@ -269,16 +277,19 @@ const styles = StyleSheet.create({
     shadowRadius: 1.5,
     elevation: 2,
   },
-  clusterBubble: {
-    backgroundColor: '#FFFFFF',
+  clusterBubbleShadow: {
     borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.14,
     shadowRadius: 6,
     elevation: 4,
+  },
+  clusterBubble: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
   markerBadge: {
     width: MARKER_BADGE_SIZE,
@@ -293,19 +304,23 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 3,
   },
-  labelPill: {
+  labelPillShadow: {
     marginTop: MARKER_LABEL_GAP,
     maxWidth: MARKER_LABEL_MAX_WIDTH,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
     borderRadius: 6,
-    backgroundColor: '#FFFFFF',
-    borderWidth: StyleSheet.hairlineWidth,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
+  },
+  labelPill: {
+    maxWidth: MARKER_LABEL_MAX_WIDTH,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth,
   },
   labelText: {
     fontSize: 10,

@@ -24,7 +24,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { GlassSurface } from '@/components/glass/GlassSurface';
+import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
 import { ActivityForm } from '@/components/map/ActivityLogSheet';
 import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
 import {
@@ -308,7 +308,7 @@ export function ActivityFormScreen() {
         >
           <View style={styles.barRow}>
             <View style={styles.shadowWrap}>
-              <GlassSurface style={styles.pill}>
+              <AdaptiveGlassSurface style={styles.pill}>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={saveLabel}
@@ -329,7 +329,7 @@ export function ActivityFormScreen() {
                     </Text>
                   )}
                 </Pressable>
-              </GlassSurface>
+              </AdaptiveGlassSurface>
             </View>
 
             <MapGlassCircleButton

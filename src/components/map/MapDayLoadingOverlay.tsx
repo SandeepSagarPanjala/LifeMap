@@ -1,5 +1,6 @@
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
+import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
 import { Text } from '@/components/ui/text';
 
 type MapDayLoadingOverlayProps = {
@@ -17,9 +18,11 @@ export function MapDayLoadingOverlay({
 
   return (
     <View pointerEvents="none" style={styles.overlay}>
-      <View style={styles.card}>
-        <ActivityIndicator size="small" />
-        <Text className="mt-2 text-center text-sm font-medium">{label}</Text>
+      <View style={styles.cardShadow}>
+        <AdaptiveGlassSurface effect="regular" style={styles.card}>
+          <ActivityIndicator size="small" />
+          <Text className="mt-2 text-center text-sm font-medium">{label}</Text>
+        </AdaptiveGlassSurface>
       </View>
     </View>
   );
@@ -32,17 +35,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.45)',
   },
-  card: {
+  cardShadow: {
     minWidth: 160,
     borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.12,
     shadowRadius: 8,
     elevation: 4,
+  },
+  card: {
+    minWidth: 160,
+    borderRadius: 16,
+    overflow: 'hidden',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    alignItems: 'center',
   },
 });

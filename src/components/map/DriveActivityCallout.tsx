@@ -2,6 +2,7 @@ import { memo, useEffect, useMemo, useState } from 'react';
 import { Marker } from 'react-native-maps';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
 import { DriveEndpointPlaceRow } from '@/components/map/DriveEndpointPlaceRow';
 import { useMarkerTracksViewChanges } from '@/hooks/use-marker-tracks-view-changes';
 import type { DriveEndpointLabel } from '@/lib/drive-endpoint-label';
@@ -78,7 +79,7 @@ function DriveActivityCalloutComponent({
       tracksViewChanges={bubbleHeight === 0 && tracksViewChanges}
     >
       <View
-        style={styles.bubble}
+        style={styles.bubbleShadow}
         collapsable={false}
         onLayout={event => {
           onMarkerLayout();
@@ -88,34 +89,36 @@ function DriveActivityCalloutComponent({
           }
         }}
       >
-        <View style={styles.body}>
-          {showStart ? (
-            <DriveEndpointPlaceRow
-              label={startLabel}
-              iconSize={14}
-              textStyle={styles.routeText}
-              numberOfLines={1}
-            />
-          ) : null}
-          {showEnd ? (
-            <>
-              <Text style={styles.routeArrow}>→</Text>
+        <AdaptiveGlassSurface effect="regular" style={styles.bubble}>
+          <View style={styles.body}>
+            {showStart ? (
               <DriveEndpointPlaceRow
-                label={endLabel!}
+                label={startLabel}
                 iconSize={14}
                 textStyle={styles.routeText}
                 numberOfLines={1}
               />
-            </>
-          ) : null}
-          <Text style={styles.timeLine} numberOfLines={2}>
-            {drive.title}
-          </Text>
-          <Text style={styles.durationLine}>{drive.subtitle}</Text>
-          {drive.statusLine ? (
-            <Text style={styles.statusLine}>{drive.statusLine}</Text>
-          ) : null}
-        </View>
+            ) : null}
+            {showEnd ? (
+              <>
+                <Text style={styles.routeArrow}>→</Text>
+                <DriveEndpointPlaceRow
+                  label={endLabel!}
+                  iconSize={14}
+                  textStyle={styles.routeText}
+                  numberOfLines={1}
+                />
+              </>
+            ) : null}
+            <Text style={styles.timeLine} numberOfLines={2}>
+              {drive.title}
+            </Text>
+            <Text style={styles.durationLine}>{drive.subtitle}</Text>
+            {drive.statusLine ? (
+              <Text style={styles.statusLine}>{drive.statusLine}</Text>
+            ) : null}
+          </View>
+        </AdaptiveGlassSurface>
       </View>
     </Marker>
   );
@@ -124,17 +127,20 @@ function DriveActivityCalloutComponent({
 export const DriveActivityCallout = memo(DriveActivityCalloutComponent);
 
 const styles = StyleSheet.create({
-  bubble: {
-    backgroundColor: '#FFFFFF',
+  bubbleShadow: {
     borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    maxWidth: 260,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.14,
     shadowRadius: 8,
     elevation: 5,
+  },
+  bubble: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    maxWidth: 260,
   },
   body: {
     gap: 2,
