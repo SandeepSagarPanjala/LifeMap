@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ComponentRef } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Keyboard, Pressable, StyleSheet, View } from 'react-native';
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 
 import { AppBottomSheet } from '@/components/ui/app-bottom-sheet';
@@ -130,6 +130,7 @@ export function ProfileEditSheet({
           },
         ]}
         returnKeyType="done"
+        onSubmitEditing={Keyboard.dismiss}
       />
       {nameLocked ? (
         <Text variant="muted" className="mt-1 text-xs">

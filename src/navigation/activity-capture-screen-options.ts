@@ -1,5 +1,17 @@
-import { NATIVE_HALF_SHEET_HEIGHT_RATIO } from '@/lib/app-constants';
+import {
+  ACTIVITY_ADVANCED_SHEET_HEIGHT_RATIO,
+  ACTIVITY_KEYBOARD_SHEET_HEIGHT_RATIO,
+  NATIVE_HALF_SHEET_HEIGHT_RATIO,
+} from '@/lib/app-constants';
 import { nativeHalfSheetCaptureScreenOptions } from '@/navigation/native-half-sheet-capture-options';
 
 export const ACTIVITY_SHEET_HEIGHT_RATIO = NATIVE_HALF_SHEET_HEIGHT_RATIO;
+export const ACTIVITY_FORM_ADVANCED_HEIGHT_RATIO =
+  ACTIVITY_ADVANCED_SHEET_HEIGHT_RATIO;
+export const ACTIVITY_FORM_KEYBOARD_HEIGHT_RATIO =
+  ACTIVITY_KEYBOARD_SHEET_HEIGHT_RATIO;
+export const ACTIVITY_CATALOG_HEIGHT_RATIO =
+  ACTIVITY_ADVANCED_SHEET_HEIGHT_RATIO;
+export const ACTIVITY_LOG_ENTRY_HEIGHT_RATIO =
+  ACTIVITY_ADVANCED_SHEET_HEIGHT_RATIO;
 export const activityCaptureScreenOptions = nativeHalfSheetCaptureScreenOptions;

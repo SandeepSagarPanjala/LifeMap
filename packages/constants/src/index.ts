@@ -152,6 +152,10 @@ export const HISTORY_DATA_CACHE_MAX_ENTRIES = 5;
 export const NATIVE_HALF_SHEET_HEIGHT_RATIO = 0.5;
 export const HISTORY_DATE_PICKER_HEIGHT_RATIO = 0.55;
 export const VOICE_SHEET_HEIGHT_RATIO = 0.34;
+/** Activity form / templates / structured log when advanced fields need room. */
+export const ACTIVITY_ADVANCED_SHEET_HEIGHT_RATIO = 0.78;
+/** Activity form while the software keyboard is open. */
+export const ACTIVITY_KEYBOARD_SHEET_HEIGHT_RATIO = 0.92;
 
 // ——— Trip playback & geometry ———
 

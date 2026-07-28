@@ -9,14 +9,13 @@ import {
 import {
   Alert,
   Keyboard,
+  Modal,
   Pressable,
   StyleSheet,
+  TextInput,
   View,
 } from 'react-native';
-import {
-  BottomSheetTextInput,
-  type BottomSheetModal,
-} from '@gorhom/bottom-sheet';
+import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import { GripVertical, Plus, Trash2 } from 'lucide-react-native';
 import { Camera } from 'phosphor-react-native/src/icons/Camera';
 import { CurrencyDollar } from 'phosphor-react-native/src/icons/CurrencyDollar';
@@ -26,13 +25,11 @@ import { Receipt } from 'phosphor-react-native/src/icons/Receipt';
 import { TextT } from 'phosphor-react-native/src/icons/TextT';
 import { Timer } from 'phosphor-react-native/src/icons/Timer';
 import { ToggleLeft } from 'phosphor-react-native/src/icons/ToggleLeft';
-import {
-  NestableDraggableFlatList,
+import DraggableFlatList, {
   ScaleDecorator,
   type RenderItemParams,
 } from 'react-native-draggable-flatlist';
 
-import { AppBottomSheet } from '@/components/ui/app-bottom-sheet';
 import { Text } from '@/components/ui/text';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import type {
@@ -151,33 +148,49 @@ function toRows(fields: ActivityFieldDefinition[]): FieldRow[] {
 type ActivityFieldsEditorProps = {
   fields: ActivityFieldDefinition[];
   onChangeFields: (fields: ActivityFieldDefinition[]) => void;
+  /** Use Gorhom BottomSheetTextInput inside AppBottomSheet. */
+  sheetInputs?: boolean;
+  onInputFocus?: (event: {
+    target?: unknown;
+    currentTarget?: unknown;
+  }) => void;
 };
 
 export type ActivityFieldsEditorHandle = {
-  /** Dismiss nested sheets (e.g. Add field picker). Returns true if one was open. */
+  /** Dismiss nested sheets / reorder mode. Returns true if something was open. */
   dismissNested: () => boolean;
 };
 
 export const ActivityFieldsEditor = forwardRef<
   ActivityFieldsEditorHandle,
   ActivityFieldsEditorProps
->(function ActivityFieldsEditor({ fields, onChangeFields }, ref) {
+>(function ActivityFieldsEditor(
+  { fields, onChangeFields, sheetInputs = false, onInputFocus },
+  ref,
+) {
+  const FieldInput = sheetInputs ? BottomSheetTextInput : TextInput;
   const colors = useThemeColors();
   const [pickerOpen, setPickerOpen] = useState(false);
-  const pickerRef = useRef<BottomSheetModal>(null);
+  const [reorderMode, setReorderMode] = useState(false);
   const pickerOpenRef = useRef(false);
+  const reorderModeRef = useRef(false);
   pickerOpenRef.current = pickerOpen;
+  reorderModeRef.current = reorderMode;
 
   useImperativeHandle(
     ref,
     () => ({
       dismissNested: () => {
-        if (!pickerOpenRef.current) {
-          return false;
+        let dismissed = false;
+        if (pickerOpenRef.current) {
+          setPickerOpen(false);
+          dismissed = true;
         }
-        pickerRef.current?.dismiss();
-        setPickerOpen(false);
-        return true;
+        if (reorderModeRef.current) {
+          setReorderMode(false);
+          dismissed = true;
+        }
+        return dismissed;
       },
     }),
     [],
@@ -185,8 +198,12 @@ export const ActivityFieldsEditor = forwardRef<
 
   const rows = useMemo(() => toRows(fields), [fields]);
   const canAddField = rows.length < MAX_FIELDS;
+  const canReorder = rows.length > 1;
 
   const openPicker = useCallback(() => {
+    if (reorderMode) {
+      return;
+    }
     if (!canAddField) {
       Alert.alert(
         'Field limit reached',
@@ -196,14 +213,26 @@ export const ActivityFieldsEditor = forwardRef<
     }
     Keyboard.dismiss();
     setPickerOpen(true);
-  }, [canAddField]);
+  }, [canAddField, reorderMode]);
+
+  const enterReorderMode = useCallback(() => {
+    if (!canReorder) {
+      return;
+    }
+    Keyboard.dismiss();
+    setPickerOpen(false);
+    setReorderMode(true);
+  }, [canReorder]);
+
+  const exitReorderMode = useCallback(() => {
+    setReorderMode(false);
+  }, []);
 
   const updateField = useCallback(
     (index: number, patch: Partial<ActivityFieldDefinition>) => {
-      const next = fields.map((field, fieldIndex) =>
-        fieldIndex === index ? { ...field, ...patch } : field,
+      onChangeFields(
+        fields.map((field, i) => (i === index ? { ...field, ...patch } : field)),
       );
-      onChangeFields(next);
     },
     [fields, onChangeFields],
   );
@@ -214,7 +243,7 @@ export const ActivityFieldsEditor = forwardRef<
       if (removed == null) {
         return;
       }
-      let next = fields.filter((_, fieldIndex) => fieldIndex !== index);
+      let next = fields.filter((_, i) => i !== index);
       if (removed.type === 'scan' && removed.fillField) {
         const moneyId = removed.fillField;
         const stillLinked = next.some(
@@ -311,9 +340,8 @@ export const ActivityFieldsEditor = forwardRef<
     [fields, onChangeFields],
   );
 
-  const renderItem = useCallback(
-    ({ item, drag, isActive, getIndex }: RenderItemParams<FieldRow>) => {
-      const index = getIndex() ?? 0;
+  const renderEditCard = useCallback(
+    (item: FieldRow, index: number) => {
       const { label: typeLabel, Icon: TypeIcon } = TYPE_META[item.type];
       const linkedMoney =
         item.type === 'scan' && item.fillField
@@ -326,104 +354,133 @@ export const ActivityFieldsEditor = forwardRef<
         );
 
       return (
-        <ScaleDecorator activeScale={1.02}>
-          <View
-            style={[styles.card, isActive ? styles.cardDragging : null]}
-          >
-            <View style={styles.cardHeader}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Drag to reorder ${item.label}`}
-                onPressIn={drag}
-                hitSlop={6}
-                style={styles.dragHandle}
+        <View key={item.key} style={styles.card}>
+          <View style={styles.cardHeader}>
+            <View style={styles.typeBadge}>
+              <TypeIcon size={14} color="#15803D" weight="duotone" />
+              <Text style={styles.typeBadgeLabel}>{typeLabel}</Text>
+            </View>
+            <View style={styles.headerSpacer} />
+            <Pressable
+              accessibilityRole="switch"
+              accessibilityState={{ checked: item.required }}
+              accessibilityLabel="Required"
+              onPress={() =>
+                updateField(index, { required: !item.required })
+              }
+              hitSlop={6}
+              style={styles.requiredToggle}
+            >
+              <Text style={styles.requiredToggleLabel}>Required</Text>
+              <View
+                style={[
+                  styles.requiredTrack,
+                  item.required ? styles.requiredTrackOn : null,
+                ]}
               >
-                <GripVertical size={18} color="#8E8E93" strokeWidth={2.25} />
-              </Pressable>
-              <View style={styles.typeBadge}>
-                <TypeIcon size={14} color="#15803D" weight="duotone" />
-                <Text style={styles.typeBadgeLabel}>{typeLabel}</Text>
-              </View>
-              <View style={styles.headerSpacer} />
-              <Pressable
-                accessibilityRole="switch"
-                accessibilityState={{ checked: item.required }}
-                accessibilityLabel="Required"
-                onPress={() =>
-                  updateField(index, { required: !item.required })
-                }
-                hitSlop={6}
-                style={styles.requiredToggle}
-              >
-                <Text style={styles.requiredToggleLabel}>Required</Text>
                 <View
                   style={[
-                    styles.requiredTrack,
-                    item.required ? styles.requiredTrackOn : null,
+                    styles.requiredThumb,
+                    item.required ? styles.requiredThumbOn : null,
                   ]}
-                >
-                  <View
-                    style={[
-                      styles.requiredThumb,
-                      item.required ? styles.requiredThumbOn : null,
-                    ]}
-                  />
-                </View>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Remove ${item.label}`}
-                onPress={() => removeField(index)}
-                hitSlop={8}
-                style={styles.deleteButton}
-              >
-                <Trash2 size={16} color="#FF3B30" strokeWidth={2.25} />
-              </Pressable>
-            </View>
+                />
+              </View>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Remove ${item.label}`}
+              onPress={() => removeField(index)}
+              hitSlop={8}
+              style={styles.deleteButton}
+            >
+              <Trash2 size={16} color="#FF3B30" strokeWidth={2.25} />
+            </Pressable>
+          </View>
 
-            <BottomSheetTextInput
-              value={item.label}
-              onChangeText={text => updateField(index, { label: text })}
-              style={styles.labelInput}
-              placeholder="Label"
+          <FieldInput
+            value={item.label}
+            onChangeText={text => updateField(index, { label: text })}
+            onFocus={onInputFocus}
+            style={styles.labelInput}
+            placeholder="Label"
+            placeholderTextColor="#8E8E93"
+            returnKeyType="done"
+            onSubmitEditing={Keyboard.dismiss}
+          />
+
+          {item.type === 'choice' ? (
+            <FieldInput
+              value={(item.options ?? []).join(', ')}
+              onChangeText={text =>
+                updateField(index, {
+                  options: text
+                    .split(',')
+                    .map(part => part.trim())
+                    .filter(Boolean),
+                })
+              }
+              onFocus={onInputFocus}
+              style={styles.optionsInput}
+              placeholder="Options: Back, Chest, Legs"
               placeholderTextColor="#8E8E93"
+              returnKeyType="done"
+              onSubmitEditing={Keyboard.dismiss}
             />
+          ) : null}
 
-            {item.type === 'choice' ? (
-              <BottomSheetTextInput
-                value={(item.options ?? []).join(', ')}
-                onChangeText={text =>
-                  updateField(index, {
-                    options: text
-                      .split(',')
-                      .map(part => part.trim())
-                      .filter(Boolean),
-                  })
-                }
-                style={styles.optionsInput}
-                placeholder="Options: Back, Chest, Legs"
-                placeholderTextColor="#8E8E93"
-              />
-            ) : null}
+          {item.type === 'scan' ? (
+            <Text style={styles.linkedHint}>
+              {linkedMoney
+                ? `Reads the total into “${linkedMoney.label}”.`
+                : 'Add an Amount control to save the total.'}
+            </Text>
+          ) : null}
 
-            {item.type === 'scan' ? (
-              <Text style={styles.linkedHint}>
-                {linkedMoney
-                  ? `Reads the total into “${linkedMoney.label}”.`
-                  : 'Add an Amount control to save the total.'}
-              </Text>
-            ) : null}
+          {filledFromBill ? (
+            <Text style={styles.linkedHint}>
+              Filled from the Bill photo when you log.
+            </Text>
+          ) : null}
+        </View>
+      );
+    },
+    [FieldInput, fields, onInputFocus, removeField, updateField],
+  );
 
-            {filledFromBill ? (
-              <Text style={styles.linkedHint}>
-                Filled from the Bill photo when you log.
-              </Text>
-            ) : null}
+  const renderReorderItem = useCallback(
+    ({ item, drag, isActive }: RenderItemParams<FieldRow>) => {
+      const { label: typeLabel, Icon: TypeIcon } = TYPE_META[item.type];
+      return (
+        <ScaleDecorator activeScale={1.02}>
+          <View style={[styles.reorderCard, isActive ? styles.cardDragging : null]}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Drag to reorder ${item.label}`}
+              onPressIn={drag}
+              hitSlop={8}
+              style={styles.dragHandle}
+            >
+              <GripVertical size={18} color="#8E8E93" strokeWidth={2.25} />
+            </Pressable>
+            <View style={styles.typeBadge}>
+              <TypeIcon size={14} color="#15803D" weight="duotone" />
+              <Text style={styles.typeBadgeLabel}>{typeLabel}</Text>
+            </View>
+            <Text style={styles.reorderLabel} numberOfLines={1}>
+              {item.label}
+            </Text>
           </View>
         </ScaleDecorator>
       );
     },
-    [fields, removeField, updateField],
+    [],
+  );
+
+  const onDragEnd = useCallback(
+    ({ data }: { data: FieldRow[] }) => {
+      onChangeFields(data.map(({ key: _key, ...field }) => field));
+    },
+    [onChangeFields],
   );
 
   return (
@@ -432,79 +489,112 @@ export const ActivityFieldsEditor = forwardRef<
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionLabel}>Advanced</Text>
           <Text style={styles.optionalBadge}>Optional</Text>
+          <View style={styles.headerSpacer} />
+          {canReorder ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={
+                reorderMode ? 'Done reordering' : 'Reorder fields'
+              }
+              onPress={reorderMode ? exitReorderMode : enterReorderMode}
+              hitSlop={8}
+              style={styles.reorderToggle}
+            >
+              <Text
+                style={[
+                  styles.reorderToggleLabel,
+                  { color: colors.primary },
+                ]}
+              >
+                {reorderMode ? 'Done' : 'Reorder'}
+              </Text>
+            </Pressable>
+          ) : null}
         </View>
         <Text style={styles.hint} numberOfLines={1}>
-          Extra fields when logging (photo, amount, notes, etc)
+          {reorderMode
+            ? 'Drag handles to change order'
+            : 'Extra fields when logging (photo, amount, notes, etc)'}
         </Text>
 
         {rows.length > 0 ? (
-          <NestableDraggableFlatList
-            data={rows}
-            keyExtractor={item => item.key}
-            onDragEnd={({ data }) => {
-              onChangeFields(
-                data.map(({ key: _key, ...field }) => field),
-              );
-            }}
-            renderItem={renderItem}
-            scrollEnabled={false}
-            activationDistance={8}
-            containerStyle={styles.list}
-            showsVerticalScrollIndicator={false}
-          />
+          reorderMode ? (
+            <DraggableFlatList
+              data={rows}
+              keyExtractor={item => item.key}
+              onDragEnd={onDragEnd}
+              renderItem={renderReorderItem}
+              scrollEnabled={false}
+              activationDistance={8}
+              containerStyle={styles.list}
+              showsVerticalScrollIndicator={false}
+            />
+          ) : (
+            <View style={styles.list}>
+              {rows.map((item, index) => renderEditCard(item, index))}
+            </View>
+          )
         ) : null}
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Add field"
-          onPress={openPicker}
-          style={[styles.addButton, { backgroundColor: ACTIVITY_TINT }]}
-        >
-          <Plus size={15} color={colors.primary} strokeWidth={2.5} />
-          <Text style={[styles.addButtonLabel, { color: colors.primary }]}>
-            Add field
-          </Text>
-        </Pressable>
+        {reorderMode ? null : (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Add field"
+            onPress={openPicker}
+            style={[styles.addButton, { backgroundColor: ACTIVITY_TINT }]}
+          >
+            <Plus size={15} color={colors.primary} strokeWidth={2.5} />
+            <Text style={[styles.addButtonLabel, { color: colors.primary }]}>
+              Add field
+            </Text>
+          </Pressable>
+        )}
       </View>
 
-      <AppBottomSheet
-        name="activity-control-picker"
+      <Modal
         visible={pickerOpen}
-        bottomSheetRef={pickerRef}
-        onClose={() => setPickerOpen(false)}
-        instantPresent
-        stackBehavior="push"
-        enableDynamicSizing
-        footerPadding={16}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPickerOpen(false)}
       >
-        <View style={styles.pickerBody}>
-          <Text variant="h4" className="border-0 pb-0">
-            Add field
-          </Text>
-          <Text variant="muted" className="mt-1 text-sm">
-            Choose what to collect when logging this activity.
-          </Text>
-          <View style={styles.pickerList}>
-            {PICKER_OPTIONS.map(({ type, label, hint, Icon }) => (
-              <Pressable
-                key={type}
-                accessibilityRole="button"
-                accessibilityLabel={label}
-                onPress={() => addControl(type)}
-                style={styles.pickerRow}
-              >
-                <View style={styles.pickerIcon}>
-                  <Icon size={18} color="#15803D" weight="duotone" />
-                </View>
-                <View style={styles.pickerRowText}>
-                  <Text style={styles.pickerLabel}>{label}</Text>
-                  <Text style={styles.pickerHint}>{hint}</Text>
-                </View>
-              </Pressable>
-            ))}
+        <View style={styles.pickerModalRoot}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss field picker"
+            style={styles.pickerBackdrop}
+            onPress={() => setPickerOpen(false)}
+          />
+          <View style={styles.pickerSheet}>
+            <View style={styles.pickerBody}>
+              <Text variant="h4" className="border-0 pb-0">
+                Add field
+              </Text>
+              <Text variant="muted" className="mt-1 text-sm">
+                Choose what to collect when logging this activity.
+              </Text>
+              <View style={styles.pickerList}>
+                {PICKER_OPTIONS.map(({ type, label, hint, Icon }) => (
+                  <Pressable
+                    key={type}
+                    accessibilityRole="button"
+                    accessibilityLabel={label}
+                    onPress={() => addControl(type)}
+                    style={styles.pickerRow}
+                  >
+                    <View style={styles.pickerIcon}>
+                      <Icon size={18} color="#15803D" weight="duotone" />
+                    </View>
+                    <View style={styles.pickerRowText}>
+                      <Text style={styles.pickerLabel}>{label}</Text>
+                      <Text style={styles.pickerHint}>{hint}</Text>
+                    </View>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
           </View>
         </View>
-      </AppBottomSheet>
+      </Modal>
     </View>
   );
 });
@@ -526,6 +616,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+  },
+  reorderToggle: {
+    paddingVertical: 2,
+    paddingHorizontal: 2,
+  },
+  reorderToggleLabel: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   sectionLabel: {
     fontSize: 13,
@@ -567,6 +665,24 @@ const styles = StyleSheet.create({
     gap: 6,
     backgroundColor: '#FFFFFF',
     marginBottom: 6,
+  },
+  reorderCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#E5E5EA',
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    backgroundColor: '#FFFFFF',
+    marginBottom: 6,
+  },
+  reorderLabel: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#1C1C1E',
   },
   cardDragging: {
     shadowColor: '#000',
@@ -658,6 +774,22 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#8E8E93',
     lineHeight: 15,
+  },
+  pickerModalRoot: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  pickerBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  pickerSheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 28,
   },
   pickerBody: {
     gap: 4,

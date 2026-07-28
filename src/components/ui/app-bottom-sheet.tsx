@@ -81,6 +81,8 @@ type AppBottomSheetProps = {
   releaseTouchesWhileClosing?: boolean;
   /** Override default bottom content padding (defaults to safe area). */
   footerPadding?: number;
+  /** Sticky footer that stays above the keyboard (Gorhom BottomSheetFooter). */
+  footerComponent?: BottomSheetModalProps['footerComponent'];
   /** When false, backdrop taps won't blur the keyboard (e.g. show discard alert first). */
   enableBlurKeyboardOnGesture?: boolean;
 };
@@ -110,6 +112,7 @@ export function AppBottomSheet({
   closeOnAnimateOut = false,
   releaseTouchesWhileClosing = false,
   footerPadding,
+  footerComponent,
   enableBlurKeyboardOnGesture = true,
 }: AppBottomSheetProps) {
   const ref = useRef<BottomSheetModalType>(null);
@@ -355,6 +358,7 @@ export function AppBottomSheet({
       keyboardBlurBehavior={keyboardBlurBehavior}
       android_keyboardInputMode="adjustResize"
       stackBehavior={stackBehavior}
+      footerComponent={footerComponent}
       containerStyle={modalContainerStyle}
       handleIndicatorStyle={styles.handle}
       backgroundStyle={styles.background}

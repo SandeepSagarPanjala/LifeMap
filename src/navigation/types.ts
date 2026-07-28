@@ -20,6 +20,12 @@ export type RootStackParamList = {
   CapturePhoto: undefined;
   CaptureVoice: undefined;
   CaptureActivity: undefined;
+  ActivityManage: { openCreate?: boolean } | undefined;
+  ActivityForm:
+    | { kind: 'create' }
+    | { kind: 'create-first' }
+    | { kind: 'edit'; activityId: number };
+  ActivityLogEntry: { activityId: number };
   HistoryDatePicker: undefined;
   SavedPlaces: undefined;
   MomentPreview: undefined;

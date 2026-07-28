@@ -1,9 +1,19 @@
 import { useEffect, useState, type ComponentRef, type RefObject } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
+import { Check, X } from 'lucide-react-native';
 
+import { GlassSurface } from '@/components/glass/GlassSurface';
+import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
 import { Text } from '@/components/ui/text';
-import { MAX_SAVED_PLACE_LABEL_LENGTH } from '@/lib/app-constants';
+import {
+  MAP_MOMENTS_BAR_GAP,
+  MAP_MOMENTS_BAR_HEIGHT,
+  MAP_MOMENTS_SIDE_BTN_GAP,
+  MAP_STACK_BUTTON_SIZE,
+  MAX_SAVED_PLACE_LABEL_LENGTH,
+} from '@/lib/app-constants';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 
 type EditFavoriteLabelPanelProps = {
   initialValue?: string;
@@ -18,6 +28,7 @@ export function EditFavoriteLabelPanel({
   onClose,
   onSave,
 }: EditFavoriteLabelPanelProps) {
+  const colors = useThemeColors();
   const [value, setValue] = useState(initialValue);
 
   useEffect(() => {
@@ -52,28 +63,40 @@ export function EditFavoriteLabelPanel({
           }
         }}
       />
-      <View style={styles.actions}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Cancel rename"
-          onPress={onClose}
-          style={[styles.button, styles.cancelButton]}
-        >
-          <Text className="font-medium">Cancel</Text>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Save favorite name"
-          disabled={!canSave}
-          onPress={() => onSave(trimmed)}
-          style={[
-            styles.button,
-            styles.saveButton,
-            !canSave && styles.saveButtonDisabled,
-          ]}
-        >
-          <Text className="font-semibold text-white">Save</Text>
-        </Pressable>
+
+      <View
+        pointerEvents="box-none"
+        style={[styles.barWrap, { paddingBottom: MAP_MOMENTS_BAR_GAP }]}
+      >
+        <View style={styles.barRow}>
+          <View style={styles.shadowWrap}>
+            <GlassSurface style={styles.pill}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Save favorite name"
+                disabled={!canSave}
+                onPress={() => onSave(trimmed)}
+                style={[
+                  styles.savePressable,
+                  !canSave ? styles.savePressableDisabled : null,
+                ]}
+              >
+                <Check size={16} color={colors.primary} strokeWidth={2.5} />
+                <Text style={[styles.saveLabel, { color: colors.primary }]}>
+                  Save
+                </Text>
+              </Pressable>
+            </GlassSurface>
+          </View>
+
+          <MapGlassCircleButton
+            accessibilityLabel="Close"
+            onPress={onClose}
+            style={styles.closeButton}
+          >
+            <X size={20} color={colors.primary} strokeWidth={2.25} />
+          </MapGlassCircleButton>
+        </View>
       </View>
     </View>
   );
@@ -90,25 +113,49 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1C1C1E',
   },
-  actions: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 16,
-  },
-  button: {
-    flex: 1,
+  barWrap: {
+    marginTop: 20,
     alignItems: 'center',
+  },
+  barRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: MAP_MOMENTS_SIDE_BTN_GAP,
+  },
+  shadowWrap: {
+    borderRadius: MAP_MOMENTS_BAR_HEIGHT / 2,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.16,
+        shadowRadius: 14,
+      },
+      android: { elevation: 10 },
+    }),
+  },
+  pill: {
+    height: MAP_MOMENTS_BAR_HEIGHT,
+    borderRadius: MAP_MOMENTS_BAR_HEIGHT / 2,
+    overflow: 'hidden',
     justifyContent: 'center',
-    borderRadius: 12,
-    paddingVertical: 12,
   },
-  cancelButton: {
-    backgroundColor: '#F2F2F7',
+  savePressable: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    height: MAP_MOMENTS_BAR_HEIGHT,
+    paddingHorizontal: 18,
   },
-  saveButton: {
-    backgroundColor: '#6B4EFF',
+  savePressableDisabled: {
+    opacity: 0.4,
   },
-  saveButtonDisabled: {
-    opacity: 0.45,
+  saveLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  closeButton: {
+    width: MAP_STACK_BUTTON_SIZE,
+    height: MAP_STACK_BUTTON_SIZE,
   },
 });

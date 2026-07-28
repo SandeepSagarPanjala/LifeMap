@@ -12,6 +12,9 @@ import type { RootStackParamList } from '@/navigation/types';
 import { withFeatureErrorBoundary } from '@/components/error-boundary';
 import { BenchmarkScreen } from '@/screens/benchmark/BenchmarkScreen';
 import { CaptureActivityScreen } from '@/screens/capture/CaptureActivityScreen';
+import { ActivityFormScreen } from '@/screens/capture/ActivityFormScreen';
+import { ActivityLogEntryScreen } from '@/screens/capture/ActivityLogEntryScreen';
+import { ActivityManageScreen } from '@/screens/capture/ActivityManageScreen';
 import { CaptureNoteScreen } from '@/screens/capture/CaptureNoteScreen';
 import { CapturePhotoScreen } from '@/screens/capture/CapturePhotoScreen';
 import { CaptureVoiceScreen } from '@/screens/capture/CaptureVoiceScreen';
@@ -195,6 +198,30 @@ export function RootNavigator() {
           name="CaptureActivity"
           component={CaptureActivityScreen}
           options={activityCaptureScreenOptions}
+        />
+        <Stack.Screen
+          name="ActivityManage"
+          component={ActivityManageScreen}
+          options={{
+            headerShown: false,
+            presentation: 'card',
+          }}
+        />
+        <Stack.Screen
+          name="ActivityForm"
+          component={ActivityFormScreen}
+          options={{
+            headerShown: false,
+            presentation: 'card',
+          }}
+        />
+        <Stack.Screen
+          name="ActivityLogEntry"
+          component={ActivityLogEntryScreen}
+          options={{
+            headerShown: false,
+            presentation: 'card',
+          }}
         />
         <Stack.Screen
           name="HistoryDatePicker"

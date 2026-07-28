@@ -34,7 +34,18 @@ class TextRecognizeModule: NSObject {
         return
       }
 
-      let observations = (request.results as? [VNRecognizedTextObservation]) ?? []
+      let observations = ((request.results as? [VNRecognizedTextObservation]) ?? [])
+        // Vision does not guarantee reading order — sort top→bottom, then left→right
+        // so "Total" sits below "Subtotal" like on the receipt.
+        .sorted { a, b in
+          let ay = a.boundingBox.midY
+          let by = b.boundingBox.midY
+          if abs(ay - by) > 0.008 {
+            return ay > by
+          }
+          return a.boundingBox.minX < b.boundingBox.minX
+        }
+
       var lines: [String] = []
       for observation in observations {
         if let top = observation.topCandidates(1).first {

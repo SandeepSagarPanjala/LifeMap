@@ -167,6 +167,75 @@ Total $15.50
     expect(parseAmountFromOcrText(text)).toBe(15.5);
   });
 
+  it('prefers total over larger subtotal when labels and amounts split lines', () => {
+    // DoorDash-style: discounted total is smaller than subtotal; OCR often
+    // emits the label and the "$xx.xx" on separate lines.
+    const text = `
+Subtotal
+$22.48
+Delivery Fee
+$0.00
+Service Fee
+$1.12
+Estimated Tax
+$0.93
+Discount
+-$11.24
+DoorDash Credits
+-$0.65
+Dasher Tip
+$2.00
+Total
+$14.64
+`;
+    expect(parseAmountFromOcrText(text)).toBe(14.64);
+  });
+
+  it('prefers the total that appears after subtotal in reading order', () => {
+    const text = `
+Subtotal
+$22.48
+Delivery Fee
+$0.00
+Service Fee
+$1.12
+Total
+$25.85
+`;
+    expect(parseAmountFromOcrText(text)).toBe(25.85);
+  });
+
+  it('does not treat Sub Total as Total', () => {
+    expect(parseAmountFromOcrText('Sub Total $22.48')).toBeNull();
+    expect(
+      parseAmountFromOcrText('Sub Total $22.48 Delivery Fee $0.99 Total $25.85'),
+    ).toBe(25.85);
+  });
+
+  it('prefers total when both subtotal and total have currency on the same line', () => {
+    const text = `
+Subtotal $22.48
+Total $14.64
+`;
+    expect(parseAmountFromOcrText(text)).toBe(14.64);
+  });
+
+  it('finds total in concatenated OCR that also contains subtotal', () => {
+    const text =
+      'Subtotal $22.48 Delivery Fee $0.99 Service Fee $2.37 Estimated Tax $0.93 Total $25.85';
+    expect(parseAmountFromOcrText(text)).toBe(25.85);
+  });
+
+  it('does not fall back to subtotal when total is missing on a bill', () => {
+    const text = `
+Subtotal $22.48
+Delivery Fee $0.99
+Service Fee $2.37
+Estimated Tax $0.93
+`;
+    expect(parseAmountFromOcrText(text)).toBeNull();
+  });
+
   it('accepts currency amount without total keyword', () => {
     expect(parseAmountFromOcrText('Paid $42.00 today')).toBe(42);
   });

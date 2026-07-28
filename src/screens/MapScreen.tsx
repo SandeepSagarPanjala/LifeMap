@@ -1,8 +1,9 @@
 import { memo, useEffect } from 'react';
-import { InteractionManager, View } from 'react-native';
+import { View } from 'react-native';
 
 import { BackgroundWorkBanner } from '@/components/background-work/BackgroundWorkBanner';
 import { SavePlaceSheet } from '@/components/map/SavePlaceSheet';
+import { runWhenIdle } from '@/lib/run-when-idle';
 import { warmYouScreen } from '@/lib/you/warm-you-screen';
 
 import { MapHistoryPanel } from './map/MapHistoryPanel';
@@ -54,7 +55,7 @@ export function MapScreen() {
   const { controller, playbackProgress } = useMapScreenController();
 
   useEffect(() => {
-    const task = InteractionManager.runAfterInteractions(() => {
+    const task = runWhenIdle(() => {
       warmYouScreen();
     });
     return () => task.cancel();

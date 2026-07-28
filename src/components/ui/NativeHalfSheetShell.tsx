@@ -17,6 +17,9 @@ import { NativeHalfSheetCloseContext } from '@/components/ui/native-half-sheet-c
 
 const BACKDROP_FADE_MS = 220;
 const SHEET_SLIDE_MS = 280;
+/** Ignore backdrop taps briefly after content/height swaps so a finger-up
+ *  on the newly exposed backdrop cannot dismiss the whole Activity screen. */
+const BACKDROP_DISMISS_LOCK_MS = 400;
 
 type NativeHalfSheetShellProps = {
   children: ReactNode;
@@ -26,6 +29,11 @@ type NativeHalfSheetShellProps = {
   heightRatio?: number;
   /** When false, backdrop taps are ignored (e.g. gorhom overlay is open). */
   backdropDismissEnabled?: boolean;
+  /** Sync check — preferred over `backdropDismissEnabled` when a same-tap
+   *  fallthrough can race React state by one frame. */
+  isBackdropDismissAllowed?: () => boolean;
+  /** Return true if the backdrop press was handled (do not close the shell). */
+  onBackdropPress?: () => boolean;
   /** Fires once after the open slide finishes. */
   onOpened?: () => void;
 };
@@ -36,18 +44,47 @@ export function NativeHalfSheetShell({
   onClose,
   heightRatio = 0.5,
   backdropDismissEnabled = true,
+  isBackdropDismissAllowed,
+  onBackdropPress,
   onOpened,
 }: NativeHalfSheetShellProps) {
   const { height: windowHeight } = useWindowDimensions();
-  const sheetHeight = windowHeight * heightRatio;
+  const targetSheetHeight = windowHeight * heightRatio;
   const closingRef = useRef(false);
   const didOpenRef = useRef(false);
+  const backdropLockUntilRef = useRef(0);
   const onOpenedRef = useRef(onOpened);
   onOpenedRef.current = onOpened;
+  const backdropDismissEnabledRef = useRef(backdropDismissEnabled);
+  backdropDismissEnabledRef.current = backdropDismissEnabled;
+  const isBackdropDismissAllowedRef = useRef(isBackdropDismissAllowed);
+  isBackdropDismissAllowedRef.current = isBackdropDismissAllowed;
+  const onBackdropPressRef = useRef(onBackdropPress);
+  onBackdropPressRef.current = onBackdropPress;
   const [isClosing, setIsClosing] = useState(false);
 
   const backdropOpacity = useSharedValue(0);
-  const sheetTranslateY = useSharedValue(sheetHeight);
+  const sheetHeightSV = useSharedValue(targetSheetHeight);
+  const sheetTranslateY = useSharedValue(targetSheetHeight);
+
+  const lockBackdropDismiss = useCallback(() => {
+    backdropLockUntilRef.current = Date.now() + BACKDROP_DISMISS_LOCK_MS;
+  }, []);
+
+  useEffect(() => {
+    if (closingRef.current) {
+      return;
+    }
+    if (!didOpenRef.current) {
+      sheetHeightSV.value = targetSheetHeight;
+      return;
+    }
+    lockBackdropDismiss();
+    sheetHeightSV.value = withTiming(targetSheetHeight, {
+      duration: SHEET_SLIDE_MS,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [lockBackdropDismiss, sheetHeightSV, targetSheetHeight]);
 
   useEffect(() => {
     if (didOpenRef.current) {
@@ -60,7 +97,8 @@ export function NativeHalfSheetShell({
       onOpenedRef.current?.();
     };
     backdropOpacity.value = 0;
-    sheetTranslateY.value = sheetHeight;
+    sheetHeightSV.value = targetSheetHeight;
+    sheetTranslateY.value = targetSheetHeight;
     backdropOpacity.value = withTiming(1, { duration: BACKDROP_FADE_MS });
     sheetTranslateY.value = withTiming(
       0,
@@ -74,7 +112,9 @@ export function NativeHalfSheetShell({
         }
       },
     );
-  }, [backdropOpacity, sheetHeight, sheetTranslateY]);
+    // Open once on mount; height changes after open are handled separately.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional mount-only open
+  }, []);
 
   const reopenSheet = useCallback(() => {
     closingRef.current = false;
@@ -87,6 +127,9 @@ export function NativeHalfSheetShell({
   }, [backdropOpacity, sheetTranslateY]);
 
   const finishClose = useCallback(() => {
+    if (!closingRef.current) {
+      return;
+    }
     const closed = onClose();
     if (closed === false) {
       reopenSheet();
@@ -106,28 +149,44 @@ export function NativeHalfSheetShell({
     setIsClosing(true);
     backdropOpacity.value = withTiming(0, { duration: BACKDROP_FADE_MS });
     sheetTranslateY.value = withTiming(
-      sheetHeight,
+      sheetHeightSV.value,
       { duration: SHEET_SLIDE_MS, easing: Easing.in(Easing.cubic) },
       finished => {
-        if (finished) {
+        // Height animations can cancel this timing; still finish if we meant to close.
+        if (finished || closingRef.current) {
           runOnJS(finishClose)();
         }
       },
     );
-  }, [backdropOpacity, finishClose, sheetHeight, sheetTranslateY]);
+    // Failsafe: if the close animation is canceled and never finishes, still pop.
+    setTimeout(() => {
+      if (closingRef.current) {
+        finishClose();
+      }
+    }, SHEET_SLIDE_MS + 120);
+  }, [backdropOpacity, finishClose, sheetHeightSV, sheetTranslateY]);
 
   const handleBackdropPress = useCallback(() => {
-    if (!backdropDismissEnabled) {
+    if (Date.now() < backdropLockUntilRef.current) {
+      return;
+    }
+    const allowedByRef = isBackdropDismissAllowedRef.current?.() ?? true;
+    if (!allowedByRef || !backdropDismissEnabledRef.current) {
+      return;
+    }
+    if (onBackdropPressRef.current?.()) {
+      lockBackdropDismiss();
       return;
     }
     requestClose();
-  }, [backdropDismissEnabled, requestClose]);
+  }, [lockBackdropDismiss, requestClose]);
 
   const backdropStyle = useAnimatedStyle(() => ({
     opacity: backdropOpacity.value,
   }));
 
   const sheetStyle = useAnimatedStyle(() => ({
+    height: sheetHeightSV.value,
     transform: [{ translateY: sheetTranslateY.value }],
   }));
 
@@ -145,9 +204,7 @@ export function NativeHalfSheetShell({
             style={styles.backdropTap}
           />
         </Animated.View>
-        <Animated.View
-          style={[styles.sheet, { height: sheetHeight }, sheetStyle]}
-        >
+        <Animated.View style={[styles.sheet, sheetStyle]}>
           <BottomSheetDragHandle />
           <Animated.View style={styles.body}>{children}</Animated.View>
         </Animated.View>

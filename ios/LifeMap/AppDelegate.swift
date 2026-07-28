@@ -116,8 +116,7 @@ class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {
   }
 
   /// Keep native BootSplash visible until JS calls `BootSplash.hide()`.
-  /// Not marked `override` — New Arch exposes this via an incomplete `RCTRootView`
-  /// forward-decl that Swift cannot override cleanly.
+  /// Uses `UIView` (not `RCTRootView`) so Swift can compile against New Arch headers.
   @objc func customizeRootView(_ rootView: UIView) {
     RNBootSplash.initWithStoryboard("BootSplash", rootView: rootView)
   }

@@ -6,17 +6,33 @@ import {
   type ComponentRef,
 } from 'react';
 import { APP_COPY, errorMessageOr } from '@/lib/app-copy';
-import { Alert, Keyboard, Pressable, StyleSheet, View } from 'react-native';
-import { AudioLines, Pause, Play } from 'lucide-react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Keyboard,
+  Platform,
+  Pressable,
+  StyleSheet,
+  View,
+} from 'react-native';
+import { AudioLines, Pause, Play, X } from 'lucide-react-native';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import type { BottomSheetModal } from '@gorhom/bottom-sheet';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { CAPTURE_BUTTON_THEMES } from '@/components/map/map-capture-button-theme';
+import { GlassSurface } from '@/components/glass/GlassSurface';
+import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
 import { VoicePlaybackMeter } from '@/components/voice/VoiceMeter';
 import { Text } from '@/components/ui/text';
 import { AppBottomSheet } from '@/components/ui/app-bottom-sheet';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import {
+  MAP_MOMENTS_BAR_GAP,
+  MAP_MOMENTS_BAR_HEIGHT,
+  MAP_MOMENTS_SIDE_BTN_GAP,
+  MAP_STACK_BUTTON_SIZE,
+} from '@/lib/app-constants';
 import { saveVoiceMoment } from '@/lib/moments/capture-voice';
 import { formatVoiceDurationMs } from '@/lib/moments/format-voice-duration';
 import { throttleVoiceUi } from '@/lib/moments/voice-waveform';
@@ -43,7 +59,7 @@ export function VoiceMemoPreviewSheet({
   onSaved,
 }: VoiceMemoPreviewSheetProps) {
   const colors = useThemeColors();
-  const voiceTheme = CAPTURE_BUTTON_THEMES.voice;
+  const insets = useSafeAreaInsets();
   const sheetRef = useRef<BottomSheetModal>(null);
   const noteInputRef = useRef<ComponentRef<typeof BottomSheetTextInput>>(null);
 
@@ -104,10 +120,31 @@ export function VoiceMemoPreviewSheet({
     };
   }, []);
 
+  const restoreSheetHeight = useCallback(() => {
+    // Dynamic-sizing sheets keep the keyboard-expanded height unless we nudge
+    // Gorhom to remeasure after the keyboard is gone.
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        sheetRef.current?.snapToIndex(0);
+      }, Platform.OS === 'ios' ? 40 : 0);
+    });
+  }, []);
+
   const dismissKeyboard = useCallback(() => {
     noteInputRef.current?.blur();
     Keyboard.dismiss();
   }, []);
+
+  useEffect(() => {
+    const hideEvent =
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      restoreSheetHeight();
+    });
+    return () => {
+      hideSub.remove();
+    };
+  }, [restoreSheetHeight]);
 
   const discardDraft = useCallback(async () => {
     const path = draftRef.current?.path;
@@ -203,6 +240,8 @@ export function VoiceMemoPreviewSheet({
   const playbackProgress =
     durationMs > 0 ? Math.min(1, playbackPositionMs / durationMs) : 0;
 
+  const barBottomPad = Math.max(insets.bottom, MAP_MOMENTS_BAR_GAP);
+
   return (
     <View
       style={styles.host}
@@ -221,13 +260,13 @@ export function VoiceMemoPreviewSheet({
           releaseTouchesWhileClosing
           enableDynamicSizing
           keyboardBehavior="interactive"
-          keyboardBlurBehavior="none"
+          keyboardBlurBehavior="restore"
           enableBlurKeyboardOnGesture={false}
           dismissKeyboardOnClose
           enablePanDownToClose={false}
         >
           {draft != null ? (
-            <View style={styles.body}>
+            <View style={[styles.body, { paddingBottom: barBottomPad }]}>
               <Text variant="h4" className="border-0 pb-0">
                 Voice memo
               </Text>
@@ -247,58 +286,6 @@ export function VoiceMemoPreviewSheet({
                 accentColor="#FF9500"
               />
 
-              <View style={styles.controls}>
-                {saving ? (
-                  <Text variant="muted">Saving voice memo…</Text>
-                ) : (
-                  <View style={styles.previewRow}>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={
-                        isPlayingPreview ? 'Pause preview' : 'Play preview'
-                      }
-                      onPress={() => void handleTogglePreview()}
-                      style={[
-                        styles.secondaryCircle,
-                        { backgroundColor: voiceTheme.badgeBg },
-                      ]}
-                    >
-                      {isPlayingPreview ? (
-                        <Pause
-                          size={22}
-                          color={voiceTheme.icon}
-                          strokeWidth={2.25}
-                        />
-                      ) : (
-                        <Play
-                          size={22}
-                          color={voiceTheme.icon}
-                          strokeWidth={2.25}
-                        />
-                      )}
-                    </Pressable>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Save voice memo"
-                      onPress={() => void handleSave()}
-                      style={[
-                        styles.saveButton,
-                        { backgroundColor: colors.primary },
-                      ]}
-                    >
-                      <AudioLines
-                        size={18}
-                        color={colors.primaryForeground}
-                        strokeWidth={2.25}
-                      />
-                      <Text className="text-primary-foreground font-medium">
-                        Save moment
-                      </Text>
-                    </Pressable>
-                  </View>
-                )}
-              </View>
-
               <BottomSheetTextInput
                 ref={noteInputRef}
                 value={noteText}
@@ -308,7 +295,78 @@ export function VoiceMemoPreviewSheet({
                 style={styles.noteInput}
                 multiline
                 maxLength={280}
+                returnKeyType="done"
+                blurOnSubmit
+                onSubmitEditing={() => {
+                  dismissKeyboard();
+                  restoreSheetHeight();
+                }}
               />
+
+              <View style={styles.barRow}>
+                <MapGlassCircleButton
+                  accessibilityLabel={
+                    isPlayingPreview ? 'Pause preview' : 'Play preview'
+                  }
+                  onPress={() => {
+                    void handleTogglePreview();
+                  }}
+                  disabled={saving}
+                  style={styles.sideButton}
+                >
+                  {isPlayingPreview ? (
+                    <Pause size={20} color={colors.primary} strokeWidth={2.25} />
+                  ) : (
+                    <Play size={20} color={colors.primary} strokeWidth={2.25} />
+                  )}
+                </MapGlassCircleButton>
+
+                <View style={styles.shadowWrap}>
+                  <GlassSurface style={styles.pill}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Save voice memo"
+                      disabled={saving}
+                      onPress={() => {
+                        void handleSave();
+                      }}
+                      style={[
+                        styles.savePressable,
+                        saving ? styles.saveDisabled : null,
+                      ]}
+                    >
+                      {saving ? (
+                        <ActivityIndicator color={colors.primary} />
+                      ) : (
+                        <>
+                          <AudioLines
+                            size={16}
+                            color={colors.primary}
+                            strokeWidth={2.25}
+                          />
+                          <Text
+                            style={[
+                              styles.saveLabel,
+                              { color: colors.primary },
+                            ]}
+                          >
+                            Save
+                          </Text>
+                        </>
+                      )}
+                    </Pressable>
+                  </GlassSurface>
+                </View>
+
+                <MapGlassCircleButton
+                  accessibilityLabel="Close"
+                  onPress={requestClose}
+                  disabled={saving}
+                  style={styles.sideButton}
+                >
+                  <X size={20} color={colors.primary} strokeWidth={2.25} />
+                </MapGlassCircleButton>
+              </View>
             </View>
           ) : null}
         </AppBottomSheet>
@@ -332,37 +390,9 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 12,
   },
-  controls: {
-    alignItems: 'center',
-    minHeight: 80,
-    justifyContent: 'center',
-    marginTop: 8,
-  },
-  secondaryCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  previewRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    width: '100%',
-  },
-  saveButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    borderRadius: 14,
-    paddingVertical: 14,
-  },
   noteInput: {
     marginTop: 16,
-    marginBottom: 8,
+    marginBottom: 16,
     minHeight: 44,
     maxHeight: 96,
     borderRadius: 12,
@@ -374,5 +404,49 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: '#111827',
     textAlignVertical: 'top',
+  },
+  barRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: MAP_MOMENTS_SIDE_BTN_GAP,
+  },
+  shadowWrap: {
+    borderRadius: MAP_MOMENTS_BAR_HEIGHT / 2,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.16,
+        shadowRadius: 14,
+      },
+      android: { elevation: 10 },
+    }),
+  },
+  pill: {
+    height: MAP_MOMENTS_BAR_HEIGHT,
+    borderRadius: MAP_MOMENTS_BAR_HEIGHT / 2,
+    overflow: 'hidden',
+    justifyContent: 'center',
+  },
+  savePressable: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    height: MAP_MOMENTS_BAR_HEIGHT,
+    paddingHorizontal: 18,
+    minWidth: 96,
+  },
+  saveDisabled: {
+    opacity: 0.4,
+  },
+  saveLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  sideButton: {
+    width: MAP_STACK_BUTTON_SIZE,
+    height: MAP_STACK_BUTTON_SIZE,
   },
 });

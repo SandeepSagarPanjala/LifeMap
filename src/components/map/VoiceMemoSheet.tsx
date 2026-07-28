@@ -697,6 +697,9 @@ export function VoiceMemoSheet({
           multiline
           maxLength={280}
           editable={phase === 'preview'}
+          returnKeyType="done"
+          blurOnSubmit
+          onSubmitEditing={Keyboard.dismiss}
           onFocus={() => setNoteFocused(true)}
           onBlur={() => {
             setNoteFocused(false);
