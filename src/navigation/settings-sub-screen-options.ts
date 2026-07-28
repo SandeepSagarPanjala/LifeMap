@@ -1,14 +1,14 @@
 import type { NativeStackNavigationOptions } from '@react-navigation/native-stack';
 
-import { APP_COPY } from '@/lib/app-copy';
 import { ACCENT_THEMES } from '@/lib/app-constants';
+import { APP_COPY } from '@/lib/app-copy';
 
+/** Headerless Settings stack screens — chrome lives in SettingsScreenLayout. */
 export function settingsSubScreenOptions(
-  title: string,
+  _title?: string,
 ): NativeStackNavigationOptions {
   return {
-    title,
-    headerBackTitle: APP_COPY.common.settings,
+    headerShown: false,
     presentation: 'card',
   };
 }

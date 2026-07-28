@@ -34,6 +34,7 @@ export const MapScreenMap = memo(
       showUserLocation,
       onRegionChange,
       onRegionChangeComplete,
+      onPanDrag,
       showDayJourney,
       dayMomentMapPins,
       historyMomentMapPins,
@@ -82,7 +83,8 @@ export const MapScreenMap = memo(
         initialRegion={mapInitialRegion}
         mapPadding={mapPadding}
         // Custom UserLocationPuck only — MapKit's showsUserLocation draws a
-        // giant GPS accuracy halo (the blue flash on History exit).
+        // giant GPS accuracy halo (the blue flash on History exit). Continuous
+        // drive follow is done in the controller via BackgroundGeolocation.
         showsUserLocation={false}
         showsMyLocationButton={false}
         userInterfaceStyle={colorScheme === 'dark' ? 'dark' : 'light'}
@@ -93,6 +95,7 @@ export const MapScreenMap = memo(
         rotateEnabled
         onRegionChange={onRegionChange}
         onRegionChangeComplete={onRegionChangeComplete}
+        onPanDrag={onPanDrag}
         onLongPress={handleMapLongPress}
       >
         {showUserLocation && userCoordinate != null ? (

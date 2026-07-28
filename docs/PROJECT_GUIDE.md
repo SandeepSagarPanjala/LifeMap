@@ -1080,7 +1080,6 @@ flowchart TD
   MAP --> SET["Settings"]
   SET --> THEME["ThemeSettings"]
   SET --> UNIT["DistanceUnitSettings"]
-  SET --> DRIVE["DriveMapRefreshSettings"]
   SET --> STORAGE["StorageSettings"]
   SET --> CACHED["CachedPlacesSettings"]
   SET --> BACKUP["BackupSettings"]

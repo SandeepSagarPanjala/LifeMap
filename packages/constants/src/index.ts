@@ -305,20 +305,6 @@ export const SPLASH_MIN_MS = 400;
 /** Safety cap — never block launch longer than this on a stuck migration. */
 export const SPLASH_MAX_MS = 8_000;
 
-// ——— Drive map refresh ———
-
-export const SETTINGS_KEY_DRIVE_MAP_REFRESH_INTERVAL_MS =
-  'drive_map_refresh_interval_ms';
-
-export const DRIVE_MAP_REFRESH_INTERVAL_MS_OPTIONS = [
-  10_000, 30_000, 60_000,
-] as const;
-
-export type DriveMapRefreshIntervalMs =
-  (typeof DRIVE_MAP_REFRESH_INTERVAL_MS_OPTIONS)[number];
-
-export const DEFAULT_DRIVE_MAP_REFRESH_INTERVAL_MS: DriveMapRefreshIntervalMs = 30_000;
-
 // ——— Misc ———
 
 export const DEFAULT_IDLE_TIMEOUT_MS = 100;

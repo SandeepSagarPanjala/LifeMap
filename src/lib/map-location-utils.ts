@@ -77,6 +77,25 @@ export function centerMapOnUser(
   return region;
 }
 
+/**
+ * Keep the camera locked on the user while preserving the current zoom.
+ * Used for continuous follow during an open drive (MapKit-style follow without
+ * enabling showsUserLocation / the GPS accuracy halo).
+ */
+export function followMapToUser(
+  map: MapAnimateRef,
+  user: MapCoordinate,
+  currentRegion: Region,
+): Region {
+  const region = regionAroundCoordinate(
+    user,
+    clampMapDelta(currentRegion.latitudeDelta),
+    clampMapDelta(currentRegion.longitudeDelta),
+  );
+  map.animateToRegion(region, 350);
+  return region;
+}
+
 /** Brief zoom-out then zoom-in to current location (Life360-style recenter). */
 export function animateRecenterToUser(
   map: MapAnimateRef,

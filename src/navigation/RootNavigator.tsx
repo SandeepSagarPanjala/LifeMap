@@ -30,7 +30,6 @@ import { ExportTripDaysScreen } from '@/screens/settings/export/ExportTripDaysSc
 import { ExportTripDetailScreen } from '@/screens/settings/export/ExportTripDetailScreen';
 import { BackupSettingsScreen } from '@/screens/settings/BackupSettingsScreen';
 import { DistanceUnitSettingsScreen } from '@/screens/settings/DistanceUnitSettingsScreen';
-import { DriveMapRefreshSettingsScreen } from '@/screens/settings/DriveMapRefreshSettingsScreen';
 import { CachedPlacesSettingsScreen } from '@/screens/settings/CachedPlacesSettingsScreen';
 import { CachedPlaceMapScreen } from '@/screens/settings/CachedPlaceMapScreen';
 import { StorageSettingsScreen } from '@/screens/settings/StorageSettingsScreen';
@@ -129,11 +128,6 @@ export function RootNavigator() {
           name="DistanceUnitSettings"
           component={DistanceUnitSettingsScreen}
           options={settingsSubScreenOptions('Distance unit')}
-        />
-        <Stack.Screen
-          name="DriveMapRefreshSettings"
-          component={DriveMapRefreshSettingsScreen}
-          options={settingsSubScreenOptions('Drive map updates')}
         />
         <Stack.Screen
           name="StorageSettings"

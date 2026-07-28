@@ -1,17 +1,10 @@
 import type { DetectedTrip } from '@/lib/trip-detection';
 
-jest.mock('@/lib/drive-map-refresh-settings', () => ({
-  ...jest.requireActual('@/lib/drive-map-refresh-settings'),
-  getDriveMapRefreshIntervalMs: jest.fn().mockResolvedValue(30_000),
-}));
-
-import type { DriveMapRefreshIntervalMs } from '@/lib/app-constants';
-import { getDriveMapRefreshIntervalMs } from '@/lib/drive-map-refresh-settings';
 import { resetBootstrapTraceForTests } from '@/lib/log-bootstrap';
 import {
   getTodayHistoryRefreshRevision,
-  isDriveRefreshIntervalActiveForTests,
   isGpsRefreshTimerActiveForTests,
+  isOpenDriveRefreshSuppressedForTests,
   refreshTodayOnForeground,
   resetTodayRefreshSchedulerForTests,
   scheduleTodayRefreshAfterGps,
@@ -52,7 +45,6 @@ describe('today refresh scheduler', () => {
     resetBootstrapTraceForTests();
     resetTodayRefreshSchedulerForTests();
     setTodayRefreshAppForeground(true);
-    jest.mocked(getDriveMapRefreshIntervalMs).mockResolvedValue(30_000);
   });
 
   afterEach(() => {
@@ -114,102 +106,45 @@ describe('today refresh scheduler', () => {
     expect(listener).toHaveBeenCalledTimes(1);
   });
 
-  it('starts a drive interval after sync reports an open drive', async () => {
-    updateTodayRefreshAfterSync(openDrive());
-    await Promise.resolve();
+  it('suppresses GPS debounce while an open drive is active', async () => {
+    const listener = jest.fn();
+    subscribeTodayHistoryRefresh(listener);
 
-    expect(isDriveRefreshIntervalActiveForTests()).toBe(true);
+    updateTodayRefreshAfterSync(openDrive());
+
+    expect(isOpenDriveRefreshSuppressedForTests()).toBe(true);
+
+    scheduleTodayRefreshAfterGps();
+    jest.advanceTimersByTime(8_000);
+
+    expect(listener).not.toHaveBeenCalled();
   });
 
-  it('stops the drive interval when sync reports an open stay', async () => {
-    updateTodayRefreshAfterSync(openDrive());
-    await Promise.resolve();
+  it('clears a pending GPS debounce when an open drive starts', async () => {
+    const listener = jest.fn();
+    subscribeTodayHistoryRefresh(listener);
 
+    scheduleTodayRefreshAfterGps();
+    updateTodayRefreshAfterSync(openDrive());
+
+    jest.advanceTimersByTime(8_000);
+
+    expect(listener).not.toHaveBeenCalled();
+  });
+
+  it('restores GPS debounce after sync reports an open stay', async () => {
+    const listener = jest.fn();
+    subscribeTodayHistoryRefresh(listener);
+
+    updateTodayRefreshAfterSync(openDrive());
     updateTodayRefreshAfterSync(openStay());
 
-    expect(isDriveRefreshIntervalActiveForTests()).toBe(false);
-  });
-
-  it('ignores GPS debounce while the drive interval is active', async () => {
-    const listener = jest.fn();
-    subscribeTodayHistoryRefresh(listener);
-
-    updateTodayRefreshAfterSync(openDrive());
-    await Promise.resolve();
+    expect(isOpenDriveRefreshSuppressedForTests()).toBe(false);
 
     scheduleTodayRefreshAfterGps();
     jest.advanceTimersByTime(8_000);
 
-    expect(listener).not.toHaveBeenCalled();
-  });
-
-  it('refreshes on the drive interval cadence', async () => {
-    const listener = jest.fn();
-    subscribeTodayHistoryRefresh(listener);
-
-    updateTodayRefreshAfterSync(openDrive());
-    await Promise.resolve();
-
-    jest.advanceTimersByTime(30_000);
     expect(listener).toHaveBeenCalledTimes(1);
-
-    jest.advanceTimersByTime(30_000);
-    expect(listener).toHaveBeenCalledTimes(2);
-  });
-
-  it('stops the drive interval when the app backgrounds', async () => {
-    updateTodayRefreshAfterSync(openDrive());
-    await Promise.resolve();
-
-    setTodayRefreshAppForeground(false);
-
-    expect(isDriveRefreshIntervalActiveForTests()).toBe(false);
-  });
-
-  it('does not start the drive interval in the background', async () => {
-    setTodayRefreshAppForeground(false);
-
-    updateTodayRefreshAfterSync(openDrive());
-    await Promise.resolve();
-
-    expect(isDriveRefreshIntervalActiveForTests()).toBe(false);
-  });
-
-  it('starts only one drive interval when start is requested concurrently', async () => {
-    let resolveInterval: ((ms: DriveMapRefreshIntervalMs) => void) | null =
-      null;
-    jest.mocked(getDriveMapRefreshIntervalMs).mockImplementation(
-      () =>
-        new Promise<DriveMapRefreshIntervalMs>(resolve => {
-          resolveInterval = resolve;
-        }),
-    );
-
-    updateTodayRefreshAfterSync(openDrive());
-    updateTodayRefreshAfterSync(openDrive());
-
-    resolveInterval!(30_000);
-    await Promise.resolve();
-
-    const listener = jest.fn();
-    subscribeTodayHistoryRefresh(listener);
-    jest.advanceTimersByTime(30_000);
-
-    expect(isDriveRefreshIntervalActiveForTests()).toBe(true);
-    expect(listener).toHaveBeenCalledTimes(1);
-  });
-
-  it('clears a pending GPS debounce when the drive interval starts', async () => {
-    const listener = jest.fn();
-    subscribeTodayHistoryRefresh(listener);
-
-    scheduleTodayRefreshAfterGps();
-    updateTodayRefreshAfterSync(openDrive());
-    await Promise.resolve();
-
-    jest.advanceTimersByTime(8_000);
-
-    expect(listener).not.toHaveBeenCalled();
   });
 
   it('does not refresh when the app is backgrounded', async () => {
@@ -245,24 +180,6 @@ describe('today refresh scheduler', () => {
 
     expect(listener).not.toHaveBeenCalled();
     expect(getTodayHistoryRefreshRevision()).toBe(0);
-  });
-
-  it('cancels drive interval and GPS debounce when the app backgrounds', async () => {
-    const listener = jest.fn();
-    subscribeTodayHistoryRefresh(listener);
-
-    scheduleTodayRefreshAfterGps();
-    updateTodayRefreshAfterSync(openDrive());
-    await Promise.resolve();
-
-    setTodayRefreshAppForeground(false);
-
-    expect(isDriveRefreshIntervalActiveForTests()).toBe(false);
     expect(isGpsRefreshTimerActiveForTests()).toBe(false);
-
-    jest.advanceTimersByTime(90_000);
-
-    expect(listener).not.toHaveBeenCalled();
-    expect(getTodayHistoryRefreshRevision()).toBe(0);
   });
 });
