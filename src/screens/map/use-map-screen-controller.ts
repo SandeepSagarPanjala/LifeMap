@@ -592,7 +592,7 @@ export function useMapScreenController() {
   useEffect(() => {
     setHistoryPanelContentHeight(null);
     // Intentionally omit selectedHistoryIndex — resetting height on every scrub
-    // step thrashs mapPadding and makes event-arrow navigation feel laggy.
+    // step thrashes mapPadding and makes event-arrow navigation feel laggy.
   }, [selectedDateKey, showPlaceLabelCard, historyEventCardHasMoments]);
 
   // Wait for History chrome to finish closing so day-story routes do not flash
