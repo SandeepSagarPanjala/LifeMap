@@ -5,10 +5,10 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  InteractionManager,
   Pressable,
   View,
 } from 'react-native';
+import { runWhenIdle } from '@/lib/run-when-idle';
 import { CalendarDays, Database, Eye, Trash2 } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -430,7 +430,7 @@ export function ExportSettings() {
           }
           const exportTarget = target;
           setTimeout(() => {
-            InteractionManager.runAfterInteractions(() => {
+            runWhenIdle(() => {
               void shareExport(exportTarget, 'day', dateKey);
             });
           }, EXPORT_SHARE_DELAY_MS);

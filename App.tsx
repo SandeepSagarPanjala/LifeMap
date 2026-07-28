@@ -1,7 +1,7 @@
 import './global.css';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { InteractionManager, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { PortalHost } from '@rn-primitives/portal';
 import { StatusBar, useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -26,12 +26,31 @@ import * as Sentry from '@sentry/react-native';
 
 initSentry();
 
+/** Don't block splash forever if DB open/migrate stalls. */
+const DATABASE_READY_TIMEOUT_MS = 8_000;
+/** Absolute ceiling so BootSplash can never pin the UI indefinitely. */
+const SPLASH_FAILSAFE_MS = 12_000;
+
 function waitForNextPaint(): Promise<void> {
   return new Promise(resolve => {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => resolve());
     });
   });
+}
+
+function waitMs(ms: number): Promise<void> {
+  return new Promise(resolve => {
+    setTimeout(resolve, ms);
+  });
+}
+
+async function hideBootSplash(): Promise<void> {
+  try {
+    await BootSplash.hide({ fade: true });
+  } catch {
+    // Continue startup even if the native splash module fails to hide.
+  }
 }
 
 function App() {
@@ -66,13 +85,31 @@ function App() {
 
   useEffect(() => startWidgetDeepLinkListening(), []);
 
-  // Same pattern as react-native-bootsplash docs: init work, then hide.
+  // Init work, then hide splash. Do NOT wait on idle callbacks after
+  // mounting main — MapScreen keeps the JS thread busy and can pin splash forever.
   useEffect(() => {
     let cancelled = false;
+    let splashHidden = false;
+
+    const hideOnce = async () => {
+      if (splashHidden || cancelled) {
+        return;
+      }
+      splashHidden = true;
+      await hideBootSplash();
+    };
+
+    const failsafe = setTimeout(() => {
+      setAppReady(true);
+      void hideOnce();
+    }, SPLASH_FAILSAFE_MS);
 
     void (async () => {
       try {
-        await ensureDatabaseReady();
+        await Promise.race([
+          ensureDatabaseReady().catch(() => undefined),
+          waitMs(DATABASE_READY_TIMEOUT_MS),
+        ]);
       } catch {
         // Error boundary / next screen will surface DB failures.
       }
@@ -82,22 +119,17 @@ function App() {
 
       setAppReady(true);
       await waitForNextPaint();
-      await new Promise<void>(resolve => {
-        InteractionManager.runAfterInteractions(() => resolve());
-      });
       if (cancelled) {
         return;
       }
 
-      try {
-        await BootSplash.hide({ fade: true });
-      } catch {
-        // Continue startup even if the native splash module fails to hide.
-      }
+      await hideOnce();
+      clearTimeout(failsafe);
     })();
 
     return () => {
       cancelled = true;
+      clearTimeout(failsafe);
     };
   }, []);
 

@@ -4,12 +4,16 @@ import {
   useRef,
   useState,
   type ComponentRef,
+  type RefObject,
 } from 'react';
 import { APP_COPY, errorMessageOr } from '@/lib/app-copy';
 import { Alert, Keyboard, StyleSheet, View } from 'react-native';
-import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import {
+  BottomSheetModalProvider,
+  BottomSheetScrollView,
+  BottomSheetTextInput,
+} from '@gorhom/bottom-sheet';
 import type { BottomSheetModal } from '@gorhom/bottom-sheet';
-import type { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 
 import { ActivityForm } from '@/components/map/ActivityLogSheet';
 import { AppBottomSheet } from '@/components/ui/app-bottom-sheet';
@@ -32,10 +36,14 @@ type ActivityFormSheetProps = {
   request: ActivityFormRequest | null;
   onClose: () => void;
   onSaved: () => void;
-  onLoggedAndClose: () => void;
+  /** create-first with no fields: save, log, then close manage too. */
+  onLoggedAndClose?: () => void;
 };
 
-/** Gorhom overlay for add / edit activity — keyboard + emoji label input. */
+/**
+ * Gorhom add / edit activity sheet.
+ * Save is a top-right check — no bottom footer fighting the keyboard.
+ */
 export function ActivityFormSheet({
   request,
   onClose,
@@ -43,8 +51,13 @@ export function ActivityFormSheet({
   onLoggedAndClose,
 }: ActivityFormSheetProps) {
   const sheetRef = useRef<BottomSheetModal>(null);
-  const labelInputRef = useRef<ComponentRef<typeof BottomSheetTextInput>>(null);
-  const openEmojiRef = useRef<{ open: () => void } | null>(null);
+  const scrollRef =
+    useRef<ComponentRef<typeof BottomSheetScrollView> | null>(null);
+  const labelInputRef =
+    useRef<ComponentRef<typeof BottomSheetTextInput>>(null);
+  const openEmojiRef = useRef<{ open: () => void; dismiss: () => void } | null>(
+    null,
+  );
   const [emoji, setEmoji] = useState('');
   const [label, setLabel] = useState('');
   const [fields, setFields] = useState<ActivityFieldDefinition[]>([]);
@@ -84,7 +97,6 @@ export function ActivityFormSheet({
   const handleSheetAnimate = useCallback(
     (fromIndex: number, toIndex: number) => {
       if (toIndex >= 0 && fromIndex < 0 && isCreateFlow) {
-        // Open with the sheet rise — retry next frame if native picker isn't ready yet.
         openEmojiRef.current?.open();
         requestAnimationFrame(() => openEmojiRef.current?.open());
       }
@@ -121,7 +133,7 @@ export function ActivityFormSheet({
         if (created.fields.length === 0) {
           await saveActivityMoment(created);
           onSaved();
-          onLoggedAndClose();
+          onLoggedAndClose?.();
           return;
         }
         onSaved();
@@ -188,14 +200,16 @@ export function ActivityFormSheet({
           onClosing={dismissKeyboard}
           instantPresent
           stackBehavior="push"
-          enableDynamicSizing
+          snapPoints={['92%']}
+          enableDynamicSizing={false}
           keyboardBehavior="extend"
           keyboardBlurBehavior="restore"
           dismissKeyboardOnClose
-          keyboardAware
           enableContentPanningGesture={false}
           enablePanDownToClose
-          footerPadding={0}
+          scrollable
+          scrollRef={scrollRef}
+          footerPadding={24}
         >
           {request != null ? (
             <ActivityForm
@@ -204,14 +218,21 @@ export function ActivityFormSheet({
                   ? String(request.activity.id)
                   : request.kind
               }
-              compactFooter
+              sheetInputs
+              hideFooter
+              headerSave
+              sheetScrollRef={scrollRef}
               autoFocusEmoji={isCreateFlow}
               emoji={emoji}
               label={label}
               fields={fields}
               saving={saving}
               submitLabel={submitLabel}
-              labelInputRef={labelInputRef}
+              labelInputRef={
+                labelInputRef as RefObject<ComponentRef<
+                  typeof BottomSheetTextInput
+                > | null>
+              }
               openEmojiRef={openEmojiRef}
               onBack={showBack ? requestClose : undefined}
               onChangeEmoji={setEmoji}
@@ -231,7 +252,7 @@ export function ActivityFormSheet({
 const styles = StyleSheet.create({
   host: {
     ...StyleSheet.absoluteFillObject,
-    zIndex: 10,
-    elevation: 10,
+    zIndex: 20,
+    elevation: 20,
   },
 });

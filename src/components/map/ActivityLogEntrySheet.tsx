@@ -3,25 +3,32 @@ import { APP_COPY, errorMessageOr } from '@/lib/app-copy';
 import {
   ActivityIndicator,
   Alert,
+  InputAccessoryView,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Switch,
+  TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
-import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-import type { BottomSheetModal } from '@gorhom/bottom-sheet';
-import { BottomSheetTextInput as TextInput } from '@gorhom/bottom-sheet';
+import { X } from 'lucide-react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { GlassSurface } from '@/components/glass/GlassSurface';
 import { ActivityFieldCameraModal } from '@/components/map/ActivityFieldCameraModal';
 import {
   ActivityFieldMediaRow,
   groupActivityFields,
 } from '@/components/map/ActivityFieldMediaRow';
-import { AppBottomSheet } from '@/components/ui/app-bottom-sheet';
+import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
 import { Text } from '@/components/ui/text';
 import type { ActivityRow } from '@/db/repositories/activities';
+import { useThemeColors } from '@/hooks/use-theme-colors';
 import {
   type ActivityFieldDefinition,
   type ActivityFieldValue,
@@ -30,14 +37,31 @@ import {
 import { persistActivityImage } from '@/lib/activities/persist-activity-image';
 import { extractAmountFromImage } from '@/lib/activities/text-recognize-native';
 import { assertRequiredValuesFilled } from '@/lib/activities/validate-activity-definition';
+import {
+  MAP_MOMENTS_BAR_GAP,
+  MAP_MOMENTS_BAR_HEIGHT,
+  MAP_MOMENTS_SIDE_BTN_GAP,
+  MAP_STACK_BUTTON_SIZE,
+} from '@/lib/app-constants';
 import { saveActivityMoment } from '@/lib/moments/capture-activity';
 import { resolveMomentContentPath } from '@/lib/moments/moment-media-uri';
 
-type ActivityLogEntrySheetProps = {
-  activity: ActivityRow | null;
-  onClose: () => void;
+type ActivityLogEntryPanelProps = {
+  activity: ActivityRow;
+  onBack: () => void;
   onLogged: () => void | Promise<void>;
+  /** Full-page layout with reliable keyboard scroll (not half sheet). */
+  fullPage?: boolean;
 };
+
+type Measurable = {
+  measureInWindow: (
+    cb: (x: number, y: number, w: number, h: number) => void,
+  ) => void;
+};
+
+/** iOS number pads have no Return key — toolbar Done dismisses them. */
+const NUMERIC_KEYBOARD_ACCESSORY_ID = 'activityLogNumericDone';
 
 function formatMoneyInput(amount: number | null): string {
   if (amount == null || !Number.isFinite(amount)) {
@@ -61,18 +85,28 @@ function parseMoneyInput(text: string): number | null {
   return Number.isFinite(value) ? Math.round(value * 100) / 100 : null;
 }
 
-export function ActivityLogEntrySheet({
+/** Structured activity log form — prefer fullPage for keyboard reliability. */
+export function ActivityLogEntryPanel({
   activity,
-  onClose,
+  onBack,
   onLogged,
-}: ActivityLogEntrySheetProps) {
-  const sheetRef = useRef<BottomSheetModal>(null);
+  fullPage = false,
+}: ActivityLogEntryPanelProps) {
+  const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const [values, setValues] = useState<ActivityValuesMap>({});
   const [saving, setSaving] = useState(false);
   const [scanningFieldId, setScanningFieldId] = useState<string | null>(null);
   const [captureField, setCaptureField] =
     useState<ActivityFieldDefinition | null>(null);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const mountedRef = useRef(true);
+  const scrollRef = useRef<ScrollView | null>(null);
+  const scrollYRef = useRef(0);
+  const keyboardHeightRef = useRef(0);
+  const lastFocusedTargetRef = useRef<Measurable | null>(null);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -86,9 +120,9 @@ export function ActivityLogEntrySheet({
     setSaving(false);
     setScanningFieldId(null);
     setCaptureField(null);
-  }, [activity?.id]);
+  }, [activity.id]);
 
-  const fields = useMemo(() => activity?.fields ?? [], [activity?.fields]);
+  const fields = useMemo(() => activity.fields ?? [], [activity.fields]);
 
   const setFieldValue = useCallback(
     (fieldId: string, value: ActivityFieldValue | undefined) => {
@@ -130,6 +164,8 @@ export function ActivityLogEntrySheet({
               amount,
             });
           } else {
+            // Clear a stale Subtotal from an earlier scan — don't leave 22.48 around.
+            setFieldValue(target.fillField, undefined);
             Alert.alert(
               'Couldn’t find a total',
               'Enter the amount manually if needed.',
@@ -192,22 +228,24 @@ export function ActivityLogEntrySheet({
   const fieldGroups = useMemo(() => groupActivityFields(fields), [fields]);
 
   const canSave = useMemo(() => {
-    if (activity == null || saving) {
+    if (saving) {
       return false;
     }
-    return assertRequiredValuesFilled(
-      {
-        schemaVersion: activity.schemaVersion,
-        name: activity.label,
-        emoji: activity.emoji,
-        fields,
-      },
-      values,
-    ) == null;
+    return (
+      assertRequiredValuesFilled(
+        {
+          schemaVersion: activity.schemaVersion,
+          name: activity.label,
+          emoji: activity.emoji,
+          fields,
+        },
+        values,
+      ) == null
+    );
   }, [activity, fields, saving, values]);
 
   const handleSave = useCallback(async () => {
-    if (activity == null || saving) {
+    if (saving) {
       return;
     }
     const requiredError = assertRequiredValuesFilled(
@@ -226,8 +264,6 @@ export function ActivityLogEntrySheet({
     setSaving(true);
     try {
       await saveActivityMoment(activity, values);
-      // Parent may close the capture screen (unmounting this sheet). Avoid
-      // dismiss/setState after a successful log that navigates away.
       await onLogged();
     } catch (error) {
       Alert.alert(
@@ -238,9 +274,84 @@ export function ActivityLogEntrySheet({
     }
   }, [activity, fields, onLogged, saving, values]);
 
-  const handleDismissed = useCallback(() => {
-    onClose();
-  }, [onClose]);
+  const scrollFocusedIntoView = useCallback(
+    (target: Measurable) => {
+      if (!fullPage) {
+        return;
+      }
+      const run = () => {
+        const kb = keyboardHeightRef.current;
+        if (kb <= 0) {
+          return;
+        }
+        const keyboardTop = windowHeight - kb;
+        const visibleBottom = keyboardTop - 12;
+        target.measureInWindow((_tx, ty, _tw, th) => {
+          const fieldBottom = ty + th;
+          if (fieldBottom <= visibleBottom) {
+            return;
+          }
+          const delta = fieldBottom - visibleBottom;
+          scrollRef.current?.scrollTo({
+            y: Math.max(0, scrollYRef.current + delta),
+            animated: true,
+          });
+        });
+      };
+      requestAnimationFrame(() => {
+        setTimeout(run, Platform.OS === 'ios' ? 300 : 120);
+      });
+    },
+    [fullPage, windowHeight],
+  );
+
+  const handleInputFocus = useCallback(
+    (event: { target?: unknown; currentTarget?: unknown }) => {
+      if (!fullPage) {
+        return;
+      }
+      const target = (event.target ?? event.currentTarget) as {
+        measureInWindow?: Measurable['measureInWindow'];
+      } | null;
+      if (target?.measureInWindow == null) {
+        return;
+      }
+      const measurable = target as Measurable;
+      lastFocusedTargetRef.current = measurable;
+      scrollFocusedIntoView(measurable);
+    },
+    [fullPage, scrollFocusedIntoView],
+  );
+
+  useEffect(() => {
+    if (!fullPage) {
+      return;
+    }
+    const showEvent =
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent =
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const onShow = (event: { endCoordinates: { height: number } }) => {
+      const next = event.endCoordinates.height;
+      keyboardHeightRef.current = next;
+      setKeyboardHeight(next);
+      setKeyboardOpen(true);
+      if (lastFocusedTargetRef.current != null) {
+        scrollFocusedIntoView(lastFocusedTargetRef.current);
+      }
+    };
+    const onHide = () => {
+      keyboardHeightRef.current = 0;
+      setKeyboardHeight(0);
+      setKeyboardOpen(false);
+    };
+    const showSub = Keyboard.addListener(showEvent, onShow);
+    const hideSub = Keyboard.addListener(hideEvent, onHide);
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [fullPage, scrollFocusedIntoView]);
 
   const renderField = (field: ActivityFieldDefinition) => (
     <View key={field.id} style={styles.fieldBlock}>
@@ -266,7 +377,11 @@ export function ActivityLogEntrySheet({
               amount == null ? undefined : { type: 'money', amount },
             );
           }}
+          onFocus={handleInputFocus}
           keyboardType="decimal-pad"
+          inputAccessoryViewID={
+            Platform.OS === 'ios' ? NUMERIC_KEYBOARD_ACCESSORY_ID : undefined
+          }
           placeholder="0.00"
           placeholderTextColor="#8E8E93"
           style={styles.input}
@@ -291,7 +406,11 @@ export function ActivityLogEntrySheet({
             }
             setFieldValue(field.id, { type: 'number', value });
           }}
+          onFocus={handleInputFocus}
           keyboardType="decimal-pad"
+          inputAccessoryViewID={
+            Platform.OS === 'ios' ? NUMERIC_KEYBOARD_ACCESSORY_ID : undefined
+          }
           placeholder="0"
           placeholderTextColor="#8E8E93"
           style={styles.input}
@@ -310,8 +429,11 @@ export function ActivityLogEntrySheet({
               text.trim() ? { type: 'text', value: text } : undefined,
             )
           }
+          onFocus={handleInputFocus}
           maxLength={120}
-          placeholder="Optional note"
+          returnKeyType="done"
+          onSubmitEditing={Keyboard.dismiss}
+          placeholder={`${field.label} of ${activity.label}`}
           placeholderTextColor="#8E8E93"
           style={styles.input}
         />
@@ -364,7 +486,11 @@ export function ActivityLogEntrySheet({
               seconds: mins * 60,
             });
           }}
+          onFocus={handleInputFocus}
           keyboardType="number-pad"
+          inputAccessoryViewID={
+            Platform.OS === 'ios' ? NUMERIC_KEYBOARD_ACCESSORY_ID : undefined
+          }
           placeholder="Minutes"
           placeholderTextColor="#8E8E93"
           style={styles.input}
@@ -385,73 +511,102 @@ export function ActivityLogEntrySheet({
     </View>
   );
 
+  const barBottomPad = Math.max(insets.bottom, MAP_MOMENTS_BAR_GAP);
+  const contentBottomPad =
+    keyboardOpen && fullPage
+      ? 12 + (keyboardHeight > 0 ? Math.round(keyboardHeight * 0.2) : 24)
+      : MAP_MOMENTS_BAR_HEIGHT + barBottomPad + 16;
+
+  const showBar = !(fullPage && keyboardOpen);
+
   return (
-    <View
-      style={styles.host}
-      pointerEvents={activity != null ? 'box-none' : 'none'}
-    >
-      <BottomSheetModalProvider>
-        <AppBottomSheet
-          name="activity-log-entry"
-          visible={activity != null}
-          bottomSheetRef={sheetRef}
-          onClose={handleDismissed}
-          instantPresent
-          stackBehavior="push"
-          enableDynamicSizing
-          keyboardBehavior="interactive"
-          keyboardBlurBehavior="restore"
-          dismissKeyboardOnClose
-          footerPadding={12}
+    <View style={styles.panel}>
+      <KeyboardAvoidingView
+        style={styles.panel}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          ref={scrollRef}
+          style={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[
+            styles.body,
+            fullPage ? styles.bodyBottom : null,
+            { paddingBottom: contentBottomPad },
+          ]}
+          onScroll={event => {
+            scrollYRef.current = event.nativeEvent.contentOffset.y;
+          }}
+          scrollEventThrottle={16}
         >
-          {activity != null ? (
-            <ScrollView
-              keyboardShouldPersistTaps="handled"
-              contentContainerStyle={styles.body}
+          <Text variant="h4" className="border-0 pb-0">
+            {activity.emoji} {activity.label}
+          </Text>
+          <Text variant="muted" className="mt-1 text-sm">
+            Fill in the details, then save.
+          </Text>
+
+          {fieldGroups.map(group =>
+            group.kind === 'media' ? (
+              <ActivityFieldMediaRow
+                key={group.fields.map(field => field.id).join('-')}
+                fields={group.fields}
+                values={values}
+                scanningFieldId={scanningFieldId}
+                onOpenCamera={handleOpenCamera}
+                onOpenLibrary={field => void handleOpenLibrary(field)}
+                onRemoveImage={field => setFieldValue(field.id, undefined)}
+              />
+            ) : (
+              renderField(group.field)
+            ),
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      {showBar ? (
+        <View
+          pointerEvents="box-none"
+          style={[styles.barWrap, { paddingBottom: barBottomPad }]}
+        >
+          <View style={styles.barRow}>
+            <View style={styles.shadowWrap}>
+              <GlassSurface style={styles.pill}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Save activity"
+                  disabled={!canSave}
+                  onPress={() => {
+                    void handleSave();
+                  }}
+                  style={[
+                    styles.savePressable,
+                    !canSave ? styles.savePressableDisabled : null,
+                  ]}
+                >
+                  {saving ? (
+                    <ActivityIndicator color={colors.primary} />
+                  ) : (
+                    <Text style={[styles.saveLabel, { color: colors.primary }]}>
+                      Save
+                    </Text>
+                  )}
+                </Pressable>
+              </GlassSurface>
+            </View>
+
+            <MapGlassCircleButton
+              accessibilityLabel="Back"
+              onPress={onBack}
+              style={styles.closeButton}
             >
-              <Text variant="h4" className="border-0 pb-0">
-                {activity.emoji} {activity.label}
-              </Text>
-              <Text variant="muted" className="mt-1 text-sm">
-                Fill in the details, then save.
-              </Text>
-
-              {fieldGroups.map(group =>
-                group.kind === 'media' ? (
-                  <ActivityFieldMediaRow
-                    key={group.fields.map(field => field.id).join('-')}
-                    fields={group.fields}
-                    values={values}
-                    scanningFieldId={scanningFieldId}
-                    onOpenCamera={handleOpenCamera}
-                    onOpenLibrary={field => void handleOpenLibrary(field)}
-                    onRemoveImage={field => setFieldValue(field.id, undefined)}
-                  />
-                ) : (
-                  renderField(group.field)
-                ),
-              )}
-
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Save activity"
-                disabled={!canSave}
-                onPress={() => void handleSave()}
-                style={[
-                  styles.saveButton,
-                  !canSave ? styles.saveButtonDisabled : null,
-                ]}
-              >
-                {saving ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.saveButtonLabel}>Save</Text>
-                )}
-              </Pressable>
-            </ScrollView>
-          ) : null}
-        </AppBottomSheet>
-      </BottomSheetModalProvider>
+              <X size={20} color={colors.primary} strokeWidth={2.25} />
+            </MapGlassCircleButton>
+          </View>
+        </View>
+      ) : null}
 
       <ActivityFieldCameraModal
         visible={captureField != null}
@@ -459,19 +614,64 @@ export function ActivityLogEntrySheet({
         onClose={() => setCaptureField(null)}
         onUsePhoto={handleCameraUsePhoto}
       />
+
+      {Platform.OS === 'ios' ? (
+        <InputAccessoryView nativeID={NUMERIC_KEYBOARD_ACCESSORY_ID}>
+          <View style={styles.keyboardAccessory}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Done"
+              onPress={Keyboard.dismiss}
+              hitSlop={8}
+              style={styles.keyboardAccessoryDone}
+            >
+              <Text style={styles.keyboardAccessoryDoneLabel}>Done</Text>
+            </Pressable>
+          </View>
+        </InputAccessoryView>
+      ) : null}
     </View>
   );
 }
 
+/** @deprecated Prefer ActivityLogEntryScreen for structured logs. */
+export function ActivityLogEntrySheet({
+  activity,
+  onClose,
+  onLogged,
+}: {
+  activity: ActivityRow | null;
+  onClose: () => void;
+  onLogged: () => void | Promise<void>;
+}) {
+  if (activity == null) {
+    return null;
+  }
+  return (
+    <ActivityLogEntryPanel
+      activity={activity}
+      onBack={onClose}
+      onLogged={onLogged}
+    />
+  );
+}
+
 const styles = StyleSheet.create({
-  host: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 11,
-    elevation: 11,
+  panel: {
+    flex: 1,
+    minHeight: 0,
+  },
+  scroll: {
+    flex: 1,
+    minHeight: 0,
   },
   body: {
     gap: 12,
-    paddingBottom: 8,
+    paddingHorizontal: 20,
+  },
+  bodyBottom: {
+    flexGrow: 1,
+    justifyContent: 'flex-end',
   },
   fieldBlock: {
     gap: 6,
@@ -513,19 +713,71 @@ const styles = StyleSheet.create({
     color: '#166534',
     fontWeight: '600',
   },
-  saveButton: {
-    marginTop: 8,
-    borderRadius: 14,
-    backgroundColor: '#34C759',
-    paddingVertical: 14,
+  barWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
     alignItems: 'center',
   },
-  saveButtonDisabled: {
-    opacity: 0.45,
+  barRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: MAP_MOMENTS_SIDE_BTN_GAP,
   },
-  saveButtonLabel: {
-    color: '#FFFFFF',
-    fontSize: 16,
+  shadowWrap: {
+    borderRadius: MAP_MOMENTS_BAR_HEIGHT / 2,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.16,
+        shadowRadius: 14,
+      },
+      android: { elevation: 10 },
+    }),
+  },
+  pill: {
+    height: MAP_MOMENTS_BAR_HEIGHT,
+    borderRadius: MAP_MOMENTS_BAR_HEIGHT / 2,
+    overflow: 'hidden',
+    justifyContent: 'center',
+  },
+  savePressable: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: MAP_MOMENTS_BAR_HEIGHT,
+    paddingHorizontal: 22,
+    minWidth: 120,
+  },
+  savePressableDisabled: {
+    opacity: 0.4,
+  },
+  saveLabel: {
+    fontSize: 15,
     fontWeight: '600',
+  },
+  closeButton: {
+    width: MAP_STACK_BUTTON_SIZE,
+    height: MAP_STACK_BUTTON_SIZE,
+  },
+  keyboardAccessory: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#D1D5DB',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#AEAEB2',
+  },
+  keyboardAccessoryDone: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  keyboardAccessoryDoneLabel: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#007AFF',
   },
 });

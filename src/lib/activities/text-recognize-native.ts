@@ -40,5 +40,12 @@ export async function extractAmountFromImage(
   imageUri: string,
 ): Promise<number | null> {
   const text = await recognizeImageText(imageUri);
-  return parseAmountFromOcrText(text);
+  if (__DEV__ && text) {
+    console.log('[OCR amount] raw text:\n', text);
+  }
+  const amount = parseAmountFromOcrText(text);
+  if (__DEV__) {
+    console.log('[OCR amount] parsed:', amount);
+  }
+  return amount;
 }

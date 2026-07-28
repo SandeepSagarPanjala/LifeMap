@@ -1,11 +1,26 @@
 import { useMemo } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { Trash2, Pencil } from 'lucide-react-native';
+import {
+  Alert,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
+import { MapPin, Pencil, Trash2, X } from 'lucide-react-native';
 
+import { GlassSurface } from '@/components/glass/GlassSurface';
+import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
 import { SavedPlaceIcon } from '@/components/map/SavedPlaceIcon';
 import { SavedPlacesEmptyState } from '@/components/map/SavedPlacesEmptyState';
 import { Text } from '@/components/ui/text';
-import { BOTTOM_SHEET_SURFACE } from '@/lib/app-constants';
+import {
+  BOTTOM_SHEET_SURFACE,
+  MAP_MOMENTS_BAR_GAP,
+  MAP_MOMENTS_BAR_HEIGHT,
+  MAP_MOMENTS_SIDE_BTN_GAP,
+  MAP_STACK_BUTTON_SIZE,
+} from '@/lib/app-constants';
 import type { SavedPlaceRow } from '@/db/repositories/saved-places';
 import { savedPlaceDisplayLabel } from '@/lib/saved-places';
 import { SAVED_PLACE_MAP_STYLE } from '@/lib/saved-places-map';
@@ -75,7 +90,13 @@ export function SavedPlacesSheet({
     <View style={styles.root}>
       <ScrollView
         style={styles.scrollArea}
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[
+          styles.scroll,
+          {
+            paddingBottom:
+              MAP_MOMENTS_BAR_HEIGHT + MAP_MOMENTS_BAR_GAP + 16,
+          },
+        ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
@@ -170,23 +191,41 @@ export function SavedPlacesSheet({
           </View>
         )}
       </ScrollView>
-      <Pressable
-        accessibilityRole="link"
-        accessibilityLabel="Add saved place by address"
-        disabled={!canAddByAddress}
-        onPress={onAddByAddress}
-        style={[
-          styles.addByAddressLink,
-          !canAddByAddress && styles.addByAddressLinkDisabled,
-        ]}
+
+      <View
+        pointerEvents="box-none"
+        style={[styles.barWrap, { paddingBottom: MAP_MOMENTS_BAR_GAP }]}
       >
-        <Text
-          className="text-center text-sm font-medium"
-          style={{ color: canAddByAddress ? colors.primary : '#8E8E93' }}
-        >
-          Add by address
-        </Text>
-      </Pressable>
+        <View style={styles.barRow}>
+          <View style={styles.shadowWrap}>
+            <GlassSurface style={styles.pill}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Add saved place by address"
+                disabled={!canAddByAddress}
+                onPress={onAddByAddress}
+                style={[
+                  styles.addPressable,
+                  !canAddByAddress ? styles.addPressableDisabled : null,
+                ]}
+              >
+                <MapPin size={16} color={colors.primary} strokeWidth={2.25} />
+                <Text style={[styles.addLabel, { color: colors.primary }]}>
+                  Add by address
+                </Text>
+              </Pressable>
+            </GlassSurface>
+          </View>
+
+          <MapGlassCircleButton
+            accessibilityLabel="Close"
+            onPress={onClose}
+            style={styles.closeButton}
+          >
+            <X size={20} color={colors.primary} strokeWidth={2.25} />
+          </MapGlassCircleButton>
+        </View>
+      </View>
     </View>
   );
 }
@@ -239,15 +278,52 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 8,
   },
-  addByAddressLink: {
-    paddingTop: 12,
-    paddingBottom: 20,
-    marginBottom: 4,
-    minHeight: 48,
+  barWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
     alignItems: 'center',
+  },
+  barRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: MAP_MOMENTS_SIDE_BTN_GAP,
+  },
+  shadowWrap: {
+    borderRadius: MAP_MOMENTS_BAR_HEIGHT / 2,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.16,
+        shadowRadius: 14,
+      },
+      android: { elevation: 10 },
+    }),
+  },
+  pill: {
+    height: MAP_MOMENTS_BAR_HEIGHT,
+    borderRadius: MAP_MOMENTS_BAR_HEIGHT / 2,
+    overflow: 'hidden',
     justifyContent: 'center',
   },
-  addByAddressLinkDisabled: {
-    opacity: 0.45,
+  addPressable: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    height: MAP_MOMENTS_BAR_HEIGHT,
+    paddingHorizontal: 18,
+  },
+  addPressableDisabled: {
+    opacity: 0.4,
+  },
+  addLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  closeButton: {
+    width: MAP_STACK_BUTTON_SIZE,
+    height: MAP_STACK_BUTTON_SIZE,
   },
 });

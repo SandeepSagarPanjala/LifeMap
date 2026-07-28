@@ -5,12 +5,14 @@ import {
   useRef,
   useState,
   type ComponentRef,
+  type ReactNode,
   type RefObject,
 } from 'react';
 import { APP_COPY } from '@/lib/app-copy';
 import {
   ActivityIndicator,
   Keyboard,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -19,15 +21,31 @@ import {
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
-import { Briefcase, Heart, Home } from 'lucide-react-native';
+import {
+  Briefcase,
+  Check,
+  ChevronLeft,
+  Heart,
+  Home,
+  Search,
+  X,
+} from 'lucide-react-native';
 
+import { GlassSurface } from '@/components/glass/GlassSurface';
+import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
 import { AppBottomSheet } from '@/components/ui/app-bottom-sheet';
 import { Text } from '@/components/ui/text';
 import type { SavedPlaceKind } from '@/db/repositories/saved-places';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import type { AddressGeocodeResult } from '@/lib/place-lookup-types';
 import { fetchAddressGeocode } from '@/lib/place-lookup-native';
-import { MAX_SAVED_PLACE_LABEL_LENGTH } from '@/lib/app-constants';
+import {
+  MAP_MOMENTS_BAR_GAP,
+  MAP_MOMENTS_BAR_HEIGHT,
+  MAP_MOMENTS_SIDE_BTN_GAP,
+  MAP_STACK_BUTTON_SIZE,
+  MAX_SAVED_PLACE_LABEL_LENGTH,
+} from '@/lib/app-constants';
 import type { SavedPlaceAddByAddressOptions } from '@/lib/saved-places';
 
 const MIN_ADDRESS_LENGTH = 5;
@@ -57,6 +75,97 @@ function defaultKind(options: SavedPlaceAddByAddressOptions): SavedPlaceKind {
     return 'work';
   }
   return 'favorite';
+}
+
+type GlassActionBarProps = {
+  primaryLabel: string;
+  primaryAccessibilityLabel: string;
+  primaryIcon: ReactNode;
+  primaryDisabled?: boolean;
+  primaryLoading?: boolean;
+  onPrimary: () => void;
+  onClose: () => void;
+  closeDisabled?: boolean;
+  onBack?: () => void;
+  backDisabled?: boolean;
+};
+
+function GlassActionBar({
+  primaryLabel,
+  primaryAccessibilityLabel,
+  primaryIcon,
+  primaryDisabled = false,
+  primaryLoading = false,
+  onPrimary,
+  onClose,
+  closeDisabled = false,
+  onBack,
+  backDisabled = false,
+}: GlassActionBarProps) {
+  const colors = useThemeColors();
+
+  return (
+    <View
+      pointerEvents="box-none"
+      style={[styles.barWrap, { paddingBottom: MAP_MOMENTS_BAR_GAP }]}
+    >
+      <View style={styles.barRow}>
+        {onBack != null ? (
+          <MapGlassCircleButton
+            accessibilityLabel="Back"
+            disabled={backDisabled}
+            onPress={onBack}
+            style={styles.sideButton}
+          >
+            <ChevronLeft
+              size={20}
+              color={colors.primary}
+              strokeWidth={2.25}
+            />
+          </MapGlassCircleButton>
+        ) : null}
+
+        <View style={styles.shadowWrap}>
+          <GlassSurface style={styles.pill}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={primaryAccessibilityLabel}
+              disabled={primaryDisabled || primaryLoading}
+              onPress={onPrimary}
+              style={[
+                styles.primaryPressable,
+                primaryDisabled || primaryLoading
+                  ? styles.primaryPressableDisabled
+                  : null,
+              ]}
+            >
+              {primaryLoading ? (
+                <ActivityIndicator color={colors.primary} />
+              ) : (
+                <>
+                  {primaryIcon}
+                  <Text
+                    style={[styles.primaryLabel, { color: colors.primary }]}
+                  >
+                    {primaryLabel}
+                  </Text>
+                </>
+              )}
+            </Pressable>
+          </GlassSurface>
+        </View>
+
+        <MapGlassCircleButton
+          accessibilityLabel="Cancel"
+          disabled={closeDisabled}
+          onPress={onClose}
+          style={styles.sideButton}
+        >
+          <X size={20} color={colors.primary} strokeWidth={2.25} />
+        </MapGlassCircleButton>
+      </View>
+    </View>
+  );
 }
 
 function AddSavedPlaceByAddressPanel({
@@ -197,39 +306,30 @@ function AddSavedPlaceByAddressPanel({
               returnKeyType="search"
               editable={!lookingUp && !saving}
               accessibilityLabel="Saved place address"
+              onSubmitEditing={() => {
+                if (canLookup) {
+                  void handleLookup();
+                }
+              }}
             />
           </View>
           {lookupError != null ? (
             <Text className="mt-2 text-sm text-red-600">{lookupError}</Text>
           ) : null}
-          <View style={styles.actions}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Cancel add by address"
-              onPress={onClose}
-              disabled={lookingUp || saving}
-              style={[styles.button, styles.cancelButton]}
-            >
-              <Text className="font-medium">Cancel</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Look up address"
-              disabled={!canLookup}
-              onPress={() => void handleLookup()}
-              style={[
-                styles.button,
-                styles.saveButton,
-                !canLookup && styles.saveButtonDisabled,
-              ]}
-            >
-              {lookingUp ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text className="font-semibold text-white">Continue</Text>
-              )}
-            </Pressable>
-          </View>
+          <GlassActionBar
+            primaryLabel="Continue"
+            primaryAccessibilityLabel="Look up address"
+            primaryIcon={
+              <Search size={16} color={colors.primary} strokeWidth={2.25} />
+            }
+            primaryDisabled={!canLookup}
+            primaryLoading={lookingUp}
+            onPrimary={() => {
+              void handleLookup();
+            }}
+            onClose={onClose}
+            closeDisabled={lookingUp || saving}
+          />
         </View>
       ) : null}
 
@@ -264,29 +364,17 @@ function AddSavedPlaceByAddressPanel({
               );
             })}
           </ScrollView>
-          <View style={styles.actions}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Back to address"
-              onPress={goBack}
-              style={[styles.button, styles.cancelButton]}
-            >
-              <Text className="font-medium">Back</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Continue with selected address"
-              disabled={selectedResult == null}
-              onPress={() => setStep('save')}
-              style={[
-                styles.button,
-                styles.saveButton,
-                selectedResult == null && styles.saveButtonDisabled,
-              ]}
-            >
-              <Text className="font-semibold text-white">Continue</Text>
-            </Pressable>
-          </View>
+          <GlassActionBar
+            primaryLabel="Continue"
+            primaryAccessibilityLabel="Continue with selected address"
+            primaryIcon={
+              <Check size={16} color={colors.primary} strokeWidth={2.5} />
+            }
+            primaryDisabled={selectedResult == null}
+            onPrimary={() => setStep('save')}
+            onClose={onClose}
+            onBack={goBack}
+          />
         </View>
       ) : null}
 
@@ -378,34 +466,22 @@ function AddSavedPlaceByAddressPanel({
               />
             </View>
           ) : null}
-          <View style={styles.actions}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Back"
-              onPress={goBack}
-              disabled={saving}
-              style={[styles.button, styles.cancelButton]}
-            >
-              <Text className="font-medium">Back</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Save saved place by address"
-              disabled={!canSave}
-              onPress={() => void handleSave()}
-              style={[
-                styles.button,
-                styles.saveButton,
-                !canSave && styles.saveButtonDisabled,
-              ]}
-            >
-              {saving ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text className="font-semibold text-white">Save</Text>
-              )}
-            </Pressable>
-          </View>
+          <GlassActionBar
+            primaryLabel="Save"
+            primaryAccessibilityLabel="Save saved place by address"
+            primaryIcon={
+              <Check size={16} color={colors.primary} strokeWidth={2.5} />
+            }
+            primaryDisabled={!canSave}
+            primaryLoading={saving}
+            onPrimary={() => {
+              void handleSave();
+            }}
+            onClose={onClose}
+            closeDisabled={saving}
+            onBack={goBack}
+            backDisabled={saving}
+          />
         </View>
       ) : null}
     </View>
@@ -579,26 +655,49 @@ const styles = StyleSheet.create({
     borderColor: '#6B4EFF',
     backgroundColor: '#F5F3FF',
   },
-  actions: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 16,
-  },
-  button: {
-    flex: 1,
+  barWrap: {
+    marginTop: 20,
     alignItems: 'center',
+  },
+  barRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: MAP_MOMENTS_SIDE_BTN_GAP,
+  },
+  shadowWrap: {
+    borderRadius: MAP_MOMENTS_BAR_HEIGHT / 2,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.16,
+        shadowRadius: 14,
+      },
+      android: { elevation: 10 },
+    }),
+  },
+  pill: {
+    height: MAP_MOMENTS_BAR_HEIGHT,
+    borderRadius: MAP_MOMENTS_BAR_HEIGHT / 2,
+    overflow: 'hidden',
     justifyContent: 'center',
-    borderRadius: 12,
-    paddingVertical: 12,
-    minHeight: 44,
   },
-  cancelButton: {
-    backgroundColor: '#F2F2F7',
+  primaryPressable: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    height: MAP_MOMENTS_BAR_HEIGHT,
+    paddingHorizontal: 18,
   },
-  saveButton: {
-    backgroundColor: '#6B4EFF',
+  primaryPressableDisabled: {
+    opacity: 0.4,
   },
-  saveButtonDisabled: {
-    opacity: 0.45,
+  primaryLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  sideButton: {
+    width: MAP_STACK_BUTTON_SIZE,
+    height: MAP_STACK_BUTTON_SIZE,
   },
 });

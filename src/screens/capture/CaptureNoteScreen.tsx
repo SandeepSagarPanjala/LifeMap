@@ -19,7 +19,6 @@ import {
   AudioLines,
   Camera,
   Check,
-  ChevronLeft,
   ImageIcon,
   Pause,
   Play,
@@ -30,7 +29,9 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmotionTokenPickerSheet } from '@/components/capture/EmotionTokenPickerSheet';
+import { GlassSurface } from '@/components/glass/GlassSurface';
 import { CAPTURE_BUTTON_THEMES } from '@/components/map/map-capture-button-theme';
+import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
 import { VoiceMemoSheet } from '@/components/map/VoiceMemoSheet';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import {
@@ -51,7 +52,17 @@ import {
   createVoiceRecorderSession,
   getVoiceRecordingErrorMessage,
 } from '@/lib/moments/voice-recorder';
-import { MAX_NOTE_PHOTO_ATTACHMENTS } from '@/lib/app-constants';
+import {
+  MAP_MOMENTS_BAR_HEIGHT,
+  MAP_MOMENTS_SIDE_BTN_GAP,
+  MAP_STACK_BUTTON_SIZE,
+  MAX_NOTE_PHOTO_ATTACHMENTS,
+} from '@/lib/app-constants';
+
+/** Match MapMomentsGlassBar / LiquidGlassTabBar geometry. */
+const TAB_SIZE = 44;
+const ICON_SIZE = 20;
+const H_PADDING = 4;
 import { type DraftNotePhoto } from '@/lib/moments/note-photo-attachments';
 import {
   captureAndCompressNotePhoto,
@@ -321,52 +332,20 @@ export function CaptureNoteScreen() {
     <BottomSheetModalProvider>
       <View style={styles.root}>
         <View style={styles.mainColumn}>
-          <View style={[styles.topBar, { paddingTop: insets.top + 6 }]}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Go back"
-              onPress={handleBack}
-              style={styles.topBarButton}
-            >
-              <ChevronLeft size={22} color="#1C1C1E" strokeWidth={2.25} />
-            </Pressable>
-            <View style={styles.topBarSpacer} />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Save diary entry"
-              disabled={!canSave || saving}
-              onPress={() => void handleSave()}
-              style={[
-                styles.saveIconButton,
-                {
-                  backgroundColor: canSave ? colors.primary : '#E5E7EB',
-                  opacity: saving ? 0.7 : 1,
-                },
-              ]}
-            >
-              {saving ? (
-                <ActivityIndicator
-                  color={colors.primaryForeground}
-                  size="small"
-                />
-              ) : (
-                <Check
-                  size={20}
-                  color={colors.primaryForeground}
-                  strokeWidth={2.5}
-                />
-              )}
-            </Pressable>
-          </View>
-
           <ScrollView
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={[
               styles.scrollContent,
-              { paddingBottom: bottomDockHeight + 12 },
+              {
+                // Extra room under the status bar — large title glyphs clip if
+                // the field sits flush against the safe-area edge.
+                paddingTop: insets.top + 16,
+                paddingBottom: bottomDockHeight + 12,
+              },
             ]}
             showsVerticalScrollIndicator={false}
             style={styles.scroll}
+            contentInsetAdjustmentBehavior="never"
           >
             <TextInput
               ref={titleInputRef}
@@ -381,7 +360,10 @@ export function CaptureNoteScreen() {
               style={styles.titleInput}
               selectionColor={colors.primary}
               cursorColor={colors.primary}
-              returnKeyType="next"
+              returnKeyType="done"
+              onSubmitEditing={() => {
+                bodyInputRef.current?.focus();
+              }}
             />
             <TextInput
               ref={bodyInputRef}
@@ -397,6 +379,9 @@ export function CaptureNoteScreen() {
               style={styles.bodyInput}
               selectionColor={colors.primary}
               cursorColor={colors.primary}
+              returnKeyType="done"
+              blurOnSubmit
+              onSubmitEditing={Keyboard.dismiss}
             />
           </ScrollView>
         </View>
@@ -529,68 +514,117 @@ export function CaptureNoteScreen() {
           ) : null}
 
           <View style={styles.toolbarWrap}>
-            <View style={styles.toolbar}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Attach photo from library"
-                disabled={
-                  pickingPhoto || photos.length >= MAX_NOTE_PHOTO_ATTACHMENTS
-                }
-                onPress={() => void attachPhotosFromLibrary()}
-                style={styles.toolbarButton}
+            <View style={styles.toolbarRow}>
+              <MapGlassCircleButton
+                accessibilityLabel="Save diary entry"
+                disabled={!canSave || saving}
+                onPress={() => {
+                  void handleSave();
+                }}
+                style={styles.sideButton}
               >
-                {pickingPhoto ? (
-                  <ActivityIndicator color="#8E8E93" size="small" />
+                {saving ? (
+                  <ActivityIndicator color={colors.primary} size="small" />
                 ) : (
-                  <ImageIcon size={22} color="#8E8E93" strokeWidth={2} />
+                  <Check
+                    size={20}
+                    color={colors.primary}
+                    strokeWidth={2.25}
+                  />
                 )}
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Take photo"
-                disabled={
-                  pickingPhoto || photos.length >= MAX_NOTE_PHOTO_ATTACHMENTS
-                }
-                onPress={() => void attachPhotoFromCamera()}
-                style={styles.toolbarButton}
-              >
-                <Camera size={22} color="#8E8E93" strokeWidth={2} />
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Record voice memo"
-                onPress={() => {
-                  Keyboard.dismiss();
-                  setVoiceSheetOpen(true);
-                }}
-                style={styles.toolbarButton}
-              >
-                <AudioLines size={22} color="#8E8E93" strokeWidth={2} />
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Pick emotion"
-                onPress={() => {
-                  Keyboard.dismiss();
-                  setEmotionSheetOpen(true);
-                }}
-                style={styles.toolbarButton}
-              >
-                {selectedEmotion && selectedContext ? (
-                  <View
-                    style={[
-                      styles.toolbarEmotionSticker,
-                      { backgroundColor: selectedEmotion.tint },
-                    ]}
+              </MapGlassCircleButton>
+
+              <View style={styles.shadowWrap}>
+                <GlassSurface style={styles.pill}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Attach photo from library"
+                    disabled={
+                      pickingPhoto ||
+                      photos.length >= MAX_NOTE_PHOTO_ATTACHMENTS
+                    }
+                    onPress={() => void attachPhotosFromLibrary()}
+                    style={styles.tab}
                   >
-                    <Text style={styles.toolbarEmotionEmoji}>
-                      {selectedEmotion.sticker}
-                    </Text>
-                  </View>
-                ) : (
-                  <Sparkles size={22} color="#8E8E93" strokeWidth={2} />
-                )}
-              </Pressable>
+                    {pickingPhoto ? (
+                      <ActivityIndicator color={colors.primary} size="small" />
+                    ) : (
+                      <ImageIcon
+                        size={ICON_SIZE}
+                        color={colors.primary}
+                        strokeWidth={2}
+                      />
+                    )}
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Take photo"
+                    disabled={
+                      pickingPhoto ||
+                      photos.length >= MAX_NOTE_PHOTO_ATTACHMENTS
+                    }
+                    onPress={() => void attachPhotoFromCamera()}
+                    style={styles.tab}
+                  >
+                    <Camera
+                      size={ICON_SIZE}
+                      color={colors.primary}
+                      strokeWidth={2}
+                    />
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Record voice memo"
+                    onPress={() => {
+                      Keyboard.dismiss();
+                      setVoiceSheetOpen(true);
+                    }}
+                    style={styles.tab}
+                  >
+                    <AudioLines
+                      size={ICON_SIZE}
+                      color={colors.primary}
+                      strokeWidth={2}
+                    />
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Pick emotion"
+                    onPress={() => {
+                      Keyboard.dismiss();
+                      setEmotionSheetOpen(true);
+                    }}
+                    style={styles.tab}
+                  >
+                    {selectedEmotion && selectedContext ? (
+                      <View
+                        style={[
+                          styles.toolbarEmotionSticker,
+                          { backgroundColor: selectedEmotion.tint },
+                        ]}
+                      >
+                        <Text style={styles.toolbarEmotionEmoji}>
+                          {selectedEmotion.sticker}
+                        </Text>
+                      </View>
+                    ) : (
+                      <Sparkles
+                        size={ICON_SIZE}
+                        color={colors.primary}
+                        strokeWidth={2}
+                      />
+                    )}
+                  </Pressable>
+                </GlassSurface>
+              </View>
+
+              <MapGlassCircleButton
+                accessibilityLabel="Close"
+                onPress={handleBack}
+                style={styles.sideButton}
+              >
+                <X size={20} color={colors.primary} strokeWidth={2.25} />
+              </MapGlassCircleButton>
             </View>
           </View>
         </View>
@@ -643,53 +677,20 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    backgroundColor: '#FFFFFF',
-  },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-  },
-  topBarSpacer: {
-    flex: 1,
-  },
-  topBarButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  saveIconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2,
   },
   scrollContent: {
     paddingHorizontal: 24,
-    paddingTop: 8,
     paddingBottom: 8,
     flexGrow: 1,
   },
   titleInput: {
     fontSize: 28,
+    lineHeight: 36,
     fontWeight: '600',
     color: '#1C1C1E',
-    paddingVertical: 8,
+    paddingTop: 6,
+    paddingBottom: 8,
+    ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
   },
   bodyInput: {
     minHeight: 120,
@@ -823,28 +824,36 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   toolbarWrap: {
-    paddingHorizontal: 16,
-    paddingTop: 0,
+    alignItems: 'center',
   },
-  toolbar: {
+  toolbarRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-around',
-    alignSelf: 'center',
-    minWidth: '88%',
-    borderRadius: 24,
-    paddingHorizontal: 14,
-    paddingVertical: 4,
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 4,
+    gap: MAP_MOMENTS_SIDE_BTN_GAP,
   },
-  toolbarButton: {
-    width: 40,
-    height: 40,
+  shadowWrap: {
+    borderRadius: MAP_MOMENTS_BAR_HEIGHT / 2,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.16,
+        shadowRadius: 14,
+      },
+      android: { elevation: 10 },
+    }),
+  },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: MAP_MOMENTS_BAR_HEIGHT,
+    paddingHorizontal: H_PADDING,
+    borderRadius: MAP_MOMENTS_BAR_HEIGHT / 2,
+    overflow: 'hidden',
+  },
+  tab: {
+    width: TAB_SIZE,
+    height: MAP_MOMENTS_BAR_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -858,5 +867,9 @@ const styles = StyleSheet.create({
   toolbarEmotionEmoji: {
     fontSize: 18,
     lineHeight: 22,
+  },
+  sideButton: {
+    width: MAP_STACK_BUTTON_SIZE,
+    height: MAP_STACK_BUTTON_SIZE,
   },
 });

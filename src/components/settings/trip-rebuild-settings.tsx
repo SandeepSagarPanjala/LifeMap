@@ -4,11 +4,11 @@ import { format } from 'date-fns';
 import {
   ActivityIndicator,
   Alert,
-  InteractionManager,
   Modal,
   Pressable,
   View,
 } from 'react-native';
+import { runWhenIdle } from '@/lib/run-when-idle';
 
 import { HistoryDatePickerSheet } from '@/components/map/HistoryDatePickerSheet';
 import { Text } from '@/components/ui/text';
@@ -194,7 +194,7 @@ export function TripRebuildSettings() {
           setSelectedDayKey(dateKey);
           setDayPickerVisible(false);
           setTimeout(() => {
-            InteractionManager.runAfterInteractions(() => {
+            runWhenIdle(() => {
               confirmRebuildDay(dateKey);
             });
           }, EXPORT_SHARE_DELAY_MS);

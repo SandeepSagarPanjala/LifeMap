@@ -1,6 +1,7 @@
 import { format } from 'date-fns';
 import { APP_COPY } from '@/lib/app-copy';
-import { InteractionManager, Platform, Share } from 'react-native';
+import { Platform, Share } from 'react-native';
+import { runWhenIdle } from '@/lib/run-when-idle';
 import ReactNativeBlobUtil from 'react-native-blob-util';
 import {
   errorCodes,
@@ -140,7 +141,7 @@ export async function exportBackupToDrive(
 
 async function pickBackupZipFile() {
   await new Promise<void>(resolve => {
-    InteractionManager.runAfterInteractions(() => resolve());
+    runWhenIdle(() => resolve());
   });
   const [picked] = await pick({
     type: [types.zip, 'application/zip', 'application/x-zip-compressed'],

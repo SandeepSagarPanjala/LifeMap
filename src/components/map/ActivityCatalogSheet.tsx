@@ -3,16 +3,16 @@ import { APP_COPY, errorMessageOr } from '@/lib/app-copy';
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
+  TextInput,
   View,
 } from 'react-native';
-import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-import type { BottomSheetModal } from '@gorhom/bottom-sheet';
-import { BottomSheetTextInput as TextInput } from '@gorhom/bottom-sheet';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AppBottomSheet } from '@/components/ui/app-bottom-sheet';
 import { Text } from '@/components/ui/text';
 import { createActivityFromDefinition } from '@/db/repositories/activities';
 import {
@@ -25,20 +25,19 @@ import {
   parseActivityYaml,
 } from '@/lib/activities/parse-activity-yaml';
 
-type ActivityCatalogSheetProps = {
-  visible: boolean;
-  onClose: () => void;
+type ActivityCatalogPanelProps = {
+  onBack: () => void;
   onInstalled: () => void;
 };
 
 type Mode = 'menu' | 'paste' | 'browse';
 
-export function ActivityCatalogSheet({
-  visible,
-  onClose,
+/** In-shell activity templates panel (no Gorhom overlay). */
+export function ActivityCatalogPanel({
+  onBack,
   onInstalled,
-}: ActivityCatalogSheetProps) {
-  const sheetRef = useRef<BottomSheetModal>(null);
+}: ActivityCatalogPanelProps) {
+  const insets = useSafeAreaInsets();
   const fetchAbortRef = useRef<AbortController | null>(null);
   const [mode, setMode] = useState<Mode>('menu');
   const [yamlText, setYamlText] = useState('');
@@ -48,28 +47,11 @@ export function ActivityCatalogSheet({
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    if (!visible) {
-      fetchAbortRef.current?.abort();
-      fetchAbortRef.current = null;
-      setMode('menu');
-      setYamlText('');
-      setBusy(false);
-      setCatalog([]);
-      setCatalogError(null);
-      setSelected(new Set());
-    }
-  }, [visible]);
-
-  useEffect(() => {
     return () => {
       fetchAbortRef.current?.abort();
       fetchAbortRef.current = null;
     };
   }, []);
-
-  const handleDismissed = useCallback(() => {
-    onClose();
-  }, [onClose]);
 
   const installDefinition = useCallback(
     async (definition: ActivityDefinition, source: 'yaml' | 'catalog') => {
@@ -88,8 +70,11 @@ export function ActivityCatalogSheet({
     try {
       await installDefinition(parsed.definition, 'yaml');
       onInstalled();
-      Alert.alert('Installed', `${parsed.definition.emoji} ${parsed.definition.name}`);
-      sheetRef.current?.dismiss();
+      Alert.alert(
+        'Installed',
+        `${parsed.definition.emoji} ${parsed.definition.name}`,
+      );
+      onBack();
     } catch (error) {
       Alert.alert(
         APP_COPY.alerts.couldNotSaveActivity,
@@ -98,7 +83,7 @@ export function ActivityCatalogSheet({
     } finally {
       setBusy(false);
     }
-  }, [installDefinition, onInstalled, yamlText]);
+  }, [installDefinition, onBack, onInstalled, yamlText]);
 
   const loadCatalog = useCallback(async () => {
     fetchAbortRef.current?.abort();
@@ -155,10 +140,10 @@ export function ActivityCatalogSheet({
   }, []);
 
   useEffect(() => {
-    if (visible && mode === 'browse' && catalog.length === 0 && !catalogError) {
+    if (mode === 'browse' && catalog.length === 0 && !catalogError) {
       void loadCatalog();
     }
-  }, [catalog.length, catalogError, loadCatalog, mode, visible]);
+  }, [catalog.length, catalogError, loadCatalog, mode]);
 
   const toggleSelected = useCallback((key: string) => {
     setSelected(prev => {
@@ -188,7 +173,7 @@ export function ActivityCatalogSheet({
       }
       onInstalled();
       Alert.alert('Installed', `Added ${toInstall.length} activities.`);
-      sheetRef.current?.dismiss();
+      onBack();
     } catch (error) {
       Alert.alert(
         APP_COPY.alerts.couldNotSaveActivity,
@@ -197,155 +182,166 @@ export function ActivityCatalogSheet({
     } finally {
       setBusy(false);
     }
-  }, [catalog, installDefinition, onInstalled, selected]);
+  }, [catalog, installDefinition, onBack, onInstalled, selected]);
+
+  const handleHeaderBack = useCallback(() => {
+    if (mode !== 'menu') {
+      setMode('menu');
+      return;
+    }
+    onBack();
+  }, [mode, onBack]);
 
   return (
-    <View
-      style={styles.host}
-      pointerEvents={visible ? 'box-none' : 'none'}
+    <KeyboardAvoidingView
+      style={styles.panel}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <BottomSheetModalProvider>
-        <AppBottomSheet
-          name="activity-catalog"
-          visible={visible}
-          bottomSheetRef={sheetRef}
-          onClose={handleDismissed}
-          instantPresent
-          stackBehavior="push"
-          enableDynamicSizing
-          keyboardBehavior="interactive"
-          keyboardBlurBehavior="restore"
-          dismissKeyboardOnClose
-          footerPadding={12}
-        >
-          <ScrollView
-            keyboardShouldPersistTaps="handled"
-            contentContainerStyle={styles.body}
-          >
-            <Text variant="h4" className="border-0 pb-0">
-              Activity templates
-            </Text>
-            <Text variant="muted" className="mt-1 text-sm">
-              Paste YAML or download from the catalog. Templates are data only —
-              never executable code.
-            </Text>
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={[
+          styles.body,
+          { paddingBottom: Math.max(insets.bottom, 12) },
+        ]}
+      >
+        <Pressable onPress={handleHeaderBack}>
+          <Text style={styles.back}>← Back</Text>
+        </Pressable>
+        <Text variant="h4" className="border-0 pb-0">
+          Activity templates
+        </Text>
+        <Text variant="muted" className="mt-1 text-sm">
+          Paste YAML or download from the catalog. Templates are data only —
+          never executable code.
+        </Text>
 
-            {mode === 'menu' ? (
-              <View style={styles.menu}>
+        {mode === 'menu' ? (
+          <View style={styles.menu}>
+            <Pressable
+              style={styles.menuButton}
+              onPress={() => setMode('paste')}
+            >
+              <Text style={styles.menuButtonLabel}>Paste YAML</Text>
+            </Pressable>
+            <Pressable
+              style={styles.menuButton}
+              onPress={() => setMode('browse')}
+            >
+              <Text style={styles.menuButtonLabel}>Download predefined</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {mode === 'paste' ? (
+          <View style={styles.section}>
+            <TextInput
+              value={yamlText}
+              onChangeText={setYamlText}
+              multiline
+              placeholder={
+                'schemaVersion: 1\nname: Gym\nemoji: "🏋️"\nfields: []'
+              }
+              placeholderTextColor="#8E8E93"
+              style={styles.yamlInput}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <Pressable
+              style={[styles.primary, busy ? styles.disabled : null]}
+              disabled={busy}
+              onPress={() => void handlePasteInstall()}
+            >
+              {busy ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <Text style={styles.primaryLabel}>Validate & install</Text>
+              )}
+            </Pressable>
+          </View>
+        ) : null}
+
+        {mode === 'browse' ? (
+          <View style={styles.section}>
+            {busy && catalog.length === 0 ? (
+              <ActivityIndicator style={{ marginTop: 16 }} />
+            ) : null}
+            {catalogError ? (
+              <View style={styles.section}>
+                <Text style={styles.error}>{catalogError}</Text>
                 <Pressable
                   style={styles.menuButton}
-                  onPress={() => setMode('paste')}
+                  onPress={() => void loadCatalog()}
                 >
-                  <Text style={styles.menuButtonLabel}>Paste YAML</Text>
-                </Pressable>
-                <Pressable
-                  style={styles.menuButton}
-                  onPress={() => setMode('browse')}
-                >
-                  <Text style={styles.menuButtonLabel}>
-                    Download predefined
-                  </Text>
+                  <Text style={styles.menuButtonLabel}>Retry</Text>
                 </Pressable>
               </View>
             ) : null}
-
-            {mode === 'paste' ? (
-              <View style={styles.section}>
-                <Pressable onPress={() => setMode('menu')}>
-                  <Text style={styles.back}>← Back</Text>
-                </Pressable>
-                <TextInput
-                  value={yamlText}
-                  onChangeText={setYamlText}
-                  multiline
-                  placeholder={'schemaVersion: 1\nname: Gym\nemoji: "🏋️"\nfields: []'}
-                  placeholderTextColor="#8E8E93"
-                  style={styles.yamlInput}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
+            {catalog.map((item, index) => {
+              const key = item.templateId ?? `${item.name}-${index}`;
+              const isOn = selected.has(key);
+              return (
                 <Pressable
-                  style={[styles.primary, busy ? styles.disabled : null]}
-                  disabled={busy}
-                  onPress={() => void handlePasteInstall()}
+                  key={key}
+                  style={[styles.catalogRow, isOn ? styles.catalogRowOn : null]}
+                  onPress={() => toggleSelected(key)}
                 >
-                  {busy ? (
-                    <ActivityIndicator color="#FFF" />
-                  ) : (
-                    <Text style={styles.primaryLabel}>Validate & install</Text>
-                  )}
-                </Pressable>
-              </View>
-            ) : null}
-
-            {mode === 'browse' ? (
-              <View style={styles.section}>
-                <Pressable onPress={() => setMode('menu')}>
-                  <Text style={styles.back}>← Back</Text>
-                </Pressable>
-                {busy && catalog.length === 0 ? (
-                  <ActivityIndicator style={{ marginTop: 16 }} />
-                ) : null}
-                {catalogError ? (
-                  <View style={styles.section}>
-                    <Text style={styles.error}>{catalogError}</Text>
-                    <Pressable style={styles.menuButton} onPress={() => void loadCatalog()}>
-                      <Text style={styles.menuButtonLabel}>Retry</Text>
-                    </Pressable>
+                  <Text style={styles.catalogEmoji}>{item.emoji}</Text>
+                  <View style={styles.catalogMain}>
+                    <Text style={styles.catalogName}>{item.name}</Text>
+                    <Text style={styles.catalogMeta}>
+                      {item.fields.length === 0
+                        ? 'One-tap'
+                        : `${item.fields.length} controls`}
+                    </Text>
                   </View>
-                ) : null}
-                {catalog.map((item, index) => {
-                  const key = item.templateId ?? `${item.name}-${index}`;
-                  const isOn = selected.has(key);
-                  return (
-                    <Pressable
-                      key={key}
-                      style={[styles.catalogRow, isOn ? styles.catalogRowOn : null]}
-                      onPress={() => toggleSelected(key)}
-                    >
-                      <Text style={styles.catalogEmoji}>{item.emoji}</Text>
-                      <View style={styles.catalogMain}>
-                        <Text style={styles.catalogName}>{item.name}</Text>
-                        <Text style={styles.catalogMeta}>
-                          {item.fields.length === 0
-                            ? 'One-tap'
-                            : `${item.fields.length} controls`}
-                        </Text>
-                      </View>
-                      <Text style={styles.check}>{isOn ? '✓' : ''}</Text>
-                    </Pressable>
-                  );
-                })}
-                {catalog.length > 0 ? (
-                  <Pressable
-                    style={[styles.primary, busy ? styles.disabled : null]}
-                    disabled={busy}
-                    onPress={() => void handleInstallSelected()}
-                  >
-                    {busy ? (
-                      <ActivityIndicator color="#FFF" />
-                    ) : (
-                      <Text style={styles.primaryLabel}>Install selected</Text>
-                    )}
-                  </Pressable>
-                ) : null}
-              </View>
+                  <Text style={styles.check}>{isOn ? '✓' : ''}</Text>
+                </Pressable>
+              );
+            })}
+            {catalog.length > 0 ? (
+              <Pressable
+                style={[styles.primary, busy ? styles.disabled : null]}
+                disabled={busy}
+                onPress={() => void handleInstallSelected()}
+              >
+                {busy ? (
+                  <ActivityIndicator color="#FFF" />
+                ) : (
+                  <Text style={styles.primaryLabel}>Install selected</Text>
+                )}
+              </Pressable>
             ) : null}
-          </ScrollView>
-        </AppBottomSheet>
-      </BottomSheetModalProvider>
-    </View>
+          </View>
+        ) : null}
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
+/** @deprecated Use ActivityCatalogPanel inside NativeHalfSheetShell. */
+export function ActivityCatalogSheet({
+  visible,
+  onClose,
+  onInstalled,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onInstalled: () => void;
+}) {
+  if (!visible) {
+    return null;
+  }
+  return <ActivityCatalogPanel onBack={onClose} onInstalled={onInstalled} />;
+}
+
 const styles = StyleSheet.create({
-  host: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 12,
-    elevation: 12,
+  panel: {
+    flex: 1,
+    minHeight: 0,
   },
   body: {
     gap: 12,
+    paddingHorizontal: 20,
     paddingBottom: 8,
   },
   menu: {
