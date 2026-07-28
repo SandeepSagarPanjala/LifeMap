@@ -1,8 +1,3 @@
-import {
-  DEFAULT_DRIVE_MAP_REFRESH_INTERVAL_MS,
-  type DriveMapRefreshIntervalMs,
-} from '@/lib/app-constants';
-import { getDriveMapRefreshIntervalMs } from '@/lib/drive-map-refresh-settings';
 import type { DetectedTrip } from '@/lib/trip-detection';
 
 let todayRefreshRevision = 0;
@@ -39,10 +34,9 @@ export async function refreshTodayOnForeground(): Promise<void> {
 let gpsRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 const GPS_REFRESH_DEBOUNCE_MS = 8_000;
 
-let driveRefreshInterval: ReturnType<typeof setInterval> | null = null;
-let driveIntervalStartRevision = 0;
 let appIsForeground = true;
-let driveIntervalMs = DEFAULT_DRIVE_MAP_REFRESH_INTERVAL_MS;
+/** Open drive — path grows in the background; map refreshes on foreground only. */
+let openDriveActive = false;
 
 function clearGpsRefreshTimer(): void {
   if (gpsRefreshTimer != null) {
@@ -51,49 +45,16 @@ function clearGpsRefreshTimer(): void {
   }
 }
 
-/** Cancel every foreground-only map refresh timer (drive interval + GPS debounce). */
-function stopForegroundTodayRefresh(): void {
-  stopDriveInterval();
-  clearGpsRefreshTimer();
-}
-
-function stopDriveInterval(): void {
-  driveIntervalStartRevision += 1;
-  if (driveRefreshInterval != null) {
-    clearInterval(driveRefreshInterval);
-    driveRefreshInterval = null;
-  }
-}
-
-async function startDriveInterval(): Promise<void> {
-  if (!appIsForeground || driveRefreshInterval != null) {
-    return;
-  }
-  const startRevision = ++driveIntervalStartRevision;
-  clearGpsRefreshTimer();
-  driveIntervalMs = await getDriveMapRefreshIntervalMs();
-  if (
-    startRevision !== driveIntervalStartRevision ||
-    !appIsForeground ||
-    driveRefreshInterval != null
-  ) {
-    return;
-  }
-  driveRefreshInterval = setInterval(() => {
-    refreshTodayOnForeground();
-  }, driveIntervalMs);
-}
-
 function isOpenDriveActivity(activity: DetectedTrip | null): boolean {
   return activity?.kind === 'travel' && activity.openThroughNow === true;
 }
 
-/** Debounced today sync after new GPS rows are saved (foreground only). */
+/**
+ * Debounced today sync after new GPS rows are saved (foreground stay mode only).
+ * While driving, skip — the drive path refreshes when the app returns to foreground.
+ */
 export function scheduleTodayRefreshAfterGps(): void {
-  if (!appIsForeground) {
-    return;
-  }
-  if (driveRefreshInterval != null) {
+  if (!appIsForeground || openDriveActive) {
     return;
   }
   if (gpsRefreshTimer != null) {
@@ -105,33 +66,25 @@ export function scheduleTodayRefreshAfterGps(): void {
   }, GPS_REFRESH_DEBOUNCE_MS);
 }
 
-/** Foreground drive mode — fixed interval; GPS saves do not retrigger debounce. */
+/**
+ * After today sync: while an open drive is active, suppress GPS debounce so the
+ * polyline only updates on background → foreground (see AppBootstrap).
+ */
 export function updateTodayRefreshAfterSync(
   openActivity: DetectedTrip | null,
 ): void {
-  if (appIsForeground && isOpenDriveActivity(openActivity)) {
-    void startDriveInterval();
-    return;
+  const nextOpenDrive = isOpenDriveActivity(openActivity);
+  openDriveActive = nextOpenDrive;
+  if (nextOpenDrive) {
+    clearGpsRefreshTimer();
   }
-  stopDriveInterval();
 }
 
 export function setTodayRefreshAppForeground(foreground: boolean): void {
   appIsForeground = foreground;
   if (!foreground) {
-    stopForegroundTodayRefresh();
+    clearGpsRefreshTimer();
   }
-}
-
-export function notifyDriveMapRefreshIntervalChanged(
-  ms: DriveMapRefreshIntervalMs,
-): void {
-  driveIntervalMs = ms;
-  if (driveRefreshInterval == null) {
-    return;
-  }
-  stopDriveInterval();
-  void startDriveInterval();
 }
 
 /** @deprecated Use refreshTodayOnForeground */
@@ -143,25 +96,16 @@ export function scheduleTodayImmediateMapRefresh(): void {
 export function resetTodayRefreshSchedulerForTests(): void {
   todayRefreshRevision = 0;
   todayHistoryRefreshListeners.clear();
-  driveIntervalStartRevision = 0;
   clearGpsRefreshTimer();
-  if (driveRefreshInterval != null) {
-    clearInterval(driveRefreshInterval);
-    driveRefreshInterval = null;
-  }
   appIsForeground = true;
-  driveIntervalMs = DEFAULT_DRIVE_MAP_REFRESH_INTERVAL_MS;
+  openDriveActive = false;
 }
 
 /** @internal — test helpers */
-export function isDriveRefreshIntervalActiveForTests(): boolean {
-  return driveRefreshInterval != null;
+export function isOpenDriveRefreshSuppressedForTests(): boolean {
+  return openDriveActive;
 }
 
 export function isGpsRefreshTimerActiveForTests(): boolean {
   return gpsRefreshTimer != null;
-}
-
-export function getDriveRefreshIntervalMsForTests(): number {
-  return driveIntervalMs;
 }

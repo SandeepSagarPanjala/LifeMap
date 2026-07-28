@@ -4,7 +4,6 @@
 
 import {
   APP_TIMEZONE,
-  DRIVE_MAP_REFRESH_INTERVAL_MS_OPTIONS,
   MAX_SAVED_PLACE_LABEL_LENGTH,
   MAX_SAVED_PLACES,
 } from '@lifemap/constants';
@@ -193,16 +192,10 @@ export const APP_COPY = {
       km: 'Kilometers',
       mi: 'Miles',
     },
-    driveMapRefresh: {
-      tenSeconds: '10 seconds',
-      thirtySeconds: '30 seconds',
-      oneMinute: '1 minute',
-    },
     sections: {
       appearance: 'Appearance',
       mapsAndUnits: 'Maps & units',
       tracking: 'Tracking',
-      trips: 'Trips',
       information: 'Information',
       developer: 'Developer',
     },
@@ -253,19 +246,6 @@ export function formatTripDwellLabel(minutes: number): string {
 /** Trip radius picker labels. */
 export function formatTripRadiusLabel(meters: number): string {
   return `${meters} m`;
-}
-
-export function driveMapRefreshIntervalLabel(ms: number): string {
-  switch (ms) {
-    case DRIVE_MAP_REFRESH_INTERVAL_MS_OPTIONS[0]:
-      return APP_COPY.settings.driveMapRefresh.tenSeconds;
-    case DRIVE_MAP_REFRESH_INTERVAL_MS_OPTIONS[1]:
-      return APP_COPY.settings.driveMapRefresh.thirtySeconds;
-    case DRIVE_MAP_REFRESH_INTERVAL_MS_OPTIONS[2]:
-      return APP_COPY.settings.driveMapRefresh.oneMinute;
-    default:
-      return APP_COPY.settings.driveMapRefresh.thirtySeconds;
-  }
 }
 
 export function timezoneFieldLabel(prefix: string): string {

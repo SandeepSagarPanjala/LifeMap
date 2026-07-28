@@ -1,6 +1,7 @@
 import {
   animateRecenterToUser,
   centerMapOnUser,
+  followMapToUser,
   isCoordinateInMapView,
   regionAroundCoordinate,
 } from '../src/lib/map-location-utils';
@@ -43,6 +44,22 @@ describe('map location utils', () => {
     expect(animateToRegion).toHaveBeenCalled();
     expect(centeredRegion.latitude).toBe(33.5);
     expect(centeredRegion.longitude).toBe(-97.2);
+  });
+
+  it('follows the user while preserving the current zoom', () => {
+    const animateToRegion = jest.fn();
+    const followed = followMapToUser(
+      { animateToRegion },
+      { latitude: 33.5, longitude: -97.2 },
+      region,
+    );
+    expect(followed).toMatchObject({
+      latitude: 33.5,
+      longitude: -97.2,
+      latitudeDelta: 0.1,
+      longitudeDelta: 0.1,
+    });
+    expect(animateToRegion).toHaveBeenCalledWith(followed, 350);
   });
 
   it('skips the zoom-out pulse when already at world zoom', () => {

@@ -6,11 +6,11 @@ import {
   View,
   type ListRenderItem,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronRight } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
+import { SettingsScreenLayout } from '@/components/settings/SettingsScreenLayout';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import {
@@ -103,24 +103,26 @@ export function ExportTripDaysScreen() {
     [colors.mutedForeground, handleOpenDay],
   );
 
-  return (
-    <SafeAreaView className="bg-background flex-1" edges={['bottom']}>
-      <View className="border-border border-b px-5 py-4">
-        <Text className="text-base font-semibold">Trips by day</Text>
-        <Text variant="muted" className="mt-1 text-sm leading-5">
-          Browse materialized trips with local times ({' '}
-          <Text className="text-xs">America/Chicago</Text>). Tap a day to step
-          through each segment.
-        </Text>
-      </View>
+  const listHeader = (
+    <View className="mb-3">
+      <Text className="text-base font-semibold">Trips by day</Text>
+      <Text variant="muted" className="mt-1 text-sm leading-5">
+        Browse materialized trips with local times (America/Chicago). Tap a day
+        to step through each segment.
+      </Text>
+    </View>
+  );
 
+  return (
+    <SettingsScreenLayout scroll={false}>
       {loading ? (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator />
         </View>
       ) : days.length === 0 ? (
-        <View className="flex-1 items-center justify-center px-8">
-          <Text variant="muted" className="text-center text-sm leading-5">
+        <View className="flex-1 justify-end px-5 pb-4">
+          {listHeader}
+          <Text variant="muted" className="text-sm leading-5">
             No trips stored yet. Run trip detection or open the map to
             materialize visits and drives.
           </Text>
@@ -129,10 +131,17 @@ export function ExportTripDaysScreen() {
         <FlatList
           data={days}
           keyExtractor={keyExtractor}
-          contentContainerClassName="px-5 py-4 gap-2"
+          ListHeaderComponent={listHeader}
+          contentContainerStyle={{
+            flexGrow: 1,
+            justifyContent: 'flex-end',
+            paddingHorizontal: 20,
+            paddingVertical: 16,
+            gap: 8,
+          }}
           renderItem={renderItem}
         />
       )}
-    </SafeAreaView>
+    </SettingsScreenLayout>
   );
 }

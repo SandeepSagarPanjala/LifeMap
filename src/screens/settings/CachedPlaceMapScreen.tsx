@@ -1,25 +1,16 @@
-import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CachedPlaceMapView } from '@/components/settings/CachedPlaceMapView';
+import { SettingsScreenLayout } from '@/components/settings/SettingsScreenLayout';
 import { Text } from '@/components/ui/text';
 import { getPlaceLookupById } from '@/db/repositories/place-lookup-cache';
 import { listPlacePoisForCache } from '@/db/repositories/place-pois';
 import type { RootStackScreenProps } from '@/navigation/types';
 import type { PlaceLookupRow, PlacePoiRow } from '@/lib/place-lookup-types';
 
-function mapScreenTitle(row: PlaceLookupRow | null): string {
-  const address = row?.addressLine?.trim();
-  if (address) {
-    return address.length > 32 ? `${address.slice(0, 32)}…` : address;
-  }
-  return 'Cached place map';
-}
-
 export function CachedPlaceMapScreen({
   route,
-  navigation,
 }: RootStackScreenProps<'CachedPlaceMap'>) {
   const { cacheId } = route.params;
   const [cache, setCache] = useState<PlaceLookupRow | null>(null);
@@ -54,16 +45,12 @@ export function CachedPlaceMapScreen({
     }
   }, [cacheId]);
 
-  useLayoutEffect(() => {
-    navigation.setOptions({ title: mapScreenTitle(cache) });
-  }, [cache, navigation]);
-
   useEffect(() => {
     void load();
   }, [load]);
 
   return (
-    <SafeAreaView className="bg-background flex-1" edges={['bottom']}>
+    <SettingsScreenLayout scroll={false}>
       {loading ? (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator />
@@ -82,6 +69,6 @@ export function CachedPlaceMapScreen({
           pois={pois}
         />
       )}
-    </SafeAreaView>
+    </SettingsScreenLayout>
   );
 }

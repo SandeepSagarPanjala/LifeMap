@@ -1,7 +1,6 @@
 import {
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -13,12 +12,12 @@ import {
   ScrollView,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, ChevronRight, Share2 } from 'lucide-react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
+import { SettingsScreenLayout } from '@/components/settings/SettingsScreenLayout';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { listTripPointsByTripIds } from '@/db/repositories/trip-points';
@@ -111,13 +110,6 @@ export function ExportTripDetailScreen() {
     };
   }, [currentTrip, distanceUnit]);
 
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      title: formatExportDateKeyLabel(dateKey),
-      headerBackTitle: 'Days',
-    });
-  }, [dateKey, navigation]);
-
   const canGoPrev = tripIndex > 0;
   const canGoNext = tripIndex < trips.length - 1;
 
@@ -150,29 +142,32 @@ export function ExportTripDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView className="bg-background flex-1" edges={['bottom']}>
+      <SettingsScreenLayout scroll={false}>
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator />
         </View>
-      </SafeAreaView>
+      </SettingsScreenLayout>
     );
   }
 
   if (trips.length === 0 || currentTrip == null) {
     return (
-      <SafeAreaView className="bg-background flex-1" edges={['bottom']}>
+      <SettingsScreenLayout scroll={false}>
         <View className="flex-1 items-center justify-center px-8">
           <Text variant="muted" className="text-center text-sm leading-5">
             No trips for {dateKey}.
           </Text>
         </View>
-      </SafeAreaView>
+      </SettingsScreenLayout>
     );
   }
 
   return (
-    <SafeAreaView className="bg-background flex-1" edges={['bottom']}>
+    <SettingsScreenLayout scroll={false}>
       <View className="border-border border-b px-4 py-3">
+        <Text variant="muted" className="mb-2 text-xs">
+          {formatExportDateKeyLabel(dateKey)}
+        </Text>
         <View className="flex-row items-center justify-between gap-3">
           <View className="min-w-0 flex-1">
             <Text className="text-sm font-semibold">
@@ -435,7 +430,7 @@ export function ExportTripDetailScreen() {
           />
         </View>
       </View>
-    </SafeAreaView>
+    </SettingsScreenLayout>
   );
 }
 

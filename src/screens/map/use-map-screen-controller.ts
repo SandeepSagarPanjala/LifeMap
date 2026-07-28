@@ -104,6 +104,7 @@ import {
 import {
   animateRecenterToUser,
   centerMapOnUser,
+  followMapToUser,
   regionAroundCoordinate,
 } from '@/lib/map-location-utils';
 import { getTripPlaybackDurationMs } from '@/lib/trip-playback';
@@ -276,6 +277,12 @@ export function useMapScreenController() {
   );
   const mapUiLatitudeDeltaRef = useRef(ROUTE_DIRECTION_ARROW_REF_ZOOM_DELTA);
   const mapGestureActiveRef = useRef(false);
+  /**
+   * Continuous camera follow while an open drive is active (bullseye re-enables
+   * after pan). Implemented via BackgroundGeolocation + animateToRegion — not
+   * MapKit showsUserLocation/followsUserLocation (those draw the accuracy halo).
+   */
+  const followsUserLocationRef = useRef(false);
   /** latitudeDelta at the start of the current drag/pinch (for zoom vs pan). */
   const mapGestureStartDeltaRef = useRef<number | null>(null);
   /**
@@ -507,6 +514,23 @@ export function useMapScreenController() {
     () => (currentOpenActivity?.kind === 'travel' ? currentOpenActivity : null),
     [currentOpenActivity],
   );
+
+  const setFollowsUser = useCallback((next: boolean) => {
+    followsUserLocationRef.current = next;
+  }, []);
+
+  const canFollowUser =
+    currentOpenDrive != null &&
+    viewingToday &&
+    !historyPanelOpen &&
+    !playback.isPlaying;
+
+  // Entering an open drive (today, not browsing history) enables follow.
+  // Leaving drive / history / playback turns it off. Pan unlocks without
+  // re-enabling until bullseye or a fresh drive-eligible transition.
+  useEffect(() => {
+    setFollowsUser(canFollowUser);
+  }, [canFollowUser, setFollowsUser]);
 
   const currentOpenVisitSavedPlace = useStaySavedPlace(
     currentOpenVisit,
@@ -1170,6 +1194,17 @@ export function useMapScreenController() {
   const showUserLocation =
     !historyPanelOpen && !playback.isPlaying && viewingToday;
 
+  const stopFollowingUser = useCallback(() => {
+    if (followsUserLocationRef.current) {
+      setFollowsUser(false);
+    }
+  }, [setFollowsUser]);
+
+  /** User pan unlocks follow (Apple Maps pattern). */
+  const onPanDrag = useCallback(() => {
+    stopFollowingUser();
+  }, [stopFollowingUser]);
+
   const onRegionChange = useCallback((region: Region) => {
     if (mapGestureStartDeltaRef.current == null) {
       mapGestureStartDeltaRef.current = routeDirectionMapLatitudeDeltaRef.current;
@@ -1183,6 +1218,8 @@ export function useMapScreenController() {
     }
     mapGestureActiveRef.current = true;
     setMapGestureActive(true);
+    // Pinch-zoom also unlocks continuous follow.
+    followsUserLocationRef.current = false;
   }, []);
 
   const onRegionChangeComplete = useCallback((region: Region) => {
@@ -1227,6 +1264,16 @@ export function useMapScreenController() {
     // Leaving trips overview → restore blue/red split when eligible.
     setTodayTripsOverviewActive(false);
 
+    // While driving: re-enable continuous follow (pan unlocks; bullseye locks).
+    if (
+      currentOpenDrive != null &&
+      viewingToday &&
+      !historyPanelOpen &&
+      !playback.isPlaying
+    ) {
+      setFollowsUser(true);
+    }
+
     const requestId = ++recenterRequestIdRef.current;
 
     // Instant feedback only when the cached puck fix is genuinely recent. While
@@ -1235,7 +1282,11 @@ export function useMapScreenController() {
     const cached = userCoordinateRef.current;
     const cacheAgeMs = Date.now() - lastUserCoordinateRefreshMsRef.current;
     if (cached && cacheAgeMs <= RECENTER_FRESH_CACHE_MS) {
-      animateRecenterToUser(map, cached, mapRegionRef.current);
+      if (followsUserLocationRef.current) {
+        commitMapRegion(followMapToUser(map, cached, mapRegionRef.current));
+      } else {
+        animateRecenterToUser(map, cached, mapRegionRef.current);
+      }
     }
 
     // Always request a fresh, high-accuracy fix so recenter lands on the true
@@ -1260,7 +1311,17 @@ export function useMapScreenController() {
         userCoordinateRef.current = fresh;
         setUserCoordinate(fresh);
         if (mapRef.current) {
-          animateRecenterToUser(mapRef.current, fresh, mapRegionRef.current);
+          if (followsUserLocationRef.current) {
+            commitMapRegion(
+              followMapToUser(mapRef.current, fresh, mapRegionRef.current),
+            );
+          } else {
+            animateRecenterToUser(
+              mapRef.current,
+              fresh,
+              mapRegionRef.current,
+            );
+          }
         }
       } catch {
         if (requestId !== recenterRequestIdRef.current) {
@@ -1269,11 +1330,28 @@ export function useMapScreenController() {
         // GPS unavailable / timed out — fall back to the last known coordinate.
         const fallback = userCoordinateRef.current;
         if (fallback && mapRef.current) {
-          animateRecenterToUser(mapRef.current, fallback, mapRegionRef.current);
+          if (followsUserLocationRef.current) {
+            commitMapRegion(
+              followMapToUser(mapRef.current, fallback, mapRegionRef.current),
+            );
+          } else {
+            animateRecenterToUser(
+              mapRef.current,
+              fallback,
+              mapRegionRef.current,
+            );
+          }
         }
       }
     })();
-  }, []);
+  }, [
+    commitMapRegion,
+    currentOpenDrive,
+    historyPanelOpen,
+    playback.isPlaying,
+    setFollowsUser,
+    viewingToday,
+  ]);
 
   /** Zoom out to frame all of today's tracked points (past-day overview camera). */
   const fitTodayTrips = useCallback(() => {
@@ -1281,6 +1359,7 @@ export function useMapScreenController() {
     if (!map) {
       return;
     }
+    setFollowsUser(false);
     const coordinates = toMapCoordinates(historyData.points);
     if (coordinates.length === 0) {
       return;
@@ -1290,7 +1369,7 @@ export function useMapScreenController() {
     commitMapRegion(region);
     // Already zoomed to trips — full blue locate until user recenters.
     setTodayTripsOverviewActive(true);
-  }, [commitMapRegion, historyData.points]);
+  }, [commitMapRegion, historyData.points, setFollowsUser]);
 
   const applyUserCoordinate = useCallback(
     (coordinate: { latitude: number; longitude: number }) => {
@@ -1304,6 +1383,14 @@ export function useMapScreenController() {
         lastUserCoordinateRefreshMsRef.current = Date.now();
         userCoordinateRef.current = coordinate;
         setUserCoordinate(coordinate);
+
+        if (followsUserLocationRef.current && mapRef.current) {
+          commitMapRegion(
+            followMapToUser(mapRef.current, coordinate, mapRegionRef.current),
+          );
+          hasCenteredOnOpenRef.current = true;
+          return;
+        }
       }
 
       if (hasCenteredOnOpenRef.current || !mapRef.current) {
@@ -1988,6 +2075,7 @@ export function useMapScreenController() {
       mapUiLatitudeDelta,
       onRegionChange,
       onRegionChangeComplete,
+      onPanDrag,
       currentVisitMomentCounts,
       dayMomentMapPins,
       historyMomentMapPins,
@@ -2111,6 +2199,7 @@ export function useMapScreenController() {
       mapUiLatitudeDelta,
       onRegionChange,
       onRegionChangeComplete,
+      onPanDrag,
       currentVisitMomentCounts,
       dayMomentMapPins,
       historyMomentMapPins,

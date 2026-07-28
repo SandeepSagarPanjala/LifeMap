@@ -5,7 +5,6 @@ export type RootStackParamList = {
   Settings: undefined;
   ThemeSettings: undefined;
   DistanceUnitSettings: undefined;
-  DriveMapRefreshSettings: undefined;
   StorageSettings: undefined;
   CachedPlacesSettings: undefined;
   CachedPlaceMap: { cacheId: number };

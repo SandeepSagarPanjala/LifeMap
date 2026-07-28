@@ -1,6 +1,6 @@
 import { View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { SettingsScreenLayout } from '@/components/settings/SettingsScreenLayout';
 import {
   SettingsCheckRow,
   SettingsGroup,
@@ -15,11 +15,11 @@ export function DistanceUnitSettingsScreen() {
   const setDistanceUnit = useAppStore(state => state.setDistanceUnit);
 
   return (
-    <SafeAreaView className="bg-background flex-1" edges={['bottom']}>
-      <Text variant="muted" className="px-5 pt-4 text-sm leading-5">
+    <SettingsScreenLayout>
+      <Text variant="muted" className="text-sm leading-5">
         Used for drive distances and trip summaries across the app.
       </Text>
-      <SettingsGroup className="mx-5 mt-3">
+      <SettingsGroup className="mt-3">
         {(['km', 'mi'] as const).map((unit, index) => (
           <View key={unit}>
             {index > 0 ? <SettingsGroupDivider /> : null}
@@ -31,6 +31,6 @@ export function DistanceUnitSettingsScreen() {
           </View>
         ))}
       </SettingsGroup>
-    </SafeAreaView>
+    </SettingsScreenLayout>
   );
 }

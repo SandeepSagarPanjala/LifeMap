@@ -1,6 +1,12 @@
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { X } from 'lucide-react-native';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import {
+  Platform,
+  Pressable,
+  StyleSheet,
+  useColorScheme,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
@@ -17,6 +23,8 @@ import {
 const TAB_SIZE = 44;
 const ICON_SIZE = 22;
 const H_PADDING = 4;
+/** Instagram-style active chip behind the focused tab icon. */
+const ACTIVE_PILL_SIZE = 36;
 
 export function LiquidGlassTabBar({
   state,
@@ -24,8 +32,11 @@ export function LiquidGlassTabBar({
   navigation,
 }: BottomTabBarProps) {
   const colors = useThemeColors();
+  const colorScheme = useColorScheme();
   const insets = useSafeAreaInsets();
   const accent = colors.primary;
+  const activePillBg =
+    colorScheme === 'dark' ? 'rgba(255,255,255,0.16)' : 'rgba(0,0,0,0.08)';
 
   const onClose = () => {
     const parent = navigation.getParent();
@@ -78,6 +89,15 @@ export function LiquidGlassTabBar({
                   onLongPress={onLongPress}
                   style={styles.tab}
                 >
+                  {isFocused ? (
+                    <View
+                      pointerEvents="none"
+                      style={[
+                        styles.activePill,
+                        { backgroundColor: activePillBg },
+                      ]}
+                    />
+                  ) : null}
                   {options.tabBarIcon?.({
                     focused: isFocused,
                     color,
@@ -139,6 +159,12 @@ const styles = StyleSheet.create({
     height: MAP_MOMENTS_BAR_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  activePill: {
+    position: 'absolute',
+    width: ACTIVE_PILL_SIZE,
+    height: ACTIVE_PILL_SIZE,
+    borderRadius: ACTIVE_PILL_SIZE / 2,
   },
   closeButton: {
     width: MAP_STACK_BUTTON_SIZE,
