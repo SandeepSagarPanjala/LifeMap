@@ -733,7 +733,9 @@ export function ActivityLogSheet({
               styles.gridContent,
               {
                 paddingBottom:
-                  MAP_MOMENTS_BAR_HEIGHT + MAP_MOMENTS_BAR_GAP + 16,
+                  MAP_MOMENTS_BAR_HEIGHT +
+                  Math.max(insets.bottom, MAP_MOMENTS_BAR_GAP) +
+                  16,
               },
             ]}
             showsVerticalScrollIndicator={false}
@@ -746,7 +748,9 @@ export function ActivityLogSheet({
           pointerEvents="box-none"
           style={[
             styles.barWrap,
-            { paddingBottom: MAP_MOMENTS_BAR_GAP },
+            {
+              paddingBottom: Math.max(insets.bottom, MAP_MOMENTS_BAR_GAP),
+            },
           ]}
         >
           <View style={styles.barRow}>

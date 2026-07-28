@@ -58,17 +58,17 @@ import {
   MAP_STACK_BUTTON_SIZE,
   MAX_NOTE_PHOTO_ATTACHMENTS,
 } from '@/lib/app-constants';
-
-/** Match MapMomentsGlassBar / LiquidGlassTabBar geometry. */
-const TAB_SIZE = 44;
-const ICON_SIZE = 20;
-const H_PADDING = 4;
 import { type DraftNotePhoto } from '@/lib/moments/note-photo-attachments';
 import {
   captureAndCompressNotePhoto,
   pickAndCompressNotePhotos,
 } from '@/lib/moments/pick-note-photo';
 import type { RootStackParamList } from '@/navigation/types';
+
+/** Match MapMomentsGlassBar / LiquidGlassTabBar geometry. */
+const TAB_SIZE = 44;
+const ICON_SIZE = 20;
+const H_PADDING = 4;
 
 const KEYBOARD_TOOLBAR_GAP = 8;
 

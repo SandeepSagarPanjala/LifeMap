@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import { MapPin, Pencil, Trash2, X } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GlassSurface } from '@/components/glass/GlassSurface';
 import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
@@ -63,7 +64,9 @@ export function SavedPlacesSheet({
   onAddByAddress,
 }: SavedPlacesSheetProps) {
   const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
   const sorted = useMemo(() => sortPlaces(places), [places]);
+  const barBottomPad = Math.max(insets.bottom, MAP_MOMENTS_BAR_GAP);
 
   const confirmDelete = (place: SavedPlaceRow) => {
     Alert.alert(
@@ -93,8 +96,7 @@ export function SavedPlacesSheet({
         contentContainerStyle={[
           styles.scroll,
           {
-            paddingBottom:
-              MAP_MOMENTS_BAR_HEIGHT + MAP_MOMENTS_BAR_GAP + 16,
+            paddingBottom: MAP_MOMENTS_BAR_HEIGHT + barBottomPad + 16,
           },
         ]}
         showsVerticalScrollIndicator={false}
@@ -194,7 +196,7 @@ export function SavedPlacesSheet({
 
       <View
         pointerEvents="box-none"
-        style={[styles.barWrap, { paddingBottom: MAP_MOMENTS_BAR_GAP }]}
+        style={[styles.barWrap, { paddingBottom: barBottomPad }]}
       >
         <View style={styles.barRow}>
           <View style={styles.shadowWrap}>
