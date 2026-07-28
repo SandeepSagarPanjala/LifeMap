@@ -1,5 +1,5 @@
-import { memo, useMemo } from 'react';
-import { Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { memo } from 'react';
+import { StyleSheet, View } from 'react-native';
 import MapView from 'react-native-maps';
 
 import { DriveActivityCallout } from '@/components/map/DriveActivityCallout';
@@ -14,14 +14,6 @@ import { isVisitPlaceLabelConfirmed, visitPlaceSelectedCategory } from '@/lib/pl
 import { areMapScreenMapPropsEqual } from './map-screen-map-props';
 import type { MapScreenController } from './use-map-screen-controller';
 
-/** Approximate MapKit Maps logo + Legal widths for bottom-center placement. */
-const APPLE_LOGO_WIDTH = 52;
-const APPLE_LEGAL_WIDTH = 40;
-const APPLE_ATTRIBUTION_GAP = 8;
-const APPLE_ATTRIBUTION_CLUSTER =
-  APPLE_LOGO_WIDTH + APPLE_ATTRIBUTION_GAP + APPLE_LEGAL_WIDTH;
-
-
 type MapScreenMapProps = {
   controller: MapScreenController;
   /** Kept outside controller so History UI isn't invalidated every ~66ms. */
@@ -33,28 +25,6 @@ export const MapScreenMap = memo(
     controller,
     playbackProgress,
   }: MapScreenMapProps) {
-    const { width: windowWidth } = useWindowDimensions();
-    // Native props move logo/Legal by frame — no camera bias (unlike mapPadding).
-    // Note: AIRMap ignores 0 insets, so left must be >= 1.
-    const appleAttributionInsets = useMemo(() => {
-      if (Platform.OS !== 'ios') {
-        return null;
-      }
-      const clusterLeft = Math.max(
-        1,
-        Math.round((windowWidth - APPLE_ATTRIBUTION_CLUSTER) / 2),
-      );
-      return {
-        appleLogoInsets: { top: 0, right: 0, bottom: 0, left: clusterLeft },
-        legalLabelInsets: {
-          top: 0,
-          right: 0,
-          bottom: 0,
-          left: clusterLeft + APPLE_LOGO_WIDTH + APPLE_ATTRIBUTION_GAP,
-        },
-      };
-    }, [windowWidth]);
-
     const {
       mapRef,
       mapInitialRegion,
@@ -109,8 +79,6 @@ export const MapScreenMap = memo(
         style={StyleSheet.absoluteFill}
         provider={provider}
         initialRegion={mapInitialRegion}
-        appleLogoInsets={appleAttributionInsets?.appleLogoInsets}
-        legalLabelInsets={appleAttributionInsets?.legalLabelInsets}
         // Custom UserLocationPuck only — MapKit's showsUserLocation draws a
         // giant GPS accuracy halo (the blue flash on History exit).
         showsUserLocation={false}
