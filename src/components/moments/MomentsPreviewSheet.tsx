@@ -337,6 +337,9 @@ function formatActivityFieldDisplay(
       const trimmed = value.value.trim();
       return trimmed.length > 0 ? trimmed : null;
     }
+    case 'list':
+      // List fields render as one line per item — see ActivityMomentPage.
+      return null;
     case 'choice':
       return value.value;
     case 'duration': {
@@ -356,6 +359,18 @@ function formatActivityFieldDisplay(
   }
 }
 
+function listItemsFromValue(value: ActivityFieldValue): string[] | null {
+  if (value.type !== 'list') {
+    return null;
+  }
+  const items = value.items.map(item => item.trim()).filter(Boolean);
+  return items.length > 0 ? items : null;
+}
+
+/** Cap visible list height so many receipt lines scroll without crowding the page. */
+const ACTIVITY_DETAIL_LIST_VISIBLE_ROWS = 6;
+const ACTIVITY_DETAIL_LIST_ROW_ESTIMATE = 28;
+
 function fallbackFieldLabel(value: ActivityFieldValue): string {
   switch (value.type) {
     case 'money':
@@ -364,6 +379,8 @@ function fallbackFieldLabel(value: ActivityFieldValue): string {
       return 'Number';
     case 'text':
       return 'Note';
+    case 'list':
+      return 'Items';
     case 'choice':
       return 'Choice';
     case 'duration':
@@ -389,7 +406,10 @@ function ActivityMomentPage({ moment }: { moment: MomentRow }) {
   const label = moment.activityLabel?.trim() || 'Activity';
   const values = parseActivityValuesJson(moment.activityValuesJson);
   const [fieldDefs, setFieldDefs] = useState<ActivityFieldDefinition[]>([]);
-  const [previewUri, setPreviewUri] = useState<string | null>(null);
+  const [previewMedia, setPreviewMedia] = useState<{
+    uri: string;
+    tags: string[];
+  } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -417,7 +437,12 @@ function ActivityMomentPage({ moment }: { moment: MomentRow }) {
   }, [fieldDefs]);
 
   const mediaItems = useMemo(() => {
-    const items: Array<{ fieldId: string; label: string; uri: string }> = [];
+    const items: Array<{
+      fieldId: string;
+      label: string;
+      uri: string;
+      tags: string[];
+    }> = [];
     for (const [fieldId, value] of Object.entries(values) as Array<
       [string, ActivityFieldValue]
     >) {
@@ -428,32 +453,54 @@ function ActivityMomentPage({ moment }: { moment: MomentRow }) {
         fieldId,
         label: labelByFieldId.get(fieldId) ?? fallbackFieldLabel(value),
         uri: value.uri,
+        tags:
+          value.type === 'photo' || value.type === 'scan'
+            ? (value.tags ?? [])
+            : [],
       });
     }
     return items;
   }, [labelByFieldId, values]);
 
   const detailRows = useMemo(() => {
-    const rows: Array<{ fieldId: string; label: string; text: string }> = [];
+    const rows: Array<{
+      fieldId: string;
+      label: string;
+      text?: string;
+      items?: string[];
+    }> = [];
     const orderedIds =
       fieldDefs.length > 0
         ? fieldDefs.map(field => field.id)
         : Object.keys(values);
 
-    for (const fieldId of orderedIds) {
-      const value = values[fieldId];
-      if (value == null) {
-        continue;
+    const pushRow = (fieldId: string, value: ActivityFieldValue) => {
+      const items = listItemsFromValue(value);
+      if (items != null) {
+        rows.push({
+          fieldId,
+          label: labelByFieldId.get(fieldId) ?? fallbackFieldLabel(value),
+          items,
+        });
+        return;
       }
       const text = formatActivityFieldDisplay(value);
       if (text == null) {
-        continue;
+        return;
       }
       rows.push({
         fieldId,
         label: labelByFieldId.get(fieldId) ?? fallbackFieldLabel(value),
         text,
       });
+    };
+
+    for (const fieldId of orderedIds) {
+      const value = values[fieldId];
+      if (value == null) {
+        continue;
+      }
+      pushRow(fieldId, value);
     }
 
     // Include any leftover values not in the current definition order.
@@ -463,15 +510,7 @@ function ActivityMomentPage({ moment }: { moment: MomentRow }) {
       if (rows.some(row => row.fieldId === fieldId)) {
         continue;
       }
-      const text = formatActivityFieldDisplay(value);
-      if (text == null) {
-        continue;
-      }
-      rows.push({
-        fieldId,
-        label: labelByFieldId.get(fieldId) ?? fallbackFieldLabel(value),
-        text,
-      });
+      pushRow(fieldId, value);
     }
 
     return rows;
@@ -511,7 +550,12 @@ function ActivityMomentPage({ moment }: { moment: MomentRow }) {
                 key={item.fieldId}
                 accessibilityRole="button"
                 accessibilityLabel={`View ${item.label}`}
-                onPress={() => setPreviewUri(item.uri)}
+                onPress={() =>
+                  setPreviewMedia({
+                    uri: item.uri,
+                    tags: item.tags,
+                  })
+                }
                 style={styles.activityThumbWrap}
               >
                 <MomentPreviewImage
@@ -532,7 +576,38 @@ function ActivityMomentPage({ moment }: { moment: MomentRow }) {
             {detailRows.map(row => (
               <View key={row.fieldId} style={styles.activityDetailRow}>
                 <Text style={styles.activityDetailLabel}>{row.label}</Text>
-                <Text style={styles.activityDetailValue}>{row.text}</Text>
+                {row.items != null ? (
+                  row.items.length > ACTIVITY_DETAIL_LIST_VISIBLE_ROWS ? (
+                    <ScrollView
+                      style={styles.activityDetailListScroll}
+                      contentContainerStyle={styles.activityDetailListContent}
+                      nestedScrollEnabled
+                      showsVerticalScrollIndicator
+                    >
+                      {row.items.map((item, index) => (
+                        <Text
+                          key={`${row.fieldId}-${index}`}
+                          style={styles.activityDetailValue}
+                        >
+                          {item}
+                        </Text>
+                      ))}
+                    </ScrollView>
+                  ) : (
+                    <View style={styles.activityDetailListContent}>
+                      {row.items.map((item, index) => (
+                        <Text
+                          key={`${row.fieldId}-${index}`}
+                          style={styles.activityDetailValue}
+                        >
+                          {item}
+                        </Text>
+                      ))}
+                    </View>
+                  )
+                ) : (
+                  <Text style={styles.activityDetailValue}>{row.text}</Text>
+                )}
               </View>
             ))}
           </View>
@@ -540,23 +615,45 @@ function ActivityMomentPage({ moment }: { moment: MomentRow }) {
       </ScrollView>
 
       <Modal
-        visible={previewUri != null}
+        visible={previewMedia != null}
         animationType="fade"
         presentationStyle="fullScreen"
-        onRequestClose={() => setPreviewUri(null)}
+        onRequestClose={() => setPreviewMedia(null)}
       >
         <View style={styles.activityFullPreviewRoot}>
-          {previewUri != null ? (
+          {previewMedia != null ? (
             <Image
-              source={{ uri: momentImageUri(previewUri) }}
+              source={{ uri: momentImageUri(previewMedia.uri) }}
               style={styles.activityFullPreviewImage}
               resizeMode="cover"
             />
           ) : null}
+          {previewMedia != null && previewMedia.tags.length > 0 ? (
+            <View
+              pointerEvents="none"
+              style={[
+                styles.activityFullPreviewTags,
+                { paddingTop: insets.top + 10 },
+              ]}
+            >
+              <View style={styles.activityFullPreviewTagRow}>
+                {previewMedia.tags.map(tag => (
+                  <View key={tag} style={styles.activityFullPreviewTag}>
+                    <Text
+                      style={styles.activityFullPreviewTagLabel}
+                      numberOfLines={1}
+                    >
+                      {tag}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : null}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Close preview"
-            onPress={() => setPreviewUri(null)}
+            onPress={() => setPreviewMedia(null)}
             style={[
               styles.activityFullPreviewClose,
               { bottom: insets.bottom + 20 },
@@ -1670,12 +1767,45 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
   },
+  activityDetailListScroll: {
+    maxHeight:
+      ACTIVITY_DETAIL_LIST_VISIBLE_ROWS * ACTIVITY_DETAIL_LIST_ROW_ESTIMATE,
+  },
+  activityDetailListContent: {
+    gap: 6,
+  },
   activityFullPreviewRoot: {
     flex: 1,
     backgroundColor: '#000000',
   },
   activityFullPreviewImage: {
     ...StyleSheet.absoluteFillObject,
+  },
+  activityFullPreviewTags: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 2,
+  },
+  activityFullPreviewTagRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+  },
+  activityFullPreviewTag: {
+    maxWidth: '100%',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  activityFullPreviewTagLabel: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '600',
   },
   activityFullPreviewClose: {
     position: 'absolute',

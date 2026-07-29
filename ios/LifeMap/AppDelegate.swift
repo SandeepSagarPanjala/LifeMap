@@ -25,18 +25,28 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     reactNativeDelegate = delegate
     reactNativeFactory = factory
 
-    window = UIWindow(frame: UIScreen.main.bounds)
-
-    factory.startReactNative(
-      withModuleName: "LifeMap",
-      in: window,
-      launchOptions: launchOptions
-    )
+    // React Native is started from SceneDelegate once the UIWindowScene connects
+    // (required by iOS 27 when building with the Xcode 27 SDK).
 
     return true
   }
 
-  func applicationDidBecomeActive(_ application: UIApplication) {
+  func application(
+    _ application: UIApplication,
+    configurationForConnecting connectingSceneSession: UISceneSession,
+    options: UIScene.ConnectionOptions
+  ) -> UISceneConfiguration {
+    let configuration = UISceneConfiguration(
+      name: "Default Configuration",
+      sessionRole: connectingSceneSession.role
+    )
+    configuration.delegateClass = SceneDelegate.self
+    return configuration
+  }
+
+  /// Called by `SceneDelegate`: UIKit skips `applicationDidBecomeActive(_:)` and
+  /// `applicationDidEnterBackground(_:)` for apps that adopt the scene lifecycle.
+  func handleDidBecomeActive() {
     scheduleBackgroundWakeTask()
     if WidgetRefreshRequestStore.consumeIfRequested() {
       WidgetSnapshotSync.refreshAndReload()
@@ -44,7 +54,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     LifeMapNativePersistLoop.shared.tickNow()
   }
 
-  func applicationDidEnterBackground(_ application: UIApplication) {
+  func handleDidEnterBackground() {
     scheduleBackgroundWakeTask()
   }
 

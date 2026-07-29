@@ -4,7 +4,12 @@ import {
   stringifyActivityYaml,
 } from '../src/lib/activities/parse-activity-yaml';
 import { parseAmountFromOcrText } from '../src/lib/activities/parse-amount-from-ocr';
+import { parseItemsFromOcrText } from '../src/lib/activities/parse-items-from-ocr';
 import { validateActivityDefinition } from '../src/lib/activities/validate-activity-definition';
+import {
+  parseActivityValuesJson,
+  serializeActivityValuesJson,
+} from '../src/lib/activities/activity-definition';
 
 describe('validateActivityDefinition', () => {
   it('accepts one-tap activities with empty fields', () => {
@@ -44,6 +49,101 @@ describe('validateActivityDefinition', () => {
     });
     expect(result.ok).toBe(false);
   });
+
+  it('accepts bill with amount + optional items list', () => {
+    const result = validateActivityDefinition({
+      schemaVersion: 1,
+      name: 'Junk Food',
+      emoji: '🍔',
+      fields: [
+        {
+          id: 'receipt',
+          type: 'scan',
+          label: 'Bill',
+          required: false,
+          extract: 'amount',
+          fillField: 'amount',
+          fillItemsField: 'items',
+        },
+        {
+          id: 'amount',
+          type: 'money',
+          label: 'Amount',
+          required: true,
+        },
+        {
+          id: 'items',
+          type: 'list',
+          label: 'Items',
+          required: false,
+        },
+      ],
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.definition.fields[0]?.fillItemsField).toBe('items');
+    }
+  });
+
+  it('requires fillItemsField to target a list field', () => {
+    const result = validateActivityDefinition({
+      schemaVersion: 1,
+      name: 'Junk Food',
+      emoji: '🍔',
+      fields: [
+        {
+          id: 'receipt',
+          type: 'scan',
+          label: 'Bill',
+          required: false,
+          extract: 'amount',
+          fillField: 'amount',
+          fillItemsField: 'amount',
+        },
+        {
+          id: 'amount',
+          type: 'money',
+          label: 'Amount',
+          required: true,
+        },
+      ],
+    });
+    expect(result.ok).toBe(false);
+  });
+});
+
+describe('activity values', () => {
+  it('round-trips photo tags, list items, and zero money', () => {
+    const raw = serializeActivityValuesJson({
+      food: { type: 'photo', uri: 'moments/a.jpg', tags: ['Food', 'Plate'] },
+      bill: {
+        type: 'scan',
+        uri: 'moments/b.jpg',
+        tags: ['Paper', 'Receipt'],
+      },
+      amount: { type: 'money', amount: 0 },
+      items: {
+        type: 'list',
+        items: ['FFL Bread Ezeki', 'Hass Avocados'],
+      },
+    });
+    const parsed = parseActivityValuesJson(raw);
+    expect(parsed.food).toEqual({
+      type: 'photo',
+      uri: 'moments/a.jpg',
+      tags: ['Food', 'Plate'],
+    });
+    expect(parsed.bill).toEqual({
+      type: 'scan',
+      uri: 'moments/b.jpg',
+      tags: ['Paper', 'Receipt'],
+    });
+    expect(parsed.amount).toEqual({ type: 'money', amount: 0 });
+    expect(parsed.items).toEqual({
+      type: 'list',
+      items: ['FFL Bread Ezeki', 'Hass Avocados'],
+    });
+  });
 });
 
 describe('parseActivityYaml', () => {
@@ -62,6 +162,11 @@ fields:
     required: false
     extract: amount
     fillField: amount
+    fillItemsField: items
+  - id: items
+    type: list
+    label: Items
+    required: false
   - id: amount
     type: money
     label: Amount
@@ -72,7 +177,7 @@ fields:
     if (!parsed.ok) {
       return;
     }
-    expect(parsed.definition.fields).toHaveLength(3);
+    expect(parsed.definition.fields).toHaveLength(4);
     const again = parseActivityYaml(stringifyActivityYaml(parsed.definition));
     expect(again.ok).toBe(true);
   });
@@ -168,8 +273,6 @@ Total $15.50
   });
 
   it('prefers total over larger subtotal when labels and amounts split lines', () => {
-    // DoorDash-style: discounted total is smaller than subtotal; OCR often
-    // emits the label and the "$xx.xx" on separate lines.
     const text = `
 Subtotal
 $22.48
@@ -240,6 +343,10 @@ Estimated Tax $0.93
     expect(parseAmountFromOcrText('Paid $42.00 today')).toBe(42);
   });
 
+  it('accepts a zero total', () => {
+    expect(parseAmountFromOcrText('Total $0.00')).toBe(0);
+  });
+
   it('does not guess bare numbers from non-bill text', () => {
     const text = `
 function add(a, b) {
@@ -248,5 +355,68 @@ function add(a, b) {
 const n = 361;
 `;
     expect(parseAmountFromOcrText(text)).toBeNull();
+  });
+});
+
+describe('parseItemsFromOcrText', () => {
+  it('groups Natural Grocers multiline items into rich tags', () => {
+    // Real Vision-style OCR: name, qty@price, and BF line total on separate lines.
+    const text = `
+Natural Grocers by Vitamin Cottage
+110 W University Dr
+Denton, TX 76201
+940-205-5330
+07/28/26 06:07 PM
+Store U063 Reg 3 Emp 40727 Txn 156
+01202 FFL Bread Ezeki 24 o
+2 @ 7.19 USD
+14.38 BF
+40235 Seedless Red Grapes
+2.26 lb @ 4.29 USD/lb
+9.70 BF
+42253 Hass Avocados
+3 @ 1.99 USD
+5.97 BF
+NPWR $1.39 Avocados
+-1.80
+SUBTOTAL 28.25 USD
+B 28.25 @ 0.000% = 0.00
+TOTAL USD 28.25
+Discover USD 28.25
+`;
+    expect(parseItemsFromOcrText(text)).toEqual([
+      'FFL Bread Ezeki 24 o · 2 @ $7.19 = $14.38',
+      'Seedless Red Grapes · 2.26 lb @ $4.29/lb = $9.70',
+      'Hass Avocados · 3 @ $1.99 = $5.97',
+    ]);
+  });
+
+  it('handles qty and line total glued on one OCR line', () => {
+    const text = `
+01202 FFL Bread Ezeki 24 o
+2 @ 7.19 14.38
+40235 Seedless Red Grapes
+2.26 lb @ 4.29 /lb 9.70
+42253 Hass Avocados
+3 @ 1.99 5.97
+Subtotal 28.25
+TOTAL 28.25
+`;
+    expect(parseItemsFromOcrText(text)).toEqual([
+      'FFL Bread Ezeki 24 o · 2 @ $7.19 = $14.38',
+      'Seedless Red Grapes · 2.26 lb @ $4.29/lb = $9.70',
+      'Hass Avocados · 3 @ $1.99 = $5.97',
+    ]);
+  });
+});
+
+describe('parseAmountFromOcrText currency code', () => {
+  it('reads TOTAL USD 28.25 (Natural Grocers style)', () => {
+    const text = `
+SUBTOTAL 28.25 USD
+TOTAL USD 28.25
+Discover USD 28.25
+`;
+    expect(parseAmountFromOcrText(text)).toBe(28.25);
   });
 });

@@ -25,6 +25,7 @@ import {
   ActivityFieldMediaRow,
   groupActivityFields,
 } from '@/components/map/ActivityFieldMediaRow';
+import { ActivityListFieldInput } from '@/components/map/ActivityListFieldInput';
 import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
 import { Text } from '@/components/ui/text';
 import type { ActivityRow } from '@/db/repositories/activities';
@@ -35,7 +36,7 @@ import {
   type ActivityValuesMap,
 } from '@/lib/activities/activity-definition';
 import { persistActivityImage } from '@/lib/activities/persist-activity-image';
-import { extractAmountFromImage } from '@/lib/activities/text-recognize-native';
+import { extractBillFieldsFromImage } from '@/lib/activities/bill-parse-native';
 import { assertRequiredValuesFilled } from '@/lib/activities/validate-activity-definition';
 import {
   MAP_MOMENTS_BAR_GAP,
@@ -44,6 +45,8 @@ import {
   MAP_STACK_BUTTON_SIZE,
 } from '@/lib/app-constants';
 import { saveActivityMoment } from '@/lib/moments/capture-activity';
+import { labelPhotoTags } from '@/lib/moments/image-label-native';
+import { sanitizePhotoTags } from '@/lib/moments/moment-tags';
 import { resolveMomentContentPath } from '@/lib/moments/moment-media-uri';
 
 type ActivityLogEntryPanelProps = {
@@ -82,7 +85,10 @@ function parseMoneyInput(text: string): number | null {
     return null;
   }
   const value = Number(cleaned);
-  return Number.isFinite(value) ? Math.round(value * 100) / 100 : null;
+  // Accept 0; reject negatives (strip already prevents '-').
+  return Number.isFinite(value) && value >= 0
+    ? Math.round(value * 100) / 100
+    : null;
 }
 
 /** Structured activity log form — prefer fullPage for keyboard reliability. */
@@ -98,6 +104,9 @@ export function ActivityLogEntryPanel({
   const [values, setValues] = useState<ActivityValuesMap>({});
   const [saving, setSaving] = useState(false);
   const [scanningFieldId, setScanningFieldId] = useState<string | null>(null);
+  const [taggingFieldIds, setTaggingFieldIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [captureField, setCaptureField] =
     useState<ActivityFieldDefinition | null>(null);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
@@ -119,6 +128,7 @@ export function ActivityLogEntryPanel({
     setValues({});
     setSaving(false);
     setScanningFieldId(null);
+    setTaggingFieldIds(new Set());
     setCaptureField(null);
   }, [activity.id]);
 
@@ -139,6 +149,87 @@ export function ActivityLogEntryPanel({
     [],
   );
 
+  /** Amount OCR only when the linked money field still exists. */
+  const resolveAmountFieldId = useCallback(
+    (scanField: ActivityFieldDefinition): string | undefined => {
+      if (
+        scanField.fillField &&
+        fields.some(
+          field =>
+            field.id === scanField.fillField && field.type === 'money',
+        )
+      ) {
+        return scanField.fillField;
+      }
+      return undefined;
+    },
+    [fields],
+  );
+
+  /** Items OCR only when the linked list field still exists. */
+  const resolveItemsFieldId = useCallback(
+    (scanField: ActivityFieldDefinition): string | undefined => {
+      if (
+        scanField.fillItemsField &&
+        fields.some(
+          field =>
+            field.id === scanField.fillItemsField && field.type === 'list',
+        )
+      ) {
+        return scanField.fillItemsField;
+      }
+      return undefined;
+    },
+    [fields],
+  );
+
+  const startSceneTagging = useCallback(
+    (fieldId: string, stored: string, mediaType: 'photo' | 'scan') => {
+      setTaggingFieldIds(prev => {
+        const next = new Set(prev);
+        next.add(fieldId);
+        return next;
+      });
+      const absolute = resolveMomentContentPath(stored);
+      void labelPhotoTags(absolute)
+        .then(candidates => {
+          if (!mountedRef.current) {
+            return;
+          }
+          const tags = sanitizePhotoTags(
+            candidates.map(candidate => candidate.label),
+          );
+          setValues(prev => {
+            const current = prev[fieldId];
+            if (current?.type !== mediaType || current.uri !== stored) {
+              return prev;
+            }
+            return {
+              ...prev,
+              [fieldId]:
+                tags.length > 0
+                  ? { type: mediaType, uri: stored, tags }
+                  : { type: mediaType, uri: stored },
+            };
+          });
+        })
+        .finally(() => {
+          if (!mountedRef.current) {
+            return;
+          }
+          setTaggingFieldIds(prev => {
+            if (!prev.has(fieldId)) {
+              return prev;
+            }
+            const next = new Set(prev);
+            next.delete(fieldId);
+            return next;
+          });
+        });
+    },
+    [],
+  );
+
   const applyImageToField = useCallback(
     async (target: ActivityFieldDefinition, uri: string) => {
       setScanningFieldId(target.id);
@@ -149,27 +240,52 @@ export function ActivityLogEntryPanel({
         }
         if (target.type === 'photo') {
           setFieldValue(target.id, { type: 'photo', uri: stored });
+          startSceneTagging(target.id, stored, 'photo');
           return;
         }
+
         setFieldValue(target.id, { type: 'scan', uri: stored });
-        if (target.extract === 'amount' && target.fillField) {
-          const absolute = resolveMomentContentPath(stored);
-          const amount = await extractAmountFromImage(absolute);
-          if (!mountedRef.current) {
-            return;
-          }
+        startSceneTagging(target.id, stored, 'scan');
+
+        const amountFieldId = resolveAmountFieldId(target);
+        const itemsFieldId = resolveItemsFieldId(target);
+        const wantAmount = amountFieldId != null;
+        const wantItems = itemsFieldId != null;
+        if (!wantAmount && !wantItems) {
+          return;
+        }
+
+        const absolute = resolveMomentContentPath(stored);
+        const { amount, items } = await extractBillFieldsFromImage(absolute, {
+          wantAmount,
+          wantItems,
+        });
+        if (!mountedRef.current) {
+          return;
+        }
+        if (wantAmount && amountFieldId != null) {
           if (amount != null) {
-            setFieldValue(target.fillField, {
+            setFieldValue(amountFieldId, {
               type: 'money',
               amount,
             });
           } else {
-            // Clear a stale Subtotal from an earlier scan — don't leave 22.48 around.
-            setFieldValue(target.fillField, undefined);
+            // Clear a stale total from an earlier scan — don't leave old totals around.
+            setFieldValue(amountFieldId, undefined);
             Alert.alert(
               'Couldn’t find a total',
               'Enter the amount manually if needed.',
             );
+          }
+        }
+        if (wantItems && itemsFieldId != null) {
+          if (items.length > 0) {
+            setFieldValue(itemsFieldId, {
+              type: 'list',
+              items,
+            });
+          } else {
+            setFieldValue(itemsFieldId, undefined);
           }
         }
       } catch (error) {
@@ -188,7 +304,32 @@ export function ActivityLogEntryPanel({
         }
       }
     },
-    [setFieldValue],
+    [
+      resolveAmountFieldId,
+      resolveItemsFieldId,
+      setFieldValue,
+      startSceneTagging,
+    ],
+  );
+
+  const handleRemovePhotoTag = useCallback(
+    (field: ActivityFieldDefinition, tag: string) => {
+      setValues(prev => {
+        const current = prev[field.id];
+        if (current?.type !== 'photo' && current?.type !== 'scan') {
+          return prev;
+        }
+        const tags = (current.tags ?? []).filter(entry => entry !== tag);
+        return {
+          ...prev,
+          [field.id]:
+            tags.length > 0
+              ? { type: current.type, uri: current.uri, tags }
+              : { type: current.type, uri: current.uri },
+        };
+      });
+    },
+    [],
   );
 
   const handleOpenCamera = useCallback((field: ActivityFieldDefinition) => {
@@ -467,6 +608,23 @@ export function ActivityLogEntryPanel({
         </View>
       ) : null}
 
+      {field.type === 'list' ? (
+        <ActivityListFieldInput
+          items={(() => {
+            const current = values[field.id];
+            return current?.type === 'list' ? current.items : [];
+          })()}
+          onChangeItems={items =>
+            setFieldValue(
+              field.id,
+              items.length > 0 ? { type: 'list', items } : undefined,
+            )
+          }
+          onFocus={handleInputFocus}
+          placeholder={`Add ${field.label.toLowerCase()}…`}
+        />
+      ) : null}
+
       {field.type === 'duration' ? (
         <TextInput
           value={(() => {
@@ -555,9 +713,23 @@ export function ActivityLogEntryPanel({
                 fields={group.fields}
                 values={values}
                 scanningFieldId={scanningFieldId}
+                taggingFieldIds={taggingFieldIds}
                 onOpenCamera={handleOpenCamera}
                 onOpenLibrary={field => void handleOpenLibrary(field)}
-                onRemoveImage={field => setFieldValue(field.id, undefined)}
+                onRemoveImage={field => {
+                  setFieldValue(field.id, undefined);
+                  if (field.type === 'photo') {
+                    setTaggingFieldIds(prev => {
+                      if (!prev.has(field.id)) {
+                        return prev;
+                      }
+                      const next = new Set(prev);
+                      next.delete(field.id);
+                      return next;
+                    });
+                  }
+                }}
+                onRemovePhotoTag={handleRemovePhotoTag}
               />
             ) : (
               renderField(group.field)

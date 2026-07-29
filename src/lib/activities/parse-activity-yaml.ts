@@ -51,6 +51,9 @@ export function stringifyActivityYaml(definition: ActivityDefinition): string {
     if (field.fillField != null) {
       entry.fillField = field.fillField;
     }
+    if (field.fillItemsField != null) {
+      entry.fillItemsField = field.fillItemsField;
+    }
     return entry;
   });
   return stringifyYaml(doc, { lineWidth: 0 }).trimEnd() + '\n';

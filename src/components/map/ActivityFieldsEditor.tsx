@@ -20,6 +20,7 @@ import { GripVertical, Plus, Trash2 } from 'lucide-react-native';
 import { Camera } from 'phosphor-react-native/src/icons/Camera';
 import { CurrencyDollar } from 'phosphor-react-native/src/icons/CurrencyDollar';
 import { Hash } from 'phosphor-react-native/src/icons/Hash';
+import { ListBullets } from 'phosphor-react-native/src/icons/ListBullets';
 import { ListChecks } from 'phosphor-react-native/src/icons/ListChecks';
 import { Receipt } from 'phosphor-react-native/src/icons/Receipt';
 import { TextT } from 'phosphor-react-native/src/icons/TextT';
@@ -40,7 +41,7 @@ import type { PhosphorIcon } from '@/lib/profile/phosphor-icon';
 
 const ACTIVITY_TINT = '#F0FDF4';
 /** Builder UX cap (stricter than ACTIVITY_MAX_FIELDS used by YAML/catalog). */
-const MAX_FIELDS = 5;
+const MAX_FIELDS = 8;
 const MAX_PHOTO_FIELDS = 2;
 const MAX_SCAN_FIELDS = 2;
 
@@ -53,6 +54,7 @@ const TYPE_META: Record<
   money: { label: 'Money', Icon: CurrencyDollar },
   number: { label: 'Number', Icon: Hash },
   text: { label: 'Text', Icon: TextT },
+  list: { label: 'List', Icon: ListBullets },
   choice: { label: 'Choice', Icon: ListChecks },
   duration: { label: 'Duration', Icon: Timer },
   toggle: { label: 'Toggle', Icon: ToggleLeft },
@@ -74,13 +76,13 @@ const PICKER_OPTIONS: {
   {
     type: 'bill',
     label: 'Bill',
-    hint: 'Photo of a bill + amount field',
+    hint: 'Photo of a bill + amount + items',
     Icon: Receipt,
   },
   {
     type: 'money',
     label: 'Money',
-    hint: 'Enter an amount',
+    hint: 'Enter an amount (0 allowed)',
     Icon: CurrencyDollar,
   },
   {
@@ -94,6 +96,12 @@ const PICKER_OPTIONS: {
     label: 'Text',
     hint: 'Short note',
     Icon: TextT,
+  },
+  {
+    type: 'list',
+    label: 'List',
+    hint: 'Comma-separated tokens',
+    Icon: ListBullets,
   },
   {
     type: 'choice',
@@ -244,22 +252,62 @@ export const ActivityFieldsEditor = forwardRef<
         return;
       }
       let next = fields.filter((_, i) => i !== index);
-      if (removed.type === 'scan' && removed.fillField) {
+      if (removed.type === 'scan') {
         const moneyId = removed.fillField;
-        const stillLinked = next.some(
-          field =>
-            field.type === 'scan' &&
-            field.fillField === moneyId &&
-            field.id !== removed.id,
-        );
-        if (!stillLinked) {
-          next = next.filter(field => field.id !== moneyId);
+        const itemsId = removed.fillItemsField;
+        if (moneyId) {
+          const stillLinked = next.some(
+            field =>
+              field.type === 'scan' &&
+              field.fillField === moneyId &&
+              field.id !== removed.id,
+          );
+          if (!stillLinked) {
+            next = next.filter(field => field.id !== moneyId);
+          }
+        }
+        if (itemsId) {
+          const stillLinked = next.some(
+            field =>
+              field.type === 'scan' &&
+              field.fillItemsField === itemsId &&
+              field.id !== removed.id,
+          );
+          if (!stillLinked) {
+            next = next.filter(field => field.id !== itemsId);
+          }
         }
       }
       if (removed.type === 'money') {
+        const linkedItemIds = new Set<string>();
+        next = next.map(field => {
+          if (field.fillField !== removed.id) {
+            return field;
+          }
+          if (field.fillItemsField) {
+            linkedItemIds.add(field.fillItemsField);
+          }
+          return {
+            ...field,
+            extract: undefined,
+            fillField: undefined,
+            fillItemsField: undefined,
+          };
+        });
+        for (const itemsId of linkedItemIds) {
+          const stillLinked = next.some(
+            field =>
+              field.type === 'scan' && field.fillItemsField === itemsId,
+          );
+          if (!stillLinked) {
+            next = next.filter(field => field.id !== itemsId);
+          }
+        }
+      }
+      if (removed.type === 'list') {
         next = next.map(field =>
-          field.fillField === removed.id
-            ? { ...field, extract: undefined, fillField: undefined }
+          field.fillItemsField === removed.id
+            ? { ...field, fillItemsField: undefined }
             : field,
         );
       }
@@ -268,9 +316,68 @@ export const ActivityFieldsEditor = forwardRef<
     [fields, onChangeFields],
   );
 
+  const requestRemoveField = useCallback(
+    (index: number) => {
+      const removed = fields[index];
+      if (removed == null) {
+        return;
+      }
+
+      if (removed.type === 'money') {
+        const linkedBill = fields.find(
+          field => field.type === 'scan' && field.fillField === removed.id,
+        );
+        if (linkedBill != null) {
+          const hasItems = Boolean(linkedBill.fillItemsField);
+          Alert.alert(
+            'Remove Amount?',
+            hasItems
+              ? 'Bill scans use Amount to auto-fill the paid total from a receipt photo. Removing it also removes the linked Items list, so scans won’t extract a total or line items anymore.'
+              : 'Bill scans use Amount to auto-fill the paid total from a receipt photo. Without it, scanning a bill won’t read the total anymore.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Remove',
+                style: 'destructive',
+                onPress: () => removeField(index),
+              },
+            ],
+          );
+          return;
+        }
+      }
+
+      if (removed.type === 'list') {
+        const linkedBill = fields.find(
+          field =>
+            field.type === 'scan' && field.fillItemsField === removed.id,
+        );
+        if (linkedBill != null) {
+          Alert.alert(
+            'Remove Items?',
+            'Bill scans use Items to auto-fill sold line items from a receipt photo. Without it, scanning a bill won’t extract items anymore (the total can still fill Amount if that field remains).',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Remove',
+                style: 'destructive',
+                onPress: () => removeField(index),
+              },
+            ],
+          );
+          return;
+        }
+      }
+
+      removeField(index);
+    },
+    [fields, removeField],
+  );
+
   const addControl = useCallback(
     (optionType: ActivityFieldType | 'bill') => {
-      const requiredSlots = optionType === 'bill' ? 2 : 1;
+      // Bill ships scan + amount + optional items list.
+      const requiredSlots = optionType === 'bill' ? 3 : 1;
       if (fields.length + requiredSlots > MAX_FIELDS) {
         Alert.alert(
           'Field limit reached',
@@ -301,6 +408,8 @@ export const ActivityFieldsEditor = forwardRef<
       if (optionType === 'bill') {
         const amountId = slugifyFieldId('amount', used);
         used.add(amountId);
+        const itemsId = slugifyFieldId('items', used);
+        used.add(itemsId);
         const billId = slugifyFieldId('bill', used);
         onChangeFields([
           ...fields,
@@ -311,6 +420,13 @@ export const ActivityFieldsEditor = forwardRef<
             required: false,
             extract: 'amount',
             fillField: amountId,
+            fillItemsField: itemsId,
+          },
+          {
+            id: itemsId,
+            type: 'list',
+            label: 'Items',
+            required: false,
           },
           {
             id: amountId,
@@ -347,11 +463,20 @@ export const ActivityFieldsEditor = forwardRef<
         item.type === 'scan' && item.fillField
           ? fields.find(field => field.id === item.fillField)
           : null;
+      const linkedItems =
+        item.type === 'scan' && item.fillItemsField
+          ? fields.find(field => field.id === item.fillItemsField)
+          : null;
       const filledFromBill =
-        item.type === 'money' &&
-        fields.some(
-          field => field.type === 'scan' && field.fillField === item.id,
-        );
+        (item.type === 'money' &&
+          fields.some(
+            field => field.type === 'scan' && field.fillField === item.id,
+          )) ||
+        (item.type === 'list' &&
+          fields.some(
+            field =>
+              field.type === 'scan' && field.fillItemsField === item.id,
+          ));
 
       return (
         <View key={item.key} style={styles.card}>
@@ -389,7 +514,7 @@ export const ActivityFieldsEditor = forwardRef<
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={`Remove ${item.label}`}
-              onPress={() => removeField(index)}
+              onPress={() => requestRemoveField(index)}
               hitSlop={8}
               style={styles.deleteButton}
             >
@@ -428,11 +553,26 @@ export const ActivityFieldsEditor = forwardRef<
             />
           ) : null}
 
+          {item.type === 'list' && !filledFromBill ? (
+            <Text style={styles.linkedHint}>
+              Type comma-separated values; they show as tokens when logging.
+            </Text>
+          ) : null}
+
           {item.type === 'scan' ? (
             <Text style={styles.linkedHint}>
-              {linkedMoney
-                ? `Reads the total into “${linkedMoney.label}”.`
-                : 'Add an Amount control to save the total.'}
+              {linkedMoney || linkedItems
+                ? [
+                    linkedMoney
+                      ? `Reads the total into “${linkedMoney.label}”`
+                      : null,
+                    linkedItems
+                      ? `items into “${linkedItems.label}”`
+                      : null,
+                  ]
+                    .filter(Boolean)
+                    .join(', and ') + '.'
+                : 'Add Amount / Items fields to save bill data.'}
             </Text>
           ) : null}
 
@@ -444,7 +584,7 @@ export const ActivityFieldsEditor = forwardRef<
         </View>
       );
     },
-    [FieldInput, fields, onInputFocus, removeField, updateField],
+    [FieldInput, fields, onInputFocus, requestRemoveField, updateField],
   );
 
   const renderReorderItem = useCallback(

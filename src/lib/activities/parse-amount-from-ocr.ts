@@ -24,7 +24,8 @@ export function parseAmountFromOcrText(text: string): number | null {
 
   const parseMoney = (raw: string): number | null => {
     const amount = Number(raw.replace(/,/g, ''));
-    if (!Number.isFinite(amount) || amount <= 0 || amount > 1_000_000) {
+    // Allow 0 (complimentary / $0.00 total); reject negatives and absurd values.
+    if (!Number.isFinite(amount) || amount < 0 || amount > 1_000_000) {
       return null;
     }
     return Math.round(amount * 100) / 100;
@@ -38,8 +39,9 @@ export function parseAmountFromOcrText(text: string): number | null {
   };
 
   // 1) Label then amount (same-line / concatenated OCR).
+  // Allow an optional currency code between label and amount ("TOTAL USD 28.25").
   const labelThenAmount = new RegExp(
-    `\\b${totalLabel}\\b[\\s:.\\-]*${moneyCapture}`,
+    `\\b${totalLabel}\\b[\\s:.\\-]*(?:USD|EUR|GBP|CAD|INR)?[\\s:.\\-]*${moneyCapture}`,
     'gi',
   );
   for (const match of scrubbed.matchAll(labelThenAmount)) {
@@ -58,7 +60,7 @@ export function parseAmountFromOcrText(text: string): number | null {
 
   // 2) Amount then label ("$14.64 Total").
   const amountThenLabel = new RegExp(
-    `${moneyCapture}[\\s:.\\-]*\\b${totalLabel}\\b`,
+    `${moneyCapture}[\\s:.\\-]*(?:USD|EUR|GBP|CAD|INR)?[\\s:.\\-]*\\b${totalLabel}\\b`,
     'gi',
   );
   for (const match of scrubbed.matchAll(amountThenLabel)) {
@@ -103,6 +105,7 @@ export function parseAmountFromOcrText(text: string): number | null {
     let amounts = amountsOn(line);
     let amountIndex = lineIndex;
     if (amounts.length === 0) {
+      // Same-line miss: try the next 1–2 lines (classic receipt).
       for (let look = 1; look <= 2; look += 1) {
         const nextRaw = rawLines[i + look];
         if (nextRaw == null) {
@@ -120,6 +123,41 @@ export function parseAmountFromOcrText(text: string): number | null {
           amountIndex = lineIndex + rawLine.length + 1;
           break;
         }
+      }
+    }
+    // DoorDash-style column OCR: "Total" then a stack of bare money lines
+    // (subtotal, fees, …, paid). Prefer the last positive amount in that block.
+    if (amounts.length === 1 || amounts.length === 0) {
+      const block: number[] = [];
+      let blockIndex = amountIndex;
+      for (let look = 1; look < rawLines.length - i; look += 1) {
+        const nextRaw = rawLines[i + look];
+        if (nextRaw == null) {
+          break;
+        }
+        const next = nextRaw.trim();
+        if (!next) {
+          continue;
+        }
+        const found = amountsOn(next);
+        const withoutMoney = next
+          .replace(/[$€£₹]/g, '')
+          .replace(/[\d,.\-\s]/g, '');
+        if (found.length === 0 || withoutMoney.length > 2) {
+          break;
+        }
+        if (block.length === 0) {
+          blockIndex = lineIndex + rawLine.length + 1;
+        }
+        for (const value of found) {
+          if (value > 0) {
+            block.push(value);
+          }
+        }
+      }
+      if (block.length >= 2) {
+        amounts = [block[block.length - 1]!];
+        amountIndex = blockIndex;
       }
     }
     // Rightmost amount on a Total row is usually the charge.
