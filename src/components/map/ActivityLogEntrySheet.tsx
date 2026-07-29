@@ -721,16 +721,14 @@ export function ActivityLogEntryPanel({
                 onOpenLibrary={field => void handleOpenLibrary(field)}
                 onRemoveImage={field => {
                   setFieldValue(field.id, undefined);
-                  if (field.type === 'photo') {
-                    setTaggingFieldIds(prev => {
-                      if (!prev.has(field.id)) {
-                        return prev;
-                      }
-                      const next = new Set(prev);
-                      next.delete(field.id);
-                      return next;
-                    });
-                  }
+                  setTaggingFieldIds(prev => {
+                    if (!prev.has(field.id)) {
+                      return prev;
+                    }
+                    const next = new Set(prev);
+                    next.delete(field.id);
+                    return next;
+                  });
                 }}
                 onRemovePhotoTag={handleRemovePhotoTag}
               />
