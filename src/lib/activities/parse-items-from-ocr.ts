@@ -182,10 +182,14 @@ function formatItemTag(item: OpenItem): string | null {
   if (item.qtyPrice) {
     const { qty, unit, unitPrice, priceUnit } = item.qtyPrice;
     const qtyLabel = unit ? `${qty} ${unit}` : qty;
-    const priceLabel = priceUnit
-      ? `${formatMoney(unitPrice)}/${priceUnit}`
-      : formatMoney(unitPrice);
-    tag += ` · ${qtyLabel} @ ${priceLabel}`;
+    if (unitPrice > 0) {
+      const priceLabel = priceUnit
+        ? `${formatMoney(unitPrice)}/${priceUnit}`
+        : formatMoney(unitPrice);
+      tag += ` · ${qtyLabel} @ ${priceLabel}`;
+    } else {
+      tag += ` · ${qtyLabel}`;
+    }
   }
 
   if (item.lineTotal != null && Number.isFinite(item.lineTotal)) {

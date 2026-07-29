@@ -74,6 +74,9 @@ function formatMoneyInput(amount: number | null): string {
 }
 
 function parseMoneyInput(text: string): number | null {
+  if (/[-−]/.test(text)) {
+    return null;
+  }
   let cleaned = text.replace(/[^0-9.]/g, '');
   const firstDot = cleaned.indexOf('.');
   if (firstDot >= 0) {

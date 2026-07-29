@@ -99,12 +99,17 @@ function App() {
   // once per JS instance, so nothing else would clear a splash left behind.
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextState => {
-      if (
-        nextState === 'active' &&
-        splashHideRequested.current &&
-        BootSplash.isVisible()
-      ) {
-        void hideBootSplash();
+      if (nextState === 'active' && splashHideRequested.current) {
+        void Promise.resolve(BootSplash.isVisible())
+          .then(isVisible => {
+            if (isVisible) {
+              return hideBootSplash();
+            }
+          })
+          .catch(() => {
+            // If visibility probing fails, still attempt the hide.
+            return hideBootSplash();
+          });
       }
     });
     return () => subscription.remove();
