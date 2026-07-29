@@ -12,7 +12,6 @@
 		377AE740C0064F5CABAA4DF9 /* BootSplash.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 131463DD1F564FA1B4067F32 /* BootSplash.storyboard */; };
 		3942CC750AC601641664379E /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
-		SCENED01A68108700A75B9A /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = SCENED00A68108700A75B9A /* SceneDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
 		83DA7245AC48434CAE3A2724 /* Colors.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D4837FADD91344068AFF8BDE /* Colors.xcassets */; };
 		A1B2C3D61A68108700A75B9A /* PlaceLookupModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D41A68108700A75B9A /* PlaceLookupModule.swift */; };
@@ -35,6 +34,7 @@
 		IMG0MOD2A68108700A75B9A /* ImageLabelModule.m in Sources */ = {isa = PBXBuildFile; fileRef = IMG0FR02A68108700A75B9A /* ImageLabelModule.m */; };
 		OCR0MOD1A68108700A75B9A /* TextRecognizeModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = OCR0FR01A68108700A75B9A /* TextRecognizeModule.swift */; };
 		OCR0MOD2A68108700A75B9A /* TextRecognizeModule.m in Sources */ = {isa = PBXBuildFile; fileRef = OCR0FR02A68108700A75B9A /* TextRecognizeModule.m */; };
+		SCENED01A68108700A75B9A /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = SCENED00A68108700A75B9A /* SceneDelegate.swift */; };
 		VRC0MOD3A68108700A75B9A /* VoiceRecorderModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = VRC0MOD1A68108700A75B9A /* VoiceRecorderModule.swift */; };
 		VRC0MOD4A68108700A75B9A /* VoiceRecorderModule.m in Sources */ = {isa = PBXBuildFile; fileRef = VRC0MOD2A68108700A75B9A /* VoiceRecorderModule.m */; };
 		WGT0BLD1A68108700A75B9A /* WidgetSnapshotBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = WGT0FR09A68108700A75B9A /* WidgetSnapshotBuilder.swift */; };
@@ -92,7 +92,6 @@
 		5709B34CF0A7D63546082F79 /* Pods-LifeMap.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LifeMap.release.xcconfig"; path = "Target Support Files/Pods-LifeMap/Pods-LifeMap.release.xcconfig"; sourceTree = "<group>"; };
 		5DCACB8F33CDC322A6C60F78 /* libPods-LifeMap.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-LifeMap.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = LifeMap/AppDelegate.swift; sourceTree = "<group>"; };
-		SCENED00A68108700A75B9A /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SceneDelegate.swift; path = LifeMap/SceneDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = LifeMap/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		A1B2C3D41A68108700A75B9A /* PlaceLookupModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PlaceLookupModule.swift; path = LifeMap/PlaceLookupModule.swift; sourceTree = "<group>"; };
 		A1B2C3D51A68108700A75B9A /* PlaceLookupModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PlaceLookupModule.m; path = LifeMap/PlaceLookupModule.m; sourceTree = "<group>"; };
@@ -118,6 +117,7 @@
 		IMG0FR02A68108700A75B9A /* ImageLabelModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = ImageLabelModule.m; path = LifeMap/ImageLabelModule.m; sourceTree = "<group>"; };
 		OCR0FR01A68108700A75B9A /* TextRecognizeModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TextRecognizeModule.swift; path = LifeMap/TextRecognizeModule.swift; sourceTree = "<group>"; };
 		OCR0FR02A68108700A75B9A /* TextRecognizeModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = TextRecognizeModule.m; path = LifeMap/TextRecognizeModule.m; sourceTree = "<group>"; };
+		SCENED00A68108700A75B9A /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SceneDelegate.swift; path = LifeMap/SceneDelegate.swift; sourceTree = "<group>"; };
 		VRC0MOD1A68108700A75B9A /* VoiceRecorderModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VoiceRecorderModule.swift; path = LifeMap/VoiceRecorderModule.swift; sourceTree = "<group>"; };
 		VRC0MOD2A68108700A75B9A /* VoiceRecorderModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = VoiceRecorderModule.m; path = LifeMap/VoiceRecorderModule.m; sourceTree = "<group>"; };
 		WGT0FR01A68108700A75B9A /* WidgetSnapshotModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WidgetSnapshotModule.swift; path = LifeMap/WidgetSnapshotModule.swift; sourceTree = "<group>"; };
@@ -549,7 +549,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = LifeMap/LifeMap.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 68;
+				CURRENT_PROJECT_VERSION = 69;
 				DEVELOPMENT_TEAM = SRTH66N3SH;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = LifeMap/Info.plist;
@@ -583,7 +583,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = LifeMap/LifeMap.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 68;
+				CURRENT_PROJECT_VERSION = 69;
 				DEVELOPMENT_TEAM = SRTH66N3SH;
 				INFOPLIST_FILE = LifeMap/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.5;
@@ -769,7 +769,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = LifeMapWidget/LifeMapWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 68;
+				CURRENT_PROJECT_VERSION = 69;
 				DEVELOPMENT_TEAM = SRTH66N3SH;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = LifeMapWidget/Info.plist;
@@ -795,7 +795,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = LifeMapWidget/LifeMapWidget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 68;
+				CURRENT_PROJECT_VERSION = 69;
 				DEVELOPMENT_TEAM = SRTH66N3SH;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = LifeMapWidget/Info.plist;

@@ -58,6 +58,31 @@
   }
 }
 
++ (void)prewarmRequestService {
+  if (!NSThread.isMainThread) {
+    return;
+  }
+
+  @try {
+    Class serviceClass = NSClassFromString(@"TSLocationRequestService");
+    if (serviceClass == nil) {
+      return;
+    }
+
+    SEL sharedSelector = NSSelectorFromString(@"sharedInstance");
+    if (![serviceClass respondsToSelector:sharedSelector]) {
+      return;
+    }
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+    (void)[serviceClass performSelector:sharedSelector];
+#pragma clang diagnostic pop
+  } @catch (NSException *exception) {
+    // Internal SDK class — never let a layout change break launch.
+  }
+}
+
 + (void)forceMovingMode {
   @try {
     Class managerClass = NSClassFromString(@"TSLocationManager");
