@@ -5,6 +5,7 @@ export const ACTIVITY_FIELD_TYPES = [
   'money',
   'number',
   'text',
+  'list',
   'choice',
   'duration',
   'toggle',
@@ -27,10 +28,12 @@ export type ActivityFieldDefinition = {
   required: boolean;
   /** For `choice` — chip options. */
   options?: string[];
-  /** For `scan` — what to extract (v1: amount only). */
+  /** For `scan` — what to extract (v1: amount). */
   extract?: ActivityFieldExtract;
-  /** For `scan` — target field id (must be `money` when extract is amount). */
+  /** For `scan` — target money field id when extract is amount. */
   fillField?: string;
+  /** For `scan` — optional target `list` field for receipt line items. */
+  fillItemsField?: string;
 };
 
 export type ActivityDefinition = {
@@ -46,11 +49,12 @@ export type ActivityDefinitionSource = 'blank' | 'yaml' | 'catalog';
 
 /** Runtime values keyed by field id when logging. */
 export type ActivityFieldValue =
-  | { type: 'photo'; uri: string }
-  | { type: 'scan'; uri: string }
+  | { type: 'photo'; uri: string; tags?: string[] }
+  | { type: 'scan'; uri: string; tags?: string[] }
   | { type: 'money'; amount: number }
   | { type: 'number'; value: number }
   | { type: 'text'; value: string }
+  | { type: 'list'; items: string[] }
   | { type: 'choice'; value: string }
   | { type: 'duration'; seconds: number }
   | { type: 'toggle'; value: boolean };
@@ -115,6 +119,9 @@ function normalizeStoredField(
   if (typeof raw.fillField === 'string' && raw.fillField.trim()) {
     field.fillField = raw.fillField.trim();
   }
+  if (typeof raw.fillItemsField === 'string' && raw.fillItemsField.trim()) {
+    field.fillItemsField = raw.fillItemsField.trim();
+  }
   return field;
 }
 
@@ -156,15 +163,40 @@ function normalizeStoredValue(value: unknown): ActivityFieldValue | null {
   }
   const record = value as Record<string, unknown>;
   switch (record.type) {
-    case 'photo':
+    case 'photo': {
+      if (typeof record.uri !== 'string' || !record.uri.trim()) {
+        return null;
+      }
+      const tags = Array.isArray(record.tags)
+        ? record.tags
+            .filter((item): item is string => typeof item === 'string')
+            .map(item => item.trim())
+            .filter(Boolean)
+        : [];
+      return tags.length > 0
+        ? { type: 'photo', uri: record.uri.trim(), tags }
+        : { type: 'photo', uri: record.uri.trim() };
+    }
     case 'scan': {
       if (typeof record.uri !== 'string' || !record.uri.trim()) {
         return null;
       }
-      return { type: record.type, uri: record.uri.trim() };
+      const tags = Array.isArray(record.tags)
+        ? record.tags
+            .filter((item): item is string => typeof item === 'string')
+            .map(item => item.trim())
+            .filter(Boolean)
+        : [];
+      return tags.length > 0
+        ? { type: 'scan', uri: record.uri.trim(), tags }
+        : { type: 'scan', uri: record.uri.trim() };
     }
     case 'money': {
       if (typeof record.amount !== 'number' || !Number.isFinite(record.amount)) {
+        return null;
+      }
+      // Allow 0 (free / complimentary); reject negatives.
+      if (record.amount < 0) {
         return null;
       }
       return { type: 'money', amount: record.amount };
@@ -181,6 +213,16 @@ function normalizeStoredValue(value: unknown): ActivityFieldValue | null {
         return null;
       }
       return { type: record.type, value: record.value };
+    }
+    case 'list': {
+      if (!Array.isArray(record.items)) {
+        return null;
+      }
+      const items = record.items
+        .filter((item): item is string => typeof item === 'string')
+        .map(item => item.trim().replace(/\s+/g, ' '))
+        .filter(Boolean);
+      return { type: 'list', items };
     }
     case 'duration': {
       if (

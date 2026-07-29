@@ -11,12 +11,17 @@ import { X } from 'phosphor-react-native/src/icons/X';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { ClipPath, Defs, G, Path } from 'react-native-svg';
 
+import {
+  PhotoTagsBar,
+  type PhotoTagsStatus,
+} from '@/components/capture/PhotoTagsBar';
 import { Text } from '@/components/ui/text';
 import type {
   ActivityFieldDefinition,
   ActivityFieldValue,
 } from '@/lib/activities/activity-definition';
 import { momentImageUri } from '@/lib/moments/moment-media-uri';
+import type { PhotoTagCandidate } from '@/lib/moments/moment-tags';
 
 const PHOTO_STYLE = {
   backgroundColor: '#F0FDF4',
@@ -53,9 +58,12 @@ type ActivityFieldMediaRowProps = {
   fields: ActivityFieldDefinition[];
   values: Record<string, ActivityFieldValue | undefined>;
   scanningFieldId: string | null;
+  /** Field ids currently running on-device photo labeling. */
+  taggingFieldIds?: ReadonlySet<string>;
   onOpenCamera: (field: ActivityFieldDefinition) => void;
   onOpenLibrary: (field: ActivityFieldDefinition) => void;
   onRemoveImage: (field: ActivityFieldDefinition) => void;
+  onRemovePhotoTag?: (field: ActivityFieldDefinition, tag: string) => void;
 };
 
 function getStoredUri(
@@ -73,6 +81,20 @@ function getStoredUri(
     return value.uri;
   }
   return null;
+}
+
+function getMediaTags(
+  field: ActivityFieldDefinition,
+  values: Record<string, ActivityFieldValue | undefined>,
+): string[] {
+  const value = values[field.id];
+  if (field.type === 'photo' && value?.type === 'photo') {
+    return value.tags ?? [];
+  }
+  if (field.type === 'scan' && value?.type === 'scan') {
+    return value.tags ?? [];
+  }
+  return [];
 }
 
 function DiagonalSplitMediaControl({
@@ -260,12 +282,34 @@ export function ActivityFieldMediaRow({
   fields,
   values,
   scanningFieldId,
+  taggingFieldIds,
   onOpenCamera,
   onOpenLibrary,
   onRemoveImage,
+  onRemovePhotoTag,
 }: ActivityFieldMediaRowProps) {
   const insets = useSafeAreaInsets();
-  const [previewUri, setPreviewUri] = useState<string | null>(null);
+  const [previewFieldId, setPreviewFieldId] = useState<string | null>(null);
+
+  const previewField =
+    previewFieldId != null
+      ? (fields.find(field => field.id === previewFieldId) ?? null)
+      : null;
+  const previewUri =
+    previewField != null ? getStoredUri(previewField, values) : null;
+  const previewTags: PhotoTagCandidate[] =
+    previewField != null
+      ? getMediaTags(previewField, values).map(label => ({
+          label,
+          confidence: 1,
+        }))
+      : [];
+  const previewTagStatus: PhotoTagsStatus =
+    previewField != null && taggingFieldIds?.has(previewField.id)
+      ? 'loading'
+      : previewTags.length > 0
+        ? 'ready'
+        : 'idle';
 
   if (fields.length === 0) {
     return null;
@@ -301,7 +345,7 @@ export function ActivityFieldMediaRow({
                   uri={storedUri}
                   palette={palette}
                   isScanning={isScanning}
-                  onPressPreview={() => setPreviewUri(storedUri)}
+                  onPressPreview={() => setPreviewFieldId(field.id)}
                   onRemove={() => onRemoveImage(field)}
                 />
               ) : (
@@ -323,7 +367,7 @@ export function ActivityFieldMediaRow({
         visible={previewUri != null}
         animationType="fade"
         presentationStyle="fullScreen"
-        onRequestClose={() => setPreviewUri(null)}
+        onRequestClose={() => setPreviewFieldId(null)}
       >
         <View style={styles.fullPreviewRoot}>
           {previewUri != null ? (
@@ -333,10 +377,28 @@ export function ActivityFieldMediaRow({
               resizeMode="cover"
             />
           ) : null}
+
+          {previewField?.type === 'photo' || previewField?.type === 'scan' ? (
+            <View
+              pointerEvents="box-none"
+              style={[styles.fullPreviewTags, { paddingTop: insets.top + 10 }]}
+            >
+              <PhotoTagsBar
+                tags={previewTags}
+                status={previewTagStatus}
+                onRemoveTag={tag => {
+                  if (previewField != null && onRemovePhotoTag != null) {
+                    onRemovePhotoTag(previewField, tag);
+                  }
+                }}
+              />
+            </View>
+          ) : null}
+
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Close preview"
-            onPress={() => setPreviewUri(null)}
+            onPress={() => setPreviewFieldId(null)}
             style={[
               styles.fullPreviewClose,
               { bottom: insets.bottom + 20 },
@@ -442,6 +504,13 @@ const styles = StyleSheet.create({
   },
   fullPreviewImage: {
     ...StyleSheet.absoluteFillObject,
+  },
+  fullPreviewTags: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 2,
   },
   fullPreviewClose: {
     position: 'absolute',

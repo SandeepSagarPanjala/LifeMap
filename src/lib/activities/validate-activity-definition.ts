@@ -8,6 +8,8 @@ import {
   type ActivityDefinition,
   type ActivityFieldDefinition,
   type ActivityFieldType,
+  type ActivityFieldValue,
+  type ActivityValuesMap,
 } from '@/lib/activities/activity-definition';
 
 export type ActivityDefinitionValidationResult =
@@ -76,6 +78,7 @@ function validateField(
     'options',
     'extract',
     'fillField',
+    'fillItemsField',
   ]);
   for (const key of Object.keys(record)) {
     if (!allowedKeys.has(key)) {
@@ -154,10 +157,34 @@ function validateField(
         error: `Scan field "${id}" fillField requires extract: amount.`,
       };
     }
-  } else if (record.extract != null || record.fillField != null) {
+
+    if (record.fillItemsField != null) {
+      if (record.extract !== 'amount') {
+        return {
+          ok: false,
+          error: `Scan field "${id}" fillItemsField requires extract: amount.`,
+        };
+      }
+      const fillItemsField =
+        typeof record.fillItemsField === 'string'
+          ? record.fillItemsField.trim()
+          : '';
+      if (!fillItemsField) {
+        return {
+          ok: false,
+          error: `Scan field "${id}" fillItemsField must be a field id.`,
+        };
+      }
+      field.fillItemsField = fillItemsField;
+    }
+  } else if (
+    record.extract != null ||
+    record.fillField != null ||
+    record.fillItemsField != null
+  ) {
     return {
       ok: false,
-      error: `Field "${id}" cannot use extract/fillField.`,
+      error: `Field "${id}" cannot use extract/fillField/fillItemsField.`,
     };
   }
 
@@ -259,6 +286,21 @@ export function validateActivityDefinition(
         };
       }
     }
+    if (field.type === 'scan' && field.fillItemsField) {
+      const target = fields.find(item => item.id === field.fillItemsField);
+      if (target == null) {
+        return {
+          ok: false,
+          error: `Scan field "${field.id}" fillItemsField "${field.fillItemsField}" does not exist.`,
+        };
+      }
+      if (target.type !== 'list') {
+        return {
+          ok: false,
+          error: `Scan field "${field.id}" fillItemsField must point to a list field.`,
+        };
+      }
+    }
   }
 
   const templateIdRaw = record.templateId ?? record.id;
@@ -279,16 +321,33 @@ export function validateActivityDefinition(
   };
 }
 
+function isRequiredValueFilled(value: ActivityFieldValue | undefined): boolean {
+  if (value == null) {
+    return false;
+  }
+  if (value.type === 'list') {
+    return value.items.length > 0;
+  }
+  if (value.type === 'text') {
+    return value.value.trim().length > 0;
+  }
+  if (value.type === 'money') {
+    // 0 is a valid amount (free / complimentary).
+    return Number.isFinite(value.amount) && value.amount >= 0;
+  }
+  return true;
+}
+
 export function assertRequiredValuesFilled(
   definition: ActivityDefinition,
-  values: Record<string, unknown>,
+  values: ActivityValuesMap | Record<string, unknown>,
 ): string | null {
   for (const field of definition.fields) {
     if (!field.required) {
       continue;
     }
-    const value = values[field.id];
-    if (value == null) {
+    const value = values[field.id] as ActivityFieldValue | undefined;
+    if (!isRequiredValueFilled(value)) {
       return `${field.label} is required.`;
     }
   }

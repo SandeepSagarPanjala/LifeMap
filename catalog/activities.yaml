@@ -59,6 +59,11 @@ activities:
         required: false
         extract: amount
         fillField: amount
+        fillItemsField: items
+      - id: items
+        type: list
+        label: Items
+        required: false
       - id: amount
         type: money
         label: Amount

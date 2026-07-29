@@ -1,7 +1,7 @@
 import './global.css';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AppState, StyleSheet, View } from 'react-native';
 import { PortalHost } from '@rn-primitives/portal';
 import { StatusBar, useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -31,6 +31,9 @@ const DATABASE_READY_TIMEOUT_MS = 8_000;
 /** Absolute ceiling so BootSplash can never pin the UI indefinitely. */
 const SPLASH_FAILSAFE_MS = 12_000;
 
+/** requestAnimationFrame never fires while backgrounded, so this must be bounded. */
+const NEXT_PAINT_TIMEOUT_MS = 500;
+
 function waitForNextPaint(): Promise<void> {
   return new Promise(resolve => {
     requestAnimationFrame(() => {
@@ -47,13 +50,18 @@ function waitMs(ms: number): Promise<void> {
 
 async function hideBootSplash(): Promise<void> {
   try {
-    await BootSplash.hide({ fade: true });
+    // Only fade in the foreground. react-native-bootsplash removes its view in
+    // the cross-dissolve completion block, and UIKit never runs that transition
+    // while the app is backgrounded — the splash would stay on screen for good.
+    // The non-fade path removes the view synchronously, so it always works.
+    await BootSplash.hide({ fade: AppState.currentState === 'active' });
   } catch {
     // Continue startup even if the native splash module fails to hide.
   }
 }
 
 function App() {
+  const splashHideRequested = useRef(false);
   const [isAppReady, setAppReady] = useState(false);
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
   const colorScheme = useColorScheme();
@@ -85,6 +93,28 @@ function App() {
 
   useEffect(() => startWidgetDeepLinkListening(), []);
 
+  // iOS starts React Native (and mounts this component) even when the OS wakes
+  // the app in the background for a location event, so the hide below can run
+  // while backgrounded. Retry on foreground: the cold-start effect only runs
+  // once per JS instance, so nothing else would clear a splash left behind.
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextState => {
+      if (nextState === 'active' && splashHideRequested.current) {
+        void Promise.resolve(BootSplash.isVisible())
+          .then(isVisible => {
+            if (isVisible) {
+              return hideBootSplash();
+            }
+          })
+          .catch(() => {
+            // If visibility probing fails, still attempt the hide.
+            return hideBootSplash();
+          });
+      }
+    });
+    return () => subscription.remove();
+  }, []);
+
   // Init work, then hide splash. Do NOT wait on idle callbacks after
   // mounting main — MapScreen keeps the JS thread busy and can pin splash forever.
   useEffect(() => {
@@ -96,6 +126,9 @@ function App() {
         return;
       }
       splashHidden = true;
+      // Arm the foreground retry before awaiting: a hide that starts while
+      // backgrounded may never resolve.
+      splashHideRequested.current = true;
       await hideBootSplash();
     };
 
@@ -118,7 +151,7 @@ function App() {
       }
 
       setAppReady(true);
-      await waitForNextPaint();
+      await Promise.race([waitForNextPaint(), waitMs(NEXT_PAINT_TIMEOUT_MS)]);
       if (cancelled) {
         return;
       }
