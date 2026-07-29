@@ -2308,7 +2308,7 @@ PODS:
     - React-utils (= 0.84.1)
     - ReactNativeDependencies
   - ReactNativeDependencies (0.84.1)
-  - RNBackgroundGeolocation (5.1.1):
+  - RNBackgroundGeolocation (5.4.0):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2329,7 +2329,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
-    - TSLocationManager (~> 4.1.0)
+    - TSLocationManager (~> 4.4.0)
     - Yoga
   - RNBootSplash (7.3.2):
     - hermes-engine
@@ -2686,7 +2686,7 @@ PODS:
   - Sentry/Core (9.19.1)
   - SSZipArchive (2.5.5)
   - TSBackgroundFetch (4.1.1)
-  - TSLocationManager (4.1.7):
+  - TSLocationManager (4.4.1):
     - TSBackgroundFetch (~> 4.1.0)
   - VisionCamera (5.0.11):
     - hermes-engine
@@ -3160,7 +3160,7 @@ SPEC CHECKSUMS:
   ReactCodegen: 4fa1b291ad275013e39212f2463c46480fb53afe
   ReactCommon: 309419492d417c4cbb87af06f67735afa40ecb9d
   ReactNativeDependencies: dc9f6fff588cce4d4c78702ca7c82ff4202099e8
-  RNBackgroundGeolocation: c79e8f7b187522805baf849a04e0b554b564a4b9
+  RNBackgroundGeolocation: 90072776a1f16f0f276bc49ead0105b0a6df1b31
   RNBootSplash: 456331a52cfe22475bd37af928a8d700efc9606e
   RNGestureHandler: 0d11f2db07ad290163036896cb2a2a922150d355
   RNKeychain: 91be81cd32b30c7d4c2569dcad29b472d9b93982
@@ -3173,11 +3173,11 @@ SPEC CHECKSUMS:
   Sentry: e4588d62ac3fd3c82652bb7c8a215ec8c3de776b
   SSZipArchive: c69881e8ac5521f0e622291387add5f60f30f3c4
   TSBackgroundFetch: 18918b6449a1e3f01eb0f5b44d6d79ce6160a5a5
-  TSLocationManager: 0c1b8ed109ae05ea4247def2992b3e4e3f49f839
+  TSLocationManager: 3a1a98741387935ee2ef5b48cc8a8cde9762b03a
   VisionCamera: c49d44d170b1cfa2039c86a1f76c9c1b0ffb7ca2
   VisionCameraWorklets: c6d8b275868895fba37a6a18aeca0d89f4753b54
   Yoga: c0b3f2c7e8d3e327e450223a2414ca3fa296b9a2
 
 PODFILE CHECKSUM: 2b3f69d8465637681f4efea12786a6f102440b28
 
-COCOAPODS: 1.17.0
+COCOAPODS: 1.15.2
