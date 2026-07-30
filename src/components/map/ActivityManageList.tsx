@@ -6,9 +6,10 @@ import DraggableFlatList, {
 } from 'react-native-draggable-flatlist';
 import { GripVertical, Pencil, Trash2 } from 'lucide-react-native';
 
+import { ActivityEmojiOrb } from '@/components/map/ActivityEmojiOrb';
 import type { ActivityRow } from '@/db/repositories/activities';
+import { activityReminderSummary } from '@/lib/activities/activity-tile-style';
 
-const ACTIVITY_TINT = '#F0FDF4';
 const ROW_RADIUS = 16;
 
 type ActivityManageListProps = {
@@ -32,6 +33,7 @@ export function ActivityManageList({
       const index = getIndex() ?? 0;
       const isFirst = index === 0;
       const isLast = index === lastIndex;
+      const reminderSummary = activityReminderSummary(item);
 
       return (
         <ScaleDecorator activeScale={1.02}>
@@ -53,17 +55,22 @@ export function ActivityManageList({
               <GripVertical size={18} color="#8E8E93" strokeWidth={2.25} />
             </Pressable>
             <View style={styles.manageRowMain}>
-              <View
-                style={[
-                  styles.manageEmojiOrb,
-                  { backgroundColor: ACTIVITY_TINT },
-                ]}
-              >
-                <Text style={styles.manageEmoji}>{item.emoji}</Text>
+              <ActivityEmojiOrb
+                activity={item}
+                size={40}
+                radius={12}
+                emojiSize={22}
+              />
+              <View style={styles.manageTextCol}>
+                <Text style={styles.manageLabel} numberOfLines={1}>
+                  {item.label}
+                </Text>
+                {reminderSummary != null ? (
+                  <Text style={styles.manageReminder} numberOfLines={1}>
+                    {reminderSummary}
+                  </Text>
+                ) : null}
               </View>
-              <Text style={styles.manageLabel} numberOfLines={1}>
-                {item.label}
-              </Text>
             </View>
             <View style={styles.manageActions}>
               <Pressable
@@ -158,21 +165,20 @@ const styles = StyleSheet.create({
     minWidth: 0,
     paddingRight: 8,
   },
-  manageEmojiOrb: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  manageEmoji: {
-    fontSize: 22,
+  manageTextCol: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
   },
   manageLabel: {
-    flex: 1,
     fontSize: 16,
     fontWeight: '600',
     color: '#1C1C1E',
+  },
+  manageReminder: {
+    fontSize: 12,
+    color: '#DB2777',
+    fontWeight: '500',
   },
   manageActions: {
     flexDirection: 'row',

@@ -19,7 +19,7 @@ import { GlassPressable } from '@/components/glass/GlassPressable';
 import { ActivityManageList } from '@/components/map/ActivityManageList';
 import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
 import {
-  archiveActivity,
+  deleteOrArchiveActivity,
   listActiveActivities,
   reorderActivities,
   type ActivityRow,
@@ -121,7 +121,7 @@ export function ActivityManageScreen() {
             onPress: () => {
               void (async () => {
                 try {
-                  await archiveActivity(activity.id);
+                  await deleteOrArchiveActivity(activity.id);
                   const rows = await listActiveActivities();
                   setActivities(rows);
                   if (rows.length === 0) {

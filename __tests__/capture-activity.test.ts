@@ -35,6 +35,13 @@ describe('capture activity', () => {
       templateId: null,
       definitionJson: '[]',
       fields: [],
+      reminderEnabled: false,
+      reminderRepeat: 'never' as const,
+      reminderTimeMinutes: null,
+      reminderWeekday: null,
+      reminderDayOfMonth: null,
+      reminderAnchorAt: null,
+      reminderSound: 'ding' as const,
     };
     mockedInsertMoment.mockResolvedValue({
       id: 99,

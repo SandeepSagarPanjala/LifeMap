@@ -79,13 +79,13 @@ export const MapMomentsGlassBar = memo(function MapMomentsGlassBar({
   const colors = useThemeColors();
   const accent = colors.primary;
 
-  // Left → right: You, Diary, Activity, Voice, Mood, Camera
+  // Left → right: You, Diary, Voice, Mood, Activity, Camera
   const actions: MomentAction[] = [
     { key: 'you', icon: LayoutGrid, label: 'Open You', onPress: onYou },
     { key: 'note', icon: Book, label: 'Open diary', onPress: onNote },
-    { key: 'activity', icon: Activity, label: 'Log an activity', onPress: onActivity },
     { key: 'voice', icon: AudioLines, label: 'Record a voice memo', onPress: onVoice },
     { key: 'mood', icon: Sparkles, label: 'Log a mood', onPress: onMood },
+    { key: 'activity', icon: Activity, label: 'Log an activity', onPress: onActivity },
     { key: 'camera', icon: Camera, label: 'Take a photo', onPress: onCamera },
   ];
 

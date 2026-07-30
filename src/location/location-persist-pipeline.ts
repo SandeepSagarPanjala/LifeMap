@@ -259,6 +259,14 @@ export async function handleMotionChangePersist(
       dedupe: true,
       allowRapidMotion: true,
     });
+    try {
+      const { onPlaceDepartureForNotifications } = await import(
+        '@/lib/notifications/place-prompts'
+      );
+      await onPlaceDepartureForNotifications();
+    } catch {
+      // Non-fatal
+    }
     return;
   }
 
@@ -268,4 +276,17 @@ export async function handleMotionChangePersist(
     dedupe: true,
     allowRapidMotion: true,
   });
+
+  try {
+    const { onPlaceArrivalForNotifications } = await import(
+      '@/lib/notifications/place-prompts'
+    );
+    await onPlaceArrivalForNotifications({
+      latitude: location.coords.latitude,
+      longitude: location.coords.longitude,
+      arrivedAt: locationTimestamp(location),
+    });
+  } catch {
+    // Non-fatal
+  }
 }

@@ -183,6 +183,8 @@ export async function migrationAlreadyApplied(
       );
     case '0038_moment_type_mood_voice_transcript':
       return columnExists(sqlite, 'moments', 'voice_transcript');
+    case '0039_activity_reminders':
+      return columnExists(sqlite, 'activities', 'reminder_enabled');
     default:
       return false;
   }
@@ -363,6 +365,57 @@ export async function ensureActivityDefinitionColumns(
         `ALTER TABLE moments ADD COLUMN activity_values_json text`,
       );
     }
+  }
+}
+
+/** Repair activity reminder columns when migration 0039 was skipped. */
+export async function ensureActivityReminderColumns(
+  sqlite: DB,
+): Promise<void> {
+  if (!(await tableExists(sqlite, 'activities'))) {
+    return;
+  }
+  if (!(await columnExists(sqlite, 'activities', 'reminder_enabled'))) {
+    await executeMigrationStatement(
+      sqlite,
+      `ALTER TABLE activities ADD COLUMN reminder_enabled integer DEFAULT 0 NOT NULL`,
+    );
+  }
+  if (!(await columnExists(sqlite, 'activities', 'reminder_repeat'))) {
+    await executeMigrationStatement(
+      sqlite,
+      `ALTER TABLE activities ADD COLUMN reminder_repeat text DEFAULT 'never' NOT NULL`,
+    );
+  }
+  if (!(await columnExists(sqlite, 'activities', 'reminder_time_minutes'))) {
+    await executeMigrationStatement(
+      sqlite,
+      `ALTER TABLE activities ADD COLUMN reminder_time_minutes integer`,
+    );
+  }
+  if (!(await columnExists(sqlite, 'activities', 'reminder_weekday'))) {
+    await executeMigrationStatement(
+      sqlite,
+      `ALTER TABLE activities ADD COLUMN reminder_weekday integer`,
+    );
+  }
+  if (!(await columnExists(sqlite, 'activities', 'reminder_day_of_month'))) {
+    await executeMigrationStatement(
+      sqlite,
+      `ALTER TABLE activities ADD COLUMN reminder_day_of_month integer`,
+    );
+  }
+  if (!(await columnExists(sqlite, 'activities', 'reminder_anchor_at'))) {
+    await executeMigrationStatement(
+      sqlite,
+      `ALTER TABLE activities ADD COLUMN reminder_anchor_at integer`,
+    );
+  }
+  if (!(await columnExists(sqlite, 'activities', 'reminder_sound'))) {
+    await executeMigrationStatement(
+      sqlite,
+      `ALTER TABLE activities ADD COLUMN reminder_sound text DEFAULT 'ding' NOT NULL`,
+    );
   }
 }
 

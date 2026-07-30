@@ -19,6 +19,7 @@ import {
 } from '@/lib/today-refresh-scheduler';
 import { runWhenIdle, yieldToEventLoop } from '@/lib/run-when-idle';
 import { useAppStore } from '@/stores/app-store';
+import { bootstrapNotifications } from '@/lib/notifications/bootstrap';
 
 /** Defer place-lookup catch-up — not on the critical map path. */
 const DEFER_PLACE_LOOKUP_MS = 2_000;
@@ -87,6 +88,11 @@ export function AppBootstrap({ children }: AppBootstrapProps) {
     void runTrackingBootstrap()
       .then(async () => {
         await yieldToEventLoop();
+        try {
+          await bootstrapNotifications();
+        } catch (error) {
+          logPipelineFailure('notifications_bootstrap', error);
+        }
         beginTodayOpenCycle();
         await yieldToEventLoop();
         await ensureHistoryCalendarBounds();

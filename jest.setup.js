@@ -279,6 +279,19 @@ jest.mock('@react-native-camera-roll/camera-roll', () => ({
   },
 }));
 
+jest.mock('react-native-notify-kit', () =>
+  require('react-native-notify-kit/jest-mock'),
+);
+
+jest.mock('@react-native-community/datetimepicker', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    __esModule: true,
+    default: React.forwardRef((props, ref) => <View ref={ref} {...props} />),
+  };
+});
+
 jest.mock('react-native-blob-util', () => ({
   __esModule: true,
   default: {
