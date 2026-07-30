@@ -20,6 +20,7 @@ import { launchImageLibrary } from 'react-native-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
+import { GlassPressable } from '@/components/glass/GlassPressable';
 import { ActivityFieldCameraModal } from '@/components/map/ActivityFieldCameraModal';
 import {
   ActivityFieldMediaRow,
@@ -745,15 +746,16 @@ export function ActivityLogEntryPanel({
           style={[styles.barWrap, { paddingBottom: barBottomPad }]}
         >
           <View style={styles.barRow}>
-            <View style={styles.shadowWrap}>
+            <GlassPressable
+              accessibilityLabel="Save activity"
+              disabled={!canSave}
+              onPress={() => {
+                void handleSave();
+              }}
+              style={styles.shadowWrap}
+            >
               <AdaptiveGlassSurface style={styles.pill}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Save activity"
-                  disabled={!canSave}
-                  onPress={() => {
-                    void handleSave();
-                  }}
+                <View
                   style={[
                     styles.savePressable,
                     !canSave ? styles.savePressableDisabled : null,
@@ -766,9 +768,9 @@ export function ActivityLogEntryPanel({
                       Save
                     </Text>
                   )}
-                </Pressable>
+                </View>
               </AdaptiveGlassSurface>
-            </View>
+            </GlassPressable>
 
             <MapGlassCircleButton
               accessibilityLabel="Back"

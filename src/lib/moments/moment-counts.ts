@@ -11,6 +11,7 @@ import {
 } from '@/lib/moment-refs';
 import { resolveStayAnchor } from '@/lib/trip-detection';
 
+import { momentImageUri } from './moment-media-uri';
 import {
   effectiveTimelineEntryEnd,
   findContainingTimelineEntry,
@@ -23,6 +24,16 @@ export type MomentCounts = {
   voice: number;
   note: number;
   activity: number;
+  mood: number;
+};
+
+/** Latest rich previews for stay-card chips (diary/voice keep Lucide). */
+export type MomentCountPreviews = {
+  photoThumbUri: string | null;
+  videoThumbUri: string | null;
+  activityEmoji: string | null;
+  moodLabel: string | null;
+  moodVariant: string | null;
 };
 
 export type TravelMomentMarker = {
@@ -38,10 +49,99 @@ export const EMPTY_MOMENT_COUNTS: MomentCounts = {
   voice: 0,
   note: 0,
   activity: 0,
+  mood: 0,
+};
+
+export const EMPTY_MOMENT_COUNT_PREVIEWS: MomentCountPreviews = {
+  photoThumbUri: null,
+  videoThumbUri: null,
+  activityEmoji: null,
+  moodLabel: null,
+  moodVariant: null,
 };
 
 export function emptyMomentCounts(): MomentCounts {
-  return { photo: 0, video: 0, voice: 0, note: 0, activity: 0 };
+  return { photo: 0, video: 0, voice: 0, note: 0, activity: 0, mood: 0 };
+}
+
+export function emptyMomentCountPreviews(): MomentCountPreviews {
+  return { ...EMPTY_MOMENT_COUNT_PREVIEWS };
+}
+
+/**
+ * Latest moment of each rich type for map chips.
+ * Photo/video use thumbnailPath only (never full contentPath).
+ */
+export function latestMomentCountPreviews(
+  moments: readonly MomentRow[],
+): MomentCountPreviews {
+  let latestPhoto: MomentRow | null = null;
+  let latestVideo: MomentRow | null = null;
+  let latestActivity: MomentRow | null = null;
+  let latestMood: MomentRow | null = null;
+
+  for (const moment of moments) {
+    if (moment.type === 'photo') {
+      if (
+        latestPhoto == null ||
+        moment.timestamp.getTime() >= latestPhoto.timestamp.getTime()
+      ) {
+        latestPhoto = moment;
+      }
+      continue;
+    }
+    if (moment.type === 'video') {
+      if (
+        latestVideo == null ||
+        moment.timestamp.getTime() >= latestVideo.timestamp.getTime()
+      ) {
+        latestVideo = moment;
+      }
+      continue;
+    }
+    if (moment.type === 'activity') {
+      if (
+        latestActivity == null ||
+        moment.timestamp.getTime() >= latestActivity.timestamp.getTime()
+      ) {
+        latestActivity = moment;
+      }
+      continue;
+    }
+    if (moment.type === 'mood') {
+      if (
+        latestMood == null ||
+        moment.timestamp.getTime() >= latestMood.timestamp.getTime()
+      ) {
+        latestMood = moment;
+      }
+    }
+  }
+
+  return {
+    photoThumbUri: latestPhoto?.thumbnailPath
+      ? momentImageUri(latestPhoto.thumbnailPath)
+      : null,
+    videoThumbUri: latestVideo?.thumbnailPath
+      ? momentImageUri(latestVideo.thumbnailPath)
+      : null,
+    activityEmoji: latestActivity?.activityEmoji?.trim() || null,
+    moodLabel: latestMood?.moodLabel?.trim() || null,
+    moodVariant: latestMood?.moodVariant?.trim() || null,
+  };
+}
+
+/** Stable signature for Marker tracksViewChanges when thumbs backfill. */
+export function momentCountPreviewsSignature(
+  previews: MomentCountPreviews,
+): string {
+  return [
+    previews.photoThumbUri ?? '',
+    previews.videoThumbUri ?? '',
+    previews.activityEmoji ?? '',
+    previews.moodLabel ?? '',
+    previews.moodVariant ?? '',
+  ].join('|');
 }
 
 export function hasMomentCounts(counts: MomentCounts): boolean {
@@ -50,7 +150,8 @@ export function hasMomentCounts(counts: MomentCounts): boolean {
     counts.video > 0 ||
     counts.voice > 0 ||
     counts.note > 0 ||
-    counts.activity > 0
+    counts.activity > 0 ||
+    counts.mood > 0
   );
 }
 
@@ -61,16 +162,33 @@ export function countMomentTypes(counts: MomentCounts): number {
   if (counts.voice > 0) total += 1;
   if (counts.note > 0) total += 1;
   if (counts.activity > 0) total += 1;
+  if (counts.mood > 0) total += 1;
   return total;
 }
 
 export type MomentCountType = keyof MomentCounts;
 
-export function firstMomentIndexOfType(
+/**
+ * Chips show the latest moment of a type, so tapping one must open that same
+ * moment rather than the oldest in the group.
+ */
+export function latestMomentIndexOfType(
   moments: readonly MomentRow[],
   type: MomentRow['type'],
 ): number {
-  return moments.findIndex(moment => moment.type === type);
+  let latestIndex = -1;
+  let latestTime = 0;
+  moments.forEach((moment, index) => {
+    if (moment.type !== type) {
+      return;
+    }
+    const time = moment.timestamp.getTime();
+    if (latestIndex < 0 || time >= latestTime) {
+      latestIndex = index;
+      latestTime = time;
+    }
+  });
+  return latestIndex;
 }
 
 /** Hide the saved-place cluster pill when a stay callout already shows those moments. */
@@ -89,17 +207,7 @@ export function shouldHideSavedPlaceMomentCluster(
 export function countMoments(moments: MomentRow[]): MomentCounts {
   const counts = emptyMomentCounts();
   for (const moment of moments) {
-    if (moment.type === 'photo') {
-      counts.photo += 1;
-    } else if (moment.type === 'video') {
-      counts.video += 1;
-    } else if (moment.type === 'voice') {
-      counts.voice += 1;
-    } else if (moment.type === 'note') {
-      counts.note += 1;
-    } else if (moment.type === 'activity') {
-      counts.activity += 1;
-    }
+    addToCounts(counts, moment);
   }
   return counts;
 }
@@ -129,17 +237,7 @@ export function countMomentsForEntry(
     if (!momentBelongsToEntry(moment, entry, now)) {
       continue;
     }
-    if (moment.type === 'photo') {
-      counts.photo += 1;
-    } else if (moment.type === 'video') {
-      counts.video += 1;
-    } else if (moment.type === 'voice') {
-      counts.voice += 1;
-    } else if (moment.type === 'note') {
-      counts.note += 1;
-    } else if (moment.type === 'activity') {
-      counts.activity += 1;
-    }
+    addToCounts(counts, moment);
   }
   return counts;
 }
@@ -270,6 +368,8 @@ export function addToCounts(counts: MomentCounts, moment: MomentRow): void {
     counts.note += 1;
   } else if (moment.type === 'activity') {
     counts.activity += 1;
+  } else if (moment.type === 'mood') {
+    counts.mood += 1;
   }
 }
 

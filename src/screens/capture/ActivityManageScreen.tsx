@@ -4,7 +4,6 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   View,
@@ -16,6 +15,7 @@ import { Plus, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
+import { GlassPressable } from '@/components/glass/GlassPressable';
 import { ActivityManageList } from '@/components/map/ActivityManageList';
 import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
 import {
@@ -184,21 +184,20 @@ export function ActivityManageScreen() {
         ]}
       >
         <View style={styles.barRow}>
-          <View style={styles.shadowWrap}>
+          <GlassPressable
+            accessibilityLabel="Add activity"
+            onPress={handleAdd}
+            style={styles.shadowWrap}
+          >
             <AdaptiveGlassSurface style={styles.pill}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Add activity"
-                onPress={handleAdd}
-                style={styles.addPressable}
-              >
+              <View style={styles.addPressable}>
                 <Plus size={18} color={colors.primary} strokeWidth={2.5} />
                 <Text style={[styles.addLabel, { color: colors.primary }]}>
                   Add Activity
                 </Text>
-              </Pressable>
+              </View>
             </AdaptiveGlassSurface>
-          </View>
+          </GlassPressable>
 
           <MapGlassCircleButton
             accessibilityLabel="Close"

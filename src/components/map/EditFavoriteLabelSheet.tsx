@@ -1,9 +1,10 @@
 import { useEffect, useState, type ComponentRef, type RefObject } from 'react';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import { Check, X } from 'lucide-react-native';
 
 import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
+import { GlassPressable } from '@/components/glass/GlassPressable';
 import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
 import { Text } from '@/components/ui/text';
 import {
@@ -69,13 +70,14 @@ export function EditFavoriteLabelPanel({
         style={[styles.barWrap, { paddingBottom: MAP_MOMENTS_BAR_GAP }]}
       >
         <View style={styles.barRow}>
-          <View style={styles.shadowWrap}>
+          <GlassPressable
+            accessibilityLabel="Save favorite name"
+            disabled={!canSave}
+            onPress={() => onSave(trimmed)}
+            style={styles.shadowWrap}
+          >
             <AdaptiveGlassSurface style={styles.pill}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Save favorite name"
-                disabled={!canSave}
-                onPress={() => onSave(trimmed)}
+              <View
                 style={[
                   styles.savePressable,
                   !canSave ? styles.savePressableDisabled : null,
@@ -85,9 +87,9 @@ export function EditFavoriteLabelPanel({
                 <Text style={[styles.saveLabel, { color: colors.primary }]}>
                   Save
                 </Text>
-              </Pressable>
+              </View>
             </AdaptiveGlassSurface>
-          </View>
+          </GlassPressable>
 
           <MapGlassCircleButton
             accessibilityLabel="Close"

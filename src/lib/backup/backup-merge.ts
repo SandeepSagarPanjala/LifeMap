@@ -440,7 +440,14 @@ async function mergePlaceLookupCache(rows: unknown[]): Promise<IdMap> {
   return map;
 }
 
-const MOMENT_TYPES = new Set(['photo', 'note', 'video', 'voice', 'activity']);
+const MOMENT_TYPES = new Set([
+  'photo',
+  'note',
+  'video',
+  'voice',
+  'activity',
+  'mood',
+]);
 
 function remapId(value: number | null | undefined, map: IdMap): number | null {
   if (value == null) {
@@ -502,13 +509,20 @@ async function mergeMoments(
     }
 
     await db.insert(moments).values({
-      type: type as 'photo' | 'note' | 'video' | 'voice' | 'activity',
+      type: type as
+        | 'photo'
+        | 'note'
+        | 'video'
+        | 'voice'
+        | 'activity'
+        | 'mood',
       timestamp,
       finishedAt: parseIsoDate(record.finishedAt),
       contentPath,
       voiceAttachmentPath: parseOptionalString(record.voiceAttachmentPath),
       voiceAttachmentBytes: parseOptionalNumber(record.voiceAttachmentBytes),
       voiceDurationSec: parseOptionalNumber(record.voiceDurationSec),
+      voiceTranscript: parseOptionalString(record.voiceTranscript),
       photoAttachmentsJson:
         typeof record.photoAttachmentsJson === 'string'
           ? record.photoAttachmentsJson
@@ -520,6 +534,8 @@ async function mergeMoments(
       title: parseOptionalString(record.title),
       moodScore: parseOptionalNumber(record.moodScore),
       moodLabel: parseOptionalString(record.moodLabel),
+      moodReason: parseOptionalString(record.moodReason),
+      moodVariant: parseOptionalString(record.moodVariant),
       placeLabel: parseOptionalString(record.placeLabel),
       contentBytes: parseOptionalNumber(record.contentBytes),
       sourceBytes: parseOptionalNumber(record.sourceBytes),

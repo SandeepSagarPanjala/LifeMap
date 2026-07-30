@@ -56,6 +56,7 @@ const MOMENT_TYPE_LABELS: Record<keyof SegmentMomentCounts, string> = {
   voice: APP_COPY.explorer.momentVoice,
   note: APP_COPY.explorer.momentNote,
   activity: APP_COPY.explorer.momentActivity,
+  mood: APP_COPY.explorer.momentMood,
 };
 
 function canonicalPointCountLabel(

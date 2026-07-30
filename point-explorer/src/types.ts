@@ -71,7 +71,7 @@ export type DatabaseExport = {
 export type UploadDataKind = 'location_points' | 'stored_trips' | 'unknown';
 export type UploadMode = 'detect' | 'plot';
 
-export type MomentType = 'photo' | 'note' | 'video' | 'voice' | 'activity';
+export type MomentType = 'photo' | 'note' | 'video' | 'voice' | 'activity' | 'mood';
 
 export type MomentRow = {
   id: number;

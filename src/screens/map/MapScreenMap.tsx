@@ -49,6 +49,7 @@ export const MapScreenMap = memo(
       currentOpenDriveEndpointLabels,
       currentOpenVisitPlaceDisplay,
       currentVisitMomentCounts,
+      currentVisitMomentPreviews,
       openCurrentVisitMomentsPreview,
       userCoordinate,
       handleMapLongPress,
@@ -58,6 +59,7 @@ export const MapScreenMap = memo(
       selectedVisitPlaceDisplay,
       selectedDriveEndpointLabels,
       selectedEntryMomentCounts,
+      selectedEntryMomentPreviews,
       openSelectedEntryMomentsPreview,
       playback,
       savedPlaces,
@@ -157,6 +159,7 @@ export const MapScreenMap = memo(
                 showVisitPin={false}
                 anchorCoordinate={userCoordinate}
                 momentCounts={currentVisitMomentCounts}
+                momentPreviews={currentVisitMomentPreviews}
                 onPressMomentType={openCurrentVisitMomentsPreview}
               />
             ) : currentOpenDrive ? (
@@ -192,6 +195,7 @@ export const MapScreenMap = memo(
               selectedDriveStartLabel={selectedDriveEndpointLabels.start}
               selectedDriveEndLabel={selectedDriveEndpointLabels.end}
               selectedEntryMomentCounts={selectedEntryMomentCounts}
+              selectedEntryMomentPreviews={selectedEntryMomentPreviews}
               onPressSelectedEntryMoments={openSelectedEntryMomentsPreview}
               tripConfig={tripDetectionConfig}
               playbackProgress={

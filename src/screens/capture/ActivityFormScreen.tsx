@@ -12,7 +12,6 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -25,6 +24,7 @@ import { X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
+import { GlassPressable } from '@/components/glass/GlassPressable';
 import { ActivityForm } from '@/components/map/ActivityLogSheet';
 import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
 import {
@@ -307,15 +307,16 @@ export function ActivityFormScreen() {
           ]}
         >
           <View style={styles.barRow}>
-            <View style={styles.shadowWrap}>
+            <GlassPressable
+              accessibilityLabel={saveLabel}
+              disabled={!canSave}
+              onPress={() => {
+                void handleSubmit();
+              }}
+              style={styles.shadowWrap}
+            >
               <AdaptiveGlassSurface style={styles.pill}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={saveLabel}
-                  disabled={!canSave}
-                  onPress={() => {
-                    void handleSubmit();
-                  }}
+                <View
                   style={[
                     styles.savePressable,
                     !canSave ? styles.savePressableDisabled : null,
@@ -328,9 +329,9 @@ export function ActivityFormScreen() {
                       {saveLabel}
                     </Text>
                   )}
-                </Pressable>
+                </View>
               </AdaptiveGlassSurface>
-            </View>
+            </GlassPressable>
 
             <MapGlassCircleButton
               accessibilityLabel="Close"

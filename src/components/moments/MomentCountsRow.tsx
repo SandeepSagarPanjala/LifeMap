@@ -3,25 +3,41 @@ import {
   AudioLines,
   Camera,
   NotebookPen,
+  Sparkles,
   Video,
 } from 'lucide-react-native';
 import { memo, useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type ImageSourcePropType,
+} from 'react-native';
 
 import {
   CAPTURE_BUTTON_THEMES,
   CAPTURE_ICON_SIZE,
 } from '@/components/map/map-capture-button-theme';
 import type {
+  MomentCountPreviews,
   MomentCountType,
   MomentCounts,
 } from '@/lib/moments/moment-counts';
 import { hasMomentCounts } from '@/lib/moments/moment-counts';
+import {
+  getMoodArtPresentation,
+  resolveEmotionFromMoodLabel,
+  resolveMoodVariantFromMoment,
+} from '@/lib/moments/mood-art';
 
 type MomentCountsRowLayout = 'inline' | 'stacked';
 
 type MomentCountsRowProps = {
   counts: MomentCounts;
+  /** Latest rich chip content for photo/video/activity/mood. */
+  previews?: MomentCountPreviews | null;
   iconSize?: number;
   compact?: boolean;
   /** Tighter stacked chips for small map cluster bubbles. */
@@ -69,11 +85,55 @@ const CHIP_DEFINITIONS: ChipDefinition[] = [
     theme: CAPTURE_BUTTON_THEMES.activity,
     accessibilityLabel: 'Preview activity moments',
   },
+  {
+    type: 'mood',
+    icon: Sparkles,
+    theme: CAPTURE_BUTTON_THEMES.mood,
+    accessibilityLabel: 'Preview mood moments',
+  },
 ];
+
+type ChipVisual =
+  | { kind: 'icon'; icon: typeof Camera }
+  | { kind: 'image'; uri: string }
+  | { kind: 'emoji'; emoji: string }
+  | { kind: 'mood'; source: ImageSourcePropType; tint: string };
+
+function resolveChipVisual(
+  type: MomentCountType,
+  fallbackIcon: typeof Camera,
+  previews: MomentCountPreviews | null | undefined,
+): ChipVisual {
+  if (previews == null) {
+    return { kind: 'icon', icon: fallbackIcon };
+  }
+  if (type === 'photo' && previews.photoThumbUri) {
+    return { kind: 'image', uri: previews.photoThumbUri };
+  }
+  if (type === 'video' && previews.videoThumbUri) {
+    return { kind: 'image', uri: previews.videoThumbUri };
+  }
+  if (type === 'activity' && previews.activityEmoji) {
+    return { kind: 'emoji', emoji: previews.activityEmoji };
+  }
+  if (type === 'mood' && previews.moodLabel) {
+    const emotion = resolveEmotionFromMoodLabel(previews.moodLabel);
+    if (emotion != null) {
+      const variant = resolveMoodVariantFromMoment(previews.moodVariant);
+      const art = getMoodArtPresentation(emotion.id, variant);
+      return {
+        kind: 'mood',
+        source: art.imageSource,
+        tint: emotion.tint,
+      };
+    }
+  }
+  return { kind: 'icon', icon: fallbackIcon };
+}
 
 type MomentCountChipProps = {
   count: number;
-  icon: typeof Camera;
+  visual: ChipVisual;
   theme: (typeof CAPTURE_BUTTON_THEMES)['camera'];
   iconSize: number;
   compact: boolean;
@@ -85,7 +145,7 @@ type MomentCountChipProps = {
 
 const MomentCountChip = memo(function MomentCountChip({
   count,
-  icon: Icon,
+  visual,
   theme,
   iconSize,
   compact,
@@ -95,6 +155,59 @@ const MomentCountChip = memo(function MomentCountChip({
   accessibilityLabel,
 }: MomentCountChipProps) {
   const stacked = layout === 'stacked';
+  const orbSize = dense
+    ? stacked
+      ? 22
+      : 18
+    : stacked
+      ? 26
+      : 28;
+  const glyphSize = dense ? iconSize - (stacked ? 4 : 0) : stacked ? iconSize - 2 : iconSize;
+
+  const orbContent =
+    visual.kind === 'image' ? (
+      <Image
+        source={{ uri: visual.uri }}
+        style={[styles.previewImage, { width: orbSize, height: orbSize }]}
+        resizeMode="cover"
+      />
+    ) : visual.kind === 'emoji' ? (
+      <Text
+        style={[
+          styles.previewEmoji,
+          { fontSize: dense ? glyphSize + 1 : glyphSize + 2 },
+        ]}
+        allowFontScaling={false}
+      >
+        {visual.emoji}
+      </Text>
+    ) : visual.kind === 'mood' ? (
+      <Image
+        source={visual.source}
+        style={[
+          styles.moodSticker,
+          {
+            width: orbSize - (dense ? 4 : 6),
+            height: orbSize - (dense ? 4 : 6),
+          },
+        ]}
+        resizeMode="contain"
+      />
+    ) : (
+      <visual.icon
+        size={glyphSize}
+        color={theme.icon}
+        strokeWidth={2.25}
+      />
+    );
+
+  const orbBackground =
+    visual.kind === 'image'
+      ? '#E8E8ED'
+      : visual.kind === 'mood'
+        ? visual.tint
+        : theme.badgeBg;
+
   const chip = stacked ? (
     <View style={[styles.chipStacked, dense ? styles.chipStackedDense : null]}>
       <View
@@ -102,14 +215,11 @@ const MomentCountChip = memo(function MomentCountChip({
           styles.iconOrb,
           styles.iconOrbStacked,
           dense ? styles.iconOrbStackedDense : null,
-          { backgroundColor: theme.badgeBg },
+          visual.kind === 'image' ? styles.iconOrbClipped : null,
+          { backgroundColor: orbBackground },
         ]}
       >
-        <Icon
-          size={dense ? iconSize - 4 : iconSize - 2}
-          color={theme.icon}
-          strokeWidth={2.25}
-        />
+        {orbContent}
       </View>
       <Text
         style={[styles.countStacked, dense ? styles.countStackedDense : null]}
@@ -129,10 +239,11 @@ const MomentCountChip = memo(function MomentCountChip({
         style={[
           styles.iconOrb,
           dense ? styles.iconOrbInlineDense : null,
-          { backgroundColor: theme.badgeBg },
+          visual.kind === 'image' ? styles.iconOrbClipped : null,
+          { backgroundColor: orbBackground },
         ]}
       >
-        <Icon size={iconSize} color={theme.icon} strokeWidth={2.25} />
+        {orbContent}
       </View>
       <Text
         style={[
@@ -165,6 +276,7 @@ const MomentCountChip = memo(function MomentCountChip({
 
 function MomentCountsRowComponent({
   counts,
+  previews = null,
   iconSize = CAPTURE_ICON_SIZE - 2,
   compact = false,
   dense = false,
@@ -210,7 +322,11 @@ function MomentCountsRowComponent({
           <MomentCountChip
             key={definition.type}
             count={count}
-            icon={definition.icon}
+            visual={resolveChipVisual(
+              definition.type,
+              definition.icon,
+              previews,
+            )}
             theme={definition.theme}
             iconSize={iconSize}
             compact={compact}
@@ -290,6 +406,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  iconOrbClipped: {
+    overflow: 'hidden',
+  },
   iconOrbInlineDense: {
     width: 18,
     height: 18,
@@ -304,6 +423,16 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
+  },
+  previewImage: {
+    borderRadius: 999,
+  },
+  previewEmoji: {
+    textAlign: 'center',
+    lineHeight: undefined,
+  },
+  moodSticker: {
+    // sized inline
   },
   count: {
     fontSize: 15,

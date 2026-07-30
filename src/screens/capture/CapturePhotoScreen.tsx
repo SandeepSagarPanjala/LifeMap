@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Alert,
   AppState,
+  Image,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -29,6 +30,7 @@ import {
   RefreshCw,
   RotateCcw,
   RotateCw,
+  Sparkles,
   Type,
   X,
   Zap,
@@ -57,6 +59,7 @@ import ViewShot from 'react-native-view-shot';
 
 import { CameraFocusIndicator } from '@/components/capture/CameraFocusIndicator';
 import { CameraZoomBar } from '@/components/capture/CameraZoomBar';
+import { EmotionTokenPickerSheet } from '@/components/capture/EmotionTokenPickerSheet';
 import { FilteredCaptureImage } from '@/components/capture/FilteredCaptureImage';
 import { MomentVideoPlayer } from '@/components/capture/MomentVideoPlayer';
 import {
@@ -65,6 +68,8 @@ import {
 } from '@/components/capture/PhotoTagsBar';
 import { VoiceMemoSheet } from '@/components/map/VoiceMemoSheet';
 import { CAPTURE_BUTTON_THEMES } from '@/components/map/map-capture-button-theme';
+import { getSetting, setSetting } from '@/db/repositories/settings';
+import { loadProfile } from '@/db/repositories/profile';
 import { savePhotoMoment } from '@/lib/moments/capture-photo';
 import { labelPhotoTags } from '@/lib/moments/image-label-native';
 import { labelVideoTags } from '@/lib/moments/label-video-tags';
@@ -73,13 +78,30 @@ import {
   isVideoRecordingTooShort,
   saveVideoMoment,
 } from '@/lib/moments/capture-video';
+import type {
+  EmotionSelection,
+  EmotionTokenId,
+} from '@/lib/moments/emotion-tokens';
+import { getEmotionToken } from '@/lib/moments/emotion-tokens';
 import { formatVoiceDurationMs } from '@/lib/moments/format-voice-duration';
+import {
+  getMoodArtPresentation,
+  getMoodArtVariantsForGender,
+  resolveMoodArtVariant,
+  MOOD_ART_VARIANT_SETTING_KEY,
+  type MoodArtVariant,
+} from '@/lib/moments/mood-art';
 import { deleteMomentContentFile } from '@/lib/moments/moment-storage';
 import {
   createVoiceRecorderSession,
   getVoiceRecordingErrorMessage,
 } from '@/lib/moments/voice-recorder';
-import { VIDEO_MAX_DURATION_MS } from '@/lib/app-constants';
+import type { ProfileGender } from '@/lib/profile/types';
+import {
+  PHOTO_CAPTION_MAX_LENGTH,
+  PHOTO_VOICE_MAX_DURATION_MS,
+  VIDEO_MAX_DURATION_MS,
+} from '@/lib/app-constants';
 import { normalizeCameraPhoto } from '@/lib/moments/normalize-camera-photo';
 import {
   captureFilteredPhotoUri,
@@ -275,6 +297,13 @@ export function CapturePhotoScreen() {
   const [voicePlaying, setVoicePlaying] = useState(false);
   const [voiceSheetOpen, setVoiceSheetOpen] = useState(false);
   const voicePlayerRef = useRef(createVoiceRecorderSession());
+  const [selectedEmotionId, setSelectedEmotionId] =
+    useState<EmotionTokenId | null>(null);
+  const [moodVariant, setMoodVariant] = useState<MoodArtVariant>('cat');
+  const [profileGender, setProfileGender] = useState<ProfileGender | null>(
+    null,
+  );
+  const [emotionSheetOpen, setEmotionSheetOpen] = useState(false);
   const [capturing, setCapturing] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -690,6 +719,8 @@ export function CapturePhotoScreen() {
   const handleOpenVoiceSheet = useCallback(() => {
     void (async () => {
       setReviewChromeVisible(true);
+      await voicePlayerRef.current.stopPreview().catch(() => undefined);
+      setVoicePlaying(false);
       await releaseVoiceRecordingSession().catch(() => undefined);
       setVoiceSheetOpen(true);
     })();
@@ -705,6 +736,59 @@ export function CapturePhotoScreen() {
     return () => {
       void voicePlayer.dispose();
     };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [profile, savedVariant] = await Promise.all([
+          loadProfile(),
+          getSetting(MOOD_ART_VARIANT_SETTING_KEY),
+        ]);
+        if (cancelled) {
+          return;
+        }
+        setProfileGender(profile.gender);
+        setMoodVariant(resolveMoodArtVariant(profile.gender, savedVariant));
+      } catch {
+        if (!cancelled) {
+          setMoodVariant('cat');
+        }
+      }
+    })().catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const allowedMoodVariants = getMoodArtVariantsForGender(profileGender);
+  const selectedEmotion =
+    selectedEmotionId != null ? getEmotionToken(selectedEmotionId) : null;
+  const selectedMoodArt =
+    selectedEmotionId != null
+      ? getMoodArtPresentation(selectedEmotionId, moodVariant)
+      : null;
+
+  const clearMood = useCallback(() => {
+    setSelectedEmotionId(null);
+  }, []);
+
+  const handleOpenMoodSheet = useCallback(() => {
+    setReviewChromeVisible(true);
+    setEmotionSheetOpen(true);
+  }, []);
+
+  const handleMoodSelect = useCallback((selection: EmotionSelection) => {
+    setSelectedEmotionId(selection.emotion.id);
+    setMoodVariant(selection.variant);
+    void setSetting(MOOD_ART_VARIANT_SETTING_KEY, selection.variant);
+    setEmotionSheetOpen(false);
+  }, []);
+
+  const handleMoodVariantChange = useCallback((variant: MoodArtVariant) => {
+    setMoodVariant(variant);
+    void setSetting(MOOD_ART_VARIANT_SETTING_KEY, variant);
   }, []);
 
   const clearVoice = useCallback(async () => {
@@ -795,6 +879,7 @@ export function CapturePhotoScreen() {
   const handleRetake = useCallback(() => {
     resetRecordingState();
     void clearVoice();
+    clearMood();
     cameraLeavingRef.current = false;
     cameraShutdownIntentRef.current = null;
     cameraShutdownCompletedRef.current = false;
@@ -815,7 +900,7 @@ export function CapturePhotoScreen() {
     setSaving(false);
     setSaveStatus(null);
     setPhase('camera');
-  }, [clearCameraCloseTimeout, clearVoice, resetRecordingState]);
+  }, [clearCameraCloseTimeout, clearMood, clearVoice, resetRecordingState]);
 
   const handleDismissCaption = useCallback(() => {
     Keyboard.dismiss();
@@ -1066,6 +1151,12 @@ export function CapturePhotoScreen() {
           captionText,
           voiceUri ? { uri: voiceUri, durationMs: voiceDurationMs } : null,
           sceneTags.map(tag => tag.label),
+          selectedEmotion
+            ? {
+                moodLabel: selectedEmotion.label,
+                moodVariant,
+              }
+            : null,
         );
       } else {
         await saveVideoMoment(
@@ -1076,6 +1167,12 @@ export function CapturePhotoScreen() {
             setSaveStatus(update);
           },
           sceneTags.map(tag => tag.label),
+          selectedEmotion
+            ? {
+                moodLabel: selectedEmotion.label,
+                moodVariant,
+              }
+            : null,
         );
       }
       try {
@@ -1101,9 +1198,11 @@ export function CapturePhotoScreen() {
     captionText,
     draft,
     handleRetake,
+    moodVariant,
     sceneTags,
     rotationSteps,
     saving,
+    selectedEmotion,
     selectedFilter,
     voiceDurationMs,
     voiceUri,
@@ -1578,6 +1677,42 @@ export function CapturePhotoScreen() {
                       </Pressable>
                     </View>
                   ) : null}
+                  {selectedEmotion && selectedMoodArt ? (
+                    <View style={styles.moodPreviewRow}>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`Change mood sticker, currently ${selectedEmotion.label}`}
+                        disabled={saving}
+                        onPress={handleOpenMoodSheet}
+                        style={styles.moodPreviewBody}
+                      >
+                        <View
+                          style={[
+                            styles.moodPreviewArt,
+                            { backgroundColor: selectedEmotion.tint },
+                          ]}
+                        >
+                          <Image
+                            source={selectedMoodArt.imageSource}
+                            resizeMode="contain"
+                            style={styles.moodPreviewImage}
+                          />
+                        </View>
+                        <Text numberOfLines={1} style={styles.moodPreviewLabel}>
+                          {selectedEmotion.label}
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel="Remove mood sticker"
+                        disabled={saving}
+                        onPress={clearMood}
+                        style={styles.moodPreviewRemove}
+                      >
+                        <X size={16} color="#FFFFFF" strokeWidth={2.5} />
+                      </Pressable>
+                    </View>
+                  ) : null}
                   {captionText.trim().length > 0 ? (
                     <View style={styles.captionPreviewRow}>
                       <Pressable
@@ -1631,7 +1766,7 @@ export function CapturePhotoScreen() {
                     <Pressable
                       accessibilityRole="button"
                       accessibilityLabel="Record voice memo about this photo"
-                      disabled={saving || voiceUri != null || voiceSheetOpen}
+                    disabled={saving || voiceSheetOpen}
                       onPress={handleOpenVoiceSheet}
                       style={[
                         styles.sideToolButton,
@@ -1646,6 +1781,19 @@ export function CapturePhotoScreen() {
                       <Text style={styles.sideToolButtonLabel}>Voice</Text>
                     </Pressable>
                   ) : null}
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Add optional mood sticker"
+                    disabled={saving || emotionSheetOpen}
+                    onPress={handleOpenMoodSheet}
+                    style={[
+                      styles.sideToolButton,
+                      saving ? styles.disabled : null,
+                    ]}
+                  >
+                    <Sparkles size={18} color="#FFFFFF" strokeWidth={2.25} />
+                    <Text style={styles.sideToolButtonLabel}>Mood</Text>
+                  </Pressable>
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel="Add optional text"
@@ -1691,7 +1839,9 @@ export function CapturePhotoScreen() {
                   <TextInput
                     autoFocus
                     value={captionText}
-                    onChangeText={setCaptionText}
+                    onChangeText={value =>
+                      setCaptionText(value.slice(0, PHOTO_CAPTION_MAX_LENGTH))
+                    }
                     placeholder="What a lovely day… (optional)"
                     placeholderTextColor="rgba(255,255,255,0.45)"
                     style={styles.captionInput}
@@ -1699,7 +1849,7 @@ export function CapturePhotoScreen() {
                     blurOnSubmit
                     onSubmitEditing={handleDismissCaption}
                     multiline
-                    maxLength={280}
+                    maxLength={PHOTO_CAPTION_MAX_LENGTH}
                     editable={!saving}
                   />
                 </View>
@@ -1757,7 +1907,8 @@ export function CapturePhotoScreen() {
         <VoiceMemoSheet
           visible={voiceSheetOpen}
           saveTarget="photo"
-          startRecordingOnOpen={false}
+          startRecordingOnOpen
+          maxDurationMs={PHOTO_VOICE_MAX_DURATION_MS}
           onDiaryAttach={attachment => {
             void clearVoice().then(() => {
               setVoiceUri(attachment.uri);
@@ -1766,6 +1917,15 @@ export function CapturePhotoScreen() {
           }}
           onClose={() => setVoiceSheetOpen(false)}
           onSaved={async () => {}}
+        />
+        <EmotionTokenPickerSheet
+          visible={emotionSheetOpen}
+          selectedEmotionId={selectedEmotionId}
+          selectedVariant={moodVariant}
+          allowedVariants={allowedMoodVariants}
+          onSelect={handleMoodSelect}
+          onVariantChange={handleMoodVariantChange}
+          onClose={() => setEmotionSheetOpen(false)}
         />
       </View>
     </BottomSheetModalProvider>
@@ -1904,6 +2064,46 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   voicePreviewRemove: {
+    padding: 6,
+  },
+  moodPreviewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 14,
+    paddingLeft: 8,
+    paddingRight: 6,
+    paddingVertical: 7,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+  },
+  moodPreviewBody: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  moodPreviewArt: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  moodPreviewImage: {
+    width: 36,
+    height: 36,
+  },
+  moodPreviewLabel: {
+    flex: 1,
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  moodPreviewRemove: {
     padding: 6,
   },
   reviewSideToolsColumn: {

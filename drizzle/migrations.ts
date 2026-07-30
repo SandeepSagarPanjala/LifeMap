@@ -321,6 +321,12 @@ ALTER TABLE \`activities\` ADD \`definition_json\` text DEFAULT '[]' NOT NULL;
 --> statement-breakpoint
 ALTER TABLE \`moments\` ADD \`activity_values_json\` text;`;
 
+const m0037 = `ALTER TABLE \`moments\` ADD \`mood_reason\` text;
+--> statement-breakpoint
+ALTER TABLE \`moments\` ADD \`mood_variant\` text;`;
+
+const m0038 = `ALTER TABLE \`moments\` ADD \`voice_transcript\` text;`;
+
 export default {
   journal,
   migrations: {
@@ -361,5 +367,7 @@ export default {
     m0034,
     m0035,
     m0036,
+    m0037,
+    m0038,
   },
 };

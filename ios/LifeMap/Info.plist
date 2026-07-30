@@ -49,6 +49,8 @@
 	<string>LifeMap lets you attach photos from your library to notes. Attached photos are stored on this device only.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>LifeMap uses the microphone so you can record voice memos on your map. Recordings are stored on this device only.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>LifeMap transcribes mood voice reasons on this device so you can read them later. Audio and transcripts stay on your phone.</string>
 	<key>NSUbiquitousContainers</key>
 	<dict>
 		<key>iCloud.com.sunrio.lifemap</key>

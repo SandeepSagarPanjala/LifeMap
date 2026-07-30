@@ -7,6 +7,16 @@ import {
   useColorScheme,
   View,
 } from 'react-native';
+import { useEffect } from 'react';
+import Animated, {
+  Easing,
+  ReduceMotion,
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
@@ -25,6 +35,12 @@ const ICON_SIZE = 22;
 const H_PADDING = 4;
 /** Instagram-style active chip behind the focused tab icon. */
 const ACTIVE_PILL_SIZE = 36;
+const INDICATOR_SPRING = {
+  damping: 17,
+  stiffness: 190,
+  mass: 0.8,
+  reduceMotion: ReduceMotion.System,
+};
 
 export function LiquidGlassTabBar({
   state,
@@ -37,6 +53,83 @@ export function LiquidGlassTabBar({
   const accent = colors.primary;
   const activePillBg =
     colorScheme === 'dark' ? 'rgba(255,255,255,0.16)' : 'rgba(0,0,0,0.08)';
+  const indicatorX = useSharedValue(state.index * TAB_SIZE);
+  const indicatorOpacity = useSharedValue(1);
+  const indicatorScaleX = useSharedValue(1);
+  const indicatorScaleY = useSharedValue(1);
+  const parentScale = useSharedValue(1);
+
+  useEffect(() => {
+    indicatorX.value = withSpring(state.index * TAB_SIZE, INDICATOR_SPRING);
+    indicatorOpacity.value = withSequence(
+      withTiming(0.38, {
+        duration: 80,
+        easing: Easing.out(Easing.quad),
+        reduceMotion: ReduceMotion.System,
+      }),
+      withTiming(0.38, {
+        duration: 35,
+        reduceMotion: ReduceMotion.System,
+      }),
+      withTiming(1, {
+        duration: 110,
+        easing: Easing.out(Easing.cubic),
+        reduceMotion: ReduceMotion.System,
+      }),
+    );
+    indicatorScaleX.value = withSequence(
+      withTiming(1.22, {
+        duration: 120,
+        easing: Easing.out(Easing.quad),
+        reduceMotion: ReduceMotion.System,
+      }),
+      withTiming(1.22, {
+        duration: 35,
+        reduceMotion: ReduceMotion.System,
+      }),
+      withSpring(1, INDICATOR_SPRING),
+    );
+    indicatorScaleY.value = withSequence(
+      withTiming(1.18, {
+        duration: 120,
+        easing: Easing.out(Easing.quad),
+        reduceMotion: ReduceMotion.System,
+      }),
+      withTiming(1.18, {
+        duration: 35,
+        reduceMotion: ReduceMotion.System,
+      }),
+      withSpring(1, INDICATOR_SPRING),
+    );
+    parentScale.value = withSequence(
+      withTiming(1.035, {
+        duration: 105,
+        easing: Easing.out(Easing.quad),
+        reduceMotion: ReduceMotion.System,
+      }),
+      withSpring(1, INDICATOR_SPRING),
+    );
+  }, [
+    indicatorOpacity,
+    indicatorScaleX,
+    indicatorScaleY,
+    indicatorX,
+    parentScale,
+    state.index,
+  ]);
+
+  const indicatorStyle = useAnimatedStyle(() => ({
+    opacity: indicatorOpacity.value,
+    transform: [
+      { translateX: indicatorX.value },
+      { scaleX: indicatorScaleX.value },
+      { scaleY: indicatorScaleY.value },
+    ],
+  }));
+
+  const parentStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: parentScale.value }],
+  }));
 
   const onClose = () => {
     const parent = navigation.getParent();
@@ -56,8 +149,16 @@ export function LiquidGlassTabBar({
       ]}
     >
       <View style={styles.row}>
-        <View style={styles.shadowWrap}>
+        <Animated.View style={[styles.shadowWrap, parentStyle]}>
           <AdaptiveGlassSurface style={styles.pill}>
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.activePill,
+                { backgroundColor: activePillBg },
+                indicatorStyle,
+              ]}
+            />
             {state.routes.map((route, index) => {
               const { options } = descriptors[route.key];
               const isFocused = state.index === index;
@@ -89,15 +190,6 @@ export function LiquidGlassTabBar({
                   onLongPress={onLongPress}
                   style={styles.tab}
                 >
-                  {isFocused ? (
-                    <View
-                      pointerEvents="none"
-                      style={[
-                        styles.activePill,
-                        { backgroundColor: activePillBg },
-                      ]}
-                    />
-                  ) : null}
                   {options.tabBarIcon?.({
                     focused: isFocused,
                     color,
@@ -107,7 +199,7 @@ export function LiquidGlassTabBar({
               );
             })}
           </AdaptiveGlassSurface>
-        </View>
+        </Animated.View>
 
         <MapGlassCircleButton
           accessibilityLabel="Close"
@@ -162,6 +254,8 @@ const styles = StyleSheet.create({
   },
   activePill: {
     position: 'absolute',
+    left: H_PADDING + (TAB_SIZE - ACTIVE_PILL_SIZE) / 2,
+    top: (MAP_MOMENTS_BAR_HEIGHT - ACTIVE_PILL_SIZE) / 2,
     width: ACTIVE_PILL_SIZE,
     height: ACTIVE_PILL_SIZE,
     borderRadius: ACTIVE_PILL_SIZE / 2,

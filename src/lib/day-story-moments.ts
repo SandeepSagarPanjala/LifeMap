@@ -5,7 +5,10 @@ import type { DayStoryStop } from '@/lib/day-story-stops';
 import {
   countMoments,
   emptyMomentCounts,
+  EMPTY_MOMENT_COUNT_PREVIEWS,
   filterMomentsForStayEntry,
+  latestMomentCountPreviews,
+  type MomentCountPreviews,
   type MomentCounts,
 } from '@/lib/moments/moment-counts';
 import type { DayTimelineEntry } from '@/lib/trip-detection';
@@ -79,6 +82,25 @@ export function momentCountsForDayStoryStop(
   historyEntries: readonly DayTimelineEntry[],
   dwellRadiusMeters: number,
 ): MomentCounts {
+  return momentCountsAndPreviewsForDayStoryStop(
+    stop,
+    dayMoments,
+    savedPlaces,
+    historyPoints,
+    historyEntries,
+    dwellRadiusMeters,
+  ).counts;
+}
+
+/** One pass over stop moments → counts + latest rich chip previews. */
+export function momentCountsAndPreviewsForDayStoryStop(
+  stop: DayStoryStop,
+  dayMoments: readonly MomentRow[],
+  savedPlaces: readonly SavedPlaceRow[],
+  historyPoints: readonly LocationPointRow[],
+  historyEntries: readonly DayTimelineEntry[],
+  dwellRadiusMeters: number,
+): { counts: MomentCounts; previews: MomentCountPreviews } {
   const moments = collectMomentsForDayStoryStop(
     stop,
     dayMoments,
@@ -88,7 +110,13 @@ export function momentCountsForDayStoryStop(
     dwellRadiusMeters,
   );
   if (moments.length === 0) {
-    return emptyMomentCounts();
+    return {
+      counts: emptyMomentCounts(),
+      previews: EMPTY_MOMENT_COUNT_PREVIEWS,
+    };
   }
-  return countMoments(moments);
+  return {
+    counts: countMoments(moments),
+    previews: latestMomentCountPreviews(moments),
+  };
 }

@@ -7,6 +7,7 @@ export function resolveMomentVoiceContentPath(
   if (moment.type === 'voice') {
     return moment.contentPath;
   }
+  // note / photo / mood (and any future attachment hosts)
   return moment.voiceAttachmentPath;
 }
 
@@ -20,7 +21,11 @@ export function getMomentVoiceDurationMs(moment: MomentRow): number | null {
     return moment.voiceDurationSec * 1000;
   }
 
-  if (moment.type === 'voice' || moment.type === 'note') {
+  if (
+    moment.type === 'voice' ||
+    moment.type === 'note' ||
+    moment.type === 'mood'
+  ) {
     const seconds = moment.caption ? Number(moment.caption) : NaN;
     if (Number.isFinite(seconds) && seconds > 0) {
       return seconds * 1000;

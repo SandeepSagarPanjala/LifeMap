@@ -10,11 +10,14 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { AudioLines, Pause, Play } from 'lucide-react-native';
+import { AudioLines, Pause, Play, X } from 'lucide-react-native';
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 
 import { CAPTURE_BUTTON_THEMES } from '@/components/map/map-capture-button-theme';
+import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
+import { GlassPressable } from '@/components/glass/GlassPressable';
+import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
 import {
   VoiceLiveMeter,
   VoicePlaybackMeter,
@@ -24,6 +27,7 @@ import { BOTTOM_SHEET_SURFACE } from '@/lib/app-constants';
 import { AppBottomSheet } from '@/components/ui/app-bottom-sheet';
 import type { VoiceMemoPreviewDraft } from '@/components/map/VoiceMemoPreviewSheet';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { VOICE_MAX_DURATION_MS } from '@/lib/app-constants';
 import {
   formatVoiceDurationCap,
   formatVoiceDurationMs,
@@ -45,7 +49,7 @@ const VOICE_RECORD_RED = '#FF3B30';
 
 type VoiceMemoPhase = 'idle' | 'recording' | 'preview' | 'saving';
 
-export type VoiceMemoSaveTarget = 'moment' | 'diary' | 'photo';
+export type VoiceMemoSaveTarget = 'moment' | 'diary' | 'photo' | 'mood';
 
 type VoiceMemoSheetProps = {
   visible: boolean;
@@ -66,6 +70,8 @@ type VoiceMemoSheetProps = {
   onBeginPreview?: (draft: VoiceMemoPreviewDraft) => void;
   /** Increment after preview discard — resets to manual mic (no auto-record). */
   restartNonce?: number;
+  /** Cap recording length (defaults to VOICE_MAX_DURATION_MS). */
+  maxDurationMs?: number;
 };
 
 export function VoiceMemoSheet({
@@ -82,11 +88,13 @@ export function VoiceMemoSheet({
   embedded = false,
   onBeginPreview,
   restartNonce = 0,
+  maxDurationMs = VOICE_MAX_DURATION_MS,
 }: VoiceMemoSheetProps) {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const voiceTheme = CAPTURE_BUTTON_THEMES.voice;
   const useExternalPreview = embedded && onBeginPreview != null;
+  const durationCapMs = maxDurationMs;
 
   const [phase, setPhase] = useState<VoiceMemoPhase>('idle');
   const [durationMs, setDurationMs] = useState(0);
@@ -227,6 +235,7 @@ export function VoiceMemoSheet({
   useEffect(() => {
     aliveRef.current = true;
     const session = createVoiceRecorderSession({
+      maxDurationMs: durationCapMs,
       onDurationMs: ms => {
         if (!aliveRef.current || !recordingActiveRef.current) {
           return;
@@ -283,7 +292,7 @@ export function VoiceMemoSheet({
         }
       })();
     };
-  }, []);
+  }, [durationCapMs]);
 
   const handleStopRecording = useCallback(async () => {
     if (!recorderRef.current) {
@@ -461,7 +470,11 @@ export function VoiceMemoSheet({
     setPhase('saving');
     try {
       await recorderRef.current.stopPreview();
-      if (saveTarget === 'diary' || saveTarget === 'photo') {
+      if (
+        saveTarget === 'diary' ||
+        saveTarget === 'photo' ||
+        saveTarget === 'mood'
+      ) {
         onDiaryAttach?.({ uri: previewPath, durationMs });
         setPreviewPath(null);
         setPhase('idle');
@@ -484,24 +497,30 @@ export function VoiceMemoSheet({
   };
 
   const durationLabel = formatVoiceDurationMs(timerMs);
-  const capLabel = formatVoiceDurationCap();
+  const capLabel = formatVoiceDurationCap(durationCapMs);
   const saveActionLabel =
     saveTarget === 'diary'
       ? 'Add to diary'
       : saveTarget === 'photo'
       ? 'Add to photo'
+      : saveTarget === 'mood'
+      ? 'Add voice reason'
       : 'Save moment';
   const previewHint =
     saveTarget === 'diary'
       ? 'Preview your memo, then add it to this diary entry.'
       : saveTarget === 'photo'
       ? 'Preview your memo, then add it to this photo.'
+      : saveTarget === 'mood'
+      ? 'Preview your memo, then add it as the mood reason.'
       : 'Preview your memo, then save it.';
   const idleHint =
     saveTarget === 'diary'
       ? `Record up to ${capLabel} for this diary entry.`
       : saveTarget === 'photo'
       ? `Record up to ${capLabel} for this photo.`
+      : saveTarget === 'mood'
+      ? `Record up to ${capLabel} as your mood reason.`
       : `Record up to ${capLabel} and save to your day.`;
 
   const handleAnimate = useCallback(
@@ -581,7 +600,8 @@ export function VoiceMemoSheet({
             <Text className="text-sm font-medium">Recording</Text>
           </View>
         ) : null}
-        {isVoiceDurationAtCap(durationMs) && phase !== 'idle' ? (
+        {isVoiceDurationAtCap(durationMs, durationCapMs) &&
+        phase !== 'idle' ? (
           <Text variant="muted" className="text-xs">
             Max length reached
           </Text>
@@ -642,7 +662,52 @@ export function VoiceMemoSheet({
           </Pressable>
         ) : null}
 
-        {phase === 'preview' && !useExternalPreview ? (
+        {phase === 'preview' && !useExternalPreview && saveTarget === 'photo' ? (
+          <View style={styles.photoPreviewRow}>
+            <MapGlassCircleButton
+              accessibilityLabel={
+                isPlayingPreview ? 'Pause preview' : 'Play preview'
+              }
+              onPress={() => void handleTogglePreview()}
+              size={56}
+            >
+              {isPlayingPreview ? (
+                <Pause size={22} color={colors.primary} strokeWidth={2.25} />
+              ) : (
+                <Play size={22} color={colors.primary} strokeWidth={2.25} />
+              )}
+            </MapGlassCircleButton>
+
+            <GlassPressable
+              accessibilityLabel="Add voice memo to photo"
+              onPress={() => void handleSave()}
+              style={styles.photoSaveShadow}
+            >
+              <AdaptiveGlassSurface style={styles.photoSaveGlass}>
+                <AudioLines
+                  size={18}
+                  color={colors.primary}
+                  strokeWidth={2.25}
+                />
+                <Text style={[styles.photoSaveLabel, { color: colors.primary }]}>
+                  Add to photo
+                </Text>
+              </AdaptiveGlassSurface>
+            </GlassPressable>
+
+            <MapGlassCircleButton
+              accessibilityLabel="Close voice memo"
+              onPress={closeSheet}
+              size={56}
+            >
+              <X size={21} color={colors.primary} strokeWidth={2.25} />
+            </MapGlassCircleButton>
+          </View>
+        ) : null}
+
+        {phase === 'preview' &&
+        !useExternalPreview &&
+        saveTarget !== 'photo' ? (
           <View style={styles.previewRow}>
             <Pressable
               accessibilityRole="button"
@@ -843,6 +908,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     width: '100%',
+  },
+  photoPreviewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    width: '100%',
+  },
+  photoSaveShadow: {
+    flex: 1,
+    borderRadius: 28,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.14,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  photoSaveGlass: {
+    height: 56,
+    borderRadius: 28,
+    overflow: 'hidden',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 18,
+  },
+  photoSaveLabel: {
+    fontSize: 15,
+    fontWeight: '600',
   },
   saveButton: {
     flex: 1,

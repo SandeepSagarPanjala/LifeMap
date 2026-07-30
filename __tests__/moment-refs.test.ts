@@ -57,6 +57,7 @@ describe('moment refs', () => {
       voice: 1,
       note: 0,
       activity: 0,
+      mood: 0,
     });
   });
 

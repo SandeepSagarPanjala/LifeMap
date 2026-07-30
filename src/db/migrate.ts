@@ -176,6 +176,13 @@ export async function migrationAlreadyApplied(
         (await columnExists(sqlite, 'activities', 'definition_json')) &&
         (await columnExists(sqlite, 'moments', 'activity_values_json'))
       );
+    case '0037_moment_mood_reason_variant':
+      return (
+        (await columnExists(sqlite, 'moments', 'mood_reason')) &&
+        (await columnExists(sqlite, 'moments', 'mood_variant'))
+      );
+    case '0038_moment_type_mood_voice_transcript':
+      return columnExists(sqlite, 'moments', 'voice_transcript');
     default:
       return false;
   }
@@ -446,6 +453,18 @@ export async function ensureMomentsMoodColumns(sqlite: DB): Promise<void> {
       name: 'photo_attachments_json',
       ddl: 'ALTER TABLE moments ADD COLUMN photo_attachments_json text',
     },
+    {
+      name: 'mood_reason',
+      ddl: 'ALTER TABLE moments ADD COLUMN mood_reason text',
+    },
+    {
+      name: 'mood_variant',
+      ddl: 'ALTER TABLE moments ADD COLUMN mood_variant text',
+    },
+    {
+      name: 'voice_transcript',
+      ddl: 'ALTER TABLE moments ADD COLUMN voice_transcript text',
+    },
   ];
   for (const column of columns) {
     if (!(await columnExists(sqlite, 'moments', column.name))) {
@@ -512,6 +531,7 @@ const MOMENTS_COLUMNS_WITHOUT_LOCATION = [
   'voice_attachment_path',
   'voice_attachment_bytes',
   'voice_duration_sec',
+  'voice_transcript',
   'photo_attachments_json',
   'tags_json',
   'text_body',
@@ -520,6 +540,8 @@ const MOMENTS_COLUMNS_WITHOUT_LOCATION = [
   'title',
   'mood_score',
   'mood_label',
+  'mood_reason',
+  'mood_variant',
   'finished_at',
   'content_bytes',
   'source_bytes',
@@ -579,6 +601,9 @@ export async function rebuildMomentsTableWithoutLocationColumns(
         title text,
         mood_score real,
         mood_label text,
+        mood_reason text,
+        mood_variant text,
+        voice_transcript text,
         finished_at integer,
         content_bytes integer,
         source_bytes integer,

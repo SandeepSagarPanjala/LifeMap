@@ -9,10 +9,14 @@ import { MomentCountsRow } from '@/components/moments/MomentCountsRow';
 import { useMarkerTracksViewChanges } from '@/hooks/use-marker-tracks-view-changes';
 import type { SavedPlaceRow } from '@/db/repositories/saved-places';
 import type {
+  MomentCountPreviews,
   MomentCountType,
   MomentCounts,
 } from '@/lib/moments/moment-counts';
-import { hasMomentCounts } from '@/lib/moments/moment-counts';
+import {
+  hasMomentCounts,
+  momentCountPreviewsSignature,
+} from '@/lib/moments/moment-counts';
 import { formatStayVisitLabel, isVisitOngoing } from '@/lib/trip-format';
 import type { DetectedTrip } from '@/lib/trip-detection';
 import { stayMapMarkerCoordinate } from '@/lib/trip-detection';
@@ -39,6 +43,7 @@ type StayDurationCalloutProps = {
   nearbyPlacePinned?: boolean;
   nearbyPlaceCategory?: string | null;
   momentCounts?: MomentCounts;
+  momentPreviews?: MomentCountPreviews | null;
   /** History scrub — orange visit pin. Live map keeps the system blue user puck. */
   showVisitPin?: boolean;
   /** Anchor the label (e.g. live GPS while the blue puck is shown). */
@@ -53,6 +58,7 @@ function StayDurationCalloutComponent({
   nearbyPlacePinned = false,
   nearbyPlaceCategory = null,
   momentCounts,
+  momentPreviews = null,
   showVisitPin = true,
   anchorCoordinate = null,
   onPressMomentType,
@@ -108,7 +114,19 @@ function StayDurationCalloutComponent({
   });
   const { tracksViewChanges, onLayout: onMarkerLayout } =
     useMarkerTracksViewChanges(
-      `${bubbleHeight}:${visit.title}:${visit.subtitle}:${livePuckLabel}`,
+      [
+        bubbleHeight,
+        visit.title,
+        visit.subtitle,
+        livePuckLabel,
+        momentPreviews
+          ? momentCountPreviewsSignature(momentPreviews)
+          : '',
+        momentCounts?.photo ?? 0,
+        momentCounts?.video ?? 0,
+        momentCounts?.activity ?? 0,
+        momentCounts?.mood ?? 0,
+      ].join(':'),
     );
 
   const bubble = (
@@ -128,6 +146,7 @@ function StayDurationCalloutComponent({
           <>
             <MomentCountsRow
               counts={counts!}
+              previews={momentPreviews}
               onPressType={onPressMomentType}
               layout="stacked"
             />

@@ -44,6 +44,7 @@ export const APP_COPY = {
     couldNotPlayVoiceMemo: 'Could not play voice memo',
     couldNotPauseVoiceMemo: 'Could not pause voice memo',
     couldNotSaveDiaryEntry: 'Could not save diary entry',
+    couldNotSaveMood: 'Could not save mood',
     couldNotSaveActivity: 'Could not save activity',
     couldNotLogActivity: 'Could not log activity',
     couldNotExport: 'Could not export',
@@ -95,6 +96,23 @@ export const APP_COPY = {
     momentVoice: 'voice',
     momentNote: 'note',
     momentActivity: 'activity',
+    momentMood: 'mood',
+  },
+
+  mood: {
+    log: 'Log',
+    typeReason: 'Type reason',
+    voiceReason: 'Voice reason',
+    saveReason: 'Save',
+    stopAndLog: 'Log',
+    stopRecording: 'Stop recording',
+    recordAgain: 'Record again',
+    voiceTooShort: 'Record a bit longer, then log.',
+    reasonPrompt: 'Log this mood, or add a text or voice reason.',
+    typeReasonHint: 'What made you feel this?',
+    voiceReasonHint: 'Speak your reason — up to 1 minute.',
+    howAreYouFeeling: 'How are you feeling?',
+    noReasonGiven: 'No reason is given',
   },
 
   savedPlaces: {
@@ -134,6 +152,21 @@ export const APP_COPY = {
     videoSaved: 'Video saved in LifeMap',
   },
 
+  diary: {
+    title: 'Diary',
+    addDiary: 'Add Diary',
+    emptyTitle: 'No diary entries yet',
+    emptyBody: 'Write when you have a moment — tap Add Diary below.',
+    entryFallbackTitle: 'Diary entry',
+    oneEntry: '1 entry',
+    entriesCount: (count: number) => `${count} entries`,
+    howAreYouFeeling: 'How are you feeling?',
+    searchMoods: 'Search moods',
+    noMoodsFound: 'No moods found',
+    moodReasonPlaceholder: 'What made you feel this?',
+    removeMood: 'Remove mood',
+  },
+
   onboarding: {
     slides: {
       locationHistory: {
@@ -144,7 +177,7 @@ export const APP_COPY = {
       captureMoments: {
         title: 'Capture the moment',
         description:
-          'At any point in time, add a photo, video, voice memo, or note — tied to that place and moment.',
+          'At any point in time, add a photo, video, voice memo, mood, or note — tied to that place and moment.',
       },
       privateByDesign: {
         title: 'Encrypted on your device',

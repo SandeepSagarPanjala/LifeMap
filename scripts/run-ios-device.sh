@@ -18,43 +18,15 @@ if xcrun xctrace list devices 2>/dev/null | awk '
   device_online=1
 fi
 
-# CoreDevice (Xcode 15+): tunnel must be connected for wireless installs.
-if command -v python3 >/dev/null 2>&1; then
-  if xcrun devicectl list devices --json-output /tmp/lifemap-ios-devices.json >/dev/null 2>&1; then
-    if python3 - "$DEVICE_UDID" <<'PY'
-import json, sys
-udid = sys.argv[1]
-data = json.load(open("/tmp/lifemap-ios-devices.json"))
-for device in data.get("result", {}).get("devices", []):
-    hardware = device.get("hardwareProperties") or {}
-    connection = device.get("connectionProperties") or {}
-    if hardware.get("udid") != udid:
-        continue
-    tunnel = connection.get("tunnelState")
-    transport = connection.get("transportType")
-    # USB / wired shows up as localNetwork or wired with connected tunnel.
-    if tunnel == "connected":
-        sys.exit(0)
-    # Some hosts report wired without an explicit tunnel key.
-    if transport in ("wired", "local") and tunnel != "disconnected":
-        sys.exit(0)
-    print(
-        f"Device is paired but not ready for installs "
-        f"(transport={transport}, tunnel={tunnel}).",
-        file=sys.stderr,
-    )
-    sys.exit(2)
-sys.exit(1)
-PY
-    then
-      device_online=1
-    else
-      status=$?
-      if [[ "$status" -eq 2 ]]; then
-        device_online=0
-      fi
-    fi
-  fi
+# CoreDevice brings the tunnel up lazily, so `list devices` can report
+# tunnelState=disconnected (and xctrace can list it Offline) while the phone is
+# perfectly reachable. Probe with a real request instead of trusting that field.
+if xcrun devicectl device info details \
+  --device "$DEVICE_UDID" --timeout 30 --quiet >/dev/null 2>&1; then
+  device_online=1
+elif [[ "$device_online" -eq 1 ]]; then
+  echo "Device is listed but did not answer a CoreDevice request." >&2
+  device_online=0
 fi
 
 if [[ "$device_online" -ne 1 ]]; then
@@ -62,11 +34,12 @@ if [[ "$device_online" -ne 1 ]]; then
 iPhone is not connected for development (xcodebuild exit 70).
 
 Fix:
-  1. Unlock SandY Earth 🌎
+  1. Unlock $DEVICE_NAME
   2. Plug in USB (more reliable after iOS 27 upgrade than wireless)
   3. Tap Trust if prompted; keep Developer Mode on
-  4. Wait until this shows the phone under Devices (not Offline):
-       xcrun xctrace list devices
+  4. For wireless, keep Mac and phone on the same Wi-Fi, then check:
+       xcrun devicectl device info details --device $DEVICE_UDID
+     (xctrace can list the phone Offline even when it is reachable)
   5. Retry: pnpm ios
 
 Looking for UDID: $DEVICE_UDID

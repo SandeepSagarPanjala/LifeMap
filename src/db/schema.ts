@@ -57,7 +57,7 @@ export const moments = sqliteTable(
   {
     id: integer('id').primaryKey({ autoIncrement: true }),
     type: text('type', {
-      enum: ['photo', 'note', 'video', 'voice', 'activity'],
+      enum: ['photo', 'note', 'video', 'voice', 'activity', 'mood'],
     }).notNull(),
     timestamp: integer('timestamp', { mode: 'timestamp' }).notNull(),
     contentPath: text('content_path'),
@@ -65,6 +65,8 @@ export const moments = sqliteTable(
     voiceAttachmentPath: text('voice_attachment_path'),
     voiceAttachmentBytes: integer('voice_attachment_bytes'),
     voiceDurationSec: integer('voice_duration_sec'),
+    /** On-device speech-to-text for voice attachments (mood reason, later voice moments). */
+    voiceTranscript: text('voice_transcript'),
     photoAttachmentsJson: text('photo_attachments_json'),
     /** JSON string array of scene tags (max 8), e.g. ["Lake","Outdoors"]. */
     tagsJson: text('tags_json'),
@@ -74,6 +76,10 @@ export const moments = sqliteTable(
     title: text('title'),
     moodScore: real('mood_score'),
     moodLabel: text('mood_label'),
+    /** Free-text reason for the selected mood (~3 lines). */
+    moodReason: text('mood_reason'),
+    /** Art variant: male | female | cat | dog. */
+    moodVariant: text('mood_variant'),
     finishedAt: integer('finished_at', { mode: 'timestamp' }),
     contentBytes: integer('content_bytes'),
     sourceBytes: integer('source_bytes'),
