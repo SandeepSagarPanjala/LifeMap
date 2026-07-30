@@ -281,6 +281,13 @@
       "when": 1788931000000,
       "tag": "0039_activity_reminders",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1788932000000,
+      "tag": "0040_healthkit",
+      "breakpoints": true
     }
   ]
 }

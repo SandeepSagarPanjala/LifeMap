@@ -292,6 +292,15 @@ jest.mock('@react-native-community/datetimepicker', () => {
   };
 });
 
+jest.mock('@kingstinct/react-native-healthkit', () => ({
+  isHealthDataAvailable: jest.fn(() => false),
+  isHealthDataAvailableAsync: jest.fn(async () => false),
+  requestAuthorization: jest.fn(async () => false),
+  queryCategorySamples: jest.fn(async () => []),
+  queryWorkoutSamples: jest.fn(async () => []),
+  queryStatisticsForQuantity: jest.fn(async () => ({ sources: [] })),
+}));
+
 jest.mock('react-native-blob-util', () => ({
   __esModule: true,
   default: {

@@ -197,11 +197,15 @@ export function ActivityFormScreen() {
     if (!canSave) {
       return;
     }
+    const fieldsForSave =
+      editActivity?.source === 'healthkit'
+        ? editActivity.fields
+        : fields;
     const validated = validateActivityDefinition({
       schemaVersion: ACTIVITY_SCHEMA_VERSION,
       name: label,
       emoji,
-      fields,
+      fields: fieldsForSave,
     });
     if (!validated.ok) {
       Alert.alert('Invalid activity', validated.error);
@@ -442,6 +446,7 @@ export function ActivityFormScreen() {
           labelInputRef={labelInputRef as RefObject<TextInput | null>}
           openEmojiRef={openEmojiRef}
           belowLabel={notifyBelowLabel}
+          lockFields={editActivity?.source === 'healthkit'}
           onChangeEmoji={setEmoji}
           onChangeLabel={setLabel}
           onChangeFields={setFields}

@@ -137,10 +137,11 @@ const styles = StyleSheet.create({
     }),
   },
   pill: {
-    height: MAP_STACK_BUTTON_SIZE,
+    minHeight: MAP_STACK_BUTTON_SIZE,
     flexShrink: 0,
     borderRadius: MAP_STACK_BUTTON_SIZE / 2,
     paddingHorizontal: 16,
+    paddingVertical: 6,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',

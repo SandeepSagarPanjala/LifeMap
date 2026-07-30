@@ -63,7 +63,12 @@ export type ActivityReminderPatch = {
 };
 
 function mapSource(value: string | null | undefined): ActivityDefinitionSource {
-  if (value === 'yaml' || value === 'catalog' || value === 'blank') {
+  if (
+    value === 'yaml' ||
+    value === 'catalog' ||
+    value === 'blank' ||
+    value === 'healthkit'
+  ) {
     return value;
   }
   return 'blank';

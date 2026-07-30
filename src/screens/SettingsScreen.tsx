@@ -123,6 +123,14 @@ export function SettingsScreen() {
         />
       </SettingsGroup>
 
+      <SettingsGroupLabel title="Apple Health" />
+      <SettingsGroup>
+        <SettingsLinkRow
+          label="Apple Health"
+          onPress={() => navigation.navigate('HealthSettings')}
+        />
+      </SettingsGroup>
+
       <SettingsGroupLabel title="Information" />
       <SettingsGroup>
         <SettingsLinkRow

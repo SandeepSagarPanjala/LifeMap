@@ -45,7 +45,11 @@ export type ActivityDefinition = {
   templateId?: string;
 };
 
-export type ActivityDefinitionSource = 'blank' | 'yaml' | 'catalog';
+export type ActivityDefinitionSource =
+  | 'blank'
+  | 'yaml'
+  | 'catalog'
+  | 'healthkit';
 
 /** Runtime values keyed by field id when logging. */
 export type ActivityFieldValue =

@@ -20,6 +20,7 @@ import {
 import { runWhenIdle, yieldToEventLoop } from '@/lib/run-when-idle';
 import { useAppStore } from '@/stores/app-store';
 import { bootstrapNotifications } from '@/lib/notifications/bootstrap';
+import { bootstrapHealthKit } from '@/lib/healthkit/sync';
 
 /** Defer place-lookup catch-up — not on the critical map path. */
 const DEFER_PLACE_LOOKUP_MS = 2_000;
@@ -92,6 +93,11 @@ export function AppBootstrap({ children }: AppBootstrapProps) {
           await bootstrapNotifications();
         } catch (error) {
           logPipelineFailure('notifications_bootstrap', error);
+        }
+        try {
+          await bootstrapHealthKit();
+        } catch (error) {
+          logPipelineFailure('healthkit_bootstrap', error);
         }
         beginTodayOpenCycle();
         await yieldToEventLoop();

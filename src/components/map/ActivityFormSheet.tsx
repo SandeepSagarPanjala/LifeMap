@@ -111,11 +111,15 @@ export function ActivityFormSheet({
     if (request == null || saving) {
       return;
     }
+    const fieldsForSave =
+      request.kind === 'edit' && request.activity.source === 'healthkit'
+        ? request.activity.fields
+        : fields;
     const validated = validateActivityDefinition({
       schemaVersion: ACTIVITY_SCHEMA_VERSION,
       name: label,
       emoji,
-      fields,
+      fields: fieldsForSave,
     });
     if (!validated.ok) {
       Alert.alert('Invalid activity', validated.error);
@@ -238,6 +242,10 @@ export function ActivityFormSheet({
               onChangeEmoji={setEmoji}
               onChangeLabel={setLabel}
               onChangeFields={setFields}
+              lockFields={
+                request.kind === 'edit' &&
+                request.activity.source === 'healthkit'
+              }
               onSubmit={() => {
                 void handleSubmit();
               }}

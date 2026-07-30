@@ -106,6 +106,8 @@ export const moments = sqliteTable(
     activityEmoji: text('activity_emoji'),
     activityLabel: text('activity_label'),
     activityValuesJson: text('activity_values_json'),
+    /** Provenance for auto-imported moments (e.g. healthkit). */
+    importSource: text('import_source'),
   },
   table => ({
     timestampIdx: index('moments_timestamp_idx').on(table.timestamp),
@@ -115,6 +117,54 @@ export const moments = sqliteTable(
     ),
   }),
 );
+
+export const healthSleepSessions = sqliteTable(
+  'health_sleep_sessions',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    uuid: text('uuid').notNull(),
+    startAt: integer('start_at', { mode: 'timestamp' }).notNull(),
+    endAt: integer('end_at', { mode: 'timestamp' }).notNull(),
+    sourceName: text('source_name'),
+    syncedAt: integer('synced_at', { mode: 'timestamp' }).notNull(),
+  },
+  table => ({
+    uuidUnique: uniqueIndex('health_sleep_sessions_uuid_unique').on(table.uuid),
+    startEndIdx: index('health_sleep_sessions_start_end_idx').on(
+      table.startAt,
+      table.endAt,
+    ),
+  }),
+);
+
+export const healthWorkouts = sqliteTable(
+  'health_workouts',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    uuid: text('uuid').notNull(),
+    activityType: integer('activity_type').notNull(),
+    activityLabel: text('activity_label').notNull(),
+    startAt: integer('start_at', { mode: 'timestamp' }).notNull(),
+    endAt: integer('end_at', { mode: 'timestamp' }).notNull(),
+    durationSec: integer('duration_sec').notNull(),
+    distanceM: real('distance_m'),
+    linkedMomentId: integer('linked_moment_id').references(() => moments.id),
+    syncedAt: integer('synced_at', { mode: 'timestamp' }).notNull(),
+  },
+  table => ({
+    uuidUnique: uniqueIndex('health_workouts_uuid_unique').on(table.uuid),
+    startEndIdx: index('health_workouts_start_end_idx').on(
+      table.startAt,
+      table.endAt,
+    ),
+  }),
+);
+
+export const healthDaySteps = sqliteTable('health_day_steps', {
+  dateKey: text('date_key').primaryKey(),
+  steps: integer('steps').notNull(),
+  syncedAt: integer('synced_at', { mode: 'timestamp' }).notNull(),
+});
 
 export const settings = sqliteTable('settings', {
   id: integer('id').primaryKey({ autoIncrement: true }),

@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
-import { Bell } from 'lucide-react-native';
+import { Bell, Heart } from 'lucide-react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
@@ -17,6 +17,8 @@ type ActivityEmojiOrbProps = {
   radius?: number;
   emojiSize?: number;
   showNotifyBadge?: boolean;
+  /** Health badge for picker / manage tiles. Default true. */
+  showHealthBadge?: boolean;
 };
 
 export const ActivityEmojiOrb = memo(function ActivityEmojiOrb({
@@ -25,13 +27,15 @@ export const ActivityEmojiOrb = memo(function ActivityEmojiOrb({
   radius = 16,
   emojiSize = 32,
   showNotifyBadge = true,
+  showHealthBadge = true,
 }: ActivityEmojiOrbProps) {
   const coreTint = activityCoreTint(activity);
   const hasNotify = activity.reminderEnabled;
+  const hasHealth = activity.source === 'healthkit';
   const gradientId = `activity-orb-${activity.id}-${size}`;
   const notifyStart = activityNotifyGradientStart(activity);
   const badgeSize = Math.max(16, Math.round(size * 0.28));
-  const bellSize = Math.max(9, Math.round(badgeSize * 0.55));
+  const iconSize = Math.max(9, Math.round(badgeSize * 0.55));
 
   return (
     <View style={[styles.wrap, { width: size + 6, height: size + 6 }]}>
@@ -83,6 +87,36 @@ export const ActivityEmojiOrb = memo(function ActivityEmojiOrb({
           {activity.emoji}
         </Text>
       </View>
+      {hasHealth && showHealthBadge ? (
+        <View
+          pointerEvents="none"
+          style={[
+            styles.badgeWrap,
+            {
+              width: badgeSize,
+              height: badgeSize,
+              borderRadius: badgeSize / 2,
+              top: 0,
+              left: 0,
+            },
+          ]}
+        >
+          <AdaptiveGlassSurface
+            effect="clear"
+            tintColor="rgba(239,68,68,0.16)"
+            style={[
+              styles.badgeSurface,
+              {
+                width: badgeSize,
+                height: badgeSize,
+                borderRadius: badgeSize / 2,
+              },
+            ]}
+          >
+            <Heart size={iconSize} color="#DC2626" strokeWidth={2.5} />
+          </AdaptiveGlassSurface>
+        </View>
+      ) : null}
       {hasNotify && showNotifyBadge ? (
         <View
           pointerEvents="none"
@@ -109,7 +143,7 @@ export const ActivityEmojiOrb = memo(function ActivityEmojiOrb({
               },
             ]}
           >
-            <Bell size={bellSize} color="#DB2777" strokeWidth={2.5} />
+            <Bell size={iconSize} color="#DB2777" strokeWidth={2.5} />
           </AdaptiveGlassSurface>
         </View>
       ) : null}

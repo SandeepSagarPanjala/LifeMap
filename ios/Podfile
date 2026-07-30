@@ -31,6 +31,17 @@ target 'LifeMap' do
       # :ccache_enabled => true
     )
 
+    # `pod install` cleans the .last_build_configuration marker that RN's prebuilt
+    # pods use to track which slice (Debug/Release) is extracted, but leaves the
+    # slice itself. A missing marker makes RN assume Debug, so a Debug build after
+    # a Release build links against Release binaries and fails on debug-only
+    # symbols. Writing a sentinel forces the next build to re-extract its slice.
+    ['React-Core-prebuilt', 'ReactNativeDependencies'].each do |pod_name|
+      pod_dir = File.join(installer.sandbox.root, pod_name)
+      next unless File.directory?(pod_dir)
+      File.write(File.join(pod_dir, '.last_build_configuration'), 'Invalidated')
+    end
+
     # Xcode 27 SDKs reject deployment targets below iOS 15.
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |build_config|

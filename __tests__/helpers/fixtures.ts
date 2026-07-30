@@ -36,6 +36,7 @@ export function makeMoment(
 ): MomentRow {
   const {
     activityValuesJson: activityValuesJsonPartial,
+    importSource: importSourcePartial,
     ...rest
   } = partial;
   return {
@@ -65,6 +66,7 @@ export function makeMoment(
     activityEmoji: null,
     activityLabel: null,
     activityValuesJson: activityValuesJsonPartial ?? null,
+    importSource: importSourcePartial ?? null,
     ...rest,
   };
 }

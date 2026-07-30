@@ -419,6 +419,76 @@ export async function ensureActivityReminderColumns(
   }
 }
 
+/** Repair HealthKit tables / moment import_source when migration 0040 was skipped. */
+export async function ensureHealthKitTables(sqlite: DB): Promise<void> {
+  if (!(await tableExists(sqlite, 'health_sleep_sessions'))) {
+    await executeMigrationStatement(
+      sqlite,
+      `CREATE TABLE IF NOT EXISTS health_sleep_sessions (
+        id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+        uuid text NOT NULL,
+        start_at integer NOT NULL,
+        end_at integer NOT NULL,
+        source_name text,
+        synced_at integer NOT NULL
+      )`,
+    );
+    await executeMigrationStatement(
+      sqlite,
+      `CREATE UNIQUE INDEX IF NOT EXISTS health_sleep_sessions_uuid_unique ON health_sleep_sessions (uuid)`,
+    );
+    await executeMigrationStatement(
+      sqlite,
+      `CREATE INDEX IF NOT EXISTS health_sleep_sessions_start_end_idx ON health_sleep_sessions (start_at, end_at)`,
+    );
+  }
+  if (!(await tableExists(sqlite, 'health_workouts'))) {
+    await executeMigrationStatement(
+      sqlite,
+      `CREATE TABLE IF NOT EXISTS health_workouts (
+        id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+        uuid text NOT NULL,
+        activity_type integer NOT NULL,
+        activity_label text NOT NULL,
+        start_at integer NOT NULL,
+        end_at integer NOT NULL,
+        duration_sec integer NOT NULL,
+        distance_m real,
+        linked_moment_id integer,
+        synced_at integer NOT NULL,
+        FOREIGN KEY (linked_moment_id) REFERENCES moments(id) ON UPDATE no action ON DELETE set null
+      )`,
+    );
+    await executeMigrationStatement(
+      sqlite,
+      `CREATE UNIQUE INDEX IF NOT EXISTS health_workouts_uuid_unique ON health_workouts (uuid)`,
+    );
+    await executeMigrationStatement(
+      sqlite,
+      `CREATE INDEX IF NOT EXISTS health_workouts_start_end_idx ON health_workouts (start_at, end_at)`,
+    );
+  }
+  if (!(await tableExists(sqlite, 'health_day_steps'))) {
+    await executeMigrationStatement(
+      sqlite,
+      `CREATE TABLE IF NOT EXISTS health_day_steps (
+        date_key text PRIMARY KEY NOT NULL,
+        steps integer NOT NULL,
+        synced_at integer NOT NULL
+      )`,
+    );
+  }
+  if (
+    (await tableExists(sqlite, 'moments')) &&
+    !(await columnExists(sqlite, 'moments', 'import_source'))
+  ) {
+    await executeMigrationStatement(
+      sqlite,
+      `ALTER TABLE moments ADD COLUMN import_source text`,
+    );
+  }
+}
+
 /** Repair visit_label_overrides anchor columns when migration 0033 was skipped. */
 export async function ensureVisitLabelOverrideAnchorColumns(
   sqlite: DB,
