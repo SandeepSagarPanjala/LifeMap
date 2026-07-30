@@ -1,4 +1,12 @@
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { APP_COPY } from '@/lib/app-copy';
 import {
   Alert,
@@ -21,6 +29,7 @@ import {
   NotebookPen,
   Pause,
   Play,
+  Sparkles,
   Trash2,
   Video,
   X,
@@ -54,11 +63,11 @@ import {
 } from '@/lib/moments/moment-voice';
 import { parseMomentTagsJson } from '@/lib/moments/moment-tags';
 import { notePhotoAttachmentPaths } from '@/lib/moments/note-photo-attachments';
-import { getEmotionContextTokenByLabel } from '@/lib/moments/emotion-context-tokens';
 import {
-  getEmotionTokenByLabel,
-  parseEmotionMoodLabel,
-} from '@/lib/moments/emotion-tokens';
+  getMoodArtPresentation,
+  resolveEmotionFromMoodLabel,
+  resolveMoodVariantFromMoment,
+} from '@/lib/moments/mood-art';
 import {
   createVoiceRecorderSession,
   getVoiceRecordingErrorMessage,
@@ -94,6 +103,8 @@ function momentDeleteNoun(type: MomentRow['type']): string {
       return 'note';
     case 'activity':
       return 'activity';
+    case 'mood':
+      return 'mood';
     default:
       return 'moment';
   }
@@ -166,6 +177,65 @@ function VoiceAttachmentRow({
   );
 }
 
+function MoodAttachmentRow({ moment }: { moment: MomentRow }) {
+  const moodLabel = moment.moodLabel?.trim() || null;
+  const emotion = useMemo(
+    () => resolveEmotionFromMoodLabel(moodLabel),
+    [moodLabel],
+  );
+  const variant = useMemo(
+    () => resolveMoodVariantFromMoment(moment.moodVariant),
+    [moment.moodVariant],
+  );
+  const art =
+    emotion != null ? getMoodArtPresentation(emotion.id, variant) : null;
+  const label = emotion?.label ?? moodLabel ?? 'Mood';
+
+  return (
+    <View
+      accessibilityRole="text"
+      accessibilityLabel={`Mood ${label}`}
+      style={[styles.voiceAttachmentRow, styles.voiceAttachmentRowCompact]}
+    >
+      {art != null && emotion != null ? (
+        <View
+          style={[styles.moodAttachmentArt, { backgroundColor: emotion.tint }]}
+        >
+          <Image
+            source={art.imageSource}
+            resizeMode="contain"
+            style={styles.moodAttachmentImage}
+          />
+        </View>
+      ) : (
+        <View
+          style={[
+            styles.moodAttachmentArt,
+            { backgroundColor: CAPTURE_BUTTON_THEMES.mood.badgeBg },
+          ]}
+        >
+          <Sparkles
+            size={16}
+            color={CAPTURE_BUTTON_THEMES.mood.icon}
+            strokeWidth={2.25}
+          />
+        </View>
+      )}
+      <View style={styles.voiceAttachmentCopy}>
+        <Text
+          style={[
+            styles.voiceAttachmentLabel,
+            styles.voiceAttachmentLabelCompact,
+          ]}
+          numberOfLines={1}
+        >
+          {label}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 function MomentTypeIcon({
   moment,
   size = 18,
@@ -180,6 +250,8 @@ function MomentTypeIcon({
       ? CAPTURE_BUTTON_THEMES.note
       : moment.type === 'activity'
       ? CAPTURE_BUTTON_THEMES.activity
+      : moment.type === 'mood'
+      ? CAPTURE_BUTTON_THEMES.mood
       : moment.type === 'video'
       ? CAPTURE_BUTTON_THEMES.camera
       : CAPTURE_BUTTON_THEMES.camera;
@@ -193,6 +265,14 @@ function MomentTypeIcon({
       : moment.type === 'video'
       ? Video
       : Camera;
+
+  if (moment.type === 'mood') {
+    return (
+      <View style={[styles.typeOrb, { backgroundColor: theme.badgeBg }]}>
+        <Sparkles size={size} color={theme.icon} strokeWidth={2.25} />
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.typeOrb, { backgroundColor: theme.badgeBg }]}>
@@ -325,9 +405,7 @@ function VoiceMomentPage({
   );
 }
 
-function formatActivityFieldDisplay(
-  value: ActivityFieldValue,
-): string | null {
+function formatActivityFieldDisplay(value: ActivityFieldValue): string | null {
   switch (value.type) {
     case 'money':
       return `$${value.amount.toFixed(2)}`;
@@ -455,7 +533,7 @@ function ActivityMomentPage({ moment }: { moment: MomentRow }) {
         uri: value.uri,
         tags:
           value.type === 'photo' || value.type === 'scan'
-            ? (value.tags ?? [])
+            ? value.tags ?? []
             : [],
       });
     }
@@ -788,16 +866,18 @@ function NoteMomentPage({
   contentInsetTop: number;
 }) {
   const moodLabel = moment.moodLabel?.trim();
-  const { parsedMood, emotionToken, contextToken } = useMemo(() => {
-    const parsed = moodLabel ? parseEmotionMoodLabel(moodLabel) : null;
-    return {
-      parsedMood: parsed,
-      emotionToken: parsed ? getEmotionTokenByLabel(parsed.emotionLabel) : null,
-      contextToken: parsed?.contextLabel
-        ? getEmotionContextTokenByLabel(parsed.contextLabel)
-        : null,
-    };
-  }, [moodLabel]);
+  const emotionToken = useMemo(
+    () => resolveEmotionFromMoodLabel(moodLabel),
+    [moodLabel],
+  );
+  const moodVariant = useMemo(
+    () => resolveMoodVariantFromMoment(moment.moodVariant),
+    [moment.moodVariant],
+  );
+  const moodArt = emotionToken
+    ? getMoodArtPresentation(emotionToken.id, moodVariant)
+    : null;
+  const moodReason = moment.moodReason?.trim() || null;
   const voiceDuration = noteVoiceDurationLabel(moment);
   const voiceTheme = CAPTURE_BUTTON_THEMES.voice;
   const photoPaths = useMemo(() => notePhotoAttachmentPaths(moment), [moment]);
@@ -817,31 +897,21 @@ function NoteMomentPage({
       {moment.textBody?.trim() ? (
         <Text style={styles.noteBody}>{moment.textBody.trim()}</Text>
       ) : null}
-      {emotionToken ? (
-        <View style={styles.noteEmotionRow}>
-          <View
-            style={[
-              styles.noteEmotionSticker,
-              { backgroundColor: emotionToken.tint },
-            ]}
-          >
-            <Text style={styles.noteEmotionEmoji}>{emotionToken.sticker}</Text>
+      {emotionToken && moodArt ? (
+        <View
+          style={[styles.noteMoodBlock, { backgroundColor: emotionToken.tint }]}
+        >
+          <View style={styles.noteMoodArt}>
+            <Image
+              source={moodArt.imageSource}
+              resizeMode="contain"
+              style={styles.noteMoodImage}
+            />
           </View>
           <View style={styles.noteEmotionCopy}>
-            <Text style={styles.noteMood}>{emotionToken.label}</Text>
-            {contextToken ? (
-              <View style={styles.noteContextRow}>
-                <Text style={styles.noteContextSticker}>
-                  {contextToken.sticker}
-                </Text>
-                <Text style={styles.noteContextLabel}>
-                  {contextToken.label}
-                </Text>
-              </View>
-            ) : parsedMood?.contextLabel ? (
-              <Text style={styles.noteContextLabel}>
-                {parsedMood.contextLabel}
-              </Text>
+            <Text style={styles.noteMoodBlockLabel}>{emotionToken.label}</Text>
+            {moodReason ? (
+              <Text style={styles.noteMoodReason}>{moodReason}</Text>
             ) : null}
           </View>
         </View>
@@ -878,6 +948,117 @@ function NoteMomentPage({
         </Pressable>
       ) : null}
       {photoPaths.length > 0 ? <NotePhotoGrid paths={photoPaths} /> : null}
+    </ScrollView>
+  );
+}
+
+function MoodMomentPage({
+  moment,
+  isPlayingVoice,
+  onToggleVoice,
+  contentInsetTop,
+}: {
+  moment: MomentRow;
+  isPlayingVoice: boolean;
+  onToggleVoice: () => void;
+  contentInsetTop: number;
+}) {
+  const moodLabel = moment.moodLabel?.trim();
+  const emotionToken = useMemo(
+    () => resolveEmotionFromMoodLabel(moodLabel),
+    [moodLabel],
+  );
+  const moodVariant = useMemo(
+    () => resolveMoodVariantFromMoment(moment.moodVariant),
+    [moment.moodVariant],
+  );
+  const moodArt = emotionToken
+    ? getMoodArtPresentation(emotionToken.id, moodVariant)
+    : null;
+  const moodReason = moment.moodReason?.trim() || null;
+  const voiceTranscript = moment.voiceTranscript?.trim() || null;
+  const voiceDuration = formatMomentVoiceDuration(moment);
+  const voiceTheme = CAPTURE_BUTTON_THEMES.voice;
+  const reasonText = moodReason || voiceTranscript;
+
+  return (
+    <ScrollView
+      style={styles.noteScroll}
+      contentContainerStyle={[
+        styles.noteScrollContent,
+        { paddingTop: contentInsetTop },
+      ]}
+      showsVerticalScrollIndicator={false}
+    >
+      {emotionToken && moodArt ? (
+        <View
+          style={[styles.noteMoodBlock, { backgroundColor: emotionToken.tint }]}
+        >
+          <View style={styles.noteMoodArt}>
+            <Image
+              source={moodArt.imageSource}
+              resizeMode="contain"
+              style={styles.noteMoodImage}
+            />
+          </View>
+          <View style={styles.noteEmotionCopy}>
+            <Text style={styles.noteMoodBlockLabel}>{emotionToken.label}</Text>
+            {moment.voiceAttachmentPath ? null : reasonText ? (
+              <Text style={styles.noteMoodReason}>{reasonText}</Text>
+            ) : (
+              <Text style={styles.noteMoodReasonMuted}>
+                {APP_COPY.mood.noReasonGiven}
+              </Text>
+            )}
+          </View>
+        </View>
+      ) : moodLabel ? (
+        <>
+          <Text style={styles.noteMood}>{moodLabel}</Text>
+          {moment.voiceAttachmentPath || reasonText ? null : (
+            <Text style={styles.noteMoodReasonStandaloneMuted}>
+              {APP_COPY.mood.noReasonGiven}
+            </Text>
+          )}
+        </>
+      ) : null}
+
+      {moment.voiceAttachmentPath ? (
+        <View style={styles.moodVoiceBlock}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={
+              isPlayingVoice ? 'Pause voice reason' : 'Play voice reason'
+            }
+            onPress={onToggleVoice}
+            style={styles.noteVoiceRow}
+          >
+            <View
+              style={[
+                styles.noteVoicePlay,
+                { backgroundColor: voiceTheme.badgeBg },
+              ]}
+            >
+              {isPlayingVoice ? (
+                <Pause size={18} color={voiceTheme.icon} strokeWidth={2.25} />
+              ) : (
+                <Play size={18} color={voiceTheme.icon} strokeWidth={2.25} />
+              )}
+            </View>
+            <View style={styles.noteVoiceCopy}>
+              <Text style={styles.noteVoiceLabel}>Voice reason</Text>
+              {voiceDuration ? (
+                <Text style={styles.noteVoiceDuration}>{voiceDuration}</Text>
+              ) : null}
+            </View>
+          </Pressable>
+          {voiceTranscript ? (
+            <Text style={styles.noteMoodReason}>{voiceTranscript}</Text>
+          ) : null}
+        </View>
+      ) : moodReason ? (
+        <Text style={styles.noteMoodReasonStandalone}>{moodReason}</Text>
+      ) : null}
     </ScrollView>
   );
 }
@@ -963,6 +1144,15 @@ const MomentPagerPage = memo(function MomentPagerPage({
 
       {moment.type === 'note' ? (
         <NoteMomentPage
+          moment={moment}
+          isPlayingVoice={isPlayingVoice}
+          onToggleVoice={handleToggleVoice}
+          contentInsetTop={noteContentInsetTop}
+        />
+      ) : null}
+
+      {moment.type === 'mood' ? (
+        <MoodMomentPage
           moment={moment}
           isPlayingVoice={isPlayingVoice}
           onToggleVoice={handleToggleVoice}
@@ -1225,7 +1415,6 @@ export function MomentPreviewViewer({
     }
   }, [activeIndex, moments.length, pageWidth]);
 
-
   useEffect(() => {
     if (moments.length === 0) {
       closeViewer();
@@ -1383,6 +1572,11 @@ export function MomentPreviewViewer({
     activeMoment?.type === 'photo' && activeMoment.voiceAttachmentPath
       ? activeMoment
       : null;
+  const activeMediaMood =
+    (activeMoment?.type === 'photo' || activeMoment?.type === 'video') &&
+    activeMoment.moodLabel?.trim()
+      ? activeMoment
+      : null;
 
   return (
     <View style={styles.root}>
@@ -1402,86 +1596,91 @@ export function MomentPreviewViewer({
       />
 
       {chromeVisible ? (
-      <View
-        pointerEvents="box-none"
-        onLayout={event => {
-          setNoteContentInsetTop(event.nativeEvent.layout.height + 12);
-        }}
-        style={[styles.topChrome, { paddingTop: insets.top + 8 }]}
-      >
-        <View style={styles.topChromeRow}>
-          {activeMoment ? (
-            <MomentInfoHeader
-              moment={activeMoment}
-              previewEntryContext={previewEntryContext}
-              placeLabelsByMomentId={placeLabelsByMomentId}
-              previewSavedPlace={previewSavedPlace}
-            />
-          ) : null}
+        <View
+          pointerEvents="box-none"
+          onLayout={event => {
+            setNoteContentInsetTop(event.nativeEvent.layout.height + 12);
+          }}
+          style={[styles.topChrome, { paddingTop: insets.top + 8 }]}
+        >
+          <View style={styles.topChromeRow}>
+            {activeMoment ? (
+              <MomentInfoHeader
+                moment={activeMoment}
+                previewEntryContext={previewEntryContext}
+                placeLabelsByMomentId={placeLabelsByMomentId}
+                previewSavedPlace={previewSavedPlace}
+              />
+            ) : null}
 
-          {activeMoment ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Delete ${momentDeleteNoun(
-                activeMoment.type,
-              )}`}
-              disabled={deletingMomentId === activeMoment.id}
-              hitSlop={8}
-              onPress={() => confirmDeleteMoment(activeMoment)}
-              style={[
-                styles.topDeleteButton,
-                { backgroundColor: 'rgba(0,0,0,0.45)' },
-                deletingMomentId === activeMoment.id ? styles.disabled : null,
-              ]}
-            >
-              <Trash2 size={18} color="#FF453A" strokeWidth={2.25} />
-            </Pressable>
-          ) : null}
+            {activeMoment ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Delete ${momentDeleteNoun(
+                  activeMoment.type,
+                )}`}
+                disabled={deletingMomentId === activeMoment.id}
+                hitSlop={8}
+                onPress={() => confirmDeleteMoment(activeMoment)}
+                style={[
+                  styles.topDeleteButton,
+                  { backgroundColor: 'rgba(0,0,0,0.45)' },
+                  deletingMomentId === activeMoment.id ? styles.disabled : null,
+                ]}
+              >
+                <Trash2 size={18} color="#FF453A" strokeWidth={2.25} />
+              </Pressable>
+            ) : null}
+          </View>
         </View>
-      </View>
       ) : null}
 
       {chromeVisible ? (
-      <View
-        pointerEvents="box-none"
-        style={[styles.bottomChrome, { paddingBottom: insets.bottom + 16 }]}
-      >
-        {activePhotoVoice ? (
-          <View style={styles.bottomVoiceDock}>
-            <VoiceAttachmentRow
-              compact
-              label="Voice memo"
-              durationLabel={formatMomentVoiceDuration(activePhotoVoice)}
-              isPlaying={playingVoiceId === activePhotoVoice.id}
-              onToggle={() => void toggleVoice(activePhotoVoice)}
+        <View
+          pointerEvents="box-none"
+          style={[styles.bottomChrome, { paddingBottom: insets.bottom + 16 }]}
+        >
+          {activeMediaMood || activePhotoVoice ? (
+            <View style={styles.bottomAttachmentsDock}>
+              {activeMediaMood ? (
+                <MoodAttachmentRow moment={activeMediaMood} />
+              ) : null}
+              {activePhotoVoice ? (
+                <VoiceAttachmentRow
+                  compact
+                  label="Voice memo"
+                  durationLabel={formatMomentVoiceDuration(activePhotoVoice)}
+                  isPlaying={playingVoiceId === activePhotoVoice.id}
+                  onToggle={() => void toggleVoice(activePhotoVoice)}
+                />
+              ) : null}
+            </View>
+          ) : null}
+          <View style={styles.bottomRow}>
+            <View style={[styles.bottomRowSide, styles.bottomRowSideLeft]}>
+              <View style={styles.bottomRowBalance} />
+            </View>
+            <PaginationDots
+              count={moments.length}
+              activeIndex={activeIndex}
+              accentColor={colors.primary}
             />
-          </View>
-        ) : null}
-        <View style={styles.bottomRow}>
-          <View style={[styles.bottomRowSide, styles.bottomRowSideLeft]}>
-            <View style={styles.bottomRowBalance} />
-          </View>
-          <PaginationDots
-            count={moments.length}
-            activeIndex={activeIndex}
-            accentColor={colors.primary}
-          />
-          <View style={[styles.bottomRowSide, styles.bottomRowSideRight]}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Close moments"
-              onPress={closeViewer}
-              hitSlop={8}
-              style={[
-                styles.chromeIconButton,
-                { backgroundColor: 'rgba(0,0,0,0.45)' },
-              ]}
-            >
-              <X size={20} color="#FFFFFF" strokeWidth={2.25} />
-            </Pressable>
+            <View style={[styles.bottomRowSide, styles.bottomRowSideRight]}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Close moments"
+                onPress={closeViewer}
+                hitSlop={8}
+                style={[
+                  styles.chromeIconButton,
+                  { backgroundColor: 'rgba(0,0,0,0.45)' },
+                ]}
+              >
+                <X size={20} color="#FFFFFF" strokeWidth={2.25} />
+              </Pressable>
+            </View>
           </View>
         </View>
-      </View>
       ) : null}
     </View>
   );
@@ -1556,6 +1755,23 @@ const styles = StyleSheet.create({
   bottomVoiceDock: {
     alignSelf: 'stretch',
     paddingHorizontal: 4,
+  },
+  bottomAttachmentsDock: {
+    alignSelf: 'stretch',
+    paddingHorizontal: 4,
+    gap: 8,
+  },
+  moodAttachmentArt: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  moodAttachmentImage: {
+    width: 30,
+    height: 30,
   },
   bottomRow: {
     flexDirection: 'row',
@@ -1954,6 +2170,53 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
+  noteMoodBlock: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    width: '100%',
+    borderRadius: 18,
+    padding: 12,
+  },
+  noteMoodArt: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  noteMoodBlockLabel: {
+    color: '#1C1C1E',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  noteMoodReason: {
+    color: '#3A3A3C',
+    fontSize: 14,
+    lineHeight: 19,
+  },
+  noteMoodReasonMuted: {
+    color: '#8E8E93',
+    fontSize: 14,
+    lineHeight: 19,
+  },
+  noteMoodReasonStandalone: {
+    color: '#E5E5EA',
+    fontSize: 16,
+    lineHeight: 22,
+    marginTop: 12,
+  },
+  noteMoodReasonStandaloneMuted: {
+    color: '#8E8E93',
+    fontSize: 16,
+    lineHeight: 22,
+    marginTop: 12,
+  },
+  moodVoiceBlock: {
+    marginTop: 14,
+    gap: 10,
+  },
   noteEmotionRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1971,9 +2234,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  noteEmotionEmoji: {
-    fontSize: 22,
-    lineHeight: 26,
+  noteMoodImage: {
+    width: 52,
+    height: 52,
   },
   noteEmotionCopy: {
     flex: 1,

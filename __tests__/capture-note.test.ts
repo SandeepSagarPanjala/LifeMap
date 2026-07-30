@@ -4,11 +4,12 @@ import {
 } from '../src/lib/moments/capture-note';
 
 describe('canSaveNoteDraft', () => {
-  it('requires a title or body', () => {
+  it('requires a title, body, or mood', () => {
     expect(canSaveNoteDraft('', '')).toBe(false);
     expect(canSaveNoteDraft('Morning coffee', '')).toBe(true);
     expect(canSaveNoteDraft('', 'Feeling good today')).toBe(true);
     expect(canSaveNoteDraft('   ', '   ')).toBe(false);
+    expect(canSaveNoteDraft('', '', true)).toBe(true);
   });
 });
 

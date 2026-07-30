@@ -7,10 +7,11 @@ export type SegmentMomentCounts = {
   voice: number;
   note: number;
   activity: number;
+  mood: number;
 };
 
 export function emptySegmentMomentCounts(): SegmentMomentCounts {
-  return { photo: 0, video: 0, voice: 0, note: 0, activity: 0 };
+  return { photo: 0, video: 0, voice: 0, note: 0, activity: 0, mood: 0 };
 }
 
 export function hasSegmentMomentCounts(counts: SegmentMomentCounts): boolean {
@@ -19,7 +20,8 @@ export function hasSegmentMomentCounts(counts: SegmentMomentCounts): boolean {
     counts.video > 0 ||
     counts.voice > 0 ||
     counts.note > 0 ||
-    counts.activity > 0
+    counts.activity > 0 ||
+    counts.mood > 0
   );
 }
 
@@ -37,6 +39,8 @@ function bumpCount(
     counts.note += 1;
   } else if (type === 'activity') {
     counts.activity += 1;
+  } else if (type === 'mood') {
+    counts.mood += 1;
   }
 }
 

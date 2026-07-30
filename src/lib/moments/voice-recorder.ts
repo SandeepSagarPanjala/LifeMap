@@ -58,7 +58,8 @@ const VOICE_AUDIO_SET: AudioSet = {
   AudioChannels: 1,
 };
 
-export type VoiceRecorderCallbacks = {
+export type VoiceRecorderOptions = {
+  maxDurationMs?: number;
   onDurationMs?: (durationMs: number) => void;
   onMaxDurationReached?: () => void;
   onMetering?: (meteringDb: number) => void;
@@ -77,9 +78,10 @@ export type VoiceRecorderSession = {
 };
 
 export function createVoiceRecorderSession(
-  callbacks: VoiceRecorderCallbacks = {},
+  options: VoiceRecorderOptions = {},
 ): VoiceRecorderSession {
   const useNativeRecorder = isNativeIosVoiceRecorderAvailable();
+  const maxDurationMs = options.maxDurationMs ?? VOICE_MAX_DURATION_MS;
   let sound = createSound();
   let activeRecordPath: string | null = null;
   let durationMs = 0;
@@ -103,13 +105,13 @@ export function createVoiceRecorderSession(
       return;
     }
     durationMs = event.currentPosition;
-    callbacks.onDurationMs?.(durationMs);
+    options.onDurationMs?.(durationMs);
     if (event.currentMetering != null) {
-      callbacks.onMetering?.(event.currentMetering);
+      options.onMetering?.(event.currentMetering);
     }
-    if (!stoppingForCap && durationMs >= VOICE_MAX_DURATION_MS) {
+    if (!stoppingForCap && durationMs >= maxDurationMs) {
       stoppingForCap = true;
-      callbacks.onMaxDurationReached?.();
+      options.onMaxDurationReached?.();
     }
   };
 
@@ -176,13 +178,13 @@ export function createVoiceRecorderSession(
       return;
     }
     durationMs = event.currentPosition;
-    callbacks.onDurationMs?.(durationMs);
+    options.onDurationMs?.(durationMs);
     if (event.currentMetering != null) {
-      callbacks.onMetering?.(event.currentMetering);
+      options.onMetering?.(event.currentMetering);
     }
-    if (!stoppingForCap && durationMs >= VOICE_MAX_DURATION_MS) {
+    if (!stoppingForCap && durationMs >= maxDurationMs) {
       stoppingForCap = true;
-      callbacks.onMaxDurationReached?.();
+      options.onMaxDurationReached?.();
     }
   };
 
@@ -231,7 +233,7 @@ export function createVoiceRecorderSession(
     if (disposed) {
       return;
     }
-    callbacks.onPlaybackProgress?.(event.currentPosition, event.duration);
+    options.onPlaybackProgress?.(event.currentPosition, event.duration);
   };
 
   const handlePlaybackEnded = (event: {
@@ -241,8 +243,8 @@ export function createVoiceRecorderSession(
     if (disposed) {
       return;
     }
-    callbacks.onPlaybackProgress?.(event.currentPosition, event.duration);
-    callbacks.onPlaybackEnded?.();
+    options.onPlaybackProgress?.(event.currentPosition, event.duration);
+    options.onPlaybackEnded?.();
   };
 
   const startNativeRecording = async (recordPath: string) => {

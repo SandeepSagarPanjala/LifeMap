@@ -16,7 +16,9 @@ import { ActivityFormScreen } from '@/screens/capture/ActivityFormScreen';
 import { ActivityLogEntryScreen } from '@/screens/capture/ActivityLogEntryScreen';
 import { ActivityManageScreen } from '@/screens/capture/ActivityManageScreen';
 import { CaptureNoteScreen } from '@/screens/capture/CaptureNoteScreen';
+import { CaptureMoodScreen } from '@/screens/capture/CaptureMoodScreen';
 import { CapturePhotoScreen } from '@/screens/capture/CapturePhotoScreen';
+import { DiaryScreen } from '@/screens/capture/DiaryScreen';
 import { CaptureVoiceScreen } from '@/screens/capture/CaptureVoiceScreen';
 import { MapScreen } from '@/screens/MapScreen';
 import { HistoryDatePickerScreen } from '@/screens/map/HistoryDatePickerScreen';
@@ -165,12 +167,28 @@ export function RootNavigator() {
           options={settingsSubScreenOptions('Trip detail')}
         />
         <Stack.Screen
+          name="Diary"
+          component={DiaryScreen}
+          options={{
+            headerShown: false,
+            presentation: 'card',
+          }}
+        />
+        <Stack.Screen
           name="CaptureNote"
           component={CaptureNoteScreen}
           options={{
             headerShown: false,
             presentation: 'fullScreenModal',
             animation: 'slide_from_bottom',
+          }}
+        />
+        <Stack.Screen
+          name="CaptureMood"
+          component={CaptureMoodScreen}
+          options={{
+            headerShown: false,
+            presentation: 'card',
           }}
         />
         <Stack.Screen

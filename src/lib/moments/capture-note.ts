@@ -26,13 +26,19 @@ export type CaptureNoteInput = {
   textBody: string;
   moodScore?: number | null;
   moodLabel?: string | null;
+  moodReason?: string | null;
+  moodVariant?: string | null;
   photoAttachments?: CaptureNotePhotoInput[];
   voiceAttachmentUri?: string | null;
   voiceDurationMs?: number | null;
 };
 
-export function canSaveNoteDraft(title: string, textBody: string): boolean {
-  return title.trim().length > 0 || textBody.trim().length > 0;
+export function canSaveNoteDraft(
+  title: string,
+  textBody: string,
+  hasEmotion = false,
+): boolean {
+  return title.trim().length > 0 || textBody.trim().length > 0 || hasEmotion;
 }
 
 export function isCaptureNoteDraftDirty(input: {
@@ -41,21 +47,29 @@ export function isCaptureNoteDraftDirty(input: {
   hasPhoto: boolean;
   hasVoice: boolean;
   hasEmotion: boolean;
+  moodReason?: string;
 }): boolean {
   return (
     input.title.trim().length > 0 ||
     input.textBody.trim().length > 0 ||
     input.hasPhoto ||
     input.hasVoice ||
-    input.hasEmotion
+    input.hasEmotion ||
+    (input.moodReason?.trim().length ?? 0) > 0
   );
 }
 
 export async function saveNoteMoment(
   input: CaptureNoteInput,
 ): Promise<MomentRow> {
-  if (!canSaveNoteDraft(input.title, input.textBody)) {
-    throw new Error('Add a title or note before saving.');
+  if (
+    !canSaveNoteDraft(
+      input.title,
+      input.textBody,
+      Boolean(input.moodLabel?.trim()),
+    )
+  ) {
+    throw new Error('Add a title, note, or mood before saving.');
   }
 
   let contentPath: string | null = null;
@@ -120,6 +134,8 @@ export async function saveNoteMoment(
   }
 
   const moodLabel = input.moodLabel?.trim() || null;
+  const moodReason = input.moodReason?.trim() || null;
+  const moodVariant = input.moodVariant?.trim() || null;
 
   return insertMoment({
     type: 'note',
@@ -129,6 +145,8 @@ export async function saveNoteMoment(
     textBody: input.textBody.trim() || null,
     moodScore: null,
     moodLabel,
+    moodReason,
+    moodVariant,
     caption: voiceCaption,
     contentPath,
     contentBytes,

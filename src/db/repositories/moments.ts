@@ -9,7 +9,13 @@ import { getDayRange, toDateKey } from '@/lib/day-utils';
 import { getDatabase } from '../client';
 import { moments } from '../schema';
 
-export type MomentType = 'photo' | 'note' | 'video' | 'voice' | 'activity';
+export type MomentType =
+  | 'photo'
+  | 'note'
+  | 'video'
+  | 'voice'
+  | 'activity'
+  | 'mood';
 
 export type MomentRow = {
   id: number;
@@ -21,6 +27,7 @@ export type MomentRow = {
   voiceAttachmentPath: string | null;
   voiceAttachmentBytes: number | null;
   voiceDurationSec: number | null;
+  voiceTranscript: string | null;
   photoAttachmentsJson: string | null;
   tagsJson: string | null;
   textBody: string | null;
@@ -28,6 +35,8 @@ export type MomentRow = {
   title: string | null;
   moodScore: number | null;
   moodLabel: string | null;
+  moodReason: string | null;
+  moodVariant: string | null;
   placeLabel: string | null;
   contentBytes: number | null;
   sourceBytes: number | null;
@@ -49,11 +58,14 @@ export type NewMoment = {
   caption?: string | null;
   moodScore?: number | null;
   moodLabel?: string | null;
+  moodReason?: string | null;
+  moodVariant?: string | null;
   contentPath?: string | null;
   thumbnailPath?: string | null;
   voiceAttachmentPath?: string | null;
   voiceAttachmentBytes?: number | null;
   voiceDurationSec?: number | null;
+  voiceTranscript?: string | null;
   photoAttachmentsJson?: string | null;
   tagsJson?: string | null;
   contentBytes?: number | null;
@@ -77,6 +89,7 @@ function mapRow(row: typeof moments.$inferSelect): MomentRow {
     voiceAttachmentPath: row.voiceAttachmentPath ?? null,
     voiceAttachmentBytes: row.voiceAttachmentBytes ?? null,
     voiceDurationSec: row.voiceDurationSec ?? null,
+    voiceTranscript: row.voiceTranscript ?? null,
     photoAttachmentsJson: sanitizePhotoAttachmentsJson(
       row.photoAttachmentsJson,
     ),
@@ -86,6 +99,8 @@ function mapRow(row: typeof moments.$inferSelect): MomentRow {
     title: row.title ?? null,
     moodScore: row.moodScore ?? null,
     moodLabel: row.moodLabel ?? null,
+    moodReason: row.moodReason ?? null,
+    moodVariant: row.moodVariant ?? null,
     placeLabel: row.placeLabel ?? null,
     contentBytes: row.contentBytes ?? null,
     sourceBytes: row.sourceBytes ?? null,
@@ -112,12 +127,15 @@ export async function insertMoment(input: NewMoment): Promise<MomentRow> {
       caption: input.caption ?? null,
       moodScore: input.moodScore ?? null,
       moodLabel: input.moodLabel ?? null,
+      moodReason: input.moodReason ?? null,
+      moodVariant: input.moodVariant ?? null,
       placeLabel: input.placeLabel ?? null,
       contentPath: input.contentPath ?? null,
       thumbnailPath: input.thumbnailPath ?? null,
       voiceAttachmentPath: input.voiceAttachmentPath ?? null,
       voiceAttachmentBytes: input.voiceAttachmentBytes ?? null,
       voiceDurationSec: input.voiceDurationSec ?? null,
+      voiceTranscript: input.voiceTranscript ?? null,
       photoAttachmentsJson: sanitizePhotoAttachmentsJson(
         input.photoAttachmentsJson ?? null,
       ),
@@ -436,6 +454,17 @@ export async function getRecentMoments(limit = 20): Promise<MomentRow[]> {
     .from(moments)
     .orderBy(desc(moments.timestamp), desc(moments.id))
     .limit(limit);
+  return rows.map(mapRow);
+}
+
+/** All diary (note) moments, newest first. */
+export async function listNoteMoments(): Promise<MomentRow[]> {
+  const db = await getDatabase();
+  const rows = await db
+    .select()
+    .from(moments)
+    .where(eq(moments.type, 'note'))
+    .orderBy(desc(moments.timestamp), desc(moments.id));
   return rows.map(mapRow);
 }
 

@@ -116,6 +116,7 @@ export async function savePhotoMoment(
   caption?: string | null,
   voiceAttachment?: { uri: string; durationMs: number } | null,
   tags?: readonly string[] | null,
+  mood?: { moodLabel: string; moodVariant: string } | null,
 ): Promise<MomentRow> {
   try {
     await saveCaptureToPhotoLibrary(sourceUri);
@@ -159,6 +160,9 @@ export async function savePhotoMoment(
     }
   }
 
+  const moodLabel = mood?.moodLabel.trim() || null;
+  const moodVariant = mood?.moodVariant.trim() || null;
+
   try {
     const row = await insertMoment({
       type: 'photo',
@@ -172,6 +176,8 @@ export async function savePhotoMoment(
       voiceAttachmentPath,
       voiceAttachmentBytes,
       voiceDurationSec,
+      moodLabel,
+      moodVariant,
     });
     scheduleMomentThumbnailGeneration(row);
     return row;

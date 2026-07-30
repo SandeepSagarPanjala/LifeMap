@@ -3,6 +3,7 @@ import {
   Camera,
   NotebookPen,
   Play,
+  Sparkles,
   Video,
 } from 'lucide-react-native';
 import { memo, useMemo } from 'react';
@@ -11,6 +12,11 @@ import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CAPTURE_BUTTON_THEMES } from '@/components/map/map-capture-button-theme';
 import type { MomentRow } from '@/db/repositories/moments';
 import { momentImageUri } from '@/lib/moments/moment-media-uri';
+import {
+  getMoodArtPresentation,
+  resolveEmotionFromMoodLabel,
+  resolveMoodVariantFromMoment,
+} from '@/lib/moments/mood-art';
 import { formatTripClockTime } from '@/lib/trip-format';
 
 export const GALLERY_TILE_GAP = 4;
@@ -140,6 +146,38 @@ function TypeFallback({ moment }: { moment: MomentRow }) {
     );
   }
 
+  if (moment.type === 'mood') {
+    const emotion = resolveEmotionFromMoodLabel(moment.moodLabel);
+    const variant = resolveMoodVariantFromMoment(moment.moodVariant);
+    const art = emotion
+      ? getMoodArtPresentation(emotion.id, variant)
+      : null;
+    return (
+      <View
+        style={[
+          styles.fallback,
+          {
+            backgroundColor:
+              emotion?.tint ?? CAPTURE_BUTTON_THEMES.mood.badgeBg,
+          },
+        ]}
+      >
+        {art ? (
+          <Image
+            source={art.imageSource}
+            resizeMode="contain"
+            style={styles.moodSticker}
+          />
+        ) : (
+          <Sparkles size={28} color={CAPTURE_BUTTON_THEMES.mood.icon} />
+        )}
+        <Text style={styles.moodLabel} numberOfLines={1}>
+          {emotion?.label ?? moment.moodLabel ?? 'Mood'}
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <View
       style={[
@@ -181,6 +219,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: CAPTURE_BUTTON_THEMES.activity.icon,
+    textAlign: 'center',
+  },
+  moodSticker: {
+    width: 44,
+    height: 44,
+  },
+  moodLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: CAPTURE_BUTTON_THEMES.mood.icon,
     textAlign: 'center',
   },
   videoBadge: {

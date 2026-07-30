@@ -277,6 +277,12 @@ export const MOMENT_THUMBNAIL_MAX_DIMENSION = 512;
 export const MOMENT_THUMBNAIL_QUALITY = 0.82;
 
 export const VOICE_MAX_DURATION_MS = 5 * 60_000;
+/** Mood voice reasons stay short — one minute max. */
+export const MOOD_VOICE_MAX_DURATION_MS = 60_000;
+/** Photo voice memos match the short mood reason cap. */
+export const PHOTO_VOICE_MAX_DURATION_MS = 60_000;
+/** Optional text attached on camera review. */
+export const PHOTO_CAPTION_MAX_LENGTH = 500;
 export const VOICE_CONTENT_FORMAT = 'aac' as const;
 
 export const VIDEO_MAX_DURATION_MS = 5 * 60_000;

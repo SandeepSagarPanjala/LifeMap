@@ -39,7 +39,8 @@ export type SegmentationMomentType =
   | 'note'
   | 'video'
   | 'voice'
-  | 'activity';
+  | 'activity'
+  | 'mood';
 
 export type SegmentationMoment = {
   timestamp: Date | string;

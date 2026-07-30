@@ -84,6 +84,7 @@ export function areMapScreenMapPropsEqual(
     previous.currentOpenVisitPlaceDisplay ===
       next.currentOpenVisitPlaceDisplay &&
     previous.currentVisitMomentCounts === next.currentVisitMomentCounts &&
+    previous.currentVisitMomentPreviews === next.currentVisitMomentPreviews &&
     previous.openCurrentVisitMomentsPreview ===
       next.openCurrentVisitMomentsPreview &&
     coordinatesEqual(previous.userCoordinate, next.userCoordinate) &&
@@ -94,6 +95,7 @@ export function areMapScreenMapPropsEqual(
     previous.selectedVisitPlaceDisplay === next.selectedVisitPlaceDisplay &&
     previous.selectedDriveEndpointLabels === next.selectedDriveEndpointLabels &&
     previous.selectedEntryMomentCounts === next.selectedEntryMomentCounts &&
+    previous.selectedEntryMomentPreviews === next.selectedEntryMomentPreviews &&
     previous.openSelectedEntryMomentsPreview ===
       next.openSelectedEntryMomentsPreview &&
     playbackControlsEqual(previous.playback, next.playback) &&

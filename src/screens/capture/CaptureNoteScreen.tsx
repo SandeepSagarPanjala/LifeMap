@@ -29,40 +29,49 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmotionTokenPickerSheet } from '@/components/capture/EmotionTokenPickerSheet';
+import { DiaryMoodBlock } from '@/components/capture/DiaryMoodBlock';
 import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
+import { GlassPressable } from '@/components/glass/GlassPressable';
 import { CAPTURE_BUTTON_THEMES } from '@/components/map/map-capture-button-theme';
 import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
 import { VoiceMemoSheet } from '@/components/map/VoiceMemoSheet';
+import { getSetting, setSetting } from '@/db/repositories/settings';
+import { loadProfile } from '@/db/repositories/profile';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import {
-  canSaveNoteDraft,
-  isCaptureNoteDraftDirty,
-  saveNoteMoment,
-} from '@/lib/moments/capture-note';
-import type { EmotionContextTokenId } from '@/lib/moments/emotion-context-tokens';
-import { getEmotionContextToken } from '@/lib/moments/emotion-context-tokens';
-import {
-  formatEmotionMoodLabel,
-  getEmotionToken,
-  type EmotionTokenId,
-} from '@/lib/moments/emotion-tokens';
-import { formatVoiceDurationMs } from '@/lib/moments/format-voice-duration';
-import { deleteMomentContentFile } from '@/lib/moments/moment-storage';
-import {
-  createVoiceRecorderSession,
-  getVoiceRecordingErrorMessage,
-} from '@/lib/moments/voice-recorder';
 import {
   MAP_MOMENTS_BAR_HEIGHT,
   MAP_MOMENTS_SIDE_BTN_GAP,
   MAP_STACK_BUTTON_SIZE,
   MAX_NOTE_PHOTO_ATTACHMENTS,
 } from '@/lib/app-constants';
+import {
+  canSaveNoteDraft,
+  isCaptureNoteDraftDirty,
+  saveNoteMoment,
+} from '@/lib/moments/capture-note';
+import {
+  getEmotionToken,
+  type EmotionTokenId,
+} from '@/lib/moments/emotion-tokens';
+import { formatVoiceDurationMs } from '@/lib/moments/format-voice-duration';
+import {
+  getMoodArtPresentation,
+  getMoodArtVariantsForGender,
+  resolveMoodArtVariant,
+  MOOD_ART_VARIANT_SETTING_KEY,
+  type MoodArtVariant,
+} from '@/lib/moments/mood-art';
+import { deleteMomentContentFile } from '@/lib/moments/moment-storage';
 import { type DraftNotePhoto } from '@/lib/moments/note-photo-attachments';
 import {
   captureAndCompressNotePhoto,
   pickAndCompressNotePhotos,
 } from '@/lib/moments/pick-note-photo';
+import type { ProfileGender } from '@/lib/profile/types';
+import {
+  createVoiceRecorderSession,
+  getVoiceRecordingErrorMessage,
+} from '@/lib/moments/voice-recorder';
 import type { RootStackParamList } from '@/navigation/types';
 
 /** Match MapMomentsGlassBar / LiquidGlassTabBar geometry. */
@@ -92,8 +101,11 @@ export function CaptureNoteScreen() {
   const [textBody, setTextBody] = useState('');
   const [selectedEmotionId, setSelectedEmotionId] =
     useState<EmotionTokenId | null>(null);
-  const [selectedContextId, setSelectedContextId] =
-    useState<EmotionContextTokenId | null>(null);
+  const [moodVariant, setMoodVariant] = useState<MoodArtVariant>('cat');
+  const [moodReason, setMoodReason] = useState('');
+  const [profileGender, setProfileGender] = useState<ProfileGender | null>(
+    null,
+  );
   const [emotionSheetOpen, setEmotionSheetOpen] = useState(false);
   const [voiceSheetOpen, setVoiceSheetOpen] = useState(false);
   const [photos, setPhotos] = useState<DraftNotePhoto[]>([]);
@@ -102,21 +114,19 @@ export function CaptureNoteScreen() {
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [bottomDockHeight, setBottomDockHeight] = useState(0);
 
-  const canSave = canSaveNoteDraft(title, textBody);
+  const allowedVariants = getMoodArtVariantsForGender(profileGender);
+  const canSave = canSaveNoteDraft(title, textBody, selectedEmotionId != null);
   const isDirty = isCaptureNoteDraftDirty({
     title,
     textBody,
     hasPhoto: photos.length > 0,
     hasVoice: voiceUri != null,
-    hasEmotion: selectedEmotionId != null && selectedContextId != null,
+    hasEmotion: selectedEmotionId != null,
+    moodReason,
   });
 
   const selectedEmotion =
     selectedEmotionId != null ? getEmotionToken(selectedEmotionId) : null;
-  const selectedContext =
-    selectedContextId != null
-      ? getEmotionContextToken(selectedContextId)
-      : null;
 
   const restoreDiaryFocus = useCallback(() => {
     if (lastFocusedFieldRef.current === 'body') {
@@ -129,6 +139,30 @@ export function CaptureNoteScreen() {
   useEffect(() => {
     const timer = setTimeout(() => titleInputRef.current?.focus(), 400);
     return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [profile, savedVariant] = await Promise.all([
+          loadProfile(),
+          getSetting(MOOD_ART_VARIANT_SETTING_KEY),
+        ]);
+        if (cancelled) {
+          return;
+        }
+        setProfileGender(profile.gender);
+        setMoodVariant(resolveMoodArtVariant(profile.gender, savedVariant));
+      } catch {
+        if (!cancelled) {
+          setMoodVariant('cat');
+        }
+      }
+    })().catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -187,8 +221,13 @@ export function CaptureNoteScreen() {
 
   const clearEmotion = () => {
     setSelectedEmotionId(null);
-    setSelectedContextId(null);
+    setMoodReason('');
   };
+
+  const handleMoodVariantChange = useCallback((variant: MoodArtVariant) => {
+    setMoodVariant(variant);
+    setSetting(MOOD_ART_VARIANT_SETTING_KEY, variant).catch(() => undefined);
+  }, []);
 
   const clearPhotos = async () => {
     await Promise.all(photos.map(photo => deleteMomentContentFile(photo.uri)));
@@ -301,13 +340,9 @@ export function CaptureNoteScreen() {
         finishedAt: new Date(),
         title,
         textBody,
-        moodLabel:
-          selectedEmotion && selectedContext
-            ? formatEmotionMoodLabel(
-                selectedEmotion.label,
-                selectedContext.label,
-              )
-            : null,
+        moodLabel: selectedEmotion?.label ?? null,
+        moodReason: selectedEmotion ? moodReason : null,
+        moodVariant: selectedEmotion ? moodVariant : null,
         photoAttachments: photos.map(photo => ({
           uri: photo.uri,
           sourceBytes: photo.sourceBytes,
@@ -475,42 +510,17 @@ export function CaptureNoteScreen() {
             </View>
           ) : null}
 
-          {selectedEmotion && selectedContext ? (
-            <View style={styles.moodPreviewDock}>
-              <View style={styles.selectedEmotionRow}>
-                <View
-                  style={[
-                    styles.selectedEmotionSticker,
-                    { backgroundColor: selectedEmotion.tint },
-                  ]}
-                >
-                  <Text style={styles.selectedEmotionEmoji}>
-                    {selectedEmotion.sticker}
-                  </Text>
-                </View>
-                <View style={styles.selectedEmotionCopy}>
-                  <Text style={styles.selectedEmotionLabel}>
-                    {selectedEmotion.label}
-                  </Text>
-                  <View style={styles.selectedContextRow}>
-                    <Text style={styles.selectedContextSticker}>
-                      {selectedContext.sticker}
-                    </Text>
-                    <Text style={styles.selectedContextLabel}>
-                      {selectedContext.label}
-                    </Text>
-                  </View>
-                </View>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Remove mood"
-                  onPress={clearEmotion}
-                  style={styles.moodPreviewRemove}
-                >
-                  <X size={16} color="#8E8E93" strokeWidth={2.5} />
-                </Pressable>
-              </View>
-            </View>
+          {selectedEmotionId ? (
+            <DiaryMoodBlock
+              emotionId={selectedEmotionId}
+              variant={moodVariant}
+              reason={moodReason}
+              onChangeReason={setMoodReason}
+              onRemove={clearEmotion}
+              onFocusReason={() => {
+                lastFocusedFieldRef.current = 'body';
+              }}
+            />
           ) : null}
 
           <View style={styles.toolbarWrap}>
@@ -526,18 +536,13 @@ export function CaptureNoteScreen() {
                 {saving ? (
                   <ActivityIndicator color={colors.primary} size="small" />
                 ) : (
-                  <Check
-                    size={20}
-                    color={colors.primary}
-                    strokeWidth={2.25}
-                  />
+                  <Check size={20} color={colors.primary} strokeWidth={2.25} />
                 )}
               </MapGlassCircleButton>
 
               <View style={styles.shadowWrap}>
                 <AdaptiveGlassSurface style={styles.pill}>
-                  <Pressable
-                    accessibilityRole="button"
+                  <GlassPressable
                     accessibilityLabel="Attach photo from library"
                     disabled={
                       pickingPhoto ||
@@ -555,9 +560,8 @@ export function CaptureNoteScreen() {
                         strokeWidth={2}
                       />
                     )}
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
+                  </GlassPressable>
+                  <GlassPressable
                     accessibilityLabel="Take photo"
                     disabled={
                       pickingPhoto ||
@@ -571,9 +575,8 @@ export function CaptureNoteScreen() {
                       color={colors.primary}
                       strokeWidth={2}
                     />
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
+                  </GlassPressable>
+                  <GlassPressable
                     accessibilityLabel="Record voice memo"
                     onPress={() => {
                       Keyboard.dismiss();
@@ -586,9 +589,8 @@ export function CaptureNoteScreen() {
                       color={colors.primary}
                       strokeWidth={2}
                     />
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
+                  </GlassPressable>
+                  <GlassPressable
                     accessibilityLabel="Pick emotion"
                     onPress={() => {
                       Keyboard.dismiss();
@@ -596,16 +598,23 @@ export function CaptureNoteScreen() {
                     }}
                     style={styles.tab}
                   >
-                    {selectedEmotion && selectedContext ? (
+                    {selectedEmotion ? (
                       <View
                         style={[
                           styles.toolbarEmotionSticker,
                           { backgroundColor: selectedEmotion.tint },
                         ]}
                       >
-                        <Text style={styles.toolbarEmotionEmoji}>
-                          {selectedEmotion.sticker}
-                        </Text>
+                        <Image
+                          source={
+                            getMoodArtPresentation(
+                              selectedEmotion.id,
+                              moodVariant,
+                            ).imageSource
+                          }
+                          resizeMode="contain"
+                          style={styles.toolbarEmotionImage}
+                        />
                       </View>
                     ) : (
                       <Sparkles
@@ -614,7 +623,7 @@ export function CaptureNoteScreen() {
                         strokeWidth={2}
                       />
                     )}
-                  </Pressable>
+                  </GlassPressable>
                 </AdaptiveGlassSurface>
               </View>
 
@@ -632,11 +641,16 @@ export function CaptureNoteScreen() {
         <EmotionTokenPickerSheet
           visible={emotionSheetOpen}
           selectedEmotionId={selectedEmotionId}
-          selectedContextId={selectedContextId}
+          selectedVariant={moodVariant}
+          allowedVariants={allowedVariants}
           onSelect={selection => {
             setSelectedEmotionId(selection.emotion.id);
-            setSelectedContextId(selection.context.id);
+            setMoodVariant(selection.variant);
+            setSetting(MOOD_ART_VARIANT_SETTING_KEY, selection.variant).catch(
+              () => undefined,
+            );
           }}
+          onVariantChange={handleMoodVariantChange}
           onClose={() => setEmotionSheetOpen(false)}
           onWillClose={restoreDiaryFocus}
         />
@@ -715,10 +729,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: '#F2F2F7',
   },
-  moodPreviewDock: {
-    paddingHorizontal: 16,
-    marginBottom: 10,
-  },
   voicePreviewDock: {
     paddingHorizontal: 16,
     marginBottom: 10,
@@ -758,55 +768,6 @@ const styles = StyleSheet.create({
     height: 32,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  moodPreviewRemove: {
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  selectedEmotionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: '#F7F7FA',
-  },
-  selectedEmotionSticker: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  selectedEmotionEmoji: {
-    fontSize: 20,
-    lineHeight: 24,
-  },
-  selectedEmotionLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1C1C1E',
-  },
-  selectedEmotionCopy: {
-    flex: 1,
-    gap: 4,
-  },
-  selectedContextRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  selectedContextSticker: {
-    fontSize: 14,
-    lineHeight: 16,
-  },
-  selectedContextLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#636366',
   },
   photoPreview: {
     width: '100%',
@@ -864,9 +825,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  toolbarEmotionEmoji: {
-    fontSize: 18,
-    lineHeight: 22,
+  toolbarEmotionImage: {
+    width: 32,
+    height: 32,
   },
   sideButton: {
     width: MAP_STACK_BUTTON_SIZE,
