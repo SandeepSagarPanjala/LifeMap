@@ -1,7 +1,8 @@
 import { ChevronLeft, ChevronRight, X } from 'lucide-react-native';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 
 import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
+import { GlassPressable } from '@/components/glass/GlassPressable';
 import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import {
@@ -74,19 +75,17 @@ export function HistoryPanelChrome({
           />
         </MapGlassCircleButton>
 
-        <Pressable
-          accessibilityRole="button"
+        <GlassPressable
           accessibilityLabel="Choose date"
-          onPress={onPressLabel}
+          onPress={() => onPressLabel?.()}
+          style={styles.pillShadow}
         >
-          <View style={styles.pillShadow}>
-            <AdaptiveGlassSurface style={styles.pill}>
-              <Text style={[styles.label, { color: accent }]} numberOfLines={1}>
-                {label}
-              </Text>
-            </AdaptiveGlassSurface>
-          </View>
-        </Pressable>
+          <AdaptiveGlassSurface style={styles.pill}>
+            <Text style={[styles.label, { color: accent }]} numberOfLines={1}>
+              {label}
+            </Text>
+          </AdaptiveGlassSurface>
+        </GlassPressable>
 
         <MapGlassCircleButton
           accessibilityLabel="Next day"

@@ -12,9 +12,13 @@ import {
   type DayStoryCardSide,
 } from '@/lib/day-story-placement';
 import type { DayStoryStop } from '@/lib/day-story-stops';
-import { momentCountsForDayStoryStop } from '@/lib/day-story-moments';
+import { momentCountsAndPreviewsForDayStoryStop } from '@/lib/day-story-moments';
 import {
+  EMPTY_MOMENT_COUNTS,
+  EMPTY_MOMENT_COUNT_PREVIEWS,
   hasMomentCounts,
+  momentCountPreviewsSignature,
+  type MomentCountPreviews,
   type MomentCountType,
   type MomentCounts,
 } from '@/lib/moments/moment-counts';
@@ -34,14 +38,6 @@ const NUMBER_BADGE_SIZE = 28;
 const MULTI_BADGE_SIZE = 22;
 const LABEL_MAX_WIDTH = 100;
 const MARKER_ANCHOR = { x: 0.5, y: 0.5 } as const;
-/** Stable fallback so a missing stop key doesn't break DayStoryStopMarker memo. */
-const EMPTY_MOMENT_COUNTS: MomentCounts = {
-  photo: 0,
-  video: 0,
-  voice: 0,
-  note: 0,
-  activity: 0,
-};
 
 type DayStoryStopsOverlayProps = {
   /** Prebuilt by the map controller — avoid rebuilding on every overlay mount. */
@@ -160,12 +156,14 @@ function PlaceLabelRow({ stop }: { stop: DayStoryStop }) {
 const DayStoryStopMarker = memo(function DayStoryStopMarker({
   stop,
   momentCounts,
+  momentPreviews,
   cardSide,
   onPressMomentType,
   onPressStay,
 }: {
   stop: DayStoryStop;
   momentCounts: MomentCounts;
+  momentPreviews: MomentCountPreviews;
   cardSide: DayStoryCardSide;
   onPressMomentType?: (type: MomentCountType) => void;
   onPressStay?: (stay: DetectedTrip) => void;
@@ -199,6 +197,8 @@ const DayStoryStopMarker = memo(function DayStoryStopMarker({
     momentCounts.voice,
     momentCounts.note,
     momentCounts.activity,
+    momentCounts.mood,
+    momentCountPreviewsSignature(momentPreviews),
     Math.round(cardSize.w),
     Math.round(cardSize.h),
   ].join('|');
@@ -260,6 +260,7 @@ const DayStoryStopMarker = memo(function DayStoryStopMarker({
       <AdaptiveGlassSurface effect="regular" style={styles.momentsCard}>
         <MomentCountsRow
           counts={momentCounts}
+          previews={momentPreviews}
           layout="inline"
           compact
           dense
@@ -345,12 +346,15 @@ export const DayStoryStopsOverlay = memo(function DayStoryStopsOverlay({
     [stops, historyEntries],
   );
 
-  const momentCountsByStopKey = useMemo(() => {
-    const map = new Map<string, MomentCounts>();
+  const momentDataByStopKey = useMemo(() => {
+    const map = new Map<
+      string,
+      { counts: MomentCounts; previews: MomentCountPreviews }
+    >();
     for (const stop of stops) {
       map.set(
         stop.key,
-        momentCountsForDayStoryStop(
+        momentCountsAndPreviewsForDayStoryStop(
           stop,
           dayMoments,
           savedPlaces,
@@ -395,13 +399,14 @@ export const DayStoryStopsOverlay = memo(function DayStoryStopsOverlay({
           return null;
         }
 
+        const momentData = momentDataByStopKey.get(stop.key);
+
         return (
           <DayStoryStopMarker
             key={stop.key}
             stop={stop}
-            momentCounts={
-              momentCountsByStopKey.get(stop.key) ?? EMPTY_MOMENT_COUNTS
-            }
+            momentCounts={momentData?.counts ?? EMPTY_MOMENT_COUNTS}
+            momentPreviews={momentData?.previews ?? EMPTY_MOMENT_COUNT_PREVIEWS}
             cardSide={stop.isHome ? 'top' : cardSides.get(stop.key) ?? 'top'}
             onPressMomentType={
               onPressMomentType != null

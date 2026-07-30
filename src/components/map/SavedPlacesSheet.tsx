@@ -11,6 +11,7 @@ import { MapPin, Pencil, Trash2, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
+import { GlassPressable } from '@/components/glass/GlassPressable';
 import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
 import { SavedPlaceIcon } from '@/components/map/SavedPlaceIcon';
 import { SavedPlacesEmptyState } from '@/components/map/SavedPlacesEmptyState';
@@ -199,13 +200,14 @@ export function SavedPlacesSheet({
         style={[styles.barWrap, { paddingBottom: barBottomPad }]}
       >
         <View style={styles.barRow}>
-          <View style={styles.shadowWrap}>
+          <GlassPressable
+            accessibilityLabel="Add saved place by address"
+            disabled={!canAddByAddress}
+            onPress={onAddByAddress}
+            style={styles.shadowWrap}
+          >
             <AdaptiveGlassSurface style={styles.pill}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Add saved place by address"
-                disabled={!canAddByAddress}
-                onPress={onAddByAddress}
+              <View
                 style={[
                   styles.addPressable,
                   !canAddByAddress ? styles.addPressableDisabled : null,
@@ -215,9 +217,9 @@ export function SavedPlacesSheet({
                 <Text style={[styles.addLabel, { color: colors.primary }]}>
                   Add by address
                 </Text>
-              </Pressable>
+              </View>
             </AdaptiveGlassSurface>
-          </View>
+          </GlassPressable>
 
           <MapGlassCircleButton
             accessibilityLabel="Close"

@@ -215,7 +215,14 @@ async function importPlaceLookupCache(rows: unknown[]): Promise<IdMap> {
   return map;
 }
 
-const MOMENT_TYPES = new Set(['photo', 'note', 'video', 'voice', 'activity']);
+const MOMENT_TYPES = new Set([
+  'photo',
+  'note',
+  'video',
+  'voice',
+  'activity',
+  'mood',
+]);
 
 async function importMoments(
   rows: unknown[],
@@ -235,13 +242,20 @@ async function importMoments(
     }
 
     await db.insert(moments).values({
-      type: type as 'photo' | 'note' | 'video' | 'voice' | 'activity',
+      type: type as
+        | 'photo'
+        | 'note'
+        | 'video'
+        | 'voice'
+        | 'activity'
+        | 'mood',
       timestamp: parseRequiredIsoDate(record.timestamp, 'moments.timestamp'),
       finishedAt: parseIsoDate(record.finishedAt),
       contentPath: parseOptionalString(record.contentPath),
       voiceAttachmentPath: parseOptionalString(record.voiceAttachmentPath),
       voiceAttachmentBytes: parseOptionalNumber(record.voiceAttachmentBytes),
       voiceDurationSec: parseOptionalNumber(record.voiceDurationSec),
+      voiceTranscript: parseOptionalString(record.voiceTranscript),
       photoAttachmentsJson:
         typeof record.photoAttachmentsJson === 'string'
           ? record.photoAttachmentsJson
@@ -253,6 +267,8 @@ async function importMoments(
       title: parseOptionalString(record.title),
       moodScore: parseOptionalNumber(record.moodScore),
       moodLabel: parseOptionalString(record.moodLabel),
+      moodReason: parseOptionalString(record.moodReason),
+      moodVariant: parseOptionalString(record.moodVariant),
       placeLabel: parseOptionalString(record.placeLabel),
       contentBytes: parseOptionalNumber(record.contentBytes),
       sourceBytes: parseOptionalNumber(record.sourceBytes),

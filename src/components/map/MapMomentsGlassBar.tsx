@@ -5,6 +5,7 @@ import {
   Camera,
   LayoutGrid,
   Search,
+  Sparkles,
   type LucideIcon,
 } from 'lucide-react-native';
 import { memo } from 'react';
@@ -37,6 +38,7 @@ type MapMomentsGlassBarProps = {
   onVoice: () => void;
   onNote: () => void;
   onActivity: () => void;
+  onMood: () => void;
   onYou: () => void;
 };
 
@@ -71,17 +73,19 @@ export const MapMomentsGlassBar = memo(function MapMomentsGlassBar({
   onVoice,
   onNote,
   onActivity,
+  onMood,
   onYou,
 }: MapMomentsGlassBarProps) {
   const colors = useThemeColors();
   const accent = colors.primary;
 
-  // Left → right: You, Diary, Activity, Voice, Camera
+  // Left → right: You, Diary, Activity, Voice, Mood, Camera
   const actions: MomentAction[] = [
     { key: 'you', icon: LayoutGrid, label: 'Open You', onPress: onYou },
     { key: 'note', icon: Book, label: 'Open diary', onPress: onNote },
     { key: 'activity', icon: Activity, label: 'Log an activity', onPress: onActivity },
     { key: 'voice', icon: AudioLines, label: 'Record a voice memo', onPress: onVoice },
+    { key: 'mood', icon: Sparkles, label: 'Log a mood', onPress: onMood },
     { key: 'camera', icon: Camera, label: 'Take a photo', onPress: onCamera },
   ];
 
@@ -146,6 +150,7 @@ export const MapMomentsGlassBar = memo(function MapMomentsGlassBar({
       >
         <MapGlassCircleButton
           accessibilityLabel="Search"
+          animate={false}
           onPress={() => {
             // Placeholder — search not wired yet.
           }}

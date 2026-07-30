@@ -59,6 +59,7 @@ const VOICE_AUDIO_SET: AudioSet = {
 };
 
 export type VoiceRecorderCallbacks = {
+  maxDurationMs?: number;
   onDurationMs?: (durationMs: number) => void;
   onMaxDurationReached?: () => void;
   onMetering?: (meteringDb: number) => void;
@@ -80,6 +81,7 @@ export function createVoiceRecorderSession(
   callbacks: VoiceRecorderCallbacks = {},
 ): VoiceRecorderSession {
   const useNativeRecorder = isNativeIosVoiceRecorderAvailable();
+  const maxDurationMs = callbacks.maxDurationMs ?? VOICE_MAX_DURATION_MS;
   let sound = createSound();
   let activeRecordPath: string | null = null;
   let durationMs = 0;
@@ -107,7 +109,7 @@ export function createVoiceRecorderSession(
     if (event.currentMetering != null) {
       callbacks.onMetering?.(event.currentMetering);
     }
-    if (!stoppingForCap && durationMs >= VOICE_MAX_DURATION_MS) {
+    if (!stoppingForCap && durationMs >= maxDurationMs) {
       stoppingForCap = true;
       callbacks.onMaxDurationReached?.();
     }
@@ -180,7 +182,7 @@ export function createVoiceRecorderSession(
     if (event.currentMetering != null) {
       callbacks.onMetering?.(event.currentMetering);
     }
-    if (!stoppingForCap && durationMs >= VOICE_MAX_DURATION_MS) {
+    if (!stoppingForCap && durationMs >= maxDurationMs) {
       stoppingForCap = true;
       callbacks.onMaxDurationReached?.();
     }

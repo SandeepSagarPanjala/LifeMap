@@ -44,8 +44,11 @@ import {
   filterMomentsForStayEntry,
   shouldHideSavedPlaceMomentCluster,
   hasMomentCounts,
-  firstMomentIndexOfType,
+  latestMomentIndexOfType,
+  latestMomentCountPreviews,
   EMPTY_MOMENT_COUNTS,
+  EMPTY_MOMENT_COUNT_PREVIEWS,
+  type MomentCountPreviews,
   type MomentCountType,
   type MomentCounts,
 } from '@/lib/moments/moment-counts';
@@ -687,6 +690,20 @@ export function useMapScreenController() {
     tripDetectionConfig.dwellRadiusMeters,
   ]);
 
+  const currentVisitMomentPreviews = useMemo(
+    (): MomentCountPreviews =>
+      latestMomentCountPreviews(currentVisitPreviewMoments),
+    [currentVisitPreviewMoments],
+  );
+
+  const selectedEntryMomentPreviews = useMemo(
+    (): MomentCountPreviews =>
+      selectedEntry == null
+        ? EMPTY_MOMENT_COUNT_PREVIEWS
+        : latestMomentCountPreviews(selectedEntryPreviewMoments),
+    [selectedEntry, selectedEntryPreviewMoments],
+  );
+
   const provider = mapProviderForPlatform();
 
   const historyPanelSlideDistance = useMemo(
@@ -1037,7 +1054,7 @@ export function useMapScreenController() {
       } else if (payload.initialType != null) {
         initialIndex = Math.max(
           0,
-          firstMomentIndexOfType(payload.moments, payload.initialType),
+          latestMomentIndexOfType(payload.moments, payload.initialType),
         );
       }
       queueMomentPreview({
@@ -1707,6 +1724,10 @@ export function useMapScreenController() {
     navigation.navigate('CaptureVoice');
   }, [navigation]);
 
+  const openCaptureMood = useCallback(() => {
+    navigation.navigate('CaptureMood');
+  }, [navigation]);
+
   const openCaptureActivity = useCallback(() => {
     navigation.navigate('CaptureActivity');
   }, [navigation]);
@@ -1973,7 +1994,7 @@ export function useMapScreenController() {
   }, [navigation]);
 
   const handleCaptureNote = useCallback(() => {
-    navigation.navigate('CaptureNote');
+    navigation.navigate('Diary');
   }, [navigation]);
 
   useEffect(() => {
@@ -2025,6 +2046,7 @@ export function useMapScreenController() {
       showMomentsBar,
       momentsBarBottom,
       openCaptureVoice,
+      openCaptureMood,
       openCaptureActivity,
       handleCaptureCamera,
       handleCaptureNote,
@@ -2077,9 +2099,11 @@ export function useMapScreenController() {
       onRegionChangeComplete,
       onPanDrag,
       currentVisitMomentCounts,
+      currentVisitMomentPreviews,
       dayMomentMapPins,
       historyMomentMapPins,
       selectedEntryMomentCounts,
+      selectedEntryMomentPreviews,
       showUserLocation,
       currentOpenVisit,
       currentOpenDrive,
@@ -2151,6 +2175,7 @@ export function useMapScreenController() {
       showMomentsBar,
       momentsBarBottom,
       openCaptureVoice,
+      openCaptureMood,
       openCaptureActivity,
       handleCaptureCamera,
       handleCaptureNote,
@@ -2201,9 +2226,11 @@ export function useMapScreenController() {
       onRegionChangeComplete,
       onPanDrag,
       currentVisitMomentCounts,
+      currentVisitMomentPreviews,
       dayMomentMapPins,
       historyMomentMapPins,
       selectedEntryMomentCounts,
+      selectedEntryMomentPreviews,
       showUserLocation,
       currentOpenVisit,
       currentOpenDrive,

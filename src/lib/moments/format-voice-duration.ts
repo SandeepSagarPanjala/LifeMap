@@ -14,6 +14,8 @@ export function isVoiceDurationAtCap(
   return ms >= capMs;
 }
 
-export function formatVoiceDurationCap(): string {
-  return formatVoiceDurationMs(VOICE_MAX_DURATION_MS);
+export function formatVoiceDurationCap(
+  capMs: number = VOICE_MAX_DURATION_MS,
+): string {
+  return formatVoiceDurationMs(capMs);
 }

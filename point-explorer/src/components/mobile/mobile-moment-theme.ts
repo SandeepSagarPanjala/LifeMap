@@ -8,7 +8,7 @@ export type MobileMomentTheme = {
 };
 
 export const MOBILE_MOMENT_THEMES: Record<
-  'camera' | 'voice' | 'note' | 'activity',
+  'camera' | 'voice' | 'note' | 'activity' | 'mood',
   MobileMomentTheme
 > = {
   camera: {
@@ -27,6 +27,10 @@ export const MOBILE_MOMENT_THEMES: Record<
     badgeBg: '#EAF7F1',
     icon: '#34C759',
   },
+  mood: {
+    badgeBg: '#FFF0F6',
+    icon: '#FF2D55',
+  },
 };
 
 export const MOBILE_MOMENT_CHIP_ORDER: readonly {
@@ -39,6 +43,7 @@ export const MOBILE_MOMENT_CHIP_ORDER: readonly {
   { type: 'voice', themeKey: 'voice', label: 'Voice moments' },
   { type: 'note', themeKey: 'note', label: 'Diary moments' },
   { type: 'activity', themeKey: 'activity', label: 'Activity moments' },
+  { type: 'mood', themeKey: 'mood', label: 'Mood moments' },
 ];
 
 export function hasMobileMomentCounts(
@@ -52,6 +57,7 @@ export function hasMobileMomentCounts(
     counts.video > 0 ||
     counts.voice > 0 ||
     counts.note > 0 ||
-    counts.activity > 0
+    counts.activity > 0 ||
+    counts.mood > 0
   );
 }

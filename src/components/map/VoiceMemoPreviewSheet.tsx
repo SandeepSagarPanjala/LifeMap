@@ -11,7 +11,6 @@ import {
   Alert,
   Keyboard,
   Platform,
-  Pressable,
   StyleSheet,
   View,
 } from 'react-native';
@@ -22,6 +21,7 @@ import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
+import { GlassPressable } from '@/components/glass/GlassPressable';
 import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
 import { VoicePlaybackMeter } from '@/components/voice/VoiceMeter';
 import { Text } from '@/components/ui/text';
@@ -321,15 +321,16 @@ export function VoiceMemoPreviewSheet({
                   )}
                 </MapGlassCircleButton>
 
-                <View style={styles.shadowWrap}>
+                <GlassPressable
+                  accessibilityLabel="Save voice memo"
+                  disabled={saving}
+                  onPress={() => {
+                    void handleSave();
+                  }}
+                  style={styles.shadowWrap}
+                >
                   <AdaptiveGlassSurface style={styles.pill}>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Save voice memo"
-                      disabled={saving}
-                      onPress={() => {
-                        void handleSave();
-                      }}
+                    <View
                       style={[
                         styles.savePressable,
                         saving ? styles.saveDisabled : null,
@@ -354,9 +355,9 @@ export function VoiceMemoPreviewSheet({
                           </Text>
                         </>
                       )}
-                    </Pressable>
+                    </View>
                   </AdaptiveGlassSurface>
-                </View>
+                </GlassPressable>
 
                 <MapGlassCircleButton
                   accessibilityLabel="Close"

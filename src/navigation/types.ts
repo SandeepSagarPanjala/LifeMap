@@ -15,7 +15,9 @@ export type RootStackParamList = {
   RestoreBackup:
     | { source?: 'install' | 'settings' | 'drive'; preview?: boolean }
     | undefined;
+  Diary: undefined;
   CaptureNote: undefined;
+  CaptureMood: undefined;
   CapturePhoto: undefined;
   CaptureVoice: undefined;
   CaptureActivity: undefined;

@@ -27,6 +27,7 @@ export async function saveVideoMoment(
   caption?: string | null,
   onProgress?: (update: SaveVideoMomentProgress) => void,
   tags?: readonly string[] | null,
+  mood?: { moodLabel: string; moodVariant: string } | null,
 ): Promise<MomentRow> {
   if (isVideoRecordingTooShort(durationMs)) {
     throw new Error('Video is too short to save.');
@@ -60,6 +61,9 @@ export async function saveVideoMoment(
     MOMENT_VIDEO_FILE_EXTENSION,
   );
 
+  const moodLabel = mood?.moodLabel.trim() || null;
+  const moodVariant = mood?.moodVariant.trim() || null;
+
   try {
     const row = await insertMoment({
       type: 'video',
@@ -69,6 +73,8 @@ export async function saveVideoMoment(
       contentFormat: VIDEO_CONTENT_FORMAT,
       caption: caption?.trim() || null,
       tagsJson: serializeMomentTagsJson(tags),
+      moodLabel,
+      moodVariant,
     });
     scheduleMomentThumbnailGeneration(row);
     return row;

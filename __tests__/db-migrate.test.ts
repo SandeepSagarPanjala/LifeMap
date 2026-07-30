@@ -8,7 +8,7 @@ import {
 describe('database migrations', () => {
   it('loads bundled sqlite migrations in journal order', () => {
     const prepared = prepareMigrations();
-    expect(prepared).toHaveLength(37);
+    expect(prepared).toHaveLength(39);
     expect(prepared[0]?.tag).toBe('0000_init');
     expect(prepared[0]?.sql[0]).toContain('CREATE TABLE `location_points`');
     expect(prepared[6]?.tag).toBe('0006_moments_mood');

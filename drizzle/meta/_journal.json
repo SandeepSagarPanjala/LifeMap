@@ -260,6 +260,20 @@
       "when": 1788928000000,
       "tag": "0036_activity_definitions",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1788929000000,
+      "tag": "0037_moment_mood_reason_variant",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1788930000000,
+      "tag": "0038_moment_type_mood_voice_transcript",
+      "breakpoints": true
     }
   ]
 }

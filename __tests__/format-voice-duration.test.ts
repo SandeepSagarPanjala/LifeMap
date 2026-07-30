@@ -25,4 +25,8 @@ describe('formatVoiceDurationCap', () => {
   it('matches the configured max duration label', () => {
     expect(formatVoiceDurationCap()).toBe('5:00');
   });
+
+  it('formats an optional custom cap', () => {
+    expect(formatVoiceDurationCap(60_000)).toBe('1:00');
+  });
 });

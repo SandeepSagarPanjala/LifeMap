@@ -1,7 +1,6 @@
 import { ChevronLeft, ChevronRight, X } from 'lucide-react-native';
 import {
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   View,
@@ -10,6 +9,7 @@ import {
 } from 'react-native';
 
 import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
+import { GlassPressable } from '@/components/glass/GlassPressable';
 import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import {
@@ -73,13 +73,12 @@ export function MapDateLabel({
         style={[styles.wrap, { top, height: MAP_SETTINGS_SIZE }]}
       >
         {onPressLabel ? (
-          <Pressable
-            accessibilityRole="button"
+          <GlassPressable
             accessibilityLabel="Choose date"
             onPress={onPressLabel}
           >
             {glassPill}
-          </Pressable>
+          </GlassPressable>
         ) : (
           glassPill
         )}
@@ -124,13 +123,12 @@ export function MapDateLabel({
           />
         </MapGlassCircleButton>
 
-        <Pressable
-          accessibilityRole="button"
+        <GlassPressable
           accessibilityLabel="Choose date"
-          onPress={onPressLabel}
+          onPress={() => onPressLabel?.()}
         >
           {glassPill}
-        </Pressable>
+        </GlassPressable>
 
         <MapGlassCircleButton
           accessibilityLabel="Next day"

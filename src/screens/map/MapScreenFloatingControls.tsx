@@ -36,6 +36,7 @@ export const MapScreenFloatingControls = memo(
       handleToggleHistoryPanel,
       handleCaptureCamera,
       openCaptureVoice,
+      openCaptureMood,
       openCaptureActivity,
       handleCaptureNote,
       openSettings,
@@ -94,6 +95,7 @@ export const MapScreenFloatingControls = memo(
             onVoice={openCaptureVoice}
             onNote={handleCaptureNote}
             onActivity={openCaptureActivity}
+            onMood={openCaptureMood}
             onYou={openYou}
           />
         ) : null}

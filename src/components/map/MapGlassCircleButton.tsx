@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import {
   Platform,
-  Pressable,
   StyleSheet,
   View,
   type StyleProp,
@@ -9,6 +8,7 @@ import {
 } from 'react-native';
 
 import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
+import { GlassPressable } from '@/components/glass/GlassPressable';
 import { MAP_STACK_BUTTON_SIZE } from '@/lib/app-constants';
 
 type MapGlassCircleButtonProps = {
@@ -22,6 +22,8 @@ type MapGlassCircleButtonProps = {
   active?: boolean;
   /** Soft tint wash for close / warning controls. */
   tint?: 'none' | 'danger' | 'warning';
+  /** Quick grow/release feedback. Enabled by default. */
+  animate?: boolean;
   children: ReactNode;
 };
 
@@ -39,6 +41,7 @@ export function MapGlassCircleButton({
   style,
   active = false,
   tint = 'none',
+  animate = true,
   children,
 }: MapGlassCircleButtonProps) {
   const washStyle =
@@ -51,18 +54,27 @@ export function MapGlassCircleButton({
           : null;
 
   return (
-    <Pressable
-      accessibilityRole="button"
+    <GlassPressable
       accessibilityLabel={accessibilityLabel}
       disabled={disabled}
       onPress={onPress}
       hitSlop={6}
+      animate={animate}
       style={[styles.wrap, { width: size, height: size }, style]}
     >
-      {({ pressed }) => (
-        <View
+      <View
+        style={[
+          styles.shadow,
+          {
+            width: size,
+            height: size,
+            borderRadius: size / 2,
+          },
+        ]}
+      >
+        <AdaptiveGlassSurface
           style={[
-            styles.shadow,
+            styles.surface,
             {
               width: size,
               height: size,
@@ -70,32 +82,18 @@ export function MapGlassCircleButton({
             },
           ]}
         >
-          <AdaptiveGlassSurface
+          {washStyle ? <View pointerEvents="none" style={washStyle} /> : null}
+          <View
             style={[
-              styles.surface,
-              {
-                width: size,
-                height: size,
-                borderRadius: size / 2,
-              },
+              styles.content,
+              disabled ? styles.contentDisabled : null,
             ]}
           >
-            {washStyle ? (
-              <View pointerEvents="none" style={washStyle} />
-            ) : null}
-            <View
-              style={[
-                styles.content,
-                disabled ? styles.contentDisabled : null,
-                pressed && !disabled ? styles.contentPressed : null,
-              ]}
-            >
-              {children}
-            </View>
-          </AdaptiveGlassSurface>
-        </View>
-      )}
-    </Pressable>
+            {children}
+          </View>
+        </AdaptiveGlassSurface>
+      </View>
+    </GlassPressable>
   );
 }
 
@@ -127,9 +125,6 @@ const styles = StyleSheet.create({
   },
   contentDisabled: {
     opacity: 0.45,
-  },
-  contentPressed: {
-    opacity: 0.85,
   },
   activeWash: {
     ...StyleSheet.absoluteFillObject,

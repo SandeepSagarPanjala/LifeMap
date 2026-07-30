@@ -36,6 +36,7 @@ import {
 } from 'react-native-system-emoji-picker';
 
 import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
+import { GlassPressable } from '@/components/glass/GlassPressable';
 import { ActivityFieldsEditor } from '@/components/map/ActivityFieldsEditor';
 import type { ActivityFieldsEditorHandle } from '@/components/map/ActivityFieldsEditor';
 import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
@@ -754,14 +755,13 @@ export function ActivityLogSheet({
           ]}
         >
           <View style={styles.barRow}>
-            <View style={styles.shadowWrap}>
+            <GlassPressable
+              accessibilityLabel="Manage activities"
+              onPress={onBeginManage}
+              style={styles.shadowWrap}
+            >
               <AdaptiveGlassSurface style={styles.pill}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Manage activities"
-                  onPress={onBeginManage}
-                  style={styles.managePressable}
-                >
+                <View style={styles.managePressable}>
                   <Pencil
                     size={16}
                     color={colors.primary}
@@ -772,9 +772,9 @@ export function ActivityLogSheet({
                   >
                     Manage activities
                   </Text>
-                </Pressable>
+                </View>
               </AdaptiveGlassSurface>
-            </View>
+            </GlassPressable>
 
             <MapGlassCircleButton
               accessibilityLabel="Close"

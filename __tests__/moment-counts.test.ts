@@ -6,8 +6,9 @@ import {
   emptyMomentCounts,
   filterMomentsForEntry,
   filterMomentsForStayEntry,
+  latestMomentCountPreviews,
   shouldHideSavedPlaceMomentCluster,
-  firstMomentIndexOfType,
+  latestMomentIndexOfType,
 } from '../src/lib/moments/moment-counts';
 import type { MomentRow } from '../src/db/repositories/moments';
 import type { SavedPlaceRow } from '../src/db/repositories/saved-places';
@@ -68,7 +69,7 @@ describe('moment counts', () => {
           timestamp: new Date('2026-06-08T15:30:00.000Z'),
         }),
       ]),
-    ).toEqual({ photo: 2, video: 0, voice: 1, note: 1, activity: 0 });
+    ).toEqual({ photo: 2, video: 0, voice: 1, note: 1, activity: 0, mood: 0 });
   });
 
   it('counts moments inside a visit entry', () => {
@@ -93,7 +94,7 @@ describe('moment counts', () => {
       video: 0,
       voice: 0,
       note: 0,
-      activity: 0,
+      activity: 0, mood: 0,
     });
   });
 
@@ -188,7 +189,7 @@ describe('moment counts', () => {
   });
 
   it('hides the saved-place cluster when the stay callout already shows moments', () => {
-    const counts = { photo: 3, video: 0, voice: 1, note: 1, activity: 0 };
+    const counts = { photo: 3, video: 0, voice: 1, note: 1, activity: 0, mood: 0 };
     expect(shouldHideSavedPlaceMomentCluster(7, 7, counts)).toBe(true);
     expect(shouldHideSavedPlaceMomentCluster(7, 8, counts)).toBe(false);
     expect(shouldHideSavedPlaceMomentCluster(7, 7, emptyMomentCounts())).toBe(
@@ -308,7 +309,7 @@ describe('moment counts', () => {
       video: 0,
       voice: 0,
       note: 0,
-      activity: 0,
+      activity: 0, mood: 0,
     });
     expect(countMomentsForStayEntry(moments, eveningStay, stayOptions)).toEqual(
       {
@@ -316,7 +317,7 @@ describe('moment counts', () => {
         video: 0,
         voice: 1,
         note: 1,
-        activity: 0,
+        activity: 0, mood: 0,
       },
     );
     expect(
@@ -408,7 +409,7 @@ describe('moment counts', () => {
       video: 0,
       voice: 1,
       note: 1,
-      activity: 0,
+      activity: 0, mood: 0,
     });
     expect(
       countMomentsForStayEntry(moments, eveningStay, visitOptions),
@@ -417,13 +418,13 @@ describe('moment counts', () => {
       video: 0,
       voice: 0,
       note: 0,
-      activity: 0,
+      activity: 0, mood: 0,
     });
   });
 });
 
-describe('firstMomentIndexOfType', () => {
-  it('returns the index of the first moment matching the type', () => {
+describe('latestMomentIndexOfType', () => {
+  it('returns the index of the latest moment matching the type', () => {
     const moments = [
       moment({
         id: 1,
@@ -440,10 +441,110 @@ describe('firstMomentIndexOfType', () => {
         type: 'note',
         timestamp: new Date('2026-06-21T10:00:00Z'),
       }),
+      moment({
+        id: 4,
+        type: 'photo',
+        timestamp: new Date('2026-06-21T11:00:00Z'),
+      }),
     ];
 
-    expect(firstMomentIndexOfType(moments, 'note')).toBe(2);
-    expect(firstMomentIndexOfType(moments, 'photo')).toBe(0);
-    expect(firstMomentIndexOfType(moments, 'video')).toBe(-1);
+    expect(latestMomentIndexOfType(moments, 'photo')).toBe(3);
+    expect(latestMomentIndexOfType(moments, 'note')).toBe(2);
+    expect(latestMomentIndexOfType(moments, 'video')).toBe(-1);
+  });
+
+  it('uses timestamps rather than array position', () => {
+    const moments = [
+      moment({
+        id: 1,
+        type: 'mood',
+        timestamp: new Date('2026-06-21T18:00:00Z'),
+      }),
+      moment({
+        id: 2,
+        type: 'mood',
+        timestamp: new Date('2026-06-21T09:00:00Z'),
+      }),
+    ];
+
+    expect(latestMomentIndexOfType(moments, 'mood')).toBe(0);
+  });
+
+  it('picks latest rich previews and ignores diary/voice', () => {
+    const previews = latestMomentCountPreviews([
+      moment({
+        id: 1,
+        type: 'photo',
+        timestamp: new Date('2026-06-08T14:00:00.000Z'),
+        thumbnailPath: 'moments/old-photo-thumb.jpg',
+      }),
+      moment({
+        id: 2,
+        type: 'photo',
+        timestamp: new Date('2026-06-08T15:00:00.000Z'),
+        thumbnailPath: 'moments/new-photo-thumb.jpg',
+      }),
+      moment({
+        id: 3,
+        type: 'video',
+        timestamp: new Date('2026-06-08T14:30:00.000Z'),
+        thumbnailPath: 'moments/video-thumb.jpg',
+      }),
+      moment({
+        id: 4,
+        type: 'activity',
+        timestamp: new Date('2026-06-08T14:10:00.000Z'),
+        activityEmoji: '☕',
+      }),
+      moment({
+        id: 5,
+        type: 'activity',
+        timestamp: new Date('2026-06-08T15:10:00.000Z'),
+        activityEmoji: '🏃',
+      }),
+      moment({
+        id: 6,
+        type: 'mood',
+        timestamp: new Date('2026-06-08T14:20:00.000Z'),
+        moodLabel: 'Calm',
+        moodVariant: 'cat',
+      }),
+      moment({
+        id: 7,
+        type: 'mood',
+        timestamp: new Date('2026-06-08T15:20:00.000Z'),
+        moodLabel: 'Joyful',
+        moodVariant: 'dog',
+      }),
+      moment({
+        id: 8,
+        type: 'note',
+        timestamp: new Date('2026-06-08T15:30:00.000Z'),
+      }),
+      moment({
+        id: 9,
+        type: 'voice',
+        timestamp: new Date('2026-06-08T15:40:00.000Z'),
+      }),
+    ]);
+
+    expect(previews.photoThumbUri).toContain('moments/new-photo-thumb.jpg');
+    expect(previews.videoThumbUri).toContain('moments/video-thumb.jpg');
+    expect(previews.activityEmoji).toBe('🏃');
+    expect(previews.moodLabel).toBe('Joyful');
+    expect(previews.moodVariant).toBe('dog');
+  });
+
+  it('leaves photo preview null when thumbnail is missing', () => {
+    const previews = latestMomentCountPreviews([
+      moment({
+        id: 1,
+        type: 'photo',
+        timestamp: new Date('2026-06-08T14:00:00.000Z'),
+        contentPath: 'moments/full.jpg',
+        thumbnailPath: null,
+      }),
+    ]);
+    expect(previews.photoThumbUri).toBeNull();
   });
 });
