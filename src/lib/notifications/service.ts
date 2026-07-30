@@ -129,7 +129,7 @@ export async function scheduleActivityReminder(
   const trigger = withAndroidAlarm({
     type: TriggerType.TIMESTAMP,
     timestamp: next.getTime(),
-    ...(repeatFrequency != null ? { repeatFrequency } : null),
+    ...(repeatFrequency != null ? { repeatFrequency } : {}),
   } as TimestampTrigger);
 
   await notifee.createTriggerNotification(
