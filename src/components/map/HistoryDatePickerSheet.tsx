@@ -57,12 +57,15 @@ export function HistoryDatePickerPanel({
 
   const syncVisibleMonth = useCallback(() => {
     const month = startOfMonth(parseDateKey(selectedDateKey));
-    setVisibleMonth(
+    const clamped =
       month < earliestMonth
         ? earliestMonth
         : month > todayMonth
         ? todayMonth
-        : month,
+        : month;
+    // Compare by time: a fresh Date with the same month would still re-render.
+    setVisibleMonth(current =>
+      current.getTime() === clamped.getTime() ? current : clamped,
     );
   }, [earliestMonth, selectedDateKey, todayMonth]);
 

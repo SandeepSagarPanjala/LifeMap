@@ -37,6 +37,7 @@ import { CachedPlaceMapScreen } from '@/screens/settings/CachedPlaceMapScreen';
 import { StorageSettingsScreen } from '@/screens/settings/StorageSettingsScreen';
 import { ThemeSettingsScreen } from '@/screens/settings/ThemeSettingsScreen';
 import { NotificationsSettingsScreen } from '@/screens/settings/NotificationsSettingsScreen';
+import { HealthSettingsScreen } from '@/screens/settings/HealthSettingsScreen';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { setWidgetNavigationRef } from '@/lib/widget/widget-deep-link';
 import { setNotificationNavigationRef } from '@/lib/notifications/bootstrap';
@@ -161,6 +162,11 @@ export function RootNavigator() {
           name="NotificationsSettings"
           component={NotificationsSettingsScreen}
           options={settingsSubScreenOptions('Notifications')}
+        />
+        <Stack.Screen
+          name="HealthSettings"
+          component={HealthSettingsScreen}
+          options={settingsSubScreenOptions('Apple Health')}
         />
         <Stack.Screen
           name="DeveloperSettings"

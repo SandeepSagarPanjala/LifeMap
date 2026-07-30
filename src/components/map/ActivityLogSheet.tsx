@@ -253,6 +253,7 @@ export function ActivityForm({
   labelInputRef,
   openEmojiRef,
   belowLabel,
+  lockFields = false,
 }: {
   emoji: string;
   label: string;
@@ -276,6 +277,8 @@ export function ActivityForm({
   labelInputRef?: RefObject<any>;
   openEmojiRef?: RefObject<ActivityEmojiPickerHandle | null>;
   belowLabel?: ReactNode;
+  /** HealthKit definitions: hide Advanced field editing. */
+  lockFields?: boolean;
 }) {
   const LabelInput = sheetInputs ? BottomSheetTextInput : TextInput;
   const canSave = emoji.trim().length > 0 && label.trim().length > 0 && !saving;
@@ -524,13 +527,19 @@ export function ActivityForm({
           onSubmitEditing={Keyboard.dismiss}
         />
         {belowLabel}
-        <ActivityFieldsEditor
-          ref={fieldsEditorRef}
-          fields={fields}
-          onChangeFields={onChangeFields}
-          sheetInputs={sheetInputs}
-          onInputFocus={handleInputFocus}
-        />
+        {lockFields ? (
+          <Text style={styles.healthFieldsHint}>
+            Fields come from Apple Health and can’t be changed.
+          </Text>
+        ) : (
+          <ActivityFieldsEditor
+            ref={fieldsEditorRef}
+            fields={fields}
+            onChangeFields={onChangeFields}
+            sheetInputs={sheetInputs}
+            onInputFocus={handleInputFocus}
+          />
+        )}
       </View>
     </>
   );
@@ -997,6 +1006,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#3A3A3C',
+  },
+  healthFieldsHint: {
+    marginTop: 16,
+    fontSize: 13,
+    lineHeight: 18,
+    color: '#8E8E93',
   },
   input: {
     borderWidth: StyleSheet.hairlineWidth,

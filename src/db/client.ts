@@ -5,6 +5,7 @@ import {
   runMigrations,
   ensureActivityDefinitionColumns,
   ensureActivityReminderColumns,
+  ensureHealthKitTables,
   ensureMaterializedDayGeometryColumn,
   ensureMaterializedDayExcludedDriveColumn,
   ensureMomentThumbnailPathColumn,
@@ -66,6 +67,7 @@ async function initDatabase(): Promise<{ db: Database; sqlite: DB }> {
   await ensureMomentTagsJsonColumn(sqlite);
   await ensureActivityDefinitionColumns(sqlite);
   await ensureActivityReminderColumns(sqlite);
+  await ensureHealthKitTables(sqlite);
   await ensureMaterializedDayGeometryColumn(sqlite);
   await ensureMaterializedDayExcludedDriveColumn(sqlite);
   await ensureVisitLabelOverrideAnchorColumns(sqlite);

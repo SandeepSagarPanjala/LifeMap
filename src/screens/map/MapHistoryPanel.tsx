@@ -73,6 +73,7 @@ export const MapHistoryPanel = memo(function MapHistoryPanel({
         : null;
     return selected?.source === 'user' ? selected.name : '';
   }, [placeLabelEditDisplay.candidates, placeLabelEditDisplay.selectedPoiId]);
+
   const eventSelected = selectedHistoryIndex >= 0 && selectedEntry != null;
   const pickerVisible = showPlaceLabelCard && !customLabelOpen;
 

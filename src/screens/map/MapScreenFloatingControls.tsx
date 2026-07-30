@@ -1,11 +1,23 @@
 import { memo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import {
+  MapHealthMetricChip,
+  MAP_HEALTH_CHIP_HEIGHT,
+  mapHealthChipBottom,
+} from '@/components/map/MapHealthMetricChip';
 import { MapHistoryButton } from '@/components/map/MapHistoryButton';
 import { MapLocateButton } from '@/components/map/MapLocateButton';
 import { MapMomentsGlassBar } from '@/components/map/MapMomentsGlassBar';
 import { MapSettingsButton } from '@/components/map/MapSettingsButton';
 import { MapPlacesButton } from '@/components/map/MapPlacesButton';
+import { useDayHealthChips } from '@/hooks/use-day-health-chips';
+import {
+  MAP_SETTINGS_SIZE,
+  MAP_SETTINGS_STACK_GAP,
+  MAP_STACK_BUTTON_GAP,
+  MAP_STACK_BUTTON_SIZE,
+} from '@/lib/app-constants';
 
 import type { MapScreenController } from './use-map-screen-controller';
 
@@ -45,20 +57,68 @@ export const MapScreenFloatingControls = memo(
       showLocateFitSplit,
       trackingGapWarning,
       emptySelectedDayMessage,
+      selectedDateKey,
     } = controller;
 
+    const health = useDayHealthChips(selectedDateKey);
     const historyPanelActive = historyPanelOpen;
     const showTodayControls = viewingToday && !historyPanelActive;
     const showHistoryButton = !historyPanelActive;
     const showSettingsButton = !historyPanelActive;
-    const messageAnchorBottom = viewingToday
-      ? placesButtonBottom + 64
-      : historyButtonBottom + 64;
+
+    const showStepsChip =
+      showHistoryButton && health.masterOn && health.stepsEnabled;
+    const showSleepChip =
+      showHistoryButton && health.masterOn && health.sleepEnabled;
+    const healthMetricsActive =
+      health.masterOn && (health.sleepEnabled || health.stepsEnabled);
+    const placesUnderSettings = healthMetricsActive;
+
+    const stepsChipBottom = showStepsChip
+      ? mapHealthChipBottom(historyButtonBottom, 0)
+      : null;
+    const sleepChipBottom = showSleepChip
+      ? mapHealthChipBottom(
+          historyButtonBottom,
+          showStepsChip ? 1 : 0,
+        )
+      : null;
+
+    const placesTop = placesUnderSettings
+      ? settingsButtonTop + MAP_SETTINGS_SIZE + MAP_SETTINGS_STACK_GAP
+      : null;
+
+    const leftStackAboveHistory =
+      (showStepsChip ? 1 : 0) + (showSleepChip ? 1 : 0);
+    const leftStackTop =
+      historyButtonBottom +
+      MAP_STACK_BUTTON_SIZE +
+      (leftStackAboveHistory > 0
+        ? MAP_STACK_BUTTON_GAP +
+          leftStackAboveHistory * MAP_HEALTH_CHIP_HEIGHT +
+          (leftStackAboveHistory - 1) * MAP_STACK_BUTTON_GAP
+        : 0) +
+      (!placesUnderSettings && showTodayControls
+        ? MAP_STACK_BUTTON_GAP + MAP_STACK_BUTTON_SIZE
+        : 0);
+
+    const messageAnchorBottom = Math.max(
+      leftStackTop + 20,
+      viewingToday ? placesButtonBottom + 64 : historyButtonBottom + 64,
+    );
 
     return (
       <View pointerEvents="box-none" style={styles.overlay}>
         {showSettingsButton ? (
           <MapSettingsButton top={settingsButtonTop} onPress={openSettings} />
+        ) : null}
+
+        {showTodayControls && placesUnderSettings && placesTop != null ? (
+          <MapPlacesButton
+            placement="right"
+            top={placesTop}
+            onPress={openSavedPlaces}
+          />
         ) : null}
 
         {showTodayControls ? (
@@ -77,7 +137,21 @@ export const MapScreenFloatingControls = memo(
             onPress={handleToggleHistoryPanel}
           />
         ) : null}
-        {showTodayControls ? (
+        {showStepsChip && stepsChipBottom != null ? (
+          <MapHealthMetricChip
+            kind="steps"
+            bottom={stepsChipBottom}
+            value={health.steps}
+          />
+        ) : null}
+        {showSleepChip && sleepChipBottom != null ? (
+          <MapHealthMetricChip
+            kind="sleep"
+            bottom={sleepChipBottom}
+            value={health.sleepMs}
+          />
+        ) : null}
+        {showTodayControls && !placesUnderSettings ? (
           <MapPlacesButton
             bottom={placesButtonBottom}
             onPress={openSavedPlaces}

@@ -10,6 +10,7 @@ export type RootStackParamList = {
   CachedPlaceMap: { cacheId: number };
   BackupSettings: undefined;
   NotificationsSettings: undefined;
+  HealthSettings: undefined;
   DeveloperSettings: undefined;
   ExportTripDays: undefined;
   ExportTripDetail: { dateKey: string; tripIndex: number };
