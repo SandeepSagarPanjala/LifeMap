@@ -284,6 +284,7 @@ export async function handleMotionChangePersist(
     await onPlaceArrivalForNotifications({
       latitude: location.coords.latitude,
       longitude: location.coords.longitude,
+      arrivedAt: locationTimestamp(location),
     });
   } catch {
     // Non-fatal

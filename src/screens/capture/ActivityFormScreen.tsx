@@ -339,13 +339,21 @@ export function ActivityFormScreen() {
     <View style={styles.notifyBlock}>
       <View style={styles.notifyRow}>
         <View style={styles.notifyTextCol}>
-          <Text style={styles.notifyLabel}>Notify me</Text>
+          <Text style={[styles.notifyLabel, { color: colors.foreground }]}>
+            Notify me
+          </Text>
           {reminderConfig.enabled ? (
-            <Text style={styles.notifySummary}>
+            <Text
+              style={[styles.notifySummary, { color: colors.mutedForeground }]}
+            >
               {formatActivityReminderSummary(reminderConfig)}
             </Text>
           ) : (
-            <Text style={styles.notifySummary}>Off</Text>
+            <Text
+              style={[styles.notifySummary, { color: colors.mutedForeground }]}
+            >
+              Off
+            </Text>
           )}
         </View>
         <Switch
@@ -537,12 +545,10 @@ const styles = StyleSheet.create({
   notifyLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
   },
   notifySummary: {
     marginTop: 2,
     fontSize: 13,
-    color: '#6B7280',
   },
   editReminderBtn: {
     marginTop: 8,

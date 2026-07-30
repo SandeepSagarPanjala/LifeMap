@@ -18,6 +18,7 @@ import {
   activityNotificationId,
   activityWeekdayNotificationId,
   type ActivityReminderConfig,
+  type PlaceNotifyMode,
   type ReminderSound,
 } from './types';
 
@@ -182,7 +183,7 @@ export async function schedulePlaceArrivalHold(input: {
   stayKey: string;
   fireAt: Date;
   placeLabel?: string | null;
-  mode: string;
+  mode: PlaceNotifyMode;
 }): Promise<void> {
   await ensureNotificationChannels();
   await cancelPlaceArrivalHold(input.stayKey);
