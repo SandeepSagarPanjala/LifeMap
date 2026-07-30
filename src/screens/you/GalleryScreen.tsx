@@ -1,6 +1,7 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Pressable,
   StyleSheet,
   Text,
   View,
@@ -8,9 +9,11 @@ import {
 import { FlashList } from '@shopify/flash-list';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Check, ListFilter } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GalleryDayBlock } from '@/components/gallery/GalleryDayBlock';
+import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
 import type { MomentRow } from '@/db/repositories/moments';
 import {
   useGalleryMoments,
@@ -18,11 +21,18 @@ import {
 } from '@/hooks/use-gallery-moments';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { warmHistoryForDay } from '@/lib/history-preload';
+import {
+  GALLERY_TYPE_FILTER_OPTIONS,
+  galleryTypeFilterLabel,
+  type GalleryTypeFilter,
+} from '@/lib/moments/gallery-type-filter';
 import { queueMomentPreview } from '@/lib/moments/moment-preview-navigation';
 import type { RootStackParamList } from '@/navigation/types';
 import {
   MAP_MOMENTS_BAR_GAP,
   MAP_MOMENTS_BAR_HEIGHT,
+  MAP_STACK_BUTTON_LEFT,
+  MAP_STACK_BUTTON_SIZE,
 } from '@/lib/app-constants';
 
 const SKELETON_COUNT = 4;
@@ -47,6 +57,21 @@ function GallerySkeleton({ color }: { color: string }) {
   );
 }
 
+function filterGallerySections(
+  sections: GalleryDaySection[],
+  typeFilter: GalleryTypeFilter,
+): GalleryDaySection[] {
+  if (typeFilter === 'all') {
+    return sections;
+  }
+  return sections
+    .map(section => ({
+      ...section,
+      moments: section.moments.filter(moment => moment.type === typeFilter),
+    }))
+    .filter(section => section.moments.length > 0);
+}
+
 export function GalleryScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
@@ -54,12 +79,17 @@ export function GalleryScreen() {
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { sections, loading, loadingMore, hasMore, loadMoreOlder } =
     useGalleryMoments();
+  const [typeFilter, setTypeFilter] = useState<GalleryTypeFilter>('all');
+  const [filterMenuOpen, setFilterMenuOpen] = useState(false);
 
+  const filterBottom = Math.max(insets.bottom, MAP_MOMENTS_BAR_GAP);
   const bottomPad =
-    Math.max(insets.bottom, MAP_MOMENTS_BAR_GAP) + MAP_MOMENTS_BAR_HEIGHT + 16;
+    filterBottom + MAP_MOMENTS_BAR_HEIGHT + 16;
 
-  // FlashList inverted: index 0 sits at the visual bottom → newest first.
-  const listData = sections;
+  const listData = useMemo(
+    () => filterGallerySections(sections, typeFilter),
+    [sections, typeFilter],
+  );
 
   const onPressMoment = useCallback(
     (section: GalleryDaySection, _moment: MomentRow, indexInDay: number) => {
@@ -86,6 +116,15 @@ export function GalleryScreen() {
     warmHistoryForDay(dateKey);
   }, []);
 
+  const onPressFilter = useCallback(() => {
+    setFilterMenuOpen(open => !open);
+  }, []);
+
+  const onSelectFilter = useCallback((filter: GalleryTypeFilter) => {
+    setTypeFilter(filter);
+    setFilterMenuOpen(false);
+  }, []);
+
   const renderItem = useCallback(
     ({ item }: { item: GalleryDaySection }) => (
       <GalleryDayBlock
@@ -109,17 +148,26 @@ export function GalleryScreen() {
     if (loading) {
       return null;
     }
+    const filteredEmpty = typeFilter !== 'all' && sections.length > 0;
     return (
       <View style={styles.empty}>
         <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-          No moments yet
+          {filteredEmpty ? 'No matching moments' : 'No moments yet'}
         </Text>
         <Text style={[styles.emptyBody, { color: colors.mutedForeground }]}>
-          Photos, videos, notes, voice memos, and activities will show up here.
+          {filteredEmpty
+            ? `Nothing in ${galleryTypeFilterLabel(typeFilter)} yet. Try another filter.`
+            : 'Photos, videos, notes, voice memos, and activities will show up here.'}
         </Text>
       </View>
     );
-  }, [colors.foreground, colors.mutedForeground, loading]);
+  }, [
+    colors.foreground,
+    colors.mutedForeground,
+    loading,
+    sections.length,
+    typeFilter,
+  ]);
 
   const onEndReached = useCallback(() => {
     if (hasMore && !loadingMore) {
@@ -127,7 +175,93 @@ export function GalleryScreen() {
     }
   }, [hasMore, loadMoreOlder, loadingMore]);
 
-  if (loading && listData.length === 0) {
+  const filterControls = (
+    <>
+      {filterMenuOpen ? (
+        <>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Close filter menu"
+            onPress={() => setFilterMenuOpen(false)}
+            style={styles.filterBackdrop}
+          />
+          <View
+            style={[
+              styles.filterMenu,
+              {
+                bottom: filterBottom + MAP_STACK_BUTTON_SIZE + 10,
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.filterMenuTitle,
+                { color: colors.mutedForeground },
+              ]}
+            >
+              Show moments
+            </Text>
+            {GALLERY_TYPE_FILTER_OPTIONS.map(option => {
+              const selected = option.value === typeFilter;
+              return (
+                <Pressable
+                  key={option.value}
+                  accessibilityRole="menuitem"
+                  accessibilityState={{ selected }}
+                  onPress={() => onSelectFilter(option.value)}
+                  style={[
+                    styles.filterMenuItem,
+                    selected
+                      ? { backgroundColor: colors.accent }
+                      : undefined,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.filterMenuItemLabel,
+                      {
+                        color: selected
+                          ? colors.primary
+                          : colors.cardForeground,
+                      },
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                  {selected ? (
+                    <Check
+                      size={17}
+                      color={colors.primary}
+                      strokeWidth={2.5}
+                    />
+                  ) : null}
+                </Pressable>
+              );
+            })}
+          </View>
+        </>
+      ) : null}
+      <View
+        pointerEvents="box-none"
+        style={[styles.filterSlot, { bottom: filterBottom }]}
+      >
+        <MapGlassCircleButton
+          accessibilityLabel={`Filter gallery, ${galleryTypeFilterLabel(typeFilter)}`}
+          onPress={onPressFilter}
+          style={styles.filterButton}
+        >
+          <ListFilter size={20} color={colors.primary} strokeWidth={2.25} />
+        </MapGlassCircleButton>
+        {typeFilter !== 'all' ? (
+          <View pointerEvents="none" style={styles.filterDot} />
+        ) : null}
+      </View>
+    </>
+  );
+
+  if (loading && sections.length === 0) {
     return (
       <View
         style={[
@@ -140,6 +274,7 @@ export function GalleryScreen() {
         ]}
       >
         <GallerySkeleton color={colors.border} />
+        {filterControls}
       </View>
     );
   }
@@ -171,6 +306,7 @@ export function GalleryScreen() {
           ) : null
         }
       />
+      {filterControls}
     </View>
   );
 }
@@ -197,6 +333,68 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingVertical: 16,
+  },
+  filterBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 20,
+  },
+  filterMenu: {
+    position: 'absolute',
+    left: MAP_STACK_BUTTON_LEFT,
+    zIndex: 21,
+    width: 190,
+    padding: 6,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  filterMenuTitle: {
+    paddingHorizontal: 10,
+    paddingTop: 7,
+    paddingBottom: 5,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  filterMenuItem: {
+    minHeight: 40,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  filterMenuItemLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  filterSlot: {
+    position: 'absolute',
+    left: MAP_STACK_BUTTON_LEFT,
+    zIndex: 22,
+    width: MAP_STACK_BUTTON_SIZE,
+    height: MAP_MOMENTS_BAR_HEIGHT,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterButton: {
+    width: MAP_STACK_BUTTON_SIZE,
+    height: MAP_STACK_BUTTON_SIZE,
+  },
+  filterDot: {
+    position: 'absolute',
+    top: 9,
+    right: 9,
+    width: 10,
+    height: 10,
+    borderRadius: 6,
+    backgroundColor: '#FF3B30',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+    zIndex: 2,
   },
   skeletonRoot: {
     paddingTop: 8,

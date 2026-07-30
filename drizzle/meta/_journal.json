@@ -274,6 +274,13 @@
       "when": 1788930000000,
       "tag": "0038_moment_type_mood_voice_transcript",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1788931000000,
+      "tag": "0039_activity_reminders",
+      "breakpoints": true
     }
   ]
 }

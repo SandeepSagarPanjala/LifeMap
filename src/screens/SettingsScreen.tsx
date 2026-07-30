@@ -115,6 +115,14 @@ export function SettingsScreen() {
       <SettingsGroupLabel title="Tracking" />
       <TrackingSettings />
 
+      <SettingsGroupLabel title="Notifications" />
+      <SettingsGroup>
+        <SettingsLinkRow
+          label="Notifications"
+          onPress={() => navigation.navigate('NotificationsSettings')}
+        />
+      </SettingsGroup>
+
       <SettingsGroupLabel title="Information" />
       <SettingsGroup>
         <SettingsLinkRow

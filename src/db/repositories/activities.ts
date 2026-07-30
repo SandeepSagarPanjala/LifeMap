@@ -1,4 +1,4 @@
-import { asc, eq, isNull, sql } from 'drizzle-orm';
+import { asc, count, eq, isNull, sql } from 'drizzle-orm';
 
 import {
   ACTIVITY_SCHEMA_VERSION,
@@ -9,9 +9,18 @@ import {
   definitionFromActivityRow,
   parseActivityFieldsJson,
 } from '@/lib/activities/activity-definition';
+import {
+  cancelActivityReminder,
+} from '@/lib/notifications/service';
+import {
+  isReminderRepeat,
+  isReminderSound,
+  type ReminderRepeat,
+  type ReminderSound,
+} from '@/lib/notifications/types';
 
 import { getDatabase } from '../client';
-import { activities } from '../schema';
+import { activities, moments } from '../schema';
 
 export type ActivityRow = {
   id: number;
@@ -25,6 +34,13 @@ export type ActivityRow = {
   templateId: string | null;
   definitionJson: string;
   fields: ActivityFieldDefinition[];
+  reminderEnabled: boolean;
+  reminderRepeat: ReminderRepeat;
+  reminderTimeMinutes: number | null;
+  reminderWeekday: number | null;
+  reminderDayOfMonth: number | null;
+  reminderAnchorAt: Date | null;
+  reminderSound: ReminderSound;
 };
 
 export type NewActivity = {
@@ -36,6 +52,16 @@ export type NewActivity = {
   schemaVersion?: number;
 };
 
+export type ActivityReminderPatch = {
+  reminderEnabled: boolean;
+  reminderRepeat: ReminderRepeat;
+  reminderTimeMinutes: number;
+  reminderWeekday: number;
+  reminderDayOfMonth: number;
+  reminderAnchorAt: Date | null;
+  reminderSound: ReminderSound;
+};
+
 function mapSource(value: string | null | undefined): ActivityDefinitionSource {
   if (value === 'yaml' || value === 'catalog' || value === 'blank') {
     return value;
@@ -45,6 +71,8 @@ function mapSource(value: string | null | undefined): ActivityDefinitionSource {
 
 function mapRow(row: typeof activities.$inferSelect): ActivityRow {
   const definitionJson = row.definitionJson ?? '[]';
+  const repeatRaw = row.reminderRepeat ?? 'never';
+  const soundRaw = row.reminderSound ?? 'ding';
   return {
     id: row.id,
     emoji: row.emoji,
@@ -57,6 +85,13 @@ function mapRow(row: typeof activities.$inferSelect): ActivityRow {
     templateId: row.templateId ?? null,
     definitionJson,
     fields: parseActivityFieldsJson(definitionJson),
+    reminderEnabled: Boolean(row.reminderEnabled),
+    reminderRepeat: isReminderRepeat(repeatRaw) ? repeatRaw : 'never',
+    reminderTimeMinutes: row.reminderTimeMinutes ?? null,
+    reminderWeekday: row.reminderWeekday ?? null,
+    reminderDayOfMonth: row.reminderDayOfMonth ?? null,
+    reminderAnchorAt: row.reminderAnchorAt ?? null,
+    reminderSound: isReminderSound(soundRaw) ? soundRaw : 'ding',
   };
 }
 
@@ -139,12 +174,69 @@ export async function updateActivity(
   return rows[0] ? mapRow(rows[0]) : null;
 }
 
+export async function updateActivityReminder(
+  id: number,
+  patch: ActivityReminderPatch,
+): Promise<ActivityRow | null> {
+  const db = await getDatabase();
+  const rows = await db
+    .update(activities)
+    .set({
+      reminderEnabled: patch.reminderEnabled,
+      reminderRepeat: patch.reminderRepeat,
+      reminderTimeMinutes: patch.reminderTimeMinutes,
+      reminderWeekday: patch.reminderWeekday,
+      reminderDayOfMonth: patch.reminderDayOfMonth,
+      reminderAnchorAt: patch.reminderAnchorAt,
+      reminderSound: patch.reminderSound,
+    })
+    .where(eq(activities.id, id))
+    .returning();
+  return rows[0] ? mapRow(rows[0]) : null;
+}
+
+export async function clearActivityReminder(id: number): Promise<void> {
+  const db = await getDatabase();
+  await db
+    .update(activities)
+    .set({
+      reminderEnabled: false,
+    })
+    .where(eq(activities.id, id));
+  await cancelActivityReminder(id);
+}
+
+export async function countMomentsForActivity(
+  activityId: number,
+): Promise<number> {
+  const db = await getDatabase();
+  const rows = await db
+    .select({ value: count() })
+    .from(moments)
+    .where(eq(moments.activityId, activityId));
+  return Number(rows[0]?.value ?? 0);
+}
+
 export async function archiveActivity(id: number): Promise<void> {
   const db = await getDatabase();
   await db
     .update(activities)
-    .set({ archivedAt: new Date() })
+    .set({ archivedAt: new Date(), reminderEnabled: false })
     .where(eq(activities.id, id));
+  await cancelActivityReminder(id);
+}
+
+/** Hard-delete when never logged; otherwise archive (soft-delete). */
+export async function deleteOrArchiveActivity(id: number): Promise<'deleted' | 'archived'> {
+  const logged = await countMomentsForActivity(id);
+  if (logged > 0) {
+    await archiveActivity(id);
+    return 'archived';
+  }
+  await cancelActivityReminder(id);
+  const db = await getDatabase();
+  await db.delete(activities).where(eq(activities.id, id));
+  return 'deleted';
 }
 
 export async function reorderActivities(orderedIds: number[]): Promise<void> {

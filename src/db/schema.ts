@@ -50,6 +50,20 @@ export const activities = sqliteTable('activities', {
   source: text('source').notNull().default('blank'),
   templateId: text('template_id'),
   definitionJson: text('definition_json').notNull().default('[]'),
+  /** Local reminder — config in DB; schedule lives in the OS. */
+  reminderEnabled: integer('reminder_enabled', { mode: 'boolean' })
+    .notNull()
+    .default(false),
+  reminderRepeat: text('reminder_repeat').notNull().default('never'),
+  /** Minutes from local midnight (0–1439). */
+  reminderTimeMinutes: integer('reminder_time_minutes'),
+  /** 0 = Sunday … 6 = Saturday (weekly). */
+  reminderWeekday: integer('reminder_weekday'),
+  /** 1–31 (monthly). */
+  reminderDayOfMonth: integer('reminder_day_of_month'),
+  /** First/one-shot fire date (never / monthly anchor). */
+  reminderAnchorAt: integer('reminder_anchor_at', { mode: 'timestamp' }),
+  reminderSound: text('reminder_sound').notNull().default('ding'),
 });
 
 export const moments = sqliteTable(

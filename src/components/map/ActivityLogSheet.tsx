@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
   type ComponentRef,
+  type ReactNode,
   type RefObject,
 } from 'react';
 import { APP_COPY, errorMessageOr } from '@/lib/app-copy';
@@ -37,6 +38,7 @@ import {
 
 import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
 import { GlassPressable } from '@/components/glass/GlassPressable';
+import { ActivityEmojiOrb } from '@/components/map/ActivityEmojiOrb';
 import { ActivityFieldsEditor } from '@/components/map/ActivityFieldsEditor';
 import type { ActivityFieldsEditorHandle } from '@/components/map/ActivityFieldsEditor';
 import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
@@ -54,11 +56,12 @@ import {
   type ActivityRow,
 } from '@/db/repositories/activities';
 import type { ActivityFieldDefinition } from '@/lib/activities/activity-definition';
+import { ACTIVITY_TINT_ONE_TAP } from '@/lib/activities/activity-tile-style';
 import { saveActivityMoment } from '@/lib/moments/capture-activity';
 
 const GRID_COLUMNS = 4;
 const GRID_GAP = 12;
-const ACTIVITY_TINT = '#F0FDF4';
+const ACTIVITY_TINT = ACTIVITY_TINT_ONE_TAP;
 const EMOJI_PLACEHOLDER = '❓';
 const LOG_SHEET_SNAP_RATIO = 0.5;
 const LOG_SHEET_HANDLE_HEIGHT = 24;
@@ -212,15 +215,15 @@ const ActivityPickerCell = memo(function ActivityPickerCell({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Log ${activity.label}`}
+      accessibilityLabel={
+        activity.reminderEnabled
+          ? `Log ${activity.label}, reminder on`
+          : `Log ${activity.label}`
+      }
       onPress={handlePress}
       style={styles.tokenCell}
     >
-      <View style={styles.tokenStickerWrap}>
-        <View style={[styles.tokenSticker, { backgroundColor: ACTIVITY_TINT }]}>
-          <Text style={styles.tokenEmoji}>{activity.emoji}</Text>
-        </View>
-      </View>
+      <ActivityEmojiOrb activity={activity} />
       <Text numberOfLines={1} style={styles.tokenLabel}>
         {activity.label}
       </Text>
@@ -249,6 +252,7 @@ export function ActivityForm({
   onKeyboardOpenChange,
   labelInputRef,
   openEmojiRef,
+  belowLabel,
 }: {
   emoji: string;
   label: string;
@@ -271,6 +275,7 @@ export function ActivityForm({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   labelInputRef?: RefObject<any>;
   openEmojiRef?: RefObject<ActivityEmojiPickerHandle | null>;
+  belowLabel?: ReactNode;
 }) {
   const LabelInput = sheetInputs ? BottomSheetTextInput : TextInput;
   const canSave = emoji.trim().length > 0 && label.trim().length > 0 && !saving;
@@ -518,6 +523,7 @@ export function ActivityForm({
           onFocus={handleInputFocus}
           onSubmitEditing={Keyboard.dismiss}
         />
+        {belowLabel}
         <ActivityFieldsEditor
           ref={fieldsEditorRef}
           fields={fields}
@@ -873,25 +879,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 5,
     paddingVertical: 4,
-  },
-  tokenStickerWrap: {
-    width: 70,
-    height: 70,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tokenSticker: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tokenEmoji: {
-    fontSize: 32,
-    lineHeight: Platform.OS === 'android' ? 36 : 34,
-    textAlign: 'center',
-    ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
   },
   tokenLabel: {
     fontSize: 11,

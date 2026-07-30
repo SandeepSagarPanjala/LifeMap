@@ -95,3 +95,7 @@ android/transistor-license.properties
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+# Python
+__pycache__/
+*.pyc

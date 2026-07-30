@@ -36,8 +36,10 @@ import { CachedPlacesSettingsScreen } from '@/screens/settings/CachedPlacesSetti
 import { CachedPlaceMapScreen } from '@/screens/settings/CachedPlaceMapScreen';
 import { StorageSettingsScreen } from '@/screens/settings/StorageSettingsScreen';
 import { ThemeSettingsScreen } from '@/screens/settings/ThemeSettingsScreen';
+import { NotificationsSettingsScreen } from '@/screens/settings/NotificationsSettingsScreen';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { setWidgetNavigationRef } from '@/lib/widget/widget-deep-link';
+import { setNotificationNavigationRef } from '@/lib/notifications/bootstrap';
 import { activityCaptureScreenOptions } from '@/navigation/activity-capture-screen-options';
 import { nativeHalfSheetCaptureScreenOptions } from '@/navigation/native-half-sheet-capture-options';
 import { settingsSubScreenOptions } from '@/navigation/settings-sub-screen-options';
@@ -71,10 +73,14 @@ export function RootNavigator() {
 
   const handleNavigationReady = useCallback(() => {
     setWidgetNavigationRef(navigationRef);
+    setNotificationNavigationRef(navigationRef);
   }, [navigationRef]);
 
   useEffect(() => {
-    return () => setWidgetNavigationRef(null);
+    return () => {
+      setWidgetNavigationRef(null);
+      setNotificationNavigationRef(null);
+    };
   }, []);
 
   const navigationTheme = useMemo(
@@ -150,6 +156,11 @@ export function RootNavigator() {
           name="BackupSettings"
           component={BackupSettingsScreen}
           options={settingsSubScreenOptions('Backup')}
+        />
+        <Stack.Screen
+          name="NotificationsSettings"
+          component={NotificationsSettingsScreen}
+          options={settingsSubScreenOptions('Notifications')}
         />
         <Stack.Screen
           name="DeveloperSettings"

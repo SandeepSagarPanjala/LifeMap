@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -23,6 +24,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ActivityReminderSheet } from '@/components/capture/ActivityReminderSheet';
 import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
 import { GlassPressable } from '@/components/glass/GlassPressable';
 import { ActivityForm } from '@/components/map/ActivityLogSheet';
@@ -31,6 +33,7 @@ import {
   createActivity,
   getActivityById,
   updateActivity,
+  updateActivityReminder,
   type ActivityRow,
 } from '@/db/repositories/activities';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -44,6 +47,22 @@ import {
 } from '@/lib/app-constants';
 import { validateActivityDefinition } from '@/lib/activities/validate-activity-definition';
 import { saveActivityMoment } from '@/lib/moments/capture-activity';
+import { formatActivityReminderSummary } from '@/lib/activities/activity-tile-style';
+import {
+  canEnableActivityReminder,
+  reminderConfigFromRow,
+  syncActivityReminderSchedule,
+} from '@/lib/notifications/activity-reminders';
+import { ensureNotificationPermission } from '@/lib/notifications/permissions';
+import {
+  getActivityNotificationsEnabled,
+  getNotificationsMasterEnabled,
+} from '@/lib/notifications/settings';
+import {
+  defaultReminderConfig,
+  MAX_ACTIVITY_REMINDERS,
+  type ActivityReminderConfig,
+} from '@/lib/notifications/types';
 import type { RootStackParamList } from '@/navigation/types';
 
 /**
@@ -70,6 +89,10 @@ export function ActivityFormScreen() {
   const [editActivity, setEditActivity] = useState<ActivityRow | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const [reminderConfig, setReminderConfig] = useState<ActivityReminderConfig>(
+    () => defaultReminderConfig(),
+  );
+  const [reminderSheetOpen, setReminderSheetOpen] = useState(false);
 
   const canSave =
     emoji.trim().length > 0 && label.trim().length > 0 && !saving && !loading;
@@ -91,6 +114,84 @@ export function ActivityFormScreen() {
     dismissKeyboard();
     navigation.popToTop();
   }, [dismissKeyboard, navigation]);
+
+  const persistReminder = useCallback(
+    async (activityId: number, config: ActivityReminderConfig) => {
+      await updateActivityReminder(activityId, {
+        reminderEnabled: config.enabled,
+        reminderRepeat: config.repeat,
+        reminderTimeMinutes: config.timeMinutes,
+        reminderWeekday: config.weekday,
+        reminderDayOfMonth: config.dayOfMonth,
+        reminderAnchorAt: config.anchorAt,
+        reminderSound: config.sound,
+      });
+      await syncActivityReminderSchedule(activityId);
+    },
+    [],
+  );
+
+  const handleNotifyToggle = useCallback(
+    async (next: boolean) => {
+      if (!next) {
+        const cleared = { ...reminderConfig, enabled: false };
+        setReminderConfig(cleared);
+        if (editActivity != null) {
+          await persistReminder(editActivity.id, cleared);
+        }
+        return;
+      }
+
+      const master = await getNotificationsMasterEnabled();
+      const activityMaster = await getActivityNotificationsEnabled();
+      if (!master || !activityMaster) {
+        Alert.alert(
+          'Notifications off',
+          'Turn on Notifications and Activity notifications in Settings first.',
+        );
+        return;
+      }
+
+      const permitted = await ensureNotificationPermission();
+      if (!permitted) {
+        Alert.alert(
+          'Permission needed',
+          'Enable notifications for LifeMap in system Settings.',
+        );
+        return;
+      }
+
+      const allowed = await canEnableActivityReminder(editActivity?.id);
+      if (!allowed) {
+        Alert.alert(
+          'Limit reached',
+          `Only ${MAX_ACTIVITY_REMINDERS} active notifications are allowed.`,
+        );
+        return;
+      }
+
+      setReminderSheetOpen(true);
+    },
+    [editActivity, persistReminder, reminderConfig],
+  );
+
+  const handleReminderSave = useCallback(
+    async (config: ActivityReminderConfig) => {
+      setReminderSheetOpen(false);
+      setReminderConfig(config);
+      if (editActivity != null) {
+        try {
+          await persistReminder(editActivity.id, config);
+        } catch (error) {
+          Alert.alert(
+            APP_COPY.alerts.couldNotSaveActivity,
+            errorMessageOr(error, APP_COPY.common.pleaseTryAgain),
+          );
+        }
+      }
+    },
+    [editActivity, persistReminder],
+  );
 
   const handleSubmit = useCallback(async () => {
     if (!canSave) {
@@ -115,6 +216,9 @@ export function ActivityFormScreen() {
           fields: validated.definition.fields,
           source: 'blank',
         });
+        if (reminderConfig.enabled) {
+          await persistReminder(created.id, reminderConfig);
+        }
         if (created.fields.length === 0) {
           await saveActivityMoment(created);
           popToMap();
@@ -124,12 +228,15 @@ export function ActivityFormScreen() {
         return;
       }
       if (params.kind === 'create') {
-        await createActivity({
+        const created = await createActivity({
           emoji: validated.definition.emoji,
           label: validated.definition.name,
           fields: validated.definition.fields,
           source: 'blank',
         });
+        if (reminderConfig.enabled) {
+          await persistReminder(created.id, reminderConfig);
+        }
         goBack();
         return;
       }
@@ -147,6 +254,7 @@ export function ActivityFormScreen() {
         source: editActivity.source,
         templateId: editActivity.templateId,
       });
+      await persistReminder(editActivity.id, reminderConfig);
       goBack();
     } catch (error) {
       Alert.alert(
@@ -164,7 +272,9 @@ export function ActivityFormScreen() {
     goBack,
     label,
     params.kind,
+    persistReminder,
     popToMap,
+    reminderConfig,
   ]);
 
   useEffect(() => {
@@ -175,6 +285,7 @@ export function ActivityFormScreen() {
       setLoading(false);
       setEditActivity(null);
       setLoadError(null);
+      setReminderConfig(defaultReminderConfig());
       return;
     }
     let cancelled = false;
@@ -195,6 +306,7 @@ export function ActivityFormScreen() {
         setEmoji(row.emoji);
         setLabel(row.label);
         setFields(row.fields);
+        setReminderConfig(reminderConfigFromRow(row));
       } catch (error) {
         if (!cancelled) {
           setLoadError(
@@ -222,6 +334,41 @@ export function ActivityFormScreen() {
     params.kind === 'create-first' && fields.length === 0
       ? 'Save & log'
       : 'Save Activity';
+
+  const notifyBelowLabel = (
+    <View style={styles.notifyBlock}>
+      <View style={styles.notifyRow}>
+        <View style={styles.notifyTextCol}>
+          <Text style={styles.notifyLabel}>Notify me</Text>
+          {reminderConfig.enabled ? (
+            <Text style={styles.notifySummary}>
+              {formatActivityReminderSummary(reminderConfig)}
+            </Text>
+          ) : (
+            <Text style={styles.notifySummary}>Off</Text>
+          )}
+        </View>
+        <Switch
+          value={reminderConfig.enabled}
+          onValueChange={value => {
+            void handleNotifyToggle(value);
+          }}
+          trackColor={{ false: '#E5E5EA', true: colors.primary }}
+        />
+      </View>
+      {reminderConfig.enabled ? (
+        <GlassPressable
+          accessibilityLabel="Edit reminder"
+          onPress={() => setReminderSheetOpen(true)}
+          style={styles.editReminderBtn}
+        >
+          <Text style={[styles.editReminderText, { color: colors.primary }]}>
+            Edit schedule
+          </Text>
+        </GlassPressable>
+      ) : null}
+    </View>
+  );
 
   if (loading) {
     return (
@@ -274,9 +421,7 @@ export function ActivityFormScreen() {
       >
         <ActivityForm
           key={
-            params.kind === 'edit'
-              ? String(params.activityId)
-              : params.kind
+            params.kind === 'edit' ? String(params.activityId) : params.kind
           }
           embedded
           hideFooter
@@ -288,6 +433,7 @@ export function ActivityFormScreen() {
           submitLabel={saveLabel}
           labelInputRef={labelInputRef as RefObject<TextInput | null>}
           openEmojiRef={openEmojiRef}
+          belowLabel={notifyBelowLabel}
           onChangeEmoji={setEmoji}
           onChangeLabel={setLabel}
           onChangeFields={setFields}
@@ -343,6 +489,16 @@ export function ActivityFormScreen() {
           </View>
         </View>
       )}
+
+      <ActivityReminderSheet
+        visible={reminderSheetOpen}
+        initial={reminderConfig}
+        activityLabel={label.trim() || 'Activity'}
+        onCancel={() => setReminderSheetOpen(false)}
+        onSave={config => {
+          void handleReminderSave(config);
+        }}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -366,6 +522,36 @@ const styles = StyleSheet.create({
     color: '#FF3B30',
     textAlign: 'center',
   },
+  notifyBlock: {
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  notifyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  notifyTextCol: {
+    flex: 1,
+  },
+  notifyLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  notifySummary: {
+    marginTop: 2,
+    fontSize: 13,
+    color: '#6B7280',
+  },
+  editReminderBtn: {
+    marginTop: 8,
+    alignSelf: 'flex-start',
+  },
+  editReminderText: {
+    fontSize: 15,
+    fontWeight: '500',
+  },
   barWrap: {
     position: 'absolute',
     left: 0,
@@ -378,40 +564,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: MAP_MOMENTS_SIDE_BTN_GAP,
   },
-  shadowWrap: {
-    borderRadius: MAP_MOMENTS_BAR_HEIGHT / 2,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.16,
-        shadowRadius: 14,
-      },
-      android: { elevation: 10 },
-    }),
-  },
+  shadowWrap: {},
   pill: {
-    height: MAP_MOMENTS_BAR_HEIGHT,
-    borderRadius: MAP_MOMENTS_BAR_HEIGHT / 2,
+    borderRadius: 999,
     overflow: 'hidden',
-    justifyContent: 'center',
   },
   savePressable: {
+    minWidth: 160,
+    minHeight: MAP_STACK_BUTTON_SIZE,
+    paddingHorizontal: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    height: MAP_MOMENTS_BAR_HEIGHT,
-    paddingHorizontal: 22,
-    minWidth: 148,
   },
   savePressableDisabled: {
-    opacity: 0.4,
+    opacity: 0.45,
   },
   saveLabel: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
   },
-  closeButton: {
-    width: MAP_STACK_BUTTON_SIZE,
-    height: MAP_STACK_BUTTON_SIZE,
-  },
+  closeButton: {},
 });
