@@ -116,13 +116,13 @@ function phasePercent(
 }
 
 async function findOrCreateHealthActivity(
+  cache: ActivityRow[],
   emoji: string,
   label: string,
   activityType: number,
 ): Promise<ActivityRow> {
   const templateId = `healthkit:workout:${activityType}`;
-  const existing = await listActiveActivities();
-  const match = existing.find(
+  const match = cache.find(
     a =>
       a.templateId === templateId ||
       (a.source === 'healthkit' && a.label === label),
@@ -130,13 +130,15 @@ async function findOrCreateHealthActivity(
   if (match) {
     return match;
   }
-  return createActivity({
+  const created = await createActivity({
     emoji,
     label,
     fields: [DURATION_FIELD],
     source: 'healthkit',
     templateId,
   });
+  cache.push(created);
+  return created;
 }
 
 async function syncSleep(
@@ -266,6 +268,7 @@ async function syncWorkouts(
     return;
   }
 
+  const activityCache = await listActiveActivities();
   let completed = 0;
   for (const workout of workouts) {
     const activityType = Number(workout.workoutActivityType);
@@ -302,6 +305,7 @@ async function syncWorkouts(
     }
 
     const activity = await findOrCreateHealthActivity(
+      activityCache,
       meta.emoji,
       meta.label,
       activityType,

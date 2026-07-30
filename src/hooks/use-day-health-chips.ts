@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 
 import {
@@ -21,9 +21,20 @@ const EMPTY: DayHealthChipStatus = {
  */
 export function useDayHealthChips(dateKey: string): DayHealthChipStatus {
   const [status, setStatus] = useState<DayHealthChipStatus>(EMPTY);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const refresh = useCallback(async () => {
     const next = await loadDayHealthChipStatus(dateKey);
+    if (!mountedRef.current) {
+      return;
+    }
     setStatus(current => {
       if (
         current.masterOn === next.masterOn &&

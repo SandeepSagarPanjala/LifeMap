@@ -221,25 +221,29 @@ export function HealthSettingsScreen() {
           />
 
           {/* TEMP: remove after dogfooding the first-enable 30-day backfill. */}
-          <SettingsGroupLabel title="Dev" />
-          <SettingsLinkRow
-            label="Sync last 30 days"
-            value={syncing ? 'Working…' : undefined}
-            accessibilityLabel="Sync last 30 days from Apple Health"
-            onPress={() => {
-              if (!syncing) {
-                void runSyncWithProgress();
-              }
-            }}
-          />
-          <Text
-            variant="muted"
-            className={cn('mt-1 text-sm')}
-            style={{ color: colors.mutedForeground }}
-          >
-            Temporary. Same import as turning Apple Health on for the first
-            time. Safe to run again — won’t duplicate workouts.
-          </Text>
+          {__DEV__ ? (
+            <>
+              <SettingsGroupLabel title="Dev" />
+              <SettingsLinkRow
+                label="Sync last 30 days"
+                value={syncing ? 'Working…' : undefined}
+                accessibilityLabel="Sync last 30 days from Apple Health"
+                onPress={() => {
+                  if (!syncing) {
+                    void runSyncWithProgress();
+                  }
+                }}
+              />
+              <Text
+                variant="muted"
+                className={cn('mt-1 text-sm')}
+                style={{ color: colors.mutedForeground }}
+              >
+                Temporary. Same import as turning Apple Health on for the first
+                time. Safe to run again — won’t duplicate workouts.
+              </Text>
+            </>
+          ) : null}
         </>
       ) : (
         <Text

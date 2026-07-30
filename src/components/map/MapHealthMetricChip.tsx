@@ -58,7 +58,9 @@ function MetricChip({
               numberOfLines={1}
               style={[
                 styles.label,
-                { color: colors.primary },
+                {
+                  color: muted ? colors.mutedForeground : colors.primary,
+                },
               ]}
             >
               {label}

@@ -21,6 +21,7 @@ import {
   loadVisitSleepDisplay,
   type VisitSleepDisplay,
 } from '@/lib/healthkit/display';
+import { subscribeHealthData } from '@/lib/healthkit/events';
 import { savedPlaceDisplayLabel } from '@/lib/saved-places';
 import type { DayTimelineEntry } from '@/lib/trip-detection';
 import {
@@ -149,17 +150,23 @@ export const HistoryEventCard = memo(function HistoryEventCard({
       return;
     }
     let cancelled = false;
-    void loadVisitSleepDisplay(new Date(stayStartMs), new Date(stayEndMs)).then(
-      rows => {
+    const load = () => {
+      void loadVisitSleepDisplay(
+        new Date(stayStartMs),
+        new Date(stayEndMs),
+      ).then(rows => {
         if (!cancelled) {
           setSleepRows(current =>
             current.length === 0 && rows.length === 0 ? current : rows,
           );
         }
-      },
-    );
+      });
+    };
+    load();
+    const unsubscribe = subscribeHealthData(load);
     return () => {
       cancelled = true;
+      unsubscribe();
     };
   }, [stayStartMs, stayEndMs]);
 
