@@ -46,6 +46,7 @@ describe('materialized moment counts', () => {
       voice: 1,
       note: 0,
       activity: 0,
+      mood: 0,
     });
     expect(filterMomentsForEntry(dayMoments, entry).map(row => row.id)).toEqual(
       [2, 3],
