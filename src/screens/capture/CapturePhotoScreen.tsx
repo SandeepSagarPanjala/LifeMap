@@ -782,13 +782,15 @@ export function CapturePhotoScreen() {
   const handleMoodSelect = useCallback((selection: EmotionSelection) => {
     setSelectedEmotionId(selection.emotion.id);
     setMoodVariant(selection.variant);
-    void setSetting(MOOD_ART_VARIANT_SETTING_KEY, selection.variant);
+    setSetting(MOOD_ART_VARIANT_SETTING_KEY, selection.variant).catch(
+      () => undefined,
+    );
     setEmotionSheetOpen(false);
   }, []);
 
   const handleMoodVariantChange = useCallback((variant: MoodArtVariant) => {
     setMoodVariant(variant);
-    void setSetting(MOOD_ART_VARIANT_SETTING_KEY, variant);
+    setSetting(MOOD_ART_VARIANT_SETTING_KEY, variant).catch(() => undefined);
   }, []);
 
   const clearVoice = useCallback(async () => {

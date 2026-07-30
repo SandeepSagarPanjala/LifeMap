@@ -123,12 +123,16 @@ export function MapDateLabel({
           />
         </MapGlassCircleButton>
 
-        <GlassPressable
-          accessibilityLabel="Choose date"
-          onPress={() => onPressLabel?.()}
-        >
-          {glassPill}
-        </GlassPressable>
+        {onPressLabel ? (
+          <GlassPressable
+            accessibilityLabel="Choose date"
+            onPress={onPressLabel}
+          >
+            {glassPill}
+          </GlassPressable>
+        ) : (
+          glassPill
+        )}
 
         <MapGlassCircleButton
           accessibilityLabel="Next day"

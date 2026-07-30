@@ -75,17 +75,27 @@ export function HistoryPanelChrome({
           />
         </MapGlassCircleButton>
 
-        <GlassPressable
-          accessibilityLabel="Choose date"
-          onPress={() => onPressLabel?.()}
-          style={styles.pillShadow}
-        >
-          <AdaptiveGlassSurface style={styles.pill}>
-            <Text style={[styles.label, { color: accent }]} numberOfLines={1}>
-              {label}
-            </Text>
-          </AdaptiveGlassSurface>
-        </GlassPressable>
+        {onPressLabel ? (
+          <GlassPressable
+            accessibilityLabel="Choose date"
+            onPress={onPressLabel}
+            style={styles.pillShadow}
+          >
+            <AdaptiveGlassSurface style={styles.pill}>
+              <Text style={[styles.label, { color: accent }]} numberOfLines={1}>
+                {label}
+              </Text>
+            </AdaptiveGlassSurface>
+          </GlassPressable>
+        ) : (
+          <View style={styles.pillShadow}>
+            <AdaptiveGlassSurface style={styles.pill}>
+              <Text style={[styles.label, { color: accent }]} numberOfLines={1}>
+                {label}
+              </Text>
+            </AdaptiveGlassSurface>
+          </View>
+        )}
 
         <MapGlassCircleButton
           accessibilityLabel="Next day"
