@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
     maxWidth: 168,
   },
   pressed: {
-    opacity: 0.85,
+    transform: [{ scale: 0.97 }],
   },
   shadow: {
     borderRadius: MAP_HEALTH_CHIP_HEIGHT / 2,

@@ -13,7 +13,7 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { X } from 'lucide-react-native';
+import { ChevronLeft, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   Easing,
@@ -38,6 +38,7 @@ import { shiftDateKey } from '@/lib/day-utils';
 import { subscribeHealthData } from '@/lib/healthkit/events';
 import { APP_TIMEZONE } from '@/lib/timezone';
 import type { RootStackParamList } from '@/navigation/types';
+import { useClosesToMap } from '@/navigation/use-closes-to-map';
 
 type ChartRange = 'W' | 'M' | '6M' | 'ALL';
 
@@ -108,6 +109,7 @@ export function StepsDetailScreen() {
   const route = useRoute<RouteProp<RootStackParamList, 'StepsDetail'>>();
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
+  const closesToMap = useClosesToMap();
   const initialDateKey = route.params.dateKey;
 
   const [range, setRange] = useState<ChartRange>('W');
@@ -329,10 +331,14 @@ export function StepsDetailScreen() {
         ]}
       >
         <MapGlassCircleButton
-          accessibilityLabel="Close steps"
+          accessibilityLabel={closesToMap ? 'Close steps' : 'Back'}
           onPress={handleClose}
         >
-          <X size={21} color={colors.primary} strokeWidth={2.25} />
+          {closesToMap ? (
+            <X size={21} color={colors.primary} strokeWidth={2.25} />
+          ) : (
+            <ChevronLeft size={22} color={colors.primary} strokeWidth={2.25} />
+          )}
         </MapGlassCircleButton>
       </View>
     </View>
