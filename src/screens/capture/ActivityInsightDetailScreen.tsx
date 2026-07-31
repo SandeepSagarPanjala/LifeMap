@@ -506,7 +506,9 @@ export function ActivityInsightDetailScreen() {
   const handleClose = useCallback(() => {
     if (navigation.canGoBack()) {
       navigation.goBack();
+      return;
     }
+    navigation.navigate('Map');
   }, [navigation]);
 
   const bottomPad =

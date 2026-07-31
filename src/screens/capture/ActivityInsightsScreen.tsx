@@ -74,7 +74,9 @@ export function ActivityInsightsScreen() {
   const handleClose = useCallback(() => {
     if (navigation.canGoBack()) {
       navigation.goBack();
+      return;
     }
+    navigation.navigate('Map');
   }, [navigation]);
 
   const handleSelect = useCallback(
