@@ -773,7 +773,7 @@ export function listMonthsInclusive(fromDate: Date, toDate: Date): Date[] {
     return [end];
   }
   const months: Date[] = [];
-  let cursor = start;
+  let cursor: Date = start;
   while (cursor.getTime() <= end.getTime()) {
     months.push(cursor);
     cursor = shiftMonth(cursor, 1);
