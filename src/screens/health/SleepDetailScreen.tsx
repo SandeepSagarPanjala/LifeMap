@@ -206,6 +206,7 @@ export function SleepDetailScreen() {
   }, [initialDateKey, range]);
 
   useEffect(() => {
+    void loadChart();
     return subscribeHealthData(() => {
       void loadChart();
     });
@@ -221,8 +222,8 @@ export function SleepDetailScreen() {
         } catch {
           // Detail screen still shows last cached rollups.
         } finally {
+          setSyncing(false);
           if (!cancelled) {
-            setSyncing(false);
             await loadChart();
           }
         }
@@ -291,12 +292,18 @@ export function SleepDetailScreen() {
         }
         return;
       }
-      const samples = await listSleepSamplesOverlapping(
-        selected.sleepStartAt,
-        selected.sleepEndAt,
-      );
-      if (!cancelled) {
-        setTimelineSamples(samples);
+      try {
+        const samples = await listSleepSamplesOverlapping(
+          selected.sleepStartAt,
+          selected.sleepEndAt,
+        );
+        if (!cancelled) {
+          setTimelineSamples(samples);
+        }
+      } catch {
+        if (!cancelled) {
+          setTimelineSamples([]);
+        }
       }
     })();
     return () => {

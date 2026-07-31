@@ -140,6 +140,7 @@ export function StepsDetailScreen() {
   }, [initialDateKey, range]);
 
   useEffect(() => {
+    void loadChart();
     return subscribeHealthData(() => {
       void loadChart();
     });
