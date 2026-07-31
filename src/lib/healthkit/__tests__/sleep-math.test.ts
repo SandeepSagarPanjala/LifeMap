@@ -18,10 +18,7 @@ import {
   calculateSleepScore,
   computeLifeMapSleepScore,
 } from '@/lib/healthkit/sleep-score';
-import {
-  buildSleepTimelineModel,
-  timelineLeftPct,
-} from '@/lib/healthkit/sleep-timeline';
+import { buildSleepTimelineModel } from '@/lib/healthkit/sleep-timeline';
 import { workoutMetaForType } from '@/lib/healthkit/workout-labels';
 
 describe('healthkit routine lookback', () => {
