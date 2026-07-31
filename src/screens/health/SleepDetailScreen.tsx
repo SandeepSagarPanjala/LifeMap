@@ -215,21 +215,22 @@ export function SleepDetailScreen() {
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
+      setSyncing(true);
       void (async () => {
-        setSyncing(true);
         try {
           await syncHealthKitOnDemand();
         } catch {
           // Detail screen still shows last cached rollups.
-        } finally {
-          setSyncing(false);
-          if (!cancelled) {
-            await loadChart();
-          }
         }
+        if (cancelled) {
+          return;
+        }
+        setSyncing(false);
+        await loadChart();
       })();
       return () => {
         cancelled = true;
+        setSyncing(false);
       };
     }, [loadChart]),
   );

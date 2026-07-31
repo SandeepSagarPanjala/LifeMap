@@ -1,9 +1,9 @@
 For all the changes in Staged, create branch, commit all changes
 check lint, typecheck and tests
-create Pr and attach issue(s) if none found create one with the changes we did and assign as a child to Epic: unknown
+create PR and attach related issue(s). If none exist, create an issue for the work and nest it under Epic: Unknown (#89).
 
-and monitor copilot review after copilot review is completed(make sure it is completed, Copilot does not run in Checks block it gives text something like this Copilot started reviewing on behalf of SandeepSagarPanjala 5 minutes ago and when it is completed Copilot AI reviewed 3 minutes ago) and copilot review kept any review comments fix them only if they are worth after fixing them push the changes and again wait for copilot review comments again if copilot kept any review comments again do the same if they are worth fixing it repeat this process until there are no worth fixing review comments
+Monitor Copilot review until it finishes (look for timeline text like “Copilot started reviewing…” then “Copilot AI reviewed…” — not the Checks block). Fix only worth-fixing review comments, push, and request another Copilot review. Repeat until there are no remaining worth-fixing comments.
 
-After all these merge the PR
+After that, merge the PR.
 
-After it is merged switch to main branch pull latest code.
+After it is merged, switch to main and pull the latest code.
