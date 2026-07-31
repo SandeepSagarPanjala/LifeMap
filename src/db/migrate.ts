@@ -185,6 +185,10 @@ export async function migrationAlreadyApplied(
       return columnExists(sqlite, 'moments', 'voice_transcript');
     case '0039_activity_reminders':
       return columnExists(sqlite, 'activities', 'reminder_enabled');
+    case '0042_activity_intent':
+      return columnExists(sqlite, 'activities', 'intent');
+    case '0043_moments_activity_id_idx':
+      return indexExists(sqlite, 'moments_activity_id_idx');
     default:
       return false;
   }
@@ -417,6 +421,12 @@ export async function ensureActivityReminderColumns(
       `ALTER TABLE activities ADD COLUMN reminder_sound text DEFAULT 'ding' NOT NULL`,
     );
   }
+  if (!(await columnExists(sqlite, 'activities', 'intent'))) {
+    await executeMigrationStatement(
+      sqlite,
+      `ALTER TABLE activities ADD COLUMN intent text DEFAULT 'track' NOT NULL`,
+    );
+  }
 }
 
 /** Repair HealthKit tables / moment import_source when migration 0040 was skipped. */
@@ -476,6 +486,55 @@ export async function ensureHealthKitTables(sqlite: DB): Promise<void> {
         steps integer NOT NULL,
         synced_at integer NOT NULL
       )`,
+    );
+  }
+  if (!(await tableExists(sqlite, 'health_sleep_samples'))) {
+    await executeMigrationStatement(
+      sqlite,
+      `CREATE TABLE IF NOT EXISTS health_sleep_samples (
+        id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+        uuid text NOT NULL,
+        start_at integer NOT NULL,
+        end_at integer NOT NULL,
+        value integer NOT NULL,
+        synced_at integer NOT NULL
+      )`,
+    );
+    await executeMigrationStatement(
+      sqlite,
+      `CREATE UNIQUE INDEX IF NOT EXISTS health_sleep_samples_uuid_unique ON health_sleep_samples (uuid)`,
+    );
+    await executeMigrationStatement(
+      sqlite,
+      `CREATE INDEX IF NOT EXISTS health_sleep_samples_start_end_idx ON health_sleep_samples (start_at, end_at)`,
+    );
+  }
+  if (!(await tableExists(sqlite, 'health_day_sleep'))) {
+    await executeMigrationStatement(
+      sqlite,
+      `CREATE TABLE IF NOT EXISTS health_day_sleep (
+        date_key text PRIMARY KEY NOT NULL,
+        asleep_ms integer NOT NULL,
+        awake_ms integer NOT NULL,
+        rem_ms integer NOT NULL,
+        core_ms integer NOT NULL,
+        deep_ms integer NOT NULL,
+        unspecified_ms integer NOT NULL,
+        awakenings_over_5_min integer DEFAULT 0 NOT NULL,
+        sleep_start_at integer,
+        sleep_end_at integer,
+        score integer,
+        synced_at integer NOT NULL
+      )`,
+    );
+  }
+  if (
+    (await tableExists(sqlite, 'health_day_sleep')) &&
+    !(await columnExists(sqlite, 'health_day_sleep', 'awakenings_over_5_min'))
+  ) {
+    await executeMigrationStatement(
+      sqlite,
+      `ALTER TABLE health_day_sleep ADD COLUMN awakenings_over_5_min integer DEFAULT 0`,
     );
   }
   if (
@@ -748,6 +807,9 @@ export async function rebuildMomentsTableWithoutLocationColumns(
     );
     await sqlite.execute(
       `CREATE INDEX IF NOT EXISTS moments_type_timestamp_idx ON moments (type, timestamp)`,
+    );
+    await sqlite.execute(
+      `CREATE INDEX IF NOT EXISTS moments_activity_id_idx ON moments (activity_id)`,
     );
   } finally {
     await sqlite.execute('PRAGMA foreign_keys=ON');

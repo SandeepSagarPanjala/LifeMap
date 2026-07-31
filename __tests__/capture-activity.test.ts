@@ -35,6 +35,7 @@ describe('capture activity', () => {
       templateId: null,
       definitionJson: '[]',
       fields: [],
+      intent: 'track' as const,
       reminderEnabled: false,
       reminderRepeat: 'never' as const,
       reminderTimeMinutes: null,

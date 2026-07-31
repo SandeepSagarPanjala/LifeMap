@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Check, X } from 'lucide-react-native';
+import { Check, ChevronLeft } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
@@ -333,11 +333,11 @@ export function ActivityReminderSheet({
             </GlassPressable>
 
             <MapGlassCircleButton
-              accessibilityLabel="Close reminder"
+              accessibilityLabel="Back"
               onPress={onCancel}
               style={styles.closeButton}
             >
-              <X size={20} color={colors.primary} strokeWidth={2.25} />
+              <ChevronLeft size={22} color={colors.primary} strokeWidth={2.25} />
             </MapGlassCircleButton>
           </View>
         </View>

@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import MapView from 'react-native-maps';
 
@@ -25,6 +25,11 @@ export const MapScreenMap = memo(
     controller,
     playbackProgress,
   }: MapScreenMapProps) {
+    const [mapScrollEnabled, setMapScrollEnabled] = useState(true);
+    const onChipScrollActiveChange = useCallback((active: boolean) => {
+      setMapScrollEnabled(!active);
+    }, []);
+
     const {
       mapRef,
       mapInitialRegion,
@@ -91,7 +96,7 @@ export const MapScreenMap = memo(
         showsMyLocationButton={false}
         userInterfaceStyle={colorScheme === 'dark' ? 'dark' : 'light'}
         followsUserLocation={false}
-        scrollEnabled
+        scrollEnabled={mapScrollEnabled}
         zoomEnabled
         pitchEnabled
         rotateEnabled
@@ -161,6 +166,7 @@ export const MapScreenMap = memo(
                 momentCounts={currentVisitMomentCounts}
                 momentPreviews={currentVisitMomentPreviews}
                 onPressMomentType={openCurrentVisitMomentsPreview}
+                onChipScrollActiveChange={onChipScrollActiveChange}
               />
             ) : currentOpenDrive ? (
               <DriveActivityCallout
@@ -197,6 +203,7 @@ export const MapScreenMap = memo(
               selectedEntryMomentCounts={selectedEntryMomentCounts}
               selectedEntryMomentPreviews={selectedEntryMomentPreviews}
               onPressSelectedEntryMoments={openSelectedEntryMomentsPreview}
+              onChipScrollActiveChange={onChipScrollActiveChange}
               tripConfig={tripDetectionConfig}
               playbackProgress={
                 playback.isPlaying ? playbackProgress : null

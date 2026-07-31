@@ -15,7 +15,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { X } from 'lucide-react-native';
+import { ChevronLeft } from 'lucide-react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -777,7 +777,7 @@ export function ActivityLogEntryPanel({
               onPress={onBack}
               style={styles.closeButton}
             >
-              <X size={20} color={colors.primary} strokeWidth={2.25} />
+              <ChevronLeft size={22} color={colors.primary} strokeWidth={2.25} />
             </MapGlassCircleButton>
           </View>
         </View>

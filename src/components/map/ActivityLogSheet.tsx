@@ -29,7 +29,7 @@ import {
   BottomSheetTextInput,
 } from '@gorhom/bottom-sheet';
 import { ScrollView } from 'react-native-gesture-handler';
-import { Check, ChevronLeft, Pencil, X } from 'lucide-react-native';
+import { Check, ChevronDown, ChevronLeft, Pencil, WandSparkles, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   SystemEmojiPicker,
@@ -51,6 +51,11 @@ import {
   MAP_STACK_BUTTON_SIZE,
 } from '@/lib/app-constants';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import type { ActivityIntent } from '@/lib/activities/activity-intent';
+import {
+  ACTIVITY_INTENT_OPTIONS,
+  activityIntentLabel,
+} from '@/lib/activities/activity-intent';
 import {
   listActiveActivities,
   type ActivityRow,
@@ -63,8 +68,6 @@ const GRID_COLUMNS = 4;
 const GRID_GAP = 12;
 const ACTIVITY_TINT = ACTIVITY_TINT_ONE_TAP;
 const EMOJI_PLACEHOLDER = '❓';
-const LOG_SHEET_SNAP_RATIO = 0.5;
-const LOG_SHEET_HANDLE_HEIGHT = 24;
 
 type ActivityEmojiPickerHandle = {
   open: () => void;
@@ -197,6 +200,7 @@ type ActivityLogSheetProps = {
   onLogged: () => void | Promise<void>;
   onBeginCreateFirst: () => void;
   onBeginManage: () => void;
+  onBeginInsights: () => void;
   onBeginStructuredLog: (activity: ActivityRow) => void;
   reloadNonce?: number;
 };
@@ -234,11 +238,13 @@ const ActivityPickerCell = memo(function ActivityPickerCell({
 export function ActivityForm({
   emoji,
   label,
+  intent,
   fields,
   saving,
   submitLabel,
   onChangeEmoji,
   onChangeLabel,
+  onChangeIntent,
   onChangeFields,
   onSubmit,
   onBack,
@@ -257,11 +263,13 @@ export function ActivityForm({
 }: {
   emoji: string;
   label: string;
+  intent: ActivityIntent;
   fields: ActivityFieldDefinition[];
   saving: boolean;
   submitLabel: string;
   onChangeEmoji: (value: string) => void;
   onChangeLabel: (value: string) => void;
+  onChangeIntent: (value: ActivityIntent) => void;
   onChangeFields: (fields: ActivityFieldDefinition[]) => void;
   onSubmit: () => void;
   onBack?: () => void;
@@ -280,14 +288,22 @@ export function ActivityForm({
   /** HealthKit definitions: hide Advanced field editing. */
   lockFields?: boolean;
 }) {
+  const colors = useThemeColors();
   const LabelInput = sheetInputs ? BottomSheetTextInput : TextInput;
   const canSave = emoji.trim().length > 0 && label.trim().length > 0 && !saving;
   const { height: windowHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [intentMenuOpen, setIntentMenuOpen] = useState(false);
+  const [intentMenuPos, setIntentMenuPos] = useState<{
+    top: number;
+    right: number;
+  } | null>(null);
   const keyboardHeightRef = useRef(0);
   const keyboardSwapRef = useRef(false);
   const fieldsEditorRef = useRef<ActivityFieldsEditorHandle>(null);
+  const formShellRef = useRef<View>(null);
+  const intentAnchorRef = useRef<View>(null);
   const scrollYRef = useRef(0);
   const scrollRef = useRef<ScrollView | null>(null);
   const lastFocusedTargetRef = useRef<{
@@ -298,11 +314,55 @@ export function ActivityForm({
   const emojiKeyboardActiveRef = useRef(false);
 
   const handleBack = useCallback(() => {
+    if (intentMenuOpen) {
+      setIntentMenuOpen(false);
+      setIntentMenuPos(null);
+      return;
+    }
     if (fieldsEditorRef.current?.dismissNested()) {
       return;
     }
     onBack?.();
-  }, [onBack]);
+  }, [intentMenuOpen, onBack]);
+
+  const closeIntentMenu = useCallback(() => {
+    setIntentMenuOpen(false);
+    setIntentMenuPos(null);
+  }, []);
+
+  const toggleIntentMenu = useCallback(() => {
+    Keyboard.dismiss();
+    if (intentMenuOpen) {
+      setIntentMenuOpen(false);
+      setIntentMenuPos(null);
+      return;
+    }
+    const anchor = intentAnchorRef.current;
+    const shell = formShellRef.current;
+    if (anchor == null || shell == null) {
+      setIntentMenuPos({ top: 120, right: 16 });
+      setIntentMenuOpen(true);
+      return;
+    }
+    anchor.measureInWindow((ax, ay, aw, ah) => {
+      shell.measureInWindow((sx, sy, sw) => {
+        setIntentMenuPos({
+          top: ay + ah - sy + 6,
+          right: Math.max(8, sx + sw - (ax + aw)),
+        });
+        setIntentMenuOpen(true);
+      });
+    });
+  }, [intentMenuOpen]);
+
+  const selectIntent = useCallback(
+    (value: ActivityIntent) => {
+      onChangeIntent(value);
+      setIntentMenuOpen(false);
+      setIntentMenuPos(null);
+    },
+    [onChangeIntent],
+  );
 
   const handleEmojiPicked = useCallback(() => {
     emojiKeyboardActiveRef.current = false;
@@ -314,6 +374,8 @@ export function ActivityForm({
   }, [autoFocusEmoji, labelInputRef]);
 
   const handleEmojiOpen = useCallback(() => {
+    setIntentMenuOpen(false);
+    setIntentMenuPos(null);
     // Emoji is already at the top — don't re-scroll to a previous bottom field.
     emojiKeyboardActiveRef.current = true;
     lastFocusedTargetRef.current = null;
@@ -372,6 +434,8 @@ export function ActivityForm({
 
   const handleInputFocus = useCallback(
     (event: { target?: unknown; currentTarget?: unknown }) => {
+      setIntentMenuOpen(false);
+      setIntentMenuPos(null);
       emojiKeyboardActiveRef.current = false;
       if (sheetInputs) {
         requestAnimationFrame(() => {
@@ -460,6 +524,73 @@ export function ActivityForm({
 
   const showFormChrome = onBack != null || headerSave;
 
+  const intentMenuOverlay =
+    intentMenuOpen && intentMenuPos != null ? (
+      <>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Close habit menu"
+          onPress={closeIntentMenu}
+          style={styles.intentMenuBackdrop}
+        />
+        <View
+          style={[
+            styles.intentMenu,
+            {
+              top: intentMenuPos.top,
+              right: intentMenuPos.right,
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+            },
+          ]}
+        >
+          <Text
+            style={[
+              styles.intentMenuTitle,
+              { color: colors.mutedForeground },
+            ]}
+          >
+            Build or cut back?
+          </Text>
+          {ACTIVITY_INTENT_OPTIONS.map(option => {
+            const selected = option.value === intent;
+            return (
+              <Pressable
+                key={option.value}
+                accessibilityRole="menuitem"
+                accessibilityState={{ selected }}
+                onPress={() => selectIntent(option.value)}
+                style={[
+                  styles.intentMenuItem,
+                  selected ? { backgroundColor: colors.accent } : null,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.intentMenuItemLabel,
+                    {
+                      color: selected
+                        ? colors.primary
+                        : colors.cardForeground,
+                    },
+                  ]}
+                >
+                  {option.label}
+                </Text>
+                {selected ? (
+                  <Check
+                    size={17}
+                    color={colors.primary}
+                    strokeWidth={2.5}
+                  />
+                ) : null}
+              </Pressable>
+            );
+          })}
+        </View>
+      </>
+    ) : null;
+
   const formBody = (
     <>
       {showFormChrome ? (
@@ -526,6 +657,23 @@ export function ActivityForm({
           onFocus={handleInputFocus}
           onSubmitEditing={Keyboard.dismiss}
         />
+        <View ref={intentAnchorRef} collapsable={false}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Habit, ${activityIntentLabel(intent)}`}
+            accessibilityState={{ expanded: intentMenuOpen }}
+            onPress={toggleIntentMenu}
+            style={styles.intentPicker}
+          >
+            <Text style={styles.intentPickerLabel}>Habit</Text>
+            <View style={styles.intentPickerValue}>
+              <Text style={styles.intentPickerValueText}>
+                {activityIntentLabel(intent)}
+              </Text>
+              <ChevronDown size={16} color="#8E8E93" strokeWidth={2.25} />
+            </View>
+          </Pressable>
+        </View>
         {belowLabel}
         {lockFields ? (
           <Text style={styles.healthFieldsHint}>
@@ -545,11 +693,18 @@ export function ActivityForm({
   );
 
   if (sheetInputs) {
-    return <View style={styles.formShellSheet}>{formBody}</View>;
+    return (
+      <View ref={formShellRef} style={styles.formShellSheet} collapsable={false}>
+        {formBody}
+        {intentMenuOverlay}
+      </View>
+    );
   }
 
   return (
     <View
+      ref={formShellRef}
+      collapsable={false}
       style={[
         styles.formShell,
         embedded ? styles.formShellEmbedded : null,
@@ -572,6 +727,9 @@ export function ActivityForm({
         showsVerticalScrollIndicator={false}
         onScroll={event => {
           scrollYRef.current = event.nativeEvent.contentOffset.y;
+          if (intentMenuOpen) {
+            closeIntentMenu();
+          }
         }}
         scrollEventThrottle={16}
       >
@@ -609,6 +767,7 @@ export function ActivityForm({
           </Pressable>
         </View>
       )}
+      {intentMenuOverlay}
     </View>
   );
 }
@@ -619,19 +778,16 @@ export function ActivityLogSheet({
   onLogged,
   onBeginCreateFirst,
   onBeginManage,
+  onBeginInsights,
   onBeginStructuredLog,
   reloadNonce = 0,
 }: ActivityLogSheetProps) {
   const colors = useThemeColors();
-  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const { width: windowWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const cellWidth =
     (windowWidth - 40 - GRID_GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS;
-  const logStepHeight =
-    windowHeight * LOG_SHEET_SNAP_RATIO -
-    LOG_SHEET_HANDLE_HEIGHT -
-    Math.max(insets.bottom, 16) -
-    4;
+  const barBottomPad = Math.max(insets.bottom, MAP_MOMENTS_BAR_GAP);
 
   const [activities, setActivities] = useState<ActivityRow[]>([]);
   const emptyCreateRequestedRef = useRef(false);
@@ -729,7 +885,7 @@ export function ActivityLogSheet({
 
   return (
     <View style={[styles.sheetBodyEmbedded, { paddingBottom: 0 }]}>
-      <View style={[styles.stepBody, { height: logStepHeight }]}>
+      <View style={styles.stepBody}>
         <View style={styles.stepHeader}>
           <Text variant="h4" className="border-0 pb-0" style={styles.stepTitle}>
             What did you do?
@@ -748,10 +904,7 @@ export function ActivityLogSheet({
             contentContainerStyle={[
               styles.gridContent,
               {
-                paddingBottom:
-                  MAP_MOMENTS_BAR_HEIGHT +
-                  Math.max(insets.bottom, MAP_MOMENTS_BAR_GAP) +
-                  16,
+                paddingBottom: MAP_MOMENTS_BAR_HEIGHT + barBottomPad + 16,
               },
             ]}
             showsVerticalScrollIndicator={false}
@@ -762,14 +915,21 @@ export function ActivityLogSheet({
 
         <View
           pointerEvents="box-none"
-          style={[
-            styles.barWrap,
-            {
-              paddingBottom: Math.max(insets.bottom, MAP_MOMENTS_BAR_GAP),
-            },
-          ]}
+          style={[styles.barWrap, { paddingBottom: barBottomPad }]}
         >
           <View style={styles.barRow}>
+            <MapGlassCircleButton
+              accessibilityLabel="Activity insights"
+              onPress={onBeginInsights}
+              style={styles.closeButton}
+            >
+              <WandSparkles
+                size={20}
+                color={colors.primary}
+                strokeWidth={2.25}
+              />
+            </MapGlassCircleButton>
+
             <GlassPressable
               accessibilityLabel="Manage activities"
               onPress={onBeginManage}
@@ -819,6 +979,8 @@ const styles = StyleSheet.create({
     minHeight: 240,
   },
   stepBody: {
+    flex: 1,
+    minHeight: 0,
     flexDirection: 'column',
   },
   stepHeader: {
@@ -1006,6 +1168,68 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#3A3A3C',
+  },
+  intentPicker: {
+    marginTop: 4,
+    minHeight: 36,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  intentPickerLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#3A3A3C',
+  },
+  intentPickerValue: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flexShrink: 1,
+  },
+  intentPickerValueText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#007AFF',
+    textAlign: 'right',
+  },
+  intentMenuBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 20,
+    elevation: 11,
+  },
+  intentMenu: {
+    position: 'absolute',
+    zIndex: 21,
+    width: 190,
+    padding: 6,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  intentMenuTitle: {
+    paddingHorizontal: 10,
+    paddingTop: 7,
+    paddingBottom: 5,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  intentMenuItem: {
+    minHeight: 40,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  intentMenuItemLabel: {
+    fontSize: 15,
+    fontWeight: '600',
   },
   healthFieldsHint: {
     marginTop: 16,

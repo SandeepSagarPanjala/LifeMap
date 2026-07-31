@@ -10,7 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { AudioLines, Pause, Play, X } from 'lucide-react-native';
+import { AudioLines, ChevronLeft, Pause, Play, X } from 'lucide-react-native';
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 
@@ -72,6 +72,8 @@ type VoiceMemoSheetProps = {
   restartNonce?: number;
   /** Cap recording length (defaults to VOICE_MAX_DURATION_MS). */
   maxDurationMs?: number;
+  /** When false, dismiss control uses a back chevron (nested in another screen). Default true. */
+  closesToMap?: boolean;
 };
 
 export function VoiceMemoSheet({
@@ -89,6 +91,7 @@ export function VoiceMemoSheet({
   onBeginPreview,
   restartNonce = 0,
   maxDurationMs = VOICE_MAX_DURATION_MS,
+  closesToMap = true,
 }: VoiceMemoSheetProps) {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
@@ -696,11 +699,19 @@ export function VoiceMemoSheet({
             </GlassPressable>
 
             <MapGlassCircleButton
-              accessibilityLabel="Close voice memo"
+              accessibilityLabel={closesToMap ? 'Close voice memo' : 'Back'}
               onPress={closeSheet}
               size={56}
             >
-              <X size={21} color={colors.primary} strokeWidth={2.25} />
+              {closesToMap ? (
+                <X size={21} color={colors.primary} strokeWidth={2.25} />
+              ) : (
+                <ChevronLeft
+                  size={22}
+                  color={colors.primary}
+                  strokeWidth={2.25}
+                />
+              )}
             </MapGlassCircleButton>
           </View>
         ) : null}

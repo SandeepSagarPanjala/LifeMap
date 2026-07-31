@@ -19,6 +19,7 @@ import {
   AudioLines,
   Camera,
   Check,
+  ChevronLeft,
   ImageIcon,
   Pause,
   Play,
@@ -73,6 +74,7 @@ import {
   getVoiceRecordingErrorMessage,
 } from '@/lib/moments/voice-recorder';
 import type { RootStackParamList } from '@/navigation/types';
+import { useClosesToMap } from '@/navigation/use-closes-to-map';
 
 /** Match MapMomentsGlassBar / LiquidGlassTabBar geometry. */
 const TAB_SIZE = 44;
@@ -88,6 +90,7 @@ export function CaptureNoteScreen() {
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
+  const closesToMap = useClosesToMap();
   const [voiceUri, setVoiceUri] = useState<string | null>(null);
   const [voiceDurationMs, setVoiceDurationMs] = useState(0);
   const [voicePlaying, setVoicePlaying] = useState(false);
@@ -628,11 +631,19 @@ export function CaptureNoteScreen() {
               </View>
 
               <MapGlassCircleButton
-                accessibilityLabel="Close"
+                accessibilityLabel={closesToMap ? 'Close' : 'Back'}
                 onPress={handleBack}
                 style={styles.sideButton}
               >
-                <X size={20} color={colors.primary} strokeWidth={2.25} />
+                {closesToMap ? (
+                  <X size={20} color={colors.primary} strokeWidth={2.25} />
+                ) : (
+                  <ChevronLeft
+                    size={22}
+                    color={colors.primary}
+                    strokeWidth={2.25}
+                  />
+                )}
               </MapGlassCircleButton>
             </View>
           </View>
@@ -657,6 +668,7 @@ export function CaptureNoteScreen() {
         <VoiceMemoSheet
           visible={voiceSheetOpen}
           saveTarget="diary"
+          closesToMap={false}
           onDiaryAttach={attachment => {
             void clearVoice().then(() => {
               setVoiceUri(attachment.uri);

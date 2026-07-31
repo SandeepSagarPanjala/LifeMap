@@ -2,6 +2,7 @@ import { TZDate } from '@date-fns/tz';
 import { format } from 'date-fns';
 
 import {
+  getDaySleep,
   getDaySteps,
   listSleepSessionsOverlapping,
 } from '@/db/repositories/health';
@@ -83,6 +84,31 @@ export function formatCompactSleepDuration(durationMs: number): string {
   return `${hours}h ${minutes}m`;
 }
 
+/** Detail header duration: `2HR 46MIN`. */
+export function formatSleepDetailDuration(durationMs: number): string {
+  const totalMinutes = Math.max(0, Math.round(durationMs / 60_000));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours === 0) {
+    return `${minutes}MIN`;
+  }
+  if (minutes === 0) {
+    return `${hours}HR`;
+  }
+  return `${hours}HR ${minutes}MIN`;
+}
+
+export function formatSleepRangeLine(startAt: Date, endAt: Date): string {
+  return `${formatClock(startAt)} – ${formatClock(endAt)}`;
+}
+
+export function formatStageDuration(ms: number): string {
+  if (ms <= 0) {
+    return '0m';
+  }
+  return formatCompactSleepDuration(ms);
+}
+
 export function formatSleepChipLabel(sleepMs: number | null): string {
   if (sleepMs == null || sleepMs <= 0) {
     return 'No data';
@@ -99,8 +125,8 @@ export function formatStepsChipLabel(steps: number | null): string {
 
 /**
  * Day-level Health chip status for the selected map date.
- * `sleepEnabled` / `stepsEnabled` are false when master is off or that toggle is off.
- * Values are null when enabled but nothing is imported for the day.
+ * Prefers `health_day_sleep` rollup (wake-day attribution); falls back to
+ * calendar overlap of coalesced sessions.
  */
 export async function loadDayHealthChipStatus(
   dateKey: string,
@@ -123,15 +149,20 @@ export async function loadDayHealthChipStatus(
 
   let sleepMs: number | null = null;
   if (sleepOn) {
-    const { start, end } = getDayRange(dateKey);
-    const sessions = await listSleepSessionsOverlapping(start, end);
-    let total = 0;
-    for (const s of sessions) {
-      const overlapStart = Math.max(s.startAt.getTime(), start.getTime());
-      const overlapEnd = Math.min(s.endAt.getTime(), end.getTime());
-      total += Math.max(0, overlapEnd - overlapStart);
+    const day = await getDaySleep(dateKey);
+    if (day != null && day.asleepMs > 0) {
+      sleepMs = day.asleepMs;
+    } else {
+      const { start, end } = getDayRange(dateKey);
+      const sessions = await listSleepSessionsOverlapping(start, end);
+      let total = 0;
+      for (const s of sessions) {
+        const overlapStart = Math.max(s.startAt.getTime(), start.getTime());
+        const overlapEnd = Math.min(s.endAt.getTime(), end.getTime());
+        total += Math.max(0, overlapEnd - overlapStart);
+      }
+      sleepMs = total > 0 ? total : null;
     }
-    sleepMs = total > 0 ? total : null;
   }
 
   const steps = stepsOn ? await getDaySteps(dateKey) : null;

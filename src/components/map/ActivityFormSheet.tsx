@@ -24,6 +24,10 @@ import {
 } from '@/db/repositories/activities';
 import type { ActivityFieldDefinition } from '@/lib/activities/activity-definition';
 import { ACTIVITY_SCHEMA_VERSION } from '@/lib/activities/activity-definition';
+import {
+  DEFAULT_ACTIVITY_INTENT,
+  type ActivityIntent,
+} from '@/lib/activities/activity-intent';
 import { validateActivityDefinition } from '@/lib/activities/validate-activity-definition';
 import { saveActivityMoment } from '@/lib/moments/capture-activity';
 
@@ -60,6 +64,7 @@ export function ActivityFormSheet({
   );
   const [emoji, setEmoji] = useState('');
   const [label, setLabel] = useState('');
+  const [intent, setIntent] = useState<ActivityIntent>(DEFAULT_ACTIVITY_INTENT);
   const [fields, setFields] = useState<ActivityFieldDefinition[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -67,10 +72,12 @@ export function ActivityFormSheet({
     if (request?.kind === 'edit') {
       setEmoji(request.activity.emoji);
       setLabel(request.activity.label);
+      setIntent(request.activity.intent);
       setFields(request.activity.fields);
     } else if (request != null) {
       setEmoji('');
       setLabel('');
+      setIntent(DEFAULT_ACTIVITY_INTENT);
       setFields([]);
     }
     setSaving(false);
@@ -133,6 +140,7 @@ export function ActivityFormSheet({
           label: validated.definition.name,
           fields: validated.definition.fields,
           source: 'blank',
+          intent,
         });
         if (created.fields.length === 0) {
           await saveActivityMoment(created);
@@ -150,6 +158,7 @@ export function ActivityFormSheet({
           label: validated.definition.name,
           fields: validated.definition.fields,
           source: 'blank',
+          intent,
         });
         onSaved();
         requestClose();
@@ -161,6 +170,7 @@ export function ActivityFormSheet({
         fields: validated.definition.fields,
         source: request.activity.source,
         templateId: request.activity.templateId,
+        intent,
       });
       onSaved();
       requestClose();
@@ -175,6 +185,7 @@ export function ActivityFormSheet({
   }, [
     emoji,
     fields,
+    intent,
     label,
     onLoggedAndClose,
     onSaved,
@@ -229,6 +240,7 @@ export function ActivityFormSheet({
               autoFocusEmoji={isCreateFlow}
               emoji={emoji}
               label={label}
+              intent={intent}
               fields={fields}
               saving={saving}
               submitLabel={submitLabel}
@@ -241,6 +253,7 @@ export function ActivityFormSheet({
               onBack={showBack ? requestClose : undefined}
               onChangeEmoji={setEmoji}
               onChangeLabel={setLabel}
+              onChangeIntent={setIntent}
               onChangeFields={setFields}
               lockFields={
                 request.kind === 'edit' &&

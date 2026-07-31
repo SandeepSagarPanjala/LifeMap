@@ -1,7 +1,7 @@
 import type { LucideIcon } from 'lucide-react-native';
 import { Footprints, Moon } from 'lucide-react-native';
 import { memo } from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -23,6 +23,7 @@ type MapHealthMetricChipProps = {
   kind: 'sleep' | 'steps';
   /** Null / missing → "No data". */
   value: number | null;
+  onPress?: () => void;
 };
 
 function MetricChip({
@@ -30,44 +31,62 @@ function MetricChip({
   icon: Icon,
   label,
   accessibilityLabel,
+  onPress,
 }: {
   bottom: number;
   icon: LucideIcon;
   label: string;
   accessibilityLabel: string;
+  onPress?: () => void;
 }) {
   const colors = useThemeColors();
   const muted = label === 'No data';
+  const interactive = onPress != null;
+
+  const content = (
+    <View style={styles.shadow}>
+      <AdaptiveGlassSurface style={styles.surface}>
+        <View style={styles.content}>
+          <Icon
+            size={MAP_HEALTH_CHIP_ICON_SIZE}
+            color={muted ? colors.mutedForeground : colors.primary}
+            strokeWidth={2.25}
+          />
+          <Text
+            numberOfLines={1}
+            style={[
+              styles.label,
+              {
+                color: muted ? colors.mutedForeground : colors.primary,
+              },
+            ]}
+          >
+            {label}
+          </Text>
+        </View>
+      </AdaptiveGlassSurface>
+    </View>
+  );
 
   return (
     <View
-      pointerEvents="none"
-      accessibilityRole="text"
-      accessibilityLabel={accessibilityLabel}
+      pointerEvents={interactive ? 'box-none' : 'none'}
       style={[styles.wrap, { bottom, left: MAP_STACK_BUTTON_LEFT }]}
     >
-      <View style={styles.shadow}>
-        <AdaptiveGlassSurface style={styles.surface}>
-          <View style={styles.content}>
-            <Icon
-              size={MAP_HEALTH_CHIP_ICON_SIZE}
-              color={muted ? colors.mutedForeground : colors.primary}
-              strokeWidth={2.25}
-            />
-            <Text
-              numberOfLines={1}
-              style={[
-                styles.label,
-                {
-                  color: muted ? colors.mutedForeground : colors.primary,
-                },
-              ]}
-            >
-              {label}
-            </Text>
-          </View>
-        </AdaptiveGlassSurface>
-      </View>
+      {interactive ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={accessibilityLabel}
+          onPress={onPress}
+          style={({ pressed }) => (pressed ? styles.pressed : null)}
+        >
+          {content}
+        </Pressable>
+      ) : (
+        <View accessibilityRole="text" accessibilityLabel={accessibilityLabel}>
+          {content}
+        </View>
+      )}
     </View>
   );
 }
@@ -76,6 +95,7 @@ export const MapHealthMetricChip = memo(function MapHealthMetricChip({
   bottom,
   kind,
   value,
+  onPress,
 }: MapHealthMetricChipProps) {
   if (kind === 'sleep') {
     const label = formatSleepChipLabel(value);
@@ -87,6 +107,7 @@ export const MapHealthMetricChip = memo(function MapHealthMetricChip({
         accessibilityLabel={
           label === 'No data' ? 'Sleep, no data' : `Sleep ${label}`
         }
+        onPress={onPress}
       />
     );
   }
@@ -100,6 +121,7 @@ export const MapHealthMetricChip = memo(function MapHealthMetricChip({
       accessibilityLabel={
         label === 'No data' ? 'Steps, no data' : label
       }
+      onPress={onPress}
     />
   );
 });
@@ -122,6 +144,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     height: MAP_HEALTH_CHIP_HEIGHT,
     maxWidth: 168,
+  },
+  pressed: {
+    opacity: 0.85,
   },
   shadow: {
     borderRadius: MAP_HEALTH_CHIP_HEIGHT / 2,

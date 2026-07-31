@@ -3,6 +3,7 @@ import { getSetting, setSetting } from '@/db/repositories/settings';
 import { notifyHealthDataUpdated } from './events';
 import {
   SETTINGS_KEY_HEALTHKIT_ACTIVITY,
+  SETTINGS_KEY_HEALTHKIT_LAST_SYNC_AT,
   SETTINGS_KEY_HEALTHKIT_MASTER,
   SETTINGS_KEY_HEALTHKIT_SLEEP,
   SETTINGS_KEY_HEALTHKIT_STEPS,
@@ -51,4 +52,24 @@ export async function setHealthKitStepsEnabled(
 ): Promise<void> {
   await setSetting(SETTINGS_KEY_HEALTHKIT_STEPS, enabled ? 'true' : 'false');
   notifyHealthDataUpdated();
+}
+
+/** Null until the first successful sync, which means the next sync backfills. */
+export async function getHealthKitLastSyncAt(): Promise<Date | null> {
+  const raw = await getSetting(SETTINGS_KEY_HEALTHKIT_LAST_SYNC_AT);
+  if (raw == null) {
+    return null;
+  }
+  const ms = Number(raw);
+  if (!Number.isFinite(ms)) {
+    return null;
+  }
+  return new Date(ms);
+}
+
+export async function setHealthKitLastSyncAt(at: Date): Promise<void> {
+  await setSetting(
+    SETTINGS_KEY_HEALTHKIT_LAST_SYNC_AT,
+    String(at.getTime()),
+  );
 }

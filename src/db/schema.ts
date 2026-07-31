@@ -50,6 +50,11 @@ export const activities = sqliteTable('activities', {
   source: text('source').notNull().default('blank'),
   templateId: text('template_id'),
   definitionJson: text('definition_json').notNull().default('[]'),
+  /**
+   * Logging intent for insights: track (default) | more | less.
+   * “Just track” / “Do more” / “Do less” — not moral good/bad.
+   */
+  intent: text('intent').notNull().default('track'),
   /** Local reminder — config in DB; schedule lives in the OS. */
   reminderEnabled: integer('reminder_enabled', { mode: 'boolean' })
     .notNull()
@@ -115,6 +120,7 @@ export const moments = sqliteTable(
       table.type,
       table.timestamp,
     ),
+    activityIdIdx: index('moments_activity_id_idx').on(table.activityId),
   }),
 );
 
@@ -136,6 +142,46 @@ export const healthSleepSessions = sqliteTable(
     ),
   }),
 );
+
+/** Raw HKCategoryTypeIdentifierSleepAnalysis samples (asleep stages + awake). */
+export const healthSleepSamples = sqliteTable(
+  'health_sleep_samples',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    uuid: text('uuid').notNull(),
+    startAt: integer('start_at', { mode: 'timestamp' }).notNull(),
+    endAt: integer('end_at', { mode: 'timestamp' }).notNull(),
+    /** CategoryValueSleepAnalysis numeric value. */
+    value: integer('value').notNull(),
+    syncedAt: integer('synced_at', { mode: 'timestamp' }).notNull(),
+  },
+  table => ({
+    uuidUnique: uniqueIndex('health_sleep_samples_uuid_unique').on(table.uuid),
+    startEndIdx: index('health_sleep_samples_start_end_idx').on(
+      table.startAt,
+      table.endAt,
+    ),
+  }),
+);
+
+/**
+ * Per wake-day sleep rollup for chips / detail sheet.
+ * Sessions are attributed to the calendar day of sleep end (wake day).
+ */
+export const healthDaySleep = sqliteTable('health_day_sleep', {
+  dateKey: text('date_key').primaryKey(),
+  asleepMs: integer('asleep_ms').notNull(),
+  awakeMs: integer('awake_ms').notNull(),
+  remMs: integer('rem_ms').notNull(),
+  coreMs: integer('core_ms').notNull(),
+  deepMs: integer('deep_ms').notNull(),
+  unspecifiedMs: integer('unspecified_ms').notNull(),
+  awakeningsOver5Min: integer('awakenings_over_5_min').notNull().default(0),
+  sleepStartAt: integer('sleep_start_at', { mode: 'timestamp' }),
+  sleepEndAt: integer('sleep_end_at', { mode: 'timestamp' }),
+  score: integer('score'),
+  syncedAt: integer('synced_at', { mode: 'timestamp' }).notNull(),
+});
 
 export const healthWorkouts = sqliteTable(
   'health_workouts',

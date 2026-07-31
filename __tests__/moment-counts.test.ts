@@ -7,6 +7,7 @@ import {
   filterMomentsForEntry,
   filterMomentsForStayEntry,
   latestMomentCountPreviews,
+  countMomentCountChips,
   shouldHideSavedPlaceMomentCluster,
   latestMomentIndexOfType,
 } from '../src/lib/moments/moment-counts';
@@ -531,8 +532,89 @@ describe('latestMomentIndexOfType', () => {
     expect(previews.photoThumbUri).toContain('moments/new-photo-thumb.jpg');
     expect(previews.videoThumbUri).toContain('moments/video-thumb.jpg');
     expect(previews.activityEmoji).toBe('🏃');
+    expect(previews.activitySummaries).toEqual([
+      {
+        activityId: null,
+        emoji: '☕',
+        count: 1,
+        latestMs: new Date('2026-06-08T14:10:00.000Z').getTime(),
+      },
+      {
+        activityId: null,
+        emoji: '🏃',
+        count: 1,
+        latestMs: new Date('2026-06-08T15:10:00.000Z').getTime(),
+      },
+    ]);
+    // Oldest → newest by each chip's latest log time
+    expect(
+      previews.chipTimeline.map(entry =>
+        entry.kind === 'activity' ? entry.emoji : entry.type,
+      ),
+    ).toEqual(['☕', 'video', 'photo', '🏃', 'mood', 'note', 'voice']);
     expect(previews.moodLabel).toBe('Joyful');
     expect(previews.moodVariant).toBe('dog');
+  });
+
+  it('groups unique activities by activityId and counts repeats', () => {
+    const previews = latestMomentCountPreviews([
+      moment({
+        id: 1,
+        type: 'activity',
+        timestamp: new Date('2026-06-08T14:00:00.000Z'),
+        activityId: 10,
+        activityEmoji: '🍔',
+      }),
+      moment({
+        id: 2,
+        type: 'activity',
+        timestamp: new Date('2026-06-08T15:00:00.000Z'),
+        activityId: 11,
+        activityEmoji: '🤥',
+      }),
+      moment({
+        id: 3,
+        type: 'activity',
+        timestamp: new Date('2026-06-08T14:30:00.000Z'),
+        activityId: 10,
+        activityEmoji: '🍔',
+      }),
+      moment({
+        id: 4,
+        type: 'activity',
+        timestamp: new Date('2026-06-08T16:00:00.000Z'),
+        activityId: 12,
+        activityEmoji: '🏋️',
+      }),
+    ]);
+
+    expect(previews.activityEmoji).toBe('🏋️');
+    expect(previews.activitySummaries).toEqual([
+      {
+        activityId: 10,
+        emoji: '🍔',
+        count: 2,
+        latestMs: new Date('2026-06-08T14:30:00.000Z').getTime(),
+      },
+      {
+        activityId: 11,
+        emoji: '🤥',
+        count: 1,
+        latestMs: new Date('2026-06-08T15:00:00.000Z').getTime(),
+      },
+      {
+        activityId: 12,
+        emoji: '🏋️',
+        count: 1,
+        latestMs: new Date('2026-06-08T16:00:00.000Z').getTime(),
+      },
+    ]);
+    expect(
+      countMomentCountChips(
+        { photo: 1, video: 0, voice: 1, note: 1, activity: 4, mood: 1 },
+        previews,
+      ),
+    ).toBe(3);
   });
 
   it('leaves photo preview null when thumbnail is missing', () => {

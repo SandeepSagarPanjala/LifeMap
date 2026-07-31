@@ -9,9 +9,9 @@ import {
 import type { ActivityReminderConfig } from '@/lib/notifications/types';
 
 /** One-tap activities (no fields). */
-export const ACTIVITY_TINT_ONE_TAP = '#F0FDF4';
+export const ACTIVITY_TINT_ONE_TAP = '#DCFCE7';
 /** Config / structured activities (have fields). */
-export const ACTIVITY_TINT_CONFIG = '#EFF6FF';
+export const ACTIVITY_TINT_CONFIG = '#DBEAFE';
 /** Stronger notify gradient starts (readable behind emoji). */
 export const ACTIVITY_TINT_NOTIFY_GREEN = '#DCFCE7';
 export const ACTIVITY_TINT_NOTIFY_BLUE = '#DBEAFE';

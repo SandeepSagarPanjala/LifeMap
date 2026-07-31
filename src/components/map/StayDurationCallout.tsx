@@ -5,7 +5,10 @@ import { StyleSheet, Text, View } from 'react-native';
 import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
 import { SavedPlaceIcon } from '@/components/map/SavedPlaceIcon';
 import { VisitPlaceKindIcon } from '@/components/map/VisitPlaceKindIcon';
-import { MomentCountsRow } from '@/components/moments/MomentCountsRow';
+import {
+  MOMENT_COUNTS_SCROLL_AFTER,
+  MomentCountsRow,
+} from '@/components/moments/MomentCountsRow';
 import { useMarkerTracksViewChanges } from '@/hooks/use-marker-tracks-view-changes';
 import type { SavedPlaceRow } from '@/db/repositories/saved-places';
 import type {
@@ -14,6 +17,7 @@ import type {
   MomentCounts,
 } from '@/lib/moments/moment-counts';
 import {
+  countMomentCountChips,
   hasMomentCounts,
   momentCountPreviewsSignature,
 } from '@/lib/moments/moment-counts';
@@ -49,6 +53,8 @@ type StayDurationCalloutProps = {
   /** Anchor the label (e.g. live GPS while the blue puck is shown). */
   anchorCoordinate?: { latitude: number; longitude: number } | null;
   onPressMomentType?: (type: MomentCountType) => void;
+  /** Lock map pan while the moments chip strip scrolls. */
+  onChipScrollActiveChange?: (active: boolean) => void;
 };
 
 function StayDurationCalloutComponent({
@@ -62,6 +68,7 @@ function StayDurationCalloutComponent({
   showVisitPin = true,
   anchorCoordinate = null,
   onPressMomentType,
+  onChipScrollActiveChange,
 }: StayDurationCalloutProps) {
   const [now, setNow] = useState(() => new Date());
   const [bubbleHeight, setBubbleHeight] = useState(0);
@@ -75,6 +82,9 @@ function StayDurationCalloutComponent({
   const coordinate = anchorCoordinate ?? visitCoordinate;
   const counts = momentCounts;
   const showMomentCounts = counts != null && hasMomentCounts(counts);
+  const showMoreMomentsDot =
+    showMomentCounts &&
+    countMomentCountChips(counts!, momentPreviews) > MOMENT_COUNTS_SCROLL_AFTER;
   const livePuckLabel = !showVisitPin;
   // Center-anchor + half-height offset so the gap from the *bottom* of the
   // card to the blue puck stays the same whether moment counts are shown.
@@ -148,6 +158,7 @@ function StayDurationCalloutComponent({
               counts={counts!}
               previews={momentPreviews}
               onPressType={onPressMomentType}
+              onScrollActiveChange={onChipScrollActiveChange}
               layout="stacked"
             />
             <View style={styles.divider} />
@@ -184,6 +195,14 @@ function StayDurationCalloutComponent({
           ) : null}
         </View>
       </AdaptiveGlassSurface>
+      {showMoreMomentsDot ? (
+        <View
+          pointerEvents="none"
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          style={styles.moreMomentsDot}
+        />
+      ) : null}
     </View>
   );
 
@@ -258,6 +277,18 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.14,
     shadowRadius: 8,
     elevation: 5,
+  },
+  moreMomentsDot: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    width: 10,
+    height: 10,
+    borderRadius: 6,
+    backgroundColor: '#FF3B30',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+    zIndex: 2,
   },
   bubble: {
     borderRadius: 14,

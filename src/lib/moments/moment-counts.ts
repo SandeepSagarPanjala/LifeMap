@@ -27,11 +27,41 @@ export type MomentCounts = {
   mood: number;
 };
 
+export type MomentCountType = keyof MomentCounts;
+
 /** Latest rich previews for stay-card chips (diary/voice keep Lucide). */
+export type ActivityMomentSummary = {
+  activityId: number | null;
+  emoji: string;
+  count: number;
+  /** Latest log time for this unique activity (ms). */
+  latestMs: number;
+};
+
+/** One stay-card chip, ordered oldest → newest by latest log time. */
+export type MomentChipTimelineEntry =
+  | {
+      kind: 'type';
+      type: Exclude<MomentCountType, 'activity'>;
+      count: number;
+      latestMs: number;
+    }
+  | {
+      kind: 'activity';
+      activityId: number | null;
+      emoji: string;
+      count: number;
+      latestMs: number;
+    };
+
 export type MomentCountPreviews = {
   photoThumbUri: string | null;
   videoThumbUri: string | null;
   activityEmoji: string | null;
+  /** Unique activities (oldest → newest by latest log). */
+  activitySummaries: ActivityMomentSummary[];
+  /** All chips in log-time order (oldest left → newest right). */
+  chipTimeline: MomentChipTimelineEntry[];
   moodLabel: string | null;
   moodVariant: string | null;
 };
@@ -56,6 +86,8 @@ export const EMPTY_MOMENT_COUNT_PREVIEWS: MomentCountPreviews = {
   photoThumbUri: null,
   videoThumbUri: null,
   activityEmoji: null,
+  activitySummaries: [],
+  chipTimeline: [],
   moodLabel: null,
   moodVariant: null,
 };
@@ -65,7 +97,116 @@ export function emptyMomentCounts(): MomentCounts {
 }
 
 export function emptyMomentCountPreviews(): MomentCountPreviews {
-  return { ...EMPTY_MOMENT_COUNT_PREVIEWS };
+  return {
+    ...EMPTY_MOMENT_COUNT_PREVIEWS,
+    activitySummaries: [],
+    chipTimeline: [],
+  };
+}
+
+/**
+ * Group activity moments by activityId (emoji fallback).
+ * Ordered by log time ascending (oldest unique left → newest right).
+ * Count is how many times that activity was logged.
+ */
+export function summarizeUniqueActivityMoments(
+  moments: readonly MomentRow[],
+): ActivityMomentSummary[] {
+  type Acc = {
+    activityId: number | null;
+    emoji: string;
+    count: number;
+    latestMs: number;
+  };
+  const byKey = new Map<string, Acc>();
+
+  for (const moment of moments) {
+    if (moment.type !== 'activity') {
+      continue;
+    }
+    const emoji = moment.activityEmoji?.trim() || '✨';
+    const key =
+      moment.activityId != null ? `id:${moment.activityId}` : `emoji:${emoji}`;
+    const ts = moment.timestamp.getTime();
+    const existing = byKey.get(key);
+    if (existing == null) {
+      byKey.set(key, {
+        activityId: moment.activityId,
+        emoji,
+        count: 1,
+        latestMs: ts,
+      });
+      continue;
+    }
+    existing.count += 1;
+    if (ts >= existing.latestMs) {
+      existing.latestMs = ts;
+      existing.emoji = emoji;
+      if (moment.activityId != null) {
+        existing.activityId = moment.activityId;
+      }
+    }
+  }
+
+  return [...byKey.values()]
+    .sort((a, b) => a.latestMs - b.latestMs)
+    .map(({ activityId, emoji, count, latestMs }) => ({
+      activityId,
+      emoji,
+      count,
+      latestMs,
+    }));
+}
+
+/** Build stay chips ordered by each chip's latest log time (oldest → newest). */
+export function buildMomentChipTimeline(
+  moments: readonly MomentRow[],
+  activitySummaries: readonly ActivityMomentSummary[] = summarizeUniqueActivityMoments(
+    moments,
+  ),
+): MomentChipTimelineEntry[] {
+  const typeAgg: Partial<
+    Record<
+      Exclude<MomentCountType, 'activity'>,
+      { count: number; latestMs: number }
+    >
+  > = {};
+
+  for (const moment of moments) {
+    if (moment.type === 'activity') {
+      continue;
+    }
+    const type = moment.type as Exclude<MomentCountType, 'activity'>;
+    const ts = moment.timestamp.getTime();
+    const existing = typeAgg[type];
+    if (existing == null) {
+      typeAgg[type] = { count: 1, latestMs: ts };
+      continue;
+    }
+    existing.count += 1;
+    if (ts >= existing.latestMs) {
+      existing.latestMs = ts;
+    }
+  }
+
+  const entries: MomentChipTimelineEntry[] = [];
+  for (const type of ['photo', 'video', 'voice', 'note', 'mood'] as const) {
+    const agg = typeAgg[type];
+    if (agg != null) {
+      entries.push({ kind: 'type', type, count: agg.count, latestMs: agg.latestMs });
+    }
+  }
+  for (const summary of activitySummaries) {
+    entries.push({
+      kind: 'activity',
+      activityId: summary.activityId,
+      emoji: summary.emoji,
+      count: summary.count,
+      latestMs: summary.latestMs,
+    });
+  }
+
+  return entries.sort((a, b) => a.latestMs - b.latestMs);
 }
 
 /**
@@ -77,8 +218,9 @@ export function latestMomentCountPreviews(
 ): MomentCountPreviews {
   let latestPhoto: MomentRow | null = null;
   let latestVideo: MomentRow | null = null;
-  let latestActivity: MomentRow | null = null;
   let latestMood: MomentRow | null = null;
+  const activitySummaries = summarizeUniqueActivityMoments(moments);
+  const chipTimeline = buildMomentChipTimeline(moments, activitySummaries);
 
   for (const moment of moments) {
     if (moment.type === 'photo') {
@@ -99,15 +241,6 @@ export function latestMomentCountPreviews(
       }
       continue;
     }
-    if (moment.type === 'activity') {
-      if (
-        latestActivity == null ||
-        moment.timestamp.getTime() >= latestActivity.timestamp.getTime()
-      ) {
-        latestActivity = moment;
-      }
-      continue;
-    }
     if (moment.type === 'mood') {
       if (
         latestMood == null ||
@@ -125,7 +258,10 @@ export function latestMomentCountPreviews(
     videoThumbUri: latestVideo?.thumbnailPath
       ? momentImageUri(latestVideo.thumbnailPath)
       : null,
-    activityEmoji: latestActivity?.activityEmoji?.trim() || null,
+    activityEmoji:
+      activitySummaries[activitySummaries.length - 1]?.emoji ?? null,
+    activitySummaries,
+    chipTimeline,
     moodLabel: latestMood?.moodLabel?.trim() || null,
     moodVariant: latestMood?.moodVariant?.trim() || null,
   };
@@ -139,6 +275,19 @@ export function momentCountPreviewsSignature(
     previews.photoThumbUri ?? '',
     previews.videoThumbUri ?? '',
     previews.activityEmoji ?? '',
+    previews.activitySummaries
+      .map(
+        summary =>
+          `${summary.activityId ?? ''}:${summary.emoji}:${summary.count}:${summary.latestMs}`,
+      )
+      .join(','),
+    previews.chipTimeline
+      .map(entry =>
+        entry.kind === 'activity'
+          ? `a:${entry.activityId ?? ''}:${entry.emoji}:${entry.count}:${entry.latestMs}`
+          : `t:${entry.type}:${entry.count}:${entry.latestMs}`,
+      )
+      .join(','),
     previews.moodLabel ?? '',
     previews.moodVariant ?? '',
   ].join('|');
@@ -155,6 +304,32 @@ export function hasMomentCounts(counts: MomentCounts): boolean {
   );
 }
 
+/**
+ * How many stay-card chips will render. Unique activities expand to N chips.
+ * Used to decide when the moments row should scroll (>6).
+ */
+export function countMomentCountChips(
+  counts: MomentCounts,
+  previews?: MomentCountPreviews | null,
+): number {
+  if (previews?.chipTimeline != null && previews.chipTimeline.length > 0) {
+    return previews.chipTimeline.length;
+  }
+  let total = 0;
+  const activitySummaries = previews?.activitySummaries;
+  if (activitySummaries != null && activitySummaries.length > 0) {
+    total += activitySummaries.length;
+  } else if (counts.activity > 0) {
+    total += 1;
+  }
+  if (counts.photo > 0) total += 1;
+  if (counts.video > 0) total += 1;
+  if (counts.voice > 0) total += 1;
+  if (counts.note > 0) total += 1;
+  if (counts.mood > 0) total += 1;
+  return total;
+}
+
 export function countMomentTypes(counts: MomentCounts): number {
   let total = 0;
   if (counts.photo > 0) total += 1;
@@ -165,8 +340,6 @@ export function countMomentTypes(counts: MomentCounts): number {
   if (counts.mood > 0) total += 1;
   return total;
 }
-
-export type MomentCountType = keyof MomentCounts;
 
 /**
  * Chips show the latest moment of a type, so tapping one must open that same

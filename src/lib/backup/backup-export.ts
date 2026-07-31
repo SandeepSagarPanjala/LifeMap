@@ -91,6 +91,7 @@ function serializeActivities(
     source: row.source,
     templateId: row.templateId,
     definitionJson: row.definitionJson,
+    intent: row.intent,
   }));
 }
 

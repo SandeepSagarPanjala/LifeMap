@@ -11,6 +11,8 @@ export type RootStackParamList = {
   BackupSettings: undefined;
   NotificationsSettings: undefined;
   HealthSettings: undefined;
+  SleepDetail: { dateKey: string };
+  StepsDetail: { dateKey: string };
   DeveloperSettings: undefined;
   ExportTripDays: undefined;
   ExportTripDetail: { dateKey: string; tripIndex: number };
@@ -24,6 +26,8 @@ export type RootStackParamList = {
   CaptureVoice: undefined;
   CaptureActivity: undefined;
   ActivityManage: { openCreate?: boolean } | undefined;
+  ActivityInsights: undefined;
+  ActivityInsightDetail: { activityId: number };
   ActivityForm:
     | { kind: 'create' }
     | { kind: 'create-first' }

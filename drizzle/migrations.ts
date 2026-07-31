@@ -374,6 +374,38 @@ CREATE TABLE IF NOT EXISTS \`health_day_steps\` (
 --> statement-breakpoint
 ALTER TABLE \`moments\` ADD \`import_source\` text;`;
 
+const m0041 = `CREATE TABLE IF NOT EXISTS \`health_sleep_samples\` (
+	\`id\` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	\`uuid\` text NOT NULL,
+	\`start_at\` integer NOT NULL,
+	\`end_at\` integer NOT NULL,
+	\`value\` integer NOT NULL,
+	\`synced_at\` integer NOT NULL
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS \`health_sleep_samples_uuid_unique\` ON \`health_sleep_samples\` (\`uuid\`);
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS \`health_sleep_samples_start_end_idx\` ON \`health_sleep_samples\` (\`start_at\`, \`end_at\`);
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS \`health_day_sleep\` (
+	\`date_key\` text PRIMARY KEY NOT NULL,
+	\`asleep_ms\` integer NOT NULL,
+	\`awake_ms\` integer NOT NULL,
+	\`rem_ms\` integer NOT NULL,
+	\`core_ms\` integer NOT NULL,
+	\`deep_ms\` integer NOT NULL,
+	\`unspecified_ms\` integer NOT NULL,
+	\`awakenings_over_5_min\` integer DEFAULT 0 NOT NULL,
+	\`sleep_start_at\` integer,
+	\`sleep_end_at\` integer,
+	\`score\` integer,
+	\`synced_at\` integer NOT NULL
+);`;
+
+const m0042 = `ALTER TABLE \`activities\` ADD \`intent\` text DEFAULT 'track' NOT NULL;`;
+
+const m0043 = `CREATE INDEX IF NOT EXISTS \`moments_activity_id_idx\` ON \`moments\` (\`activity_id\`);`;
+
 export default {
   journal,
   migrations: {
@@ -418,5 +450,8 @@ export default {
     m0038,
     m0039,
     m0040,
+    m0041,
+    m0042,
+    m0043,
   },
 };

@@ -14,7 +14,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { AudioLines, Pause, Play, X } from 'lucide-react-native';
+import { AudioLines, ChevronLeft, Pause, Play } from 'lucide-react-native';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import type { BottomSheetModal } from '@gorhom/bottom-sheet';
@@ -360,12 +360,16 @@ export function VoiceMemoPreviewSheet({
                 </GlassPressable>
 
                 <MapGlassCircleButton
-                  accessibilityLabel="Close"
+                  accessibilityLabel="Back"
                   onPress={requestClose}
                   disabled={saving}
                   style={styles.sideButton}
                 >
-                  <X size={20} color={colors.primary} strokeWidth={2.25} />
+                  <ChevronLeft
+                    size={22}
+                    color={colors.primary}
+                    strokeWidth={2.25}
+                  />
                 </MapGlassCircleButton>
               </View>
             </View>
