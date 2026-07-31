@@ -34,17 +34,6 @@ export type DaySleepRollup = {
   score: number | null;
 };
 
-function overlapMs(
-  aStart: Date,
-  aEnd: Date,
-  bStart: Date,
-  bEnd: Date,
-): number {
-  const start = Math.max(aStart.getTime(), bStart.getTime());
-  const end = Math.min(aEnd.getTime(), bEnd.getTime());
-  return Math.max(0, end - start);
-}
-
 /** Merge overlapping/adjacent awake intervals, then count NSF awakenings >5 min. */
 export function countAwakeningsOver5Min(
   intervals: Array<{ startAt: Date; endAt: Date }>,
