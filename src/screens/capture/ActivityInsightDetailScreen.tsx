@@ -350,7 +350,7 @@ function MonthCalendarPager({
     () =>
       monthDates.map(monthDate =>
         buildInsightCalendarMonth({
-          intent: activity.intent,
+          intent,
           reminderEnabled: activity.reminderEnabled,
           reminderRepeat: activity.reminderRepeat,
           loggedCounts,
@@ -359,9 +359,9 @@ function MonthCalendarPager({
         }),
       ),
     [
-      activity.intent,
       activity.reminderEnabled,
       activity.reminderRepeat,
+      intent,
       loggedCounts,
       monthDates,
       now,
