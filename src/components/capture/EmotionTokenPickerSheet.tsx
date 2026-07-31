@@ -28,7 +28,7 @@ import {
   type BottomSheetFooterProps,
   type BottomSheetModal,
 } from '@gorhom/bottom-sheet';
-import { Search, X } from 'lucide-react-native';
+import { ChevronLeft, Search } from 'lucide-react-native';
 import Animated, {
   Easing,
   ReduceMotion,
@@ -238,11 +238,11 @@ const MoodSearchFooter = memo(function MoodSearchFooter({
             </AdaptiveGlassSurface>
           </View>
           <MapGlassCircleButton
-            accessibilityLabel="Close mood picker"
+            accessibilityLabel="Back"
             onPress={onClose}
             size={SEARCH_DOCK_HEIGHT}
           >
-            <X size={20} color={primaryColor} strokeWidth={2.25} />
+            <ChevronLeft size={22} color={primaryColor} strokeWidth={2.25} />
           </MapGlassCircleButton>
         </View>
       </View>
@@ -672,11 +672,11 @@ export function EmotionTokenPickerPage({
           </AdaptiveGlassSurface>
         </View>
         <MapGlassCircleButton
-          accessibilityLabel={APP_COPY.common.close}
+          accessibilityLabel="Back"
           onPress={onClose}
           size={46}
         >
-          <X size={20} color={colors.primary} strokeWidth={2.25} />
+          <ChevronLeft size={22} color={colors.primary} strokeWidth={2.25} />
         </MapGlassCircleButton>
       </View>
     </View>

@@ -28,6 +28,7 @@ type HistoryDayMapOverlayProps = {
   selectedEntryMomentCounts?: MomentCounts;
   selectedEntryMomentPreviews?: MomentCountPreviews | null;
   onPressSelectedEntryMoments?: (type: MomentCountType) => void;
+  onChipScrollActiveChange?: (active: boolean) => void;
   tripConfig: TripDetectionConfig;
   playbackProgress: number | null;
   /** Zoom-gated direction chevrons on the selected trip. */
@@ -55,6 +56,7 @@ export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
   selectedEntryMomentCounts,
   selectedEntryMomentPreviews = null,
   onPressSelectedEntryMoments,
+  onChipScrollActiveChange,
   tripConfig,
   playbackProgress,
   showDirectionArrows = false,
@@ -201,6 +203,7 @@ export const HistoryDayMapOverlay = memo(function HistoryDayMapOverlay({
           momentCounts={selectedEntryMomentCounts}
           momentPreviews={selectedEntryMomentPreviews}
           onPressMomentType={onPressSelectedEntryMoments}
+          onChipScrollActiveChange={onChipScrollActiveChange}
         />
       ) : null}
     </>

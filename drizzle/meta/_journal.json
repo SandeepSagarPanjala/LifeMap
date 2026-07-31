@@ -288,6 +288,27 @@
       "when": 1788932000000,
       "tag": "0040_healthkit",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1788933000000,
+      "tag": "0041_health_sleep_stages",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1788934000000,
+      "tag": "0042_activity_intent",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1788935000000,
+      "tag": "0043_moments_activity_id_idx",
+      "breakpoints": true
     }
   ]
 }

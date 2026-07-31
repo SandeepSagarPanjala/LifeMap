@@ -2,7 +2,7 @@ import { useCallback, type ReactNode } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { X } from 'lucide-react-native';
+import { ChevronLeft, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
@@ -13,6 +13,7 @@ import {
   MAP_STACK_BUTTON_SIZE,
 } from '@/lib/app-constants';
 import type { RootStackParamList } from '@/navigation/types';
+import { useClosesToMap } from '@/navigation/use-closes-to-map';
 
 export function settingsBottomChromePadding(bottomInset: number): number {
   return (
@@ -30,7 +31,8 @@ type SettingsScreenLayoutProps = {
 };
 
 /**
- * Shared Settings chrome: no nav header, bottom liquid-glass X (goBack),
+ * Shared Settings chrome: no nav header, bottom liquid-glass dismiss
+ * (X when returning to map, chevron when stepping back in Settings),
  * optional bottom-anchored scroll content.
  */
 export function SettingsScreenLayout({
@@ -41,6 +43,7 @@ export function SettingsScreenLayout({
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
+  const closesToMap = useClosesToMap();
   const topPad = Math.max(insets.top, 12);
   const bottomPad = settingsBottomChromePadding(insets.bottom);
 
@@ -88,11 +91,15 @@ export function SettingsScreenLayout({
         ]}
       >
         <MapGlassCircleButton
-          accessibilityLabel="Close"
+          accessibilityLabel={closesToMap ? 'Close' : 'Back'}
           onPress={handleClose}
           style={styles.closeButton}
         >
-          <X size={20} color={colors.primary} strokeWidth={2.25} />
+          {closesToMap ? (
+            <X size={20} color={colors.primary} strokeWidth={2.25} />
+          ) : (
+            <ChevronLeft size={22} color={colors.primary} strokeWidth={2.25} />
+          )}
         </MapGlassCircleButton>
       </View>
     </View>

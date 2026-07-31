@@ -9,7 +9,10 @@ import {
   SettingsLinkRow,
 } from '@/components/settings/settings-group';
 import { Text } from '@/components/ui/text';
+import { deleteLocalSleepDataOverlapping } from '@/db/repositories/health';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import { getDayRange, getTodayDateKey } from '@/lib/day-utils';
+import { notifyHealthDataUpdated } from '@/lib/healthkit/events';
 import {
   ensureHealthKitPermission,
   isHealthDataAvailableSafe,
@@ -29,6 +32,7 @@ import {
   syncHealthKit,
   type HealthSyncProgress,
 } from '@/lib/healthkit/sync';
+import { HEALTHKIT_BACKFILL_LOOKBACK_DAYS } from '@/lib/healthkit/types';
 import { cn } from '@/lib/utils';
 
 const DONE_HOLD_MS = 700;
@@ -86,6 +90,7 @@ export function HealthSettingsScreen() {
     });
     try {
       await syncHealthKit({
+        lookbackDays: HEALTHKIT_BACKFILL_LOOKBACK_DAYS,
         onProgress: next => {
           setSyncProgress(next);
         },
@@ -154,6 +159,41 @@ export function HealthSettingsScreen() {
     },
     [runSyncWithProgress, syncing],
   );
+
+  const handleDeleteTodaySleep = useCallback(() => {
+    Alert.alert(
+      "Delete today's local sleep?",
+      'This only clears the LifeMap database. Apple Health is unchanged, and putting LifeMap in the background then foreground will import the sleep again.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            const todayKey = getTodayDateKey();
+            const { start, end } = getDayRange(todayKey);
+            void deleteLocalSleepDataOverlapping(start, end, [todayKey])
+              .then(deleted => {
+                notifyHealthDataUpdated();
+                const n = deleted.sessions + deleted.samples;
+                Alert.alert(
+                  'Local sleep deleted',
+                  n === 0
+                    ? 'No local sleep rows for today. Background and reopen LifeMap to test the import.'
+                    : `Cleared ${deleted.sessions} sessions, ${deleted.samples} samples, ${deleted.days} day rollups. Background and reopen LifeMap to test the import.`,
+                );
+              })
+              .catch(() => {
+                Alert.alert(
+                  'Could not delete sleep',
+                  'LifeMap could not clear the local sleep data.',
+                );
+              });
+          },
+        },
+      ],
+    );
+  }, []);
 
   if (!isHealthKitSupported()) {
     return (
@@ -234,13 +274,19 @@ export function HealthSettingsScreen() {
                   }
                 }}
               />
+              <SettingsLinkRow
+                label="Delete today's local sleep"
+                accessibilityLabel="Delete today's sleep from the LifeMap database"
+                onPress={handleDeleteTodaySleep}
+              />
               <Text
                 variant="muted"
                 className={cn('mt-1 text-sm')}
                 style={{ color: colors.mutedForeground }}
               >
                 Temporary. Same import as turning Apple Health on for the first
-                time. Safe to run again — won’t duplicate workouts.
+                time. Deleting sleep affects only LifeMap; the next foreground
+                sync imports it again.
               </Text>
             </>
           ) : null}

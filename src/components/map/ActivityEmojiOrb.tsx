@@ -37,6 +37,21 @@ export const ActivityEmojiOrb = memo(function ActivityEmojiOrb({
   const badgeSize = Math.max(16, Math.round(size * 0.28));
   const iconSize = Math.max(9, Math.round(badgeSize * 0.55));
 
+  const emoji = (
+    <Text
+      style={[
+        styles.emoji,
+        {
+          fontSize: emojiSize,
+          lineHeight:
+            Platform.OS === 'android' ? emojiSize + 4 : emojiSize + 2,
+        },
+      ]}
+    >
+      {activity.emoji}
+    </Text>
+  );
+
   return (
     <View style={[styles.wrap, { width: size + 6, height: size + 6 }]}>
       <View
@@ -47,7 +62,9 @@ export const ActivityEmojiOrb = memo(function ActivityEmojiOrb({
             height: size,
             borderRadius: radius,
           },
-          hasNotify ? styles.orbGradient : { backgroundColor: coreTint },
+          hasNotify
+            ? styles.orbGradient
+            : [styles.orbTinted, { backgroundColor: coreTint }],
         ]}
       >
         {hasNotify ? (
@@ -74,18 +91,7 @@ export const ActivityEmojiOrb = memo(function ActivityEmojiOrb({
             />
           </Svg>
         ) : null}
-        <Text
-          style={[
-            styles.emoji,
-            {
-              fontSize: emojiSize,
-              lineHeight:
-                Platform.OS === 'android' ? emojiSize + 4 : emojiSize + 2,
-            },
-          ]}
-        >
-          {activity.emoji}
-        </Text>
+        {emoji}
       </View>
       {hasHealth && showHealthBadge ? (
         <View
@@ -160,6 +166,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
+  },
+  orbTinted: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(15, 23, 42, 0.06)',
   },
   orbGradient: {
     backgroundColor: 'transparent',

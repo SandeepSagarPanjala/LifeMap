@@ -15,6 +15,8 @@ import { CaptureActivityScreen } from '@/screens/capture/CaptureActivityScreen';
 import { ActivityFormScreen } from '@/screens/capture/ActivityFormScreen';
 import { ActivityLogEntryScreen } from '@/screens/capture/ActivityLogEntryScreen';
 import { ActivityManageScreen } from '@/screens/capture/ActivityManageScreen';
+import { ActivityInsightsScreen } from '@/screens/capture/ActivityInsightsScreen';
+import { ActivityInsightDetailScreen } from '@/screens/capture/ActivityInsightDetailScreen';
 import { CaptureNoteScreen } from '@/screens/capture/CaptureNoteScreen';
 import { CaptureMoodScreen } from '@/screens/capture/CaptureMoodScreen';
 import { CapturePhotoScreen } from '@/screens/capture/CapturePhotoScreen';
@@ -38,6 +40,8 @@ import { StorageSettingsScreen } from '@/screens/settings/StorageSettingsScreen'
 import { ThemeSettingsScreen } from '@/screens/settings/ThemeSettingsScreen';
 import { NotificationsSettingsScreen } from '@/screens/settings/NotificationsSettingsScreen';
 import { HealthSettingsScreen } from '@/screens/settings/HealthSettingsScreen';
+import { SleepDetailScreen } from '@/screens/health/SleepDetailScreen';
+import { StepsDetailScreen } from '@/screens/health/StepsDetailScreen';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { setWidgetNavigationRef } from '@/lib/widget/widget-deep-link';
 import { setNotificationNavigationRef } from '@/lib/notifications/bootstrap';
@@ -169,6 +173,24 @@ export function RootNavigator() {
           options={settingsSubScreenOptions('Apple Health')}
         />
         <Stack.Screen
+          name="SleepDetail"
+          component={SleepDetailScreen}
+          options={{
+            headerShown: false,
+            presentation: 'card',
+            animation: 'slide_from_right',
+          }}
+        />
+        <Stack.Screen
+          name="StepsDetail"
+          component={StepsDetailScreen}
+          options={{
+            headerShown: false,
+            presentation: 'card',
+            animation: 'slide_from_right',
+          }}
+        />
+        <Stack.Screen
           name="DeveloperSettings"
           component={DeveloperSettingsScreen}
           options={settingsSubScreenOptions('Developer tools')}
@@ -233,6 +255,24 @@ export function RootNavigator() {
           options={{
             headerShown: false,
             presentation: 'card',
+          }}
+        />
+        <Stack.Screen
+          name="ActivityInsights"
+          component={ActivityInsightsScreen}
+          options={{
+            headerShown: false,
+            presentation: 'card',
+            animation: 'slide_from_right',
+          }}
+        />
+        <Stack.Screen
+          name="ActivityInsightDetail"
+          component={ActivityInsightDetailScreen}
+          options={{
+            headerShown: false,
+            presentation: 'card',
+            animation: 'slide_from_right',
           }}
         />
         <Stack.Screen

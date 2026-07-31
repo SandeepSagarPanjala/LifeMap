@@ -46,6 +46,10 @@ export function CaptureActivityScreen() {
     navigation.replace('ActivityManage');
   }, [navigation]);
 
+  const handleBeginInsights = useCallback(() => {
+    navigation.replace('ActivityInsights');
+  }, [navigation]);
+
   const handleBeginStructuredLog = useCallback(
     (activity: ActivityRow) => {
       navigation.replace('ActivityLogEntry', { activityId: activity.id });
@@ -68,6 +72,7 @@ export function CaptureActivityScreen() {
             reloadNonce={reloadNonce}
             onBeginCreateFirst={handleBeginCreateFirst}
             onBeginManage={handleBeginManage}
+            onBeginInsights={handleBeginInsights}
             onBeginStructuredLog={handleBeginStructuredLog}
           />
         </View>
@@ -80,12 +85,14 @@ function CaptureActivityList({
   refreshDayMoments,
   onBeginCreateFirst,
   onBeginManage,
+  onBeginInsights,
   onBeginStructuredLog,
   reloadNonce,
 }: {
   refreshDayMoments: () => Promise<void>;
   onBeginCreateFirst: () => void;
   onBeginManage: () => void;
+  onBeginInsights: () => void;
   onBeginStructuredLog: (activity: ActivityRow) => void;
   reloadNonce: number;
 }) {
@@ -101,6 +108,7 @@ function CaptureActivityList({
         }}
         onBeginCreateFirst={onBeginCreateFirst}
         onBeginManage={onBeginManage}
+        onBeginInsights={onBeginInsights}
         onBeginStructuredLog={onBeginStructuredLog}
         reloadNonce={reloadNonce}
       />

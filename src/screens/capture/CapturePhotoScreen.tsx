@@ -1909,6 +1909,7 @@ export function CapturePhotoScreen() {
         <VoiceMemoSheet
           visible={voiceSheetOpen}
           saveTarget="photo"
+          closesToMap={false}
           startRecordingOnOpen
           maxDurationMs={PHOTO_VOICE_MAX_DURATION_MS}
           onDiaryAttach={attachment => {

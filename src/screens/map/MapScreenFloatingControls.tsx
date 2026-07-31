@@ -1,5 +1,7 @@
-import { memo } from 'react';
+import { memo, useCallback } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import {
   MapHealthMetricChip,
@@ -18,6 +20,7 @@ import {
   MAP_STACK_BUTTON_GAP,
   MAP_STACK_BUTTON_SIZE,
 } from '@/lib/app-constants';
+import type { RootStackParamList } from '@/navigation/types';
 
 import type { MapScreenController } from './use-map-screen-controller';
 
@@ -60,6 +63,8 @@ export const MapScreenFloatingControls = memo(
       selectedDateKey,
     } = controller;
 
+    const navigation =
+      useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const health = useDayHealthChips(selectedDateKey);
     const historyPanelActive = historyPanelOpen;
     const showTodayControls = viewingToday && !historyPanelActive;
@@ -73,6 +78,14 @@ export const MapScreenFloatingControls = memo(
     const healthMetricsActive =
       health.masterOn && (health.sleepEnabled || health.stepsEnabled);
     const placesUnderSettings = healthMetricsActive;
+
+    const openSleepDetail = useCallback(() => {
+      navigation.navigate('SleepDetail', { dateKey: selectedDateKey });
+    }, [navigation, selectedDateKey]);
+
+    const openStepsDetail = useCallback(() => {
+      navigation.navigate('StepsDetail', { dateKey: selectedDateKey });
+    }, [navigation, selectedDateKey]);
 
     const stepsChipBottom = showStepsChip
       ? mapHealthChipBottom(historyButtonBottom, 0)
@@ -142,6 +155,7 @@ export const MapScreenFloatingControls = memo(
             kind="steps"
             bottom={stepsChipBottom}
             value={health.steps}
+            onPress={openStepsDetail}
           />
         ) : null}
         {showSleepChip && sleepChipBottom != null ? (
@@ -149,6 +163,7 @@ export const MapScreenFloatingControls = memo(
             kind="sleep"
             bottom={sleepChipBottom}
             value={health.sleepMs}
+            onPress={openSleepDetail}
           />
         ) : null}
         {showTodayControls && !placesUnderSettings ? (

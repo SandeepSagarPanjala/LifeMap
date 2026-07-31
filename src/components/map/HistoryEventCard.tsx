@@ -1,7 +1,7 @@
 import LottieView from 'lottie-react-native';
-import { memo, useEffect, useState } from 'react';
+import { memo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Heart, Play } from 'lucide-react-native';
+import { Play } from 'lucide-react-native';
 
 import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
 import { DriveRouteStrip } from '@/components/map/DriveRouteStrip';
@@ -17,11 +17,6 @@ import type {
 } from '@/lib/moments/moment-counts';
 import { hasMomentCounts } from '@/lib/moments/moment-counts';
 import type { DriveEndpointLabel } from '@/lib/drive-endpoint-label';
-import {
-  loadVisitSleepDisplay,
-  type VisitSleepDisplay,
-} from '@/lib/healthkit/display';
-import { subscribeHealthData } from '@/lib/healthkit/events';
 import { savedPlaceDisplayLabel } from '@/lib/saved-places';
 import type { DayTimelineEntry } from '@/lib/trip-detection';
 import {
@@ -138,37 +133,6 @@ export const HistoryEventCard = memo(function HistoryEventCard({
   onZoomVisit,
 }: HistoryEventCardProps) {
   const colors = useThemeColors();
-  const [sleepRows, setSleepRows] = useState<VisitSleepDisplay[]>([]);
-  // Depend on times, not Date identities, so re-created entries don't re-fetch.
-  const stayStartMs =
-    entry?.kind === 'stay' ? entry.startAt.getTime() : null;
-  const stayEndMs = entry?.kind === 'stay' ? entry.endAt.getTime() : null;
-
-  useEffect(() => {
-    if (stayStartMs == null || stayEndMs == null) {
-      setSleepRows(current => (current.length === 0 ? current : []));
-      return;
-    }
-    let cancelled = false;
-    const load = () => {
-      void loadVisitSleepDisplay(
-        new Date(stayStartMs),
-        new Date(stayEndMs),
-      ).then(rows => {
-        if (!cancelled) {
-          setSleepRows(current =>
-            current.length === 0 && rows.length === 0 ? current : rows,
-          );
-        }
-      });
-    };
-    load();
-    const unsubscribe = subscribeHealthData(load);
-    return () => {
-      cancelled = true;
-      unsubscribe();
-    };
-  }, [stayStartMs, stayEndMs]);
 
   if (entry == null) {
     const title = scrubOnEmpty
@@ -300,22 +264,6 @@ export const HistoryEventCard = memo(function HistoryEventCard({
               <Text variant="muted" className="mt-0.5 text-sm">
                 {visitLabel.subtitle}
               </Text>
-              {sleepRows.map((row, index) => (
-                <View key={`sleep-${index}`} style={styles.sleepRow}>
-                  <Heart
-                    size={14}
-                    color="#DC2626"
-                    strokeWidth={2.4}
-                    style={styles.sleepHealthIcon}
-                  />
-                  <View style={styles.sleepText}>
-                    <Text className="text-sm font-medium">{row.timeLine}</Text>
-                    <Text variant="muted" className="mt-0.5 text-xs">
-                      {row.durationLine}
-                    </Text>
-                  </View>
-                </View>
-              ))}
             </View>
           </View>
         </>
@@ -421,19 +369,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     flexShrink: 1,
-    minWidth: 0,
-  },
-  sleepRow: {
-    marginTop: 6,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 6,
-  },
-  sleepHealthIcon: {
-    marginTop: 2,
-  },
-  sleepText: {
-    flex: 1,
     minWidth: 0,
   },
   visitLottieAnchor: {

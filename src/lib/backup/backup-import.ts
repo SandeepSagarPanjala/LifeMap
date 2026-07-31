@@ -7,6 +7,7 @@ import {
   savedPlaces,
   settings,
 } from '@/db/schema';
+import { parseActivityIntent } from '@/lib/activities/activity-intent';
 import {
   getTripByEventKey,
   listTripsForDay,
@@ -78,6 +79,7 @@ async function importActivities(rows: unknown[]): Promise<IdMap> {
           typeof record.definitionJson === 'string'
             ? record.definitionJson
             : '[]',
+        intent: parseActivityIntent(record.intent),
       })
       .returning({ id: activities.id });
     map.set(oldId, inserted[0]!.id);

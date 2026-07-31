@@ -6,7 +6,7 @@ import {
   Sparkles,
   Video,
 } from 'lucide-react-native';
-import { memo, useMemo } from 'react';
+import { memo, useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Image,
   Pressable,
@@ -15,6 +15,7 @@ import {
   View,
   type ImageSourcePropType,
 } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 
 import {
   CAPTURE_BUTTON_THEMES,
@@ -25,12 +26,15 @@ import type {
   MomentCountType,
   MomentCounts,
 } from '@/lib/moments/moment-counts';
-import { hasMomentCounts } from '@/lib/moments/moment-counts';
+import { hasMomentCounts, countMomentCountChips } from '@/lib/moments/moment-counts';
 import {
   getMoodArtPresentation,
   resolveEmotionFromMoodLabel,
   resolveMoodVariantFromMoment,
 } from '@/lib/moments/mood-art';
+
+/** Stay card fits ~6 stacked chips; beyond that the row scrolls. */
+export const MOMENT_COUNTS_SCROLL_AFTER = 6;
 
 type MomentCountsRowLayout = 'inline' | 'stacked';
 
@@ -45,6 +49,8 @@ type MomentCountsRowProps = {
   layout?: MomentCountsRowLayout;
   onPress?: () => void;
   onPressType?: (type: MomentCountType) => void;
+  /** Lock map pan while the chip strip is scrolling. */
+  onScrollActiveChange?: (active: boolean) => void;
 };
 
 type ChipDefinition = {
@@ -283,6 +289,7 @@ function MomentCountsRowComponent({
   layout = 'stacked',
   onPress,
   onPressType,
+  onScrollActiveChange,
 }: MomentCountsRowProps) {
   // Stable per-type handlers so memoized chips don't re-render on every parent
   // render just because a fresh inline closure was created.
@@ -297,47 +304,202 @@ function MomentCountsRowComponent({
     return handlers;
   }, [onPressType]);
 
-  if (!hasMomentCounts(counts)) {
-    return null;
-  }
+  const chipCount = useMemo(
+    () => countMomentCountChips(counts, previews),
+    [counts, previews],
+  );
+  const scrollable = chipCount > MOMENT_COUNTS_SCROLL_AFTER;
+  const scrollRef = useRef<ScrollView>(null);
+  const timelineSignature = useMemo(() => {
+    const timeline = previews?.chipTimeline;
+    if (timeline != null && timeline.length > 0) {
+      return timeline
+        .map(entry =>
+          entry.kind === 'activity'
+            ? `a:${entry.activityId ?? ''}:${entry.emoji}:${entry.count}:${entry.latestMs}`
+            : `t:${entry.type}:${entry.count}:${entry.latestMs}`,
+        )
+        .join('|');
+    }
+    return `counts:${counts.photo}:${counts.video}:${counts.voice}:${counts.note}:${counts.activity}:${counts.mood}`;
+  }, [counts, previews]);
+  // Stay hidden until scrollToEnd so we never paint oldest-first then jump.
+  const [pinnedSignature, setPinnedSignature] = useState<string | null>(null);
+  const scrollPinned = !scrollable || pinnedSignature === timelineSignature;
 
-  const row = (
-    <View
-      style={[
-        styles.row,
-        layout === 'stacked'
-          ? [styles.rowStacked, dense ? styles.rowStackedDense : null]
-          : dense
-            ? styles.rowInlineDense
-            : null,
-      ]}
-    >
-      {CHIP_DEFINITIONS.map(definition => {
-        const count = counts[definition.type];
-        if (count <= 0) {
-          return null;
+  const setScrollActive = useCallback(
+    (active: boolean) => {
+      onScrollActiveChange?.(active);
+    },
+    [onScrollActiveChange],
+  );
+
+  const scrollToNewest = useCallback(() => {
+    if (!scrollable) {
+      return;
+    }
+    // Oldest are on the left; pin to the end so newest stay visible.
+    scrollRef.current?.scrollToEnd({ animated: false });
+    setPinnedSignature(timelineSignature);
+  }, [scrollable, timelineSignature]);
+
+  useLayoutEffect(() => {
+    if (!scrollable) {
+      setPinnedSignature(null);
+      return;
+    }
+    scrollToNewest();
+  }, [scrollToNewest, scrollable, timelineSignature]);
+
+  const definitionByType = useMemo(() => {
+    const map = {} as Record<MomentCountType, (typeof CHIP_DEFINITIONS)[number]>;
+    for (const definition of CHIP_DEFINITIONS) {
+      map[definition.type] = definition;
+    }
+    return map;
+  }, []);
+
+  const chips = useMemo(() => {
+    const timeline = previews?.chipTimeline;
+    if (timeline != null && timeline.length > 0) {
+      return timeline.map(entry => {
+        if (entry.kind === 'activity') {
+          const definition = definitionByType.activity;
+          return (
+            <MomentCountChip
+              key={`activity-${entry.activityId ?? entry.emoji}-${entry.latestMs}`}
+              count={entry.count}
+              visual={{ kind: 'emoji', emoji: entry.emoji }}
+              theme={definition.theme}
+              iconSize={iconSize}
+              compact={compact}
+              dense={dense}
+              layout={layout}
+              onPress={typeHandlers ? typeHandlers.activity : undefined}
+              accessibilityLabel={definition.accessibilityLabel}
+            />
+          );
         }
-
+        const definition = definitionByType[entry.type];
         return (
           <MomentCountChip
-            key={definition.type}
-            count={count}
-            visual={resolveChipVisual(
-              definition.type,
-              definition.icon,
-              previews,
-            )}
+            key={`${entry.type}-${entry.latestMs}`}
+            count={entry.count}
+            visual={resolveChipVisual(entry.type, definition.icon, previews)}
             theme={definition.theme}
             iconSize={iconSize}
             compact={compact}
             dense={dense}
             layout={layout}
-            onPress={typeHandlers ? typeHandlers[definition.type] : undefined}
+            onPress={typeHandlers ? typeHandlers[entry.type] : undefined}
             accessibilityLabel={definition.accessibilityLabel}
           />
         );
-      })}
-    </View>
+      });
+    }
+
+    return CHIP_DEFINITIONS.flatMap(definition => {
+      if (definition.type === 'activity') {
+        const summaries = previews?.activitySummaries;
+        if (summaries != null && summaries.length > 0) {
+          return summaries.map(summary => (
+            <MomentCountChip
+              key={`activity-${summary.activityId ?? summary.emoji}`}
+              count={summary.count}
+              visual={{ kind: 'emoji', emoji: summary.emoji }}
+              theme={definition.theme}
+              iconSize={iconSize}
+              compact={compact}
+              dense={dense}
+              layout={layout}
+              onPress={typeHandlers ? typeHandlers.activity : undefined}
+              accessibilityLabel={definition.accessibilityLabel}
+            />
+          ));
+        }
+      }
+
+      const count = counts[definition.type];
+      if (count <= 0) {
+        return [];
+      }
+
+      return [
+        <MomentCountChip
+          key={definition.type}
+          count={count}
+          visual={resolveChipVisual(
+            definition.type,
+            definition.icon,
+            previews,
+          )}
+          theme={definition.theme}
+          iconSize={iconSize}
+          compact={compact}
+          dense={dense}
+          layout={layout}
+          onPress={typeHandlers ? typeHandlers[definition.type] : undefined}
+          accessibilityLabel={definition.accessibilityLabel}
+        />,
+      ];
+    });
+  }, [
+    compact,
+    counts,
+    definitionByType,
+    dense,
+    iconSize,
+    layout,
+    previews,
+    typeHandlers,
+  ]);
+
+  if (!hasMomentCounts(counts)) {
+    return null;
+  }
+
+  const rowStyle = [
+    styles.row,
+    layout === 'stacked'
+      ? [styles.rowStacked, dense ? styles.rowStackedDense : null]
+      : dense
+        ? styles.rowInlineDense
+        : null,
+    scrollable ? styles.rowScrollable : null,
+  ];
+
+  const row = scrollable ? (
+    <ScrollView
+      ref={scrollRef}
+      horizontal
+      nestedScrollEnabled
+      showsHorizontalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      bounces={false}
+      style={[styles.rowScroll, scrollPinned ? null : styles.rowScrollPending]}
+      contentContainerStyle={[
+        styles.rowScrollContent,
+        layout === 'stacked'
+          ? dense
+            ? styles.rowStackedDense
+            : styles.rowStackedGap
+          : dense
+            ? styles.rowInlineDense
+            : null,
+      ]}
+      onContentSizeChange={scrollToNewest}
+      onLayout={scrollToNewest}
+      onScrollBeginDrag={() => setScrollActive(true)}
+      onScrollEndDrag={() => setScrollActive(false)}
+      onMomentumScrollEnd={() => setScrollActive(false)}
+      onTouchStart={() => setScrollActive(true)}
+      onTouchEnd={() => setScrollActive(false)}
+      onTouchCancel={() => setScrollActive(false)}
+    >
+      {chips}
+    </ScrollView>
+  ) : (
+    <View style={rowStyle}>{chips}</View>
   );
 
   if (onPressType) {
@@ -377,8 +539,26 @@ const styles = StyleSheet.create({
   rowStackedDense: {
     gap: 6,
   },
+  rowStackedGap: {
+    gap: 10,
+  },
   rowInlineDense: {
     gap: 6,
+  },
+  rowScrollable: {
+    justifyContent: 'flex-start',
+  },
+  rowScroll: {
+    alignSelf: 'stretch',
+    maxWidth: '100%',
+  },
+  rowScrollPending: {
+    opacity: 0,
+  },
+  rowScrollContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexGrow: 1,
   },
   chip: {
     flexDirection: 'row',

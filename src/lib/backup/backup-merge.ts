@@ -11,6 +11,7 @@ import {
 } from '@/db/schema';
 import { getAllMoments, deleteMoment } from '@/db/repositories/moments';
 import { getSetting, setSetting } from '@/db/repositories/settings';
+import { parseActivityIntent } from '@/lib/activities/activity-intent';
 
 import type { BackupBundleTables } from './backup-export';
 import { readBackupBundleFromDirectory } from './backup-export';
@@ -205,6 +206,7 @@ async function mergeActivities(rows: unknown[]): Promise<IdMap> {
           typeof record.definitionJson === 'string'
             ? record.definitionJson
             : '[]',
+        intent: parseActivityIntent(record.intent),
       })
       .returning({ id: activities.id });
     const newId = inserted[0]!.id;

@@ -230,6 +230,30 @@ export async function getMomentsForDay(
   return rows.map(mapRow);
 }
 
+/** Activity logs for one definition, oldest → newest. Optional inclusive time bounds. */
+export async function listMomentsForActivity(
+  activityId: number,
+  options?: { from?: Date | null; to?: Date | null },
+): Promise<MomentRow[]> {
+  const db = await getDatabase();
+  const clauses = [
+    eq(moments.activityId, activityId),
+    eq(moments.type, 'activity'),
+  ];
+  if (options?.from != null) {
+    clauses.push(gte(moments.timestamp, options.from));
+  }
+  if (options?.to != null) {
+    clauses.push(lte(moments.timestamp, options.to));
+  }
+  const rows = await db
+    .select()
+    .from(moments)
+    .where(and(...clauses))
+    .orderBy(asc(moments.timestamp));
+  return rows.map(mapRow);
+}
+
 /**
  * Distinct calendar days (APP_TIMEZONE) that have moments, newest first.
  * Cursor: pass the oldest already-loaded dateKey to page further back.

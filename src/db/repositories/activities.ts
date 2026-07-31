@@ -10,6 +10,11 @@ import {
   parseActivityFieldsJson,
 } from '@/lib/activities/activity-definition';
 import {
+  DEFAULT_ACTIVITY_INTENT,
+  parseActivityIntent,
+  type ActivityIntent,
+} from '@/lib/activities/activity-intent';
+import {
   cancelActivityReminder,
 } from '@/lib/notifications/service';
 import {
@@ -34,6 +39,7 @@ export type ActivityRow = {
   templateId: string | null;
   definitionJson: string;
   fields: ActivityFieldDefinition[];
+  intent: ActivityIntent;
   reminderEnabled: boolean;
   reminderRepeat: ReminderRepeat;
   reminderTimeMinutes: number | null;
@@ -50,6 +56,7 @@ export type NewActivity = {
   source?: ActivityDefinitionSource;
   templateId?: string | null;
   schemaVersion?: number;
+  intent?: ActivityIntent;
 };
 
 export type ActivityReminderPatch = {
@@ -90,6 +97,7 @@ function mapRow(row: typeof activities.$inferSelect): ActivityRow {
     templateId: row.templateId ?? null,
     definitionJson,
     fields: parseActivityFieldsJson(definitionJson),
+    intent: parseActivityIntent(row.intent),
     reminderEnabled: Boolean(row.reminderEnabled),
     reminderRepeat: isReminderRepeat(repeatRaw) ? repeatRaw : 'never',
     reminderTimeMinutes: row.reminderTimeMinutes ?? null,
@@ -134,6 +142,7 @@ export async function createActivity(input: NewActivity): Promise<ActivityRow> {
       source: input.source ?? 'blank',
       templateId: input.templateId ?? null,
       definitionJson: serializeActivityFieldsJson(fields),
+      intent: input.intent ?? DEFAULT_ACTIVITY_INTENT,
     })
     .returning();
   return mapRow(rows[0]!);
@@ -173,6 +182,7 @@ export async function updateActivity(
       templateId:
         input.templateId !== undefined ? input.templateId : existing.templateId,
       definitionJson: serializeActivityFieldsJson(fields),
+      intent: input.intent ?? existing.intent,
     })
     .where(eq(activities.id, id))
     .returning();

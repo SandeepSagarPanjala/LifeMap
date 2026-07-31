@@ -8,8 +8,10 @@ import {
 } from '@/db/repositories/activities';
 import {
   getHealthWorkoutByUuid,
+  upsertDaySleep,
   upsertDaySteps,
   upsertHealthWorkout,
+  upsertSleepSample,
   upsertSleepSession,
 } from '@/db/repositories/health';
 import { insertMoment } from '@/db/repositories/moments';
@@ -19,19 +21,21 @@ import {
 } from '@/lib/activities/activity-definition';
 import { getDayRange, shiftDateKey, toDateKey } from '@/lib/day-utils';
 
+import { buildDaySleepRollups } from './day-sleep';
 import { notifyHealthDataUpdated } from './events';
-import { coalesceSleepSessions } from './sleep-math';
+import { resolveRoutineLookbackDays } from './lookback';
+import { coalesceSleepSessions, isAsleepSleepValue } from './sleep-math';
 import {
   getHealthKitActivityEnabled,
+  getHealthKitLastSyncAt,
   getHealthKitMasterEnabled,
   getHealthKitSleepEnabled,
   getHealthKitStepsEnabled,
+  setHealthKitLastSyncAt,
 } from './settings';
 import { isHealthDataAvailableSafe, isHealthKitSupported } from './permissions';
 import { HEALTHKIT_IMPORT_SOURCE } from './types';
 import { workoutMetaForType } from './workout-labels';
-
-const LOOKBACK_DAYS = 30;
 
 const DURATION_FIELD: ActivityFieldDefinition = {
   id: 'duration',
@@ -62,9 +66,12 @@ export type HealthSyncProgressCallback = (
 
 type SyncOptions = {
   onProgress?: HealthSyncProgressCallback;
+  /** Omit for the routine window; pass a value for an explicit backfill. */
+  lookbackDays?: number;
 };
 
 let syncInFlight: Promise<void> | null = null;
+let syncInFlightLookbackDays = 0;
 let bootstrapped = false;
 
 function quantityValue(
@@ -166,22 +173,36 @@ async function syncSleep(
     },
   );
 
-  const coalesced = coalesceSleepSessions(
-    samples.map(s => ({
-      uuid: s.uuid,
-      startAt: s.startDate,
-      endAt: s.endDate,
-      value: Number(s.value),
-    })),
-  );
+  const mapped = samples.map(s => ({
+    uuid: s.uuid,
+    startAt: s.startDate,
+    endAt: s.endDate,
+    value: Number(s.value),
+  }));
 
-  const total = Math.max(1, coalesced.length);
-  if (coalesced.length === 0) {
+  // Persist asleep + awake samples (skip inBed-only for stage math).
+  const persistable = mapped.filter(
+    s => isAsleepSleepValue(s.value) || s.value === 2,
+  );
+  const coalesced = coalesceSleepSessions(mapped);
+
+  const total = Math.max(1, persistable.length + coalesced.length);
+  if (persistable.length === 0 && coalesced.length === 0) {
     report(1, 1, 'No sleep sessions in range');
     return;
   }
 
   let completed = 0;
+  for (const sample of persistable) {
+    await upsertSleepSample(sample);
+    completed += 1;
+    report(
+      completed,
+      total,
+      `Saving sleep ${completed} of ${total}`,
+    );
+  }
+
   for (const session of coalesced) {
     await upsertSleepSession({
       uuid: session.uuid,
@@ -192,8 +213,13 @@ async function syncSleep(
     report(
       completed,
       total,
-      `Saving sleep ${completed} of ${coalesced.length}`,
+      `Saving sleep ${completed} of ${total}`,
     );
+  }
+
+  const rollups = buildDaySleepRollups(mapped);
+  for (const rollup of rollups) {
+    await upsertDaySleep(rollup);
   }
 }
 
@@ -359,17 +385,22 @@ export async function syncHealthKit(options?: SyncOptions): Promise<void> {
   }
 
   const onProgress = options?.onProgress;
+  const lookbackDays =
+    options?.lookbackDays ??
+    resolveRoutineLookbackDays(await getHealthKitLastSyncAt());
 
   if (syncInFlight) {
-    if (onProgress == null) {
+    // A narrower in-flight run cannot satisfy a wider request.
+    if (onProgress == null && syncInFlightLookbackDays >= lookbackDays) {
       return syncInFlight;
     }
     await syncInFlight;
   }
 
+  syncInFlightLookbackDays = lookbackDays;
   syncInFlight = (async () => {
     const to = new Date();
-    const from = subDays(to, LOOKBACK_DAYS);
+    const from = subDays(to, lookbackDays);
     const fromKey = toDateKey(from);
     const toKey = toDateKey(to);
 
@@ -430,6 +461,8 @@ export async function syncHealthKit(options?: SyncOptions): Promise<void> {
       }
     }
 
+    await setHealthKitLastSyncAt(to);
+
     onProgress?.({
       phase: 'done',
       message: 'Imported available Health data',
@@ -438,6 +471,7 @@ export async function syncHealthKit(options?: SyncOptions): Promise<void> {
     notifyHealthDataUpdated();
   })().finally(() => {
     syncInFlight = null;
+    syncInFlightLookbackDays = 0;
   });
 
   return syncInFlight;

@@ -21,7 +21,7 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { X } from 'lucide-react-native';
+import { ChevronLeft } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ActivityReminderSheet } from '@/components/capture/ActivityReminderSheet';
@@ -39,6 +39,10 @@ import {
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import type { ActivityFieldDefinition } from '@/lib/activities/activity-definition';
 import { ACTIVITY_SCHEMA_VERSION } from '@/lib/activities/activity-definition';
+import {
+  DEFAULT_ACTIVITY_INTENT,
+  type ActivityIntent,
+} from '@/lib/activities/activity-intent';
 import {
   MAP_MOMENTS_BAR_GAP,
   MAP_MOMENTS_BAR_HEIGHT,
@@ -83,6 +87,7 @@ export function ActivityFormScreen() {
   );
   const [emoji, setEmoji] = useState('');
   const [label, setLabel] = useState('');
+  const [intent, setIntent] = useState<ActivityIntent>(DEFAULT_ACTIVITY_INTENT);
   const [fields, setFields] = useState<ActivityFieldDefinition[]>([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(params.kind === 'edit');
@@ -219,6 +224,7 @@ export function ActivityFormScreen() {
           label: validated.definition.name,
           fields: validated.definition.fields,
           source: 'blank',
+          intent,
         });
         if (reminderConfig.enabled) {
           await persistReminder(created.id, reminderConfig);
@@ -237,6 +243,7 @@ export function ActivityFormScreen() {
           label: validated.definition.name,
           fields: validated.definition.fields,
           source: 'blank',
+          intent,
         });
         if (reminderConfig.enabled) {
           await persistReminder(created.id, reminderConfig);
@@ -257,6 +264,7 @@ export function ActivityFormScreen() {
         fields: validated.definition.fields,
         source: editActivity.source,
         templateId: editActivity.templateId,
+        intent,
       });
       await persistReminder(editActivity.id, reminderConfig);
       goBack();
@@ -274,6 +282,7 @@ export function ActivityFormScreen() {
     emoji,
     fields,
     goBack,
+    intent,
     label,
     params.kind,
     persistReminder,
@@ -285,6 +294,7 @@ export function ActivityFormScreen() {
     if (params.kind !== 'edit') {
       setEmoji('');
       setLabel('');
+      setIntent(DEFAULT_ACTIVITY_INTENT);
       setFields([]);
       setLoading(false);
       setEditActivity(null);
@@ -309,6 +319,7 @@ export function ActivityFormScreen() {
         setEditActivity(row);
         setEmoji(row.emoji);
         setLabel(row.label);
+        setIntent(row.intent);
         setFields(row.fields);
         setReminderConfig(reminderConfigFromRow(row));
       } catch (error) {
@@ -440,6 +451,7 @@ export function ActivityFormScreen() {
           autoFocusEmoji={false}
           emoji={emoji}
           label={label}
+          intent={intent}
           fields={fields}
           saving={saving}
           submitLabel={saveLabel}
@@ -449,6 +461,7 @@ export function ActivityFormScreen() {
           lockFields={editActivity?.source === 'healthkit'}
           onChangeEmoji={setEmoji}
           onChangeLabel={setLabel}
+          onChangeIntent={setIntent}
           onChangeFields={setFields}
           onKeyboardOpenChange={setKeyboardOpen}
           onSubmit={() => {
@@ -493,11 +506,11 @@ export function ActivityFormScreen() {
             </GlassPressable>
 
             <MapGlassCircleButton
-              accessibilityLabel="Close"
+              accessibilityLabel="Back"
               onPress={goBack}
               style={styles.closeButton}
             >
-              <X size={20} color={colors.primary} strokeWidth={2.25} />
+              <ChevronLeft size={22} color={colors.primary} strokeWidth={2.25} />
             </MapGlassCircleButton>
           </View>
         </View>
