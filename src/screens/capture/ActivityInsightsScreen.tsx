@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { WandSparkles, X } from 'lucide-react-native';
+import { ChevronLeft, WandSparkles, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ActivityEmojiOrb } from '@/components/map/ActivityEmojiOrb';
@@ -26,6 +26,7 @@ import {
   MAP_MOMENTS_BAR_HEIGHT,
 } from '@/lib/app-constants';
 import type { RootStackParamList } from '@/navigation/types';
+import { useClosesToMap } from '@/navigation/use-closes-to-map';
 
 const GRID_COLUMNS = 4;
 const GRID_GAP = 12;
@@ -40,6 +41,7 @@ export function ActivityInsightsScreen() {
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
+  const closesToMap = useClosesToMap();
   const { width: windowWidth } = useWindowDimensions();
   const [activities, setActivities] = useState<ActivityRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -172,10 +174,14 @@ export function ActivityInsightsScreen() {
         ]}
       >
         <MapGlassCircleButton
-          accessibilityLabel="Close"
+          accessibilityLabel={closesToMap ? 'Close' : 'Back'}
           onPress={handleClose}
         >
-          <X size={20} color={colors.primary} strokeWidth={2.25} />
+          {closesToMap ? (
+            <X size={20} color={colors.primary} strokeWidth={2.25} />
+          ) : (
+            <ChevronLeft size={22} color={colors.primary} strokeWidth={2.25} />
+          )}
         </MapGlassCircleButton>
       </View>
     </View>

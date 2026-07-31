@@ -199,7 +199,7 @@ async function syncSleep(
     report(
       completed,
       total,
-      `Saving sleep samples ${completed} of ${persistable.length}`,
+      `Saving sleep ${completed} of ${total}`,
     );
   }
 
@@ -213,7 +213,7 @@ async function syncSleep(
     report(
       completed,
       total,
-      `Saving sleep sessions ${completed} of ${total}`,
+      `Saving sleep ${completed} of ${total}`,
     );
   }
 

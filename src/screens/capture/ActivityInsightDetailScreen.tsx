@@ -11,7 +11,7 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ChevronLeft } from 'lucide-react-native';
+import { ChevronLeft, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 
@@ -46,6 +46,7 @@ import {
 } from '@/lib/app-constants';
 import { ensureHistoryCalendarBounds } from '@/lib/history-calendar-bounds';
 import type { RootStackParamList } from '@/navigation/types';
+import { useClosesToMap } from '@/navigation/use-closes-to-map';
 import { useAppStore } from '@/stores/app-store';
 
 const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'] as const;
@@ -467,6 +468,7 @@ export function ActivityInsightDetailScreen() {
     useRoute<RouteProp<RootStackParamList, 'ActivityInsightDetail'>>();
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
+  const closesToMap = useClosesToMap();
   const { width: windowWidth } = useWindowDimensions();
   const activityId = route.params.activityId;
 
@@ -664,10 +666,14 @@ export function ActivityInsightDetailScreen() {
         ]}
       >
         <MapGlassCircleButton
-          accessibilityLabel="Back"
+          accessibilityLabel={closesToMap ? 'Close' : 'Back'}
           onPress={handleClose}
         >
-          <ChevronLeft size={22} color={colors.primary} strokeWidth={2.25} />
+          {closesToMap ? (
+            <X size={20} color={colors.primary} strokeWidth={2.25} />
+          ) : (
+            <ChevronLeft size={22} color={colors.primary} strokeWidth={2.25} />
+          )}
         </MapGlassCircleButton>
       </View>
     </View>

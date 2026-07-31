@@ -112,37 +112,39 @@ export async function deleteLocalSleepDataOverlapping(
   dateKeys: string[],
 ): Promise<{ sessions: number; samples: number; days: number }> {
   const db = await getDatabase();
-  const sessions = await db
-    .delete(healthSleepSessions)
-    .where(
-      and(
-        lt(healthSleepSessions.startAt, end),
-        gte(healthSleepSessions.endAt, start),
-      ),
-    )
-    .returning({ id: healthSleepSessions.id });
-  const samples = await db
-    .delete(healthSleepSamples)
-    .where(
-      and(
-        lt(healthSleepSamples.startAt, end),
-        gte(healthSleepSamples.endAt, start),
-      ),
-    )
-    .returning({ id: healthSleepSamples.id });
-  let days = 0;
-  for (const dateKey of dateKeys) {
-    const removed = await db
-      .delete(healthDaySleep)
-      .where(eq(healthDaySleep.dateKey, dateKey))
-      .returning({ dateKey: healthDaySleep.dateKey });
-    days += removed.length;
-  }
-  return {
-    sessions: sessions.length,
-    samples: samples.length,
-    days,
-  };
+  return db.transaction(async tx => {
+    const sessions = await tx
+      .delete(healthSleepSessions)
+      .where(
+        and(
+          lt(healthSleepSessions.startAt, end),
+          gte(healthSleepSessions.endAt, start),
+        ),
+      )
+      .returning({ id: healthSleepSessions.id });
+    const samples = await tx
+      .delete(healthSleepSamples)
+      .where(
+        and(
+          lt(healthSleepSamples.startAt, end),
+          gte(healthSleepSamples.endAt, start),
+        ),
+      )
+      .returning({ id: healthSleepSamples.id });
+    let days = 0;
+    for (const dateKey of dateKeys) {
+      const removed = await tx
+        .delete(healthDaySleep)
+        .where(eq(healthDaySleep.dateKey, dateKey))
+        .returning({ dateKey: healthDaySleep.dateKey });
+      days += removed.length;
+    }
+    return {
+      sessions: sessions.length,
+      samples: samples.length,
+      days,
+    };
+  });
 }
 
 export async function upsertHealthWorkout(input: {
