@@ -343,6 +343,31 @@ export type HealthSleepSampleRow = {
   syncedAt: Date;
 };
 
+export async function listSleepSamplesOverlapping(
+  start: Date,
+  end: Date,
+): Promise<HealthSleepSampleRow[]> {
+  const db = await getDatabase();
+  const rows = await db
+    .select()
+    .from(healthSleepSamples)
+    .where(
+      and(
+        lt(healthSleepSamples.startAt, end),
+        gte(healthSleepSamples.endAt, start),
+      ),
+    )
+    .orderBy(asc(healthSleepSamples.startAt));
+  return rows.map(row => ({
+    id: row.id,
+    uuid: row.uuid,
+    startAt: row.startAt,
+    endAt: row.endAt,
+    value: row.value,
+    syncedAt: row.syncedAt,
+  }));
+}
+
 export async function upsertSleepSample(input: {
   uuid: string;
   startAt: Date;

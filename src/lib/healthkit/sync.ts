@@ -385,7 +385,7 @@ export async function syncHealthKit(options?: SyncOptions): Promise<void> {
   }
 
   const onProgress = options?.onProgress;
-  const lookbackDays =
+  let lookbackDays =
     options?.lookbackDays ??
     resolveRoutineLookbackDays(await getHealthKitLastSyncAt());
 
@@ -395,6 +395,18 @@ export async function syncHealthKit(options?: SyncOptions): Promise<void> {
       return syncInFlight;
     }
     await syncInFlight;
+    // In-flight sync may have written lastSyncAt — re-resolve routine window.
+    if (options?.lookbackDays == null) {
+      lookbackDays = resolveRoutineLookbackDays(await getHealthKitLastSyncAt());
+    }
+    // Another sync may have started; if it already covers us, join it.
+    if (
+      syncInFlight != null &&
+      onProgress == null &&
+      syncInFlightLookbackDays >= lookbackDays
+    ) {
+      return syncInFlight;
+    }
   }
 
   syncInFlightLookbackDays = lookbackDays;
@@ -490,9 +502,27 @@ export async function bootstrapHealthKit(): Promise<void> {
     }
   });
 
+  try {
+    const { subscribeToChanges } =
+      require('@kingstinct/react-native-healthkit') as typeof import('@kingstinct/react-native-healthkit');
+    subscribeToChanges('HKCategoryTypeIdentifierSleepAnalysis', () => {
+      void syncHealthKit({ lookbackDays: 3 });
+    });
+    subscribeToChanges('HKQuantityTypeIdentifierStepCount', () => {
+      void syncHealthKit({ lookbackDays: 3 });
+    });
+  } catch {
+    // Subscription is best-effort; foreground + detail-screen sync still run.
+  }
+
   if (!(await getHealthKitMasterEnabled())) {
     return;
   }
 
   await syncHealthKit();
+}
+
+/** Fresh pull when opening sleep/steps detail (Watch → phone may have just landed). */
+export async function syncHealthKitOnDemand(): Promise<void> {
+  await syncHealthKit({ lookbackDays: 3 });
 }

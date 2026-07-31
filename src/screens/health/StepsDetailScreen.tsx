@@ -10,7 +10,7 @@ import {
   useColorScheme,
   View,
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ChevronLeft, X } from 'lucide-react-native';
@@ -36,6 +36,7 @@ import {
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { shiftDateKey } from '@/lib/day-utils';
 import { subscribeHealthData } from '@/lib/healthkit/events';
+import { syncHealthKitOnDemand } from '@/lib/healthkit/sync';
 import { APP_TIMEZONE } from '@/lib/timezone';
 import type { RootStackParamList } from '@/navigation/types';
 import { useClosesToMap } from '@/navigation/use-closes-to-map';
@@ -139,11 +140,30 @@ export function StepsDetailScreen() {
   }, [initialDateKey, range]);
 
   useEffect(() => {
-    void loadChart();
     return subscribeHealthData(() => {
       void loadChart();
     });
   }, [loadChart]);
+
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      void (async () => {
+        try {
+          await syncHealthKitOnDemand();
+        } catch {
+          // Detail screen still shows last cached totals.
+        } finally {
+          if (!cancelled) {
+            await loadChart();
+          }
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [loadChart]),
+  );
 
   const handleSelect = useCallback((row: HealthDayStepsRow) => {
     setSelectedDateKey(row.dateKey);

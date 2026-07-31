@@ -86,16 +86,52 @@ export function formatCompactSleepDuration(durationMs: number): string {
 
 /** Detail header duration: `2HR 46MIN`. */
 export function formatSleepDetailDuration(durationMs: number): string {
-  const totalMinutes = Math.max(0, Math.round(durationMs / 60_000));
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
+  return formatSleepDetailMinutes(
+    Math.max(0, Math.round(durationMs / 60_000)),
+  );
+}
+
+/** Format already-rounded whole minutes as `6HR 50MIN`. */
+export function formatSleepDetailMinutes(totalMinutes: number): string {
+  const minutes = Math.max(0, Math.round(totalMinutes));
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
   if (hours === 0) {
-    return `${minutes}MIN`;
+    return `${mins}MIN`;
   }
-  if (minutes === 0) {
+  if (mins === 0) {
     return `${hours}HR`;
   }
-  return `${hours}HR ${minutes}MIN`;
+  return `${hours}HR ${mins}MIN`;
+}
+
+/**
+ * Sum of per-stage rounded minutes so the hero total matches stage chips
+ * (and Apple Health), instead of rounding the raw ms total once (can be ±1 min).
+ */
+export function sleepAsleepDisplayMinutes(parts: {
+  remMs: number;
+  coreMs: number;
+  deepMs: number;
+  unspecifiedMs: number;
+}): number {
+  const roundMin = (ms: number) => Math.max(0, Math.round(ms / 60_000));
+  return (
+    roundMin(parts.remMs) +
+    roundMin(parts.coreMs) +
+    roundMin(parts.deepMs) +
+    roundMin(parts.unspecifiedMs)
+  );
+}
+
+/** Display ms aligned with Apple / stage-sum rounding. */
+export function sleepAsleepDisplayMs(parts: {
+  remMs: number;
+  coreMs: number;
+  deepMs: number;
+  unspecifiedMs: number;
+}): number {
+  return sleepAsleepDisplayMinutes(parts) * 60_000;
 }
 
 export function formatSleepRangeLine(startAt: Date, endAt: Date): string {
@@ -151,7 +187,12 @@ export async function loadDayHealthChipStatus(
   if (sleepOn) {
     const day = await getDaySleep(dateKey);
     if (day != null && day.asleepMs > 0) {
-      sleepMs = day.asleepMs;
+      sleepMs = sleepAsleepDisplayMs({
+        remMs: day.remMs,
+        coreMs: day.coreMs,
+        deepMs: day.deepMs,
+        unspecifiedMs: day.unspecifiedMs,
+      });
     } else {
       const { start, end } = getDayRange(dateKey);
       const sessions = await listSleepSessionsOverlapping(start, end);
