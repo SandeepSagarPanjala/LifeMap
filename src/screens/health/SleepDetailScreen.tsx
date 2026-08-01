@@ -116,7 +116,8 @@ const STAGE_EXPLAINERS = [
     key: 'core',
     label: 'Core',
     color: STAGE_COLORS.core,
-    ms: (row: HealthDaySleepRow) => row.coreMs,
+    // Fold unspecified asleep into Core (matches history bars / Apple-style display).
+    ms: (row: HealthDaySleepRow) => row.coreMs + row.unspecifiedMs,
     blurb:
       'This stage, where muscle activity lowers and body temperature drops, represents the bulk of your time asleep. While it’s sometimes referred to as light sleep, it’s just as critical as any other sleep stage.',
   },

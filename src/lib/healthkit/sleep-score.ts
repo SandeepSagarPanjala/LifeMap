@@ -58,7 +58,7 @@ export type SleepScoreResult = {
   durationScore: number;
   efficiencyScore: number;
   compositionScore: number;
-  /** Weighted points toward 50 / 20 / 30 (may differ from `total` by ±1 after rounding). */
+  /** Weighted points toward 50 / 20 / 30; sum equals `total`. */
   durationPoints: number;
   efficiencyPoints: number;
   compositionPoints: number;
@@ -92,7 +92,8 @@ function bandForTotal(total: number): SleepScoreBand {
 }
 
 /**
- * Weighted sleep score from minute components (Gemini / NSF-oriented formula).
+ * Weighted sleep score from minute components (NSF-oriented duration /
+ * efficiency / stage-composition heuristic).
  */
 export function calculateSleepScore(data: SleepData): number {
   return computeSleepScoreFromMinutes(data).total;
@@ -148,11 +149,14 @@ export function computeSleepScoreFromMinutes(
   }
 
   const compositionScore = (deepScore + remScore) / 2;
-  const durationPoints = durationScore * 0.5;
-  const efficiencyPoints = efficiencyScore * 0.2;
-  const compositionPoints = compositionScore * 0.3;
-  const finalScore = durationPoints + efficiencyPoints + compositionPoints;
-  const total = Math.round(clamp(finalScore, 0, 100));
+  const durationPoints = Math.round(durationScore * 0.5);
+  const efficiencyPoints = Math.round(efficiencyScore * 0.2);
+  const compositionPoints = Math.round(compositionScore * 0.3);
+  const total = clamp(
+    durationPoints + efficiencyPoints + compositionPoints,
+    0,
+    100,
+  );
 
   const coreMinutes = Math.max(0, data.coreMinutes);
   const actualCorePct =
@@ -166,9 +170,9 @@ export function computeSleepScoreFromMinutes(
     durationScore: Math.round(durationScore),
     efficiencyScore: Math.round(efficiencyScore),
     compositionScore: Math.round(compositionScore),
-    durationPoints: Math.round(durationPoints),
-    efficiencyPoints: Math.round(efficiencyPoints),
-    compositionPoints: Math.round(compositionPoints),
+    durationPoints,
+    efficiencyPoints,
+    compositionPoints,
     efficiencyPct: Math.round(efficiencyPct),
     awakePct: Math.round(awakePct),
     deepPct: Math.round(actualDeepPct),

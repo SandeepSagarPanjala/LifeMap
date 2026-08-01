@@ -119,23 +119,35 @@ export function StepsDetailScreen() {
   const [selectedSteps, setSelectedSteps] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const loadChart = useCallback(async () => {
+  const loadChart = useCallback(async (isCancelled?: () => boolean) => {
     try {
       const newestFirst = await listDayStepsBefore(
         shiftDateKey(initialDateKey, 1),
         RANGE_LIMITS[range],
       );
+      if (isCancelled?.()) {
+        return;
+      }
       const nextRows = newestFirst.reverse();
       setRows(nextRows);
       const focusKey =
         nextRows.find(row => row.dateKey === initialDateKey)?.dateKey ??
         nextRows.at(-1)?.dateKey ??
         initialDateKey;
+      if (isCancelled?.()) {
+        return;
+      }
       setSelectedDateKey(focusKey);
       const focused = nextRows.find(row => row.dateKey === focusKey);
-      setSelectedSteps(focused?.steps ?? (await getDaySteps(focusKey)));
+      const steps = focused?.steps ?? (await getDaySteps(focusKey));
+      if (isCancelled?.()) {
+        return;
+      }
+      setSelectedSteps(steps);
     } finally {
-      setLoading(false);
+      if (!isCancelled?.()) {
+        setLoading(false);
+      }
     }
   }, [initialDateKey, range]);
 
@@ -154,11 +166,11 @@ export function StepsDetailScreen() {
           await syncHealthKitOnDemand();
         } catch {
           // Detail screen still shows last cached totals.
-        } finally {
-          if (!cancelled) {
-            await loadChart();
-          }
         }
+        if (cancelled) {
+          return;
+        }
+        await loadChart(() => cancelled);
       })();
       return () => {
         cancelled = true;

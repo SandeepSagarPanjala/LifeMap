@@ -129,7 +129,8 @@ export function buildSleepTimelineModel(
         sample.endAt.getTime() > sample.startAt.getTime(),
     )
     .map(sample => ({
-      start: Math.max(axisStartMs, sample.startAt.getTime()),
+      // Axis may pad to the hour before windowStart for labels; blocks stay in-window.
+      start: Math.max(windowStartMs, sample.startAt.getTime()),
       end: Math.min(axisEndMs, sample.endAt.getTime()),
     }))
     .filter(interval => interval.end > interval.start)

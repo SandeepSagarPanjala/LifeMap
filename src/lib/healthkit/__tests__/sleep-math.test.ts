@@ -54,7 +54,7 @@ describe('healthkit routine lookback', () => {
 });
 
 describe('healthkit sleep score', () => {
-  it('matches the Gemini example night (~4.5h with stages)', () => {
+  it('scores a short staged night (~4.5h) in the mid-70s', () => {
     const total = calculateSleepScore({
       durationMinutes: 270,
       awakeMinutes: 8,
