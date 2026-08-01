@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, lte, lt, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, gte, lte, lt, sql } from 'drizzle-orm';
 
 import { getDatabase } from '@/db/client';
 import {
@@ -127,7 +127,7 @@ export async function deleteLocalSleepDataOverlapping(
       .where(
         and(
           lt(healthSleepSamples.startAt, end),
-          gte(healthSleepSamples.endAt, start),
+          gt(healthSleepSamples.endAt, start),
         ),
       )
       .returning({ id: healthSleepSamples.id });
@@ -354,7 +354,7 @@ export async function listSleepSamplesOverlapping(
     .where(
       and(
         lt(healthSleepSamples.startAt, end),
-        gte(healthSleepSamples.endAt, start),
+        gt(healthSleepSamples.endAt, start),
       ),
     )
     .orderBy(asc(healthSleepSamples.startAt));
