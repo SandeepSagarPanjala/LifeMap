@@ -1,6 +1,6 @@
 import { TZDate } from '@date-fns/tz';
 import { format } from 'date-fns';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -10,7 +10,7 @@ import {
   useColorScheme,
   View,
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ChevronLeft, X } from 'lucide-react-native';
@@ -36,6 +36,7 @@ import {
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { shiftDateKey } from '@/lib/day-utils';
 import { subscribeHealthData } from '@/lib/healthkit/events';
+import { syncHealthKitOnDemand } from '@/lib/healthkit/sync';
 import { APP_TIMEZONE } from '@/lib/timezone';
 import type { RootStackParamList } from '@/navigation/types';
 import { useClosesToMap } from '@/navigation/use-closes-to-map';
@@ -118,32 +119,79 @@ export function StepsDetailScreen() {
   const [selectedSteps, setSelectedSteps] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const loadChart = useCallback(async () => {
+  const loadChart = useCallback(async (isCancelled?: () => boolean) => {
     try {
       const newestFirst = await listDayStepsBefore(
         shiftDateKey(initialDateKey, 1),
         RANGE_LIMITS[range],
       );
+      if (isCancelled?.()) {
+        return;
+      }
       const nextRows = newestFirst.reverse();
       setRows(nextRows);
       const focusKey =
         nextRows.find(row => row.dateKey === initialDateKey)?.dateKey ??
         nextRows.at(-1)?.dateKey ??
         initialDateKey;
+      if (isCancelled?.()) {
+        return;
+      }
       setSelectedDateKey(focusKey);
       const focused = nextRows.find(row => row.dateKey === focusKey);
-      setSelectedSteps(focused?.steps ?? (await getDaySteps(focusKey)));
+      const steps = focused?.steps ?? (await getDaySteps(focusKey));
+      if (isCancelled?.()) {
+        return;
+      }
+      setSelectedSteps(steps);
     } finally {
-      setLoading(false);
+      if (!isCancelled?.()) {
+        setLoading(false);
+      }
     }
   }, [initialDateKey, range]);
 
+  const loadChartRef = useRef(loadChart);
+  loadChartRef.current = loadChart;
+  const skipRangeLoadRef = useRef(true);
+
+  // Subscription + local range reloads (no HealthKit sync).
   useEffect(() => {
-    void loadChart();
-    return subscribeHealthData(() => {
-      void loadChart();
+    let cancelled = false;
+    if (skipRangeLoadRef.current) {
+      skipRangeLoadRef.current = false;
+    } else {
+      void loadChart(() => cancelled);
+    }
+    const unsubscribe = subscribeHealthData(() => {
+      void loadChart(() => cancelled);
     });
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   }, [loadChart]);
+
+  // On-demand sync only on focus/blur — not when the chart range changes.
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      void (async () => {
+        try {
+          await syncHealthKitOnDemand();
+        } catch {
+          // Detail screen still shows last cached totals.
+        }
+        if (cancelled) {
+          return;
+        }
+        await loadChartRef.current(() => cancelled);
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, []),
+  );
 
   const handleSelect = useCallback((row: HealthDayStepsRow) => {
     setSelectedDateKey(row.dateKey);

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, lte, lt, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, gte, lte, lt, sql } from 'drizzle-orm';
 
 import { getDatabase } from '@/db/client';
 import {
@@ -118,7 +118,7 @@ export async function deleteLocalSleepDataOverlapping(
       .where(
         and(
           lt(healthSleepSessions.startAt, end),
-          gte(healthSleepSessions.endAt, start),
+          gt(healthSleepSessions.endAt, start),
         ),
       )
       .returning({ id: healthSleepSessions.id });
@@ -127,7 +127,7 @@ export async function deleteLocalSleepDataOverlapping(
       .where(
         and(
           lt(healthSleepSamples.startAt, end),
-          gte(healthSleepSamples.endAt, start),
+          gt(healthSleepSamples.endAt, start),
         ),
       )
       .returning({ id: healthSleepSamples.id });
@@ -342,6 +342,31 @@ export type HealthSleepSampleRow = {
   value: number;
   syncedAt: Date;
 };
+
+export async function listSleepSamplesOverlapping(
+  start: Date,
+  end: Date,
+): Promise<HealthSleepSampleRow[]> {
+  const db = await getDatabase();
+  const rows = await db
+    .select()
+    .from(healthSleepSamples)
+    .where(
+      and(
+        lt(healthSleepSamples.startAt, end),
+        gt(healthSleepSamples.endAt, start),
+      ),
+    )
+    .orderBy(asc(healthSleepSamples.startAt));
+  return rows.map(row => ({
+    id: row.id,
+    uuid: row.uuid,
+    startAt: row.startAt,
+    endAt: row.endAt,
+    value: row.value,
+    syncedAt: row.syncedAt,
+  }));
+}
 
 export async function upsertSleepSample(input: {
   uuid: string;

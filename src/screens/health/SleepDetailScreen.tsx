@@ -1,6 +1,13 @@
 import { TZDate } from '@date-fns/tz';
 import { format } from 'date-fns';
-import { useCallback, useEffect, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -10,11 +17,12 @@ import {
   useColorScheme,
   View,
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ChevronLeft, X } from 'lucide-react-native';
+import { ChevronDown, ChevronLeft, ChevronUp, Info, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import Animated, {
   Easing,
   ReduceMotion,
@@ -27,20 +35,38 @@ import Animated, {
 
 import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
 import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
+import { AppBottomSheet } from '@/components/ui/app-bottom-sheet';
 import { Text } from '@/components/ui/text';
 import {
   getDaySleep,
   listDaySleepBefore,
+  listSleepSamplesOverlapping,
   type HealthDaySleepRow,
+  type HealthSleepSampleRow,
 } from '@/db/repositories/health';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { shiftDateKey } from '@/lib/day-utils';
 import {
   formatSleepDetailDuration,
+  formatSleepDetailMinutes,
   formatSleepRangeLine,
   formatStageDuration,
+  sleepAsleepDisplayMinutes,
+  sleepAsleepDisplayMs,
 } from '@/lib/healthkit/display';
 import { subscribeHealthData } from '@/lib/healthkit/events';
+import {
+  SLEEP_SCORE_FORMULA_FOOTNOTE,
+  SLEEP_STAGE_AIMS,
+  SLEEP_STAGES_AIM_COPY,
+  computeLifeMapSleepScore,
+  type SleepScoreResult,
+} from '@/lib/healthkit/sleep-score';
+import {
+  buildSleepTimelineModel,
+  timelineLeftPct,
+} from '@/lib/healthkit/sleep-timeline';
+import { syncHealthKitOnDemand } from '@/lib/healthkit/sync';
 import { APP_TIMEZONE } from '@/lib/timezone';
 import type { RootStackParamList } from '@/navigation/types';
 import { useClosesToMap } from '@/navigation/use-closes-to-map';
@@ -83,7 +109,7 @@ const STAGE_EXPLAINERS = [
     color: STAGE_COLORS.awake,
     ms: (row: HealthDaySleepRow) => row.awakeMs,
     blurb:
-      'Time you were awake during the night — tossing, bathroom trips, or brief wake-ups.',
+      "It takes time to fall asleep and we wake up periodically throughout the night. This time is represented as Awake in your charts.",
   },
   {
     key: 'rem',
@@ -91,15 +117,16 @@ const STAGE_EXPLAINERS = [
     color: STAGE_COLORS.rem,
     ms: (row: HealthDaySleepRow) => row.remMs,
     blurb:
-      'Dreaming sleep. Helps with memory, learning, and mood. Usually grows longer toward morning.',
+      'Studies show that REM sleep may play a key role in memory and refreshing your brain. It’s where most of your dreaming happens. REM sleep first occurs about 90 minutes after falling asleep.',
   },
   {
     key: 'core',
     label: 'Core',
     color: STAGE_COLORS.core,
-    ms: (row: HealthDaySleepRow) => row.coreMs,
+    // Fold unspecified asleep into Core (matches history bars / Apple-style display).
+    ms: (row: HealthDaySleepRow) => row.coreMs + row.unspecifiedMs,
     blurb:
-      'Light sleep that makes up most of the night. Bridges deeper stages and keeps sleep going.',
+      'This stage, where muscle activity lowers and body temperature drops, represents the bulk of your time asleep. While it’s sometimes referred to as light sleep, it’s just as critical as any other sleep stage.',
   },
   {
     key: 'deep',
@@ -107,9 +134,12 @@ const STAGE_EXPLAINERS = [
     color: STAGE_COLORS.deep,
     ms: (row: HealthDaySleepRow) => row.deepMs,
     blurb:
-      'Slow-wave sleep. The most restorative stage for body recovery, usually earlier in the night.',
+      'Also known as slow wave sleep, this stage allows the body to repair itself and release essential hormones. It happens in longer periods during the first half of the night.',
   },
 ] as const;
+
+const STAGE_INFO_INTRO =
+  'While we sleep, our brains and bodies restore themselves. Each sleep stage plays a different role, but they’re all essential to waking up refreshed.';
 
 type ChartDay = {
   dateKey: string;
@@ -143,41 +173,104 @@ export function SleepDetailScreen() {
   const [selected, setSelected] = useState<HealthDaySleepRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [range, setRange] = useState<ChartRange>('W');
+  const [stagesInfoOpen, setStagesInfoOpen] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [scoreExpanded, setScoreExpanded] = useState(false);
+  const [timelineSamples, setTimelineSamples] = useState<
+    HealthSleepSampleRow[]
+  >([]);
 
-  const loadChart = useCallback(async () => {
+  const loadChart = useCallback(async (isCancelled?: () => boolean) => {
     try {
       const rows = await listDaySleepBefore(
         shiftDateKey(initialDateKey, 1),
         RANGE_LIMITS[range],
       );
+      if (isCancelled?.()) {
+        return;
+      }
       const days = rows
         .reverse()
         .map(row => ({
           dateKey: row.dateKey,
-          asleepMs: row.asleepMs,
+          asleepMs: sleepAsleepDisplayMs({
+            remMs: row.remMs,
+            coreMs: row.coreMs,
+            deepMs: row.deepMs,
+            unspecifiedMs: row.unspecifiedMs,
+          }),
           row,
         }));
+      if (isCancelled?.()) {
+        return;
+      }
       setChartDays(days);
       const focusKey =
         days.find(d => d.dateKey === initialDateKey)?.dateKey ??
         days.at(-1)?.dateKey ??
         initialDateKey;
+      if (isCancelled?.()) {
+        return;
+      }
       setSelectedDateKey(focusKey);
       const row =
         days.find(d => d.dateKey === focusKey)?.row ??
         (await getDaySleep(focusKey));
+      if (isCancelled?.()) {
+        return;
+      }
       setSelected(row);
     } finally {
-      setLoading(false);
+      if (!isCancelled?.()) {
+        setLoading(false);
+      }
     }
   }, [initialDateKey, range]);
 
+  const loadChartRef = useRef(loadChart);
+  loadChartRef.current = loadChart;
+  const skipRangeLoadRef = useRef(true);
+
+  // Subscription + local range reloads (no HealthKit sync).
   useEffect(() => {
-    void loadChart();
-    return subscribeHealthData(() => {
-      void loadChart();
+    let cancelled = false;
+    if (skipRangeLoadRef.current) {
+      skipRangeLoadRef.current = false;
+    } else {
+      void loadChart(() => cancelled);
+    }
+    const unsubscribe = subscribeHealthData(() => {
+      void loadChart(() => cancelled);
     });
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   }, [loadChart]);
+
+  // On-demand sync only on focus/blur — not when the chart range changes.
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      setSyncing(true);
+      void (async () => {
+        try {
+          await syncHealthKitOnDemand();
+        } catch {
+          // Detail screen still shows last cached rollups.
+        }
+        if (cancelled) {
+          return;
+        }
+        setSyncing(false);
+        await loadChartRef.current(() => cancelled);
+      })();
+      return () => {
+        cancelled = true;
+        setSyncing(false);
+      };
+    }, []),
+  );
 
   const handleSelect = useCallback(async (day: ChartDay) => {
     setSelectedDateKey(day.dateKey);
@@ -195,6 +288,79 @@ export function SleepDetailScreen() {
     }
     navigation.navigate('Map');
   }, [navigation]);
+
+  const sleepScore = useMemo(() => {
+    if (selected == null || selected.asleepMs <= 0) {
+      return null;
+    }
+    const stageParts = {
+      remMs: selected.remMs,
+      coreMs: selected.coreMs,
+      deepMs: selected.deepMs,
+      unspecifiedMs: selected.unspecifiedMs,
+    };
+    const asleepMs = sleepAsleepDisplayMs(stageParts);
+    const windowBedMs =
+      selected.sleepStartAt != null && selected.sleepEndAt != null
+        ? selected.sleepEndAt.getTime() - selected.sleepStartAt.getTime()
+        : 0;
+    return computeLifeMapSleepScore({
+      // Match hero “Time Asleep” (stage-sum rounded) so Duration points agree.
+      asleepMs,
+      awakeMs: selected.awakeMs,
+      awakeningsOver5Min: selected.awakeningsOver5Min,
+      timeInBedMs: Math.max(asleepMs + selected.awakeMs, windowBedMs),
+      remMs: selected.remMs,
+      coreMs: selected.coreMs + selected.unspecifiedMs,
+      deepMs: selected.deepMs,
+    });
+  }, [selected]);
+
+  const asleepDisplayLabel = useMemo(() => {
+    if (selected == null || selected.asleepMs <= 0) {
+      return null;
+    }
+    return formatSleepDetailMinutes(
+      sleepAsleepDisplayMinutes({
+        remMs: selected.remMs,
+        coreMs: selected.coreMs,
+        deepMs: selected.deepMs,
+        unspecifiedMs: selected.unspecifiedMs,
+      }),
+    );
+  }, [selected]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      if (
+        selected?.sleepStartAt == null ||
+        selected.sleepEndAt == null ||
+        selected.asleepMs <= 0
+      ) {
+        if (!cancelled) {
+          setTimelineSamples([]);
+        }
+        return;
+      }
+      try {
+        const samples = await listSleepSamplesOverlapping(
+          selected.sleepStartAt,
+          selected.sleepEndAt,
+        );
+        if (!cancelled) {
+          setTimelineSamples(samples);
+        }
+      } catch {
+        if (!cancelled) {
+          setTimelineSamples([]);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selected]);
 
   if (loading) {
     return (
@@ -228,9 +394,19 @@ export function SleepDetailScreen() {
 
         {selected != null && selected.asleepMs > 0 ? (
           <>
-            <Text className="mt-2 text-4xl font-bold tracking-tight">
-              {formatSleepDetailDuration(selected.asleepMs)}
-            </Text>
+            <View style={styles.durationRow}>
+              <Text className="text-4xl font-bold tracking-tight">
+                {asleepDisplayLabel ??
+                  formatSleepDetailDuration(selected.asleepMs)}
+              </Text>
+              <MapGlassCircleButton
+                accessibilityLabel="About sleep stages and score"
+                onPress={() => setStagesInfoOpen(true)}
+                size={32}
+              >
+                <Info size={16} color={colors.primary} strokeWidth={2.25} />
+              </MapGlassCircleButton>
+            </View>
             {selected.sleepStartAt && selected.sleepEndAt ? (
               <Text variant="muted" className="mt-1 text-base">
                 {formatSleepRangeLine(
@@ -240,17 +416,39 @@ export function SleepDetailScreen() {
               </Text>
             ) : null}
 
-            <View style={styles.stageList}>
+            <View style={styles.stageChips}>
               {STAGE_EXPLAINERS.map(stage => (
-                <StageExplainRow
+                <StageChip
                   key={stage.key}
                   label={stage.label}
                   value={formatStageDuration(stage.ms(selected))}
                   color={stage.color}
-                  blurb={stage.blurb}
                 />
               ))}
             </View>
+
+            {selected.sleepStartAt && selected.sleepEndAt ? (
+              <SleepTimelineGraph
+                samples={timelineSamples}
+                windowStart={selected.sleepStartAt}
+                windowEnd={selected.sleepEndAt}
+                labelColor={colors.mutedForeground}
+              />
+            ) : null}
+
+            {sleepScore != null ? (
+              <SleepScoreCard
+                score={sleepScore}
+                expanded={scoreExpanded}
+                onToggleExpand={() => setScoreExpanded(value => !value)}
+              />
+            ) : null}
+
+            {syncing ? (
+              <Text variant="muted" className="mt-3 text-[12px]">
+                Updating from Apple Health…
+              </Text>
+            ) : null}
           </>
         ) : (
           <Text className="mt-3 text-2xl font-semibold">No sleep data</Text>
@@ -359,6 +557,55 @@ export function SleepDetailScreen() {
           </>
         ) : null}
       </ScrollView>
+      <AppBottomSheet
+        visible={stagesInfoOpen}
+        onClose={() => setStagesInfoOpen(false)}
+        enableDynamicSizing
+        scrollable
+      >
+        <View style={styles.infoSheetHeader}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+            hitSlop={10}
+            onPress={() => setStagesInfoOpen(false)}
+            style={styles.infoCloseButton}
+          >
+            <X size={18} color={colors.primary} strokeWidth={2.25} />
+          </Pressable>
+          <Text className="text-[17px] font-semibold">Sleep Stages</Text>
+          <View style={styles.infoCloseSpacer} />
+        </View>
+        <Text variant="muted" className="mb-4 text-[14px] leading-5">
+          {STAGE_INFO_INTRO}
+        </Text>
+        <View style={styles.infoStageList}>
+          {STAGE_EXPLAINERS.map(stage => (
+            <View key={stage.key} style={styles.infoStageRow}>
+              <View
+                style={[
+                  styles.stageDot,
+                  styles.infoStageDot,
+                  { backgroundColor: stage.color },
+                ]}
+              />
+              <View style={styles.infoStageCopy}>
+                <Text className="text-[15px] font-semibold">{stage.label}</Text>
+                <Text variant="muted" className="mt-1 text-[13px] leading-5">
+                  {stage.blurb}
+                </Text>
+              </View>
+            </View>
+          ))}
+        </View>
+        <Text className="mt-5 text-[15px] font-semibold">Sleep score</Text>
+        <Text variant="muted" className="mt-1 text-[13px] leading-5">
+          Duration is half the score (toward 8 hours). Continuity is sleep
+          efficiency (asleep ÷ time in bed). Stages reward healthy Deep and REM
+          amounts on a 7–9 hour night ({SLEEP_STAGES_AIM_COPY.replace(/^Aim for /, '')}).
+          Not Apple Sleep Score.
+        </Text>
+      </AppBottomSheet>
       <View
         pointerEvents="box-none"
         style={[
@@ -381,29 +628,330 @@ export function SleepDetailScreen() {
   );
 }
 
-function StageExplainRow({
+function StageChip({
   label,
   value,
   color,
-  blurb,
 }: {
   label: string;
   value: string;
   color: string;
-  blurb: string;
 }) {
   return (
-    <View style={styles.stageRow}>
-      <View style={styles.stageRowHeader}>
-        <View style={styles.stageLabelRow}>
-          <View style={[styles.stageDot, { backgroundColor: color }]} />
-          <Text style={[styles.stageLabel, { color }]}>{label}</Text>
-        </View>
-        <Text className="text-base font-semibold">{value}</Text>
+    <View style={styles.stageChip}>
+      <View style={styles.stageLabelRow}>
+        <View style={[styles.stageDot, { backgroundColor: color }]} />
+        <Text style={[styles.stageChipLabel, { color }]}>{label}</Text>
       </View>
-      <Text variant="muted" className="text-[12px] leading-4">
-        {blurb}
+      <Text className="mt-1 text-[15px] font-semibold">{value}</Text>
+    </View>
+  );
+}
+
+/** Soft sleep blue — clearer than map accent green on a light timeline. */
+const TIMELINE_SLEEP_BAR = '#5B8DEF';
+const TIMELINE_RULE = 'rgba(142, 142, 147, 0.4)';
+
+function SleepTimelineGraph({
+  samples,
+  windowStart,
+  windowEnd,
+  labelColor,
+}: {
+  samples: HealthSleepSampleRow[];
+  windowStart: Date;
+  windowEnd: Date;
+  labelColor: string;
+}) {
+  const model = useMemo(
+    () => buildSleepTimelineModel(samples, windowStart, windowEnd),
+    [samples, windowStart, windowEnd],
+  );
+  const { axisStartMs, axisEndMs, blocks, ticks } = model;
+  const [plotWidth, setPlotWidth] = useState(0);
+  const labeledTicks = ticks.filter(tick => tick.label != null);
+
+  return (
+    <View style={styles.timelineWrap}>
+      <View
+        style={styles.timelinePlot}
+        onLayout={event => setPlotWidth(event.nativeEvent.layout.width)}
+      >
+        {plotWidth > 0 ? (
+          <Svg width={plotWidth} height={56}>
+            {ticks.map((tick, index) => {
+              const x =
+                (timelineLeftPct(tick.atMs, axisStartMs, axisEndMs) / 100) *
+                plotWidth;
+              const lineX = Math.min(plotWidth - 1, Math.max(0, x));
+              return (
+                <Rect
+                  key={`rule-${index}`}
+                  x={lineX}
+                  y={0}
+                  width={StyleSheet.hairlineWidth * 2}
+                  height={40}
+                  fill={TIMELINE_RULE}
+                />
+              );
+            })}
+            {blocks.map((block, index) => {
+              const left =
+                (timelineLeftPct(block.startMs, axisStartMs, axisEndMs) /
+                  100) *
+                plotWidth;
+              const right =
+                (timelineLeftPct(block.endMs, axisStartMs, axisEndMs) / 100) *
+                plotWidth;
+              const width = Math.max(2, right - left);
+              return (
+                <Rect
+                  key={`block-${index}`}
+                  x={left}
+                  y={10}
+                  width={width}
+                  height={20}
+                  rx={5}
+                  ry={5}
+                  fill={TIMELINE_SLEEP_BAR}
+                />
+              );
+            })}
+          </Svg>
+        ) : null}
+      </View>
+      <View style={styles.timelineTicks}>
+        {labeledTicks.map((tick, index) => {
+          const isLast = index === labeledTicks.length - 1;
+          const isFirst = index === 0;
+          return (
+            <Text
+              key={`label-${tick.atMs}`}
+              numberOfLines={1}
+              style={[
+                styles.timelineTickLabel,
+                {
+                  color: labelColor,
+                  left: `${timelineLeftPct(tick.atMs, axisStartMs, axisEndMs)}%`,
+                  transform: [
+                    {
+                      translateX: isFirst ? 0 : isLast ? -32 : -14,
+                    },
+                  ],
+                },
+              ]}
+            >
+              {tick.label}
+            </Text>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+function SleepScoreCard({
+  score,
+  expanded,
+  onToggleExpand,
+}: {
+  score: SleepScoreResult;
+  expanded: boolean;
+  onToggleExpand: () => void;
+}) {
+  const colors = useThemeColors();
+  const bandColor =
+    score.total >= 75
+      ? '#34C759'
+      : score.total >= 50
+        ? '#FF9F0A'
+        : '#FF3B30';
+
+  return (
+    <AdaptiveGlassSurface style={styles.scoreCard}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        accessibilityLabel={
+          expanded ? 'Collapse sleep score details' : 'Expand sleep score details'
+        }
+        onPress={onToggleExpand}
+        style={styles.scoreHeaderPressable}
+      >
+        <View style={styles.scoreHeaderTop}>
+          <Text
+            variant="muted"
+            className="text-[11px] font-semibold uppercase tracking-wide"
+          >
+            LifeMap Sleep Score
+          </Text>
+          <View style={styles.expandChip}>
+            <Text style={[styles.expandChipLabel, { color: colors.primary }]}>
+              {expanded ? 'Collapse' : 'Expand'}
+            </Text>
+            {expanded ? (
+              <ChevronUp size={16} color={colors.primary} strokeWidth={2.25} />
+            ) : (
+              <ChevronDown size={16} color={colors.primary} strokeWidth={2.25} />
+            )}
+          </View>
+        </View>
+        <View style={styles.scoreHero}>
+          <Text
+            className="text-[44px] font-bold leading-[52px] tracking-tight"
+            style={{ color: bandColor }}
+          >
+            {score.total}
+          </Text>
+          <View
+            style={[styles.bandPill, { backgroundColor: `${bandColor}22` }]}
+          >
+            <View style={[styles.bandDot, { backgroundColor: bandColor }]} />
+            <Text style={[styles.bandLabel, { color: bandColor }]}>
+              {score.band}
+            </Text>
+          </View>
+        </View>
+      </Pressable>
+
+      <ScoreGauge score={score.total} />
+
+      {expanded ? (
+        <>
+          <ScoreMetricRow
+            title="Duration"
+            points={score.durationPoints}
+            maxPoints={50}
+            barColor="#0A84FF"
+            detail="Aim for 7–9 hours of sleep."
+          />
+          <ScoreMetricRow
+            title="Stages"
+            points={score.compositionPoints}
+            maxPoints={30}
+            barColor="#5856D6"
+            detail="On a 7–9 hour night, aim for:"
+          >
+            <View style={styles.stageSubRows}>
+              {SLEEP_STAGE_AIMS.map(stage => (
+                <StageSubRow
+                  key={stage.key}
+                  label={stage.label}
+                  value={stage.aim}
+                  color={stage.color}
+                />
+              ))}
+            </View>
+          </ScoreMetricRow>
+          <ScoreMetricRow
+            title="Continuity"
+            points={score.efficiencyPoints}
+            maxPoints={20}
+            barColor="#32ADE6"
+            detail={`Awake ${score.awakePct}% of the night. Full points when efficiency is ≥85%.`}
+          />
+          <View style={styles.scoreFooter}>
+            <Text variant="muted" className="text-[11px]">
+              {SLEEP_SCORE_FORMULA_FOOTNOTE}
+            </Text>
+            <Text style={[styles.scoreTarget, { color: bandColor }]}>
+              Target 75+ · {score.band}
+            </Text>
+          </View>
+        </>
+      ) : null}
+    </AdaptiveGlassSurface>
+  );
+}
+
+function StageSubRow({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: string;
+  color: string;
+}) {
+  return (
+    <View style={styles.stageSubRow}>
+      <View style={styles.stageLabelRow}>
+        <View style={[styles.stageDot, { backgroundColor: color }]} />
+        <Text style={[styles.stageSubLabel, { color }]}>{label}</Text>
+      </View>
+      <Text className="text-[13px] font-semibold">{value}</Text>
+    </View>
+  );
+}
+
+function ScoreGauge({ score }: { score: number }) {
+  const clamped = Math.min(100, Math.max(0, score));
+  return (
+    <View style={styles.gaugeWrap}>
+      <Svg width="100%" height={10} viewBox="0 0 100 10" preserveAspectRatio="none">
+        <Defs>
+          <LinearGradient id="sleepScoreGauge" x1="0" y1="0" x2="1" y2="0">
+            <Stop offset="0%" stopColor="#FF3B30" />
+            <Stop offset="45%" stopColor="#FF9F0A" />
+            <Stop offset="100%" stopColor="#34C759" />
+          </LinearGradient>
+        </Defs>
+        <Rect
+          x="0"
+          y="2"
+          width="100"
+          height="6"
+          rx="3"
+          fill="url(#sleepScoreGauge)"
+        />
+      </Svg>
+      <View
+        pointerEvents="none"
+        style={[styles.gaugeThumb, { left: `${clamped}%` }]}
+      />
+    </View>
+  );
+}
+
+function ScoreMetricRow({
+  title,
+  points,
+  maxPoints,
+  barColor,
+  detail,
+  children,
+}: {
+  title: string;
+  points: number;
+  maxPoints: number;
+  barColor: string;
+  detail: string;
+  children?: ReactNode;
+}) {
+  const ratio = maxPoints > 0 ? Math.min(1, points / maxPoints) : 0;
+  return (
+    <View style={styles.metricBlock}>
+      <View style={styles.metricHeader}>
+        <Text className="text-[15px] font-semibold">{title}</Text>
+        <Text className="text-[15px] font-semibold">
+          {points}/{maxPoints}
+        </Text>
+      </View>
+      <View style={styles.metricTrack}>
+        <View
+          style={[
+            styles.metricFill,
+            {
+              width: `${Math.round(ratio * 100)}%`,
+              backgroundColor: barColor,
+            },
+          ]}
+        />
+      </View>
+      <Text variant="muted" className="mt-1.5 text-[12px] leading-4">
+        {detail}
       </Text>
+      {children}
     </View>
   );
 }
@@ -544,24 +1092,19 @@ function SleepStageBar({
   if (row == null || row.asleepMs <= 0) {
     return null;
   }
+  // Fold unspecified asleep into Core for the history chart — that gray was
+  // "asleep without a Watch stage," already counted in Time Asleep but not
+  // shown in the stage chips.
+  const coreDisplayMs = row.coreMs + row.unspecifiedMs;
   const total = Math.max(
     1,
-    row.awakeMs +
-      row.remMs +
-      row.coreMs +
-      row.deepMs +
-      row.unspecifiedMs,
+    row.awakeMs + row.remMs + coreDisplayMs + row.deepMs,
   );
   const segments = [
     { key: 'awake', ms: row.awakeMs, color: STAGE_COLORS.awake },
     { key: 'rem', ms: row.remMs, color: STAGE_COLORS.rem },
-    { key: 'core', ms: row.coreMs, color: STAGE_COLORS.core },
+    { key: 'core', ms: coreDisplayMs, color: STAGE_COLORS.core },
     { key: 'deep', ms: row.deepMs, color: STAGE_COLORS.deep },
-    {
-      key: 'unspecified',
-      ms: row.unspecifiedMs,
-      color: STAGE_COLORS.unspecified,
-    },
   ].filter(segment => segment.ms > 0);
 
   return (
@@ -590,30 +1133,192 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'flex-end',
     paddingHorizontal: 20,
   },
-  centered: {
+  durationRow: {
+    marginTop: 10,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 10,
   },
-  stageList: {
-    marginTop: 22,
-    gap: 16,
+  stageChips: {
+    marginTop: 18,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 14,
   },
-  stageRow: {
-    gap: 4,
+  stageChip: {
+    minWidth: '22%',
+    flexGrow: 1,
+    flexBasis: '22%',
   },
-  stageRowHeader: {
+  stageChipLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  scoreCard: {
+    marginTop: 18,
+    borderRadius: 22,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 14,
+    gap: 12,
+    overflow: 'visible',
+  },
+  scoreHeaderPressable: {
+    gap: 8,
+  },
+  scoreHeaderTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 12,
   },
+  expandChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  expandChipLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  scoreHero: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    minHeight: 52,
+  },
+  bandPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+  },
+  bandDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  bandLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  timelineWrap: {
+    marginTop: 18,
+    marginBottom: 4,
+  },
+  timelinePlot: {
+    height: 56,
+    width: '100%',
+  },
+  timelineTicks: {
+    marginTop: 2,
+    height: 16,
+    position: 'relative',
+  },
+  timelineTickLabel: {
+    position: 'absolute',
+    fontSize: 11,
+    fontWeight: '500',
+    fontVariant: ['tabular-nums'],
+  },
+  stageSubRows: {
+    marginTop: 10,
+    gap: 8,
+  },
+  stageSubRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  stageSubLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  gaugeWrap: {
+    height: 18,
+    justifyContent: 'center',
+  },
+  gaugeThumb: {
+    position: 'absolute',
+    top: 1,
+    width: 14,
+    height: 14,
+    marginLeft: -7,
+    borderRadius: 7,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: 'rgba(0,0,0,0.18)',
+  },
+  metricBlock: {
+    gap: 6,
+  },
+  metricHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  metricTrack: {
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: 'rgba(120,120,128,0.18)',
+    overflow: 'hidden',
+  },
+  metricFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  scoreFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginTop: 2,
+  },
+  scoreTarget: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  centered: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  infoSheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  infoCloseButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  infoCloseSpacer: {
+    width: 32,
+  },
+  infoStageList: {
+    gap: 18,
+    paddingBottom: 8,
+  },
+  infoStageRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  infoStageCopy: {
+    flex: 1,
+  },
   stageLabelRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   stageDot: {
     width: 8,
@@ -621,9 +1326,8 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     flexShrink: 0,
   },
-  stageLabel: {
-    fontSize: 15,
-    fontWeight: '700',
+  infoStageDot: {
+    marginTop: 5,
   },
   chartHeading: {
     marginTop: 26,
