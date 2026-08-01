@@ -151,9 +151,10 @@ export function StepsDetailScreen() {
     }
   }, [initialDateKey, range]);
 
+  // Focus effect owns the initial/range load after on-demand sync; this only
+  // refreshes when HealthKit data changes while the screen is mounted.
   useEffect(() => {
     let cancelled = false;
-    void loadChart(() => cancelled);
     const unsubscribe = subscribeHealthData(() => {
       void loadChart(() => cancelled);
     });

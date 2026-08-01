@@ -220,9 +220,10 @@ export function SleepDetailScreen() {
     }
   }, [initialDateKey, range]);
 
+  // Focus effect owns the initial/range load after on-demand sync; this only
+  // refreshes when HealthKit data changes while the screen is mounted.
   useEffect(() => {
     let cancelled = false;
-    void loadChart(() => cancelled);
     const unsubscribe = subscribeHealthData(() => {
       void loadChart(() => cancelled);
     });
@@ -276,12 +277,19 @@ export function SleepDetailScreen() {
     if (selected == null || selected.asleepMs <= 0) {
       return null;
     }
+    const stageParts = {
+      remMs: selected.remMs,
+      coreMs: selected.coreMs,
+      deepMs: selected.deepMs,
+      unspecifiedMs: selected.unspecifiedMs,
+    };
     return computeLifeMapSleepScore({
-      asleepMs: selected.asleepMs,
+      // Match hero “Time Asleep” (stage-sum rounded) so Duration points agree.
+      asleepMs: sleepAsleepDisplayMs(stageParts),
       awakeMs: selected.awakeMs,
       awakeningsOver5Min: selected.awakeningsOver5Min,
       remMs: selected.remMs,
-      coreMs: selected.coreMs,
+      coreMs: selected.coreMs + selected.unspecifiedMs,
       deepMs: selected.deepMs,
     });
   }, [selected]);
