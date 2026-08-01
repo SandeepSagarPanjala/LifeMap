@@ -1,6 +1,6 @@
 import { TZDate } from '@date-fns/tz';
 import { format } from 'date-fns';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -151,10 +151,18 @@ export function StepsDetailScreen() {
     }
   }, [initialDateKey, range]);
 
-  // Focus effect owns the initial/range load after on-demand sync; this only
-  // refreshes when HealthKit data changes while the screen is mounted.
+  const loadChartRef = useRef(loadChart);
+  loadChartRef.current = loadChart;
+  const skipRangeLoadRef = useRef(true);
+
+  // Subscription + local range reloads (no HealthKit sync).
   useEffect(() => {
     let cancelled = false;
+    if (skipRangeLoadRef.current) {
+      skipRangeLoadRef.current = false;
+    } else {
+      void loadChart(() => cancelled);
+    }
     const unsubscribe = subscribeHealthData(() => {
       void loadChart(() => cancelled);
     });
@@ -164,6 +172,7 @@ export function StepsDetailScreen() {
     };
   }, [loadChart]);
 
+  // On-demand sync only on focus/blur — not when the chart range changes.
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
@@ -176,12 +185,12 @@ export function StepsDetailScreen() {
         if (cancelled) {
           return;
         }
-        await loadChart(() => cancelled);
+        await loadChartRef.current(() => cancelled);
       })();
       return () => {
         cancelled = true;
       };
-    }, [loadChart]),
+    }, []),
   );
 
   const handleSelect = useCallback((row: HealthDayStepsRow) => {

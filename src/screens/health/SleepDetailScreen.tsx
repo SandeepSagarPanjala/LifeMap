@@ -1,6 +1,13 @@
 import { TZDate } from '@date-fns/tz';
 import { format } from 'date-fns';
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -220,10 +227,18 @@ export function SleepDetailScreen() {
     }
   }, [initialDateKey, range]);
 
-  // Focus effect owns the initial/range load after on-demand sync; this only
-  // refreshes when HealthKit data changes while the screen is mounted.
+  const loadChartRef = useRef(loadChart);
+  loadChartRef.current = loadChart;
+  const skipRangeLoadRef = useRef(true);
+
+  // Subscription + local range reloads (no HealthKit sync).
   useEffect(() => {
     let cancelled = false;
+    if (skipRangeLoadRef.current) {
+      skipRangeLoadRef.current = false;
+    } else {
+      void loadChart(() => cancelled);
+    }
     const unsubscribe = subscribeHealthData(() => {
       void loadChart(() => cancelled);
     });
@@ -233,6 +248,7 @@ export function SleepDetailScreen() {
     };
   }, [loadChart]);
 
+  // On-demand sync only on focus/blur — not when the chart range changes.
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
@@ -247,13 +263,13 @@ export function SleepDetailScreen() {
           return;
         }
         setSyncing(false);
-        await loadChart(() => cancelled);
+        await loadChartRef.current(() => cancelled);
       })();
       return () => {
         cancelled = true;
         setSyncing(false);
       };
-    }, [loadChart]),
+    }, []),
   );
 
   const handleSelect = useCallback(async (day: ChartDay) => {
@@ -283,11 +299,17 @@ export function SleepDetailScreen() {
       deepMs: selected.deepMs,
       unspecifiedMs: selected.unspecifiedMs,
     };
+    const asleepMs = sleepAsleepDisplayMs(stageParts);
+    const windowBedMs =
+      selected.sleepStartAt != null && selected.sleepEndAt != null
+        ? selected.sleepEndAt.getTime() - selected.sleepStartAt.getTime()
+        : 0;
     return computeLifeMapSleepScore({
       // Match hero “Time Asleep” (stage-sum rounded) so Duration points agree.
-      asleepMs: sleepAsleepDisplayMs(stageParts),
+      asleepMs,
       awakeMs: selected.awakeMs,
       awakeningsOver5Min: selected.awakeningsOver5Min,
+      timeInBedMs: Math.max(asleepMs + selected.awakeMs, windowBedMs),
       remMs: selected.remMs,
       coreMs: selected.coreMs + selected.unspecifiedMs,
       deepMs: selected.deepMs,

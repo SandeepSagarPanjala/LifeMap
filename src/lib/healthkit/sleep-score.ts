@@ -45,6 +45,7 @@ export type SleepScoreInput = {
   awakeMs: number;
   /** Kept for rollups / future use; not used in the weighted score. */
   awakeningsOver5Min?: number;
+  /** When set (and larger than asleep+awake), used as efficiency denominator. */
   timeInBedMs?: number | null;
   remMs?: number;
   coreMs?: number;
@@ -190,10 +191,17 @@ export function computeLifeMapSleepScore(
   const remMs = Math.max(0, input.remMs ?? 0);
   const coreMs = Math.max(0, input.coreMs ?? 0);
   const deepMs = Math.max(0, input.deepMs ?? 0);
+  const timeInBedMs = Math.max(
+    asleepMs,
+    input.timeInBedMs != null && Number.isFinite(input.timeInBedMs)
+      ? Math.max(0, input.timeInBedMs)
+      : asleepMs + awakeMs,
+  );
+  const efficiencyAwakeMs = Math.max(awakeMs, timeInBedMs - asleepMs);
 
   return computeSleepScoreFromMinutes({
     durationMinutes: asleepMs / 60_000,
-    awakeMinutes: awakeMs / 60_000,
+    awakeMinutes: efficiencyAwakeMs / 60_000,
     remMinutes: remMs / 60_000,
     coreMinutes: coreMs / 60_000,
     deepMinutes: deepMs / 60_000,

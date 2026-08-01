@@ -113,6 +113,23 @@ describe('healthkit sleep score', () => {
     expect(restless.total).toBeLessThan(calm.total);
     expect(restless.efficiencyScore).toBeLessThan(calm.efficiencyScore);
   });
+
+  it('uses timeInBedMs when larger than asleep+awake for efficiency', () => {
+    const base = {
+      asleepMs: 7.5 * 3600_000,
+      awakeMs: 5 * 60_000,
+      remMs: Math.round(7.5 * 3600_000 * 0.22),
+      deepMs: Math.round(7.5 * 3600_000 * 0.15),
+      coreMs: Math.round(7.5 * 3600_000 * 0.63),
+    };
+    const tightBed = computeLifeMapSleepScore(base);
+    const longBed = computeLifeMapSleepScore({
+      ...base,
+      timeInBedMs: 10 * 3600_000,
+    });
+    expect(longBed.efficiencyScore).toBeLessThan(tightBed.efficiencyScore);
+    expect(longBed.total).toBeLessThan(tightBed.total);
+  });
 });
 
 describe('healthkit day sleep rollups', () => {
