@@ -83,7 +83,6 @@ import {
 import { clampDateKeyToHistoryBounds } from '@/lib/history-calendar-bounds';
 import {
   consumeHistoryDatePickerResult,
-  queueHistoryDatePickerOpen,
 } from '@/lib/history-date-picker-navigation';
 import { useAppStore } from '@/stores/app-store';
 import { regionForCoordinates, toMapCoordinates } from '@/lib/location-geo';
@@ -396,8 +395,8 @@ export function useMapScreenController() {
     historyData.dateKey === selectedDateKey &&
     (!historyLoading || viewingToday || historyHasGpsData);
   const historyReadyForDay = historyDayLoaded && historyHasGpsData;
-  const historyBlockingLoader =
-    historyLoading && !historyDayLoaded && !viewingToday;
+  // Past days: keep “Loading your day…” until history finished loading.
+  const historyBlockingLoader = !viewingToday && historyLoading;
 
   const historyBadgeCount = useMemo(() => {
     if (!historyDayLoaded) {
@@ -1533,8 +1532,7 @@ export function useMapScreenController() {
   );
 
   const openHistoryDatePicker = useCallback(() => {
-    queueHistoryDatePickerOpen({ selectedDateKey });
-    navigation.navigate('HistoryDatePicker');
+    navigation.navigate('HistoryDatePicker', { selectedDateKey });
   }, [navigation, selectedDateKey]);
 
   const handleSelectMapDate = useCallback(

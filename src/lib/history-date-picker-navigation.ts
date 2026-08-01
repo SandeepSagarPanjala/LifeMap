@@ -1,21 +1,6 @@
-export type HistoryDatePickerOpenPayload = {
-  selectedDateKey: string;
-};
+/** Result hand-off when the date picker half-sheet closes back to the map. */
 
-let pendingOpen: HistoryDatePickerOpenPayload | null = null;
 let pendingResult: string | null = null;
-
-export function queueHistoryDatePickerOpen(
-  payload: HistoryDatePickerOpenPayload,
-): void {
-  pendingOpen = payload;
-}
-
-export function consumeHistoryDatePickerOpen(): HistoryDatePickerOpenPayload | null {
-  const payload = pendingOpen;
-  pendingOpen = null;
-  return payload;
-}
 
 export function queueHistoryDatePickerResult(dateKey: string): void {
   pendingResult = dateKey;

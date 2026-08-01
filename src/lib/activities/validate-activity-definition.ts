@@ -270,6 +270,15 @@ export function validateActivityDefinition(
     fields.push(result.field!);
   }
 
+  const photoCount = fields.filter(field => field.type === 'photo').length;
+  const scanCount = fields.filter(field => field.type === 'scan').length;
+  if (photoCount > 1) {
+    return { ok: false, error: 'An activity can have at most one photo field.' };
+  }
+  if (scanCount > 1) {
+    return { ok: false, error: 'An activity can have at most one bill field.' };
+  }
+
   for (const field of fields) {
     if (field.type === 'scan' && field.extract === 'amount' && field.fillField) {
       const target = fields.find(item => item.id === field.fillField);
@@ -334,6 +343,9 @@ function isRequiredValueFilled(value: ActivityFieldValue | undefined): boolean {
   if (value.type === 'money') {
     // 0 is a valid amount (free / complimentary).
     return Number.isFinite(value.amount) && value.amount >= 0;
+  }
+  if (value.type === 'photo' || value.type === 'scan') {
+    return value.uris.length > 0;
   }
   return true;
 }

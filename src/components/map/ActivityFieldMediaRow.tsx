@@ -16,9 +16,11 @@ import {
   type PhotoTagsStatus,
 } from '@/components/capture/PhotoTagsBar';
 import { Text } from '@/components/ui/text';
-import type {
-  ActivityFieldDefinition,
-  ActivityFieldValue,
+import {
+  ACTIVITY_MAX_MEDIA_URIS,
+  getActivityMediaUris,
+  type ActivityFieldDefinition,
+  type ActivityFieldValue,
 } from '@/lib/activities/activity-definition';
 import { momentImageUri } from '@/lib/moments/moment-media-uri';
 import type { PhotoTagCandidate } from '@/lib/moments/moment-tags';
@@ -37,10 +39,10 @@ const BILL_STYLE = {
   iconColor: '#D97706',
 };
 
-const MEDIA_SQUARE_SIZE = 112;
-const MEDIA_ICON_SIZE = 60;
+const MEDIA_SQUARE_SIZE = 100;
+const MEDIA_ICON_SIZE = 52;
 const DUOTONE_OPACITY = 0.28;
-const MEDIA_ROW_GAP = 20;
+const MEDIA_ROW_GAP = 12;
 
 /** Phosphor Camera (duotone) — secondary fill + primary outline, viewBox 0 0 256 256 */
 const CAMERA_DUOTONE_FILL =
@@ -55,47 +57,17 @@ const IMAGES_DUOTONE_OUTLINE =
   'M216 40H72a16 16 0 0 0-16 16v16H40a16 16 0 0 0-16 16v112a16 16 0 0 0 16 16h144a16 16 0 0 0 16-16v-16h16a16 16 0 0 0 16-16V56a16 16 0 0 0-16-16M72 56h144v62.75l-10.07-10.06a16 16 0 0 0-22.63 0l-20 20-44-44a16 16 0 0 0-22.62 0L72 109.37Zm112 144H40V88h16v80a16 16 0 0 0 16 16h112Zm32-32H72v-36l36-36 49.66 49.66a8 8 0 0 0 11.31 0L194.63 120 216 141.38zm-56-84a12 12 0 1 1 12 12 12 12 0 0 1-12-12';
 
 type ActivityFieldMediaRowProps = {
-  fields: ActivityFieldDefinition[];
+  field: ActivityFieldDefinition;
   values: Record<string, ActivityFieldValue | undefined>;
   scanningFieldId: string | null;
   /** Field ids currently running on-device photo labeling. */
   taggingFieldIds?: ReadonlySet<string>;
-  onOpenCamera: (field: ActivityFieldDefinition) => void;
-  onOpenLibrary: (field: ActivityFieldDefinition) => void;
-  onRemoveImage: (field: ActivityFieldDefinition) => void;
+  slotCount?: number;
+  onOpenCamera: (field: ActivityFieldDefinition, slotIndex: number) => void;
+  onOpenLibrary: (field: ActivityFieldDefinition, slotIndex: number) => void;
+  onRemoveImage: (field: ActivityFieldDefinition, slotIndex: number) => void;
   onRemovePhotoTag?: (field: ActivityFieldDefinition, tag: string) => void;
 };
-
-function getStoredUri(
-  field: ActivityFieldDefinition,
-  values: Record<string, ActivityFieldValue | undefined>,
-): string | null {
-  const value = values[field.id];
-  if (value == null) {
-    return null;
-  }
-  if (field.type === 'photo' && value.type === 'photo') {
-    return value.uri;
-  }
-  if (field.type === 'scan' && value.type === 'scan') {
-    return value.uri;
-  }
-  return null;
-}
-
-function getMediaTags(
-  field: ActivityFieldDefinition,
-  values: Record<string, ActivityFieldValue | undefined>,
-): string[] {
-  const value = values[field.id];
-  if (field.type === 'photo' && value?.type === 'photo') {
-    return value.tags ?? [];
-  }
-  if (field.type === 'scan' && value?.type === 'scan') {
-    return value.tags ?? [];
-  }
-  return [];
-}
 
 function DiagonalSplitMediaControl({
   fieldId,
@@ -115,8 +87,8 @@ function DiagonalSplitMediaControl({
   const size = MEDIA_SQUARE_SIZE;
   const iconOffset = (size - MEDIA_ICON_SIZE) / 2;
   const iconScale = MEDIA_ICON_SIZE / 256;
-  const cameraNudge = -8;
-  const libraryNudge = 8;
+  const cameraNudge = -6;
+  const libraryNudge = 6;
   const safeId = fieldId.replace(/[^a-zA-Z0-9_]/g, '_');
   const topLeftClipId = `media-tl-${safeId}`;
   const bottomRightClipId = `media-br-${safeId}`;
@@ -130,6 +102,7 @@ function DiagonalSplitMediaControl({
         { name: 'openCamera', label: 'Open camera' },
         { name: 'openLibrary', label: 'Open photo library' },
       ]}
+      disabled={isScanning}
       onAccessibilityAction={event => {
         const action = event.nativeEvent.actionName;
         if (action === 'openCamera' || action === 'activate') {
@@ -213,7 +186,7 @@ function DiagonalSplitMediaControl({
       </Svg>
 
       {isScanning ? (
-        <View style={styles.scanningOverlay}>
+        <View style={styles.scanningOverlay} pointerEvents="none">
           <ActivityIndicator color={palette.iconColor} />
         </View>
       ) : null}
@@ -278,96 +251,103 @@ function FilledMediaThumb({
   );
 }
 
+/**
+ * One media field as an optional row of up to 3 capture slots (photo or bill).
+ */
 export function ActivityFieldMediaRow({
-  fields,
+  field,
   values,
   scanningFieldId,
   taggingFieldIds,
+  slotCount = ACTIVITY_MAX_MEDIA_URIS,
   onOpenCamera,
   onOpenLibrary,
   onRemoveImage,
   onRemovePhotoTag,
 }: ActivityFieldMediaRowProps) {
   const insets = useSafeAreaInsets();
-  const [previewFieldId, setPreviewFieldId] = useState<string | null>(null);
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
 
-  const previewField =
-    previewFieldId != null
-      ? (fields.find(field => field.id === previewFieldId) ?? null)
-      : null;
+  const isPhoto = field.type === 'photo';
+  const palette = isPhoto ? PHOTO_STYLE : BILL_STYLE;
+  const uris = getActivityMediaUris(values[field.id]);
+  const tags = (() => {
+    const value = values[field.id];
+    if (value?.type === 'photo' || value?.type === 'scan') {
+      return value.tags ?? [];
+    }
+    return [];
+  })();
+  const isScanning = scanningFieldId === field.id;
+  const slots = Math.max(1, Math.min(slotCount, ACTIVITY_MAX_MEDIA_URIS));
+
   const previewUri =
-    previewField != null ? getStoredUri(previewField, values) : null;
-  const previewTags: PhotoTagCandidate[] =
-    previewField != null
-      ? getMediaTags(previewField, values).map(label => ({
-          label,
-          confidence: 1,
-        }))
-      : [];
+    previewIndex != null && previewIndex >= 0 && previewIndex < uris.length
+      ? uris[previewIndex]!
+      : null;
+  const previewTags: PhotoTagCandidate[] = tags.map(label => ({
+    label,
+    confidence: 1,
+  }));
   const previewTagStatus: PhotoTagsStatus =
-    previewField != null && taggingFieldIds?.has(previewField.id)
+    taggingFieldIds?.has(field.id)
       ? 'loading'
       : previewTags.length > 0
         ? 'ready'
         : 'idle';
 
-  if (fields.length === 0) {
-    return null;
-  }
-
   return (
     <>
-      <View style={styles.row}>
-        {fields.map((field, index) => {
-          const isPhoto = field.type === 'photo';
-          const palette = isPhoto ? PHOTO_STYLE : BILL_STYLE;
-          const storedUri = getStoredUri(field, values);
-          const hasImage = storedUri != null;
-          const isScanning = scanningFieldId === field.id;
-          const isLast = index === fields.length - 1;
-
-          return (
-            <View
-              key={field.id}
-              style={[
-                styles.fieldWrap,
-                !isLast ? { marginRight: MEDIA_ROW_GAP } : null,
-              ]}
-            >
-              <Text style={styles.fieldLabel} numberOfLines={2}>
-                {field.label}
-                {field.required ? ' *' : ''}
-              </Text>
-
-              {hasImage ? (
-                <FilledMediaThumb
-                  label={field.label}
-                  uri={storedUri}
-                  palette={palette}
-                  isScanning={isScanning}
-                  onPressPreview={() => setPreviewFieldId(field.id)}
-                  onRemove={() => onRemoveImage(field)}
-                />
-              ) : (
-                <DiagonalSplitMediaControl
-                  fieldId={field.id}
-                  label={field.label}
-                  palette={palette}
-                  isScanning={isScanning}
-                  onOpenCamera={() => onOpenCamera(field)}
-                  onOpenLibrary={() => onOpenLibrary(field)}
-                />
-              )}
-            </View>
-          );
-        })}
+      <View style={styles.block}>
+        <Text style={styles.rowLabel} numberOfLines={2}>
+          {field.label}
+          {field.required ? ' *' : ''}
+        </Text>
+        <View style={styles.row}>
+          {Array.from({ length: slots }, (_, slotIndex) => {
+            const uri = uris[slotIndex] ?? null;
+            const slotLabel =
+              slotIndex === 0 ? field.label : `${field.label} ${slotIndex + 1}`;
+            return (
+              <View
+                key={`${field.id}-${slotIndex}`}
+                style={[
+                  styles.fieldWrap,
+                  slotIndex < slots - 1
+                    ? { marginRight: MEDIA_ROW_GAP }
+                    : null,
+                ]}
+              >
+                {uri != null ? (
+                  <FilledMediaThumb
+                    label={slotLabel}
+                    uri={uri}
+                    palette={palette}
+                    isScanning={isScanning}
+                    onPressPreview={() => setPreviewIndex(slotIndex)}
+                    onRemove={() => onRemoveImage(field, slotIndex)}
+                  />
+                ) : (
+                  <DiagonalSplitMediaControl
+                    fieldId={`${field.id}_${slotIndex}`}
+                    label={slotLabel}
+                    palette={palette}
+                    isScanning={isScanning}
+                    onOpenCamera={() => onOpenCamera(field, slotIndex)}
+                    onOpenLibrary={() => onOpenLibrary(field, slotIndex)}
+                  />
+                )}
+              </View>
+            );
+          })}
+        </View>
       </View>
 
       <Modal
         visible={previewUri != null}
         animationType="fade"
         presentationStyle="fullScreen"
-        onRequestClose={() => setPreviewFieldId(null)}
+        onRequestClose={() => setPreviewIndex(null)}
       >
         <View style={styles.fullPreviewRoot}>
           {previewUri != null ? (
@@ -378,7 +358,7 @@ export function ActivityFieldMediaRow({
             />
           ) : null}
 
-          {previewField?.type === 'photo' || previewField?.type === 'scan' ? (
+          {field.type === 'photo' || field.type === 'scan' ? (
             <View
               pointerEvents="box-none"
               style={[styles.fullPreviewTags, { paddingTop: insets.top + 10 }]}
@@ -387,9 +367,7 @@ export function ActivityFieldMediaRow({
                 tags={previewTags}
                 status={previewTagStatus}
                 onRemoveTag={tag => {
-                  if (previewField != null && onRemovePhotoTag != null) {
-                    onRemovePhotoTag(previewField, tag);
-                  }
+                  onRemovePhotoTag?.(field, tag);
                 }}
               />
             </View>
@@ -398,11 +376,8 @@ export function ActivityFieldMediaRow({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Close preview"
-            onPress={() => setPreviewFieldId(null)}
-            style={[
-              styles.fullPreviewClose,
-              { bottom: insets.bottom + 20 },
-            ]}
+            onPress={() => setPreviewIndex(null)}
+            style={[styles.fullPreviewClose, { bottom: insets.bottom + 20 }]}
           >
             <X size={22} color="#FFFFFF" weight="bold" />
           </Pressable>
@@ -415,35 +390,43 @@ export function ActivityFieldMediaRow({
 export function groupActivityFields(
   fields: ActivityFieldDefinition[],
 ): Array<
-  | { kind: 'media'; fields: ActivityFieldDefinition[] }
+  | { kind: 'photoSlots'; field: ActivityFieldDefinition }
+  | { kind: 'billSlots'; field: ActivityFieldDefinition }
   | { kind: 'field'; field: ActivityFieldDefinition }
 > {
   const groups: Array<
-    | { kind: 'media'; fields: ActivityFieldDefinition[] }
+    | { kind: 'photoSlots'; field: ActivityFieldDefinition }
+    | { kind: 'billSlots'; field: ActivityFieldDefinition }
     | { kind: 'field'; field: ActivityFieldDefinition }
   > = [];
-  let mediaRun: ActivityFieldDefinition[] = [];
 
   for (const field of fields) {
-    if (field.type === 'photo' || field.type === 'scan') {
-      mediaRun.push(field);
+    if (field.type === 'photo') {
+      groups.push({ kind: 'photoSlots', field });
       continue;
     }
-    if (mediaRun.length > 0) {
-      groups.push({ kind: 'media', fields: mediaRun });
-      mediaRun = [];
+    if (field.type === 'scan') {
+      groups.push({ kind: 'billSlots', field });
+      continue;
     }
     groups.push({ kind: 'field', field });
-  }
-
-  if (mediaRun.length > 0) {
-    groups.push({ kind: 'media', fields: mediaRun });
   }
 
   return groups;
 }
 
 const styles = StyleSheet.create({
+  block: {
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    gap: 6,
+  },
+  rowLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#3A3A3C',
+    textAlign: 'center',
+  },
   row: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -455,14 +438,6 @@ const styles = StyleSheet.create({
     flexGrow: 0,
     flexShrink: 0,
     alignItems: 'center',
-  },
-  fieldLabel: {
-    width: MEDIA_SQUARE_SIZE,
-    marginBottom: 6,
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#3A3A3C',
-    textAlign: 'center',
   },
   mediaControl: {
     width: MEDIA_SQUARE_SIZE,
@@ -477,50 +452,47 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
   previewImage: {
-    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
   },
   removeButton: {
     position: 'absolute',
     top: 6,
     right: 6,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(0,0,0,0.55)',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 59, 48, 0.72)',
   },
   scanningOverlay: {
     ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255,255,255,0.55)',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.72)',
   },
   fullPreviewRoot: {
     flex: 1,
     backgroundColor: '#000000',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   fullPreviewImage: {
-    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
   },
   fullPreviewTags: {
     position: 'absolute',
-    top: 0,
     left: 0,
     right: 0,
-    zIndex: 2,
   },
   fullPreviewClose: {
     position: 'absolute',
-    right: 20,
-    zIndex: 2,
+    alignSelf: 'center',
     width: 48,
     height: 48,
     borderRadius: 24,
+    backgroundColor: 'rgba(0,0,0,0.55)',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.45)',
   },
 });

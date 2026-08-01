@@ -1,8 +1,6 @@
 import type { HistoryData } from '@/lib/history-data-types';
-import {
-  HISTORY_DATA_CACHE_MAX_ENTRIES,
-  TRIP_DETECTION_VERSION,
-} from '@/lib/app-constants';
+import { TRIP_DETECTION_VERSION } from '@/lib/app-constants';
+import { getTodayDateKey } from '@/lib/day-utils';
 import type { TripDetectionConfig } from '@/lib/trip-settings';
 
 /** Today never uses fingerprint cache validation — placeholder for RAM peek only. */
@@ -20,17 +18,15 @@ type CacheSlot = {
   fingerprint: string;
 };
 
+/**
+ * Today-only RAM cache. Past days are never stored so browsing history cannot
+ * evict Today (the day users return to constantly).
+ */
 class HistoryDataCache {
   private slots = new Map<string, CacheSlot>();
-  private accessOrder: string[] = [];
 
   peek(cacheKey: string): HistoryData | null {
-    const slot = this.slots.get(cacheKey);
-    if (slot == null) {
-      return null;
-    }
-    this.touch(cacheKey);
-    return slot.data;
+    return this.slots.get(cacheKey)?.data ?? null;
   }
 
   getFingerprint(dateKey: string): string | undefined {
@@ -51,39 +47,21 @@ class HistoryDataCache {
     if (slot == null || slot.data.dateKey !== dateKey) {
       return null;
     }
-    this.touch(cacheKey);
     return slot.data;
   }
 
   write(cacheKey: string, data: HistoryData, fingerprint: string): void {
-    if (!this.slots.has(cacheKey)) {
-      while (this.accessOrder.length >= HISTORY_DATA_CACHE_MAX_ENTRIES) {
-        const evictKey = this.accessOrder.shift();
-        if (evictKey != null) {
-          this.slots.delete(evictKey);
-        } else {
-          break;
-        }
-      }
-      this.accessOrder.push(cacheKey);
-    } else {
-      this.touch(cacheKey);
+    if (data.dateKey !== getTodayDateKey()) {
+      return;
     }
 
+    // Keep a single Today slot (config key may change); drop everything else.
+    this.slots.clear();
     this.slots.set(cacheKey, { data, fingerprint });
   }
 
   clear(): void {
     this.slots.clear();
-    this.accessOrder = [];
-  }
-
-  private touch(cacheKey: string): void {
-    const index = this.accessOrder.indexOf(cacheKey);
-    if (index >= 0) {
-      this.accessOrder.splice(index, 1);
-    }
-    this.accessOrder.push(cacheKey);
   }
 }
 

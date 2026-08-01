@@ -1,16 +1,17 @@
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import { StyleSheet, View } from 'react-native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { HistoryDatePickerPanel } from '@/components/map/HistoryDatePickerSheet';
 import { NativeHalfSheetShell } from '@/components/ui/NativeHalfSheetShell';
 import { useNativeHalfSheetClose } from '@/components/ui/native-half-sheet-context';
-import {
-  consumeHistoryDatePickerOpen,
-  queueHistoryDatePickerResult,
-} from '@/lib/history-date-picker-navigation';
+import { queueHistoryDatePickerResult } from '@/lib/history-date-picker-navigation';
 import { getTodayDateKey } from '@/lib/day-utils';
 import { HISTORY_DATE_PICKER_HEIGHT_RATIO } from '@/lib/app-constants';
+import type { RootStackParamList } from '@/navigation/types';
 import { useSheetCaptureClose } from '@/screens/sheets/use-sheet-capture-close';
+
+type Props = NativeStackScreenProps<RootStackParamList, 'HistoryDatePicker'>;
 
 function HistoryDatePickerPanelHost({
   selectedDateKey,
@@ -32,10 +33,10 @@ function HistoryDatePickerPanelHost({
   );
 }
 
-export function HistoryDatePickerScreen() {
+export function HistoryDatePickerScreen({ route }: Props) {
   const navigationClose = useSheetCaptureClose();
-  const [payload] = useState(() => consumeHistoryDatePickerOpen());
-  const selectedDateKey = payload?.selectedDateKey ?? getTodayDateKey();
+  const selectedDateKey =
+    route.params?.selectedDateKey ?? getTodayDateKey();
 
   return (
     <View style={styles.root}>

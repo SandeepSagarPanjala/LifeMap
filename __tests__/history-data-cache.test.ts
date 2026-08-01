@@ -1,6 +1,5 @@
 import type { HistoryData } from '../src/lib/history-data-types';
 import { getTodayDateKey } from '../src/lib/day-utils';
-import { HISTORY_DATA_CACHE_MAX_ENTRIES } from '@/lib/app-constants';
 import {
   historyCacheKey,
   historyDataCache,
@@ -24,35 +23,13 @@ describe('historyDataCache', () => {
     resetHistoryDataCacheForTests();
   });
 
-  it('evicts the oldest day when cache exceeds max entries', () => {
-    const keys = Array.from(
-      { length: HISTORY_DATA_CACHE_MAX_ENTRIES + 1 },
-      (_, index) => {
-        const day = String(index + 1).padStart(2, '0');
-        const dateKey = `2026-06-${day}`;
-        return {
-          cacheKey: historyCacheKey(dateKey, config),
-          dateKey,
-        };
-      },
-    );
-
-    for (const [index, item] of keys.entries()) {
-      historyDataCache.write(
-        item.cacheKey,
-        sampleData(item.dateKey),
-        `${index + 1}:${index + 1}`,
-      );
-    }
-
-    const [oldest, ...remaining] = keys;
-    expect(historyDataCache.peek(oldest!.cacheKey)).toBeNull();
-    for (const item of remaining) {
-      expect(historyDataCache.peek(item.cacheKey)?.dateKey).toBe(item.dateKey);
-    }
+  it('ignores past-day writes so browsing cannot fill the cache', () => {
+    const pastKey = historyCacheKey('2026-06-01', config);
+    historyDataCache.write(pastKey, sampleData('2026-06-01'), '1:1');
+    expect(historyDataCache.peek(pastKey)).toBeNull();
   });
 
-  it('keeps today when the user browses one other day', () => {
+  it('keeps today and ignores past-day writes after today is cached', () => {
     const todayKey = getTodayDateKey();
     const todayCacheKey = historyCacheKey(todayKey, config);
     const pastKey = historyCacheKey('2026-06-01', config);
@@ -61,6 +38,10 @@ describe('historyDataCache', () => {
     historyDataCache.write(pastKey, sampleData('2026-06-01'), '1:1');
 
     expect(historyDataCache.peek(todayCacheKey)?.dateKey).toBe(todayKey);
-    expect(historyDataCache.peek(pastKey)?.dateKey).toBe('2026-06-01');
+    expect(historyDataCache.peek(pastKey)).toBeNull();
+
+    historyDataCache.write(todayCacheKey, sampleData(todayKey), 'today-2');
+    expect(historyDataCache.peek(todayCacheKey)?.dateKey).toBe(todayKey);
+    expect(historyDataCache.getFingerprint(todayKey)).toBe('today-2');
   });
 });

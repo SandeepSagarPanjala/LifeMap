@@ -23,6 +23,9 @@ import {
   type MomentCounts,
 } from '@/lib/moments/moment-counts';
 import type { DayTimelineEntry, DetectedTrip } from '@/lib/trip-detection';
+import {
+  formatTripClockTime,
+} from '@/lib/trip-format';
 import { memo, useCallback, useMemo, useRef, useState } from 'react';
 import { Marker } from 'react-native-maps';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -153,6 +156,64 @@ function PlaceLabelRow({ stop }: { stop: DayStoryStop }) {
   );
 }
 
+type VisitTimeLine = {
+  visitNumber: number;
+  label: string;
+};
+
+function visitTimeLinesForStop(stop: DayStoryStop): VisitTimeLine[] {
+  const lines: VisitTimeLine[] = [];
+  for (let index = 0; index < stop.visitNumbers.length; index += 1) {
+    const visitNumber = stop.visitNumbers[index];
+    const stay = stop.stays[index];
+    if (visitNumber == null || stay?.startAt == null || stay.endAt == null) {
+      continue;
+    }
+    lines.push({
+      visitNumber,
+      label: `${formatTripClockTime(stay.startAt)} - ${formatTripClockTime(stay.endAt)}`,
+    });
+  }
+  return lines;
+}
+
+function PlaceVisitTimes({ lines }: { lines: readonly VisitTimeLine[] }) {
+  if (lines.length === 0) {
+    return null;
+  }
+  return (
+    <View style={styles.reachedTimesRow}>
+      {lines.map(line => {
+        const tint = dayStoryCardFill(
+          dayStoryColorForVisit(line.visitNumber),
+          0.22,
+        );
+        return (
+          <View
+            key={`${line.visitNumber}-${line.label}`}
+            style={styles.timeCardShadow}
+            collapsable={false}
+          >
+            <AdaptiveGlassSurface
+              effect="regular"
+              tintColor={tint}
+              style={styles.timeCard}
+            >
+              <Text
+                style={styles.reachedTimeText}
+                numberOfLines={1}
+                accessibilityLabel={line.label}
+              >
+                {line.label}
+              </Text>
+            </AdaptiveGlassSurface>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 const DayStoryStopMarker = memo(function DayStoryStopMarker({
   stop,
   momentCounts,
@@ -172,10 +233,17 @@ const DayStoryStopMarker = memo(function DayStoryStopMarker({
   const visitColor = dayStoryColorForVisit(stop.visitNumbers[0] ?? 1);
   // Soft pastel tint — full visit colors read too dark on Liquid Glass.
   const labelTint = dayStoryCardFill(visitColor, 0.22);
+  const visitTimes = useMemo(() => visitTimeLinesForStop(stop), [stop]);
+  const visitTimesSignature = visitTimes
+    .map(line => `${line.visitNumber}:${line.label}`)
+    .join(',');
   const [cardSize, setCardSize] = useState({ w: 0, h: 0 });
   // Fallback until onLayout — rough pill size so first paint isn't on the badge.
   const measuredW = cardSize.w > 0 ? cardSize.w : 72;
-  const measuredH = cardSize.h > 0 ? cardSize.h : showMoments ? 44 : 22;
+  const measuredH =
+    cardSize.h > 0
+      ? cardSize.h
+      : (showMoments ? 30 : 22) + (visitTimes.length > 0 ? 4 + 20 : 0);
   const badgeRadius = stop.visitNumbers.length > 1 ? 18 : NUMBER_BADGE_SIZE / 2;
   const cardOffset = useMemo(
     () =>
@@ -191,6 +259,7 @@ const DayStoryStopMarker = memo(function DayStoryStopMarker({
     cardSide,
     stop.label,
     visitColor,
+    visitTimesSignature,
     showMoments ? 1 : 0,
     momentCounts.photo,
     momentCounts.video,
@@ -226,47 +295,52 @@ const DayStoryStopMarker = memo(function DayStoryStopMarker({
     }
   }, [onPressStay, stop.stays]);
 
-  // History opens from the label Pressable only — not Marker.onPress.
-  // Moments share this Marker; Marker.onPress would also fire on cam taps.
+  // History opens from the place-name Pressable only — not from times or
+  // Marker.onPress (moments share this Marker; Marker.onPress would also fire
+  // on cam taps). Number badges keep their own onPressStay wiring.
   const labelInner = (
     <AdaptiveGlassSurface
       effect="regular"
       tintColor={labelTint}
       style={styles.labelCard}
     >
-      <PlaceLabelRow stop={stop} />
+      {onPressStay != null ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Open ${stop.label} in history`}
+          onPress={handlePressStop}
+        >
+          <PlaceLabelRow stop={stop} />
+        </Pressable>
+      ) : (
+        <PlaceLabelRow stop={stop} />
+      )}
     </AdaptiveGlassSurface>
   );
 
-  const labelCard =
-    onPressStay != null ? (
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`Open ${stop.label} in history`}
-        onPress={handlePressStop}
-        style={styles.labelCardShadow}
-        collapsable={false}
-      >
-        {labelInner}
-      </Pressable>
-    ) : (
-      <View style={styles.labelCardShadow} collapsable={false}>
-        {labelInner}
-      </View>
-    );
+  const labelCard = (
+    <View style={styles.labelCardShadow} collapsable={false}>
+      {labelInner}
+    </View>
+  );
+
+  const timesCard =
+    visitTimes.length > 0 ? <PlaceVisitTimes lines={visitTimes} /> : null;
 
   const momentsCard = showMoments ? (
     <View style={styles.momentsCardShadow} collapsable={false}>
       <AdaptiveGlassSurface effect="regular" style={styles.momentsCard}>
-        <MomentCountsRow
-          counts={momentCounts}
-          previews={momentPreviews}
-          layout="inline"
-          compact
-          dense
-          iconSize={12}
-          onPressType={onPressMomentType}
-        />
+        <View style={styles.momentsRowClip}>
+          <MomentCountsRow
+            counts={momentCounts}
+            previews={momentPreviews}
+            layout="inline"
+            compact
+            dense
+            iconSize={12}
+            onPressType={onPressMomentType}
+          />
+        </View>
       </AdaptiveGlassSurface>
     </View>
   ) : null;
@@ -318,6 +392,7 @@ const DayStoryStopMarker = memo(function DayStoryStopMarker({
         >
           {momentsCard}
           {labelCard}
+          {timesCard}
         </View>
       </Marker>
     </>
@@ -425,10 +500,11 @@ const styles = StyleSheet.create({
   cardStack: {
     alignItems: 'center',
     gap: 4,
-    maxWidth: LABEL_MAX_WIDTH + 24,
+    maxWidth: LABEL_MAX_WIDTH + 80,
   },
   momentsCardShadow: {
     borderRadius: 8,
+    maxWidth: LABEL_MAX_WIDTH + 48,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.12,
@@ -440,6 +516,12 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     paddingHorizontal: 7,
     paddingVertical: 3,
+    maxWidth: LABEL_MAX_WIDTH + 48,
+  },
+  momentsRowClip: {
+    maxHeight: 22,
+    overflow: 'hidden',
+    justifyContent: 'center',
   },
   labelCardShadow: {
     borderRadius: 10,
@@ -456,6 +538,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     maxWidth: LABEL_MAX_WIDTH + 16,
+  },
+  timeCardShadow: {
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  timeCard: {
+    borderRadius: 10,
+    overflow: 'hidden',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
   },
   numberBadge: {
     width: NUMBER_BADGE_SIZE,
@@ -514,5 +610,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: HISTORY_COLORS.playhead,
     maxWidth: LABEL_MAX_WIDTH - 20,
+  },
+  reachedTimesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    gap: 4,
+    maxWidth: LABEL_MAX_WIDTH + 72,
+  },
+  reachedTimeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: HISTORY_COLORS.playhead,
+    textAlign: 'center',
   },
 });

@@ -6,7 +6,6 @@ import {
 } from '@/lib/history-data-cache';
 import { loadHistoryForDayCoalesced } from '@/lib/history-day-load';
 import { ensureHistoryCalendarBounds } from '@/lib/history-calendar-bounds';
-import { getDayHistoryFingerprint } from '@/lib/history-fingerprint';
 import { getCurrentTripDetectionConfig } from '@/lib/trip-detection-config';
 import { markTodayPreloadedForMountSkip } from '@/lib/today-preload-coordination';
 
@@ -33,24 +32,25 @@ export async function preloadTodayHistory(): Promise<void> {
 /**
  * Fire-and-forget warm for gallery map-pin press-in.
  * Coalesces with any in-flight load for the same day.
+ * Only Today is written to RAM cache; past days only start the shared load.
  */
 export function warmHistoryForDay(dateKey: string): void {
   const detectionConfig = getCurrentTripDetectionConfig();
   const cacheKey = historyCacheKey(dateKey, detectionConfig);
-  if (historyDataCache.has(cacheKey)) {
+  const isToday = dateKey === getTodayDateKey();
+  if (isToday && historyDataCache.has(cacheKey)) {
     return;
   }
   void (async () => {
     try {
       const result = await loadHistoryForDayCoalesced(dateKey, detectionConfig);
+      if (!isToday) {
+        return;
+      }
       if (historyDataCache.has(cacheKey)) {
         return;
       }
-      const fingerprint =
-        dateKey === getTodayDateKey()
-          ? TODAY_LIVE_FINGERPRINT
-          : await getDayHistoryFingerprint(dateKey);
-      historyDataCache.write(cacheKey, result, fingerprint);
+      historyDataCache.write(cacheKey, result, TODAY_LIVE_FINGERPRINT);
     } catch (error) {
       if (__DEV__) {
         console.warn('[history] warmHistoryForDay failed', dateKey, error);

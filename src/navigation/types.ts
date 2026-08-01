@@ -33,7 +33,7 @@ export type RootStackParamList = {
     | { kind: 'create-first' }
     | { kind: 'edit'; activityId: number };
   ActivityLogEntry: { activityId: number };
-  HistoryDatePicker: undefined;
+  HistoryDatePicker: { selectedDateKey: string } | undefined;
   SavedPlaces: undefined;
   MomentPreview: undefined;
   GalleryDayJourney: { dateKey: string };

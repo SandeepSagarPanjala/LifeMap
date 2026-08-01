@@ -15,7 +15,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { ChevronLeft } from 'lucide-react-native';
+import { X } from 'lucide-react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -32,12 +32,19 @@ import { Text } from '@/components/ui/text';
 import type { ActivityRow } from '@/db/repositories/activities';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import {
+  ACTIVITY_MAX_MEDIA_URIS,
+  activityMediaValue,
+  getActivityMediaUris,
   type ActivityFieldDefinition,
   type ActivityFieldValue,
   type ActivityValuesMap,
 } from '@/lib/activities/activity-definition';
 import { persistActivityImage } from '@/lib/activities/persist-activity-image';
-import { extractBillFieldsFromImage } from '@/lib/activities/bill-parse-native';
+import {
+  extractBillFieldsFromImage,
+  type BillParseResult,
+} from '@/lib/activities/bill-parse-native';
+import { mergeBillParseResults } from '@/lib/activities/merge-bill-parse';
 import { assertRequiredValuesFilled } from '@/lib/activities/validate-activity-definition';
 import {
   MAP_MOMENTS_BAR_GAP,
@@ -128,12 +135,19 @@ export function ActivityLogEntryPanel({
     };
   }, []);
 
+  const billParseCacheRef = useRef(new Map<string, BillParseResult>());
+  const captureSlotRef = useRef(0);
+  const valuesRef = useRef(values);
+  valuesRef.current = values;
+
   useEffect(() => {
     setValues({});
     setSaving(false);
     setScanningFieldId(null);
     setTaggingFieldIds(new Set());
     setCaptureField(null);
+    billParseCacheRef.current.clear();
+    captureSlotRef.current = 0;
   }, [activity.id]);
 
   const fields = useMemo(() => activity.fields ?? [], [activity.fields]);
@@ -187,6 +201,53 @@ export function ActivityLogEntryPanel({
     [fields],
   );
 
+  const applyMergedBillFields = useCallback(
+    (
+      target: ActivityFieldDefinition,
+      uris: string[],
+      options?: { alertIfNoTotal?: boolean },
+    ) => {
+      const amountFieldId = resolveAmountFieldId(target);
+      const itemsFieldId = resolveItemsFieldId(target);
+      if (amountFieldId == null && itemsFieldId == null) {
+        return;
+      }
+
+      const results = uris
+        .map(uri => billParseCacheRef.current.get(uri))
+        .filter((entry): entry is BillParseResult => entry != null);
+      const merged = mergeBillParseResults(results);
+
+      if (amountFieldId != null) {
+        if (merged.amount != null) {
+          setFieldValue(amountFieldId, {
+            type: 'money',
+            amount: merged.amount,
+          });
+        } else if (options?.alertIfNoTotal) {
+          // Leave a manually typed amount alone; nudge only when no bill has a total.
+          Alert.alert(
+            'Couldn’t find a total',
+            'Enter the amount manually if needed.',
+          );
+        }
+      }
+
+      if (itemsFieldId != null) {
+        if (merged.items.length > 0) {
+          setFieldValue(itemsFieldId, {
+            type: 'list',
+            items: merged.items,
+          });
+        } else {
+          // No items from remaining bills (or all bills removed).
+          setFieldValue(itemsFieldId, undefined);
+        }
+      }
+    },
+    [resolveAmountFieldId, resolveItemsFieldId, setFieldValue],
+  );
+
   const startSceneTagging = useCallback(
     (fieldId: string, stored: string, mediaType: 'photo' | 'scan') => {
       setTaggingFieldIds(prev => {
@@ -203,18 +264,27 @@ export function ActivityLogEntryPanel({
           const tags = sanitizePhotoTags(
             candidates.map(candidate => candidate.label),
           );
+          if (tags.length === 0) {
+            return;
+          }
           setValues(prev => {
             const current = prev[fieldId];
-            if (current?.type !== mediaType || current.uri !== stored) {
+            if (current?.type !== mediaType || !current.uris.includes(stored)) {
               return prev;
             }
-            return {
-              ...prev,
-              [fieldId]:
-                tags.length > 0
-                  ? { type: mediaType, uri: stored, tags }
-                  : { type: mediaType, uri: stored },
-            };
+            const mergedTags = sanitizePhotoTags([
+              ...(current.tags ?? []),
+              ...tags,
+            ]);
+            const next = activityMediaValue(
+              mediaType,
+              current.uris,
+              mergedTags,
+            );
+            if (next == null) {
+              return prev;
+            }
+            return { ...prev, [fieldId]: next };
           });
         })
         .finally(() => {
@@ -235,21 +305,62 @@ export function ActivityLogEntryPanel({
   );
 
   const applyImageToField = useCallback(
-    async (target: ActivityFieldDefinition, uri: string) => {
+    async (
+      target: ActivityFieldDefinition,
+      uri: string,
+      slotIndex: number,
+    ) => {
+      if (target.type !== 'photo' && target.type !== 'scan') {
+        return;
+      }
       setScanningFieldId(target.id);
       try {
         const stored = await persistActivityImage(uri);
         if (!mountedRef.current) {
           return;
         }
-        if (target.type === 'photo') {
-          setFieldValue(target.id, { type: 'photo', uri: stored });
-          startSceneTagging(target.id, stored, 'photo');
+
+        const current = valuesRef.current[target.id];
+        const existing =
+          current?.type === target.type ? [...current.uris] : [];
+        const priorTags =
+          current?.type === target.type ? current.tags : undefined;
+        const index = Math.max(
+          0,
+          Math.min(
+            slotIndex,
+            Math.min(existing.length, ACTIVITY_MAX_MEDIA_URIS - 1),
+          ),
+        );
+        const replaced = [...existing];
+        if (index < replaced.length) {
+          const removed = replaced[index];
+          if (removed != null) {
+            billParseCacheRef.current.delete(removed);
+          }
+          replaced[index] = stored;
+        } else {
+          replaced.push(stored);
+        }
+        const nextUris = replaced.slice(0, ACTIVITY_MAX_MEDIA_URIS);
+        const next = activityMediaValue(target.type, nextUris, priorTags);
+        setFieldValue(target.id, next ?? undefined);
+        valuesRef.current = {
+          ...valuesRef.current,
+          ...(next != null
+            ? { [target.id]: next }
+            : (() => {
+                const copy = { ...valuesRef.current };
+                delete copy[target.id];
+                return copy;
+              })()),
+        };
+
+        startSceneTagging(target.id, stored, target.type);
+
+        if (target.type !== 'scan') {
           return;
         }
-
-        setFieldValue(target.id, { type: 'scan', uri: stored });
-        startSceneTagging(target.id, stored, 'scan');
 
         const amountFieldId = resolveAmountFieldId(target);
         const itemsFieldId = resolveItemsFieldId(target);
@@ -260,38 +371,19 @@ export function ActivityLogEntryPanel({
         }
 
         const absolute = resolveMomentContentPath(stored);
-        const { amount, items } = await extractBillFieldsFromImage(absolute, {
+        const parsed = await extractBillFieldsFromImage(absolute, {
           wantAmount,
           wantItems,
         });
         if (!mountedRef.current) {
           return;
         }
-        if (wantAmount && amountFieldId != null) {
-          if (amount != null) {
-            setFieldValue(amountFieldId, {
-              type: 'money',
-              amount,
-            });
-          } else {
-            // Clear a stale total from an earlier scan — don't leave old totals around.
-            setFieldValue(amountFieldId, undefined);
-            Alert.alert(
-              'Couldn’t find a total',
-              'Enter the amount manually if needed.',
-            );
-          }
-        }
-        if (wantItems && itemsFieldId != null) {
-          if (items.length > 0) {
-            setFieldValue(itemsFieldId, {
-              type: 'list',
-              items,
-            });
-          } else {
-            setFieldValue(itemsFieldId, undefined);
-          }
-        }
+        billParseCacheRef.current.set(stored, parsed);
+        applyMergedBillFields(target, nextUris, {
+          // Nudge once on the first bill if nothing has a total yet; later
+          // pages may be long-receipt continuations without totals.
+          alertIfNoTotal: wantAmount && nextUris.length === 1,
+        });
       } catch (error) {
         if (!mountedRef.current) {
           return;
@@ -309,11 +401,53 @@ export function ActivityLogEntryPanel({
       }
     },
     [
+      applyMergedBillFields,
       resolveAmountFieldId,
       resolveItemsFieldId,
       setFieldValue,
       startSceneTagging,
     ],
+  );
+
+  const handleRemoveImage = useCallback(
+    (field: ActivityFieldDefinition, slotIndex: number) => {
+      if (field.type !== 'photo' && field.type !== 'scan') {
+        return;
+      }
+      const current = valuesRef.current[field.id];
+      if (current?.type !== field.type) {
+        return;
+      }
+      const removed = current.uris[slotIndex];
+      if (removed != null) {
+        billParseCacheRef.current.delete(removed);
+      }
+      const nextUris = current.uris.filter((_, index) => index !== slotIndex);
+      const next = activityMediaValue(field.type, nextUris, current.tags);
+      setFieldValue(field.id, next ?? undefined);
+      valuesRef.current = {
+        ...valuesRef.current,
+        ...(next != null
+          ? { [field.id]: next }
+          : (() => {
+              const copy = { ...valuesRef.current };
+              delete copy[field.id];
+              return copy;
+            })()),
+      };
+      setTaggingFieldIds(prev => {
+        if (!prev.has(field.id)) {
+          return prev;
+        }
+        const copy = new Set(prev);
+        copy.delete(field.id);
+        return copy;
+      });
+      if (field.type === 'scan') {
+        applyMergedBillFields(field, nextUris);
+      }
+    },
+    [applyMergedBillFields, setFieldValue],
   );
 
   const handleRemovePhotoTag = useCallback(
@@ -324,37 +458,53 @@ export function ActivityLogEntryPanel({
           return prev;
         }
         const tags = (current.tags ?? []).filter(entry => entry !== tag);
-        return {
-          ...prev,
-          [field.id]:
-            tags.length > 0
-              ? { type: current.type, uri: current.uri, tags }
-              : { type: current.type, uri: current.uri },
-        };
+        const next = activityMediaValue(current.type, current.uris, tags);
+        if (next == null) {
+          const copy = { ...prev };
+          delete copy[field.id];
+          return copy;
+        }
+        return { ...prev, [field.id]: next };
       });
     },
     [],
   );
 
-  const handleOpenCamera = useCallback((field: ActivityFieldDefinition) => {
-    setCaptureField(field);
-  }, []);
+  const handleOpenCamera = useCallback(
+    (field: ActivityFieldDefinition, slotIndex: number) => {
+      captureSlotRef.current = slotIndex;
+      setCaptureField(field);
+    },
+    [],
+  );
 
   const handleOpenLibrary = useCallback(
-    async (field: ActivityFieldDefinition) => {
+    async (field: ActivityFieldDefinition, slotIndex: number) => {
+      const existing = getActivityMediaUris(valuesRef.current[field.id]);
+      const remaining = Math.max(0, ACTIVITY_MAX_MEDIA_URIS - existing.length);
+      // Filling an empty slot: allow multi-select into remaining capacity.
+      const selectionLimit =
+        slotIndex < existing.length ? 1 : Math.max(1, remaining);
       const result = await launchImageLibrary({
         mediaType: 'photo',
         quality: 0.9,
-        selectionLimit: 1,
+        selectionLimit,
       });
       if (result.didCancel || result.errorCode) {
         return;
       }
-      const uri = result.assets?.[0]?.uri?.trim();
-      if (uri == null) {
+      const picked =
+        result.assets
+          ?.map(asset => asset.uri?.trim())
+          .filter((uri): uri is string => uri != null && uri.length > 0) ?? [];
+      if (picked.length === 0) {
         return;
       }
-      await applyImageToField(field, uri);
+      let nextSlot = slotIndex;
+      for (const uri of picked) {
+        await applyImageToField(field, uri, nextSlot);
+        nextSlot += 1;
+      }
     },
     [applyImageToField],
   );
@@ -364,7 +514,7 @@ export function ActivityLogEntryPanel({
       if (captureField == null) {
         return;
       }
-      void applyImageToField(captureField, uri);
+      void applyImageToField(captureField, uri, captureSlotRef.current);
       setCaptureField(null);
     },
     [applyImageToField, captureField],
@@ -711,26 +861,18 @@ export function ActivityLogEntryPanel({
           </Text>
 
           {fieldGroups.map(group =>
-            group.kind === 'media' ? (
+            group.kind === 'photoSlots' || group.kind === 'billSlots' ? (
               <ActivityFieldMediaRow
-                key={group.fields.map(field => field.id).join('-')}
-                fields={group.fields}
+                key={`${group.kind}-${group.field.id}`}
+                field={group.field}
                 values={values}
                 scanningFieldId={scanningFieldId}
                 taggingFieldIds={taggingFieldIds}
                 onOpenCamera={handleOpenCamera}
-                onOpenLibrary={field => void handleOpenLibrary(field)}
-                onRemoveImage={field => {
-                  setFieldValue(field.id, undefined);
-                  setTaggingFieldIds(prev => {
-                    if (!prev.has(field.id)) {
-                      return prev;
-                    }
-                    const next = new Set(prev);
-                    next.delete(field.id);
-                    return next;
-                  });
+                onOpenLibrary={(field, slotIndex) => {
+                  void handleOpenLibrary(field, slotIndex);
                 }}
+                onRemoveImage={handleRemoveImage}
                 onRemovePhotoTag={handleRemovePhotoTag}
               />
             ) : (
@@ -773,11 +915,11 @@ export function ActivityLogEntryPanel({
             </GlassPressable>
 
             <MapGlassCircleButton
-              accessibilityLabel="Back"
+              accessibilityLabel="Close"
               onPress={onBack}
               style={styles.closeButton}
             >
-              <ChevronLeft size={22} color={colors.primary} strokeWidth={2.25} />
+              <X size={22} color={colors.primary} strokeWidth={2.25} />
             </MapGlassCircleButton>
           </View>
         </View>
