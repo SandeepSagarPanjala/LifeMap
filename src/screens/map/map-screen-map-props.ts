@@ -57,6 +57,7 @@ export function areMapScreenMapPropsEqual(
     previous.mapPadding === next.mapPadding &&
     previous.colorScheme === next.colorScheme &&
     previous.showUserLocation === next.showUserLocation &&
+    previous.viewingToday === next.viewingToday &&
     previous.onRegionChange === next.onRegionChange &&
     previous.onRegionChangeComplete === next.onRegionChangeComplete &&
     previous.onPanDrag === next.onPanDrag &&
