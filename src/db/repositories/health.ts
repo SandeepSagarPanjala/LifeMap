@@ -118,7 +118,7 @@ export async function deleteLocalSleepDataOverlapping(
       .where(
         and(
           lt(healthSleepSessions.startAt, end),
-          gte(healthSleepSessions.endAt, start),
+          gt(healthSleepSessions.endAt, start),
         ),
       )
       .returning({ id: healthSleepSessions.id });
