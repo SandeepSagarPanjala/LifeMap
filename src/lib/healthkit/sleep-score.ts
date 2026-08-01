@@ -58,7 +58,7 @@ export type SleepScoreResult = {
   durationScore: number;
   efficiencyScore: number;
   compositionScore: number;
-  /** Weighted points that sum to `total` (50 + 20 + 30). */
+  /** Weighted points toward 50 / 20 / 30 (may differ from `total` by ±1 after rounding). */
   durationPoints: number;
   efficiencyPoints: number;
   compositionPoints: number;
