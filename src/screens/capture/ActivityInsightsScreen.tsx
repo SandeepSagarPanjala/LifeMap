@@ -98,7 +98,7 @@ export function ActivityInsightsScreen() {
           </Text>
         </View>
         <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          Choose an activity to see timing, habit trends, and amounts.
+          Choose an activity to see what it teaches you about yourself.
         </Text>
       </View>
     ),

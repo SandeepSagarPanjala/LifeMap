@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Plus, X } from 'lucide-react-native';
+import { Plus, WandSparkles, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
@@ -31,7 +31,7 @@ import type { RootStackParamList } from '@/navigation/types';
 
 /**
  * Diary feed — browse existing note moments, then compose via Add Diary.
- * Bottom liquid-glass: Add Diary + close — same chrome as ActivityManage.
+ * Bottom liquid-glass: insights + Add Diary + close — same chrome as activities.
  */
 export function DiaryScreen() {
   const navigation =
@@ -77,6 +77,10 @@ export function DiaryScreen() {
     navigation.navigate('CaptureNote');
   }, [navigation]);
 
+  const handleInsights = useCallback(() => {
+    navigation.navigate('DiaryInsights');
+  }, [navigation]);
+
   const handlePressEntry = useCallback(
     (entry: MomentRow, index: number) => {
       queueMomentPreview({
@@ -97,10 +101,7 @@ export function DiaryScreen() {
       <View
         style={[
           styles.content,
-          {
-            paddingTop: Math.max(insets.top, 12),
-            paddingBottom: bottomPad,
-          },
+          { paddingTop: Math.max(insets.top, 12) },
         ]}
       >
         {loading && entries.length === 0 ? (
@@ -111,6 +112,7 @@ export function DiaryScreen() {
           <DiaryList
             entries={entries}
             onPressEntry={handlePressEntry}
+            contentContainerStyle={{ paddingBottom: bottomPad }}
             ListEmptyComponent={
               <View style={styles.empty}>
                 <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
@@ -135,6 +137,18 @@ export function DiaryScreen() {
         ]}
       >
         <View style={styles.barRow}>
+          <MapGlassCircleButton
+            accessibilityLabel={APP_COPY.diary.insights}
+            onPress={handleInsights}
+            style={styles.closeButton}
+          >
+            <WandSparkles
+              size={20}
+              color={colors.primary}
+              strokeWidth={2.25}
+            />
+          </MapGlassCircleButton>
+
           <GlassPressable
             accessibilityLabel={APP_COPY.diary.addDiary}
             onPress={handleAdd}

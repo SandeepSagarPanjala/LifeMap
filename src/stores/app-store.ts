@@ -12,6 +12,9 @@ import type { TripDwellMinutes, TripRadiusMeters } from '@/lib/trip-settings';
 
 export type DistanceUnit = 'km' | 'mi';
 
+/** Temporary A/B for activity insights UI until one version ships. */
+export type ActivityInsightsUiVersion = 'v1' | 'v2';
+
 type AppState = {
   hasCompletedPrivacyOnboarding: boolean;
   accentTheme: AccentThemeId;
@@ -21,6 +24,7 @@ type AppState = {
   tripDwellMinutes: TripDwellMinutes;
   tripDwellRadiusMeters: TripRadiusMeters;
   historyEarliestDateKey: string | null;
+  activityInsightsUiVersion: ActivityInsightsUiVersion;
   completePrivacyOnboarding: () => void;
   setAccentTheme: (theme: AccentThemeId) => void;
   setSlowSplashEnabled: (enabled: boolean) => void;
@@ -29,6 +33,7 @@ type AppState = {
   setTripDwellMinutes: (minutes: TripDwellMinutes) => void;
   setTripDwellRadiusMeters: (meters: TripRadiusMeters) => void;
   setHistoryEarliestDateKey: (dateKey: string) => void;
+  setActivityInsightsUiVersion: (version: ActivityInsightsUiVersion) => void;
 };
 
 function persistedAppState(state: AppState) {
@@ -40,6 +45,7 @@ function persistedAppState(state: AppState) {
     tripDwellMinutes: state.tripDwellMinutes,
     tripDwellRadiusMeters: state.tripDwellRadiusMeters,
     historyEarliestDateKey: state.historyEarliestDateKey,
+    activityInsightsUiVersion: state.activityInsightsUiVersion,
     ...(__DEV__ ? { devShowOnboarding: state.devShowOnboarding } : {}),
   };
 }
@@ -55,6 +61,7 @@ export const useAppStore = create<AppState>()(
       tripDwellMinutes: DEFAULT_TRIP_DWELL_MINUTES,
       tripDwellRadiusMeters: DEFAULT_TRIP_DWELL_RADIUS_METERS,
       historyEarliestDateKey: null,
+      activityInsightsUiVersion: 'v1',
       completePrivacyOnboarding: () =>
         set({ hasCompletedPrivacyOnboarding: true }),
       setAccentTheme: theme => set({ accentTheme: theme }),
@@ -71,16 +78,24 @@ export const useAppStore = create<AppState>()(
         set({ tripDwellRadiusMeters }),
       setHistoryEarliestDateKey: historyEarliestDateKey =>
         set({ historyEarliestDateKey }),
+      setActivityInsightsUiVersion: activityInsightsUiVersion =>
+        set({ activityInsightsUiVersion }),
     }),
     {
       name: 'lifemap-app',
       storage: createJSONStorage(() => AsyncStorage),
       partialize: persistedAppState,
-      merge: (persisted, current) => ({
-        ...current,
-        ...(persisted as Partial<AppState>),
-        ...(!__DEV__ ? { devShowOnboarding: false } : {}),
-      }),
+      merge: (persisted, current) => {
+        const fromStorage = persisted as Partial<AppState>;
+        const version =
+          fromStorage.activityInsightsUiVersion === 'v2' ? 'v2' : 'v1';
+        return {
+          ...current,
+          ...fromStorage,
+          activityInsightsUiVersion: version,
+          ...(!__DEV__ ? { devShowOnboarding: false } : {}),
+        };
+      },
     },
   ),
 );

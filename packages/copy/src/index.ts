@@ -113,6 +113,10 @@ export const APP_COPY = {
     voiceReasonHint: 'Speak your reason — up to 1 minute.',
     howAreYouFeeling: 'How are you feeling?',
     noReasonGiven: 'No reason is given',
+    insights: 'Mood insights',
+    insightsTitle: 'Mood insights',
+    insightsSubtitle: "How often you've been logging moods.",
+    insightsEmpty: 'Log a mood to unlock insights.',
   },
 
   savedPlaces: {
@@ -155,6 +159,10 @@ export const APP_COPY = {
   diary: {
     title: 'Diary',
     addDiary: 'Add Diary',
+    insights: 'Diary insights',
+    insightsTitle: 'Diary insights',
+    insightsSubtitle: "How often you've been writing.",
+    insightsEmpty: 'Write a diary entry to unlock insights.',
     emptyTitle: 'No diary entries yet',
     emptyBody: 'Write when you have a moment — tap Add Diary below.',
     entryFallbackTitle: 'Diary entry',

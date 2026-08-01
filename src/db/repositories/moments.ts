@@ -496,6 +496,17 @@ export async function listNoteMoments(): Promise<MomentRow[]> {
   return rows.map(mapRow);
 }
 
+/** All mood moments, newest first. */
+export async function listMoodMoments(): Promise<MomentRow[]> {
+  const db = await getDatabase();
+  const rows = await db
+    .select()
+    .from(moments)
+    .where(eq(moments.type, 'mood'))
+    .orderBy(desc(moments.timestamp), desc(moments.id));
+  return rows.map(mapRow);
+}
+
 export async function getAllMoments(): Promise<MomentRow[]> {
   const db = await getDatabase();
   const rows = await db

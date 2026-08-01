@@ -20,8 +20,10 @@ export type RootStackParamList = {
     | { source?: 'install' | 'settings' | 'drive'; preview?: boolean }
     | undefined;
   Diary: undefined;
+  DiaryInsights: undefined;
   CaptureNote: undefined;
   CaptureMood: undefined;
+  MoodInsights: undefined;
   CapturePhoto: undefined;
   CaptureVoice: undefined;
   CaptureActivity: undefined;
