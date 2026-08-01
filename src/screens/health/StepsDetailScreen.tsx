@@ -152,10 +152,15 @@ export function StepsDetailScreen() {
   }, [initialDateKey, range]);
 
   useEffect(() => {
-    void loadChart();
-    return subscribeHealthData(() => {
-      void loadChart();
+    let cancelled = false;
+    void loadChart(() => cancelled);
+    const unsubscribe = subscribeHealthData(() => {
+      void loadChart(() => cancelled);
     });
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   }, [loadChart]);
 
   useFocusEffect(
