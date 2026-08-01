@@ -390,8 +390,10 @@ export async function syncHealthKit(options?: SyncOptions): Promise<void> {
     resolveRoutineLookbackDays(await getHealthKitLastSyncAt());
 
   if (syncInFlight) {
+    // Snapshot before awaiting: .finally() resets syncInFlightLookbackDays to 0.
+    const inflightLookback = syncInFlightLookbackDays;
     // A narrower in-flight run cannot satisfy a wider request.
-    if (onProgress == null && syncInFlightLookbackDays >= lookbackDays) {
+    if (onProgress == null && inflightLookback >= lookbackDays) {
       return syncInFlight;
     }
     await syncInFlight;
@@ -399,13 +401,17 @@ export async function syncHealthKit(options?: SyncOptions): Promise<void> {
     if (options?.lookbackDays == null) {
       lookbackDays = resolveRoutineLookbackDays(await getHealthKitLastSyncAt());
     }
-    // Another sync may have started; if it already covers us, join it.
+    // Another sync may have started while we waited; if it already covers us, join it.
     if (
       syncInFlight != null &&
       onProgress == null &&
       syncInFlightLookbackDays >= lookbackDays
     ) {
       return syncInFlight;
+    }
+    // The just-completed sync already covered our required range; skip a redundant pass.
+    if (onProgress == null && inflightLookback >= lookbackDays) {
+      return;
     }
   }
 
