@@ -172,12 +172,15 @@ export function SleepDetailScreen() {
     HealthSleepSampleRow[]
   >([]);
 
-  const loadChart = useCallback(async () => {
+  const loadChart = useCallback(async (isCancelled?: () => boolean) => {
     try {
       const rows = await listDaySleepBefore(
         shiftDateKey(initialDateKey, 1),
         RANGE_LIMITS[range],
       );
+      if (isCancelled?.()) {
+        return;
+      }
       const days = rows
         .reverse()
         .map(row => ({
@@ -190,18 +193,29 @@ export function SleepDetailScreen() {
           }),
           row,
         }));
+      if (isCancelled?.()) {
+        return;
+      }
       setChartDays(days);
       const focusKey =
         days.find(d => d.dateKey === initialDateKey)?.dateKey ??
         days.at(-1)?.dateKey ??
         initialDateKey;
+      if (isCancelled?.()) {
+        return;
+      }
       setSelectedDateKey(focusKey);
       const row =
         days.find(d => d.dateKey === focusKey)?.row ??
         (await getDaySleep(focusKey));
+      if (isCancelled?.()) {
+        return;
+      }
       setSelected(row);
     } finally {
-      setLoading(false);
+      if (!isCancelled?.()) {
+        setLoading(false);
+      }
     }
   }, [initialDateKey, range]);
 
@@ -226,7 +240,7 @@ export function SleepDetailScreen() {
           return;
         }
         setSyncing(false);
-        await loadChart();
+        await loadChart(() => cancelled);
       })();
       return () => {
         cancelled = true;
