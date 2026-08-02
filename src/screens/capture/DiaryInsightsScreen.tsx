@@ -51,6 +51,7 @@ const CELL_FILL: Record<InsightCalendarCellState, string> = {
   success: '#34D399',
   miss: '#FCA5A5',
   relapse: '#FB923C',
+  today: '#60A5FA',
   empty: 'transparent',
   future: '#E5E7EB',
   unscheduled: '#F3F4F6',

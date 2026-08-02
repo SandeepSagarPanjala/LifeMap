@@ -1,78 +1,25 @@
 import { TZDate } from '@date-fns/tz';
 import {
   addDays,
-  differenceInCalendarDays,
   endOfDay,
   endOfMonth,
   startOfDay,
   startOfMonth,
   startOfWeek,
   startOfYear,
-  subDays,
 } from 'date-fns';
 
-import type { ActivityRow } from '@/db/repositories/activities';
 import type { MomentRow } from '@/db/repositories/moments';
 import {
   parseActivityValuesJson,
   type ActivityFieldDefinition,
 } from '@/lib/activities/activity-definition';
-import {
-  activityIntentLabel,
-  type ActivityIntent,
-} from '@/lib/activities/activity-intent';
+import type { ActivityIntent } from '@/lib/activities/activity-intent';
 import { parseDateKey, toDateKey } from '@/lib/day-utils';
 import type { ReminderRepeat } from '@/lib/notifications/types';
 import { APP_TIMEZONE } from '@/lib/timezone';
 
-/** On-time if logged within scheduled time ± this many minutes. */
-export const ACTIVITY_ON_TIME_WINDOW_MINUTES = 30;
-
 export type ActivityInsightRange = 'today' | 'week' | 'month' | 'year' | 'all';
-
-export const ACTIVITY_INSIGHT_RANGES: Array<{
-  value: ActivityInsightRange;
-  label: string;
-}> = [
-  { value: 'today', label: 'Today' },
-  { value: 'week', label: 'Week' },
-  { value: 'month', label: 'Month' },
-  { value: 'year', label: 'Year' },
-  { value: 'all', label: 'All' },
-];
-
-export type TimingOutcome =
-  | { kind: 'on_time' }
-  | { kind: 'early'; minutes: number }
-  | { kind: 'late'; minutes: number };
-
-export type TimingSummary = {
-  evaluated: number;
-  onTime: number;
-  early: number;
-  late: number;
-  onTimeRate: number;
-  /** Average minutes late among late logs only. */
-  avgLateMinutes: number | null;
-  /** Average minutes early among early logs only. */
-  avgEarlyMinutes: number | null;
-  recent: Array<{
-    at: Date;
-    outcome: TimingOutcome;
-  }>;
-};
-
-export type FrequencySummary = {
-  logCount: number;
-  daysWithLog: number;
-  daySpan: number;
-  /** Consecutive days with a log ending at the newest logged day (build / track). */
-  currentStreak: number;
-  bestStreak: number;
-  /** Consecutive days without a log ending yesterday (avoidance / less). */
-  cleanStreak: number;
-  bestCleanStreak: number;
-};
 
 export type AmountFieldSummary = {
   fieldId: string;
@@ -92,6 +39,7 @@ export type InsightCalendarCellState =
   | 'success'
   | 'miss'
   | 'relapse'
+  | 'today'
   | 'empty'
   | 'future'
   | 'unscheduled';
@@ -102,30 +50,10 @@ export type InsightCalendarCell = {
   state: InsightCalendarCellState;
   scheduled: boolean;
   hasLog: boolean;
+  /** True when this cell is the current local calendar day. */
+  isToday: boolean;
   /** Number of logs on this day (0 when none). */
   logCount: number;
-};
-
-export type AdherenceSummary = {
-  scheduledDays: number;
-  /** Good: days with a log. Bad: days without a log. */
-  successDays: number;
-  /** Good: skipped scheduled days. Bad: days with a log (relapse). */
-  failDays: number;
-  rate: number;
-};
-
-export type ActivityInsightWidgets = {
-  /** @deprecated Streak widgets removed — always false. */
-  showHabitCore: boolean;
-  /** Adherence % for daily/weekdays reminder (good/bad only). */
-  showSchedule: boolean;
-  /** Month calendar — always shown. */
-  showCalendar: boolean;
-  /** On-time / early / late when reminder is on with a repeating schedule. */
-  showTiming: boolean;
-  /** Today / Week / Month / Year / All log counts. */
-  showLogTotals: boolean;
 };
 
 export type LogTotals = {
@@ -136,30 +64,8 @@ export type LogTotals = {
   all: number;
 };
 
-export type ActivityInsightSnapshot = {
-  intent: ActivityIntent;
-  intentLabel: string;
-  statusLine: string;
-  frequency: FrequencySummary;
-  logTotals: LogTotals;
-  timing: TimingSummary | null;
-  adherence: AdherenceSummary | null;
-  calendar: InsightCalendarCell[];
-  /** Month label for the calendar grid (local YYYY-MM). */
-  calendarMonthKey: string;
-  /** False when viewing the current calendar month (block swipe to future). */
-  canGoNextMonth: boolean;
-  amounts: AmountFieldSummary[];
-  widgets: ActivityInsightWidgets;
-};
-
 function zoned(date: Date): TZDate {
   return new TZDate(date, APP_TIMEZONE);
-}
-
-function localMinutesFromMidnight(date: Date): number {
-  const z = zoned(date);
-  return z.getHours() * 60 + z.getMinutes();
 }
 
 export function insightRangeBounds(
@@ -202,78 +108,6 @@ function filterMomentsInRange(
   });
 }
 
-/**
- * Compare a log time to a scheduled local time-of-day.
- * Early/late minutes are measured from the scheduled time (not the window edge).
- */
-export function classifyTimingAgainstSchedule(
-  loggedAt: Date,
-  scheduledTimeMinutes: number,
-  windowMinutes: number = ACTIVITY_ON_TIME_WINDOW_MINUTES,
-): TimingOutcome {
-  const loggedMinutes = localMinutesFromMidnight(loggedAt);
-  const delta = loggedMinutes - scheduledTimeMinutes;
-  if (delta >= -windowMinutes && delta <= windowMinutes) {
-    return { kind: 'on_time' };
-  }
-  if (delta < -windowMinutes) {
-    return { kind: 'early', minutes: Math.abs(delta) };
-  }
-  return { kind: 'late', minutes: delta };
-}
-
-export function summarizeTiming(
-  moments: readonly MomentRow[],
-  scheduledTimeMinutes: number | null,
-  reminderEnabled: boolean,
-): TimingSummary | null {
-  if (!reminderEnabled || scheduledTimeMinutes == null) {
-    return null;
-  }
-  const recent: TimingSummary['recent'] = [];
-  let onTime = 0;
-  let early = 0;
-  let late = 0;
-  let lateMinutesSum = 0;
-  let earlyMinutesSum = 0;
-  for (const moment of moments) {
-    const outcome = classifyTimingAgainstSchedule(
-      moment.timestamp,
-      scheduledTimeMinutes,
-    );
-    if (outcome.kind === 'on_time') {
-      onTime += 1;
-    } else if (outcome.kind === 'early') {
-      early += 1;
-      earlyMinutesSum += outcome.minutes;
-    } else {
-      late += 1;
-      lateMinutesSum += outcome.minutes;
-    }
-    recent.push({ at: moment.timestamp, outcome });
-  }
-  recent.sort((a, b) => b.at.getTime() - a.at.getTime());
-  const evaluated = moments.length;
-  return {
-    evaluated,
-    onTime,
-    early,
-    late,
-    onTimeRate: evaluated > 0 ? onTime / evaluated : 0,
-    avgLateMinutes: late > 0 ? lateMinutesSum / late : null,
-    avgEarlyMinutes: early > 0 ? earlyMinutesSum / early : null,
-    recent: recent.slice(0, 5),
-  };
-}
-
-function dateKeysWithLogs(moments: readonly MomentRow[]): string[] {
-  const keys = new Set<string>();
-  for (const moment of moments) {
-    keys.add(toDateKey(moment.timestamp));
-  }
-  return [...keys].sort();
-}
-
 /** Per-day log counts for calendar multi-log indicators. */
 export function countLogsByDateKey(
   moments: readonly { timestamp: Date }[],
@@ -284,117 +118,6 @@ export function countLogsByDateKey(
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
   return counts;
-}
-
-function streakEndingAt(sortedKeysAsc: string[], endKey: string): number {
-  if (sortedKeysAsc.length === 0) {
-    return 0;
-  }
-  const set = new Set(sortedKeysAsc);
-  if (!set.has(endKey)) {
-    return 0;
-  }
-  let streak = 0;
-  let cursor = endKey;
-  while (set.has(cursor)) {
-    streak += 1;
-    cursor = toDateKey(subDays(startOfDay(zoned(parseKey(cursor))), 1));
-  }
-  return streak;
-}
-
-function parseKey(dateKey: string): Date {
-  const [y, m, d] = dateKey.split('-').map(Number);
-  return startOfDay(new TZDate(y!, m! - 1, d!, APP_TIMEZONE));
-}
-
-function bestConsecutiveStreak(sortedKeysAsc: string[]): number {
-  if (sortedKeysAsc.length === 0) {
-    return 0;
-  }
-  let best = 1;
-  let current = 1;
-  for (let i = 1; i < sortedKeysAsc.length; i++) {
-    const prev = parseKey(sortedKeysAsc[i - 1]!);
-    const next = parseKey(sortedKeysAsc[i]!);
-    const gap = differenceInCalendarDays(next, prev);
-    if (gap === 1) {
-      current += 1;
-      best = Math.max(best, current);
-    } else {
-      current = 1;
-    }
-  }
-  return best;
-}
-
-/** Clean-day streaks: consecutive days with no logs (for intent `less`). */
-function cleanStreaks(
-  sortedKeysAsc: string[],
-  now: Date,
-): { current: number; best: number } {
-  if (sortedKeysAsc.length === 0) {
-    return { current: 0, best: 0 };
-  }
-  const logged = new Set(sortedKeysAsc);
-  const first = parseKey(sortedKeysAsc[0]!);
-  const yesterday = startOfDay(subDays(zoned(now), 1));
-  let current = 0;
-  let cursor = yesterday;
-  while (
-    cursor.getTime() >= first.getTime() &&
-    !logged.has(toDateKey(cursor))
-  ) {
-    current += 1;
-    cursor = startOfDay(subDays(cursor, 1));
-  }
-
-  let best = 0;
-  let run = 0;
-  for (
-    let day = first;
-    day.getTime() <= yesterday.getTime();
-    day = startOfDay(addDays(day, 1))
-  ) {
-    if (!logged.has(toDateKey(day))) {
-      run += 1;
-      best = Math.max(best, run);
-    } else {
-      run = 0;
-    }
-  }
-  return { current, best };
-}
-
-export function summarizeFrequency(
-  moments: readonly MomentRow[],
-  range: ActivityInsightRange,
-  now: Date = new Date(),
-): FrequencySummary {
-  const keys = dateKeysWithLogs(moments);
-  const { start, end } = insightRangeBounds(range, now);
-  const spanStart =
-    start ?? (keys[0] != null ? parseKey(keys[0]) : startOfDay(zoned(now)));
-  const daySpan = Math.max(
-    1,
-    differenceInCalendarDays(
-      startOfDay(zoned(end)),
-      startOfDay(zoned(spanStart)),
-    ) + 1,
-  );
-  const todayKey = toDateKey(now);
-  const newestKey = keys[keys.length - 1] ?? todayKey;
-  const streakEnd = keys.includes(todayKey) ? todayKey : newestKey;
-  const clean = cleanStreaks(keys, now);
-  return {
-    logCount: moments.length,
-    daysWithLog: keys.length,
-    daySpan,
-    currentStreak: streakEndingAt(keys, streakEnd),
-    bestStreak: bestConsecutiveStreak(keys),
-    cleanStreak: clean.current,
-    bestCleanStreak: clean.best,
-  };
 }
 
 function sumFieldInMoments(
@@ -507,16 +230,6 @@ export function isCalendarReminderRepeat(repeat: ReminderRepeat): boolean {
   return repeat === 'daily' || repeat === 'weekdays';
 }
 
-/** Repeats that have a predictable scheduled clock time for on-time / early / late. */
-export function isTimingReminderRepeat(repeat: ReminderRepeat): boolean {
-  return (
-    repeat === 'daily' ||
-    repeat === 'weekdays' ||
-    repeat === 'weekly' ||
-    repeat === 'monthly'
-  );
-}
-
 export function isDayScheduled(
   date: Date,
   repeat: ReminderRepeat,
@@ -548,26 +261,10 @@ export function isCalendarActiveDay(
   return true;
 }
 
-export function resolveInsightWidgets(
-  intent: ActivityIntent,
-  reminderEnabled: boolean,
-  reminderRepeat: ReminderRepeat,
-): ActivityInsightWidgets {
-  const habit = intent === 'more' || intent === 'less';
-  const timingRepeat =
-    reminderEnabled && isTimingReminderRepeat(reminderRepeat);
-  return {
-    showHabitCore: false,
-    showSchedule: false,
-    showCalendar: true,
-    showTiming: habit && timingRepeat,
-    showLogTotals: true,
-  };
-}
-
 /**
  * Map a day + log presence to a calendar cell state.
- * Good: log = green, no log = miss (when active).
+ * Good: log = green, no log = miss (when active). Today without a log is
+ * `today` (in progress), never miss — the day is not over yet.
  * Bad: no log = green, log = relapse (when active).
  * Track: log = green, no log = gray.
  */
@@ -576,6 +273,7 @@ export function calendarCellState(input: {
   scheduled: boolean;
   hasLog: boolean;
   isFuture: boolean;
+  isToday?: boolean;
 }): InsightCalendarCellState {
   if (input.isFuture) {
     return 'future';
@@ -587,64 +285,18 @@ export function calendarCellState(input: {
     if (input.intent === 'less') {
       return input.hasLog ? 'relapse' : 'unscheduled';
     }
-    return input.hasLog ? 'success' : 'unscheduled';
+    if (input.hasLog) {
+      return 'success';
+    }
+    return input.isToday ? 'today' : 'unscheduled';
   }
   if (input.intent === 'less') {
     return input.hasLog ? 'relapse' : 'success';
   }
-  return input.hasLog ? 'success' : 'miss';
-}
-
-export function listScheduledDateKeysInRange(
-  start: Date,
-  end: Date,
-  repeat: ReminderRepeat,
-): string[] {
-  if (!isCalendarReminderRepeat(repeat)) {
-    return [];
+  if (input.hasLog) {
+    return 'success';
   }
-  const keys: string[] = [];
-  let cursor = startOfDay(zoned(start));
-  const last = startOfDay(zoned(end));
-  while (cursor.getTime() <= last.getTime()) {
-    if (isDayScheduled(cursor, repeat)) {
-      keys.push(toDateKey(cursor));
-    }
-    cursor = startOfDay(addDays(cursor, 1));
-  }
-  return keys;
-}
-
-export function summarizeAdherence(input: {
-  intent: ActivityIntent;
-  scheduledKeys: readonly string[];
-  loggedKeys: ReadonlySet<string>;
-}): AdherenceSummary | null {
-  const scheduledDays = input.scheduledKeys.length;
-  if (scheduledDays === 0) {
-    return null;
-  }
-  let hits = 0;
-  for (const key of input.scheduledKeys) {
-    if (input.loggedKeys.has(key)) {
-      hits += 1;
-    }
-  }
-  const clean = scheduledDays - hits;
-  if (input.intent === 'less') {
-    return {
-      scheduledDays,
-      successDays: clean,
-      failDays: hits,
-      rate: clean / scheduledDays,
-    };
-  }
-  return {
-    scheduledDays,
-    successDays: hits,
-    failDays: clean,
-    rate: hits / scheduledDays,
-  };
+  return input.isToday ? 'today' : 'miss';
 }
 
 /**
@@ -680,6 +332,7 @@ export function buildInsightCalendarMonth(input: {
       cursor.getTime() >= monthStart.getTime() &&
       cursor.getTime() <= monthEnd.getTime();
     const isFuture = cursor.getTime() > todayStart.getTime();
+    const isToday = cursor.getTime() === todayStart.getTime();
     const scheduled =
       inMonth &&
       isCalendarActiveDay(
@@ -698,6 +351,7 @@ export function buildInsightCalendarMonth(input: {
       dayOfMonth: z.getDate(),
       scheduled,
       hasLog,
+      isToday,
       logCount,
       state: !inMonth
         ? 'empty'
@@ -706,6 +360,7 @@ export function buildInsightCalendarMonth(input: {
             scheduled,
             hasLog,
             isFuture,
+            isToday,
           }),
     });
     cursor = startOfDay(addDays(cursor, 1));
@@ -779,109 +434,4 @@ export function listMonthsInclusive(fromDate: Date, toDate: Date): Date[] {
     cursor = shiftMonth(cursor, 1);
   }
   return months;
-}
-
-function buildStatusLine(
-  intent: ActivityIntent,
-  logTotals: LogTotals,
-  timing: TimingSummary | null,
-  adherence: AdherenceSummary | null,
-): string {
-  const intentLabel = activityIntentLabel(intent);
-  const parts: string[] = [intentLabel];
-  parts.push(`${logTotals.all} log${logTotals.all === 1 ? '' : 's'} total`);
-  if (adherence != null && adherence.scheduledDays > 0) {
-    parts.push(
-      `${Math.round(adherence.rate * 100)}% ${intent === 'less' ? 'clean' : 'kept'}`,
-    );
-  }
-  if (timing != null && timing.evaluated > 0) {
-    parts.push(`${Math.round(timing.onTimeRate * 100)}% on time`);
-  }
-  return parts.join(' · ');
-}
-
-export function buildActivityInsightSnapshot(input: {
-  activity: ActivityRow;
-  moments: readonly MomentRow[];
-  /** @deprecated Range filter removed — ignored when provided. */
-  range?: ActivityInsightRange;
-  /** Month to show on the calendar (defaults to current month). */
-  monthDate?: Date;
-  now?: Date;
-}): ActivityInsightSnapshot {
-  const now = input.now ?? new Date();
-  const activity = input.activity;
-  const widgets = resolveInsightWidgets(
-    activity.intent,
-    activity.reminderEnabled,
-    activity.reminderRepeat,
-  );
-  const logTotals = summarizeLogTotals(input.moments, now);
-  // Keep frequency for tests / status helpers (all-time moments).
-  const frequency = summarizeFrequency(input.moments, 'all', now);
-
-  const timing = widgets.showTiming
-    ? summarizeTiming(
-        input.moments,
-        activity.reminderTimeMinutes,
-        activity.reminderEnabled,
-      )
-    : null;
-
-  const allLoggedKeys = new Set(dateKeysWithLogs(input.moments));
-  const loggedCounts = countLogsByDateKey(input.moments);
-
-  let adherence: AdherenceSummary | null = null;
-  if (widgets.showSchedule) {
-    const monthStart = startOfMonth(zoned(now));
-    const monthEnd = endOfDay(zoned(now));
-    const scheduledKeys = listScheduledDateKeysInRange(
-      monthStart,
-      monthEnd,
-      activity.reminderRepeat,
-    );
-    adherence = summarizeAdherence({
-      intent: activity.intent,
-      scheduledKeys,
-      loggedKeys: allLoggedKeys,
-    });
-  }
-
-  const monthDate = input.monthDate ?? now;
-  const calendar = buildInsightCalendarMonth({
-    intent: activity.intent,
-    reminderEnabled: activity.reminderEnabled,
-    reminderRepeat: activity.reminderRepeat,
-    loggedCounts,
-    monthDate,
-    now,
-  });
-
-  const amounts = summarizeAmounts(
-    input.moments,
-    activity.fields,
-    'all',
-    now,
-  );
-
-  return {
-    intent: activity.intent,
-    intentLabel: activityIntentLabel(activity.intent),
-    statusLine: buildStatusLine(
-      activity.intent,
-      logTotals,
-      timing,
-      adherence,
-    ),
-    frequency,
-    logTotals,
-    timing,
-    adherence,
-    calendar: calendar.cells,
-    calendarMonthKey: calendar.monthKey,
-    canGoNextMonth: calendar.canGoNextMonth,
-    amounts,
-    widgets,
-  };
 }

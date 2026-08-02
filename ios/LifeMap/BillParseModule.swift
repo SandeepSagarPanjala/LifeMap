@@ -7,9 +7,16 @@ import FoundationModels
 #if canImport(_FoundationModels_UIKit)
 import _FoundationModels_UIKit
 #endif
-#if canImport(Vision)
-import Vision
+#if canImport(_Vision_FoundationModels)
+import _Vision_FoundationModels
 #endif
+#endif
+
+/// Xcode 27+ SDKs expose multimodal bill APIs via these overlays.
+#if canImport(FoundationModels) && canImport(_FoundationModels_UIKit) && canImport(_Vision_FoundationModels)
+private let billParseSupportsImageSDK = true
+#else
+private let billParseSupportsImageSDK = false
 #endif
 
 /**
@@ -44,7 +51,7 @@ class BillParseModule: NSObject {
     rejecter _: @escaping RCTPromiseRejectBlock
   ) {
     #if canImport(FoundationModels)
-    if #available(iOS 27.0, *) {
+    if billParseSupportsImageSDK, #available(iOS 27.0, *) {
       resolver(Self.modelIsReady())
       return
     }
@@ -89,7 +96,7 @@ class BillParseModule: NSObject {
     rejecter: @escaping RCTPromiseRejectBlock
   ) {
     #if canImport(FoundationModels)
-    if #available(iOS 27.0, *) {
+    if billParseSupportsImageSDK, #available(iOS 27.0, *) {
       Task {
         do {
           let payload = try await Self.parseImageWithFoundationModels(uri)
@@ -164,9 +171,9 @@ class BillParseModule: NSObject {
     }
   }
 
+  #if canImport(_FoundationModels_UIKit) && canImport(_Vision_FoundationModels)
   @available(iOS 27.0, *)
   private static func makeImageSession() -> LanguageModelSession {
-    #if canImport(Vision)
     let ocr = OCRTool(
       name: "receipt_ocr",
       description: """
@@ -179,12 +186,8 @@ class BillParseModule: NSObject {
     return LanguageModelSession(tools: [ocr]) {
       receiptInstructions
     }
-    #else
-    return LanguageModelSession {
-      receiptInstructions
-    }
-    #endif
   }
+  #endif
 
   @available(iOS 26.0, *)
   private static func parseTextWithFoundationModels(_ ocrText: String) async throws -> [String: Any]? {
@@ -202,7 +205,7 @@ class BillParseModule: NSObject {
     let session = makeTextSession()
     let response = try await session.respond(
       generating: BillParseResult.self,
-      options: GenerationOptions(samplingMode: .greedy, temperature: 0.1)
+      options: Self.textGenerationOptions
     ) {
       """
       Parse this bill/receipt OCR into total and purchased line items.
@@ -214,6 +217,16 @@ class BillParseModule: NSObject {
     return dictionary(from: response.content, source: "foundation_models_text")
   }
 
+  @available(iOS 26.0, *)
+  private static var textGenerationOptions: GenerationOptions {
+    #if canImport(_FoundationModels_UIKit)
+    GenerationOptions(samplingMode: .greedy, temperature: 0.1)
+    #else
+    GenerationOptions(sampling: .greedy, temperature: 0.1)
+    #endif
+  }
+
+  #if canImport(_FoundationModels_UIKit) && canImport(_Vision_FoundationModels)
   @available(iOS 27.0, *)
   private static func parseImageWithFoundationModels(_ uri: String) async throws -> [String: Any]? {
     guard modelIsReady() else {
@@ -246,6 +259,12 @@ class BillParseModule: NSObject {
     }
     return dictionary(from: response.content, source: "foundation_models_image")
   }
+  #else
+  @available(iOS 27.0, *)
+  private static func parseImageWithFoundationModels(_: String) async throws -> [String: Any]? {
+    nil
+  }
+  #endif
 
   @available(iOS 26.0, *)
   private static func dictionary(

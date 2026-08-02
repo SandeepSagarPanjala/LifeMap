@@ -46,3 +46,15 @@ export function activityIntentLabel(intent: ActivityIntent): string {
     ACTIVITY_INTENT_OPTIONS[0]!.label
   );
 }
+
+/** Hero copy for activity insights (Do more / Do less / Tracking). */
+export function activityExperienceIntentLabel(intent: ActivityIntent): string {
+  switch (intent) {
+    case 'more':
+      return 'Do more';
+    case 'less':
+      return 'Do less';
+    case 'track':
+      return 'Tracking';
+  }
+}

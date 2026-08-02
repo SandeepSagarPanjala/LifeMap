@@ -5,6 +5,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   BookOpen,
   CloudDownload,
+  Database,
   FlaskConical,
   Image as ImageIcon,
   Tags,
@@ -15,6 +16,11 @@ import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import type { RootStackParamList } from '@/navigation/types';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import {
+  dumpActivitiesSeed,
+  type DumpActivitiesProgress,
+} from '@/lib/dev/dump-activities-seed';
+import { isSimulatorRuntime } from '@/lib/dev/is-simulator-runtime';
 import { backfillMomentTags } from '@/lib/moments/backfill-moment-tags';
 import { backfillMomentThumbnails } from '@/lib/moments/backfill-moment-thumbnails';
 import { useAppStore } from '@/stores/app-store';
@@ -76,9 +82,75 @@ export function DevSettings() {
   );
   const [tagBackfillBusy, setTagBackfillBusy] = useState(false);
   const [tagBackfillLabel, setTagBackfillLabel] = useState<string | null>(null);
+  const [dumpBusy, setDumpBusy] = useState(false);
+  const [dumpLabel, setDumpLabel] = useState<string | null>(null);
+
+  const anyBusy = thumbBackfillBusy || tagBackfillBusy || dumpBusy;
+
+  const formatDumpProgress = useCallback((progress: DumpActivitiesProgress) => {
+    switch (progress.phase) {
+      case 'clearing':
+        return 'Clearing prior dump…';
+      case 'activities':
+        return `Activities ${progress.done}/${progress.total}`;
+      case 'logs':
+        return `Logs ${progress.done}/${progress.total}`;
+      case 'finishing':
+        return 'Finishing…';
+      default:
+        return 'Working…';
+    }
+  }, []);
+
+  const runDumpActivities = useCallback(() => {
+    if (anyBusy) {
+      return;
+    }
+    if (!isSimulatorRuntime()) {
+      Alert.alert(
+        'Simulator only',
+        'Dump activities is blocked on physical devices. Run it on the iOS Simulator or Android emulator.',
+      );
+      return;
+    }
+    Alert.alert(
+      'Dump activities?',
+      'Creates 18 demo activities + ~2 years of logs. Replaces any previous dump. Your other activities are left alone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Dump',
+          style: 'destructive',
+          onPress: () => {
+            void (async () => {
+              setDumpBusy(true);
+              setDumpLabel('Starting…');
+              try {
+                const result = await dumpActivitiesSeed(progress => {
+                  setDumpLabel(formatDumpProgress(progress));
+                });
+                Alert.alert(
+                  'Dump complete',
+                  `Created ${result.activities} activities and ${result.moments} logs.`,
+                );
+              } catch (error) {
+                Alert.alert(
+                  'Dump failed',
+                  error instanceof Error ? error.message : String(error),
+                );
+              } finally {
+                setDumpBusy(false);
+                setDumpLabel(null);
+              }
+            })();
+          },
+        },
+      ],
+    );
+  }, [anyBusy, formatDumpProgress]);
 
   const runThumbnailBackfill = useCallback(async () => {
-    if (thumbBackfillBusy || tagBackfillBusy) {
+    if (anyBusy) {
       return;
     }
     setThumbBackfillBusy(true);
@@ -109,10 +181,10 @@ export function DevSettings() {
       setThumbBackfillBusy(false);
       setThumbBackfillLabel(null);
     }
-  }, [tagBackfillBusy, thumbBackfillBusy]);
+  }, [anyBusy]);
 
   const runTagBackfill = useCallback(async () => {
-    if (tagBackfillBusy || thumbBackfillBusy) {
+    if (anyBusy) {
       return;
     }
     setTagBackfillBusy(true);
@@ -145,7 +217,7 @@ export function DevSettings() {
       setTagBackfillBusy(false);
       setTagBackfillLabel(null);
     }
-  }, [tagBackfillBusy, thumbBackfillBusy]);
+  }, [anyBusy]);
 
   if (!__DEV__) {
     return null;
@@ -162,7 +234,30 @@ export function DevSettings() {
       />
       <Pressable
         accessibilityRole="button"
-        disabled={thumbBackfillBusy || tagBackfillBusy}
+        disabled={anyBusy}
+        onPress={runDumpActivities}
+        className="bg-card border-border rounded-2xl border p-4"
+      >
+        <View className="flex-row items-center gap-3">
+          <Icon as={Database} size={20} color={colors.primary} />
+          <View className="flex-1">
+            <Text className="font-medium">Dump activities</Text>
+            <Text variant="muted" className="mt-1">
+              Temporary: 18 demo activities + ~2 years of field logs for
+              insights design. Simulator/emulator only. Replaces prior dump.
+            </Text>
+            {dumpLabel ? (
+              <Text variant="muted" className="mt-2">
+                Progress: {dumpLabel}
+              </Text>
+            ) : null}
+          </View>
+          {dumpBusy ? <ActivityIndicator color={colors.primary} /> : null}
+        </View>
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        disabled={anyBusy}
         onPress={() => {
           void runThumbnailBackfill();
         }}
@@ -189,7 +284,7 @@ export function DevSettings() {
       </Pressable>
       <Pressable
         accessibilityRole="button"
-        disabled={tagBackfillBusy || thumbBackfillBusy}
+        disabled={anyBusy}
         onPress={() => {
           void runTagBackfill();
         }}
