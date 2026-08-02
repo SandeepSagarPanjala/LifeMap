@@ -476,9 +476,14 @@ function MomentCountsRowComponent({
       showsHorizontalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
       bounces={false}
-      style={[styles.rowScroll, scrollPinned ? null : styles.rowScrollPending]}
+      style={[
+        styles.rowScroll,
+        dense && layout === 'inline' ? styles.rowScrollDenseInline : null,
+        scrollPinned ? null : styles.rowScrollPending,
+      ]}
       contentContainerStyle={[
         styles.rowScrollContent,
+        dense && layout === 'inline' ? styles.rowScrollContentDenseInline : null,
         layout === 'stacked'
           ? dense
             ? styles.rowStackedDense
@@ -552,6 +557,13 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     maxWidth: '100%',
   },
+  /** Map markers: keep one chip-row tall — unconstrained ScrollView can inflate. */
+  rowScrollDenseInline: {
+    height: 22,
+    maxHeight: 22,
+    flexGrow: 0,
+    alignSelf: 'center',
+  },
   rowScrollPending: {
     opacity: 0,
   },
@@ -559,6 +571,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flexGrow: 1,
+  },
+  rowScrollContentDenseInline: {
+    flexGrow: 0,
+    paddingVertical: 0,
   },
   chip: {
     flexDirection: 'row',

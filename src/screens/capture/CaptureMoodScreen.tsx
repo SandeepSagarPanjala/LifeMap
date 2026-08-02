@@ -9,6 +9,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AudioLines, Check, Pause, Play, Square, Type, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -63,6 +65,7 @@ import {
 } from '@/lib/moments/voice-waveform';
 import type { ProfileGender } from '@/lib/profile/types';
 import { transcribeAudioFile } from '@/lib/speech/transcribe-audio';
+import type { RootStackParamList } from '@/navigation/types';
 import { useSheetCaptureClose } from '@/screens/sheets/use-sheet-capture-close';
 
 type ReasonMode = 'none' | 'text' | 'voice';
@@ -79,6 +82,8 @@ export function CaptureMoodScreen() {
 }
 
 function CaptureMoodPanel() {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const closeScreen = useSheetCaptureClose();
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
@@ -455,6 +460,7 @@ function CaptureMoodPanel() {
             onSelect={handleSelect}
             onVariantChange={handleVariantChange}
             onClose={closeScreen}
+            onInsights={() => navigation.navigate('MoodInsights')}
             onSearchFocus={() => setSearchFocused(true)}
             onSearchBlur={() => setSearchFocused(false)}
           />

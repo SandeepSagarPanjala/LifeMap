@@ -18,6 +18,8 @@ export const ACTIVITY_MAX_FIELDS = 24;
 export const ACTIVITY_MAX_LABEL_LENGTH = 80;
 export const ACTIVITY_MAX_FIELD_ID_LENGTH = 64;
 export const ACTIVITY_MAX_CHOICE_OPTIONS = 20;
+/** Max photos or bills stored on a single photo/scan field while logging. */
+export const ACTIVITY_MAX_MEDIA_URIS = 3;
 
 export type ActivityFieldExtract = 'amount';
 
@@ -53,8 +55,8 @@ export type ActivityDefinitionSource =
 
 /** Runtime values keyed by field id when logging. */
 export type ActivityFieldValue =
-  | { type: 'photo'; uri: string; tags?: string[] }
-  | { type: 'scan'; uri: string; tags?: string[] }
+  | { type: 'photo'; uris: string[]; tags?: string[] }
+  | { type: 'scan'; uris: string[]; tags?: string[] }
   | { type: 'money'; amount: number }
   | { type: 'number'; value: number }
   | { type: 'text'; value: string }
@@ -63,7 +65,57 @@ export type ActivityFieldValue =
   | { type: 'duration'; seconds: number }
   | { type: 'toggle'; value: boolean };
 
+export type ActivityMediaValue = Extract<
+  ActivityFieldValue,
+  { type: 'photo' } | { type: 'scan' }
+>;
+
 export type ActivityValuesMap = Record<string, ActivityFieldValue>;
+
+/** URIs from a photo/scan value (empty if missing / wrong type). */
+export function getActivityMediaUris(
+  value: ActivityFieldValue | null | undefined,
+): string[] {
+  if (value == null || (value.type !== 'photo' && value.type !== 'scan')) {
+    return [];
+  }
+  return value.uris;
+}
+
+export function activityMediaValue(
+  type: 'photo' | 'scan',
+  uris: string[],
+  tags?: string[],
+): ActivityMediaValue | null {
+  const cleaned = uris
+    .map(uri => uri.trim())
+    .filter(Boolean)
+    .slice(0, ACTIVITY_MAX_MEDIA_URIS);
+  if (cleaned.length === 0) {
+    return null;
+  }
+  const cleanedTags = (tags ?? [])
+    .map(tag => tag.trim())
+    .filter(Boolean);
+  return cleanedTags.length > 0
+    ? { type, uris: cleaned, tags: cleanedTags }
+    : { type, uris: cleaned };
+}
+
+function normalizeMediaUris(record: Record<string, unknown>): string[] {
+  if (Array.isArray(record.uris)) {
+    return record.uris
+      .filter((item): item is string => typeof item === 'string')
+      .map(item => item.trim())
+      .filter(Boolean)
+      .slice(0, ACTIVITY_MAX_MEDIA_URIS);
+  }
+  // Legacy single-uri shape from older logs.
+  if (typeof record.uri === 'string' && record.uri.trim()) {
+    return [record.uri.trim()];
+  }
+  return [];
+}
 
 export function emptyActivityDefinition(
   emoji: string,
@@ -167,22 +219,10 @@ function normalizeStoredValue(value: unknown): ActivityFieldValue | null {
   }
   const record = value as Record<string, unknown>;
   switch (record.type) {
-    case 'photo': {
-      if (typeof record.uri !== 'string' || !record.uri.trim()) {
-        return null;
-      }
-      const tags = Array.isArray(record.tags)
-        ? record.tags
-            .filter((item): item is string => typeof item === 'string')
-            .map(item => item.trim())
-            .filter(Boolean)
-        : [];
-      return tags.length > 0
-        ? { type: 'photo', uri: record.uri.trim(), tags }
-        : { type: 'photo', uri: record.uri.trim() };
-    }
+    case 'photo':
     case 'scan': {
-      if (typeof record.uri !== 'string' || !record.uri.trim()) {
+      const uris = normalizeMediaUris(record);
+      if (uris.length === 0) {
         return null;
       }
       const tags = Array.isArray(record.tags)
@@ -192,8 +232,8 @@ function normalizeStoredValue(value: unknown): ActivityFieldValue | null {
             .filter(Boolean)
         : [];
       return tags.length > 0
-        ? { type: 'scan', uri: record.uri.trim(), tags }
-        : { type: 'scan', uri: record.uri.trim() };
+        ? { type: record.type, uris, tags }
+        : { type: record.type, uris };
     }
     case 'money': {
       if (typeof record.amount !== 'number' || !Number.isFinite(record.amount)) {

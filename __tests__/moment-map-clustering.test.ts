@@ -3,6 +3,8 @@ import type { SavedPlaceRow } from '@/db/repositories/saved-places';
 import type { MomentRow } from '@/db/repositories/moments';
 import {
   coalesceMomentMapPins,
+  emphasizeTravelMomentMapPins,
+  omitMomentMapPinsAlreadyOnDayStoryStops,
   partitionMomentMapPins,
   shouldClusterMomentsOnMap,
 } from '../src/lib/moments/moment-map-clustering';
@@ -80,5 +82,64 @@ describe('coalesceMomentMapPins', () => {
     expect(result).toHaveLength(2);
     const merged = result.find(pin => pin.moment.id === 1);
     expect(merged?.groupedMoments?.map(row => row.id)).toEqual([2]);
+  });
+});
+
+describe('omitMomentMapPinsAlreadyOnDayStoryStops', () => {
+  it('keeps travel moments near a stay that are not on the stay chip set', () => {
+    const stayChipMoment = momentPin(10, 33.101, -96.696, 'activity');
+    const travelAtDeparture = momentPin(205, 33.101, -96.696, 'activity');
+    const elsewhere = momentPin(11, 33.2, -96.7, 'photo');
+
+    const result = omitMomentMapPinsAlreadyOnDayStoryStops(
+      [stayChipMoment, travelAtDeparture, elsewhere],
+      new Set([10]),
+    );
+
+    expect(result.map(pin => pin.moment.id)).toEqual([205, 11]);
+  });
+
+  it('strips only already-shown moments from a coalesced pin', () => {
+    const pin: MomentMapPin = {
+      moment: makeMoment({
+        id: 10,
+        type: 'activity',
+        timestamp: new Date('2026-07-31T20:53:00'),
+      }),
+      coordinate: { latitude: 33.101, longitude: -96.696 },
+      groupedMoments: [
+        makeMoment({
+          id: 205,
+          type: 'activity',
+          timestamp: new Date('2026-07-31T22:05:00'),
+        }),
+      ],
+    };
+
+    const result = omitMomentMapPinsAlreadyOnDayStoryStops([pin], new Set([10]));
+    expect(result).toHaveLength(1);
+    expect(result[0]?.moment.id).toBe(205);
+    expect(result[0]?.groupedMoments).toBeUndefined();
+  });
+});
+
+describe('emphasizeTravelMomentMapPins', () => {
+  it('tags leftover pins as travel without moving coordinates', () => {
+    const pin: MomentMapPin = {
+      moment: makeMoment({
+        id: 205,
+        type: 'activity',
+        timestamp: new Date('2026-08-01T03:05:18.000Z'),
+      }),
+      coordinate: { latitude: 33.101, longitude: -96.696 },
+    };
+
+    const result = emphasizeTravelMomentMapPins([pin]);
+    expect(result).toHaveLength(1);
+    expect(result[0]?.emphasis).toBe('travel');
+    expect(result[0]?.coordinate).toEqual({
+      latitude: 33.101,
+      longitude: -96.696,
+    });
   });
 });

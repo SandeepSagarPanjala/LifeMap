@@ -28,7 +28,7 @@ import {
   type BottomSheetFooterProps,
   type BottomSheetModal,
 } from '@gorhom/bottom-sheet';
-import { ChevronLeft, Search } from 'lucide-react-native';
+import { ChevronLeft, Search, WandSparkles, X } from 'lucide-react-native';
 import Animated, {
   Easing,
   ReduceMotion,
@@ -57,6 +57,7 @@ import {
   type EmotionSelection,
   type EmotionTokenId,
 } from '@/lib/moments/emotion-tokens';
+import { useClosesToMap } from '@/navigation/use-closes-to-map';
 
 const GRID_COLUMNS = 4;
 const GRID_GAP = 12;
@@ -86,6 +87,8 @@ type EmotionTokenPickerPageProps = {
   onSelect: (selection: EmotionSelection) => void;
   onVariantChange: (variant: MoodArtVariant) => void;
   onClose: () => void;
+  /** Optional insights control beside search (map mood capture). */
+  onInsights?: () => void;
   /** Expand the parent half sheet while search is focused. */
   onSearchFocus?: () => void;
   onSearchBlur?: () => void;
@@ -519,11 +522,13 @@ export function EmotionTokenPickerPage({
   onSelect,
   onVariantChange,
   onClose,
+  onInsights,
   onSearchFocus,
   onSearchBlur,
 }: EmotionTokenPickerPageProps) {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
+  const closesToMap = useClosesToMap();
   const { width: windowWidth } = useWindowDimensions();
   const [query, setQuery] = useState('');
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -648,6 +653,19 @@ export function EmotionTokenPickerPage({
           },
         ]}
       >
+        {onInsights != null ? (
+          <MapGlassCircleButton
+            accessibilityLabel={APP_COPY.mood.insights}
+            onPress={onInsights}
+            size={46}
+          >
+            <WandSparkles
+              size={20}
+              color={colors.primary}
+              strokeWidth={2.25}
+            />
+          </MapGlassCircleButton>
+        ) : null}
         <View style={styles.pageSearchShadow}>
           <AdaptiveGlassSurface style={styles.pageSearchGlass}>
             <Search
@@ -672,11 +690,15 @@ export function EmotionTokenPickerPage({
           </AdaptiveGlassSurface>
         </View>
         <MapGlassCircleButton
-          accessibilityLabel="Back"
+          accessibilityLabel={closesToMap ? 'Close' : 'Back'}
           onPress={onClose}
           size={46}
         >
-          <ChevronLeft size={22} color={colors.primary} strokeWidth={2.25} />
+          {closesToMap ? (
+            <X size={20} color={colors.primary} strokeWidth={2.25} />
+          ) : (
+            <ChevronLeft size={22} color={colors.primary} strokeWidth={2.25} />
+          )}
         </MapGlassCircleButton>
       </View>
     </View>

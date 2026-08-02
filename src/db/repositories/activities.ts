@@ -1,4 +1,4 @@
-import { asc, count, eq, isNull, sql } from 'drizzle-orm';
+import { asc, count, eq, isNull, like, sql } from 'drizzle-orm';
 
 import {
   ACTIVITY_SCHEMA_VERSION,
@@ -277,4 +277,37 @@ export async function getActivityById(id: number): Promise<ActivityRow | null> {
     .where(eq(activities.id, id))
     .limit(1);
   return rows[0] ? mapRow(rows[0]) : null;
+}
+
+/** Dev dump: activities whose templateId starts with the given prefix (incl. archived). */
+export async function listActivitiesByTemplateIdPrefix(
+  prefix: string,
+): Promise<ActivityRow[]> {
+  const db = await getDatabase();
+  const rows = await db
+    .select()
+    .from(activities)
+    .where(like(activities.templateId, `${prefix}%`));
+  return rows.map(mapRow);
+}
+
+/** Dev dump: hard-delete activity row and all of its moments. */
+export async function hardDeleteActivityWithMoments(
+  activityId: number,
+): Promise<void> {
+  await cancelActivityReminder(activityId);
+  const db = await getDatabase();
+  await db.delete(moments).where(eq(moments.activityId, activityId));
+  await db.delete(activities).where(eq(activities.id, activityId));
+}
+
+export async function setActivityCreatedAt(
+  activityId: number,
+  createdAt: Date,
+): Promise<void> {
+  const db = await getDatabase();
+  await db
+    .update(activities)
+    .set({ createdAt })
+    .where(eq(activities.id, activityId));
 }

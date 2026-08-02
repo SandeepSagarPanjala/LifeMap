@@ -20,8 +20,10 @@ export type RootStackParamList = {
     | { source?: 'install' | 'settings' | 'drive'; preview?: boolean }
     | undefined;
   Diary: undefined;
+  DiaryInsights: undefined;
   CaptureNote: undefined;
   CaptureMood: undefined;
+  MoodInsights: undefined;
   CapturePhoto: undefined;
   CaptureVoice: undefined;
   CaptureActivity: undefined;
@@ -33,7 +35,7 @@ export type RootStackParamList = {
     | { kind: 'create-first' }
     | { kind: 'edit'; activityId: number };
   ActivityLogEntry: { activityId: number };
-  HistoryDatePicker: undefined;
+  HistoryDatePicker: { selectedDateKey: string } | undefined;
   SavedPlaces: undefined;
   MomentPreview: undefined;
   GalleryDayJourney: { dateKey: string };

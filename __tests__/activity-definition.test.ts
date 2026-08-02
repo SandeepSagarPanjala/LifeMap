@@ -115,10 +115,14 @@ describe('validateActivityDefinition', () => {
 describe('activity values', () => {
   it('round-trips photo tags, list items, and zero money', () => {
     const raw = serializeActivityValuesJson({
-      food: { type: 'photo', uri: 'moments/a.jpg', tags: ['Food', 'Plate'] },
+      food: {
+        type: 'photo',
+        uris: ['moments/a.jpg', 'moments/a2.jpg'],
+        tags: ['Food', 'Plate'],
+      },
       bill: {
         type: 'scan',
-        uri: 'moments/b.jpg',
+        uris: ['moments/b.jpg'],
         tags: ['Paper', 'Receipt'],
       },
       amount: { type: 'money', amount: 0 },
@@ -130,18 +134,36 @@ describe('activity values', () => {
     const parsed = parseActivityValuesJson(raw);
     expect(parsed.food).toEqual({
       type: 'photo',
-      uri: 'moments/a.jpg',
+      uris: ['moments/a.jpg', 'moments/a2.jpg'],
       tags: ['Food', 'Plate'],
     });
     expect(parsed.bill).toEqual({
       type: 'scan',
-      uri: 'moments/b.jpg',
+      uris: ['moments/b.jpg'],
       tags: ['Paper', 'Receipt'],
     });
     expect(parsed.amount).toEqual({ type: 'money', amount: 0 });
     expect(parsed.items).toEqual({
       type: 'list',
       items: ['FFL Bread Ezeki', 'Hass Avocados'],
+    });
+  });
+
+  it('normalizes legacy single-uri photo and scan values', () => {
+    const parsed = parseActivityValuesJson(
+      JSON.stringify({
+        food: { type: 'photo', uri: 'moments/legacy.jpg' },
+        bill: { type: 'scan', uri: 'moments/legacy-bill.jpg', tags: ['Paper'] },
+      }),
+    );
+    expect(parsed.food).toEqual({
+      type: 'photo',
+      uris: ['moments/legacy.jpg'],
+    });
+    expect(parsed.bill).toEqual({
+      type: 'scan',
+      uris: ['moments/legacy-bill.jpg'],
+      tags: ['Paper'],
     });
   });
 });

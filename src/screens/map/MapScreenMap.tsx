@@ -1,4 +1,4 @@
-import { memo, useCallback, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import MapView from 'react-native-maps';
 
@@ -37,6 +37,7 @@ export const MapScreenMap = memo(
       mapPadding,
       colorScheme,
       showUserLocation,
+      viewingToday,
       onRegionChange,
       onRegionChangeComplete,
       onPanDrag,
@@ -78,12 +79,27 @@ export const MapScreenMap = memo(
       mapUiLatitudeDelta,
     } = controller;
 
+    const wasViewingTodayRef = useRef(viewingToday);
+    const [mapInstanceKey, setMapInstanceKey] = useState(0);
+
+    // MapKit keeps zoomed past-day tiles in process RAM with no clearCache API.
+    // Remount when returning to Today so the native map releases that footprint.
+    useEffect(() => {
+      const leftPastDay = !wasViewingTodayRef.current && viewingToday;
+      wasViewingTodayRef.current = viewingToday;
+      if (!leftPastDay) {
+        return;
+      }
+      setMapInstanceKey(key => key + 1);
+    }, [viewingToday]);
+
     if (mapInitialRegion == null) {
       return <View style={StyleSheet.absoluteFill} className="bg-background" />;
     }
 
     return (
       <MapView
+        key={mapInstanceKey}
         ref={mapRef}
         style={StyleSheet.absoluteFill}
         provider={provider}

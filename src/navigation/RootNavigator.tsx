@@ -20,7 +20,9 @@ import { ActivityInsightDetailScreen } from '@/screens/capture/ActivityInsightDe
 import { CaptureNoteScreen } from '@/screens/capture/CaptureNoteScreen';
 import { CaptureMoodScreen } from '@/screens/capture/CaptureMoodScreen';
 import { CapturePhotoScreen } from '@/screens/capture/CapturePhotoScreen';
+import { DiaryInsightsScreen } from '@/screens/capture/DiaryInsightsScreen';
 import { DiaryScreen } from '@/screens/capture/DiaryScreen';
+import { MoodInsightsScreen } from '@/screens/capture/MoodInsightsScreen';
 import { CaptureVoiceScreen } from '@/screens/capture/CaptureVoiceScreen';
 import { MapScreen } from '@/screens/MapScreen';
 import { HistoryDatePickerScreen } from '@/screens/map/HistoryDatePickerScreen';
@@ -190,27 +192,40 @@ export function RootNavigator() {
             animation: 'slide_from_right',
           }}
         />
-        <Stack.Screen
-          name="DeveloperSettings"
-          component={DeveloperSettingsScreen}
-          options={settingsSubScreenOptions('Developer tools')}
-        />
-        <Stack.Screen
-          name="ExportTripDays"
-          component={ExportTripDaysScreen}
-          options={settingsSubScreenOptions('Trip days')}
-        />
-        <Stack.Screen
-          name="ExportTripDetail"
-          component={ExportTripDetailScreen}
-          options={settingsSubScreenOptions('Trip detail')}
-        />
+        {__DEV__ ? (
+          <>
+            <Stack.Screen
+              name="DeveloperSettings"
+              component={DeveloperSettingsScreen}
+              options={settingsSubScreenOptions('Developer tools')}
+            />
+            <Stack.Screen
+              name="ExportTripDays"
+              component={ExportTripDaysScreen}
+              options={settingsSubScreenOptions('Trip days')}
+            />
+            <Stack.Screen
+              name="ExportTripDetail"
+              component={ExportTripDetailScreen}
+              options={settingsSubScreenOptions('Trip detail')}
+            />
+          </>
+        ) : null}
         <Stack.Screen
           name="Diary"
           component={DiaryScreen}
           options={{
             headerShown: false,
             presentation: 'card',
+          }}
+        />
+        <Stack.Screen
+          name="DiaryInsights"
+          component={DiaryInsightsScreen}
+          options={{
+            headerShown: false,
+            presentation: 'card',
+            animation: 'slide_from_right',
           }}
         />
         <Stack.Screen
@@ -228,6 +243,15 @@ export function RootNavigator() {
           options={{
             headerShown: false,
             presentation: 'card',
+          }}
+        />
+        <Stack.Screen
+          name="MoodInsights"
+          component={MoodInsightsScreen}
+          options={{
+            headerShown: false,
+            presentation: 'card',
+            animation: 'slide_from_right',
           }}
         />
         <Stack.Screen

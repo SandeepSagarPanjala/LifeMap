@@ -17,13 +17,11 @@ export function DeveloperSettingsScreen() {
       <SettingsGroupLabel title="Export" />
       <ExportSettings />
 
-      {__DEV__ ? (
-        <View>
-          <SettingsGroupLabel title="Developer tools" />
-          <DevSettings />
-          <TripRebuildSettings />
-        </View>
-      ) : null}
+      <View>
+        <SettingsGroupLabel title="Developer tools" />
+        <DevSettings />
+        <TripRebuildSettings />
+      </View>
     </SettingsScreenLayout>
   );
 }

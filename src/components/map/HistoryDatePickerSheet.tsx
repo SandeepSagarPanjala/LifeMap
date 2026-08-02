@@ -26,6 +26,20 @@ import { useAppStore } from '@/stores/app-store';
 
 const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
+function clampMonthToBounds(
+  month: Date,
+  earliestMonth: Date,
+  todayMonth: Date,
+): Date {
+  if (month.getTime() < earliestMonth.getTime()) {
+    return earliestMonth;
+  }
+  if (month.getTime() > todayMonth.getTime()) {
+    return todayMonth;
+  }
+  return month;
+}
+
 type HistoryDatePickerPanelProps = {
   selectedDateKey: string;
   onSelectDate: (dateKey: string) => void;
@@ -38,8 +52,11 @@ export function HistoryDatePickerPanel({
   onClose,
 }: HistoryDatePickerPanelProps) {
   const todayKey = getTodayDateKey();
-  const today = useMemo(() => startOfDay(new Date()), []);
-  const selectedDay = parseDateKey(selectedDateKey);
+  const today = useMemo(() => startOfDay(parseDateKey(todayKey)), [todayKey]);
+  const selectedDay = useMemo(
+    () => parseDateKey(selectedDateKey),
+    [selectedDateKey],
+  );
   const earliestDateKey = useAppStore(state => state.historyEarliestDateKey);
   const earliestDay = useMemo(
     () =>
@@ -48,34 +65,40 @@ export function HistoryDatePickerPanel({
         : today,
     [earliestDateKey, today],
   );
-  const earliestMonth = useMemo(() => startOfMonth(earliestDay), [earliestDay]);
+  const earliestMonth = useMemo(() => {
+    if (earliestDateKey != null) {
+      return startOfMonth(earliestDay);
+    }
+    // Bounds not ready yet — don't clamp the calendar to "today only", which
+    // blocks the previous-month chevron and snaps away from the selected day.
+    return startOfMonth(subMonths(today, 12 * 20));
+  }, [earliestDateKey, earliestDay, today]);
   const todayMonth = useMemo(() => startOfMonth(today), [today]);
 
   const [visibleMonth, setVisibleMonth] = useState(() =>
-    startOfMonth(selectedDay),
+    clampMonthToBounds(startOfMonth(selectedDay), earliestMonth, todayMonth),
   );
 
-  const syncVisibleMonth = useCallback(() => {
-    const month = startOfMonth(parseDateKey(selectedDateKey));
-    const clamped =
-      month < earliestMonth
-        ? earliestMonth
-        : month > todayMonth
-        ? todayMonth
-        : month;
-    // Compare by time: a fresh Date with the same month would still re-render.
-    setVisibleMonth(current =>
-      current.getTime() === clamped.getTime() ? current : clamped,
-    );
-  }, [earliestMonth, selectedDateKey, todayMonth]);
-
+  // Follow the selected date only when it changes (reopen / new selection).
+  // Month chevrons must not be undone by bounds loading afterward.
   useEffect(() => {
-    syncVisibleMonth();
-  }, [syncVisibleMonth]);
+    setVisibleMonth(
+      clampMonthToBounds(startOfMonth(selectedDay), earliestMonth, todayMonth),
+    );
+    // intentionally only selectedDateKey — bounds handled below
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see comment
+  }, [selectedDateKey]);
+
+  // Bounds can load after open — clamp if out of range, keep browsed month otherwise.
+  useEffect(() => {
+    setVisibleMonth(current =>
+      clampMonthToBounds(current, earliestMonth, todayMonth),
+    );
+  }, [earliestMonth, todayMonth]);
 
   const monthLabel = format(visibleMonth, 'MMMM yyyy');
-  const canGoPrevMonth = visibleMonth > earliestMonth;
-  const canGoNextMonth = visibleMonth < todayMonth;
+  const canGoPrevMonth = visibleMonth.getTime() > earliestMonth.getTime();
+  const canGoNextMonth = visibleMonth.getTime() < todayMonth.getTime();
 
   const calendarDays = useMemo(() => {
     const monthStart = startOfMonth(visibleMonth);
@@ -84,6 +107,26 @@ export function HistoryDatePickerPanel({
     const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
     return eachDayOfInterval({ start: gridStart, end: gridEnd });
   }, [visibleMonth]);
+
+  const goPrevMonth = useCallback(() => {
+    setVisibleMonth(month => {
+      const next = startOfMonth(subMonths(month, 1));
+      if (next.getTime() < earliestMonth.getTime()) {
+        return month;
+      }
+      return next;
+    });
+  }, [earliestMonth]);
+
+  const goNextMonth = useCallback(() => {
+    setVisibleMonth(month => {
+      const next = startOfMonth(addMonths(month, 1));
+      if (next.getTime() > todayMonth.getTime()) {
+        return month;
+      }
+      return next;
+    });
+  }, [todayMonth]);
 
   const handleSelect = (day: Date) => {
     const dayStart = startOfDay(day);
@@ -122,9 +165,8 @@ export function HistoryDatePickerPanel({
             accessibilityRole="button"
             accessibilityLabel="Previous month"
             disabled={!canGoPrevMonth}
-            onPress={() =>
-              canGoPrevMonth && setVisibleMonth(month => subMonths(month, 1))
-            }
+            onPress={goPrevMonth}
+            hitSlop={8}
             style={[
               styles.monthNavBtn,
               !canGoPrevMonth && styles.monthNavBtnDisabled,
@@ -141,9 +183,8 @@ export function HistoryDatePickerPanel({
             accessibilityRole="button"
             accessibilityLabel="Next month"
             disabled={!canGoNextMonth}
-            onPress={() =>
-              canGoNextMonth && setVisibleMonth(month => addMonths(month, 1))
-            }
+            onPress={goNextMonth}
+            hitSlop={8}
             style={[
               styles.monthNavBtn,
               !canGoNextMonth && styles.monthNavBtnDisabled,

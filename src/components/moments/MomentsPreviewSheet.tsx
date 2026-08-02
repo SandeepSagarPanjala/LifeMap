@@ -44,7 +44,10 @@ import { Text } from '@/components/ui/text';
 import type { MomentRow } from '@/db/repositories/moments';
 import type { SavedPlaceRow } from '@/db/repositories/saved-places';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import { parseActivityValuesJson } from '@/lib/activities/activity-definition';
+import {
+  getActivityMediaUris,
+  parseActivityValuesJson,
+} from '@/lib/activities/activity-definition';
 import type {
   ActivityFieldDefinition,
   ActivityFieldValue,
@@ -527,14 +530,17 @@ function ActivityMomentPage({ moment }: { moment: MomentRow }) {
       if (value.type !== 'photo' && value.type !== 'scan') {
         continue;
       }
-      items.push({
-        fieldId,
-        label: labelByFieldId.get(fieldId) ?? fallbackFieldLabel(value),
-        uri: value.uri,
-        tags:
-          value.type === 'photo' || value.type === 'scan'
-            ? value.tags ?? []
-            : [],
+      const baseLabel =
+        labelByFieldId.get(fieldId) ?? fallbackFieldLabel(value);
+      const uris = getActivityMediaUris(value);
+      const tags = value.tags ?? [];
+      uris.forEach((uri, index) => {
+        items.push({
+          fieldId: `${fieldId}:${index}`,
+          label: index === 0 ? baseLabel : `${baseLabel} ${index + 1}`,
+          uri,
+          tags: index === 0 ? tags : [],
+        });
       });
     }
     return items;

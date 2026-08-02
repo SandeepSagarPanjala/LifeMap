@@ -9,7 +9,6 @@ import {
   historyDataCache,
   TODAY_LIVE_FINGERPRINT,
 } from '@/lib/history-data-cache';
-import { getDayHistoryFingerprint } from '@/lib/history-fingerprint';
 import {
   beginHistoryDayLoad,
   type CoalescedLoadOptions,
@@ -112,21 +111,6 @@ async function syncHistoryForDay(
   const cacheKey = historyCacheKey(dateKey, detectionConfig);
   const isToday = dateKey === getTodayDateKey();
 
-  let writeFingerprint = TODAY_LIVE_FINGERPRINT;
-  if (!isToday) {
-    writeFingerprint = await getDayHistoryFingerprint(dateKey);
-    const cached = historyDataCache.read(cacheKey, dateKey);
-    const cachedFingerprint = historyDataCache.getFingerprint(dateKey);
-    const canUseCache =
-      !options?.force &&
-      cached != null &&
-      cachedFingerprint === writeFingerprint;
-
-    if (canUseCache) {
-      return cached;
-    }
-  }
-
   const result = await loadHistoryForDay(dateKey, detectionConfig, options);
   if (
     options?.loadGeneration != null &&
@@ -134,18 +118,18 @@ async function syncHistoryForDay(
   ) {
     return result;
   }
-  if (isToday) {
-    const cachedToday = historyDataCache.peek(cacheKey);
-    if (shouldRejectEmptyTodayWipe(dateKey, result, cachedToday)) {
-      const kept = cachedToday ?? result;
-      syncTodayRefreshMode(dateKey, kept.entries, detectionConfig);
-      return kept;
-    }
+  if (!isToday) {
+    // Past days stay out of RAM cache so Today is never evicted.
+    return result;
   }
-  historyDataCache.write(cacheKey, result, writeFingerprint);
-  if (isToday) {
-    syncTodayRefreshMode(dateKey, result.entries, detectionConfig);
+  const cachedToday = historyDataCache.peek(cacheKey);
+  if (shouldRejectEmptyTodayWipe(dateKey, result, cachedToday)) {
+    const kept = cachedToday ?? result;
+    syncTodayRefreshMode(dateKey, kept.entries, detectionConfig);
+    return kept;
   }
+  historyDataCache.write(cacheKey, result, TODAY_LIVE_FINGERPRINT);
+  syncTodayRefreshMode(dateKey, result.entries, detectionConfig);
   return result;
 }
 
@@ -203,14 +187,15 @@ export function useHistoryForDay(
 
       const skipPartialWhileCached =
         hasTodaySnapshot && targetDateKey === getTodayDateKey();
+      // Past days: wait for the full load so the map loader stays up until ready.
+      const allowPartial = isToday && !skipPartialWhileCached;
 
       return syncHistoryForDay(targetDateKey, detectionConfig, {
         force: syncOptions?.force,
         preferStored: syncOptions?.preferStored,
         loadGeneration: generation,
-        onPartial: skipPartialWhileCached
-          ? undefined
-          : partial => {
+        onPartial: allowPartial
+          ? partial => {
               if (generation !== loadGenerationRef.current) {
                 return;
               }
@@ -226,7 +211,8 @@ export function useHistoryForDay(
                 detectionConfig,
               );
               setLoading(false);
-            },
+            }
+          : undefined,
       })
         .then(result => {
           if (generation !== loadGenerationRef.current) {
@@ -306,20 +292,17 @@ export function useHistoryForDay(
       return;
     }
 
-    if (cached != null && cached.dateKey === dateKey) {
+    if (viewingToday && cached != null && cached.dateKey === dateKey) {
       setData(cached);
       setLoading(false);
-      if (!viewingToday) {
-        return;
-      }
     } else {
       // Drop other-day snapshots so badge/paths never flash the wrong date.
+      // Past days are never served from RAM cache — always show loading.
       setData(emptyForDateKey(dateKey));
       setLoading(viewingToday ? false : true);
     }
 
-    // Cold-start mount-skip only when today is still warm in cache. If browsing
-    // another day evicted it, fall through and reload (do not wait on GPS).
+    // Cold-start mount-skip only when today is still warm in cache.
     if (viewingToday && shouldSkipTodayPreloadMountSync(cacheKey)) {
       const snapshot = historyDataCache.peek(cacheKey) ?? cached;
       if (snapshot != null && snapshot.dateKey === dateKey) {

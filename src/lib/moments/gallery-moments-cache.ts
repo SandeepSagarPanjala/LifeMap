@@ -270,6 +270,14 @@ export function invalidateGalleryDay(dateKey: string): void {
   dayCache.delete(dateKey);
 }
 
+/** Clear in-memory gallery state (e.g. after a large bulk seed). */
+export function resetGalleryMomentsCache(): void {
+  dayCache.clear();
+  orderedDateKeys = [];
+  oldestLoadedKey = null;
+  hasMoreOlder = true;
+}
+
 /** Next older day than `dateKey` that has moments. */
 export async function loadAdjacentOlderDay(
   dateKey: string,

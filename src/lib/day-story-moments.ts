@@ -74,6 +74,30 @@ export function collectMomentsForDayStoryStop(
   );
 }
 
+export function momentIdsOnDayStoryStops(
+  stops: readonly DayStoryStop[],
+  dayMoments: readonly MomentRow[],
+  savedPlaces: readonly SavedPlaceRow[],
+  historyPoints: readonly LocationPointRow[],
+  historyEntries: readonly DayTimelineEntry[],
+  dwellRadiusMeters: number,
+): Set<number> {
+  const ids = new Set<number>();
+  for (const stop of stops) {
+    for (const moment of collectMomentsForDayStoryStop(
+      stop,
+      dayMoments,
+      savedPlaces,
+      historyPoints,
+      historyEntries,
+      dwellRadiusMeters,
+    )) {
+      ids.add(moment.id);
+    }
+  }
+  return ids;
+}
+
 export function momentCountsForDayStoryStop(
   stop: DayStoryStop,
   dayMoments: readonly MomentRow[],

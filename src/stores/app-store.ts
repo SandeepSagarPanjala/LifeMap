@@ -76,11 +76,14 @@ export const useAppStore = create<AppState>()(
       name: 'lifemap-app',
       storage: createJSONStorage(() => AsyncStorage),
       partialize: persistedAppState,
-      merge: (persisted, current) => ({
-        ...current,
-        ...(persisted as Partial<AppState>),
-        ...(!__DEV__ ? { devShowOnboarding: false } : {}),
-      }),
+      merge: (persisted, current) => {
+        const fromStorage = persisted as Partial<AppState>;
+        return {
+          ...current,
+          ...fromStorage,
+          ...(!__DEV__ ? { devShowOnboarding: false } : {}),
+        };
+      },
     },
   ),
 );

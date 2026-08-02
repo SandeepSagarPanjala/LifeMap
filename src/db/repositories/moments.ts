@@ -475,6 +475,56 @@ export function subscribeMomentChanges(
   };
 }
 
+/**
+ * Bulk-insert activity moments without per-row change notifications.
+ * Caller should refresh caches afterward (e.g. reset gallery).
+ */
+export async function insertActivityMomentsBulk(
+  rows: ReadonlyArray<{
+    timestamp: Date;
+    activityId: number;
+    activityEmoji: string;
+    activityLabel: string;
+    activityValuesJson: string | null;
+  }>,
+  chunkSize = 400,
+): Promise<number> {
+  if (rows.length === 0) {
+    return 0;
+  }
+  const db = await getDatabase();
+  for (let offset = 0; offset < rows.length; offset += chunkSize) {
+    const chunk = rows.slice(offset, offset + chunkSize);
+    await db.insert(moments).values(
+      chunk.map(row => ({
+        type: 'activity' as const,
+        timestamp: row.timestamp,
+        activityId: row.activityId,
+        activityEmoji: row.activityEmoji,
+        activityLabel: row.activityLabel,
+        activityValuesJson: row.activityValuesJson,
+        contentFormat: 'activity',
+      })),
+    );
+  }
+  return rows.length;
+}
+
+/** Notify listeners for distinct calendar days (deduped). */
+export function notifyMomentChangesForTimestamps(
+  timestamps: readonly Date[],
+): void {
+  const seen = new Set<string>();
+  for (const timestamp of timestamps) {
+    const key = toDateKey(timestamp);
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    notifyMomentChange(timestamp);
+  }
+}
+
 export async function getRecentMoments(limit = 20): Promise<MomentRow[]> {
   const db = await getDatabase();
   const rows = await db
@@ -492,6 +542,17 @@ export async function listNoteMoments(): Promise<MomentRow[]> {
     .select()
     .from(moments)
     .where(eq(moments.type, 'note'))
+    .orderBy(desc(moments.timestamp), desc(moments.id));
+  return rows.map(mapRow);
+}
+
+/** All mood moments, newest first. */
+export async function listMoodMoments(): Promise<MomentRow[]> {
+  const db = await getDatabase();
+  const rows = await db
+    .select()
+    .from(moments)
+    .where(eq(moments.type, 'mood'))
     .orderBy(desc(moments.timestamp), desc(moments.id));
   return rows.map(mapRow);
 }

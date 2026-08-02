@@ -71,6 +71,53 @@ export function coalesceMomentMapPins(pins: MomentMapPin[]): MomentMapPin[] {
   });
 }
 
+/**
+ * Drop moments already shown on visit stop chips. Keep travel moments that
+ * share a stay's footprint (e.g. logged at departure) as standalone pins.
+ */
+export function omitMomentMapPinsAlreadyOnDayStoryStops(
+  pins: readonly MomentMapPin[],
+  shownMomentIds: ReadonlySet<number>,
+): MomentMapPin[] {
+  if (shownMomentIds.size === 0) {
+    return [...pins];
+  }
+
+  const result: MomentMapPin[] = [];
+  for (const pin of pins) {
+    const remaining = [pin.moment, ...(pin.groupedMoments ?? [])].filter(
+      moment => !shownMomentIds.has(moment.id),
+    );
+    if (remaining.length === 0) {
+      continue;
+    }
+    const [first, ...rest] = remaining;
+    result.push({
+      moment: first!,
+      coordinate: pin.coordinate,
+      groupedMoments: rest.length > 0 ? rest : undefined,
+    });
+  }
+  return result;
+}
+
+/**
+ * Mark leftover day-journey pins as travel emphasis (larger chip).
+ * Coordinates stay at the true GPS / route anchor — do not nudge off stays
+ * (that looked like the activity moved to the wrong place on the drive).
+ * Visit number badges keep higher zIndex so stops win overlaps.
+ */
+export function emphasizeTravelMomentMapPins(
+  pins: readonly MomentMapPin[],
+): MomentMapPin[] {
+  if (pins.length === 0) {
+    return [];
+  }
+  return pins.map(pin =>
+    pin.emphasis === 'travel' ? pin : { ...pin, emphasis: 'travel' as const },
+  );
+}
+
 export function partitionMomentMapPins(
   pins: MomentMapPin[],
   places: readonly SavedPlaceRow[],

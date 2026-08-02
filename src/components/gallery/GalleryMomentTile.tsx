@@ -6,7 +6,7 @@ import {
   Sparkles,
   Video,
 } from 'lucide-react-native';
-import { memo, useMemo } from 'react';
+import { memo, useMemo, type ReactNode } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { CAPTURE_BUTTON_THEMES } from '@/components/map/map-capture-button-theme';
@@ -95,54 +95,87 @@ function GalleryMomentTileComponent({
           <Text style={styles.placeText} numberOfLines={1}>
             {trimmedPlace}
           </Text>
-        ) : null}
+        ) : (
+          <View style={styles.placeLineTrack}>
+            <View style={styles.placeLine} />
+          </View>
+        )}
       </View>
     </Pressable>
+  );
+}
+
+function FallbackShell({
+  backgroundColor,
+  icon,
+  label,
+  labelColor,
+}: {
+  backgroundColor: string;
+  icon: ReactNode;
+  label?: string | null;
+  labelColor?: string;
+}) {
+  const trimmed = label?.trim() || null;
+  return (
+    <View style={[styles.fallback, { backgroundColor }]}>
+      {/* Icon + type label centered as one group above the time bar. */}
+      <View style={styles.iconZone}>
+        {icon}
+        {trimmed != null ? (
+          <Text
+            style={[
+              styles.typeLabel,
+              labelColor != null ? { color: labelColor } : null,
+            ]}
+            numberOfLines={2}
+          >
+            {trimmed}
+          </Text>
+        ) : null}
+      </View>
+      <View style={styles.timeBarSpacer} />
+    </View>
   );
 }
 
 function TypeFallback({ moment }: { moment: MomentRow }) {
   if (moment.type === 'activity') {
     return (
-      <View
-        style={[
-          styles.fallback,
-          { backgroundColor: CAPTURE_BUTTON_THEMES.activity.badgeBg },
-        ]}
-      >
-        <Text style={styles.activityEmoji} numberOfLines={1}>
-          {moment.activityEmoji ?? '•'}
-        </Text>
-        <Text style={styles.activityLabel} numberOfLines={2}>
-          {moment.activityLabel ?? 'Activity'}
-        </Text>
-      </View>
+      <FallbackShell
+        backgroundColor={CAPTURE_BUTTON_THEMES.activity.badgeBg}
+        icon={
+          <Text style={styles.activityEmoji} numberOfLines={1}>
+            {moment.activityEmoji ?? '•'}
+          </Text>
+        }
+        label={moment.activityLabel ?? 'Activity'}
+        labelColor={CAPTURE_BUTTON_THEMES.activity.icon}
+      />
     );
   }
 
   if (moment.type === 'note') {
     return (
-      <View
-        style={[
-          styles.fallback,
-          { backgroundColor: CAPTURE_BUTTON_THEMES.note.badgeBg },
-        ]}
-      >
-        <NotebookPen size={28} color={CAPTURE_BUTTON_THEMES.note.icon} />
-      </View>
+      <FallbackShell
+        backgroundColor={CAPTURE_BUTTON_THEMES.note.badgeBg}
+        icon={
+          <NotebookPen size={28} color={CAPTURE_BUTTON_THEMES.note.icon} />
+        }
+        label="Diary"
+        labelColor={CAPTURE_BUTTON_THEMES.note.icon}
+      />
     );
   }
 
   if (moment.type === 'voice') {
     return (
-      <View
-        style={[
-          styles.fallback,
-          { backgroundColor: CAPTURE_BUTTON_THEMES.voice.badgeBg },
-        ]}
-      >
-        <AudioLines size={32} color={CAPTURE_BUTTON_THEMES.voice.icon} />
-      </View>
+      <FallbackShell
+        backgroundColor={CAPTURE_BUTTON_THEMES.voice.badgeBg}
+        icon={
+          <AudioLines size={32} color={CAPTURE_BUTTON_THEMES.voice.icon} />
+        }
+      />
     );
   }
 
@@ -153,48 +186,45 @@ function TypeFallback({ moment }: { moment: MomentRow }) {
       ? getMoodArtPresentation(emotion.id, variant)
       : null;
     return (
-      <View
-        style={[
-          styles.fallback,
-          {
-            backgroundColor:
-              emotion?.tint ?? CAPTURE_BUTTON_THEMES.mood.badgeBg,
-          },
-        ]}
-      >
-        {art ? (
-          <Image
-            source={art.imageSource}
-            resizeMode="contain"
-            style={styles.moodSticker}
-          />
-        ) : (
-          <Sparkles size={28} color={CAPTURE_BUTTON_THEMES.mood.icon} />
-        )}
-        <Text style={styles.moodLabel} numberOfLines={1}>
-          {emotion?.label ?? moment.moodLabel ?? 'Mood'}
-        </Text>
-      </View>
+      <FallbackShell
+        backgroundColor={
+          emotion?.tint ?? CAPTURE_BUTTON_THEMES.mood.badgeBg
+        }
+        icon={
+          art ? (
+            <Image
+              source={art.imageSource}
+              resizeMode="contain"
+              style={styles.moodSticker}
+            />
+          ) : (
+            <Sparkles size={28} color={CAPTURE_BUTTON_THEMES.mood.icon} />
+          )
+        }
+        label={emotion?.label ?? moment.moodLabel ?? 'Mood'}
+        labelColor={CAPTURE_BUTTON_THEMES.mood.icon}
+      />
     );
   }
 
   return (
-    <View
-      style={[
-        styles.fallback,
-        { backgroundColor: CAPTURE_BUTTON_THEMES.camera.badgeBg },
-      ]}
-    >
-      {moment.type === 'video' ? (
-        <Video size={28} color={CAPTURE_BUTTON_THEMES.camera.icon} />
-      ) : (
-        <Camera size={28} color={CAPTURE_BUTTON_THEMES.camera.icon} />
-      )}
-    </View>
+    <FallbackShell
+      backgroundColor={CAPTURE_BUTTON_THEMES.camera.badgeBg}
+      icon={
+        moment.type === 'video' ? (
+          <Video size={28} color={CAPTURE_BUTTON_THEMES.camera.icon} />
+        ) : (
+          <Camera size={28} color={CAPTURE_BUTTON_THEMES.camera.icon} />
+        )
+      }
+    />
   );
 }
 
 export const GalleryMomentTile = memo(GalleryMomentTileComponent);
+
+/** Matches time + place/line + vertical padding in `timeBar`. */
+const TIME_BAR_HEIGHT = 36;
 
 const styles = StyleSheet.create({
   tile: {
@@ -205,31 +235,31 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
   fallback: {
+    ...StyleSheet.absoluteFillObject,
+    paddingHorizontal: 6,
+  },
+  iconZone: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 6,
     gap: 4,
+    paddingHorizontal: 2,
+  },
+  typeLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  timeBarSpacer: {
+    height: TIME_BAR_HEIGHT,
   },
   activityEmoji: {
     fontSize: 40,
     lineHeight: 46,
   },
-  activityLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: CAPTURE_BUTTON_THEMES.activity.icon,
-    textAlign: 'center',
-  },
   moodSticker: {
     width: 44,
     height: 44,
-  },
-  moodLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: CAPTURE_BUTTON_THEMES.mood.icon,
-    textAlign: 'center',
   },
   videoBadge: {
     position: 'absolute',
@@ -247,10 +277,12 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    height: TIME_BAR_HEIGHT,
     paddingHorizontal: 6,
     paddingVertical: 4,
     backgroundColor: 'rgba(0,0,0,0.38)',
-    gap: 1,
+    justifyContent: 'center',
+    gap: 2,
   },
   timeText: {
     color: '#fff',
@@ -262,5 +294,15 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.88)',
     fontSize: 10,
     fontWeight: '500',
+  },
+  placeLineTrack: {
+    height: 12,
+    justifyContent: 'center',
+  },
+  placeLine: {
+    height: StyleSheet.hairlineWidth * 2,
+    width: '72%',
+    borderRadius: 1,
+    backgroundColor: 'rgba(255,255,255,0.55)',
   },
 });

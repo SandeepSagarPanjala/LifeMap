@@ -53,13 +53,17 @@ import {
   type MomentCounts,
 } from '@/lib/moments/moment-counts';
 import {
-  isCoordinateOnDayStoryStop,
   type DayStoryStop,
 } from '@/lib/day-story-stops';
-import { collectMomentsForDayStoryStop } from '@/lib/day-story-moments';
+import {
+  collectMomentsForDayStoryStop,
+  momentIdsOnDayStoryStops,
+} from '@/lib/day-story-moments';
 import { queueMomentPreview } from '@/lib/moments/moment-preview-navigation';
 import {
   coalesceMomentMapPins,
+  emphasizeTravelMomentMapPins,
+  omitMomentMapPinsAlreadyOnDayStoryStops,
   partitionMomentMapPins,
   shouldClusterMomentsOnMap,
 } from '@/lib/moments/moment-map-clustering';
@@ -83,7 +87,6 @@ import {
 import { clampDateKeyToHistoryBounds } from '@/lib/history-calendar-bounds';
 import {
   consumeHistoryDatePickerResult,
-  queueHistoryDatePickerOpen,
 } from '@/lib/history-date-picker-navigation';
 import { useAppStore } from '@/stores/app-store';
 import { regionForCoordinates, toMapCoordinates } from '@/lib/location-geo';
@@ -396,8 +399,8 @@ export function useMapScreenController() {
     historyData.dateKey === selectedDateKey &&
     (!historyLoading || viewingToday || historyHasGpsData);
   const historyReadyForDay = historyDayLoaded && historyHasGpsData;
-  const historyBlockingLoader =
-    historyLoading && !historyDayLoaded && !viewingToday;
+  // Past days: keep “Loading your day…” until history finished loading.
+  const historyBlockingLoader = !viewingToday && historyLoading;
 
   const historyBadgeCount = useMemo(() => {
     if (!historyDayLoaded) {
@@ -1006,19 +1009,30 @@ export function useMapScreenController() {
     if (dayStoryStops.length === 0) {
       return individual;
     }
-    return individual.filter(
-      pin =>
-        !isCoordinateOnDayStoryStop(
-          pin.coordinate,
-          dayStoryStops,
-          tripDetectionConfig.dwellRadiusMeters,
-        ),
+    // Suppress pins already shown on stay chips. Do not use distance-to-stop:
+    // a travel moment logged at departure sits on the stay footprint but is
+    // not in the stay chip set (e.g. Braum's → drive at 10:05).
+    const shownOnStops = momentIdsOnDayStoryStops(
+      dayStoryStops,
+      dayMoments,
+      savedPlaces,
+      historyData.points,
+      historyEntries,
+      tripDetectionConfig.dwellRadiusMeters,
     );
+    const travelPins = omitMomentMapPinsAlreadyOnDayStoryStops(
+      individual,
+      shownOnStops,
+    );
+    return emphasizeTravelMomentMapPins(travelPins);
   }, [
     dayMomentMapPinsRaw,
     savedPlaces,
     clusterMomentsOnMap,
     dayStoryStops,
+    dayMoments,
+    historyData.points,
+    historyEntries,
     tripDetectionConfig.dwellRadiusMeters,
   ]);
 
@@ -1533,8 +1547,7 @@ export function useMapScreenController() {
   );
 
   const openHistoryDatePicker = useCallback(() => {
-    queueHistoryDatePickerOpen({ selectedDateKey });
-    navigation.navigate('HistoryDatePicker');
+    navigation.navigate('HistoryDatePicker', { selectedDateKey });
   }, [navigation, selectedDateKey]);
 
   const handleSelectMapDate = useCallback(

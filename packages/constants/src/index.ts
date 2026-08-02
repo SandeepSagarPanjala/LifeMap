@@ -146,8 +146,8 @@ export const ROUTE_DIRECTION_ARROW_MAX_ZOOM_DELTA = 0.35;
 export const ROUTE_DIRECTION_ARROW_MIN_ZOOM_DELTA = 0.0012;
 
 export const HISTORY_DAY_LOAD_DEBOUNCE_MS = 120;
-/** Today + several browsed days — past-day taps should not evict Today. */
-export const HISTORY_DATA_CACHE_MAX_ENTRIES = 5;
+/** Today-only RAM cache size (past days are never cached). */
+export const HISTORY_DATA_CACHE_MAX_ENTRIES = 1;
 
 export const NATIVE_HALF_SHEET_HEIGHT_RATIO = 0.5;
 export const HISTORY_DATE_PICKER_HEIGHT_RATIO = 0.55;

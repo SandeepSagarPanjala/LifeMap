@@ -26,6 +26,11 @@ export type MomentMapPin = {
   coordinate: { latitude: number; longitude: number };
   /** Co-located moments merged for day-journey map display. */
   groupedMoments?: MomentRow[];
+  /**
+   * Day-journey travel moments — larger chip + higher z-index so they stay
+   * readable at city zoom (not buried under visit number badges).
+   */
+  emphasis?: 'travel';
 };
 
 function momentCaptureVariant(type: MomentRow['type']): CaptureButtonVariant {
@@ -158,7 +163,8 @@ const MomentMapMarker = memo(function MomentMapMarker({
   pin,
   onPressPin,
 }: MomentMapMarkerProps) {
-  const { moment, coordinate, groupedMoments } = pin;
+  const { moment, coordinate, groupedMoments, emphasis } = pin;
+  const travelEmphasis = emphasis === 'travel';
   const grouped = groupedMoments != null && groupedMoments.length > 0;
   const variant = momentCaptureVariant(moment.type);
   const theme = CAPTURE_BUTTON_THEMES[variant];
@@ -176,8 +182,11 @@ const MomentMapMarker = memo(function MomentMapMarker({
     pin,
   ]);
   const badgeStyle = useMemo(
-    () => [styles.badge, { backgroundColor: theme.badgeBg }],
-    [theme.badgeBg],
+    () => [
+      travelEmphasis ? styles.travelBadge : styles.badge,
+      { backgroundColor: theme.badgeBg },
+    ],
+    [theme.badgeBg, travelEmphasis],
   );
   const handlePress = useCallback(() => {
     onPressPin?.(pin);
@@ -187,23 +196,40 @@ const MomentMapMarker = memo(function MomentMapMarker({
     <Marker
       coordinate={coordinate}
       anchor={MARKER_ANCHOR}
-      zIndex={7}
+      // Visit number badges are zIndex 10–12 — travel chips stay under stops.
+      zIndex={travelEmphasis ? 8 : 7}
       tracksViewChanges={false}
       onPress={onPressPin != null ? handlePress : undefined}
     >
       {grouped && counts != null ? (
         <View style={styles.clusterColumn}>
-          <View style={styles.clusterBubble}>
-            <MomentCountsRow counts={counts} layout="stacked" dense />
+          <View
+            style={[
+              styles.clusterBubble,
+              travelEmphasis && styles.travelClusterBubble,
+            ]}
+          >
+            <MomentCountsRow
+              counts={counts}
+              layout="stacked"
+              dense
+              iconSize={travelEmphasis ? 14 : undefined}
+            />
           </View>
         </View>
       ) : (
         <View style={badgeStyle}>
           {activityEmoji ? (
-            <Text style={styles.activityEmoji}>{activityEmoji}</Text>
+            <Text
+              style={
+                travelEmphasis ? styles.travelActivityEmoji : styles.activityEmoji
+              }
+            >
+              {activityEmoji}
+            </Text>
           ) : (
             <Icon
-              size={CAPTURE_ICON_SIZE}
+              size={travelEmphasis ? 20 : CAPTURE_ICON_SIZE}
               color={theme.icon}
               strokeWidth={2.25}
             />
@@ -260,6 +286,20 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 4,
   },
+  travelBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.22,
+    shadowRadius: 5,
+    elevation: 8,
+  },
   clusterColumn: {
     alignItems: 'center',
   },
@@ -274,9 +314,21 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 4,
   },
+  travelClusterBubble: {
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    shadowOpacity: 0.22,
+    shadowRadius: 5,
+    elevation: 8,
+  },
   activityEmoji: {
     fontSize: 18,
     lineHeight: 20,
+    textAlign: 'center',
+  },
+  travelActivityEmoji: {
+    fontSize: 22,
+    lineHeight: 24,
     textAlign: 'center',
   },
 });

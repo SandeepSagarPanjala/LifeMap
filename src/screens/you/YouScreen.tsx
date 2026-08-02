@@ -1,8 +1,9 @@
 import { Construction } from 'lucide-react-native';
 import { Image } from 'phosphor-react-native/src/icons/Image';
-import { MapTrifold } from 'phosphor-react-native/src/icons/MapTrifold';
+import { MagicWand } from 'phosphor-react-native/src/icons/MagicWand';
 import { Trophy } from 'phosphor-react-native/src/icons/Trophy';
 import { UserCircle } from 'phosphor-react-native/src/icons/UserCircle';
+import { UsersThree } from 'phosphor-react-native/src/icons/UsersThree';
 import {
   useCallback,
   useMemo,
@@ -27,6 +28,7 @@ export type YouTabParamList = {
   Profile: undefined;
   Gallery: undefined;
   Insights: undefined;
+  Friends: undefined;
   Achievements: undefined;
 };
 
@@ -63,7 +65,11 @@ function GalleryTabIcon(props: TabBarIconProps) {
 }
 
 function InsightsTabIcon(props: TabBarIconProps) {
-  return <TabIcon as={MapTrifold} {...props} />;
+  return <TabIcon as={MagicWand} {...props} />;
+}
+
+function FriendsTabIcon(props: TabBarIconProps) {
+  return <TabIcon as={UsersThree} {...props} />;
 }
 
 function AchievementsTabIcon(props: TabBarIconProps) {
@@ -128,6 +134,12 @@ const TABS: {
     name: 'Insights',
     label: 'Insights',
     tabBarIcon: InsightsTabIcon,
+    component: YouTabPlaceholder,
+  },
+  {
+    name: 'Friends',
+    label: 'Friends',
+    tabBarIcon: FriendsTabIcon,
     component: YouTabPlaceholder,
   },
   {
