@@ -66,7 +66,7 @@ export function sameMonthInYear(
     APP_TIMEZONE,
   ).getMonth();
   const candidate = monthStartInAppTz(
-    new TZDate(year, preferredMonth, 1, APP_TIMEZONE),
+    new TZDate(year, preferredMonth, 1, 0, 0, 0, 0, APP_TIMEZONE),
   );
   if (candidate.getTime() < earliestMonth.getTime()) {
     return earliestMonth;
@@ -297,7 +297,9 @@ export function ActivityInsightYearBars({
   const handleSelectMonth = useCallback(
     (month: number) => {
       onSelectMonthDate?.(
-        monthStartInAppTz(new TZDate(year, month, 1, APP_TIMEZONE)),
+        monthStartInAppTz(
+          new TZDate(year, month, 1, 0, 0, 0, 0, APP_TIMEZONE),
+        ),
       );
     },
     [onSelectMonthDate, year],
