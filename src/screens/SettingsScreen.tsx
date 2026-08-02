@@ -152,13 +152,17 @@ export function SettingsScreen() {
         />
       </SettingsGroup>
 
-      <SettingsGroupLabel title="Developer" />
-      <SettingsGroup>
-        <SettingsLinkRow
-          label="Export & developer tools"
-          onPress={() => navigation.navigate('DeveloperSettings')}
-        />
-      </SettingsGroup>
+      {__DEV__ ? (
+        <>
+          <SettingsGroupLabel title="Developer" />
+          <SettingsGroup>
+            <SettingsLinkRow
+              label="Export & developer tools"
+              onPress={() => navigation.navigate('DeveloperSettings')}
+            />
+          </SettingsGroup>
+        </>
+      ) : null}
 
       <AppVersionFooter />
     </SettingsScreenLayout>

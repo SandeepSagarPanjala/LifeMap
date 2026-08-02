@@ -192,21 +192,25 @@ export function RootNavigator() {
             animation: 'slide_from_right',
           }}
         />
-        <Stack.Screen
-          name="DeveloperSettings"
-          component={DeveloperSettingsScreen}
-          options={settingsSubScreenOptions('Developer tools')}
-        />
-        <Stack.Screen
-          name="ExportTripDays"
-          component={ExportTripDaysScreen}
-          options={settingsSubScreenOptions('Trip days')}
-        />
-        <Stack.Screen
-          name="ExportTripDetail"
-          component={ExportTripDetailScreen}
-          options={settingsSubScreenOptions('Trip detail')}
-        />
+        {__DEV__ ? (
+          <>
+            <Stack.Screen
+              name="DeveloperSettings"
+              component={DeveloperSettingsScreen}
+              options={settingsSubScreenOptions('Developer tools')}
+            />
+            <Stack.Screen
+              name="ExportTripDays"
+              component={ExportTripDaysScreen}
+              options={settingsSubScreenOptions('Trip days')}
+            />
+            <Stack.Screen
+              name="ExportTripDetail"
+              component={ExportTripDetailScreen}
+              options={settingsSubScreenOptions('Trip detail')}
+            />
+          </>
+        ) : null}
         <Stack.Screen
           name="Diary"
           component={DiaryScreen}
