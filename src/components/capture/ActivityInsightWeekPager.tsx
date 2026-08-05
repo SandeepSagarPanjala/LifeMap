@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import {
   Platform,
   Pressable,
@@ -8,11 +8,12 @@ import {
 } from 'react-native';
 import { addDays, endOfDay, startOfMonth, startOfWeek } from 'date-fns';
 import { TZDate } from '@date-fns/tz';
+import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
 import type { MomentRow } from '@/db/repositories/moments';
 import {
-  formatMetricCompact,
+  formatMetricShortPhrase,
   sumMetricInRange,
   type InsightPeriodMetric,
 } from '@/lib/activities/insight-period-metric';
@@ -58,9 +59,8 @@ export function preferredMonthForWeek(weekStart: Date): Date {
 }
 
 /**
- * Week to show for a visible month.
- * Current month → this week; otherwise the week containing the 1st (clamped
- * so we never go past the current week).
+ * First week of a month (week containing the 1st), clamped to not after the
+ * current week.
  */
 export function preferredWeekForMonth(
   monthDate: Date,
@@ -68,16 +68,15 @@ export function preferredWeekForMonth(
   now: Date = new Date(),
 ): Date {
   const currentWeek = weekStartInAppTz(now);
-  const monthStart = startOfMonth(zoned(monthDate));
-  const currentMonth = startOfMonth(zoned(now));
-  if (monthStart.getTime() === currentMonth.getTime()) {
-    return currentWeek;
-  }
-  const firstWeek = weekStartInAppTz(monthStart);
+  const firstWeek = weekStartInAppTz(startOfMonth(zoned(monthDate)));
   if (firstWeek.getTime() > currentWeek.getTime()) {
     return currentWeek;
   }
   return firstWeek;
+}
+
+function shiftWeek(weekStart: Date, deltaWeeks: number): Date {
+  return weekStartInAppTz(addDays(weekStart, deltaWeeks * 7));
 }
 
 function clampWeekToRange(
@@ -107,9 +106,13 @@ function formatWeekRangeLabel(start: Date, end: Date): string {
   return `${startLabel} – ${endLabel}`;
 }
 
+function isCurrentWeek(weekStart: Date, now: Date): boolean {
+  return weekStart.getTime() === weekStartInAppTz(now).getTime();
+}
+
 /**
- * Static week summary (not swipeable). Driven by `weekAnchorDate` from month
- * swipe / day tap.
+ * Week summary with prev/next arrows (no swipe).
+ * Controlled by `weekAnchorDate`; reports arrow presses via `onVisibleWeekChange`.
  */
 export function ActivityInsightWeekPager({
   moments,
@@ -119,7 +122,7 @@ export function ActivityInsightWeekPager({
   foreground,
   earliestDate,
   weekAnchorDate,
-  onPressValue,
+  onVisibleWeekChange,
 }: {
   moments: readonly MomentRow[];
   metric: InsightPeriodMetric;
@@ -128,8 +131,7 @@ export function ActivityInsightWeekPager({
   foreground: string;
   earliestDate: Date;
   weekAnchorDate: Date;
-  /** Opens period drill-down for this week’s total. */
-  onPressValue?: () => void;
+  onVisibleWeekChange?: (weekStart: Date) => void;
 }) {
   const now = useMemo(() => new Date(), []);
   const currentWeek = useMemo(() => weekStartInAppTz(now), [now]);
@@ -148,46 +150,88 @@ export function ActivityInsightWeekPager({
     [weekStart],
   );
   const value = sumMetricInRange(moments, metric, start, end);
-  const valueLabel = formatMetricCompact(metric, value);
+  const valueLabel = formatMetricShortPhrase(metric, value);
   const rangeLabel = formatWeekRangeLabel(start, end);
+  const title = isCurrentWeek(weekStart, now) ? 'This Week' : 'Week';
 
-  const valueNode = (
-    <RNText
-      style={[
-        styles.value,
-        { color: onPressValue != null ? accent : foreground },
-      ]}
-      allowFontScaling={false}
-      numberOfLines={1}
-    >
-      {valueLabel}
-    </RNText>
-  );
+  const canGoPrev = weekStart.getTime() > earliestWeek.getTime();
+  const canGoNext = weekStart.getTime() < currentWeek.getTime();
+
+  const goPrev = useCallback(() => {
+    if (!canGoPrev) {
+      return;
+    }
+    onVisibleWeekChange?.(
+      clampWeekToRange(shiftWeek(weekStart, -1), earliestWeek, currentWeek),
+    );
+  }, [
+    canGoPrev,
+    currentWeek,
+    earliestWeek,
+    onVisibleWeekChange,
+    weekStart,
+  ]);
+
+  const goNext = useCallback(() => {
+    if (!canGoNext) {
+      return;
+    }
+    onVisibleWeekChange?.(
+      clampWeekToRange(shiftWeek(weekStart, 1), earliestWeek, currentWeek),
+    );
+  }, [
+    canGoNext,
+    currentWeek,
+    earliestWeek,
+    onVisibleWeekChange,
+    weekStart,
+  ]);
 
   return (
     <View style={styles.page}>
-      <View style={styles.labelRow}>
-        <Text style={[styles.label, { color: muted }]}>Week</Text>
-        <Text style={[styles.range, { color: muted }]} numberOfLines={1}>
-          {rangeLabel}
-        </Text>
-      </View>
-      {onPressValue != null ? (
+      <Text style={[styles.label, { color: muted }]}>{title}</Text>
+      <View style={styles.rangeRow}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`Week ${valueLabel}`}
-          onPress={onPressValue}
-          hitSlop={6}
-          style={({ pressed }) => [
-            styles.valueHit,
-            pressed ? { opacity: 0.72 } : null,
-          ]}
+          accessibilityLabel="Previous week"
+          disabled={!canGoPrev}
+          onPress={goPrev}
+          hitSlop={8}
+          style={styles.navBtn}
         >
-          {valueNode}
+          <ChevronLeft
+            size={16}
+            color={accent}
+            strokeWidth={2.5}
+            opacity={canGoPrev ? 1 : 0.35}
+          />
         </Pressable>
-      ) : (
-        valueNode
-      )}
+        <Text style={[styles.range, { color: accent }]} numberOfLines={1}>
+          {rangeLabel}
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Next week"
+          disabled={!canGoNext}
+          onPress={goNext}
+          hitSlop={8}
+          style={styles.navBtn}
+        >
+          <ChevronRight
+            size={16}
+            color={accent}
+            strokeWidth={2.5}
+            opacity={canGoNext ? 1 : 0.35}
+          />
+        </Pressable>
+      </View>
+      <RNText
+        style={[styles.value, { color: foreground }]}
+        allowFontScaling={false}
+        numberOfLines={1}
+      >
+        {valueLabel}
+      </RNText>
     </View>
   );
 }
@@ -197,28 +241,26 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 2,
   },
-  labelRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 6,
-    flexWrap: 'wrap',
-  },
   label: {
-    fontSize: 15,
+    fontSize: 12,
     fontWeight: '700',
+  },
+  rangeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    marginLeft: -4,
+  },
+  navBtn: {
+    padding: 2,
   },
   range: {
-    fontSize: 15,
-    fontWeight: '700',
     flexShrink: 1,
-  },
-  valueHit: {
-    alignSelf: 'flex-start',
-    marginTop: 2,
-    paddingVertical: 2,
+    fontSize: 12,
+    fontWeight: '700',
   },
   value: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
     ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
   },

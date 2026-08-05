@@ -8,7 +8,8 @@ import {
 import { VoiceMemoSheet } from '@/components/map/VoiceMemoSheet';
 import { NativeHalfSheetShell } from '@/components/ui/NativeHalfSheetShell';
 import { useNativeHalfSheetClose } from '@/components/ui/native-half-sheet-context';
-import { markNeedsTodayRefreshOnMapFocus } from '@/lib/foreground-heavy-resume';
+import { useDayMoments } from '@/hooks/use-day-moments';
+import { getTodayDateKey } from '@/lib/day-utils';
 import { VOICE_SHEET_HEIGHT_RATIO } from '@/navigation/voice-capture-screen-options';
 import { useSheetCaptureClose } from '@/screens/sheets/use-sheet-capture-close';
 
@@ -46,6 +47,7 @@ function CaptureVoicePanel({
 
 export function CaptureVoiceScreen() {
   const navigationClose = useSheetCaptureClose();
+  const { refreshDayMoments } = useDayMoments(getTodayDateKey());
   const closeShellRef = useRef<(() => void) | null>(null);
   const savedAndClosingRef = useRef(false);
   const previewSheetOpenRef = useRef(false);
@@ -78,9 +80,9 @@ export function CaptureVoiceScreen() {
   }, []);
 
   const handlePreviewSaved = useCallback(async () => {
-    markNeedsTodayRefreshOnMapFocus();
+    await refreshDayMoments();
     savedAndClosingRef.current = true;
-  }, []);
+  }, [refreshDayMoments]);
 
   const finishClose = useCallback(() => {
     if (previewSheetOpenRef.current) {

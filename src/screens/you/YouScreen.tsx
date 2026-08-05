@@ -111,13 +111,6 @@ function GalleryTabScreen() {
   return <GalleryScreen />;
 }
 
-function InsightsTabScreen() {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const InsightsScreen =
-    require('@/screens/you/InsightsScreen').InsightsScreen as ComponentType;
-  return <InsightsScreen />;
-}
-
 const TABS: {
   name: YouTabName;
   label: string;
@@ -141,7 +134,7 @@ const TABS: {
     name: 'Insights',
     label: 'Insights',
     tabBarIcon: InsightsTabIcon,
-    component: InsightsTabScreen,
+    component: YouTabPlaceholder,
   },
   {
     name: 'Friends',
@@ -163,29 +156,9 @@ const YOU_TAB_NAMES = new Set<string>(TABS.map(tab => tab.name));
 
 /** Survives You screen unmount so reopen restores the last tab. */
 let lastYouTab: YouTabName = 'Profile';
-/** Tab that was focused immediately before navigating to Insights. */
-let youTabBeforeInsights: YouTabName = 'Profile';
 
 function readLastYouTab(): YouTabName {
   return YOU_TAB_NAMES.has(lastYouTab) ? lastYouTab : 'Profile';
-}
-
-function rememberYouTab(next: YouTabName) {
-  if (next === 'Insights' && lastYouTab !== 'Insights') {
-    youTabBeforeInsights = lastYouTab;
-  }
-  lastYouTab = next;
-}
-
-/** Where Insights back should go (never Insights itself). */
-export function getYouTabBeforeInsights(): YouTabName {
-  if (
-    youTabBeforeInsights !== 'Insights' &&
-    YOU_TAB_NAMES.has(youTabBeforeInsights)
-  ) {
-    return youTabBeforeInsights;
-  }
-  return 'Profile';
 }
 
 export function YouScreen() {
@@ -198,39 +171,25 @@ export function YouScreen() {
   );
 
   const renderTabBar = useCallback(
-    (props: ComponentProps<typeof LiquidGlassTabBar>) => {
-      const routeName = props.state.routes[props.state.index]?.name;
-      // Insights has its own category bar + back; hide the You tab bar.
-      if (routeName === 'Insights') {
-        return null;
-      }
-      return <LiquidGlassTabBar {...props} />;
-    },
+    (props: ComponentProps<typeof LiquidGlassTabBar>) => (
+      <LiquidGlassTabBar {...props} />
+    ),
     [],
   );
 
-  /**
-   * `state` does not reliably fire for leaf tab switches. Use focus (after
-   * switch) and Insights `tabPress` (before switch) so back restores the prior
-   * tab — e.g. Achievements → Insights → back → Achievements.
-   */
-  const screenListeners = useCallback(
-    ({ route }: { route: { name: string } }) => ({
-      focus: () => {
-        if (!YOU_TAB_NAMES.has(route.name)) {
-          return;
-        }
-        rememberYouTab(route.name as YouTabName);
-      },
-      tabPress: () => {
-        if (route.name !== 'Insights') {
-          return;
-        }
-        if (lastYouTab !== 'Insights') {
-          youTabBeforeInsights = lastYouTab;
-        }
-      },
-    }),
+  const onTabStateChange = useCallback(
+    (event: {
+      data: { state?: { index: number; routes: { name: string }[] } };
+    }) => {
+      const navState = event.data.state;
+      if (!navState) {
+        return;
+      }
+      const routeName = navState.routes[navState.index]?.name;
+      if (routeName && YOU_TAB_NAMES.has(routeName)) {
+        lastYouTab = routeName as YouTabName;
+      }
+    },
     [],
   );
 
@@ -239,7 +198,7 @@ export function YouScreen() {
       initialRouteName={readLastYouTab()}
       screenOptions={screenOptions}
       tabBar={renderTabBar}
-      screenListeners={screenListeners}
+      screenListeners={{ state: onTabStateChange }}
     >
       {TABS.map(tab => (
         <Tab.Screen

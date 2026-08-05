@@ -35,17 +35,8 @@ const GRID_HORIZONTAL_PAD = 20;
 /**
  * Pick an activity for insights — headerless chrome, content from bottom,
  * title sits above the grid; liquid-glass close at bottom center.
- * Also embeds in You → Insights (no close; selection via callback).
  */
-export function ActivityInsightsScreen({
-  embedded = false,
-  contentBottomInset,
-  onSelectActivity,
-}: {
-  embedded?: boolean;
-  contentBottomInset?: number;
-  onSelectActivity?: (activity: ActivityRow) => void;
-} = {}) {
+export function ActivityInsightsScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const colors = useThemeColors();
@@ -65,7 +56,6 @@ export function ActivityInsightsScreen({
   );
 
   const bottomPad =
-    contentBottomInset ??
     MAP_MOMENTS_BAR_HEIGHT + Math.max(insets.bottom, MAP_MOMENTS_BAR_GAP) + 16;
 
   const load = useCallback(async () => {
@@ -93,13 +83,9 @@ export function ActivityInsightsScreen({
 
   const handleSelect = useCallback(
     (activity: ActivityRow) => {
-      if (onSelectActivity != null) {
-        onSelectActivity(activity);
-        return;
-      }
       navigation.navigate('ActivityInsightDetail', { activityId: activity.id });
     },
-    [navigation, onSelectActivity],
+    [navigation],
   );
 
   const listHeader = useMemo(
@@ -180,26 +166,24 @@ export function ActivityInsightsScreen({
         />
       )}
 
-      {embedded ? null : (
-        <View
-          pointerEvents="box-none"
-          style={[
-            styles.closeWrap,
-            { paddingBottom: Math.max(insets.bottom, MAP_MOMENTS_BAR_GAP) },
-          ]}
+      <View
+        pointerEvents="box-none"
+        style={[
+          styles.closeWrap,
+          { paddingBottom: Math.max(insets.bottom, MAP_MOMENTS_BAR_GAP) },
+        ]}
+      >
+        <MapGlassCircleButton
+          accessibilityLabel={closesToMap ? 'Close' : 'Back'}
+          onPress={handleClose}
         >
-          <MapGlassCircleButton
-            accessibilityLabel={closesToMap ? 'Close' : 'Back'}
-            onPress={handleClose}
-          >
-            {closesToMap ? (
-              <X size={20} color={colors.primary} strokeWidth={2.25} />
-            ) : (
-              <ChevronLeft size={22} color={colors.primary} strokeWidth={2.25} />
-            )}
-          </MapGlassCircleButton>
-        </View>
-      )}
+          {closesToMap ? (
+            <X size={20} color={colors.primary} strokeWidth={2.25} />
+          ) : (
+            <ChevronLeft size={22} color={colors.primary} strokeWidth={2.25} />
+          )}
+        </MapGlassCircleButton>
+      </View>
     </View>
   );
 }

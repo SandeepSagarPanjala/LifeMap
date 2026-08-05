@@ -17,21 +17,15 @@ import { ActivityLogEntryScreen } from '@/screens/capture/ActivityLogEntryScreen
 import { ActivityManageScreen } from '@/screens/capture/ActivityManageScreen';
 import { ActivityInsightsScreen } from '@/screens/capture/ActivityInsightsScreen';
 import { ActivityInsightDetailScreen } from '@/screens/capture/ActivityInsightDetailScreen';
-import { ActivityInsightPeriodDetailScreen } from '@/screens/capture/ActivityInsightPeriodDetailScreen';
-import { MomentInsightPeriodDetailScreen } from '@/screens/capture/MomentInsightPeriodDetailScreen';
 import { CaptureNoteScreen } from '@/screens/capture/CaptureNoteScreen';
 import { CaptureMoodScreen } from '@/screens/capture/CaptureMoodScreen';
 import { CapturePhotoScreen } from '@/screens/capture/CapturePhotoScreen';
-import { CameraInsightsScreen } from '@/screens/capture/CameraInsightsScreen';
 import { DiaryInsightsScreen } from '@/screens/capture/DiaryInsightsScreen';
 import { DiaryScreen } from '@/screens/capture/DiaryScreen';
 import { MoodInsightsScreen } from '@/screens/capture/MoodInsightsScreen';
 import { CaptureVoiceScreen } from '@/screens/capture/CaptureVoiceScreen';
-import { VoiceInsightsScreen } from '@/screens/capture/VoiceInsightsScreen';
 import { MapScreen } from '@/screens/MapScreen';
 import { HistoryDatePickerScreen } from '@/screens/map/HistoryDatePickerScreen';
-import { MapInsightsScreen } from '@/screens/map/MapInsightsScreen';
-import { MapOverviewDrillDownScreen } from '@/screens/map/MapOverviewDrillDownScreen';
 import { MomentPreviewScreen } from '@/screens/moments/MomentPreviewScreen';
 import { SavedPlacesScreen } from '@/screens/map/SavedPlacesScreen';
 import { RestoreBackupScreen } from '@/screens/backup/RestoreBackupScreen';
@@ -122,24 +116,6 @@ export function RootNavigator() {
           name="Map"
           component={MapScreenWithBoundary}
           options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="MapInsights"
-          component={MapInsightsScreen}
-          options={{
-            headerShown: false,
-            presentation: 'card',
-            animation: 'slide_from_right',
-          }}
-        />
-        <Stack.Screen
-          name="MapOverviewDrillDown"
-          component={MapOverviewDrillDownScreen}
-          options={{
-            headerShown: false,
-            presentation: 'card',
-            animation: 'slide_from_right',
-          }}
         />
         <Stack.Screen
           name="RestoreBackup"
@@ -288,27 +264,9 @@ export function RootNavigator() {
           }}
         />
         <Stack.Screen
-          name="CameraInsights"
-          component={CameraInsightsScreen}
-          options={{
-            headerShown: false,
-            presentation: 'card',
-            animation: 'slide_from_right',
-          }}
-        />
-        <Stack.Screen
           name="CaptureVoice"
           component={CaptureVoiceScreen}
           options={voiceCaptureScreenOptions}
-        />
-        <Stack.Screen
-          name="VoiceInsights"
-          component={VoiceInsightsScreen}
-          options={{
-            headerShown: false,
-            presentation: 'card',
-            animation: 'slide_from_right',
-          }}
         />
         <Stack.Screen
           name="CaptureActivity"
@@ -335,24 +293,6 @@ export function RootNavigator() {
         <Stack.Screen
           name="ActivityInsightDetail"
           component={ActivityInsightDetailScreen}
-          options={{
-            headerShown: false,
-            presentation: 'card',
-            animation: 'slide_from_right',
-          }}
-        />
-        <Stack.Screen
-          name="ActivityInsightPeriodDetail"
-          component={ActivityInsightPeriodDetailScreen}
-          options={{
-            headerShown: false,
-            presentation: 'card',
-            animation: 'slide_from_right',
-          }}
-        />
-        <Stack.Screen
-          name="MomentInsightPeriodDetail"
-          component={MomentInsightPeriodDetailScreen}
           options={{
             headerShown: false,
             presentation: 'card',
