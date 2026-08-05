@@ -201,6 +201,24 @@ export function ActivityLogEntryPanel({
     [fields],
   );
 
+  /** Shop name OCR only when the linked text field still exists. */
+  const resolveShopNameFieldId = useCallback(
+    (scanField: ActivityFieldDefinition): string | undefined => {
+      if (
+        scanField.fillShopNameField &&
+        fields.some(
+          field =>
+            field.id === scanField.fillShopNameField &&
+            field.type === 'text',
+        )
+      ) {
+        return scanField.fillShopNameField;
+      }
+      return undefined;
+    },
+    [fields],
+  );
+
   const applyMergedBillFields = useCallback(
     (
       target: ActivityFieldDefinition,
@@ -209,7 +227,12 @@ export function ActivityLogEntryPanel({
     ) => {
       const amountFieldId = resolveAmountFieldId(target);
       const itemsFieldId = resolveItemsFieldId(target);
-      if (amountFieldId == null && itemsFieldId == null) {
+      const shopNameFieldId = resolveShopNameFieldId(target);
+      if (
+        amountFieldId == null &&
+        itemsFieldId == null &&
+        shopNameFieldId == null
+      ) {
         return;
       }
 
@@ -244,8 +267,25 @@ export function ActivityLogEntryPanel({
           setFieldValue(itemsFieldId, undefined);
         }
       }
+
+      if (shopNameFieldId != null) {
+        if (merged.shopName != null) {
+          setFieldValue(shopNameFieldId, {
+            type: 'text',
+            value: merged.shopName,
+          });
+        } else if (uris.length === 0) {
+          // Bills removed — clear auto-filled shop name. Leave manual text alone on OCR miss.
+          setFieldValue(shopNameFieldId, undefined);
+        }
+      }
     },
-    [resolveAmountFieldId, resolveItemsFieldId, setFieldValue],
+    [
+      resolveAmountFieldId,
+      resolveItemsFieldId,
+      resolveShopNameFieldId,
+      setFieldValue,
+    ],
   );
 
   const startSceneTagging = useCallback(
@@ -364,9 +404,11 @@ export function ActivityLogEntryPanel({
 
         const amountFieldId = resolveAmountFieldId(target);
         const itemsFieldId = resolveItemsFieldId(target);
+        const shopNameFieldId = resolveShopNameFieldId(target);
         const wantAmount = amountFieldId != null;
         const wantItems = itemsFieldId != null;
-        if (!wantAmount && !wantItems) {
+        const wantShopName = shopNameFieldId != null;
+        if (!wantAmount && !wantItems && !wantShopName) {
           return;
         }
 
@@ -374,6 +416,7 @@ export function ActivityLogEntryPanel({
         const parsed = await extractBillFieldsFromImage(absolute, {
           wantAmount,
           wantItems,
+          wantShopName,
         });
         if (!mountedRef.current) {
           return;
@@ -404,6 +447,7 @@ export function ActivityLogEntryPanel({
       applyMergedBillFields,
       resolveAmountFieldId,
       resolveItemsFieldId,
+      resolveShopNameFieldId,
       setFieldValue,
       startSceneTagging,
     ],

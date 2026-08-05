@@ -27,7 +27,6 @@ function trip(overrides: Partial<TripRow> = {}): TripRow {
     poiLabel: null,
     poiCategory: null,
     inferred: false,
-    selectedCandidateIndex: null,
     detectionVersion: 10,
     closedAt: new Date('2026-07-07T15:00:00.000Z'),
     momentRefs: [],
@@ -92,6 +91,35 @@ describe('export-trip-view', () => {
       fromLabel: 'Home',
       toLabel: 'Tesla Supercharger',
       routeTitle: 'Home → Tesla Supercharger',
+    });
+  });
+
+  it('does not inherit stay labels across a missing segment', () => {
+    const dayTrips: TripRow[] = [
+      trip({
+        id: 1,
+        kind: 'stay',
+        segmentOrder: 1,
+        placeLabel: 'Home',
+        placeKind: 'saved',
+        placeId: 2,
+      }),
+      trip({ id: 2, kind: 'missing', segmentOrder: 2, placeLabel: null }),
+      trip({ id: 3, kind: 'travel', segmentOrder: 3, placeLabel: null }),
+      trip({
+        id: 4,
+        kind: 'stay',
+        segmentOrder: 4,
+        placeKind: 'cache',
+        placeLabel: 'Windhaven',
+        poiLabel: 'Windhaven Surgery Center',
+        poiId: 9,
+      }),
+    ];
+    expect(driveRouteLabelsFromDayTrips(dayTrips, 2)).toEqual({
+      fromLabel: null,
+      toLabel: 'Windhaven Surgery Center',
+      routeTitle: 'Windhaven Surgery Center',
     });
   });
 });

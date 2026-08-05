@@ -189,6 +189,15 @@ export async function migrationAlreadyApplied(
       return columnExists(sqlite, 'activities', 'intent');
     case '0043_moments_activity_id_idx':
       return indexExists(sqlite, 'moments_activity_id_idx');
+    case '0044_schema_trim':
+      return (
+        !(await tableExists(sqlite, 'tracking_events')) &&
+        !(await columnExists(sqlite, 'moments', 'share_visibility')) &&
+        !(await columnExists(sqlite, 'trips', 'selected_candidate_index')) &&
+        !(await columnExists(sqlite, 'location_day_summaries', 'point_count')) &&
+        !(await columnExists(sqlite, 'materialized_days', 'point_count')) &&
+        !(await indexExists(sqlite, 'location_points_timestamp_idx'))
+      );
     default:
       return false;
   }
@@ -555,12 +564,6 @@ export async function ensureVisitLabelOverrideAnchorColumns(
   if (!(await tableExists(sqlite, 'visit_label_overrides'))) {
     return;
   }
-  if (!(await columnExists(sqlite, 'visit_label_overrides', 'end_at_ms'))) {
-    await executeMigrationStatement(
-      sqlite,
-      `ALTER TABLE visit_label_overrides ADD COLUMN end_at_ms integer`,
-    );
-  }
   if (!(await columnExists(sqlite, 'visit_label_overrides', 'anchor_lat'))) {
     await executeMigrationStatement(
       sqlite,
@@ -599,10 +602,6 @@ export async function ensureMomentsMoodColumns(sqlite: DB): Promise<void> {
   }
   const columns: Array<{ name: string; ddl: string }> = [
     { name: 'title', ddl: 'ALTER TABLE moments ADD COLUMN title text' },
-    {
-      name: 'mood_score',
-      ddl: 'ALTER TABLE moments ADD COLUMN mood_score real',
-    },
     {
       name: 'mood_label',
       ddl: 'ALTER TABLE moments ADD COLUMN mood_label text',
@@ -718,9 +717,7 @@ const MOMENTS_COLUMNS_WITHOUT_LOCATION = [
   'tags_json',
   'text_body',
   'caption',
-  'place_label',
   'title',
-  'mood_score',
   'mood_label',
   'mood_reason',
   'mood_variant',
@@ -728,8 +725,6 @@ const MOMENTS_COLUMNS_WITHOUT_LOCATION = [
   'content_bytes',
   'source_bytes',
   'content_format',
-  'share_visibility',
-  'content_sync_state',
   'activity_id',
   'activity_emoji',
   'activity_label',
@@ -779,9 +774,7 @@ export async function rebuildMomentsTableWithoutLocationColumns(
         tags_json text,
         text_body text,
         caption text,
-        place_label text,
         title text,
-        mood_score real,
         mood_label text,
         mood_reason text,
         mood_variant text,
@@ -790,8 +783,6 @@ export async function rebuildMomentsTableWithoutLocationColumns(
         content_bytes integer,
         source_bytes integer,
         content_format text,
-        share_visibility text DEFAULT 'private' NOT NULL,
-        content_sync_state text DEFAULT 'local_only' NOT NULL,
         activity_id integer,
         activity_emoji text,
         activity_label text
@@ -888,6 +879,22 @@ function isDuplicateColumnError(error: unknown): boolean {
   return /duplicate column name/i.test(message);
 }
 
+/** Re-running DROP after a partial apply must not abort the whole trim. */
+function isBenignDropMissingError(
+  error: unknown,
+  statement: string,
+): boolean {
+  const sql = statement.trim().toUpperCase();
+  const isDrop =
+    sql.startsWith('DROP ') ||
+    /^ALTER\s+TABLE\b[\s\S]*\bDROP\s+COLUMN\b/.test(sql);
+  if (!isDrop) {
+    return false;
+  }
+  const message = error instanceof Error ? error.message : String(error);
+  return /no such (column|index|table)/i.test(message);
+}
+
 async function executeMigrationStatement(
   executor: SqlExecutor,
   statement: string,
@@ -896,6 +903,9 @@ async function executeMigrationStatement(
     await executor.execute(statement);
   } catch (error) {
     if (isDuplicateColumnError(error)) {
+      return;
+    }
+    if (isBenignDropMissingError(error, statement)) {
       return;
     }
     throw error;

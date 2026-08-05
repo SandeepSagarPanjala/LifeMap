@@ -76,7 +76,7 @@ const PICKER_OPTIONS: {
   {
     type: 'bill',
     label: 'Bill',
-    hint: 'Photo of a bill + amount + items',
+    hint: 'Photo of a bill + shop name + amount + items',
     Icon: Receipt,
   },
   {
@@ -255,6 +255,7 @@ export const ActivityFieldsEditor = forwardRef<
       if (removed.type === 'scan') {
         const moneyId = removed.fillField;
         const itemsId = removed.fillItemsField;
+        const shopNameId = removed.fillShopNameField;
         if (moneyId) {
           const stillLinked = next.some(
             field =>
@@ -277,9 +278,21 @@ export const ActivityFieldsEditor = forwardRef<
             next = next.filter(field => field.id !== itemsId);
           }
         }
+        if (shopNameId) {
+          const stillLinked = next.some(
+            field =>
+              field.type === 'scan' &&
+              field.fillShopNameField === shopNameId &&
+              field.id !== removed.id,
+          );
+          if (!stillLinked) {
+            next = next.filter(field => field.id !== shopNameId);
+          }
+        }
       }
       if (removed.type === 'money') {
         const linkedItemIds = new Set<string>();
+        const linkedShopNameIds = new Set<string>();
         next = next.map(field => {
           if (field.fillField !== removed.id) {
             return field;
@@ -287,11 +300,15 @@ export const ActivityFieldsEditor = forwardRef<
           if (field.fillItemsField) {
             linkedItemIds.add(field.fillItemsField);
           }
+          if (field.fillShopNameField) {
+            linkedShopNameIds.add(field.fillShopNameField);
+          }
           return {
             ...field,
             extract: undefined,
             fillField: undefined,
             fillItemsField: undefined,
+            fillShopNameField: undefined,
           };
         });
         for (const itemsId of linkedItemIds) {
@@ -303,11 +320,28 @@ export const ActivityFieldsEditor = forwardRef<
             next = next.filter(field => field.id !== itemsId);
           }
         }
+        for (const shopNameId of linkedShopNameIds) {
+          const stillLinked = next.some(
+            field =>
+              field.type === 'scan' &&
+              field.fillShopNameField === shopNameId,
+          );
+          if (!stillLinked) {
+            next = next.filter(field => field.id !== shopNameId);
+          }
+        }
       }
       if (removed.type === 'list') {
         next = next.map(field =>
           field.fillItemsField === removed.id
             ? { ...field, fillItemsField: undefined }
+            : field,
+        );
+      }
+      if (removed.type === 'text') {
+        next = next.map(field =>
+          field.fillShopNameField === removed.id
+            ? { ...field, fillShopNameField: undefined }
             : field,
         );
       }
@@ -329,10 +363,17 @@ export const ActivityFieldsEditor = forwardRef<
         );
         if (linkedBill != null) {
           const hasItems = Boolean(linkedBill.fillItemsField);
+          const hasShopName = Boolean(linkedBill.fillShopNameField);
+          const extras = [
+            hasShopName ? 'Shop name' : null,
+            hasItems ? 'Items list' : null,
+          ]
+            .filter(Boolean)
+            .join(' and ');
           Alert.alert(
             'Remove Amount?',
-            hasItems
-              ? 'Bill scans use Amount to auto-fill the paid total from a receipt photo. Removing it also removes the linked Items list, so scans won’t extract a total or line items anymore.'
+            extras
+              ? `Bill scans use Amount to auto-fill the paid total from a receipt photo. Removing it also removes the linked ${extras}, so scans won’t extract that bill data anymore.`
               : 'Bill scans use Amount to auto-fill the paid total from a receipt photo. Without it, scanning a bill won’t read the total anymore.',
             [
               { text: 'Cancel', style: 'cancel' },
@@ -355,7 +396,29 @@ export const ActivityFieldsEditor = forwardRef<
         if (linkedBill != null) {
           Alert.alert(
             'Remove Items?',
-            'Bill scans use Items to auto-fill sold line items from a receipt photo. Without it, scanning a bill won’t extract items anymore (the total can still fill Amount if that field remains).',
+            'Bill scans use Items to auto-fill sold line items from a receipt photo. Without it, scanning a bill won’t extract items anymore (the total and shop name can still fill if those fields remain).',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Remove',
+                style: 'destructive',
+                onPress: () => removeField(index),
+              },
+            ],
+          );
+          return;
+        }
+      }
+
+      if (removed.type === 'text') {
+        const linkedBill = fields.find(
+          field =>
+            field.type === 'scan' && field.fillShopNameField === removed.id,
+        );
+        if (linkedBill != null) {
+          Alert.alert(
+            'Remove Shop name?',
+            'Bill scans use Shop name to auto-fill the store or restaurant title from a receipt photo. Without it, scanning a bill won’t extract the shop name anymore (the total and items can still fill if those fields remain).',
             [
               { text: 'Cancel', style: 'cancel' },
               {
@@ -376,8 +439,8 @@ export const ActivityFieldsEditor = forwardRef<
 
   const addControl = useCallback(
     (optionType: ActivityFieldType | 'bill') => {
-      // Bill ships scan + amount + optional items list.
-      const requiredSlots = optionType === 'bill' ? 3 : 1;
+      // Bill ships scan + shop name + amount + optional items list.
+      const requiredSlots = optionType === 'bill' ? 4 : 1;
       if (fields.length + requiredSlots > MAX_FIELDS) {
         Alert.alert(
           'Field limit reached',
@@ -406,6 +469,8 @@ export const ActivityFieldsEditor = forwardRef<
       }
       const used = new Set(fields.map(field => field.id));
       if (optionType === 'bill') {
+        const shopNameId = slugifyFieldId('shop_name', used);
+        used.add(shopNameId);
         const amountId = slugifyFieldId('amount', used);
         used.add(amountId);
         const itemsId = slugifyFieldId('items', used);
@@ -421,6 +486,13 @@ export const ActivityFieldsEditor = forwardRef<
             extract: 'amount',
             fillField: amountId,
             fillItemsField: itemsId,
+            fillShopNameField: shopNameId,
+          },
+          {
+            id: shopNameId,
+            type: 'text',
+            label: 'Shop name',
+            required: false,
           },
           {
             id: itemsId,
@@ -467,6 +539,10 @@ export const ActivityFieldsEditor = forwardRef<
         item.type === 'scan' && item.fillItemsField
           ? fields.find(field => field.id === item.fillItemsField)
           : null;
+      const linkedShopName =
+        item.type === 'scan' && item.fillShopNameField
+          ? fields.find(field => field.id === item.fillShopNameField)
+          : null;
       const filledFromBill =
         (item.type === 'money' &&
           fields.some(
@@ -476,6 +552,11 @@ export const ActivityFieldsEditor = forwardRef<
           fields.some(
             field =>
               field.type === 'scan' && field.fillItemsField === item.id,
+          )) ||
+        (item.type === 'text' &&
+          fields.some(
+            field =>
+              field.type === 'scan' && field.fillShopNameField === item.id,
           ));
 
       return (
@@ -561,10 +642,13 @@ export const ActivityFieldsEditor = forwardRef<
 
           {item.type === 'scan' ? (
             <Text style={styles.linkedHint}>
-              {linkedMoney || linkedItems
+              {linkedMoney || linkedItems || linkedShopName
                 ? [
+                    linkedShopName
+                      ? `Reads the shop into “${linkedShopName.label}”`
+                      : null,
                     linkedMoney
-                      ? `Reads the total into “${linkedMoney.label}”`
+                      ? `total into “${linkedMoney.label}”`
                       : null,
                     linkedItems
                       ? `items into “${linkedItems.label}”`
@@ -572,7 +656,7 @@ export const ActivityFieldsEditor = forwardRef<
                   ]
                     .filter(Boolean)
                     .join(', and ') + '.'
-                : 'Add Amount / Items fields to save bill data.'}
+                : 'Add Shop name / Amount / Items fields to save bill data.'}
             </Text>
           ) : null}
 

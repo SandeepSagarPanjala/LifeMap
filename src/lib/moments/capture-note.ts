@@ -24,7 +24,6 @@ export type CaptureNoteInput = {
   finishedAt: Date;
   title: string;
   textBody: string;
-  moodScore?: number | null;
   moodLabel?: string | null;
   moodReason?: string | null;
   moodVariant?: string | null;
@@ -143,7 +142,6 @@ export async function saveNoteMoment(
     finishedAt: input.finishedAt,
     title: input.title.trim() || null,
     textBody: input.textBody.trim() || null,
-    moodScore: null,
     moodLabel,
     moodReason,
     moodVariant,

@@ -66,7 +66,7 @@ import {
   buildSleepTimelineModel,
   timelineLeftPct,
 } from '@/lib/healthkit/sleep-timeline';
-import { syncHealthKitOnDemand } from '@/lib/healthkit/sync';
+import { syncHealthKit } from '@/lib/healthkit/sync';
 import { APP_TIMEZONE } from '@/lib/timezone';
 import type { RootStackParamList } from '@/navigation/types';
 import { useClosesToMap } from '@/navigation/use-closes-to-map';
@@ -248,14 +248,14 @@ export function SleepDetailScreen() {
     };
   }, [loadChart]);
 
-  // On-demand sync only on focus/blur — not when the chart range changes.
+  // Screen opens first (loading spinner). Then HealthKit sync, then chart.
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
       setSyncing(true);
       void (async () => {
         try {
-          await syncHealthKitOnDemand();
+          await syncHealthKit();
         } catch {
           // Detail screen still shows last cached rollups.
         }

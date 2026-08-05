@@ -223,6 +223,9 @@ export function originVisitNumberForTravel(
   }
   for (let i = travelIndex - 1; i >= 0; i -= 1) {
     const entry = entries[i]!;
+    if (entry.kind === 'gap') {
+      return null;
+    }
     if (entry.kind === 'stay') {
       return visitByStayId.get(entry.id) ?? null;
     }

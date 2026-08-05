@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -35,13 +35,24 @@ function HistoryDatePickerPanelHost({
 
 export function HistoryDatePickerScreen({ route }: Props) {
   const navigationClose = useSheetCaptureClose();
+  const [shellClosed, setShellClosed] = useState(false);
   const selectedDateKey =
     route.params?.selectedDateKey ?? getTodayDateKey();
 
+  const finishClose = useCallback(() => {
+    // Drop the transparent modal's hit target before/while popping so a
+    // canceled animation cannot leave an invisible full-screen blocker.
+    setShellClosed(true);
+    navigationClose();
+  }, [navigationClose]);
+
   return (
-    <View style={styles.root}>
+    <View
+      style={styles.root}
+      pointerEvents={shellClosed ? 'none' : 'box-none'}
+    >
       <NativeHalfSheetShell
-        onClose={navigationClose}
+        onClose={finishClose}
         heightRatio={HISTORY_DATE_PICKER_HEIGHT_RATIO}
       >
         <HistoryDatePickerPanelHost selectedDateKey={selectedDateKey} />

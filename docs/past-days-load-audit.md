@@ -53,20 +53,9 @@ Code: `use-map-screen-controller.ts` (`historyDayLoaded`, `showDayJourney`, `his
 
 ---
 
-### 2. Fingerprint check on every cache miss (moderate DB tax)
+### 2. ~~Fingerprint check on every cache miss~~ (removed)
 
-On cache miss, `syncHistoryForDay` always runs `getDayHistoryFingerprint` before loading:
-
-- GPS day COUNT (`getLocationDayFingerprint`)
-- Moments day fingerprint
-- `materialized_days` row
-- `countTripsForDay`
-- `countTripPointsForDay`
-- Geometry settings fingerprint
-
-Roughly **6 SQLite round-trips** to validate cache — cheap vs full detection, but not free. Runs whenever a day falls out of the 2-slot RAM cache.
-
-Code: `src/lib/history-fingerprint.ts`, `src/hooks/use-history-data.ts` (`syncHistoryForDay`).
+`getDayHistoryFingerprint` / `src/lib/history-fingerprint.ts` was unused and deleted in the schema trim. History cache validity no longer uses that path. Overnight continuity uses `excluded_cross_midnight_from_ms` instead.
 
 ---
 

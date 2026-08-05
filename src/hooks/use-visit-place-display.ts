@@ -291,7 +291,6 @@ async function persistVisitPlacePoiSelection(args: {
   await upsertVisitLabelOverride({
     dateKey: args.dateKey,
     startAtMs: args.stay.startAt.getTime(),
-    endAtMs: args.stay.endAt.getTime(),
     anchorLat: anchor?.lat ?? null,
     anchorLng: anchor?.lng ?? null,
     poiId: args.poiId,

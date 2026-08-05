@@ -7,14 +7,12 @@ import {
   listDateKeysWithLocationDataBefore,
   type LocationPointRow,
 } from '@/db/repositories/location-days';
-import { deleteMotionLocationPoints } from '@/db/repositories/location-points';
 import {
   deleteAllMaterializedDays,
   getMaterializedDay,
   upsertMaterializedDay,
 } from '@/db/repositories/materialized-days';
 import {
-  dayHasStoredTripGeometry,
   deleteAllTripPoints,
   listTripPointsForDay,
   replaceTripPersistPoints,
@@ -394,26 +392,6 @@ function tripCentroidForPersist(
   return travelCentroidFromRoute(trip.points);
 }
 
-async function pastDayCanLoadFromStore(
-  dateKey: string,
-  tripRows: readonly TripRow[],
-): Promise<boolean> {
-  if (tripRows.length === 0) {
-    return false;
-  }
-  const [pointsByTripId, materializedDay, geometryFingerprint] =
-    await Promise.all([
-      listTripPointsForDay(dateKey),
-      getMaterializedDay(dateKey),
-      getGeometryPersistFingerprint(),
-    ]);
-  return (
-    materializedDay?.detectionVersion === TRIP_DETECTION_VERSION &&
-    materializedDay.geometryFingerprint === geometryFingerprint &&
-    dayHasStoredTripGeometry(tripRows, pointsByTripId)
-  );
-}
-
 /**
  * Past day materialization: 1st-algorithm detection on GPS, then persist
  * trip_points with canonical stay geometry and travel geometry when enabled
@@ -423,7 +401,7 @@ async function materializePastDayFromGps(
   dateKey: string,
   detectionConfig: TripDetectionConfig,
 ): Promise<number> {
-  const { entries, dayPointCount } = await buildExplorerDayTimelineFromGps(
+  const { entries } = await buildExplorerDayTimelineFromGps(
     dateKey,
     detectionConfig,
   );
@@ -438,7 +416,6 @@ async function materializePastDayFromGps(
     {
       fullReplace: true,
       forceComplete: true,
-      pointCount: dayPointCount,
       excludedCrossMidnightFromMs,
     },
   );
@@ -548,6 +525,9 @@ export async function loadHistoryFromStoredTrips(
     entries = hydrateTravelRoutesFromDayPoints(entries, dayGpsPoints);
   }
 
+  const { end: dayEnd } = getDayRange(dateKey);
+  const dayMoments = await getMomentsForDay(dayStart, dayEnd);
+
   return {
     dateKey,
     points:
@@ -560,6 +540,7 @@ export async function loadHistoryFromStoredTrips(
           ),
     entries,
     range: { startAt: dayStart, endAt: rangeEnd },
+    moments: dayMoments,
   };
 }
 
@@ -576,7 +557,7 @@ export async function persistTodaySealableSegments(
   detectionConfig: TripDetectionConfig,
   referenceNow: Date = new Date(),
 ): Promise<number> {
-  const { entries, dayPointCount } = await buildExplorerDayTimelineFromGps(
+  const { entries } = await buildExplorerDayTimelineFromGps(
     dateKey,
     detectionConfig,
   );
@@ -588,9 +569,7 @@ export async function persistTodaySealableSegments(
   if (sealable.length === 0) {
     return 0;
   }
-  return persistClosedTripsIncremental(dateKey, detectionConfig, sealable, {
-    pointCount: dayPointCount,
-  });
+  return persistClosedTripsIncremental(dateKey, detectionConfig, sealable, {});
 }
 
 /** Today: trips-first sync with incremental extend / tail merge. */
@@ -621,6 +600,7 @@ function emptyHistoryForDateKey(dateKey: string): HistoryData {
     points: [],
     entries: [],
     range: { startAt: dayStart, endAt: endOfDay(dayStart) },
+    moments: [],
   };
 }
 
@@ -638,32 +618,17 @@ export async function loadHistoryForSelectedDay(
     });
   }
 
-  if (!options?.force && !isToday) {
-    let [tripRows, materializedDay] = await Promise.all([
-      listTripsForDay(dateKey),
-      getMaterializedDay(dateKey),
-    ]);
-
-    const detectionOutdated =
-      materializedDay != null &&
-      materializedDay.detectionVersion < TRIP_DETECTION_VERSION;
-
-    // Do not purge trips before rematerializing — persistClosedTripsIncremental
-    // needs existing stay POI picks to reattach when start/end (eventKey) shift.
-    if (
-      !detectionOutdated &&
-      tripRows.length > 0
-    ) {
-      const canLoadFromStore = await pastDayCanLoadFromStore(dateKey, tripRows);
-      if (canLoadFromStore) {
-        return loadHistoryFromStoredTrips(
-          dateKey,
-          tripRows,
-          undefined,
-          detectionConfig,
-        );
-      }
-    }
+  // Past day browse: always use sealed trips when present.
+  // (Do not rematerialize from GPS just because force/fingerprint/version
+  // changed — that was wiping the map UI while trips still existed.)
+  const tripRows = await listTripsForDay(dateKey);
+  if (tripRows.length > 0) {
+    return loadHistoryFromStoredTrips(
+      dateKey,
+      tripRows,
+      undefined,
+      detectionConfig,
+    );
   }
 
   if (isStaleHistoryLoad(options?.loadGeneration)) {
@@ -710,7 +675,6 @@ export async function enqueueSealForPreviousDayIfNeeded(): Promise<void> {
 export type PersistClosedTripsOptions = {
   fullReplace?: boolean;
   forceComplete?: boolean;
-  pointCount?: number;
   excludedCrossMidnightFromMs?: number | null;
 };
 
@@ -856,8 +820,6 @@ export async function persistClosedTripsIncremental(
     upserted > 0 || options.fullReplace
       ? await listTripsForDay(dateKey)
       : existingTrips;
-  const tripCount = finalTripRows.length;
-  const pointCount = options.pointCount ?? 0;
   const materializedDay = await getMaterializedDay(dateKey);
   const sealedMs = sealedThroughMs(finalTripRows);
   const status = options.forceComplete
@@ -871,8 +833,6 @@ export async function persistClosedTripsIncremental(
   await upsertMaterializedDay(dateKey, {
     status,
     detectionVersion: TRIP_DETECTION_VERSION,
-    tripCount,
-    pointCount,
     geometryFingerprint,
     excludedCrossMidnightFromMs:
       options.forceComplete && !isToday
@@ -904,6 +864,9 @@ export async function sealYesterdayIfNeeded(): Promise<void> {
 
   const detectionConfig = getDefaultTripDetectionConfig();
   await materializePastDayFromGps(yesterdayKey, detectionConfig);
+  // Don't block today display on MapKit — places run after seal.
+  const { runPlaceCacheForDate } = await import('@/lib/place-cache-backlog');
+  void runPlaceCacheForDate(yesterdayKey).catch(() => undefined);
 }
 
 export async function drainMaterializationQueue(
@@ -979,18 +942,6 @@ export type ResetMaterializedTripHistoryResult = {
   queueJobsDeleted: number;
 };
 
-/** Drop legacy motion rows and rebuild cached visit/drive summaries from GPS. */
-export async function purgeLegacyMotionLocationData(): Promise<
-  ResetMaterializedTripHistoryResult & { motionPointsDeleted: number }
-> {
-  const motionPointsDeleted = await deleteMotionLocationPoints();
-  const reset = await resetMaterializedTripHistory();
-  return {
-    motionPointsDeleted,
-    ...reset,
-  };
-}
-
 /** Drop cached visit/drive rows so history rebuilds from GPS. */
 export async function resetMaterializedTripHistory(): Promise<ResetMaterializedTripHistoryResult> {
   const [tripsDeleted, materializedDaysDeleted] = await Promise.all([
@@ -1045,7 +996,7 @@ export async function rebuildTodayTrips(
   referenceNow: Date = new Date(),
 ): Promise<number> {
   const dateKey = getTodayDateKey();
-  const { entries, dayPointCount } = await buildExplorerDayTimelineFromGps(
+  const { entries } = await buildExplorerDayTimelineFromGps(
     dateKey,
     detectionConfig,
   );
@@ -1070,7 +1021,6 @@ export async function rebuildTodayTrips(
     sealable,
     {
       fullReplace: true,
-      pointCount: dayPointCount,
     },
   );
   return tripsSaved;

@@ -2,6 +2,24 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 export type RootStackParamList = {
   Map: { widgetAction?: string; focusPlaceId?: number } | undefined;
+  MapInsights: undefined;
+  MapOverviewDrillDown: {
+    kind:
+      | 'home_stays_all'
+      | 'home_stays_full_day'
+      | 'home_stay_longest'
+      | 'home_stay_shortest'
+      | 'work_stays_all'
+      | 'work_stay_longest'
+      | 'work_stay_shortest'
+      | 'work_commute_fastest'
+      | 'work_commute_slowest'
+      | 'work_commute_speed_min'
+      | 'work_commute_speed_max'
+      | 'work_weekday';
+    title: string;
+    weekday?: number;
+  };
   Settings: undefined;
   ThemeSettings: undefined;
   DistanceUnitSettings: undefined;
@@ -25,11 +43,34 @@ export type RootStackParamList = {
   CaptureMood: undefined;
   MoodInsights: undefined;
   CapturePhoto: undefined;
+  CameraInsights: undefined;
   CaptureVoice: undefined;
+  VoiceInsights: undefined;
   CaptureActivity: undefined;
   ActivityManage: { openCreate?: boolean } | undefined;
   ActivityInsights: undefined;
   ActivityInsightDetail: { activityId: number };
+  ActivityInsightPeriodDetail: {
+    activityId: number;
+    period: 'today' | 'week' | 'month' | 'year';
+    periodTitle: string;
+    startMs: number;
+    endMs: number;
+    metric:
+      | { kind: 'logs' }
+      | {
+          kind: 'money' | 'number' | 'duration';
+          fieldId: string;
+          label: string;
+        };
+  };
+  MomentInsightPeriodDetail: {
+    momentKind: 'mood' | 'note' | 'voice' | 'photo' | 'video';
+    period: 'today' | 'week' | 'month' | 'year';
+    periodTitle: string;
+    startMs: number;
+    endMs: number;
+  };
   ActivityForm:
     | { kind: 'create' }
     | { kind: 'create-first' }

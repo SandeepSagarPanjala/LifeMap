@@ -9,21 +9,27 @@ import { getLocationService } from '@/location/transistorsoft-location-service';
 import { ensureHistoryCalendarBounds } from '@/lib/history-calendar-bounds';
 import { preloadTodayHistory } from '@/lib/history-preload';
 import { startBackgroundWorkCycle } from '@/lib/background-work-coordinator';
-import {
-  beginTodayOpenCycle,
-} from '@/lib/today-sync';
+import { beginTodayOpenCycle } from '@/lib/today-sync';
 import { sealYesterdayIfNeeded } from '@/lib/trip-materialization';
-import {
-  refreshTodayOnForeground,
-  setTodayRefreshAppForeground,
-} from '@/lib/today-refresh-scheduler';
+import { setTodayRefreshAppForeground } from '@/lib/today-refresh-scheduler';
 import { runWhenIdle, yieldToEventLoop } from '@/lib/run-when-idle';
 import { useAppStore } from '@/stores/app-store';
 import { bootstrapNotifications } from '@/lib/notifications/bootstrap';
 import { bootstrapHealthKit } from '@/lib/healthkit/sync';
-
-/** Defer place-lookup catch-up — not on the critical map path. */
-const DEFER_PLACE_LOOKUP_MS = 2_000;
+import {
+  clearHeavyResumeMapFocusSuppress,
+  flushHeavyForegroundResumeIfDeferred,
+  hasHeavyForegroundResumeDeferred,
+  markHeavyForegroundResumeDeferred,
+  startOpenGrace,
+  cancelOpenGrace,
+} from '@/lib/foreground-heavy-resume';
+import {
+  dispatchWidgetAction,
+  isRootMapScreenActive,
+  isWidgetCaptureAction,
+  takePendingWidgetAction,
+} from '@/lib/widget/widget-deep-link';
 
 /** Let the map paint cached today before drain / tail merge on foreground resume. */
 const DEFER_FOREGROUND_RESUME_MS = 100;
@@ -84,24 +90,27 @@ export function AppBootstrap({ children }: AppBootstrapProps) {
     }
     coldStartPipelineStartedRef.current = true;
 
-    let cancelBackgroundWork: (() => void) | undefined;
-
-    void runTrackingBootstrap()
-      .then(async () => {
+    void (async () => {
+      try {
+        await runTrackingBootstrap();
         await yieldToEventLoop();
+
         try {
           await bootstrapNotifications();
         } catch (error) {
           logPipelineFailure('notifications_bootstrap', error);
         }
+
         try {
           await bootstrapHealthKit();
         } catch (error) {
           logPipelineFailure('healthkit_bootstrap', error);
         }
+
         beginTodayOpenCycle();
         await yieldToEventLoop();
         await ensureHistoryCalendarBounds();
+
         // Yesterday must be sealed before today's tail detect — lookback uses
         // excludedCrossMidnightFromMs from yesterday's materialized day.
         try {
@@ -110,18 +119,22 @@ export function AppBootstrap({ children }: AppBootstrapProps) {
           logPipelineFailure('seal_yesterday', error);
         }
         await preloadTodayHistory();
-      })
-      .then(() => {
-        const backgroundWork = runWhenIdle(() => {
-          startBackgroundWorkCycle();
-        }, DEFER_PLACE_LOOKUP_MS);
-        cancelBackgroundWork = backgroundWork.cancel;
-      })
-      .catch(error => {
-        logPipelineFailure('cold_start_pipeline', error);
-      });
 
-    return () => cancelBackgroundWork?.();
+        startOpenGrace({
+          notifyBackup: false,
+          onExpire: () => {
+            if (hasHeavyForegroundResumeDeferred()) {
+              return;
+            }
+            startBackgroundWorkCycle();
+          },
+        });
+      } catch (error) {
+        logPipelineFailure('cold_start_pipeline', error);
+      }
+    })();
+
+    return () => cancelOpenGrace();
   }, [hasCompletedPrivacyOnboarding, runTrackingBootstrap]);
 
   useEffect(() => {
@@ -134,13 +147,18 @@ export function AppBootstrap({ children }: AppBootstrapProps) {
       if (nextState === currentState) {
         return;
       }
+      const previousState = currentState;
       currentState = nextState;
 
       setTodayRefreshAppForeground(nextState === 'active');
 
       if (hasCompletedPrivacyOnboarding) {
         const service = getLocationService();
+        /* FOREGROUND */
         if (nextState === 'active') {
+          const fromBackground =
+            previousState === 'background' || previousState === 'inactive';
+
           if (!trackingBootstrapSucceededRef.current) {
             void runTrackingBootstrap();
           }
@@ -149,24 +167,60 @@ export function AppBootstrap({ children }: AppBootstrapProps) {
           const resumeWork = runWhenIdle(() => {
             void (async () => {
               try {
-                await yieldToEventLoop();
-                try {
-                  await service.drainNativeQueue();
-                } catch {
-                  // Best-effort — persist pipeline may still have rows in SQLite.
+                const widgetAction = await takePendingWidgetAction();
+
+                if (isWidgetCaptureAction(widgetAction)) {
+                  markHeavyForegroundResumeDeferred({
+                    notifyBackup: fromBackground,
+                  });
+                  dispatchWidgetAction(widgetAction);
+                  return;
                 }
-                try {
-                  await service.refreshPersistPipeline();
-                } catch {
-                  // Best-effort — still refresh the map from whatever is in the DB.
+
+                if (widgetAction != null) {
+                  dispatchWidgetAction(widgetAction);
                 }
-                try {
-                  await sealYesterdayIfNeeded();
-                } catch {
-                  // Best-effort — still refresh today even if yesterday seal fails.
+
+                // Widget capture defers drain / persist / seal / today refresh /
+                // background work / scheduled backup until Map focus (or grace expire).
+                //
+                // Optional safety net (disabled): flush deferred heavy on this active if the
+                // user left mid-capture and never returned to Map. Re-enable only if we see
+                // real stale-seal / missed-backup issues in that rare path:
+                // if (hasHeavyForegroundResumeDeferred()) {
+                //   await flushHeavyForegroundResumeIfDeferred({
+                //     ignoreMapFocusSuppress: true,
+                //   });
+                //   return;
+                // }
+                if (hasHeavyForegroundResumeDeferred()) {
+                  return;
                 }
-                await refreshTodayOnForeground();
-                startBackgroundWorkCycle();
+
+                // BG→FG: never run heavy here. Mark deferred; Map focus / grace resumes.
+                // (Nav to Settings/You/capture during an on-Map grace also defers.)
+                // Drain + persist run at the top of runHeavyForegroundResume.
+                markHeavyForegroundResumeDeferred({
+                  notifyBackup: fromBackground,
+                });
+
+                // Already on Map — focus won't re-fire, so give a 3s grace then flush.
+                if (!isRootMapScreenActive()) {
+                  return;
+                }
+
+                startOpenGrace({
+                  notifyBackup: fromBackground,
+                  onExpire: () => {
+                    if (!isRootMapScreenActive()) {
+                      // Left Map during grace — stay deferred until Map focus.
+                      return;
+                    }
+                    void flushHeavyForegroundResumeIfDeferred().catch(error => {
+                      logPipelineFailure('open_grace_expire', error);
+                    });
+                  },
+                });
               } catch (error) {
                 logPipelineFailure('foreground_resume_pipeline', error);
               }
@@ -176,6 +230,8 @@ export function AppBootstrap({ children }: AppBootstrapProps) {
         } else if (nextState === 'background') {
           cancelForegroundResumeRef.current?.();
           cancelForegroundResumeRef.current = null;
+          cancelOpenGrace();
+          clearHeavyResumeMapFocusSuppress();
           void service.drainNativeQueue().catch(() => undefined);
         }
       }

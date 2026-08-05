@@ -1,11 +1,45 @@
-import { desc, eq, gte, like, or, sql } from 'drizzle-orm';
+import { desc, gte, sql } from 'drizzle-orm';
 
 import { getDatabase, getSqlite } from '../client';
 import { locationPoints } from '../schema';
+import {
+  CREATE_LOCATION_POINTS_NO_DELETE_TRIGGER_SQL,
+  DROP_LOCATION_POINTS_NO_DELETE_TRIGGER_SQL,
+  LOCATION_POINTS_NO_DELETE_TRIGGER,
+} from '../location-points-policy';
 import { locationPointTimestampToStorageValue } from '@/lib/location-point-storage';
 import { scheduleTodayRefreshAfterGps } from '@/lib/today-refresh-scheduler';
 import { ensureLocationDaySummaryExists } from '@/db/repositories/location-day-summaries';
 
+async function locationPointsNoDeleteTriggerExists(): Promise<boolean> {
+  const sqlite = await getSqlite();
+  const result = await sqlite.execute(
+    `SELECT 1 AS ok FROM sqlite_master WHERE type = 'trigger' AND name = ? LIMIT 1`,
+    [LOCATION_POINTS_NO_DELETE_TRIGGER],
+  );
+  return (result.rows?.length ?? 0) > 0;
+}
+
+/**
+ * Temporarily allow DELETE on location_points (append-only trigger).
+ * Restores the trigger afterward if it was installed.
+ */
+export async function runWithLocationPointsDeletesAllowed<T>(
+  work: () => Promise<T>,
+): Promise<T> {
+  const sqlite = await getSqlite();
+  const hadTrigger = await locationPointsNoDeleteTriggerExists();
+  if (hadTrigger) {
+    await sqlite.execute(DROP_LOCATION_POINTS_NO_DELETE_TRIGGER_SQL);
+  }
+  try {
+    return await work();
+  } finally {
+    if (hadTrigger) {
+      await sqlite.execute(CREATE_LOCATION_POINTS_NO_DELETE_TRIGGER_SQL);
+    }
+  }
+}
 export type NewLocationPoint = {
   timestamp: Date;
   lat: number;
@@ -33,14 +67,6 @@ export function isMotionLocationPointSource(source: string): boolean {
     source === 'motion' ||
     source === 'headless:motion' ||
     source.endsWith(':motion')
-  );
-}
-
-function motionLocationSourceFilter() {
-  return or(
-    eq(locationPoints.source, 'motion'),
-    eq(locationPoints.source, 'headless:motion'),
-    like(locationPoints.source, '%:motion'),
   );
 }
 
@@ -138,25 +164,6 @@ export async function insertLocationPoint(
     source,
   });
   void ensureLocationDaySummaryExists(point.timestamp).catch(() => undefined);
-}
-
-export async function countMotionLocationPoints(): Promise<number> {
-  const db = await getDatabase();
-  const result = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(locationPoints)
-    .where(motionLocationSourceFilter());
-  return Number(result[0]?.count ?? 0);
-}
-
-export async function deleteMotionLocationPoints(): Promise<number> {
-  const deleted = await countMotionLocationPoints();
-  if (deleted === 0) {
-    return 0;
-  }
-  const db = await getDatabase();
-  await db.delete(locationPoints).where(motionLocationSourceFilter());
-  return deleted;
 }
 
 export async function countLocationPoints(): Promise<number> {

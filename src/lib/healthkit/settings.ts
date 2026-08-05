@@ -7,6 +7,8 @@ import {
   SETTINGS_KEY_HEALTHKIT_MASTER,
   SETTINGS_KEY_HEALTHKIT_SLEEP,
   SETTINGS_KEY_HEALTHKIT_STEPS,
+  SETTINGS_KEY_HEALTHKIT_SYNC_ON_CHANGES,
+  SETTINGS_KEY_HEALTHKIT_SYNC_ON_DETAIL_OPEN,
 } from './types';
 
 export async function getHealthKitMasterEnabled(): Promise<boolean> {
@@ -52,6 +54,36 @@ export async function setHealthKitStepsEnabled(
 ): Promise<void> {
   await setSetting(SETTINGS_KEY_HEALTHKIT_STEPS, enabled ? 'true' : 'false');
   notifyHealthDataUpdated();
+}
+
+/** Opt-in HealthKit observer sync. Unset = off. */
+export async function getHealthKitSyncOnChangesEnabled(): Promise<boolean> {
+  return (await getSetting(SETTINGS_KEY_HEALTHKIT_SYNC_ON_CHANGES)) === 'true';
+}
+
+export async function setHealthKitSyncOnChangesEnabled(
+  enabled: boolean,
+): Promise<void> {
+  await setSetting(
+    SETTINGS_KEY_HEALTHKIT_SYNC_ON_CHANGES,
+    enabled ? 'true' : 'false',
+  );
+}
+
+/** Opt-in sync when opening Sleep/Steps detail. Unset = off. */
+export async function getHealthKitSyncOnDetailOpenEnabled(): Promise<boolean> {
+  return (
+    (await getSetting(SETTINGS_KEY_HEALTHKIT_SYNC_ON_DETAIL_OPEN)) === 'true'
+  );
+}
+
+export async function setHealthKitSyncOnDetailOpenEnabled(
+  enabled: boolean,
+): Promise<void> {
+  await setSetting(
+    SETTINGS_KEY_HEALTHKIT_SYNC_ON_DETAIL_OPEN,
+    enabled ? 'true' : 'false',
+  );
 }
 
 /** Null until the first successful sync, which means the next sync backfills. */

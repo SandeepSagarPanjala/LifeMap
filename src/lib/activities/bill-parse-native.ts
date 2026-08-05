@@ -6,6 +6,10 @@ import {
   ACTIVITY_MAX_LIST_ITEMS,
   parseItemsFromOcrText,
 } from '@/lib/activities/parse-items-from-ocr';
+import {
+  ACTIVITY_MAX_SHOP_NAME_LENGTH,
+  parseShopNameFromOcrText,
+} from '@/lib/activities/parse-shop-name-from-ocr';
 import { recognizeImageText } from '@/lib/activities/text-recognize-native';
 
 type BillParseNativeModule = {
@@ -27,12 +31,15 @@ export type BillLineItemNative = {
 export type BillParseNativeResult = {
   total?: number | null;
   items?: BillLineItemNative[];
+  /** Shop / restaurant / merchant name printed on the bill. */
+  shopName?: string | null;
   source?: string;
 };
 
 export type BillParseResult = {
   amount: number | null;
   items: string[];
+  shopName: string | null;
   /** Where the structured parse came from. */
   source:
     | 'foundation_models_image'
@@ -113,6 +120,17 @@ function normalizeNativeResult(
     }
   }
 
+  let shopName: string | null = null;
+  if (typeof raw.shopName === 'string') {
+    const trimmed = raw.shopName.trim().replace(/\s+/g, ' ');
+    if (trimmed) {
+      shopName =
+        trimmed.length > ACTIVITY_MAX_SHOP_NAME_LENGTH
+          ? trimmed.slice(0, ACTIVITY_MAX_SHOP_NAME_LENGTH).trim()
+          : trimmed;
+    }
+  }
+
   const items: string[] = [];
   const seen = new Set<string>();
   if (Array.isArray(raw.items)) {
@@ -137,7 +155,7 @@ function normalizeNativeResult(
   }
 
   // Treat empty AI output as a miss so heuristics can try.
-  if (amount == null && items.length === 0) {
+  if (amount == null && items.length === 0 && shopName == null) {
     return null;
   }
 
@@ -152,6 +170,7 @@ function normalizeNativeResult(
   return {
     amount,
     items,
+    shopName,
     source,
   };
 }
@@ -197,6 +216,8 @@ export type BillExtractOptions = {
   wantAmount?: boolean;
   /** Extract line items when an Items/list field is linked. */
   wantItems?: boolean;
+  /** Extract shop / restaurant name when a Shop name text field is linked. */
+  wantShopName?: boolean;
 };
 
 function hasWantedAmount(
@@ -213,14 +234,23 @@ function hasWantedItems(
   return !wantItems || (result != null && result.items.length > 0);
 }
 
+function hasWantedShopName(
+  result: BillParseResult | null,
+  wantShopName: boolean,
+): boolean {
+  return !wantShopName || (result != null && result.shopName != null);
+}
+
 function trimToWanted(
   result: BillParseResult,
   wantAmount: boolean,
   wantItems: boolean,
+  wantShopName: boolean,
 ): BillParseResult {
   return {
     amount: wantAmount ? result.amount : null,
     items: wantItems ? result.items : [],
+    shopName: wantShopName ? result.shopName : null,
     source: result.source,
   };
 }
@@ -233,7 +263,7 @@ function trimToWanted(
  * 2) OCR → iOS 26 text FM
  * 3) OCR heuristics
  *
- * Only runs amount / items extraction when the linked fields still exist.
+ * Only runs amount / items / shop-name extraction when the linked fields still exist.
  */
 export async function extractBillFieldsFromImage(
   imageUri: string,
@@ -241,8 +271,9 @@ export async function extractBillFieldsFromImage(
 ): Promise<BillParseResult> {
   const wantAmount = options.wantAmount === true;
   const wantItems = options.wantItems === true;
-  if (!wantAmount && !wantItems) {
-    return { amount: null, items: [], source: 'heuristics' };
+  const wantShopName = options.wantShopName === true;
+  if (!wantAmount && !wantItems && !wantShopName) {
+    return { amount: null, items: [], shopName: null, source: 'heuristics' };
   }
 
   let best: BillParseResult | null = null;
@@ -273,7 +304,8 @@ export async function extractBillFieldsFromImage(
   const needsOcr =
     best == null ||
     !hasWantedAmount(best, wantAmount) ||
-    !hasWantedItems(best, wantItems);
+    !hasWantedItems(best, wantItems) ||
+    !hasWantedShopName(best, wantShopName);
   const text = needsOcr ? await recognizeImageText(imageUri) : '';
   if (__DEV__ && text) {
     console.log('[OCR bill] raw text:\n', text);
@@ -281,7 +313,9 @@ export async function extractBillFieldsFromImage(
 
   // 2) Text FM (iOS 26+) when image AI missed or unavailable.
   if (
-    (!hasWantedItems(best, wantItems) || !hasWantedAmount(best, wantAmount)) &&
+    (!hasWantedItems(best, wantItems) ||
+      !hasWantedAmount(best, wantAmount) ||
+      !hasWantedShopName(best, wantShopName)) &&
     text.trim() &&
     Platform.OS === 'ios' &&
     nativeModule?.parseReceiptText
@@ -308,7 +342,9 @@ export async function extractBillFieldsFromImage(
   // 3) Heuristics fill any remaining gaps (DoorDash "1 x Name" / "$price" lines).
   if (
     text.trim() &&
-    (!hasWantedAmount(best, wantAmount) || !hasWantedItems(best, wantItems))
+    (!hasWantedAmount(best, wantAmount) ||
+      !hasWantedItems(best, wantItems) ||
+      !hasWantedShopName(best, wantShopName))
   ) {
     const amount =
       wantAmount && !hasWantedAmount(best, wantAmount)
@@ -318,18 +354,31 @@ export async function extractBillFieldsFromImage(
       wantItems && !hasWantedItems(best, wantItems)
         ? parseItemsFromOcrText(text)
         : [];
+    const shopName =
+      wantShopName && !hasWantedShopName(best, wantShopName)
+        ? parseShopNameFromOcrText(text)
+        : null;
     if (__DEV__) {
-      console.log('[OCR bill] heuristics amount:', amount, 'items:', items);
+      console.log(
+        '[OCR bill] heuristics amount:',
+        amount,
+        'items:',
+        items,
+        'shopName:',
+        shopName,
+      );
     }
     best = mergeBillParse(best, {
       amount,
       items,
+      shopName,
       source: 'heuristics',
     });
   }
 
-  const resolved = best ?? { amount: null, items: [], source: 'heuristics' };
-  return trimToWanted(resolved, wantAmount, wantItems);
+  const resolved =
+    best ?? { amount: null, items: [], shopName: null, source: 'heuristics' };
+  return trimToWanted(resolved, wantAmount, wantItems, wantShopName);
 }
 
 function mergeBillParse(
@@ -342,9 +391,12 @@ function mergeBillParse(
   const amount = primary.amount ?? fallback.amount;
   const items =
     primary.items.length > 0 ? primary.items : fallback.items;
+  const shopName = primary.shopName ?? fallback.shopName;
   const source =
-    primary.items.length > 0 || primary.amount != null
+    primary.items.length > 0 ||
+    primary.amount != null ||
+    primary.shopName != null
       ? primary.source
       : fallback.source;
-  return { amount, items, source };
+  return { amount, items, shopName, source };
 }

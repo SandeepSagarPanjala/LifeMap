@@ -132,6 +132,13 @@ class BillParseModule: NSObject {
     You extract structured data from bills and receipts — paper store receipts \
     AND digital screenshots (DoorDash, Uber Eats, restaurant apps, etc.).
 
+    SHOP NAME rules:
+    - shopName is the merchant / restaurant / store title printed largest near \
+      the top of the bill (or the restaurant name on a delivery screenshot).
+    - Prefer the brand or business name over address, phone, order number, \
+      "Thank you", "Receipt", cashier, or app chrome.
+    - Empty string if unknown.
+
     TOTAL rules:
     - Use the final TOTAL / amount paid / charged amount (what the customer paid).
     - Prefer TOTAL over SUBTOTAL when both appear.
@@ -208,7 +215,7 @@ class BillParseModule: NSObject {
       options: Self.textGenerationOptions
     ) {
       """
-      Parse this bill/receipt OCR into total and purchased line items.
+      Parse this bill/receipt OCR into shop/restaurant name, total, and purchased line items.
       Support both grocery "@" pricing and delivery-app "1 × Name $price" lines.
 
       \(clipped)
@@ -251,7 +258,8 @@ class BillParseModule: NSObject {
       This image is a bill: a paper store receipt OR a delivery/restaurant app \
       screenshot (e.g. DoorDash).
       Call receipt_ocr when helpful to read the text exactly.
-      Extract the final TOTAL paid and each purchased food/product line item
+      Extract the shop/restaurant/store name (largest title near the top), \
+      the final TOTAL paid, and each purchased food/product line item
       (name, quantity, unit price, line total, discount if any).
       Skip fees, tax, tip, credits, and UI chrome.
       """
@@ -318,9 +326,11 @@ class BillParseModule: NSObject {
     let total = bill.total
     let safeTotal: Any =
       (total.isFinite && total >= 0 && total <= 1_000_000) ? total : NSNull()
+    let shopName = bill.shopName.trimmingCharacters(in: .whitespacesAndNewlines)
 
     return [
       "total": safeTotal,
+      "shopName": shopName,
       "items": items,
       "source": source,
     ]
@@ -390,6 +400,9 @@ class BillParseModule: NSObject {
 @available(iOS 26.0, *)
 @Generable
 struct BillParseResult {
+  @Guide(description: "Merchant / restaurant / store title printed largest near the top of the bill. Empty if unknown.")
+  var shopName: String
+
   @Guide(description: "Final TOTAL charged to the customer (what they paid), not subtotal. 0 if unknown.")
   var total: Double
 

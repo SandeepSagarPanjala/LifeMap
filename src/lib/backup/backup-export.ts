@@ -170,8 +170,6 @@ function serializePlaceLookupCache(
     anchorLng: row.anchorLng,
     venueRadiusMeters: row.venueRadiusMeters,
     addressLine: row.addressLine,
-    candidatesJson: row.candidatesJson,
-    selectedCandidateIndex: row.selectedCandidateIndex,
     lookupStatus: row.lookupStatus,
     fetchedAt: iso(row.fetchedAt),
   }));
@@ -193,16 +191,12 @@ function serializeMoments(rows: Array<typeof moments.$inferSelect>): unknown[] {
     textBody: row.textBody,
     caption: row.caption,
     title: row.title,
-    moodScore: row.moodScore,
     moodLabel: row.moodLabel,
     moodReason: row.moodReason,
     moodVariant: row.moodVariant,
-    placeLabel: row.placeLabel,
     contentBytes: row.contentBytes,
     sourceBytes: row.sourceBytes,
     contentFormat: row.contentFormat,
-    shareVisibility: row.shareVisibility,
-    contentSyncState: row.contentSyncState,
     activityId: row.activityId,
     activityEmoji: row.activityEmoji,
     activityLabel: row.activityLabel,
@@ -237,7 +231,6 @@ function serializeTrips(rows: Array<typeof trips.$inferSelect>): unknown[] {
     placeId: row.placeId,
     placeKind: row.placeKind,
     inferred: row.inferred === 1,
-    selectedCandidateIndex: row.selectedCandidateIndex,
     detectionVersion: row.detectionVersion,
     closedAt: iso(row.closedAt),
     momentRefs: row.momentRefs,
@@ -265,10 +258,6 @@ export function extractTripLabelOverrides(
       record.placeKind === 'saved' || record.placeKind === 'cache'
         ? record.placeKind
         : null;
-    const selectedCandidateIndex =
-      typeof record.selectedCandidateIndex === 'number'
-        ? record.selectedCandidateIndex
-        : null;
     const poiId = typeof record.poiId === 'number' ? record.poiId : null;
     const poiLabel =
       typeof record.poiLabel === 'string' ? record.poiLabel : null;
@@ -276,10 +265,7 @@ export function extractTripLabelOverrides(
       typeof record.dateKey === 'string' ? record.dateKey.trim() : null;
     const startAtMs = parseStartAtMs(record);
     // Only user choices — not reverse-geocode addresses (those wipe poi on apply).
-    const hasOverride =
-      poiId != null ||
-      placeKind === 'saved' ||
-      selectedCandidateIndex != null;
+    const hasOverride = poiId != null || placeKind === 'saved';
     if (!hasOverride) {
       continue;
     }
@@ -290,7 +276,6 @@ export function extractTripLabelOverrides(
       placeLabel,
       placeId,
       placeKind,
-      selectedCandidateIndex,
       poiId,
       poiLabel,
     });

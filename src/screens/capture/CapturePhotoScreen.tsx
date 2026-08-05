@@ -71,6 +71,7 @@ import { CAPTURE_BUTTON_THEMES } from '@/components/map/map-capture-button-theme
 import { getSetting, setSetting } from '@/db/repositories/settings';
 import { loadProfile } from '@/db/repositories/profile';
 import { savePhotoMoment } from '@/lib/moments/capture-photo';
+import { markNeedsTodayRefreshOnMapFocus } from '@/lib/foreground-heavy-resume';
 import { labelPhotoTags } from '@/lib/moments/image-label-native';
 import { labelVideoTags } from '@/lib/moments/label-video-tags';
 import type { PhotoTagCandidate } from '@/lib/moments/moment-tags';
@@ -541,6 +542,7 @@ export function CapturePhotoScreen() {
         }
         return;
       }
+      /* FOREGROUND */
       if (nextState === 'active') {
         if (phase === 'review') {
           setReviewPlaybackPaused(false);
@@ -1183,6 +1185,7 @@ export function CapturePhotoScreen() {
         // Preview may not be active; saving already succeeded.
       }
       setVoicePlaying(false);
+      markNeedsTodayRefreshOnMapFocus();
       // Stay in camera so the user can capture more; X closes when done.
       handleRetake();
     } catch (error) {
@@ -1341,12 +1344,12 @@ export function CapturePhotoScreen() {
           </View>
 
           <View style={styles.cameraBottomSection}>
-          <CameraZoomBar
-            zoomRange={zoomRange}
-            zoom={cameraZoom}
-            onSelect={selectDisplayZoom}
-            disabled={cameraLeaving}
-          />
+            <CameraZoomBar
+              zoomRange={zoomRange}
+              zoom={cameraZoom}
+              onSelect={selectDisplayZoom}
+              disabled={cameraLeaving}
+            />
 
             <View style={styles.modeSwitchRow}>
               <Pressable
@@ -1605,305 +1608,319 @@ export function CapturePhotoScreen() {
         ) : null}
 
         {reviewChromeVisible || captionInputOpen ? (
-        <View pointerEvents="box-none" style={styles.reviewRoot}>
-          {(isPhotoDraft || draft.kind === 'video') ? (
-            <View
-              pointerEvents="box-none"
-              style={[
-                styles.reviewTagsDock,
-                { paddingTop: insets.top + 10 },
-              ]}
-            >
-              <PhotoTagsBar
-                tags={sceneTags}
-                status={sceneTagsStatus}
-                disabled={saving}
-                onRemoveTag={handleRemoveSceneTag}
+          <View pointerEvents="box-none" style={styles.reviewRoot}>
+            {isPhotoDraft || draft.kind === 'video' ? (
+              <View
+                pointerEvents="box-none"
+                style={[styles.reviewTagsDock, { paddingTop: insets.top + 10 }]}
+              >
+                <PhotoTagsBar
+                  tags={sceneTags}
+                  status={sceneTagsStatus}
+                  disabled={saving}
+                  onRemoveTag={handleRemoveSceneTag}
+                />
+              </View>
+            ) : null}
+            {captionInputOpen ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Dismiss text editing"
+                onPress={handleDismissCaption}
+                style={styles.captionDismissBackdrop}
               />
-            </View>
-          ) : null}
-          {captionInputOpen ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Dismiss text editing"
-              onPress={handleDismissCaption}
-              style={styles.captionDismissBackdrop}
-            />
-          ) : (
-            <View pointerEvents="box-none" style={styles.reviewSideToolsDock}>
-              <View style={styles.reviewToolsDockRow}>
-                <View style={styles.reviewAttachmentColumn}>
-                  {isPhotoDraft && voiceUri ? (
-                    <View style={styles.voicePreviewRow}>
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel={
-                          voicePlaying ? 'Pause voice memo' : 'Play voice memo'
-                        }
-                        onPress={() => void toggleVoicePreview()}
-                        style={[
-                          styles.voicePreviewPlay,
-                          {
-                            backgroundColor:
-                              CAPTURE_BUTTON_THEMES.voice.badgeBg,
-                          },
-                        ]}
-                      >
-                        {voicePlaying ? (
-                          <Pause
-                            size={18}
-                            color={CAPTURE_BUTTON_THEMES.voice.icon}
-                            strokeWidth={2.25}
-                          />
-                        ) : (
-                          <Play
-                            size={18}
-                            color={CAPTURE_BUTTON_THEMES.voice.icon}
-                            strokeWidth={2.25}
-                          />
-                        )}
-                      </Pressable>
-                      <View style={styles.voicePreviewCopy}>
-                        <Text style={styles.voicePreviewLabel}>Voice memo</Text>
-                        <Text style={styles.voicePreviewDuration}>
-                          {formatVoiceDurationMs(voiceDurationMs)}
-                        </Text>
-                      </View>
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel="Remove voice memo"
-                        onPress={() => void clearVoice()}
-                        style={styles.voicePreviewRemove}
-                      >
-                        <X size={16} color="#FFFFFF" strokeWidth={2.5} />
-                      </Pressable>
-                    </View>
-                  ) : null}
-                  {selectedEmotion && selectedMoodArt ? (
-                    <View style={styles.moodPreviewRow}>
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel={`Change mood sticker, currently ${selectedEmotion.label}`}
-                        disabled={saving}
-                        onPress={handleOpenMoodSheet}
-                        style={styles.moodPreviewBody}
-                      >
-                        <View
+            ) : (
+              <View pointerEvents="box-none" style={styles.reviewSideToolsDock}>
+                <View style={styles.reviewToolsDockRow}>
+                  <View style={styles.reviewAttachmentColumn}>
+                    {isPhotoDraft && voiceUri ? (
+                      <View style={styles.voicePreviewRow}>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={
+                            voicePlaying
+                              ? 'Pause voice memo'
+                              : 'Play voice memo'
+                          }
+                          onPress={() => void toggleVoicePreview()}
                           style={[
-                            styles.moodPreviewArt,
-                            { backgroundColor: selectedEmotion.tint },
+                            styles.voicePreviewPlay,
+                            {
+                              backgroundColor:
+                                CAPTURE_BUTTON_THEMES.voice.badgeBg,
+                            },
                           ]}
                         >
-                          <Image
-                            source={selectedMoodArt.imageSource}
-                            resizeMode="contain"
-                            style={styles.moodPreviewImage}
-                          />
+                          {voicePlaying ? (
+                            <Pause
+                              size={18}
+                              color={CAPTURE_BUTTON_THEMES.voice.icon}
+                              strokeWidth={2.25}
+                            />
+                          ) : (
+                            <Play
+                              size={18}
+                              color={CAPTURE_BUTTON_THEMES.voice.icon}
+                              strokeWidth={2.25}
+                            />
+                          )}
+                        </Pressable>
+                        <View style={styles.voicePreviewCopy}>
+                          <Text style={styles.voicePreviewLabel}>
+                            Voice memo
+                          </Text>
+                          <Text style={styles.voicePreviewDuration}>
+                            {formatVoiceDurationMs(voiceDurationMs)}
+                          </Text>
                         </View>
-                        <Text numberOfLines={1} style={styles.moodPreviewLabel}>
-                          {selectedEmotion.label}
-                        </Text>
-                      </Pressable>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel="Remove voice memo"
+                          onPress={() => void clearVoice()}
+                          style={styles.voicePreviewRemove}
+                        >
+                          <X size={16} color="#FFFFFF" strokeWidth={2.5} />
+                        </Pressable>
+                      </View>
+                    ) : null}
+                    {selectedEmotion && selectedMoodArt ? (
+                      <View style={styles.moodPreviewRow}>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={`Change mood sticker, currently ${selectedEmotion.label}`}
+                          disabled={saving}
+                          onPress={handleOpenMoodSheet}
+                          style={styles.moodPreviewBody}
+                        >
+                          <View
+                            style={[
+                              styles.moodPreviewArt,
+                              { backgroundColor: selectedEmotion.tint },
+                            ]}
+                          >
+                            <Image
+                              source={selectedMoodArt.imageSource}
+                              resizeMode="contain"
+                              style={styles.moodPreviewImage}
+                            />
+                          </View>
+                          <Text
+                            numberOfLines={1}
+                            style={styles.moodPreviewLabel}
+                          >
+                            {selectedEmotion.label}
+                          </Text>
+                        </Pressable>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel="Remove mood sticker"
+                          disabled={saving}
+                          onPress={clearMood}
+                          style={styles.moodPreviewRemove}
+                        >
+                          <X size={16} color="#FFFFFF" strokeWidth={2.5} />
+                        </Pressable>
+                      </View>
+                    ) : null}
+                    {captionText.trim().length > 0 ? (
+                      <View style={styles.captionPreviewRow}>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel="Edit photo text"
+                          disabled={saving}
+                          onPress={handleOpenCaption}
+                          style={[
+                            styles.captionPreviewBody,
+                            saving ? styles.disabled : null,
+                          ]}
+                        >
+                          <Text
+                            numberOfLines={2}
+                            style={styles.captionPreviewText}
+                          >
+                            {captionText.trim()}
+                          </Text>
+                        </Pressable>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel="Remove photo text"
+                          disabled={saving}
+                          onPress={clearCaption}
+                          style={styles.captionPreviewRemove}
+                        >
+                          <X size={16} color="#FFFFFF" strokeWidth={2.5} />
+                        </Pressable>
+                      </View>
+                    ) : (
+                      <View style={styles.captionPreviewSpacer} />
+                    )}
+                  </View>
+                  <View style={styles.reviewSideToolsColumn}>
+                    {isPhotoDraft ? (
                       <Pressable
                         accessibilityRole="button"
-                        accessibilityLabel="Remove mood sticker"
+                        accessibilityLabel="Rotate photo"
                         disabled={saving}
-                        onPress={clearMood}
-                        style={styles.moodPreviewRemove}
-                      >
-                        <X size={16} color="#FFFFFF" strokeWidth={2.5} />
-                      </Pressable>
-                    </View>
-                  ) : null}
-                  {captionText.trim().length > 0 ? (
-                    <View style={styles.captionPreviewRow}>
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel="Edit photo text"
-                        disabled={saving}
-                        onPress={handleOpenCaption}
+                        onPress={handleRotatePhoto}
                         style={[
-                          styles.captionPreviewBody,
+                          styles.sideToolButton,
                           saving ? styles.disabled : null,
                         ]}
                       >
-                        <Text
-                          numberOfLines={2}
-                          style={styles.captionPreviewText}
-                        >
-                          {captionText.trim()}
-                        </Text>
+                        <RotateCw
+                          size={18}
+                          color="#FFFFFF"
+                          strokeWidth={2.25}
+                        />
+                        <Text style={styles.sideToolButtonLabel}>Rotate</Text>
                       </Pressable>
+                    ) : null}
+                    {isPhotoDraft ? (
                       <Pressable
                         accessibilityRole="button"
-                        accessibilityLabel="Remove photo text"
-                        disabled={saving}
-                        onPress={clearCaption}
-                        style={styles.captionPreviewRemove}
+                        accessibilityLabel="Record voice memo about this photo"
+                        disabled={saving || voiceSheetOpen}
+                        onPress={handleOpenVoiceSheet}
+                        style={[
+                          styles.sideToolButton,
+                          saving ? styles.disabled : null,
+                        ]}
                       >
-                        <X size={16} color="#FFFFFF" strokeWidth={2.5} />
+                        <AudioLines
+                          size={18}
+                          color="#FFFFFF"
+                          strokeWidth={2.25}
+                        />
+                        <Text style={styles.sideToolButtonLabel}>Voice</Text>
                       </Pressable>
-                    </View>
-                  ) : (
-                    <View style={styles.captionPreviewSpacer} />
-                  )}
-                </View>
-                <View style={styles.reviewSideToolsColumn}>
-                  {isPhotoDraft ? (
+                    ) : null}
                     <Pressable
                       accessibilityRole="button"
-                      accessibilityLabel="Rotate photo"
+                      accessibilityLabel="Add optional mood sticker"
+                      disabled={saving || emotionSheetOpen}
+                      onPress={handleOpenMoodSheet}
+                      style={[
+                        styles.sideToolButton,
+                        saving ? styles.disabled : null,
+                      ]}
+                    >
+                      <Sparkles size={18} color="#FFFFFF" strokeWidth={2.25} />
+                      <Text style={styles.sideToolButtonLabel}>Mood</Text>
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Add optional text"
                       disabled={saving}
-                      onPress={handleRotatePhoto}
+                      onPress={handleOpenCaption}
                       style={[
                         styles.sideToolButton,
                         saving ? styles.disabled : null,
                       ]}
                     >
-                      <RotateCw size={18} color="#FFFFFF" strokeWidth={2.25} />
-                      <Text style={styles.sideToolButtonLabel}>Rotate</Text>
+                      <Type size={18} color="#FFFFFF" strokeWidth={2.25} />
+                      <Text style={styles.sideToolButtonLabel}>Text</Text>
                     </Pressable>
-                  ) : null}
-                  {isPhotoDraft ? (
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Record voice memo about this photo"
-                    disabled={saving || voiceSheetOpen}
-                      onPress={handleOpenVoiceSheet}
-                      style={[
-                        styles.sideToolButton,
-                        saving ? styles.disabled : null,
-                      ]}
-                    >
-                      <AudioLines
-                        size={18}
-                        color="#FFFFFF"
-                        strokeWidth={2.25}
-                      />
-                      <Text style={styles.sideToolButtonLabel}>Voice</Text>
-                    </Pressable>
-                  ) : null}
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Add optional mood sticker"
-                    disabled={saving || emotionSheetOpen}
-                    onPress={handleOpenMoodSheet}
-                    style={[
-                      styles.sideToolButton,
-                      saving ? styles.disabled : null,
-                    ]}
-                  >
-                    <Sparkles size={18} color="#FFFFFF" strokeWidth={2.25} />
-                    <Text style={styles.sideToolButtonLabel}>Mood</Text>
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Add optional text"
-                    disabled={saving}
-                    onPress={handleOpenCaption}
-                    style={[
-                      styles.sideToolButton,
-                      saving ? styles.disabled : null,
-                    ]}
-                  >
-                    <Type size={18} color="#FFFFFF" strokeWidth={2.25} />
-                    <Text style={styles.sideToolButtonLabel}>Text</Text>
-                  </Pressable>
+                  </View>
                 </View>
               </View>
-            </View>
-          )}
+            )}
 
-          <KeyboardAvoidingView
-            pointerEvents="box-none"
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.reviewBottomDock}
-            keyboardVerticalOffset={0}
-          >
-            <View
-              style={[
-                styles.reviewChrome,
-                captionInputOpen ? styles.reviewChromeCaption : null,
-                { paddingBottom: captionInputOpen ? 10 : insets.bottom + 8 },
-              ]}
+            <KeyboardAvoidingView
+              pointerEvents="box-none"
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              style={styles.reviewBottomDock}
+              keyboardVerticalOffset={0}
             >
-              {!captionInputOpen && isPhotoDraft ? (
-                <PhotoFilterStrip
-                  sourceUri={draft.sourceUri}
-                  selectedFilter={selectedFilter}
-                  onSelectFilter={setSelectedFilter}
-                  disabled={saving}
-                />
-              ) : null}
-
-              {captionInputOpen ? (
-                <View style={styles.captionSection}>
-                  <TextInput
-                    autoFocus
-                    value={captionText}
-                    onChangeText={value =>
-                      setCaptionText(value.slice(0, PHOTO_CAPTION_MAX_LENGTH))
-                    }
-                    placeholder="What a lovely day… (optional)"
-                    placeholderTextColor="rgba(255,255,255,0.45)"
-                    style={styles.captionInput}
-                    returnKeyType="done"
-                    blurOnSubmit
-                    onSubmitEditing={handleDismissCaption}
-                    multiline
-                    maxLength={PHOTO_CAPTION_MAX_LENGTH}
-                    editable={!saving}
+              <View
+                style={[
+                  styles.reviewChrome,
+                  captionInputOpen ? styles.reviewChromeCaption : null,
+                  { paddingBottom: captionInputOpen ? 10 : insets.bottom + 8 },
+                ]}
+              >
+                {!captionInputOpen && isPhotoDraft ? (
+                  <PhotoFilterStrip
+                    sourceUri={draft.sourceUri}
+                    selectedFilter={selectedFilter}
+                    onSelectFilter={setSelectedFilter}
+                    disabled={saving}
                   />
-                </View>
-              ) : null}
+                ) : null}
 
-              {!captionInputOpen ? (
-                <View style={styles.reviewActionsRow}>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Close camera"
-                    disabled={saving}
-                    onPress={handleClose}
-                    style={[styles.iconButton, saving ? styles.disabled : null]}
-                  >
-                    <X size={22} color="#FFFFFF" strokeWidth={2.25} />
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={
-                      isPhotoDraft ? 'Retake photo' : 'Retake video'
-                    }
-                    disabled={saving}
-                    onPress={handleRetake}
-                    style={[styles.iconButton, saving ? styles.disabled : null]}
-                  >
-                    <RotateCcw size={22} color="#FFFFFF" strokeWidth={2.25} />
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={
-                      isPhotoDraft
-                        ? 'Save photo and take another'
-                        : 'Save video and record another'
-                    }
-                    disabled={saving}
-                    onPress={() => void handleSave()}
-                    style={[
-                      styles.doneIconButton,
-                      saving ? styles.disabled : null,
-                    ]}
-                  >
-                    {saving ? (
-                      <ActivityIndicator color="#FFFFFF" size="small" />
-                    ) : (
-                      <Check size={22} color="#FFFFFF" strokeWidth={2.5} />
-                    )}
-                  </Pressable>
-                </View>
-              ) : null}
-            </View>
-          </KeyboardAvoidingView>
-        </View>
+                {captionInputOpen ? (
+                  <View style={styles.captionSection}>
+                    <TextInput
+                      autoFocus
+                      value={captionText}
+                      onChangeText={value =>
+                        setCaptionText(value.slice(0, PHOTO_CAPTION_MAX_LENGTH))
+                      }
+                      placeholder="What a lovely day… (optional)"
+                      placeholderTextColor="rgba(255,255,255,0.45)"
+                      style={styles.captionInput}
+                      returnKeyType="done"
+                      blurOnSubmit
+                      onSubmitEditing={handleDismissCaption}
+                      multiline
+                      maxLength={PHOTO_CAPTION_MAX_LENGTH}
+                      editable={!saving}
+                    />
+                  </View>
+                ) : null}
+
+                {!captionInputOpen ? (
+                  <View style={styles.reviewActionsRow}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Close camera"
+                      disabled={saving}
+                      onPress={handleClose}
+                      style={[
+                        styles.iconButton,
+                        saving ? styles.disabled : null,
+                      ]}
+                    >
+                      <X size={22} color="#FFFFFF" strokeWidth={2.25} />
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={
+                        isPhotoDraft ? 'Retake photo' : 'Retake video'
+                      }
+                      disabled={saving}
+                      onPress={handleRetake}
+                      style={[
+                        styles.iconButton,
+                        saving ? styles.disabled : null,
+                      ]}
+                    >
+                      <RotateCcw size={22} color="#FFFFFF" strokeWidth={2.25} />
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={
+                        isPhotoDraft
+                          ? 'Save photo and take another'
+                          : 'Save video and record another'
+                      }
+                      disabled={saving}
+                      onPress={() => void handleSave()}
+                      style={[
+                        styles.doneIconButton,
+                        saving ? styles.disabled : null,
+                      ]}
+                    >
+                      {saving ? (
+                        <ActivityIndicator color="#FFFFFF" size="small" />
+                      ) : (
+                        <Check size={22} color="#FFFFFF" strokeWidth={2.5} />
+                      )}
+                    </Pressable>
+                  </View>
+                ) : null}
+              </View>
+            </KeyboardAvoidingView>
+          </View>
         ) : null}
 
         <VoiceMemoSheet

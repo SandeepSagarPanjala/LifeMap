@@ -77,11 +77,6 @@ function placeLabelForMoment(
   dayTrips: readonly TripRow[],
   savedPlaces: readonly SavedPlaceRow[],
 ): string | null {
-  const stored = moment.placeLabel?.trim();
-  if (stored) {
-    return stored;
-  }
-
   const tripIndex = findContainingTripIndex(dayTrips, moment.timestamp);
   if (tripIndex < 0) {
     return null;

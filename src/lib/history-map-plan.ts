@@ -40,13 +40,7 @@ function findNextStayAfter(
   entries: DayTimelineEntry[],
   afterIndex: number,
 ): DetectedTrip | null {
-  for (let index = afterIndex + 1; index < entries.length; index += 1) {
-    const entry = entries[index];
-    if (isPlayableTimelineEntry(entry) && entry.kind === 'stay') {
-      return entry;
-    }
-  }
-  return null;
+  return stayAfterEntryIndex(entries, afterIndex);
 }
 
 /**

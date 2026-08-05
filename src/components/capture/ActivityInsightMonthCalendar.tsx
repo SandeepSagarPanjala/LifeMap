@@ -1,28 +1,36 @@
-import { useCallback, useMemo } from 'react';
 import {
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import {
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text as RNText,
   View,
 } from 'react-native';
 import { startOfMonth } from 'date-fns';
 import { TZDate } from '@date-fns/tz';
-import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 
 import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
 import { Text } from '@/components/ui/text';
-import type { ActivityRow } from '@/db/repositories/activities';
 import type { MomentRow } from '@/db/repositories/moments';
 import type { ActivityIntent } from '@/lib/activities/activity-intent';
 import {
   buildInsightCalendarMonth,
   countLogsByDateKey,
+  listMonthsInclusive,
   resolveInsightCalendarStartDate,
-  shiftMonth,
   type InsightCalendarCell,
   type InsightCalendarCellState,
 } from '@/lib/activities/activity-insights';
+import type { ReminderRepeat } from '@/lib/notifications/types';
 import { APP_TIMEZONE } from '@/lib/timezone';
 import { useAppStore } from '@/stores/app-store';
 
@@ -51,21 +59,6 @@ function monthStartInAppTz(date: Date): Date {
 function toMonthKey(date: Date): string {
   const z = new TZDate(date, APP_TIMEZONE);
   return `${z.getFullYear()}-${String(z.getMonth() + 1).padStart(2, '0')}`;
-}
-
-function clampMonthToRange(
-  monthDate: Date,
-  earliestMonth: Date,
-  currentMonth: Date,
-): Date {
-  const month = monthStartInAppTz(monthDate);
-  if (month.getTime() < earliestMonth.getTime()) {
-    return earliestMonth;
-  }
-  if (month.getTime() > currentMonth.getTime()) {
-    return currentMonth;
-  }
-  return month;
 }
 
 function CalendarLogCountMarker({
@@ -102,74 +95,94 @@ function CalendarLogCountMarker({
   );
 }
 
+type LegendItem = {
+  key: string;
+  color: string;
+  label: string;
+};
+
+function calendarLegendItems(intent: ActivityIntent): LegendItem[] {
+  if (intent === 'less') {
+    return [
+      { key: 'clean', color: CELL_FILL.success, label: 'Clean' },
+      { key: 'relapse', color: CELL_FILL.relapse, label: 'Relapsed' },
+    ];
+  }
+  if (intent === 'more') {
+    return [
+      { key: 'logged', color: CELL_FILL.success, label: 'Logged' },
+      { key: 'miss', color: CELL_FILL.miss, label: 'Missed' },
+    ];
+  }
+  return [{ key: 'logged', color: CELL_FILL.success, label: 'Logged' }];
+}
+
+function CalendarLegend({ intent }: { intent: ActivityIntent }) {
+  const items = calendarLegendItems(intent);
+  return (
+    <View style={styles.legendRow} accessibilityRole="text">
+      {items.map(item => (
+        <View key={item.key} style={styles.legendItem}>
+          <View style={[styles.legendSwatch, { backgroundColor: item.color }]} />
+          <Text style={styles.legendLabel}>{item.label}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 function CalendarMonthGrid({
   cells,
   monthKey,
   monthTotalLabel,
   accent,
-  canGoPrev,
-  canGoNext,
-  onPrevMonth,
-  onNextMonth,
+  intent,
   onDayPress,
+  onPressMonthTotal,
 }: {
   cells: InsightCalendarCell[];
   monthKey: string;
   monthTotalLabel?: string;
   accent?: string;
-  canGoPrev: boolean;
-  canGoNext: boolean;
-  onPrevMonth: () => void;
-  onNextMonth: () => void;
+  intent: ActivityIntent;
   onDayPress?: (dateKey: string) => void;
+  onPressMonthTotal?: () => void;
 }) {
-  const chevronColor = accent ?? '#111827';
   return (
     <View>
       <View style={styles.calendarMonthRow}>
-        <View style={styles.monthNav}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Previous month"
-            disabled={!canGoPrev}
-            onPress={onPrevMonth}
-            hitSlop={8}
-            style={styles.navBtn}
-          >
-            <ChevronLeft
-              size={18}
-              color={chevronColor}
-              strokeWidth={2.5}
-              opacity={canGoPrev ? 1 : 0.35}
-            />
-          </Pressable>
-          <Text style={styles.calendarMonth} numberOfLines={1}>
-            {formatMonthLabel(monthKey)}
-          </Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Next month"
-            disabled={!canGoNext}
-            onPress={onNextMonth}
-            hitSlop={8}
-            style={styles.navBtn}
-          >
-            <ChevronRight
-              size={18}
-              color={chevronColor}
-              strokeWidth={2.5}
-              opacity={canGoNext ? 1 : 0.35}
-            />
-          </Pressable>
-        </View>
+        <Text style={styles.calendarMonth} numberOfLines={1}>
+          {formatMonthLabel(monthKey)}
+        </Text>
         {monthTotalLabel != null && accent != null ? (
-          <RNText
-            style={[styles.monthLogsLabel, { color: accent }]}
-            allowFontScaling={false}
-            numberOfLines={1}
-          >
-            {monthTotalLabel}
-          </RNText>
+          onPressMonthTotal != null ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={monthTotalLabel}
+              onPress={onPressMonthTotal}
+              hitSlop={6}
+              style={({ pressed }) => [
+                styles.monthTotalHit,
+                pressed ? { opacity: 0.72 } : null,
+              ]}
+            >
+              <RNText
+                style={[styles.monthLogsLabel, { color: accent }]}
+                allowFontScaling={false}
+                numberOfLines={1}
+              >
+                {monthTotalLabel}
+              </RNText>
+            </Pressable>
+          ) : (
+            <RNText
+              style={[styles.monthLogsLabel, { color: accent }]}
+              allowFontScaling={false}
+              numberOfLines={1}
+            >
+              {monthTotalLabel}
+            </RNText>
+          )
         ) : null}
       </View>
       <View style={styles.calendarWeekdays}>
@@ -223,7 +236,11 @@ function CalendarMonthGrid({
               opacity: cell.state === 'empty' ? 0 : 1,
             },
           ];
-          if (cell.state === 'empty' || onDayPress == null) {
+          if (
+            cell.state === 'empty' ||
+            cell.state === 'future' ||
+            onDayPress == null
+          ) {
             return (
               <View key={cell.dateKey} style={styles.calendarCellWrap}>
                 <View style={cellStyle}>{body}</View>
@@ -243,33 +260,50 @@ function CalendarMonthGrid({
           );
         })}
       </View>
+      <CalendarLegend intent={intent} />
     </View>
   );
 }
 
 /**
- * Month calendar with prev/next arrows (no swipe).
- * Controlled by `selectedMonthDate`; reports arrow presses via `onVisibleMonthChange`.
+ * Swipeable month calendar. Day taps update the week summary via parent.
+ * Works for activities and for plain log moments (mood / diary) with intent
+ * `track` and reminders off.
  */
 export function ActivityInsightMonthCalendar({
-  activity,
   moments,
   intent,
+  createdAt,
+  reminderEnabled = false,
+  reminderRepeat = 'daily',
   monthTotalLabel,
   accent,
   selectedMonthDate,
   onVisibleMonthChange,
   onDayPress,
+  onPressMonthTotal,
 }: {
-  activity: ActivityRow;
   moments: readonly MomentRow[];
   intent: ActivityIntent;
+  /** Fallback earliest bound when there are no moments yet. */
+  createdAt: Date;
+  reminderEnabled?: boolean;
+  reminderRepeat?: ReminderRepeat;
   monthTotalLabel?: string;
   accent?: string;
   selectedMonthDate: Date;
   onVisibleMonthChange?: (monthDate: Date) => void;
   onDayPress?: (dateKey: string) => void;
+  /** Opens period drill-down for this month’s total. */
+  onPressMonthTotal?: () => void;
 }) {
+  const pagerRef = useRef<ScrollView>(null);
+  const [pageWidth, setPageWidth] = useState(0);
+  const suppressReportRef = useRef(false);
+  const lastReportedKeyRef = useRef<string | null>(null);
+  const onVisibleMonthChangeRef = useRef(onVisibleMonthChange);
+  onVisibleMonthChangeRef.current = onVisibleMonthChange;
+
   const now = useMemo(() => new Date(), []);
   const historyEarliestDateKey = useAppStore(
     state => state.historyEarliestDateKey,
@@ -279,92 +313,183 @@ export function ActivityInsightMonthCalendar({
     () =>
       resolveInsightCalendarStartDate({
         moments,
-        activityCreatedAt: activity.createdAt,
+        activityCreatedAt: createdAt,
         historyEarliestDateKey,
         now,
       }),
-    [activity.createdAt, historyEarliestDateKey, moments, now],
+    [createdAt, historyEarliestDateKey, moments, now],
   );
 
-  const earliestMonth = useMemo(
-    () => monthStartInAppTz(earliestStart),
-    [earliestStart],
-  );
-  const currentMonth = useMemo(() => monthStartInAppTz(now), [now]);
-
-  const monthDate = useMemo(
-    () => clampMonthToRange(selectedMonthDate, earliestMonth, currentMonth),
-    [currentMonth, earliestMonth, selectedMonthDate],
+  const monthDates = useMemo(
+    () => listMonthsInclusive(earliestStart, now),
+    [earliestStart, now],
   );
 
   const loggedCounts = useMemo(() => countLogsByDateKey(moments), [moments]);
 
-  const page = useMemo(
+  const pages = useMemo(
     () =>
-      buildInsightCalendarMonth({
-        intent,
-        reminderEnabled: activity.reminderEnabled,
-        reminderRepeat: activity.reminderRepeat,
-        loggedCounts,
-        monthDate,
-        now,
-      }),
-    [
-      activity.reminderEnabled,
-      activity.reminderRepeat,
-      intent,
-      loggedCounts,
-      monthDate,
-      now,
-    ],
+      monthDates.map(monthDate =>
+        buildInsightCalendarMonth({
+          intent,
+          reminderEnabled,
+          reminderRepeat,
+          loggedCounts,
+          monthDate,
+          now,
+        }),
+      ),
+    [intent, loggedCounts, monthDates, now, reminderEnabled, reminderRepeat],
   );
 
-  const canGoPrev = monthDate.getTime() > earliestMonth.getTime();
-  const canGoNext = monthDate.getTime() < currentMonth.getTime();
+  const selectedKey = toMonthKey(monthStartInAppTz(selectedMonthDate));
 
-  const goPrev = useCallback(() => {
-    if (!canGoPrev) {
+  const indexForSelectedKey = useCallback(
+    (key: string): number => {
+      const exact = monthDates.findIndex(m => toMonthKey(m) === key);
+      if (exact >= 0) {
+        return exact;
+      }
+      // Outside range (e.g. future month) → nearest end of the pager.
+      return monthDates.length > 0 ? monthDates.length - 1 : -1;
+    },
+    [monthDates],
+  );
+
+  // Always scroll the pager to the parent-selected month. Skipping when
+  // lastReportedKey already matched left the UI stuck after a failed scroll
+  // or a year-bar tap that raced with swipe settle.
+  useLayoutEffect(() => {
+    if (pageWidth <= 0) {
       return;
     }
-    onVisibleMonthChange?.(
-      clampMonthToRange(shiftMonth(monthDate, -1), earliestMonth, currentMonth),
-    );
-  }, [
-    canGoPrev,
-    currentMonth,
-    earliestMonth,
-    monthDate,
-    onVisibleMonthChange,
-  ]);
-
-  const goNext = useCallback(() => {
-    if (!canGoNext) {
+    const index = indexForSelectedKey(selectedKey);
+    if (index < 0) {
       return;
     }
-    onVisibleMonthChange?.(
-      clampMonthToRange(shiftMonth(monthDate, 1), earliestMonth, currentMonth),
-    );
-  }, [
-    canGoNext,
-    currentMonth,
-    earliestMonth,
-    monthDate,
-    onVisibleMonthChange,
-  ]);
+    const key = toMonthKey(monthDates[index]!);
+    suppressReportRef.current = true;
+    pagerRef.current?.scrollTo({
+      x: index * pageWidth,
+      animated: false,
+    });
+    lastReportedKeyRef.current = key;
+    const t = setTimeout(() => {
+      suppressReportRef.current = false;
+    }, 400);
+    return () => clearTimeout(t);
+  }, [indexForSelectedKey, monthDates, pageWidth, selectedKey]);
+
+  const scrollToSelectedOrCurrent = useCallback(
+    (width: number) => {
+      if (width <= 0) {
+        return;
+      }
+      const target = indexForSelectedKey(selectedKey);
+      if (target < 0) {
+        return;
+      }
+      suppressReportRef.current = true;
+      lastReportedKeyRef.current = toMonthKey(monthDates[target]!);
+      requestAnimationFrame(() => {
+        pagerRef.current?.scrollTo({
+          x: target * width,
+          animated: false,
+        });
+        setTimeout(() => {
+          suppressReportRef.current = false;
+        }, 400);
+      });
+    },
+    [indexForSelectedKey, monthDates, selectedKey],
+  );
+
+  const settleMonth = useCallback(
+    (index: number) => {
+      if (suppressReportRef.current) {
+        return;
+      }
+      const clamped = Math.max(0, Math.min(index, monthDates.length - 1));
+      const month = monthDates[clamped];
+      if (month == null) {
+        return;
+      }
+      const key = toMonthKey(month);
+      if (lastReportedKeyRef.current === key) {
+        return;
+      }
+      lastReportedKeyRef.current = key;
+      onVisibleMonthChangeRef.current?.(month);
+    },
+    [monthDates],
+  );
+
+  const onMomentumScrollEnd = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (pageWidth <= 0 || suppressReportRef.current) {
+        return;
+      }
+      const index = Math.round(event.nativeEvent.contentOffset.x / pageWidth);
+      settleMonth(index);
+    },
+    [pageWidth, settleMonth],
+  );
 
   return (
     <View style={styles.calendar}>
-      <CalendarMonthGrid
-        cells={page.cells}
-        monthKey={toMonthKey(monthDate)}
-        monthTotalLabel={monthTotalLabel}
-        accent={accent}
-        canGoPrev={canGoPrev}
-        canGoNext={canGoNext}
-        onPrevMonth={goPrev}
-        onNextMonth={goNext}
-        onDayPress={onDayPress}
-      />
+      <View
+        style={styles.calendarPagerHost}
+        onLayout={event => {
+          const width = Math.round(event.nativeEvent.layout.width);
+          if (width <= 0 || width === pageWidth) {
+            return;
+          }
+          setPageWidth(width);
+          scrollToSelectedOrCurrent(width);
+        }}
+      >
+        {pageWidth > 0 ? (
+          <ScrollView
+            ref={pagerRef}
+            horizontal
+            pagingEnabled
+            scrollEnabled
+            bounces
+            alwaysBounceHorizontal
+            nestedScrollEnabled
+            directionalLockEnabled
+            decelerationRate="fast"
+            showsHorizontalScrollIndicator={false}
+            style={{ width: pageWidth }}
+            onMomentumScrollEnd={onMomentumScrollEnd}
+          >
+            {pages.map(page => (
+              <View
+                key={page.monthKey}
+                style={[styles.calendarPage, { width: pageWidth }]}
+              >
+                <CalendarMonthGrid
+                  cells={page.cells}
+                  monthKey={page.monthKey}
+                  monthTotalLabel={
+                    page.monthKey === selectedKey ? monthTotalLabel : undefined
+                  }
+                  accent={accent}
+                  intent={intent}
+                  onDayPress={onDayPress}
+                  onPressMonthTotal={
+                    page.monthKey === selectedKey
+                      ? onPressMonthTotal
+                      : undefined
+                  }
+                />
+              </View>
+            ))}
+          </ScrollView>
+        ) : (
+          <View style={styles.calendarPagePlaceholder} />
+        )}
+      </View>
     </View>
   );
 }
@@ -373,22 +498,22 @@ const styles = StyleSheet.create({
   calendar: {
     gap: 8,
   },
+  calendarPagerHost: {
+    width: '100%',
+    overflow: 'hidden',
+  },
+  calendarPage: {
+    paddingBottom: 4,
+  },
+  calendarPagePlaceholder: {
+    height: 280,
+  },
   calendarMonthRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 8,
     marginBottom: 8,
-  },
-  monthNav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexShrink: 1,
-    gap: 2,
-    marginLeft: -4,
-  },
-  navBtn: {
-    padding: 2,
   },
   calendarMonth: {
     flexShrink: 1,
@@ -397,12 +522,15 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
   monthLogsLabel: {
-    flexShrink: 1,
-    maxWidth: '42%',
-    fontSize: 13,
+    flexShrink: 0,
+    fontSize: 20,
     fontWeight: '800',
     textAlign: 'right',
     ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
+  },
+  monthTotalHit: {
+    flexShrink: 0,
+    paddingVertical: 2,
   },
   calendarWeekdays: {
     flexDirection: 'row',
@@ -479,5 +607,27 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#111827',
     ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
+  },
+  legendRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 10,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  legendSwatch: {
+    width: 10,
+    height: 10,
+    borderRadius: 3,
+  },
+  legendLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
   },
 });

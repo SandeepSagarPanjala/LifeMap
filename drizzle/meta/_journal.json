@@ -309,6 +309,13 @@
       "when": 1788935000000,
       "tag": "0043_moments_activity_id_idx",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1788936000000,
+      "tag": "0044_schema_trim",
+      "breakpoints": true
     }
   ]
 }

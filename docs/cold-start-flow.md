@@ -221,7 +221,6 @@ After onboarding completes, **Effect B** in `AppBootstrap` runs tracking bootstr
 | `useHistoryForDay(selectedDateKey, { active: true })` | `src/hooks/use-history-data.ts`          | Loads today’s timeline from `historyDataCache` or DB via `beginHistoryDayLoad()` |
 | `useSavedPlaces()`                                    | `src/hooks/use-saved-places.ts`          | Saved home/work/favorites                                                        |
 | `useDayMoments(selectedDateKey)`                      | `src/hooks/use-day-moments.ts`           | Moments for selected day                                                         |
-| `useLatestLocationSave()`                             | `src/hooks/use-latest-location-save.ts`  | Timestamp of last GPS save                                                       |
 | `useTripDetectionConfig()`                            | `src/hooks/use-trip-detection-config.ts` | Dwell radius / minutes from app store + settings                                 |
 
 ### Map bootstrap (on mount)

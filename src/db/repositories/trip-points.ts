@@ -1,10 +1,10 @@
-import { asc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 
 import type { LocationPointRow } from '@/db/repositories/location-days';
 import { locationPointRow } from '@/lib/location-point-row';
 import { getDatabase, getSqlite } from '../client';
 import { ensureTripPointMetadataColumns } from '../migrate';
-import { tripPoints, trips } from '../schema';
+import { locationPoints, tripPoints, trips } from '../schema';
 
 import type { TripRow } from './trips';
 
@@ -94,6 +94,37 @@ export async function listTripPointsByTripIds(
     }
   }
   return map;
+}
+
+/**
+ * Peak GPS speed (m/s) across trip_points → location_points for the given travels.
+ * Returns null when no usable speed samples exist.
+ */
+export async function maxGpsSpeedMsForTripIds(
+  tripIds: readonly number[],
+): Promise<number | null> {
+  if (tripIds.length === 0) {
+    return null;
+  }
+  const db = await getDatabase();
+  const rows = await db
+    .select({
+      maxSpeed: sql<number | null>`max(${locationPoints.speed})`,
+    })
+    .from(tripPoints)
+    .innerJoin(
+      locationPoints,
+      eq(tripPoints.locationPointId, locationPoints.id),
+    )
+    .where(
+      and(
+        inArray(tripPoints.tripId, [...tripIds]),
+        sql`${locationPoints.speed} is not null`,
+        sql`${locationPoints.speed} >= 0`,
+      ),
+    );
+  const value = rows[0]?.maxSpeed;
+  return value != null && Number.isFinite(value) ? value : null;
 }
 
 export async function listTripPointsForDay(

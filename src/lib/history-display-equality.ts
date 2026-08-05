@@ -48,5 +48,15 @@ export function historyDataDisplayEqual(
       return false;
     }
   }
+  const prevMoments = previous.moments ?? [];
+  const nextMoments = next.moments ?? [];
+  if (prevMoments.length !== nextMoments.length) {
+    return false;
+  }
+  for (let index = 0; index < prevMoments.length; index += 1) {
+    if (prevMoments[index]!.id !== nextMoments[index]!.id) {
+      return false;
+    }
+  }
   return true;
 }

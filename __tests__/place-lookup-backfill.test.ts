@@ -32,7 +32,6 @@ function tripRow(overrides: Partial<TripRow> = {}): TripRow {
     poiLabel: null,
     poiCategory: null,
     inferred: false,
-    selectedCandidateIndex: null,
     detectionVersion: 1,
     closedAt: new Date('2026-03-09T13:00:00.000Z'),
     momentRefs: [],

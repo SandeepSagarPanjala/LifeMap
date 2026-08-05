@@ -12,16 +12,11 @@ This doc lists code that exists mainly for **legacy data**, **mid-flight schema 
 
 | Location | What it does |
 | -------- | ------------ |
-| `src/components/settings/cached-places-settings.tsx` | Settings UI: **“Legacy POI data”** — migrate old storage into `place_pois` |
-| `src/db/migrate-place-pois-data.ts` | `countLegacyPlaceLookupCandidatesPending`, `migrateLegacyPlaceLookupCandidatesToPois` |
-| `src/db/repositories/place-lookup-cache.ts` | `listLegacyPlaceLookupCacheRows`, `clearLegacyCandidatesJson` |
-| `src/db/schema.ts` (`place_lookup_cache`) | `candidatesJson` / `selectedCandidateIndex` kept for one-time POI migration |
-| `src/lib/trip-materialization.ts` | `purgeLegacyMotionLocationData()` — delete old motion GPS rows + rebuild trips |
-| `src/db/repositories/location-points.ts` | Treats legacy `motion` / `headless:motion` sources specially |
 | `src/lib/saved-place-address.ts` | `backfillMissingSavedPlaceAddresses()` — fill addresses on old saved places |
 | `src/lib/backup/native-backup-cloud.ts` | Reads/cleans legacy Android backup slots (`current` / `previous`) |
-| `src/db/location-points-dedupe.ts` | Dedupe helpers + unique-index repair for existing point tables |
+| `src/db/location-points-dedupe.ts` | Unique-index ensure for existing point tables |
 | `src/db/migrate.ts` → `repairLocationPointsDedupeUniqueIndex` | Bootstrap repair when unique index can’t be created yet |
+| `src/db/repositories/location-points.ts` | Still recognizes legacy `motion` / `*:motion` sources (insert guard); purge helper removed |
 
 ---
 
@@ -62,8 +57,8 @@ Called from `src/db/client.ts` after migrations. Fresh installs usually already 
 
 ## Cleanup checklist (later)
 
-- [ ] Remove Legacy POI Settings UI + `migrate-place-pois-data` + legacy cache helpers; drop deprecated `candidatesJson` columns when safe
-- [ ] Remove or gate `purgeLegacyMotionLocationData` and motion-source special cases if motion rows are gone
+- [x] Remove Legacy POI Settings UI + migrate helpers; drop `candidatesJson` / `selected_candidate_index` (0044)
+- [x] Remove `purgeLegacyMotionLocationData` (0044); motion-source insert guard still present if needed
 - [ ] Remove `backfillMissingSavedPlaceAddresses` if all saved places always get addresses on create
 - [ ] Simplify Android backup to current slot layout only (drop legacy slot cleanup)
 - [ ] Revisit GPS dedupe repair on every bootstrap vs new-install-only unique index

@@ -3,8 +3,10 @@ import {
   asc,
   desc,
   eq,
+  gte,
   inArray,
   isNull,
+  lte,
   notInArray,
   or,
   sql,
@@ -43,8 +45,6 @@ export type TripRow = {
   /** Hydrated from place_pois.category (not stored on trips). */
   poiCategory: string | null;
   inferred: boolean;
-  /** @deprecated Replaced by poi_id. */
-  selectedCandidateIndex: number | null;
   detectionVersion: number;
   closedAt: Date;
   momentRefs: TripMomentRef[];
@@ -77,7 +77,6 @@ function mapRow(
     poiLabel: poiName,
     poiCategory,
     inferred: row.inferred === 1,
-    selectedCandidateIndex: row.selectedCandidateIndex,
     detectionVersion: row.detectionVersion,
     closedAt: row.closedAt,
     momentRefs: parseMomentRefs(row.momentRefs),
@@ -125,6 +124,30 @@ export async function listTripsForDateKeys(
     .from(trips)
     .leftJoin(placePois, eq(trips.poiId, placePois.id))
     .where(inArray(trips.dateKey, [...dateKeys]))
+    .orderBy(
+      asc(trips.dateKey),
+      asc(trips.segmentOrder),
+      asc(trips.startAt),
+    );
+  return rows.map(mapJoinedRow);
+}
+
+/** Inclusive `YYYY-MM-DD` range (lexicographic keys match chronological order). */
+export async function listTripsForDateKeyRange(
+  startDateKey: string,
+  endDateKey: string,
+): Promise<TripRow[]> {
+  if (startDateKey > endDateKey) {
+    return [];
+  }
+  const db = await getDatabase();
+  const rows = await db
+    .select(tripWithPoiSelect)
+    .from(trips)
+    .leftJoin(placePois, eq(trips.poiId, placePois.id))
+    .where(
+      and(gte(trips.dateKey, startDateKey), lte(trips.dateKey, endDateKey)),
+    )
     .orderBy(
       asc(trips.dateKey),
       asc(trips.segmentOrder),
@@ -213,7 +236,6 @@ export type InsertTripInput = {
   placeKind?: 'saved' | 'cache' | null;
   poiId?: number | null;
   inferred?: boolean;
-  selectedCandidateIndex?: number | null;
   detectionVersion: number;
   closedAt: Date;
   momentRefs?: readonly TripMomentRef[];
@@ -236,7 +258,6 @@ function tripValues(input: InsertTripInput) {
     placeKind: input.placeKind ?? null,
     poiId: input.poiId ?? null,
     inferred: input.inferred ? 1 : 0,
-    selectedCandidateIndex: input.selectedCandidateIndex ?? null,
     detectionVersion: input.detectionVersion,
     closedAt: input.closedAt,
     momentRefs: serializeMomentRefs(input.momentRefs ?? []),
@@ -283,7 +304,6 @@ export async function upsertTrip(input: InsertTripInput): Promise<TripRow> {
         placeKind: input.placeKind ?? null,
         poiId: input.poiId ?? null,
         inferred: input.inferred ? 1 : 0,
-        selectedCandidateIndex: input.selectedCandidateIndex ?? null,
         detectionVersion: input.detectionVersion,
         closedAt: input.closedAt,
         momentRefs: serializeMomentRefs(input.momentRefs ?? []),
@@ -325,7 +345,6 @@ export async function applyTripPersistedLabel(
       placeId: labels.placeId,
       placeKind: labels.placeKind,
       poiId: labels.poiId,
-      selectedCandidateIndex: null,
     })
     .where(eq(trips.id, tripId));
 }
@@ -341,29 +360,6 @@ export async function updateTripPoiSelection(
     .update(trips)
     .set({
       poiId,
-      selectedCandidateIndex: null,
-      ...(cachePlaceId != null
-        ? {
-            placeId: cachePlaceId,
-            placeKind: 'cache' as const,
-          }
-        : {}),
-    })
-    .where(eq(trips.id, tripId));
-}
-
-/** @deprecated Use updateTripPoiSelection */
-export async function updateTripLabelSelection(
-  tripId: number,
-  selectedCandidateIndex: number,
-  cachePlaceId?: number | null,
-): Promise<void> {
-  const db = await getDatabase();
-  await db
-    .update(trips)
-    .set({
-      selectedCandidateIndex,
-      poiId: null,
       ...(cachePlaceId != null
         ? {
             placeId: cachePlaceId,
@@ -390,7 +386,6 @@ export async function updateTripCustomLabel(
     .set({
       placeLabel: trimmed,
       poiId: null,
-      selectedCandidateIndex: null,
       ...(cachePlaceId != null
         ? {
             placeId: cachePlaceId,

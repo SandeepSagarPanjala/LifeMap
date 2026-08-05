@@ -7,9 +7,8 @@ describe('estimateExportTableStorageBytes', () => {
       trips: 0,
       trip_points: 0,
       materialized_days: 0,
-      tracking_events: 90,
       saved_places: 0,
-      place_lookup_cache: 0,
+      place_lookup_cache: 90,
       place_pois: 0,
       moments: 0,
       settings: 0,
@@ -18,7 +17,7 @@ describe('estimateExportTableStorageBytes', () => {
     const storage = estimateExportTableStorageBytes(counts, 24 * 1024 * 1024);
 
     expect(storage.location_points).toBe(Math.round(24 * 1024 * 1024 * 0.1));
-    expect(storage.tracking_events).toBe(Math.round(24 * 1024 * 1024 * 0.9));
+    expect(storage.place_lookup_cache).toBe(Math.round(24 * 1024 * 1024 * 0.9));
   });
 
   it('returns zeroes when the database is empty', () => {
@@ -28,7 +27,6 @@ describe('estimateExportTableStorageBytes', () => {
         trips: 0,
         trip_points: 0,
         materialized_days: 0,
-        tracking_events: 0,
         saved_places: 0,
         place_lookup_cache: 0,
         place_pois: 0,
@@ -38,7 +36,7 @@ describe('estimateExportTableStorageBytes', () => {
       24 * 1024 * 1024,
     );
 
-    expect(storage.tracking_events).toBe(0);
+    expect(storage.place_lookup_cache).toBe(0);
     expect(storage.location_points).toBe(0);
   });
 });

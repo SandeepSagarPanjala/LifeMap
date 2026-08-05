@@ -33,16 +33,12 @@ export type MomentRow = {
   textBody: string | null;
   caption: string | null;
   title: string | null;
-  moodScore: number | null;
   moodLabel: string | null;
   moodReason: string | null;
   moodVariant: string | null;
-  placeLabel: string | null;
   contentBytes: number | null;
   sourceBytes: number | null;
   contentFormat: string | null;
-  shareVisibility: string;
-  contentSyncState: string;
   activityId: number | null;
   activityEmoji: string | null;
   activityLabel: string | null;
@@ -57,7 +53,6 @@ export type NewMoment = {
   title?: string | null;
   textBody?: string | null;
   caption?: string | null;
-  moodScore?: number | null;
   moodLabel?: string | null;
   moodReason?: string | null;
   moodVariant?: string | null;
@@ -72,7 +67,6 @@ export type NewMoment = {
   contentBytes?: number | null;
   sourceBytes?: number | null;
   contentFormat?: string | null;
-  placeLabel?: string | null;
   activityId?: number | null;
   activityEmoji?: string | null;
   activityLabel?: string | null;
@@ -99,16 +93,12 @@ function mapRow(row: typeof moments.$inferSelect): MomentRow {
     textBody: row.textBody ?? null,
     caption: row.caption ?? null,
     title: row.title ?? null,
-    moodScore: row.moodScore ?? null,
     moodLabel: row.moodLabel ?? null,
     moodReason: row.moodReason ?? null,
     moodVariant: row.moodVariant ?? null,
-    placeLabel: row.placeLabel ?? null,
     contentBytes: row.contentBytes ?? null,
     sourceBytes: row.sourceBytes ?? null,
     contentFormat: row.contentFormat ?? null,
-    shareVisibility: row.shareVisibility,
-    contentSyncState: row.contentSyncState,
     activityId: row.activityId ?? null,
     activityEmoji: row.activityEmoji ?? null,
     activityLabel: row.activityLabel ?? null,
@@ -128,11 +118,9 @@ export async function insertMoment(input: NewMoment): Promise<MomentRow> {
       title: input.title ?? null,
       textBody: input.textBody ?? null,
       caption: input.caption ?? null,
-      moodScore: input.moodScore ?? null,
       moodLabel: input.moodLabel ?? null,
       moodReason: input.moodReason ?? null,
       moodVariant: input.moodVariant ?? null,
-      placeLabel: input.placeLabel ?? null,
       contentPath: input.contentPath ?? null,
       thumbnailPath: input.thumbnailPath ?? null,
       voiceAttachmentPath: input.voiceAttachmentPath ?? null,
@@ -553,6 +541,39 @@ export async function listMoodMoments(): Promise<MomentRow[]> {
     .select()
     .from(moments)
     .where(eq(moments.type, 'mood'))
+    .orderBy(desc(moments.timestamp), desc(moments.id));
+  return rows.map(mapRow);
+}
+
+/** All voice memo moments, newest first. */
+export async function listVoiceMoments(): Promise<MomentRow[]> {
+  const db = await getDatabase();
+  const rows = await db
+    .select()
+    .from(moments)
+    .where(eq(moments.type, 'voice'))
+    .orderBy(desc(moments.timestamp), desc(moments.id));
+  return rows.map(mapRow);
+}
+
+/** All photo moments, newest first. */
+export async function listPhotoMoments(): Promise<MomentRow[]> {
+  const db = await getDatabase();
+  const rows = await db
+    .select()
+    .from(moments)
+    .where(eq(moments.type, 'photo'))
+    .orderBy(desc(moments.timestamp), desc(moments.id));
+  return rows.map(mapRow);
+}
+
+/** All video moments, newest first. */
+export async function listVideoMoments(): Promise<MomentRow[]> {
+  const db = await getDatabase();
+  const rows = await db
+    .select()
+    .from(moments)
+    .where(eq(moments.type, 'video'))
     .orderBy(desc(moments.timestamp), desc(moments.id));
   return rows.map(mapRow);
 }

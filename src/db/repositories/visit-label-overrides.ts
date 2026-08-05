@@ -17,7 +17,6 @@ export type VisitLabelOverrideRow = {
   id: number;
   dateKey: string;
   startAtMs: number;
-  endAtMs: number | null;
   anchorLat: number | null;
   anchorLng: number | null;
   poiId: number;
@@ -34,7 +33,6 @@ function mapRow(
     id: row.id,
     dateKey: row.dateKey,
     startAtMs: row.startAtMs,
-    endAtMs: row.endAtMs ?? null,
     anchorLat: row.anchorLat ?? null,
     anchorLng: row.anchorLng ?? null,
     poiId: row.poiId,
@@ -48,7 +46,6 @@ function mapRow(
 export type UpsertVisitLabelOverrideInput = {
   dateKey: string;
   startAtMs: number;
-  endAtMs?: number | null;
   anchorLat?: number | null;
   anchorLng?: number | null;
   poiId: number;
@@ -65,7 +62,6 @@ export async function upsertVisitLabelOverride(
   const values = {
     dateKey: input.dateKey,
     startAtMs: input.startAtMs,
-    endAtMs: input.endAtMs ?? null,
     anchorLat: input.anchorLat ?? null,
     anchorLng: input.anchorLng ?? null,
     poiId: input.poiId,
@@ -81,7 +77,6 @@ export async function upsertVisitLabelOverride(
     .onConflictDoUpdate({
       target: [visitLabelOverrides.dateKey, visitLabelOverrides.startAtMs],
       set: {
-        endAtMs: values.endAtMs,
         anchorLat: values.anchorLat,
         anchorLng: values.anchorLng,
         poiId: values.poiId,

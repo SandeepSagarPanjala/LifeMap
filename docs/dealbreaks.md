@@ -1,4 +1,4 @@
-# Dealbreaks
+                  # Dealbreaks
 
 Hard constraints. Changing these without understanding the dependency **breaks the app** — wrong today timeline, missing cross-midnight drives, or silent data loss.
 
@@ -26,10 +26,10 @@ If yesterday is sealed later (e.g. only in the background-work coordinator after
 
 ### Required order
 
-| Path | Order |
-| ---- | ----- |
-| Cold start | `sealYesterdayIfNeeded()` → `preloadTodayHistory()` |
-| BG → FG | `sealYesterdayIfNeeded()` → `refreshTodayOnForeground()` |
+| Path            | Order                                                                                                                          |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Cold start      | `sealYesterdayIfNeeded()` → `preloadTodayHistory()`                                                                            |
+| BG → FG         | `sealYesterdayIfNeeded()` → `refreshTodayOnForeground()`                                                                       |
 | Background work | Yesterday is **not** sealed here — only AppBootstrap. Banner backlog is days **older than yesterday** (`date_key < yesterday`) |
 
 ### Code anchors
@@ -42,10 +42,10 @@ If yesterday is sealed later (e.g. only in the background-work coordinator after
 
 ### Safe vs unsafe
 
-| Safe | Unsafe |
-| ---- | ------ |
-| Keep yesterday seal on the critical path (silent, no banner) | Defer yesterday seal until after map preload / FG refresh |
-| Seal older past days in the coordinator with a banner | Treat yesterday like any other past day in the banner queue |
+| Safe                                                           | Unsafe                                                                             |
+| -------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Keep yesterday seal on the critical path (silent, no banner)   | Defer yesterday seal until after map preload / FG refresh                          |
+| Seal older past days in the coordinator with a banner          | Treat yesterday like any other past day in the banner queue                        |
 | Call `sealYesterdayIfNeeded` again later as a no-op / fallback | Assume “coordinator will seal yesterday eventually” is good enough for first paint |
 
 ---

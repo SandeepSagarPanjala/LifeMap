@@ -6,19 +6,29 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import LottieView from 'lottie-react-native';
 import Svg, { Circle, ClipPath, Defs, G, Path } from 'react-native-svg';
 
 import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
 import { MAP_STACK_BUTTON_RIGHT, MAP_STACK_BUTTON_SIZE } from '@/lib/app-constants';
 
+const HEAVY_WORK_ORB = require('../../../assets/lottie/heavy-work-orb.json');
+
 /** Same blue as the system map user-location puck. */
 const MAP_USER_LOCATION_BLUE = '#007AFF';
 const MAP_TRIPS_OVERVIEW_RED = '#FF3B30';
+
+const ORB_RING = 32;
+const ORB_SIZE = 28;
 
 type MapLocateButtonProps = {
   bottom: number;
   /** When true, show blue/red split puck (fit-trips available). */
   split?: boolean;
+  /**
+   * Heavy map work in flight — Lottie orb; taps ignored (modal loader).
+   */
+  busy?: boolean;
   onPressLocate: () => void;
   onPressFitTrips?: () => void;
 };
@@ -29,10 +39,12 @@ type Half = 'locate' | 'fit';
  * Locate control. Default: glass circle with blue puck (recenter).
  * Split (count > 1): glass button; blue/red only on the center puck
  * (top-left blue / bottom-right red).
+ * Busy: Lottie orb; presses do nothing.
  */
 export function MapLocateButton({
   bottom,
   split = false,
+  busy = false,
   onPressLocate,
   onPressFitTrips,
 }: MapLocateButtonProps) {
@@ -68,6 +80,31 @@ export function MapLocateButton({
   const puckRedPath = useMemo(() => {
     return `M ${size} 0 L ${size} ${size} L 0 ${size} Z`;
   }, [size]);
+
+  if (busy) {
+    return (
+      <View
+        accessibilityRole="progressbar"
+        accessibilityLabel="Updating map"
+        accessibilityState={{ busy: true }}
+        pointerEvents="none"
+        style={[styles.wrap, { bottom }]}
+      >
+        <View style={styles.shadow}>
+          <AdaptiveGlassSurface style={styles.surface}>
+            <View style={styles.orbRing}>
+              <LottieView
+                source={HEAVY_WORK_ORB}
+                autoPlay
+                loop
+                style={styles.orbLottie}
+              />
+            </View>
+          </AdaptiveGlassSurface>
+        </View>
+      </View>
+    );
+  }
 
   if (!split) {
     return (
@@ -176,9 +213,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   puckRing: {
-    width: 23,
-    height: 23,
-    borderRadius: 11.5,
+    width: ORB_RING,
+    height: ORB_RING,
+    borderRadius: ORB_RING / 2,
     backgroundColor: 'rgba(255,255,255,0.95)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -193,5 +230,23 @@ const styles = StyleSheet.create({
     height: 14,
     borderRadius: 7,
     backgroundColor: MAP_USER_LOCATION_BLUE,
+  },
+  orbRing: {
+    width: ORB_RING,
+    height: ORB_RING,
+    borderRadius: ORB_RING / 2,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  orbLottie: {
+    width: ORB_SIZE,
+    height: ORB_SIZE,
   },
 });

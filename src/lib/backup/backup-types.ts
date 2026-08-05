@@ -39,7 +39,6 @@ export type TripLabelOverride = {
   placeLabel: string | null;
   placeId: number | null;
   placeKind: 'saved' | 'cache' | null;
-  selectedCandidateIndex: number | null;
   /** User-selected POI — must survive rebuild / detection-version bumps. */
   poiId?: number | null;
   poiLabel?: string | null;

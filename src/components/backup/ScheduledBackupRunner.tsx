@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState } from 'react-native';
 
 import {
   BackupProgressModal,
@@ -11,13 +10,15 @@ import {
   skipScheduledBackup,
 } from '@/lib/backup/backup-service';
 import { clearInterruptedBackupIfNeeded } from '@/lib/backup/backup-settings';
+import { subscribeScheduledBackupForeground } from '@/lib/backup/scheduled-backup-foreground';
 import type { BackupProgress } from '@/lib/backup/backup-types';
 
 type RunnerPhase = 'idle' | 'delaying' | 'backing_up';
 
 /**
- * Runs daily/weekly/monthly auto backup when the app returns to foreground
- * (not on cold start). Shows a 10s delay with skip, then progress while uploading.
+ * Auto backup UI: delay + progress modal.
+ * Triggered on BG→FG via AppBootstrap → notifyScheduledBackupOnForeground
+ * (not on cold start).
  */
 export function ScheduledBackupRunner() {
   const [phase, setPhase] = useState<RunnerPhase>('idle');
@@ -57,17 +58,11 @@ export function ScheduledBackupRunner() {
   }, [cancel]);
 
   useEffect(() => {
-    let currentState = AppState.currentState;
-
     // If a prior backup was killed mid-run, mark that schedule window as done.
     void clearInterruptedBackupIfNeeded();
 
-    const subscription = AppState.addEventListener('change', nextState => {
-      const wasBackground =
-        currentState === 'background' || currentState === 'inactive';
-      currentState = nextState;
-
-      if (nextState !== 'active' || !wasBackground || busyRef.current) {
+    return subscribeScheduledBackupForeground(() => {
+      if (busyRef.current) {
         return;
       }
 
@@ -84,8 +79,6 @@ export function ScheduledBackupRunner() {
           busyRef.current = false;
         });
     });
-
-    return () => subscription.remove();
   }, []);
 
   return (

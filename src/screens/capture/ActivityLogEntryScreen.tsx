@@ -17,8 +17,7 @@ import {
   type ActivityRow,
 } from '@/db/repositories/activities';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import { useDayMoments } from '@/hooks/use-day-moments';
-import { getTodayDateKey } from '@/lib/day-utils';
+import { markNeedsTodayRefreshOnMapFocus } from '@/lib/foreground-heavy-resume';
 import type { RootStackParamList } from '@/navigation/types';
 
 /**
@@ -31,7 +30,6 @@ export function ActivityLogEntryScreen() {
   const route = useRoute<RouteProp<RootStackParamList, 'ActivityLogEntry'>>();
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
-  const { refreshDayMoments } = useDayMoments(getTodayDateKey());
 
   const [activity, setActivity] = useState<ActivityRow | null>(null);
   const [loading, setLoading] = useState(true);
@@ -77,9 +75,9 @@ export function ActivityLogEntryScreen() {
   }, [navigation]);
 
   const handleLogged = useCallback(async () => {
-    await refreshDayMoments();
+    markNeedsTodayRefreshOnMapFocus();
     navigation.popToTop();
-  }, [navigation, refreshDayMoments]);
+  }, [navigation]);
 
   if (loading) {
     return (

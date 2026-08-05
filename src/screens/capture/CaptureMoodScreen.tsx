@@ -25,7 +25,7 @@ import {
 } from '@/components/voice/VoiceMeter';
 import { getSetting, setSetting } from '@/db/repositories/settings';
 import { loadProfile } from '@/db/repositories/profile';
-import { useDayMoments } from '@/hooks/use-day-moments';
+import { markNeedsTodayRefreshOnMapFocus } from '@/lib/foreground-heavy-resume';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { APP_COPY, errorMessageOr } from '@/lib/app-copy';
 import {
@@ -34,7 +34,6 @@ import {
   MAP_MOMENTS_SIDE_BTN_GAP,
   MOOD_VOICE_MAX_DURATION_MS,
 } from '@/lib/app-constants';
-import { getTodayDateKey } from '@/lib/day-utils';
 import { saveMoodMoment } from '@/lib/moments/capture-mood';
 import {
   getEmotionToken,
@@ -87,7 +86,6 @@ function CaptureMoodPanel() {
   const closeScreen = useSheetCaptureClose();
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
-  const { refreshDayMoments } = useDayMoments(getTodayDateKey());
 
   const [selectedEmotionId, setSelectedEmotionId] =
     useState<EmotionTokenId | null>(null);
@@ -417,7 +415,7 @@ function CaptureMoodPanel() {
             moodReason: mode === 'text' ? reasonText : null,
           });
         }
-        await refreshDayMoments();
+        markNeedsTodayRefreshOnMapFocus();
         closeScreen();
       })
       .catch(error => {
@@ -430,7 +428,6 @@ function CaptureMoodPanel() {
     moodVariant,
     reasonText,
     recording,
-    refreshDayMoments,
     saving,
     selectedEmotion,
     stopRecording,

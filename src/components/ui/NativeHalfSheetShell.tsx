@@ -139,6 +139,17 @@ export function NativeHalfSheetShell({
     // Screen is popping; keep passthrough until unmount.
   }, [onClose, reopenSheet]);
 
+  /** JS-only: worklets must not read React refs (Reanimated serializes them). */
+  const finishCloseAfterAnimation = useCallback(
+    (finished: boolean) => {
+      // Height animations can cancel this timing; still finish if we meant to close.
+      if (finished || closingRef.current) {
+        finishClose();
+      }
+    },
+    [finishClose],
+  );
+
   const requestClose = useCallback(() => {
     if (closingRef.current) {
       return;
@@ -152,10 +163,7 @@ export function NativeHalfSheetShell({
       sheetHeightSV.value,
       { duration: SHEET_SLIDE_MS, easing: Easing.in(Easing.cubic) },
       finished => {
-        // Height animations can cancel this timing; still finish if we meant to close.
-        if (finished || closingRef.current) {
-          runOnJS(finishClose)();
-        }
+        runOnJS(finishCloseAfterAnimation)(Boolean(finished));
       },
     );
     // Failsafe: if the close animation is canceled and never finishes, still pop.
@@ -164,7 +172,13 @@ export function NativeHalfSheetShell({
         finishClose();
       }
     }, SHEET_SLIDE_MS + 120);
-  }, [backdropOpacity, finishClose, sheetHeightSV, sheetTranslateY]);
+  }, [
+    backdropOpacity,
+    finishClose,
+    finishCloseAfterAnimation,
+    sheetHeightSV,
+    sheetTranslateY,
+  ]);
 
   const handleBackdropPress = useCallback(() => {
     if (Date.now() < backdropLockUntilRef.current) {

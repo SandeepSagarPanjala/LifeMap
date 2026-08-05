@@ -1,22 +1,17 @@
-import { and, asc, eq, gte, isNull, lte, lt, ne, or, sql } from 'drizzle-orm';
+import { and, asc, eq, gte, isNull, lt, ne, or } from 'drizzle-orm';
 
+import { getTodayDateKey, shiftDateKey, toDateKey } from '@/lib/day-utils';
 import {
-  getDayRange,
-  getTodayDateKey,
-  shiftDateKey,
-  toDateKey,
-} from '@/lib/day-utils';
-import { TRIP_DETECTION_VERSION } from '@/lib/app-constants';
+  MIN_VALID_LOCATION_DATE_KEY,
+  TRIP_DETECTION_VERSION,
+} from '@/lib/app-constants';
 import { getGeometryPersistFingerprint } from '@/lib/trip-geometry-settings';
 
 import { getDatabase } from '../client';
-import { locationDaySummaries, locationPoints, materializedDays } from '../schema';
+import { locationDaySummaries, materializedDays } from '../schema';
 
 export type LocationDaySummaryRow = {
   dateKey: string;
-  pointCount: number;
-  minTimestamp: Date | null;
-  maxTimestamp: Date | null;
   updatedAt: Date;
 };
 
@@ -40,9 +35,6 @@ export async function ensureLocationDaySummaryExists(
     .insert(locationDaySummaries)
     .values({
       dateKey,
-      pointCount: 1,
-      minTimestamp: timestamp,
-      maxTimestamp: timestamp,
       updatedAt: new Date(),
     })
     .onConflictDoNothing();
@@ -61,6 +53,7 @@ function pastDayNeedsSealConditions(
 ) {
   return and(
     lt(locationDaySummaries.dateKey, yesterdayKey),
+    gte(locationDaySummaries.dateKey, MIN_VALID_LOCATION_DATE_KEY),
     or(
       isNull(materializedDays.dateKey),
       ne(materializedDays.status, 'complete'),
@@ -115,80 +108,6 @@ export async function listPastDaysNeedingSeal(): Promise<string[]> {
     .orderBy(asc(locationDaySummaries.dateKey));
 
   return rows.map(row => row.dateKey);
-}
-
-/** Ensure summary rows exist for a calendar day that has GPS points. */
-export async function refreshLocationDaySummary(dateKey: string): Promise<void> {
-  const { start, end } = getDayRange(dateKey);
-  const db = await getDatabase();
-  const [row] = await db
-    .select({
-      count: sql<number>`cast(count(*) as integer)`,
-      minTs: sql<Date | null>`min(${locationPoints.timestamp})`,
-      maxTs: sql<Date | null>`max(${locationPoints.timestamp})`,
-    })
-    .from(locationPoints)
-    .where(
-      and(
-        gte(locationPoints.timestamp, start),
-        lte(locationPoints.timestamp, end),
-      ),
-    );
-
-  const pointCount = Number(row?.count ?? 0);
-  if (pointCount === 0) {
-    await db
-      .delete(locationDaySummaries)
-      .where(eq(locationDaySummaries.dateKey, dateKey));
-    ensuredDateKeys.delete(dateKey);
-    return;
-  }
-
-  const now = new Date();
-  await db
-    .insert(locationDaySummaries)
-    .values({
-      dateKey,
-      pointCount: 1,
-      minTimestamp: row?.minTs ?? null,
-      maxTimestamp: row?.maxTs ?? null,
-      updatedAt: now,
-    })
-    .onConflictDoUpdate({
-      target: locationDaySummaries.dateKey,
-      set: {
-        pointCount: 1,
-        minTimestamp: row?.minTs ?? null,
-        maxTimestamp: row?.maxTs ?? null,
-        updatedAt: now,
-      },
-    });
-  ensuredDateKeys.add(dateKey);
-}
-
-export async function refreshLocationDaySummaryAfterSeal(
-  dateKey: string,
-  _pointCount: number,
-): Promise<void> {
-  const db = await getDatabase();
-  const now = new Date();
-  await db
-    .insert(locationDaySummaries)
-    .values({
-      dateKey,
-      pointCount: 1,
-      minTimestamp: null,
-      maxTimestamp: null,
-      updatedAt: now,
-    })
-    .onConflictDoUpdate({
-      target: locationDaySummaries.dateKey,
-      set: {
-        pointCount: 1,
-        updatedAt: now,
-      },
-    });
-  ensuredDateKeys.add(dateKey);
 }
 
 /** @internal — tests */

@@ -76,6 +76,31 @@ Example:
 
 **Gaps** (no GPS rows) may appear only between **same-kind** segments we could not fix (rare) or at the start/end of the day — never between a drive and its adjoining visit.
 
+### Stay GPS blackouts (12 hour + 1 mile rule)
+
+When GPS is silent during what would otherwise be a stay:
+
+| Gap | Distance | Result |
+| --- | --- | --- |
+| ≤ 12 hours | ≤ **1 mile** (`STAY_BLACKOUT_SAME_AREA_MAX_M`) | Keep one stay (phone off / GPS warm-up) |
+| ≤ 12 hours | > 1 mile | **Missing** |
+| > 12 hours | any | **Missing** |
+
+Example: Windhaven last fix 1:49, next fix 2:58 only ~0.3 mi away → still the same visit.
+
+`ENDPOINT_JUMP_MIN_GAP_MS` = **12 hours**.
+
+### Travel GPS blackouts (10 minute rule)
+
+Inside a drive / stay→stay point slice, GPS holes are much stricter than stays:
+
+| Gap between consecutive fixes | Result |
+| --- | --- |
+| ≤ `TRAVEL_MAX_GAP_MS` (**10 min**, = `DEFAULT_TRIP_GAP_MINUTES`) | Keep as one travel (normal sparse sampling) |
+| > 10 min, and not same-place ≤1 mi ≤12h | **Missing** for the hole; travel may resume after |
+
+Bump `TRIP_DETECTION_VERSION` when these rules change.
+
 ---
 
 ## Sparse GPS — do not lie on the map

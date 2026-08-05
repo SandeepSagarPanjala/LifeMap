@@ -423,10 +423,6 @@ async function mergePlaceLookupCache(rows: unknown[]): Promise<IdMap> {
           'place_lookup_cache.venueRadiusMeters',
         ),
         addressLine: parseOptionalString(record.addressLine),
-        candidatesJson: parseOptionalString(record.candidatesJson),
-        selectedCandidateIndex: parseOptionalNumber(
-          record.selectedCandidateIndex,
-        ),
         lookupStatus: parseRequiredString(
           record.lookupStatus,
           'place_lookup_cache.lookupStatus',
@@ -534,17 +530,12 @@ async function mergeMoments(
       textBody,
       caption: parseOptionalString(record.caption),
       title: parseOptionalString(record.title),
-      moodScore: parseOptionalNumber(record.moodScore),
       moodLabel: parseOptionalString(record.moodLabel),
       moodReason: parseOptionalString(record.moodReason),
       moodVariant: parseOptionalString(record.moodVariant),
-      placeLabel: parseOptionalString(record.placeLabel),
       contentBytes: parseOptionalNumber(record.contentBytes),
       sourceBytes: parseOptionalNumber(record.sourceBytes),
       contentFormat: parseOptionalString(record.contentFormat),
-      shareVisibility: parseOptionalString(record.shareVisibility) ?? 'private',
-      contentSyncState:
-        parseOptionalString(record.contentSyncState) ?? 'local_only',
       activityId: remapId(parseOptionalNumber(record.activityId), activityMap),
       activityEmoji: parseOptionalString(record.activityEmoji),
       activityLabel: parseOptionalString(record.activityLabel),

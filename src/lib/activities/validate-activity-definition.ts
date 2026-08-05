@@ -79,6 +79,7 @@ function validateField(
     'extract',
     'fillField',
     'fillItemsField',
+    'fillShopNameField',
   ]);
   for (const key of Object.keys(record)) {
     if (!allowedKeys.has(key)) {
@@ -177,14 +178,35 @@ function validateField(
       }
       field.fillItemsField = fillItemsField;
     }
+
+    if (record.fillShopNameField != null) {
+      if (record.extract !== 'amount') {
+        return {
+          ok: false,
+          error: `Scan field "${id}" fillShopNameField requires extract: amount.`,
+        };
+      }
+      const fillShopNameField =
+        typeof record.fillShopNameField === 'string'
+          ? record.fillShopNameField.trim()
+          : '';
+      if (!fillShopNameField) {
+        return {
+          ok: false,
+          error: `Scan field "${id}" fillShopNameField must be a field id.`,
+        };
+      }
+      field.fillShopNameField = fillShopNameField;
+    }
   } else if (
     record.extract != null ||
     record.fillField != null ||
-    record.fillItemsField != null
+    record.fillItemsField != null ||
+    record.fillShopNameField != null
   ) {
     return {
       ok: false,
-      error: `Field "${id}" cannot use extract/fillField/fillItemsField.`,
+      error: `Field "${id}" cannot use extract/fillField/fillItemsField/fillShopNameField.`,
     };
   }
 
@@ -307,6 +329,21 @@ export function validateActivityDefinition(
         return {
           ok: false,
           error: `Scan field "${field.id}" fillItemsField must point to a list field.`,
+        };
+      }
+    }
+    if (field.type === 'scan' && field.fillShopNameField) {
+      const target = fields.find(item => item.id === field.fillShopNameField);
+      if (target == null) {
+        return {
+          ok: false,
+          error: `Scan field "${field.id}" fillShopNameField "${field.fillShopNameField}" does not exist.`,
+        };
+      }
+      if (target.type !== 'text') {
+        return {
+          ok: false,
+          error: `Scan field "${field.id}" fillShopNameField must point to a text field.`,
         };
       }
     }

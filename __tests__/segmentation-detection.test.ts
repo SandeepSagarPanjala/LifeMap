@@ -72,14 +72,11 @@ describe('segmentation detection (current algorithm)', () => {
         'stay',
         'travel',
         'stay',
+        'gap',
         'travel',
         'stay',
       ]);
-      const firstDrive = timeline[1];
-      const firstStay = timeline[0];
-      if (firstDrive?.kind === 'travel' && firstStay?.kind === 'stay') {
-        expect(firstStay.endAt.getTime()).toBe(firstDrive.startAt.getTime());
-      }
+      // Walmart → Home has a 15 min GPS hole (> travel max 10 min) → missing.
     });
 
     it('stay end equals drive start when departure is a moving-speed GPS', () => {
@@ -148,7 +145,7 @@ describe('segmentation detection (current algorithm)', () => {
       expect(timeline.some(entry => entry.kind === 'travel')).toBe(false);
     });
 
-    it('bridges a long quiet gap with travel instead of a missing-data gap card', () => {
+    it('treats a quiet gap to a different area as missing, not a fake drive', () => {
       const timeline = buildDayTimeline(
         makePoints([
           { minutes: 0, ...HOME },
@@ -160,12 +157,160 @@ describe('segmentation detection (current algorithm)', () => {
         config,
       );
 
+      // ≤12h but different area after a GPS gap → missing, not a fake drive.
       expect(timeline.map(entry => entry.kind)).toEqual([
         'stay',
+        'gap',
+        'stay',
+      ]);
+      expect(timeline.some(entry => entry.kind === 'travel')).toBe(false);
+    });
+
+    it('keeps a stay across phone-off ≤12h when the user is still in the same area', () => {
+      const timeline = buildDayTimeline(
+        makePoints([
+          { minutes: 0, ...HOME },
+          { minutes: 30, ...HOME },
+          // 90 min silence, still at Home
+          { minutes: 120, lat: HOME.lat + 0.00002, lng: HOME.lng + 0.00002 },
+          { minutes: 150, ...HOME },
+        ]),
+        config,
+      );
+
+      expect(timeline.filter(entry => entry.kind === 'stay')).toHaveLength(1);
+      expect(timeline.some(entry => entry.kind === 'gap')).toBe(false);
+    });
+
+    it('treats >12h same-area phone-off as missing, not one continuous stay', () => {
+      const timeline = buildDayTimeline(
+        makePoints([
+          { minutes: 0, ...HOME },
+          { minutes: 20, ...HOME },
+          // 13h silence at Home
+          { minutes: 20 + 13 * 60, ...HOME },
+          { minutes: 20 + 13 * 60 + 20, ...HOME },
+        ]),
+        config,
+      );
+
+      expect(timeline.some(entry => entry.kind === 'gap')).toBe(true);
+    });
+
+    it('splits Home→elsewhere blackout then real drive into missing + travel (Jun 6)', () => {
+      // Home leave, ~9.5h GPS dead, resume far away (>1 mi), then drive.
+      const timeline = buildDayTimeline(
+        makePoints([
+          { minutes: 0, ...HOME },
+          { minutes: 25, ...HOME },
+          // 9.5h blackout, then moving near Walmart (well over 1 mile from Home)
+          { minutes: 25 + 9.5 * 60, lat: 33.215, lng: -97.05 },
+          { minutes: 25 + 9.5 * 60 + 5, lat: 33.22, lng: -97.04 },
+          { minutes: 25 + 9.5 * 60 + 10, lat: 33.23, lng: -97.045 },
+          { minutes: 25 + 9.5 * 60 + 15, ...WALMART },
+          { minutes: 25 + 9.5 * 60 + 40, ...WALMART },
+        ]),
+        config,
+      );
+
+      expect(timeline.map(entry => entry.kind)).toEqual([
+        'stay',
+        'gap',
         'travel',
         'stay',
       ]);
-      expect(timeline.some(entry => entry.kind === 'gap')).toBe(false);
+      const gap = timeline.find(entry => entry.kind === 'gap');
+      expect(gap).toBeDefined();
+      expect(gap!.durationMs).toBeGreaterThan(9 * 60 * 60 * 1000);
+    });
+
+    it('splits a travel-sized hole inside a drive into missing (Jun 6 12:02–12:51)', () => {
+      // Resume far from home, ~50 min silence, then real movement >1 mi away.
+      const timeline = buildDayTimeline(
+        makePoints([
+          { minutes: 0, ...HOME },
+          { minutes: 20, ...HOME },
+          // Resume far from home (still for a few minutes)
+          { minutes: 30, lat: 33.03, lng: -96.84 },
+          { minutes: 32, lat: 33.03, lng: -96.84 },
+          { minutes: 35, lat: 33.0301, lng: -96.8401 },
+          // 50 min hole — resume well over 1 mile away → missing
+          { minutes: 85, lat: 33.12, lng: -96.70, speed: 12 },
+          { minutes: 90, lat: 33.15, lng: -96.68, speed: 10 },
+          { minutes: 95, ...WALMART, speed: 3 },
+          { minutes: 120, ...WALMART },
+        ]),
+        config,
+      );
+
+      const kinds = timeline.map(entry => entry.kind);
+      expect(kinds).toContain('gap');
+      expect(kinds.filter(k => k === 'gap').length).toBeGreaterThanOrEqual(1);
+      // Real movement after the hole should still be travel.
+      expect(kinds).toContain('travel');
+      const gaps = timeline.filter(entry => entry.kind === 'gap');
+      expect(
+        gaps.some(g => g.durationMs >= 45 * 60_000 && g.durationMs <= 60 * 60_000),
+      ).toBe(true);
+    });
+
+    it('keeps a stay across ≤12h GPS blackout within 1 mile (Windhaven warm-up)', () => {
+      // Stay at venue, ~70 min silence, resume ~0.3 mi away already moving.
+      const venue = { lat: 33.0558, lng: -96.8343 };
+      const resume = { lat: 33.0512, lng: -96.8332 };
+      const timeline = buildDayTimeline(
+        makePoints([
+          { minutes: 0, ...venue },
+          { minutes: 20, ...venue },
+          { minutes: 40, ...venue },
+          // 70 min blackout, GPS restarts nearby while moving
+          { minutes: 110, ...resume, speed: 15 },
+          { minutes: 115, lat: 33.048, lng: -96.833, speed: 16 },
+          { minutes: 125, ...WALMART, speed: 3 },
+          { minutes: 150, ...WALMART },
+        ]),
+        config,
+      );
+
+      const kinds = timeline.map(entry => entry.kind);
+      expect(kinds[0]).toBe('stay');
+      // No gray gap for the warm-up blackout — still the same place.
+      expect(kinds).not.toContain('gap');
+      expect(kinds).toContain('travel');
+      const firstStay = timeline.find(entry => entry.kind === 'stay');
+      expect(firstStay?.endAt.getTime()).toBeGreaterThan(
+        new Date('2026-06-03T08:00:00').getTime() + 100 * 60_000,
+      );
+    });
+
+    it('folds a short &lt;5min island between two missings into one gap (Jun 6 11:57–12:02)', () => {
+      // Overnight missing, brief stationary blip (&lt;5 min dwell), then another
+      // hole, then real travel — blip must not stand alone; gray continues.
+      const timeline = buildDayTimeline(
+        makePoints([
+          { minutes: 0, ...HOME },
+          { minutes: 20, ...HOME },
+          // 9h blackout
+          { minutes: 20 + 9 * 60, lat: 33.03, lng: -96.84 },
+          { minutes: 20 + 9 * 60 + 1, lat: 33.03, lng: -96.84 },
+          { minutes: 20 + 9 * 60 + 3, lat: 33.0301, lng: -96.8401 },
+          // ~50 min hole (well over travel max), resume far away
+          { minutes: 20 + 9 * 60 + 55, lat: 33.15, lng: -96.70, speed: 12 },
+          { minutes: 20 + 9 * 60 + 60, lat: 33.18, lng: -96.68, speed: 10 },
+          { minutes: 20 + 9 * 60 + 70, ...WALMART, speed: 2 },
+          { minutes: 20 + 9 * 60 + 90, ...WALMART },
+        ]),
+        config,
+      );
+
+      const kinds = timeline.map(entry => entry.kind);
+      // One continuous gap through the short blip, then travel + stay.
+      expect(kinds.filter(k => k === 'gap')).toHaveLength(1);
+      expect(kinds).toContain('travel');
+      const gap = timeline.find(entry => entry.kind === 'gap');
+      expect(gap).toBeDefined();
+      // Gap covers overnight + blip + noon hole (≥ 9h + 50min).
+      expect(gap!.durationMs).toBeGreaterThan(9.5 * 60 * 60 * 1000);
     });
 
     it('treats overnight phone-off endpoint jumps as missing, not a drive', () => {

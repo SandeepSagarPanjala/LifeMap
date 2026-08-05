@@ -40,7 +40,6 @@ function makeTripRow(endAt: Date): TripRow {
     poiCategory: null,
     momentRefs: [],
     inferred: false,
-    selectedCandidateIndex: null,
     detectionVersion: 1,
     closedAt: endAt,
   };

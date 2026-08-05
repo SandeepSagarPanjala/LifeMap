@@ -23,10 +23,14 @@ import {
   getHealthKitMasterEnabled,
   getHealthKitSleepEnabled,
   getHealthKitStepsEnabled,
+  getHealthKitSyncOnChangesEnabled,
+  getHealthKitSyncOnDetailOpenEnabled,
   setHealthKitActivityEnabled,
   setHealthKitMasterEnabled,
   setHealthKitSleepEnabled,
   setHealthKitStepsEnabled,
+  setHealthKitSyncOnChangesEnabled,
+  setHealthKitSyncOnDetailOpenEnabled,
 } from '@/lib/healthkit/settings';
 import {
   syncHealthKit,
@@ -43,6 +47,8 @@ export function HealthSettingsScreen() {
   const [sleepOn, setSleepOn] = useState(true);
   const [activityOn, setActivityOn] = useState(true);
   const [stepsOn, setStepsOn] = useState(true);
+  const [syncOnChanges, setSyncOnChanges] = useState(false);
+  const [syncOnDetailOpen, setSyncOnDetailOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [available, setAvailable] = useState(false);
   const [syncVisible, setSyncVisible] = useState(false);
@@ -55,11 +61,13 @@ export function HealthSettingsScreen() {
     let cancelled = false;
     void (async () => {
       try {
-        const [m, s, a, st, avail] = await Promise.all([
+        const [m, s, a, st, onChanges, onDetail, avail] = await Promise.all([
           getHealthKitMasterEnabled(),
           getHealthKitSleepEnabled(),
           getHealthKitActivityEnabled(),
           getHealthKitStepsEnabled(),
+          getHealthKitSyncOnChangesEnabled(),
+          getHealthKitSyncOnDetailOpenEnabled(),
           isHealthDataAvailableSafe(),
         ]);
         if (!cancelled) {
@@ -67,6 +75,8 @@ export function HealthSettingsScreen() {
           setSleepOn(s);
           setActivityOn(a);
           setStepsOn(st);
+          setSyncOnChanges(onChanges);
+          setSyncOnDetailOpen(onDetail);
           setAvailable(avail);
         }
       } finally {
@@ -159,6 +169,16 @@ export function HealthSettingsScreen() {
     },
     [runSyncWithProgress, syncing],
   );
+
+  const handleSyncOnChangesChange = useCallback(async (next: boolean) => {
+    setSyncOnChanges(next);
+    await setHealthKitSyncOnChangesEnabled(next);
+  }, []);
+
+  const handleSyncOnDetailOpenChange = useCallback(async (next: boolean) => {
+    setSyncOnDetailOpen(next);
+    await setHealthKitSyncOnDetailOpenEnabled(next);
+  }, []);
 
   const handleDeleteTodaySleep = useCallback(() => {
     Alert.alert(
@@ -257,6 +277,26 @@ export function HealthSettingsScreen() {
             disabled={syncing}
             onValueChange={value => {
               void handleCategoryChange('steps', value);
+            }}
+          />
+
+          <SettingsGroupLabel title="Extra sync" />
+          <SettingsIosToggle
+            label="When Health data changes"
+            description="Pull sleep and steps as soon as Apple Health updates them. Off by default — foreground sync is usually enough."
+            value={syncOnChanges}
+            disabled={syncing}
+            onValueChange={value => {
+              void handleSyncOnChangesChange(value);
+            }}
+          />
+          <SettingsIosToggle
+            label="When opening Sleep or Steps"
+            description="Refresh from Health each time you open those detail screens. Off by default."
+            value={syncOnDetailOpen}
+            disabled={syncing}
+            onValueChange={value => {
+              void handleSyncOnDetailOpenChange(value);
             }}
           />
 

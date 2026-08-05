@@ -41,7 +41,7 @@ export const TRIP_RADIUS_CHOICES = [20, 25, 50, 75, 100, 150] as const;
 export const SAVED_PLACE_MIN_DWELL_MINUTES = 1;
 
 /** Bump when visit/drive detection rules change — invalidates sealed day cache. */
-export const TRIP_DETECTION_VERSION = 20;
+export const TRIP_DETECTION_VERSION = 25;
 
 /** Bump when stored route/visit geometry rules change — invalidates fast load path. */
 export const TRIP_GEOMETRY_VERSION = 4;
@@ -324,11 +324,30 @@ export const MERGE_STAY_MAX_DISTANCE_M = 200;
 export const MISSING_MIN_DISTANCE_M = 500;
 export const MISSING_MIN_GAP_MS = 15 * 60 * 1000;
 /**
- * Stay→stay slice with almost no GPS (phone off / tracking dead) longer than
- * this is missing, not a straight-line "drive". Shorter sparse gaps still
- * bridge as travel (see segmentation bridge tests ~65 min).
+ * Max GPS silence allowed inside a travel / stay→stay drive slice.
+ * Longer holes become `missing` (gray). Stays still use the 12h phone-off rule.
+ * Matches `DEFAULT_TRIP_GAP_MINUTES`.
  */
-export const ENDPOINT_JUMP_MIN_GAP_MS = 2 * 60 * 60 * 1000;
+export const TRAVEL_MAX_GAP_MS = DEFAULT_TRIP_GAP_MINUTES * 60 * 1000;
+/**
+ * After a tracking blackout (GPS slow to restart), still treat the user as at
+ * the same place if the next fix is within this distance (1 mile).
+ * Does not replace the normal stay radius for continuous tracking.
+ */
+export const STAY_BLACKOUT_SAME_AREA_MAX_M = 1609;
+/**
+ * Stay / GPS-blackout threshold (12 hours).
+ *
+ * - Same area (≤ 1 mi) + gap ≤ this → keep the stay (phone off / GPS warm-up).
+ * - Otherwise (gap > this, or farther than 1 mi) → missing.
+ */
+export const ENDPOINT_JUMP_MIN_GAP_MS = 12 * 60 * 60 * 1000;
+
+/**
+ * Ignore GPS / day keys before this (filters epoch junk like 1970-01-21).
+ * Rebuild and earliest-day scans must not walk from corrupt timestamps.
+ */
+export const MIN_VALID_LOCATION_DATE_KEY = '2020-01-01';
 
 export const DEFAULT_STOP_DETECTION_CONFIG = {
   radiusM: 75,

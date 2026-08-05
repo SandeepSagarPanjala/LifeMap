@@ -18,7 +18,6 @@ export function makeTripRow(
     poiLabel: null,
     poiCategory: null,
     inferred: false,
-    selectedCandidateIndex: null,
     detectionVersion: 14,
     closedAt: partial.endAt,
     momentRefs: [],

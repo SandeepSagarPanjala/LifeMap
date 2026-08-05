@@ -163,6 +163,10 @@ export function detectSegmentsForDay(
   const stopConfig = stopConfigFromTripConfig(config);
   const resolveClosestPoi =
     options.resolveClosestPoi ?? platformResolvesClosestPoi();
+  const moments = (options.moments ?? []).map(moment => ({
+    timestamp: moment.timestamp,
+    type: moment.type,
+  }));
   return detectTripsForDay(
     dateKey,
     parsed,
@@ -170,7 +174,7 @@ export function detectSegmentsForDay(
     [...savedPlaces],
     [...(options.placeLookupCache ?? [])],
     [...(options.placePois ?? [])],
-    [],
+    moments,
     { resolveClosestPoi },
   ).segments;
 }
@@ -204,13 +208,17 @@ export function detectTripsFromPoints(
 ): DetectedTrip[] {
   const parsed = locationRowsToParsedPoints(points);
   const stopConfig = stopConfigFromTripConfig(config);
+  const moments = (options.moments ?? []).map(moment => ({
+    timestamp: moment.timestamp,
+    type: moment.type,
+  }));
   const result = detectSegmentTrips(
     parsed,
     stopConfig,
     [...(options.savedPlaces ?? [])],
     [...(options.placeLookupCache ?? [])],
     [...(options.placePois ?? [])],
-    [],
+    moments,
     {
       resolveClosestPoi:
         options.resolveClosestPoi ?? platformResolvesClosestPoi(),

@@ -32,7 +32,6 @@ export const locationPoints = sqliteTable(
     batteryIsCharging: integer('battery_is_charging', { mode: 'boolean' }),
   },
   table => ({
-    timestampIdx: index('location_points_timestamp_idx').on(table.timestamp),
     timestampLatLngUnique: uniqueIndex(
       'location_points_timestamp_lat_lng_unique',
     ).on(table.timestamp, table.lat, table.lng),
@@ -91,9 +90,7 @@ export const moments = sqliteTable(
     tagsJson: text('tags_json'),
     textBody: text('text_body'),
     caption: text('caption'),
-    placeLabel: text('place_label'),
     title: text('title'),
-    moodScore: real('mood_score'),
     moodLabel: text('mood_label'),
     /** Free-text reason for the selected mood (~3 lines). */
     moodReason: text('mood_reason'),
@@ -103,10 +100,6 @@ export const moments = sqliteTable(
     contentBytes: integer('content_bytes'),
     sourceBytes: integer('source_bytes'),
     contentFormat: text('content_format'),
-    shareVisibility: text('share_visibility').notNull().default('private'),
-    contentSyncState: text('content_sync_state')
-      .notNull()
-      .default('local_only'),
     activityId: integer('activity_id').references(() => activities.id),
     activityEmoji: text('activity_emoji'),
     activityLabel: text('activity_label'),
@@ -218,19 +211,6 @@ export const settings = sqliteTable('settings', {
   value: text('value'),
 });
 
-export const trackingEvents = sqliteTable(
-  'tracking_events',
-  {
-    id: integer('id').primaryKey({ autoIncrement: true }),
-    timestamp: integer('timestamp', { mode: 'timestamp' }).notNull(),
-    event: text('event').notNull(),
-    details: text('details'),
-  },
-  table => ({
-    timestampIdx: index('tracking_events_timestamp_idx').on(table.timestamp),
-  }),
-);
-
 export const savedPlaces = sqliteTable(
   'saved_places',
   {
@@ -257,21 +237,9 @@ export const placeLookupCache = sqliteTable(
     anchorLng: real('anchor_lng').notNull(),
     venueRadiusMeters: integer('venue_radius_meters').notNull().default(100),
     addressLine: text('address_line'),
-    /** @deprecated Migrated to place_pois — kept for one-time data migration. */
-    candidatesJson: text('candidates_json'),
-    /** @deprecated Replaced by per-trip poi_id. */
-    selectedCandidateIndex: integer('selected_candidate_index'),
     lookupStatus: text('lookup_status').notNull().default('pending'),
     fetchedAt: integer('fetched_at', { mode: 'timestamp' }),
   },
-  table => ({
-    anchorLatIdx: index('place_lookup_cache_anchor_lat_idx').on(
-      table.anchorLat,
-    ),
-    anchorLngIdx: index('place_lookup_cache_anchor_lng_idx').on(
-      table.anchorLng,
-    ),
-  }),
 );
 
 export const placePois = sqliteTable(
@@ -320,8 +288,6 @@ export const trips = sqliteTable(
     /** Materialized moment membership — [{ momentId, momentKind }]. */
     momentRefs: text('moment_refs'),
     inferred: integer('inferred').notNull().default(0),
-    /** @deprecated Replaced by poi_id. */
-    selectedCandidateIndex: integer('selected_candidate_index'),
     detectionVersion: integer('detection_version').notNull(),
     closedAt: integer('closed_at', { mode: 'timestamp' }).notNull(),
   },
@@ -356,11 +322,9 @@ export const tripPoints = sqliteTable(
   }),
 );
 
+/** GPS day presence for past-day seal backlog — row existence is the signal. */
 export const locationDaySummaries = sqliteTable('location_day_summaries', {
   dateKey: text('date_key').primaryKey(),
-  pointCount: integer('point_count').notNull(),
-  minTimestamp: integer('min_timestamp', { mode: 'timestamp' }),
-  maxTimestamp: integer('max_timestamp', { mode: 'timestamp' }),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 });
 
@@ -368,8 +332,6 @@ export const materializedDays = sqliteTable('materialized_days', {
   dateKey: text('date_key').primaryKey(),
   status: text('status').notNull(),
   detectionVersion: integer('detection_version').notNull(),
-  tripCount: integer('trip_count').notNull().default(0),
-  pointCount: integer('point_count').notNull().default(0),
   geometryFingerprint: text('geometry_fingerprint'),
   /** Drive start ms withheld from past-day seal — used for today's GPS lookback. */
   excludedCrossMidnightFromMs: integer('excluded_cross_midnight_from_ms'),
@@ -390,7 +352,6 @@ export const visitLabelOverrides = sqliteTable(
     id: integer('id').primaryKey({ autoIncrement: true }),
     dateKey: text('date_key').notNull(),
     startAtMs: integer('start_at_ms').notNull(),
-    endAtMs: integer('end_at_ms'),
     anchorLat: real('anchor_lat'),
     anchorLng: real('anchor_lng'),
     poiId: integer('poi_id').notNull(),
@@ -403,6 +364,5 @@ export const visitLabelOverrides = sqliteTable(
     dateStartUnique: uniqueIndex(
       'visit_label_overrides_date_start_unique',
     ).on(table.dateKey, table.startAtMs),
-    dateKeyIdx: index('visit_label_overrides_date_key_idx').on(table.dateKey),
   }),
 );

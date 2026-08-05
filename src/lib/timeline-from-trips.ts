@@ -370,7 +370,6 @@ function toPseudoTripRow(trip: DetectedTrip): TripRow {
     poiLabel: persisted.poiLabel,
     poiCategory: persisted.poiCategory,
     inferred: trip.inferred ?? false,
-    selectedCandidateIndex: null,
     detectionVersion: 0,
     closedAt: trip.endAt,
     momentRefs: trip.momentRefs ?? [],
