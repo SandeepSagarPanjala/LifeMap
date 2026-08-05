@@ -46,7 +46,6 @@ function override(
     id: partial.id ?? 1,
     dateKey: partial.dateKey ?? '2026-07-12',
     startAtMs: partial.startAtMs,
-    endAtMs: partial.endAtMs ?? null,
     anchorLat: partial.anchorLat ?? null,
     anchorLng: partial.anchorLng ?? null,
     poiId: partial.poiId,

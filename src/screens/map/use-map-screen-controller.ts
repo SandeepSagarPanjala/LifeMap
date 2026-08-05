@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import {
   Alert,
   Animated,
@@ -26,12 +33,10 @@ import {
 } from '@/db/repositories/saved-places';
 import { historyPanelChromeHeight } from '@/components/map/HistoryPanelChrome';
 import { useHistoryForDay } from '@/hooks/use-history-data';
-import { useLatestLocationSave } from '@/hooks/use-latest-location-save';
 import { useSavedPlaces } from '@/hooks/use-saved-places';
 import { useStaySavedPlace } from '@/hooks/use-stay-saved-place';
 import { useDriveEndpointLabels } from '@/hooks/use-drive-endpoint-labels';
 import { useDayStoryStops } from '@/hooks/use-day-story-stops';
-import { useDayMoments } from '@/hooks/use-day-moments';
 import {
   buildHistoryMomentMapPins,
   buildMomentMapPins,
@@ -52,9 +57,7 @@ import {
   type MomentCountType,
   type MomentCounts,
 } from '@/lib/moments/moment-counts';
-import {
-  type DayStoryStop,
-} from '@/lib/day-story-stops';
+import { type DayStoryStop } from '@/lib/day-story-stops';
 import {
   collectMomentsForDayStoryStop,
   momentIdsOnDayStoryStops,
@@ -85,9 +88,7 @@ import {
   shiftDateKey,
 } from '@/lib/day-utils';
 import { clampDateKeyToHistoryBounds } from '@/lib/history-calendar-bounds';
-import {
-  consumeHistoryDatePickerResult,
-} from '@/lib/history-date-picker-navigation';
+import { consumeHistoryDatePickerResult } from '@/lib/history-date-picker-navigation';
 import { useAppStore } from '@/stores/app-store';
 import { regionForCoordinates, toMapCoordinates } from '@/lib/location-geo';
 import {
@@ -154,6 +155,19 @@ import {
   subscribeBackgroundWork,
 } from '@/lib/background-work-events';
 import { setBackgroundWorkMapFocused } from '@/lib/background-work-pause';
+import {
+  cancelOpenGraceAndRunHeavyResume,
+  consumeNeedsTodayRefreshOnMapFocus,
+  deferHeavyWorkDuringOpenGrace,
+  flushHeavyForegroundResumeIfDeferred,
+  isOpenGraceActive,
+  markNeedsTodayRefreshOnMapFocus,
+} from '@/lib/foreground-heavy-resume';
+import {
+  isHeavyMapWorkOrbVisible,
+  subscribeHeavyMapWorkOrb,
+} from '@/lib/heavy-map-work-orb';
+import { refreshTodayOnForeground } from '@/lib/today-refresh-scheduler';
 import type { RootStackParamList } from '@/navigation/types';
 import {
   refreshWidgetSnapshot,
@@ -245,14 +259,16 @@ export function useMapScreenController() {
     hasWork,
     refresh: refreshSavedPlaces,
   } = useSavedPlaces();
-  const { dayMoments } = useDayMoments(selectedDateKey);
   const viewingToday = selectedDateKey === todayKey;
   const { data: historyData, loading: historyLoading } = useHistoryForDay(
     selectedDateKey,
     { active: true },
   );
-  const latestLocationSaveAt = useLatestLocationSave();
+  const dayMoments = historyData.moments ?? EMPTY_MOMENT_ROWS;
   const earliestDateKey = useAppStore(state => state.historyEarliestDateKey);
+  const refreshMapOnBullseye = useAppStore(
+    state => state.refreshMapOnBullseye,
+  );
   const canGoPrevDay =
     earliestDateKey == null || selectedDateKey > earliestDateKey;
   const canGoNextDay = !viewingToday;
@@ -356,6 +372,7 @@ export function useMapScreenController() {
       if (nextState !== 'active') {
         return;
       }
+      /* FOREGROUND */
       syncSelectedDateKeyForTodayRoll(getTodayDateKey());
       if (selectedDateKey === getTodayDateKey()) {
         if (!historyPanelOpenRef.current) {
@@ -408,9 +425,16 @@ export function useMapScreenController() {
     }
     return countHistoryTimelineEvents(historyEntries);
   }, [historyDayLoaded, historyEntries]);
-  /** Blue/red split locate — only while not already in today's trips overview. */
+
+  /** Blue/red split locate — red (fit trips) stays available during open grace. */
   const showLocateFitSplit =
     viewingToday && historyBadgeCount > 1 && !todayTripsOverviewActive;
+
+  const locateButtonBusy = useSyncExternalStore(
+    subscribeHeavyMapWorkOrb,
+    isHeavyMapWorkOrbVisible,
+    isHeavyMapWorkOrbVisible,
+  );
 
   // Drop overview mode when the split is no longer eligible.
   useEffect(() => {
@@ -428,23 +452,6 @@ export function useMapScreenController() {
     }
     return 'No saved location data for this day.';
   }, [historyDayLoaded, historyHasGpsData, historyPanelOpen, viewingToday]);
-
-  const trackingGapWarning = useMemo(() => {
-    if (!viewingToday) {
-      return null;
-    }
-    const lastSaveAt = latestLocationSaveAt;
-    if (lastSaveAt == null) {
-      return null;
-    }
-    const gapMs = Date.now() - lastSaveAt.getTime();
-    if (gapMs < 2 * 60 * 60_000) {
-      return null;
-    }
-    const hours = Math.floor(gapMs / 3_600_000);
-    const minutes = Math.floor((gapMs % 3_600_000) / 60_000);
-    return `No saved points for ${hours}h ${minutes}m`;
-  }, [latestLocationSaveAt, viewingToday]);
 
   const dayStays = useMemo(
     (): DetectedTrip[] =>
@@ -733,9 +740,8 @@ export function useMapScreenController() {
   const rowBaseBottom = historyPanelOpen
     ? historyPanelBottom + MAP_HISTORY_FLOATING_CONTROLS_GAP
     : showMomentsBar
-      ? momentsBarBottom +
-        (MAP_MOMENTS_BAR_HEIGHT - MAP_STACK_BUTTON_SIZE) / 2
-      : insets.bottom + MAP_LOCATE_BUTTON_BOTTOM_GAP;
+    ? momentsBarBottom + (MAP_MOMENTS_BAR_HEIGHT - MAP_STACK_BUTTON_SIZE) / 2
+    : insets.bottom + MAP_LOCATE_BUTTON_BOTTOM_GAP;
 
   // Left: history (glass row) → places above. Right: search (in bar) → locate above.
   const historyButtonBottom = rowBaseBottom;
@@ -803,11 +809,7 @@ export function useMapScreenController() {
       return selectedVisitPlaceDisplay.primaryLabel;
     }
     return visitPlaceDefaultLabel(selectedVisitPlaceDisplay);
-  }, [
-    historyScrubOnEvent,
-    selectedSavedPlace,
-    selectedVisitPlaceDisplay,
-  ]);
+  }, [historyScrubOnEvent, selectedSavedPlace, selectedVisitPlaceDisplay]);
 
   const visitPlacePinnedInEventCard =
     historyScrubOnEvent &&
@@ -975,19 +977,16 @@ export function useMapScreenController() {
   ]);
 
   const dayMomentMapPinsRaw = useMemo((): MomentMapPin[] => {
-    if (!showDayJourney || currentOpenVisit != null) {
+    // Always build day pins when journey is visible. Open visit used to wipe
+    // this list (hiding drive video/photo chips while "Still here"). Stay
+    // moments on story stops are dropped below via omitMomentMapPins…
+    if (!showDayJourney) {
       return [];
     }
     return coalesceMomentMapPins(
       buildMomentMapPins(dayMoments, historyData.points, historyEntries),
     );
-  }, [
-    currentOpenVisit,
-    showDayJourney,
-    dayMoments,
-    historyData.points,
-    historyEntries,
-  ]);
+  }, [showDayJourney, dayMoments, historyData.points, historyEntries]);
 
   const historyMomentMapPinsRaw = useMemo((): MomentMapPin[] => {
     if (!showHistoryMap || !selectedEntry) {
@@ -1238,7 +1237,8 @@ export function useMapScreenController() {
 
   const onRegionChange = useCallback((region: Region) => {
     if (mapGestureStartDeltaRef.current == null) {
-      mapGestureStartDeltaRef.current = routeDirectionMapLatitudeDeltaRef.current;
+      mapGestureStartDeltaRef.current =
+        routeDirectionMapLatitudeDeltaRef.current;
     }
     const startDelta = mapGestureStartDeltaRef.current;
     const deltaRatio =
@@ -1305,6 +1305,12 @@ export function useMapScreenController() {
       setFollowsUser(true);
     }
 
+    if (isOpenGraceActive()) {
+      void cancelOpenGraceAndRunHeavyResume().catch(() => undefined);
+    } else if (refreshMapOnBullseye) {
+      void refreshTodayOnForeground().catch(() => undefined);
+    }
+
     const requestId = ++recenterRequestIdRef.current;
 
     // Instant feedback only when the cached puck fix is genuinely recent. While
@@ -1347,11 +1353,7 @@ export function useMapScreenController() {
               followMapToUser(mapRef.current, fresh, mapRegionRef.current),
             );
           } else {
-            animateRecenterToUser(
-              mapRef.current,
-              fresh,
-              mapRegionRef.current,
-            );
+            animateRecenterToUser(mapRef.current, fresh, mapRegionRef.current);
           }
         }
       } catch {
@@ -1380,6 +1382,7 @@ export function useMapScreenController() {
     currentOpenDrive,
     historyPanelOpen,
     playback.isPlaying,
+    refreshMapOnBullseye,
     setFollowsUser,
     viewingToday,
   ]);
@@ -1506,8 +1509,8 @@ export function useMapScreenController() {
         selectedPlayable.kind === 'travel'
           ? selectedMap?.travelPoints ?? selectedPlayable.points
           : selectedMap?.inboundPoints != null
-            ? [...selectedMap.inboundPoints, ...selectedPlayable.points]
-            : selectedPlayable.points;
+          ? [...selectedMap.inboundPoints, ...selectedPlayable.points]
+          : selectedPlayable.points;
       const region = regionForCoordinates(toMapCoordinates(routePoints));
       // Scrub jumps instantly; playback keeps a short ease. Sync arrow zoom so
       // chevrons on the selected trip are sized for this trip's camera; the
@@ -1547,6 +1550,9 @@ export function useMapScreenController() {
   );
 
   const openHistoryDatePicker = useCallback(() => {
+    if (isOpenGraceActive()) {
+      void cancelOpenGraceAndRunHeavyResume().catch(() => undefined);
+    }
     navigation.navigate('HistoryDatePicker', { selectedDateKey });
   }, [navigation, selectedDateKey]);
 
@@ -1722,42 +1728,59 @@ export function useMapScreenController() {
   );
 
   const openSavedPlaces = useCallback(() => {
+    deferHeavyWorkDuringOpenGrace();
     navigation.navigate('SavedPlaces');
   }, [navigation]);
 
   const openSettings = useCallback(() => {
+    deferHeavyWorkDuringOpenGrace();
     navigation.navigate('Settings');
   }, [navigation]);
 
   const openYou = useCallback(() => {
+    if (!deferHeavyWorkDuringOpenGrace()) {
+      markNeedsTodayRefreshOnMapFocus();
+    }
     navigation.navigate('You');
   }, [navigation]);
 
   const openCaptureVoice = useCallback(() => {
+    if (!deferHeavyWorkDuringOpenGrace()) {
+      markNeedsTodayRefreshOnMapFocus();
+    }
     navigation.navigate('CaptureVoice');
   }, [navigation]);
 
   const openCaptureMood = useCallback(() => {
+    if (!deferHeavyWorkDuringOpenGrace()) {
+      markNeedsTodayRefreshOnMapFocus();
+    }
     navigation.navigate('CaptureMood');
   }, [navigation]);
 
   const openCaptureActivity = useCallback(() => {
+    if (!deferHeavyWorkDuringOpenGrace()) {
+      markNeedsTodayRefreshOnMapFocus();
+    }
     navigation.navigate('CaptureActivity');
   }, [navigation]);
 
-  const handleSelectSavedPlace = useCallback((place: SavedPlaceRow) => {
-    if (!mapRef.current) {
-      return;
-    }
-    const region = regionAroundCoordinate(
-      { latitude: place.lat, longitude: place.lng },
-      VISIT_MAX_ZOOM_DELTA,
-      VISIT_MAX_ZOOM_DELTA,
-    );
-    mapRef.current.animateToRegion(region, 400);
-    commitMapRegion(region);
-    needsDefaultCenterRef.current = false;
-  }, [commitMapRegion]);
+  const handleSelectSavedPlace = useCallback(
+    (place: SavedPlaceRow) => {
+      if (!mapRef.current) {
+        return;
+      }
+      const region = regionAroundCoordinate(
+        { latitude: place.lat, longitude: place.lng },
+        VISIT_MAX_ZOOM_DELTA,
+        VISIT_MAX_ZOOM_DELTA,
+      );
+      mapRef.current.animateToRegion(region, 400);
+      commitMapRegion(region);
+      needsDefaultCenterRef.current = false;
+    },
+    [commitMapRegion],
+  );
 
   useEffect(() => {
     const focusPlaceId = route.params?.focusPlaceId;
@@ -2000,6 +2023,9 @@ export function useMapScreenController() {
     }
     captureInFlightRef.current = true;
     try {
+      if (!deferHeavyWorkDuringOpenGrace()) {
+        markNeedsTodayRefreshOnMapFocus();
+      }
       navigation.navigate('CapturePhoto');
     } finally {
       captureInFlightRef.current = false;
@@ -2007,6 +2033,9 @@ export function useMapScreenController() {
   }, [navigation]);
 
   const handleCaptureNote = useCallback(() => {
+    if (!deferHeavyWorkDuringOpenGrace()) {
+      markNeedsTodayRefreshOnMapFocus();
+    }
     navigation.navigate('Diary');
   }, [navigation]);
 
@@ -2027,6 +2056,14 @@ export function useMapScreenController() {
   useFocusEffect(
     useCallback(() => {
       setBackgroundWorkMapFocused(true);
+      void (async () => {
+        const flushed = await flushHeavyForegroundResumeIfDeferred().catch(
+          () => false,
+        );
+        if (!flushed && consumeNeedsTodayRefreshOnMapFocus()) {
+          await refreshTodayOnForeground().catch(() => undefined);
+        }
+      })();
       return () => {
         setBackgroundWorkMapFocused(false);
       };
@@ -2076,7 +2113,7 @@ export function useMapScreenController() {
       historyMapPlan,
       historyBadgeCount,
       showLocateFitSplit,
-      trackingGapWarning,
+      locateButtonBusy,
       emptySelectedDayMessage,
       viewingToday,
       historyHasGpsData,
@@ -2205,7 +2242,7 @@ export function useMapScreenController() {
       historyMapPlan,
       historyBadgeCount,
       showLocateFitSplit,
-      trackingGapWarning,
+      locateButtonBusy,
       emptySelectedDayMessage,
       viewingToday,
       historyHasGpsData,

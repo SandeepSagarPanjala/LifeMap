@@ -106,32 +106,3 @@ export async function getPlaceLookupById(
     .limit(1);
   return rows[0] ? mapRow(rows[0]) : null;
 }
-
-/** Raw cache rows still carrying legacy candidates_json — migration only. */
-export async function listLegacyPlaceLookupCacheRows(): Promise<
-  Array<{
-    id: number;
-    anchorLat: number;
-    anchorLng: number;
-    candidatesJson: string | null;
-  }>
-> {
-  const db = await getDatabase();
-  const rows = await db.select().from(placeLookupCache);
-  return rows.map(row => ({
-    id: row.id,
-    anchorLat: row.anchorLat,
-    anchorLng: row.anchorLng,
-    candidatesJson: row.candidatesJson,
-  }));
-}
-
-export async function clearLegacyCandidatesJson(
-  cacheId: number,
-): Promise<void> {
-  const db = await getDatabase();
-  await db
-    .update(placeLookupCache)
-    .set({ candidatesJson: null, selectedCandidateIndex: null })
-    .where(eq(placeLookupCache.id, cacheId));
-}

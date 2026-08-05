@@ -164,6 +164,29 @@ describe('drive endpoint labels', () => {
     });
   });
 
+  it('does not inherit stays across a missing gap', () => {
+    const gap: DayTimelineEntry = {
+      id: 'gap-1',
+      kind: 'gap',
+      points: [],
+      startAt: new Date('2026-06-09T02:30:00.000Z'),
+      endAt: new Date('2026-06-09T12:51:00.000Z'),
+      durationMs: 10 * 3600_000,
+      distanceKm: 30,
+    };
+    const afterGap: DayTimelineEntry[] = [homeStay, gap, travel, libraryStay];
+    expect(adjacentStaysForTravelIndex(afterGap, 2)).toEqual({
+      previousStay: null,
+      nextStay: libraryStay,
+    });
+
+    const beforeGap: DayTimelineEntry[] = [homeStay, travel, gap, libraryStay];
+    expect(adjacentStaysForTravelIndex(beforeGap, 1)).toEqual({
+      previousStay: homeStay,
+      nextStay: null,
+    });
+  });
+
   it('formats a drive route title from endpoint labels', () => {
     expect(
       formatDriveRouteTitle(

@@ -50,6 +50,7 @@ import {
   isCaptureNoteDraftDirty,
   saveNoteMoment,
 } from '@/lib/moments/capture-note';
+import { markNeedsTodayRefreshOnMapFocus } from '@/lib/foreground-heavy-resume';
 import {
   getEmotionToken,
   type EmotionTokenId,
@@ -353,6 +354,7 @@ export function CaptureNoteScreen() {
         voiceAttachmentUri: voiceUri,
         voiceDurationMs: voiceUri != null ? voiceDurationMs : null,
       });
+      markNeedsTodayRefreshOnMapFocus();
       setPhotos([]);
       setVoiceUri(null);
       navigation.goBack();

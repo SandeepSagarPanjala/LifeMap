@@ -14,7 +14,6 @@ describe('backup export', () => {
         placeLabel: '123 Main St',
         placeId: 9,
         placeKind: 'cache',
-        selectedCandidateIndex: null,
         poiId: null,
       },
       {
@@ -24,7 +23,6 @@ describe('backup export', () => {
         placeLabel: 'Coffee shop',
         placeId: 3,
         placeKind: 'cache',
-        selectedCandidateIndex: null,
         poiId: 42,
         poiLabel: "Chili's",
       },
@@ -35,25 +33,15 @@ describe('backup export', () => {
         placeLabel: null,
         placeId: 4,
         placeKind: 'saved',
-        selectedCandidateIndex: null,
-        poiId: null,
-      },
-      {
-        eventKey: 'stay-4',
-        placeLabel: null,
-        placeId: 4,
-        placeKind: 'cache',
-        selectedCandidateIndex: 1,
         poiId: null,
       },
     ]);
 
-    expect(overrides).toHaveLength(3);
+    expect(overrides).toHaveLength(2);
     expect(overrides[0]?.eventKey).toBe('stay-2');
     expect(overrides[0]?.poiId).toBe(42);
     expect(overrides[0]?.startAtMs).toBe(2_000);
     expect(overrides[1]?.placeKind).toBe('saved');
-    expect(overrides[2]?.selectedCandidateIndex).toBe(1);
   });
 });
 

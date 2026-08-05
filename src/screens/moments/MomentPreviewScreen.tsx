@@ -6,6 +6,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MomentPreviewViewer } from '@/components/moments/MomentsPreviewSheet';
 import { deleteMoment, type MomentRow } from '@/db/repositories/moments';
 import { useSavedPlaces } from '@/hooks/use-saved-places';
+import { markNeedsTodayRefreshOnMapFocus } from '@/lib/foreground-heavy-resume';
 import { resolveGalleryPlaceLabelsForMoments } from '@/lib/moments/gallery-moment-place-labels';
 import { buildMomentPreviewContextForEntry } from '@/lib/moments/moment-preview-context';
 import {
@@ -137,6 +138,7 @@ export function MomentPreviewScreen() {
   const handleDeleteMoment = useCallback(async (momentId: number) => {
     await deleteMoment(momentId);
     setMoments(previous => previous.filter(moment => moment.id !== momentId));
+    markNeedsTodayRefreshOnMapFocus();
   }, []);
 
   const handleActiveIndexChange = useCallback(

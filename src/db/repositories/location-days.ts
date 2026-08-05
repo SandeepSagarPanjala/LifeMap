@@ -1,6 +1,14 @@
 import { and, asc, gt, gte, lte, sql } from 'drizzle-orm';
 
-import { getDayRange, getTodayDateKey, shiftDateKey, toDateKey } from '@/lib/day-utils';
+import { MIN_VALID_LOCATION_DATE_KEY } from '@/lib/app-constants';
+import {
+  getDayRange,
+  getTodayDateKey,
+  parseDateKey,
+  shiftDateKey,
+  toDateKey,
+} from '@/lib/day-utils';
+import { locationPointTimestampFromStorageValue } from '@/lib/location-point-storage';
 
 import { getDatabase } from '../client';
 import { locationPoints } from '../schema';
@@ -63,7 +71,11 @@ export async function listDateKeysWithLocationDataBefore(
   }
 
   const keys: string[] = [];
-  let cursor = earliest;
+  // Never walk from epoch junk (e.g. 1970-01-21 from a corrupt timestamp).
+  let cursor =
+    earliest < MIN_VALID_LOCATION_DATE_KEY
+      ? MIN_VALID_LOCATION_DATE_KEY
+      : earliest;
   while (cursor < beforeDateKey) {
     const { start, end } = getDayRange(cursor);
     const fingerprint = await getLocationPointsFingerprintInRange(start, end);
@@ -84,12 +96,16 @@ export async function listAllDateKeysWithLocationData(): Promise<string[]> {
   }
 
   const todayKey = getTodayDateKey();
-  if (earliest > todayKey) {
+  const startKey =
+    earliest < MIN_VALID_LOCATION_DATE_KEY
+      ? MIN_VALID_LOCATION_DATE_KEY
+      : earliest;
+  if (startKey > todayKey) {
     return [];
   }
 
   const keys: string[] = [];
-  let cursor = earliest;
+  let cursor = startKey;
   while (cursor <= todayKey) {
     const { start, end } = getDayRange(cursor);
     const fingerprint = await getLocationPointsFingerprintInRange(start, end);
@@ -104,13 +120,17 @@ export async function listAllDateKeysWithLocationData(): Promise<string[]> {
 
 export async function getEarliestLocationDateKey(): Promise<string | null> {
   const db = await getDatabase();
+  const floor = parseDateKey(MIN_VALID_LOCATION_DATE_KEY);
   const [row] = await db
-    .select({ timestamp: sql<Date>`min(${locationPoints.timestamp})` })
-    .from(locationPoints);
-  if (row?.timestamp == null) {
+    .select({ timestamp: sql<unknown>`min(${locationPoints.timestamp})` })
+    .from(locationPoints)
+    .where(gte(locationPoints.timestamp, floor));
+  const at = locationPointTimestampFromStorageValue(row?.timestamp);
+  if (at == null) {
     return null;
   }
-  return toDateKey(row.timestamp);
+  const dateKey = toDateKey(at);
+  return dateKey < MIN_VALID_LOCATION_DATE_KEY ? null : dateKey;
 }
 
 export async function getLocationDayFingerprint(

@@ -18,6 +18,20 @@ import type { TripDetectionConfig } from '@/lib/trip-settings';
 export type TripTimelineOptions = {
   /** Capture times — pauses overlapping these are not split into visits. */
   momentTimestamps?: readonly Date[];
+  /**
+   * Moments for live detection (geometry + counts). Prefer unsealed today
+   * moments; sealed trips already carry momentRefs from DB.
+   */
+  moments?: readonly {
+    timestamp: Date;
+    type?:
+      | 'photo'
+      | 'note'
+      | 'video'
+      | 'voice'
+      | 'activity'
+      | 'mood';
+  }[];
   /** Saved Home / Work / favorites — 150 m + 1 min visit rules from place center. */
   savedPlaces?: readonly SavedPlaceRow[];
   /** Completed rows from `place_lookup_cache` — matched at stay anchors during annotate. */
@@ -387,12 +401,26 @@ export function staysBeforeEntryIndex(
   return stays;
 }
 
+/** Gray missing bar — blocks inheriting adjacent stay labels / route anchors. */
+function isMissingTimelineEntry(entry: DayTimelineEntry): boolean {
+  return entry.kind === 'gap';
+}
+
+/**
+ * Nearest prior stay for drive labeling / departure bridging.
+ * A `gap`/`missing` between this entry and that stay means we do not know the
+ * true origin — return null instead of jumping over the hole (e.g. Home →
+ * overnight missing → afternoon travel must not label start as Home).
+ */
 export function stayBeforeEntryIndex(
   entries: readonly DayTimelineEntry[],
   index: number,
 ): DetectedTrip | null {
   for (let entryIndex = index - 1; entryIndex >= 0; entryIndex -= 1) {
     const entry = entries[entryIndex]!;
+    if (isMissingTimelineEntry(entry)) {
+      return null;
+    }
     if (entry.kind === 'stay') {
       return entry;
     }
@@ -400,6 +428,10 @@ export function stayBeforeEntryIndex(
   return null;
 }
 
+/**
+ * Nearest following stay for drive labeling / arrival anchoring.
+ * Stops at a `gap`/`missing` instead of borrowing a stay after the hole.
+ */
 export function stayAfterEntryIndex(
   entries: readonly DayTimelineEntry[],
   index: number,
@@ -410,6 +442,9 @@ export function stayAfterEntryIndex(
     entryIndex += 1
   ) {
     const entry = entries[entryIndex]!;
+    if (isMissingTimelineEntry(entry)) {
+      return null;
+    }
     if (entry.kind === 'stay') {
       return entry;
     }

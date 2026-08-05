@@ -2,7 +2,7 @@ import {
   StackActions,
   type NavigationContainerRef,
 } from '@react-navigation/native';
-import { AppState, Linking, Platform } from 'react-native';
+import { Linking, Platform } from 'react-native';
 
 import type { RootStackParamList } from '@/navigation/types';
 
@@ -36,6 +36,17 @@ const CAPTURE_SCREEN_BY_ACTION: Partial<
   voice: 'CaptureVoice',
   activity: 'CaptureActivity',
 };
+
+export function isWidgetCaptureAction(
+  action: WidgetAction | null | undefined,
+): action is 'note' | 'photo' | 'voice' | 'activity' {
+  return (
+    action === 'note' ||
+    action === 'photo' ||
+    action === 'voice' ||
+    action === 'activity'
+  );
+}
 
 let navigationRef: NavigationContainerRef<RootStackParamList> | null = null;
 let sheetHandlers: WidgetSheetHandlers | null = null;
@@ -112,6 +123,19 @@ export function setWidgetNavigationRef(
   }
 }
 
+/** True when the root stack's focused screen is Map (not Settings / You / capture / …). */
+export function isRootMapScreenActive(): boolean {
+  if (navigationRef == null || !navigationRef.isReady()) {
+    return false;
+  }
+  const state = navigationRef.getRootState();
+  if (state == null || state.routes.length === 0) {
+    return false;
+  }
+  const top = state.routes[state.index];
+  return top?.name === 'Map';
+}
+
 function queueWidgetAction(action: WidgetAction): void {
   pendingAction = action;
   void drainPendingWidgetAction();
@@ -167,6 +191,10 @@ function applyWidgetAction(action: WidgetAction): void {
   }
 }
 
+export function dispatchWidgetAction(action: WidgetAction): void {
+  applyWidgetAction(action);
+}
+
 async function readNativePendingAction(): Promise<WidgetAction | null> {
   const action = await consumePendingWidgetAction();
   if (action != null && isWidgetAction(action)) {
@@ -175,24 +203,29 @@ async function readNativePendingAction(): Promise<WidgetAction | null> {
   return null;
 }
 
-async function drainPendingWidgetAction(): Promise<void> {
+/** Take pending widget action without applying (AppBootstrap FG decides defer vs full). */
+export async function takePendingWidgetAction(): Promise<WidgetAction | null> {
   if (draining) {
-    return;
+    return null;
   }
   draining = true;
   try {
     const nativeAction =
       Platform.OS === 'ios' ? await readNativePendingAction() : null;
     const action = nativeAction ?? pendingAction;
-    if (action == null) {
-      return;
-    }
-
     pendingAction = null;
-    applyWidgetAction(action);
+    return action;
   } finally {
     draining = false;
   }
+}
+
+async function drainPendingWidgetAction(): Promise<void> {
+  const action = await takePendingWidgetAction();
+  if (action == null) {
+    return;
+  }
+  applyWidgetAction(action);
 }
 
 export function startWidgetDeepLinkListening(): () => void {
@@ -215,13 +248,7 @@ export function startWidgetDeepLinkListening(): () => void {
     );
   }
 
-  subscriptions.push(
-    AppState.addEventListener('change', nextState => {
-      if (nextState === 'active') {
-        void drainPendingWidgetAction();
-      }
-    }),
-  );
+  // FG drain is owned by AppBootstrap (with deferred heavy resume for capture).
 
   return () => {
     for (const subscription of subscriptions) {

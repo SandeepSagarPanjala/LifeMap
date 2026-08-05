@@ -85,6 +85,74 @@ describe('validateActivityDefinition', () => {
     }
   });
 
+  it('accepts bill with optional shop name text field', () => {
+    const result = validateActivityDefinition({
+      schemaVersion: 1,
+      name: 'Junk Food',
+      emoji: '🍔',
+      fields: [
+        {
+          id: 'receipt',
+          type: 'scan',
+          label: 'Bill',
+          required: false,
+          extract: 'amount',
+          fillField: 'amount',
+          fillItemsField: 'items',
+          fillShopNameField: 'shop_name',
+        },
+        {
+          id: 'shop_name',
+          type: 'text',
+          label: 'Shop name',
+          required: false,
+        },
+        {
+          id: 'amount',
+          type: 'money',
+          label: 'Amount',
+          required: true,
+        },
+        {
+          id: 'items',
+          type: 'list',
+          label: 'Items',
+          required: false,
+        },
+      ],
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.definition.fields[0]?.fillShopNameField).toBe('shop_name');
+    }
+  });
+
+  it('requires fillShopNameField to target a text field', () => {
+    const result = validateActivityDefinition({
+      schemaVersion: 1,
+      name: 'Junk Food',
+      emoji: '🍔',
+      fields: [
+        {
+          id: 'receipt',
+          type: 'scan',
+          label: 'Bill',
+          required: false,
+          extract: 'amount',
+          fillField: 'amount',
+          fillShopNameField: 'amount',
+        },
+        {
+          id: 'amount',
+          type: 'money',
+          label: 'Amount',
+          required: true,
+        },
+      ],
+    });
+    expect(result.ok).toBe(false);
+  });
+
   it('requires fillItemsField to target a list field', () => {
     const result = validateActivityDefinition({
       schemaVersion: 1,

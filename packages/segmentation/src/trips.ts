@@ -5,6 +5,8 @@ import {
   MISSING_MIN_DISTANCE_M,
   MISSING_MIN_GAP_MS,
   SAVED_PLACE_MIN_DWELL_MS,
+  STAY_BLACKOUT_SAME_AREA_MAX_M,
+  TRAVEL_MAX_GAP_MS,
   TRAVEL_MODE_ACTIVITY_CONFIDENCE_MIN,
 } from '@lifemap/constants';
 import {
@@ -70,6 +72,8 @@ export {
   MISSING_MIN_DISTANCE_M,
   MISSING_MIN_GAP_MS,
   SAVED_PLACE_MIN_DWELL_MS,
+  STAY_BLACKOUT_SAME_AREA_MAX_M,
+  TRAVEL_MAX_GAP_MS,
 };
 
 export type { PlaceKind, ResolvedPlace } from './resolved-place';
@@ -269,30 +273,164 @@ function detectSavedPlaceStops(
 }
 
 /**
- * Phone-off / GPS-dead jump: long blackout with essentially only the stay
- * endpoints (path ≈ straight line). Not a real tracked drive.
+ * GPS blackout between consecutive fixes inside a travel / stay→stay slice.
+ * Travel does not tolerate holes longer than `TRAVEL_MAX_GAP_MS` (10 min) —
+ * except same-place warm-up (≤1 mi, ≤12h), which belongs to the stay.
  */
-function isSparseEndpointJump(points: ParsedPoint[]): boolean {
+function isInteriorBlackoutGap(prev: ParsedPoint, next: ParsedPoint): boolean {
+  const gapMs = next.at.getTime() - prev.at.getTime();
+  if (gapMs <= TRAVEL_MAX_GAP_MS) {
+    return false;
+  }
+  if (
+    gapMs <= ENDPOINT_JUMP_MIN_GAP_MS &&
+    haversineM(prev, next) <= STAY_BLACKOUT_SAME_AREA_MAX_M
+  ) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Phone-off / GPS-dead jump: blackout with essentially only the stay
+ * endpoints (path ≈ straight line). Not a real tracked drive.
+ *
+ * - >12h to another area (or collinear echoes) → missing
+ * - ≥ travel-max gap to another area with no real track → missing
+ * - ≤12h still in the same area → not missing (stay bridges upstream)
+ */
+function isSparseEndpointJump(
+  points: ParsedPoint[],
+  config: StopDetectionConfig,
+): boolean {
   if (points.length < 2) {
     return false;
   }
   const first = points[0]!;
   const last = points[points.length - 1]!;
   const durationMs = last.at.getTime() - first.at.getTime();
-  if (durationMs < ENDPOINT_JUMP_MIN_GAP_MS) {
-    return false;
-  }
-  const displacementM = haversineM(first, last);
-  if (displacementM < MISSING_MIN_DISTANCE_M) {
+  if (durationMs <= TRAVEL_MAX_GAP_MS) {
     return false;
   }
   const interiorCount = points.length - 2;
   const pathM = pathLengthM(points);
-  // Pure endpoints, or a couple of near-duplicate echoes with no real track.
-  if (interiorCount === 0) {
-    return true;
+  const displacementM = haversineM(first, last);
+  // Pure endpoints always count as sparse. Near-duplicate echoes only for long
+  // (>12h) blackouts — short multi-point drives must stay as travel.
+  const sparseShape =
+    interiorCount === 0 ||
+    (durationMs > ENDPOINT_JUMP_MIN_GAP_MS &&
+      interiorCount <= 2 &&
+      pathM <= displacementM * 1.05);
+  if (!sparseShape) {
+    return false;
   }
-  return interiorCount <= 2 && pathM <= displacementM * 1.05;
+  if (sameStayArea(first, last, config)) {
+    // Same area: only >12h phone-off becomes missing (stay rule).
+    return durationMs > ENDPOINT_JUMP_MIN_GAP_MS;
+  }
+  // Different area after a travel-sized GPS gap → missing.
+  return displacementM >= MISSING_MIN_DISTANCE_M;
+}
+
+function pointAccuracyM(point: ParsedPoint): number {
+  return point.accuracy != null && point.accuracy > 0 ? point.accuracy : 0;
+}
+
+/** Same-area after a GPS blackout — up to 1 mile (warm-up / drift). */
+function sameStayArea(
+  a: ParsedPoint,
+  b: ParsedPoint,
+  _config: StopDetectionConfig,
+): boolean {
+  const slack = Math.max(pointAccuracyM(a), pointAccuracyM(b));
+  return haversineM(a, b) <= STAY_BLACKOUT_SAME_AREA_MAX_M + slack;
+}
+
+function makeMissingBetweenPoints(
+  from: ParsedPoint,
+  to: ParsedPoint,
+  order: number,
+  fromKind: 'stay' | 'drive',
+  toKind: 'stay' | 'drive',
+): MissingSegment {
+  const gapMs = to.at.getTime() - from.at.getTime();
+  return {
+    kind: 'missing',
+    id: `missing-${from.id}-${to.id}`,
+    order,
+    startAt: from.at,
+    endAt: to.at,
+    durationMs: gapMs,
+    distanceM: haversineM(from, to),
+    fromKind,
+    toKind,
+    fromLat: from.lat,
+    fromLng: from.lng,
+    toLat: to.lat,
+    toLng: to.lng,
+    points: [],
+  };
+}
+
+/**
+ * Emit drives for contiguous GPS chunks; insert missing across travel-sized
+ * blackouts (e.g. resume cluster → 50 min silence → real drive).
+ */
+function appendSliceSegments(
+  segments: TripSegment[],
+  slice: ParsedPoint[],
+  fromStop: Stop | null,
+  toStop: Stop | null,
+  config: StopDetectionConfig,
+  startOrder: number,
+): number {
+  if (slice.length < 2) {
+    return startOrder;
+  }
+
+  let order = startOrder;
+  let chunkStart = 0;
+
+  const flushDrive = (
+    chunk: ParsedPoint[],
+    chunkFrom: Stop | null,
+    chunkTo: Stop | null,
+  ) => {
+    if (chunk.length >= 2 && isRealDrive(chunk, config)) {
+      order += 1;
+      segments.push(makeDrive(chunk, chunkFrom, chunkTo, order));
+    }
+  };
+
+  for (let i = 0; i < slice.length - 1; i += 1) {
+    const prev = slice[i]!;
+    const next = slice[i + 1]!;
+    if (!isInteriorBlackoutGap(prev, next)) {
+      continue;
+    }
+
+    const before = slice.slice(chunkStart, i + 1);
+    const isFirstChunk = chunkStart === 0;
+    const chunkFrom = isFirstChunk ? fromStop : null;
+    flushDrive(before, chunkFrom, null);
+
+    order += 1;
+    const fromKind =
+      segments.length > 0 && segments[segments.length - 1]!.kind === 'drive'
+        ? 'drive'
+        : 'stay';
+    segments.push(
+      makeMissingBetweenPoints(prev, next, order, fromKind, 'stay'),
+    );
+    chunkStart = i + 1;
+  }
+
+  const after = slice.slice(chunkStart);
+  const isOnlyChunk = chunkStart === 0;
+  flushDrive(after, isOnlyChunk ? fromStop : null, toStop);
+
+  return order;
 }
 
 /**
@@ -371,7 +509,7 @@ function isRealDrive(
     return false;
   }
   // Overnight (etc.) stay→stay with no GPS in between → missing, not a drive.
-  if (isSparseEndpointJump(points)) {
+  if (isSparseEndpointJump(points, config)) {
     return false;
   }
   const displacementM = haversineM(points[0]!, points[points.length - 1]!);
@@ -496,13 +634,86 @@ function makeMissing(
   };
 }
 
+function mergeMissings(a: MissingSegment, b: MissingSegment): MissingSegment {
+  return {
+    kind: 'missing',
+    id: `missing-merged-${a.startAt.getTime()}-${b.endAt.getTime()}`,
+    order: a.order,
+    startAt: a.startAt,
+    endAt: b.endAt,
+    durationMs: b.endAt.getTime() - a.startAt.getTime(),
+    distanceM: haversineM(
+      { lat: a.fromLat, lng: a.fromLng },
+      { lat: b.toLat, lng: b.toLng },
+    ),
+    fromKind: a.fromKind,
+    toKind: b.toKind,
+    fromLat: a.fromLat,
+    fromLng: a.fromLng,
+    toLat: b.toLat,
+    toLng: b.toLng,
+    points: [],
+  };
+}
+
+/**
+ * Short stationary / drive islands (&lt; min dwell) between two missings are
+ * still "no real visit" — fold them into one continuous missing gray bar
+ * (Jun 6: 11:57–12:02 between overnight gap and noon gap).
+ */
+function absorbShortIslandsBetweenMissings(
+  segments: TripSegment[],
+  minDwellMs: number,
+): TripSegment[] {
+  let list = segments;
+  let changed = true;
+  while (changed) {
+    changed = false;
+    const next: TripSegment[] = [];
+    for (let i = 0; i < list.length; i += 1) {
+      const a = list[i]!;
+      const b = list[i + 1];
+      const c = list[i + 2];
+
+      if (
+        a.kind === 'missing' &&
+        b != null &&
+        (b.kind === 'stay' || b.kind === 'drive') &&
+        b.durationMs < minDwellMs &&
+        c?.kind === 'missing'
+      ) {
+        next.push(mergeMissings(a, c));
+        i += 2;
+        changed = true;
+        continue;
+      }
+
+      // Adjacent missings: also cover any short uncovered hole between them.
+      if (a.kind === 'missing' && b?.kind === 'missing') {
+        next.push(mergeMissings(a, b));
+        i += 1;
+        changed = true;
+        continue;
+      }
+
+      next.push(a);
+    }
+    list = next;
+  }
+  return list;
+}
+
 /**
  * Post-process raw stay/drive segments:
  * 1. Merge consecutive stays at the same place (spread-limit artifact).
  * 2. Insert "missing" when two stays or two drives abut with a large gap in
  *    both distance and time (phone off / no GPS).
+ * 3. Fold short islands between missings into one continuous missing.
  */
-function reconcileSegments(segments: TripSegment[]): TripSegment[] {
+function reconcileSegments(
+  segments: TripSegment[],
+  config: StopDetectionConfig = DEFAULT_STOP_CONFIG,
+): TripSegment[] {
   if (segments.length === 0) {
     return segments;
   }
@@ -518,7 +729,12 @@ function reconcileSegments(segments: TripSegment[]): TripSegment[] {
       const following = list[i + 1];
       if (cur.kind === 'stay' && following?.kind === 'stay') {
         const dist = haversineM(segmentEnd(cur), segmentStart(following));
-        if (dist < MERGE_STAY_MAX_DISTANCE_M) {
+        const gapMs = following.startAt.getTime() - cur.endAt.getTime();
+        const samePlaceBlackout =
+          gapMs >= 0 &&
+          gapMs <= ENDPOINT_JUMP_MIN_GAP_MS &&
+          dist <= STAY_BLACKOUT_SAME_AREA_MAX_M;
+        if (dist < MERGE_STAY_MAX_DISTANCE_M || samePlaceBlackout) {
           next.push(mergeStays(cur, following));
           i += 1;
           didMerge = true;
@@ -531,10 +747,10 @@ function reconcileSegments(segments: TripSegment[]): TripSegment[] {
   }
 
   // Pass 2: insert missing gaps between consecutive same-kind segments.
-  const result: TripSegment[] = [];
+  const withGaps: TripSegment[] = [];
   for (let i = 0; i < list.length; i += 1) {
     const cur = list[i]!;
-    result.push(cur);
+    withGaps.push(cur);
     const following = list[i + 1];
     if (following == null) {
       continue;
@@ -549,10 +765,28 @@ function reconcileSegments(segments: TripSegment[]): TripSegment[] {
 
     const gapMs = following.startAt.getTime() - cur.endAt.getTime();
     const dist = haversineM(segmentEnd(cur), segmentStart(following));
-    if (dist >= MISSING_MIN_DISTANCE_M && gapMs >= MISSING_MIN_GAP_MS) {
-      result.push(makeMissing(cur, following, gapMs, dist));
+    // >12h blackout always missing. Same-place (≤1 mi) ≤12h is stay continuity.
+    // Farther hops with a travel-sized hole → missing.
+    const longBlackout = gapMs >= ENDPOINT_JUMP_MIN_GAP_MS;
+    const samePlaceWarmup =
+      cur.kind === 'stay' &&
+      following.kind === 'stay' &&
+      gapMs <= ENDPOINT_JUMP_MIN_GAP_MS &&
+      dist <= STAY_BLACKOUT_SAME_AREA_MAX_M;
+    const shortHopElsewhere =
+      !samePlaceWarmup &&
+      dist >= MISSING_MIN_DISTANCE_M &&
+      gapMs > TRAVEL_MAX_GAP_MS;
+    if (longBlackout || shortHopElsewhere) {
+      withGaps.push(makeMissing(cur, following, gapMs, dist));
     }
   }
+
+  // Pass 3: short blips between missings → one continuous missing.
+  const result = absorbShortIslandsBetweenMissings(
+    withGaps,
+    config.minDwellMs,
+  );
 
   result.forEach((seg, index) => {
     seg.order = index + 1;
@@ -577,10 +811,8 @@ export function buildTripSegments(
   const segments: TripSegment[] = [];
 
   if (stops.length === 0) {
-    if (isRealDrive(points, config)) {
-      segments.push(makeDrive(points, null, null, 1));
-    }
-    return segments;
+    appendSliceSegments(segments, points, null, null, config, 0);
+    return reconcileSegments(segments, config);
   }
 
   const idxById = new Map<number, number>();
@@ -597,14 +829,18 @@ export function buildTripSegments(
 
   let order = 0;
 
-  // Leading drive: movement before the first stay.
+  // Leading movement before the first stay (split across GPS blackouts).
   const first = ranges[0]!;
   if (first.start > 0) {
     const slice = points.slice(0, first.start + 1);
-    if (isRealDrive(slice, config)) {
-      order += 1;
-      segments.push(makeDrive(slice, null, first.stop, order));
-    }
+    order = appendSliceSegments(
+      segments,
+      slice,
+      null,
+      first.stop,
+      config,
+      order,
+    );
   }
 
   for (let r = 0; r < ranges.length; r += 1) {
@@ -625,24 +861,32 @@ export function buildTripSegments(
     const nextRange = ranges[r + 1];
     if (nextRange != null) {
       const slice = points.slice(range.end, nextRange.start + 1);
-      if (isRealDrive(slice, config)) {
-        order += 1;
-        segments.push(makeDrive(slice, range.stop, nextRange.stop, order));
-      }
+      order = appendSliceSegments(
+        segments,
+        slice,
+        range.stop,
+        nextRange.stop,
+        config,
+        order,
+      );
     }
   }
 
-  // Trailing drive: movement after the last stay.
+  // Trailing movement after the last stay.
   const last = ranges[ranges.length - 1]!;
   if (last.end < points.length - 1) {
     const slice = points.slice(last.end);
-    if (isRealDrive(slice, config)) {
-      order += 1;
-      segments.push(makeDrive(slice, last.stop, null, order));
-    }
+    order = appendSliceSegments(
+      segments,
+      slice,
+      last.stop,
+      null,
+      config,
+      order,
+    );
   }
 
-  return reconcileSegments(segments);
+  return reconcileSegments(segments, config);
 }
 
 function resolvedPlaceFromStay(stay: StaySegment): ResolvedPlace | null {

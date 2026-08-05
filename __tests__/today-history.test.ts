@@ -70,8 +70,10 @@ describe('prepareTodayHistoryTimeline', () => {
     const dayKey = '2026-06-03';
     const lastPing = new Date('2026-06-04T04:12:13.000Z');
     const referenceNow = new Date('2026-06-04T12:00:00.000Z');
+    // Keep pings within ≤12h at the same place so the stay bridges; the silence
+    // after lastPing until end-of-day is what this test covers.
     const dayPoints = [
-      row('2026-06-03T23:49:00.000Z', 1),
+      row('2026-06-04T03:00:00.000Z', 1),
       row(lastPing.toISOString(), 2),
     ];
 

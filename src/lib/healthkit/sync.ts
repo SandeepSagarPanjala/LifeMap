@@ -1,4 +1,3 @@
-import { AppState } from 'react-native';
 import { subDays } from 'date-fns';
 
 import {
@@ -31,6 +30,8 @@ import {
   getHealthKitMasterEnabled,
   getHealthKitSleepEnabled,
   getHealthKitStepsEnabled,
+  getHealthKitSyncOnChangesEnabled,
+  getHealthKitSyncOnDetailOpenEnabled,
   setHealthKitLastSyncAt,
 } from './settings';
 import { isHealthDataAvailableSafe, isHealthKitSupported } from './permissions';
@@ -60,9 +61,7 @@ export type HealthSyncProgress = {
   total?: number;
 };
 
-export type HealthSyncProgressCallback = (
-  progress: HealthSyncProgress,
-) => void;
+export type HealthSyncProgressCallback = (progress: HealthSyncProgress) => void;
 
 type SyncOptions = {
   onProgress?: HealthSyncProgressCallback;
@@ -153,9 +152,8 @@ async function syncSleep(
   to: Date,
   report: (completed: number, total: number, message: string) => void,
 ): Promise<void> {
-  const {
-    queryCategorySamples,
-  } = require('@kingstinct/react-native-healthkit') as typeof import('@kingstinct/react-native-healthkit');
+  const { queryCategorySamples } =
+    require('@kingstinct/react-native-healthkit') as typeof import('@kingstinct/react-native-healthkit');
 
   report(0, 1, 'Reading sleep…');
 
@@ -196,11 +194,7 @@ async function syncSleep(
   for (const sample of persistable) {
     await upsertSleepSample(sample);
     completed += 1;
-    report(
-      completed,
-      total,
-      `Saving sleep ${completed} of ${total}`,
-    );
+    report(completed, total, `Saving sleep ${completed} of ${total}`);
   }
 
   for (const session of coalesced) {
@@ -210,11 +204,7 @@ async function syncSleep(
       endAt: session.endAt,
     });
     completed += 1;
-    report(
-      completed,
-      total,
-      `Saving sleep ${completed} of ${total}`,
-    );
+    report(completed, total, `Saving sleep ${completed} of ${total}`);
   }
 
   const rollups = buildDaySleepRollups(mapped);
@@ -228,9 +218,8 @@ async function syncSteps(
   toDateKey: string,
   report: (completed: number, total: number, message: string) => void,
 ): Promise<void> {
-  const {
-    queryStatisticsForQuantity,
-  } = require('@kingstinct/react-native-healthkit') as typeof import('@kingstinct/react-native-healthkit');
+  const { queryStatisticsForQuantity } =
+    require('@kingstinct/react-native-healthkit') as typeof import('@kingstinct/react-native-healthkit');
 
   const totalDays = countDateKeysInclusive(fromDateKey, toDateKey);
   let key = fromDateKey;
@@ -271,9 +260,8 @@ async function syncWorkouts(
   to: Date,
   report: (completed: number, total: number, message: string) => void,
 ): Promise<void> {
-  const {
-    queryWorkoutSamples,
-  } = require('@kingstinct/react-native-healthkit') as typeof import('@kingstinct/react-native-healthkit');
+  const { queryWorkoutSamples } =
+    require('@kingstinct/react-native-healthkit') as typeof import('@kingstinct/react-native-healthkit');
 
   report(0, 1, 'Reading workouts…');
 
@@ -322,11 +310,7 @@ async function syncWorkouts(
         linkedMomentId: existing.linkedMomentId,
       });
       completed += 1;
-      report(
-        completed,
-        total,
-        `Workouts ${completed} of ${workouts.length}`,
-      );
+      report(completed, total, `Workouts ${completed} of ${workouts.length}`);
       continue;
     }
 
@@ -364,11 +348,7 @@ async function syncWorkouts(
     });
 
     completed += 1;
-    report(
-      completed,
-      total,
-      `Workouts ${completed} of ${workouts.length}`,
-    );
+    report(completed, total, `Workouts ${completed} of ${workouts.length}`);
   }
 }
 
@@ -501,21 +481,26 @@ export async function bootstrapHealthKit(): Promise<void> {
   }
   bootstrapped = true;
 
-  // Always listen; syncHealthKit no-ops when master is off.
-  AppState.addEventListener('change', state => {
-    if (state === 'active') {
-      void syncHealthKit();
-    }
-  });
-
+  // Change observers stay here. FG resume no longer syncs HealthKit —
+  // Sleep/Steps detail await syncHealthKitOnDemand() on open (gated by setting).
   try {
     const { subscribeToChanges } =
       require('@kingstinct/react-native-healthkit') as typeof import('@kingstinct/react-native-healthkit');
     subscribeToChanges('HKCategoryTypeIdentifierSleepAnalysis', () => {
-      void syncHealthKit({ lookbackDays: 3 });
+      void (async () => {
+        if (!(await getHealthKitSyncOnChangesEnabled())) {
+          return;
+        }
+        await syncHealthKit({ lookbackDays: 3 });
+      })();
     });
     subscribeToChanges('HKQuantityTypeIdentifierStepCount', () => {
-      void syncHealthKit({ lookbackDays: 3 });
+      void (async () => {
+        if (!(await getHealthKitSyncOnChangesEnabled())) {
+          return;
+        }
+        await syncHealthKit({ lookbackDays: 3 });
+      })();
     });
   } catch {
     // Subscription is best-effort; foreground + detail-screen sync still run.
@@ -530,5 +515,8 @@ export async function bootstrapHealthKit(): Promise<void> {
 
 /** Fresh pull when opening sleep/steps detail (Watch → phone may have just landed). */
 export async function syncHealthKitOnDemand(): Promise<void> {
+  if (!(await getHealthKitSyncOnDetailOpenEnabled())) {
+    return;
+  }
   await syncHealthKit({ lookbackDays: 3 });
 }

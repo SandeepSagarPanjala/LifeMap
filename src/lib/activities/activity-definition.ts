@@ -36,6 +36,8 @@ export type ActivityFieldDefinition = {
   fillField?: string;
   /** For `scan` — optional target `list` field for receipt line items. */
   fillItemsField?: string;
+  /** For `scan` — optional target `text` field for shop / restaurant name. */
+  fillShopNameField?: string;
 };
 
 export type ActivityDefinition = {
@@ -177,6 +179,9 @@ function normalizeStoredField(
   }
   if (typeof raw.fillItemsField === 'string' && raw.fillItemsField.trim()) {
     field.fillItemsField = raw.fillItemsField.trim();
+  }
+  if (typeof raw.fillShopNameField === 'string' && raw.fillShopNameField.trim()) {
+    field.fillShopNameField = raw.fillShopNameField.trim();
   }
   return field;
 }

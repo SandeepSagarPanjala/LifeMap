@@ -60,6 +60,11 @@ activities:
         extract: amount
         fillField: amount
         fillItemsField: items
+        fillShopNameField: shop_name
+      - id: shop_name
+        type: text
+        label: Shop name
+        required: false
       - id: items
         type: list
         label: Items

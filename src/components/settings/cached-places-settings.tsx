@@ -12,10 +12,6 @@ import { Map as MapIcon } from 'lucide-react-native';
 
 import { SettingsGroupDivider } from '@/components/settings/settings-group';
 import { Text } from '@/components/ui/text';
-import {
-  countLegacyPlaceLookupCandidatesPending,
-  migrateLegacyPlaceLookupCandidatesToPois,
-} from '@/db/migrate-place-pois-data';
 import { listPlaceLookupCacheRows } from '@/db/repositories/place-lookup-cache';
 import { listPlacePois } from '@/db/repositories/place-pois';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -265,10 +261,8 @@ export function CachedPlacesSettings() {
   >(new Map());
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [legacyPendingCount, setLegacyPendingCount] = useState(0);
   const [coordinateRefreshPendingCount, setCoordinateRefreshPendingCount] =
     useState(0);
-  const [migrating, setMigrating] = useState(false);
   const [refreshingCoordinates, setRefreshingCoordinates] = useState(false);
   const [coordinateRefreshProgress, setCoordinateRefreshProgress] =
     useState<PlacePoiCoordinateRefreshProgress | null>(null);
@@ -284,13 +278,11 @@ export function CachedPlacesSettings() {
   const loadRows = useCallback(async () => {
     setErrorMessage(null);
     try {
-      const [next, allPois, pendingLegacy, pendingCoordinateRefresh] =
-        await Promise.all([
-          listPlaceLookupCacheRows(),
-          listPlacePois(),
-          countLegacyPlaceLookupCandidatesPending(),
-          countCachesNeedingPoiCoordinateRefresh(),
-        ]);
+      const [next, allPois, pendingCoordinateRefresh] = await Promise.all([
+        listPlaceLookupCacheRows(),
+        listPlacePois(),
+        countCachesNeedingPoiCoordinateRefresh(),
+      ]);
       const grouped = new Map<number, PlacePoiRow[]>();
       for (const poi of allPois) {
         const list = grouped.get(poi.cacheId) ?? [];
@@ -299,12 +291,10 @@ export function CachedPlacesSettings() {
       }
       setRows(sortCachedPlaces(next));
       setPoisByCacheId(grouped);
-      setLegacyPendingCount(pendingLegacy);
       setCoordinateRefreshPendingCount(pendingCoordinateRefresh);
     } catch (error) {
       setRows([]);
       setPoisByCacheId(new Map());
-      setLegacyPendingCount(0);
       setCoordinateRefreshPendingCount(0);
       setErrorMessage(
         error instanceof Error
@@ -319,47 +309,6 @@ export function CachedPlacesSettings() {
   useEffect(() => {
     void loadRows();
   }, [loadRows, revision]);
-
-  const runLegacyMigration = useCallback(async () => {
-    setMigrating(true);
-    try {
-      const result = await migrateLegacyPlaceLookupCandidatesToPois();
-      await loadRows();
-      Alert.alert(
-        'POIs migrated',
-        result.insertedPois > 0
-          ? `Moved ${result.insertedPois.toLocaleString()} nearby places into the new POI table for ${result.migratedCaches.toLocaleString()} cached addresses.`
-          : 'No legacy POI data was left to migrate.',
-      );
-    } catch (error) {
-      Alert.alert(
-        'Migration failed',
-        error instanceof Error
-          ? error.message
-          : 'Could not migrate cached POIs.',
-      );
-    } finally {
-      setMigrating(false);
-    }
-  }, [loadRows]);
-
-  const confirmLegacyMigration = useCallback(() => {
-    Alert.alert(
-      'Migrate cached POIs?',
-      `This moves POI names from the old storage format into the new place_pois table for ${legacyPendingCount.toLocaleString()} cached address${
-        legacyPendingCount === 1 ? '' : 'es'
-      }. POIs without coordinates use the cache anchor as a fallback.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Migrate',
-          onPress: () => {
-            void runLegacyMigration();
-          },
-        },
-      ],
-    );
-  }, [legacyPendingCount, runLegacyMigration]);
 
   const runCoordinateRefresh = useCallback(async () => {
     setRefreshingCoordinates(true);
@@ -440,32 +389,6 @@ export function CachedPlacesSettings() {
 
   return (
     <View className="mt-4">
-      {!loading && legacyPendingCount > 0 ? (
-        <View className="bg-card border-border mb-4 rounded-xl border px-4 py-4">
-          <Text className="text-base font-medium">Legacy POI data</Text>
-          <Text variant="muted" className="mt-1 text-sm leading-5">
-            {legacyPendingCount.toLocaleString()} cached address
-            {legacyPendingCount === 1 ? '' : 'es'} still store POIs in the old
-            format. Migrate once to enable per-visit POI selection.
-          </Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Migrate cached POIs"
-            disabled={migrating}
-            onPress={confirmLegacyMigration}
-            className="bg-primary mt-3 min-h-[44px] items-center justify-center rounded-xl px-4 py-3 active:opacity-80 disabled:opacity-50"
-          >
-            {migrating ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text className="text-base font-semibold text-primary-foreground">
-                Migrate POIs
-              </Text>
-            )}
-          </Pressable>
-        </View>
-      ) : null}
-
       {!loading && canRefreshPoiCoordinates ? (
         <View className="bg-card border-border mb-4 rounded-xl border px-4 py-4">
           <Text className="text-base font-medium">Refresh POI coordinates</Text>
@@ -492,7 +415,7 @@ export function CachedPlacesSettings() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Refresh POI coordinates"
-            disabled={refreshingCoordinates || migrating}
+            disabled={refreshingCoordinates}
             onPress={confirmCoordinateRefresh}
             className="bg-primary mt-3 min-h-[44px] items-center justify-center rounded-xl px-4 py-3 active:opacity-80 disabled:opacity-50"
           >

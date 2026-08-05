@@ -4,6 +4,4 @@ create PR and attach related issue(s). If none exist, create an issue for the wo
 
 Monitor Copilot review until it finishes (look for timeline text like “Copilot started reviewing…” then “Copilot AI reviewed…” — not the Checks block). Fix only worth-fixing review comments, push, and request another Copilot review. Repeat until there are no remaining worth-fixing comments.
 
-After that, merge the PR.
-
 After it is merged, switch to main and pull the latest code.

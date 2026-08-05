@@ -296,12 +296,10 @@ function MomentInfoHeader({
   previewSavedPlace?: SavedPlaceRow | null;
 }) {
   const colors = useThemeColors();
-  const storedPlaceLabel = moment.placeLabel?.trim() || null;
   const resolvedPlaceLabel =
     placeLabelsByMomentId?.get(moment.id)?.trim() || null;
   const contextPlaceLabel = previewEntryContext?.placeLabel?.trim() || null;
-  const placeLabel =
-    storedPlaceLabel ?? resolvedPlaceLabel ?? contextPlaceLabel;
+  const placeLabel = resolvedPlaceLabel ?? contextPlaceLabel;
   const caption =
     (moment.type === 'photo' || moment.type === 'video') &&
     moment.caption?.trim()

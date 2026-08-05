@@ -79,13 +79,12 @@ describe('database export', () => {
         trips: 2,
         trip_points: 0,
         materialized_days: 1,
-        tracking_events: 3,
         saved_places: 1,
         place_lookup_cache: 4,
         moments: 5,
         settings: 2,
       }),
-    ).toBe(28);
+    ).toBe(25);
 
     expect(
       sumOriginalDataExportRowCounts({

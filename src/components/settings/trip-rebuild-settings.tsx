@@ -32,6 +32,7 @@ export function TripRebuildSettings() {
   );
   const [dayPickerVisible, setDayPickerVisible] = useState(false);
   const [selectedDayKey, setSelectedDayKey] = useState(getTodayDateKey());
+  const busy = rebuilding;
 
   const runRebuild = useCallback(async () => {
     setRebuilding(true);
@@ -157,10 +158,10 @@ export function TripRebuildSettings() {
 
         <Pressable
           accessibilityRole="button"
-          disabled={rebuilding}
+          disabled={busy}
           onPress={confirmRebuild}
           className={`bg-primary mt-4 items-center rounded-full px-4 py-3 ${
-            rebuilding ? 'opacity-50' : ''
+            busy ? 'opacity-50' : ''
           }`}
         >
           <Text className="text-primary-foreground font-medium">Rebuild</Text>
@@ -175,10 +176,10 @@ export function TripRebuildSettings() {
 
         <Pressable
           accessibilityRole="button"
-          disabled={rebuilding}
+          disabled={busy}
           onPress={() => setDayPickerVisible(true)}
           className={`bg-primary mt-4 items-center rounded-full px-4 py-3 ${
-            rebuilding ? 'opacity-50' : ''
+            busy ? 'opacity-50' : ''
           }`}
         >
           <Text className="text-primary-foreground font-medium">

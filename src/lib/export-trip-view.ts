@@ -161,7 +161,14 @@ export function adjacentStaysForTrip(
   let from: TripRow | null = null;
   for (let index = tripIndex - 1; index >= 0; index -= 1) {
     const candidate = trips[index];
-    if (candidate?.kind === 'stay') {
+    if (candidate == null) {
+      continue;
+    }
+    // Do not jump over GPS holes — travel after missing has no known origin stay.
+    if (candidate.kind === 'missing') {
+      break;
+    }
+    if (candidate.kind === 'stay') {
       from = candidate;
       break;
     }
@@ -169,7 +176,13 @@ export function adjacentStaysForTrip(
   let to: TripRow | null = null;
   for (let index = tripIndex + 1; index < trips.length; index += 1) {
     const candidate = trips[index];
-    if (candidate?.kind === 'stay') {
+    if (candidate == null) {
+      continue;
+    }
+    if (candidate.kind === 'missing') {
+      break;
+    }
+    if (candidate.kind === 'stay') {
       to = candidate;
       break;
     }

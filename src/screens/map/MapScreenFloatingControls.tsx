@@ -58,7 +58,7 @@ export const MapScreenFloatingControls = memo(
       openYou,
       historyBadgeCount,
       showLocateFitSplit,
-      trackingGapWarning,
+      locateButtonBusy,
       emptySelectedDayMessage,
       selectedDateKey,
     } = controller;
@@ -138,6 +138,7 @@ export const MapScreenFloatingControls = memo(
           <MapLocateButton
             bottom={locateButtonBottom}
             split={showLocateFitSplit}
+            busy={locateButtonBusy}
             onPressLocate={goToCurrentLocation}
             onPressFitTrips={fitTodayTrips}
           />
@@ -196,17 +197,6 @@ export const MapScreenFloatingControls = memo(
             </Text>
           </View>
         ) : null}
-
-        {trackingGapWarning &&
-        showTodayControls &&
-        !historyPanelActive &&
-        !emptySelectedDayMessage ? (
-          <View style={[styles.messageBanner, { bottom: messageAnchorBottom }]}>
-            <Text style={styles.messageText}>
-              {trackingGapWarning}. Tracking may have paused.
-            </Text>
-          </View>
-        ) : null}
       </View>
     );
   },
@@ -224,10 +214,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
-  },
-  messageText: {
-    color: '#FFFFFF',
-    fontSize: 13,
   },
   messageTextCentered: {
     color: '#FFFFFF',

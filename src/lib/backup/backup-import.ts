@@ -12,7 +12,6 @@ import {
   getTripByEventKey,
   listTripsForDay,
   updateTripCustomLabel,
-  updateTripLabelSelection,
   updateTripPoiSelection,
   updateTripSavedPlaceAssociation,
   type TripRow,
@@ -200,10 +199,6 @@ async function importPlaceLookupCache(rows: unknown[]): Promise<IdMap> {
           'place_lookup_cache.venueRadiusMeters',
         ),
         addressLine: parseOptionalString(record.addressLine),
-        candidatesJson: parseOptionalString(record.candidatesJson),
-        selectedCandidateIndex: parseOptionalNumber(
-          record.selectedCandidateIndex,
-        ),
         lookupStatus: parseRequiredString(
           record.lookupStatus,
           'place_lookup_cache.lookupStatus',
@@ -267,17 +262,12 @@ async function importMoments(
       textBody: parseOptionalString(record.textBody),
       caption: parseOptionalString(record.caption),
       title: parseOptionalString(record.title),
-      moodScore: parseOptionalNumber(record.moodScore),
       moodLabel: parseOptionalString(record.moodLabel),
       moodReason: parseOptionalString(record.moodReason),
       moodVariant: parseOptionalString(record.moodVariant),
-      placeLabel: parseOptionalString(record.placeLabel),
       contentBytes: parseOptionalNumber(record.contentBytes),
       sourceBytes: parseOptionalNumber(record.sourceBytes),
       contentFormat: parseOptionalString(record.contentFormat),
-      shareVisibility: parseOptionalString(record.shareVisibility) ?? 'private',
-      contentSyncState:
-        parseOptionalString(record.contentSyncState) ?? 'local_only',
       activityId: remapId(parseOptionalNumber(record.activityId), activityMap),
       activityEmoji: parseOptionalString(record.activityEmoji),
       activityLabel: parseOptionalString(record.activityLabel),
@@ -353,7 +343,6 @@ export async function applyTripLabelOverrides(
       await upsertVisitLabelOverride({
         dateKey: toDateKey(trip.startAt),
         startAtMs: trip.startAt.getTime(),
-        endAtMs: trip.endAt.getTime(),
         anchorLat: hasCentroid ? trip.centroidLat : null,
         anchorLng: hasCentroid ? trip.centroidLng : null,
         poiId: override.poiId,
@@ -377,19 +366,6 @@ export async function applyTripLabelOverrides(
           placeId,
           override.placeLabel,
         );
-      }
-      applied += 1;
-      continue;
-    }
-
-    if (override.selectedCandidateIndex != null) {
-      await updateTripLabelSelection(
-        trip.id,
-        override.selectedCandidateIndex,
-        override.placeKind === 'cache' ? placeId : undefined,
-      );
-      if (override.placeKind === 'saved' && placeId != null) {
-        await updateTripSavedPlaceAssociation(trip.id, placeId);
       }
       applied += 1;
       continue;

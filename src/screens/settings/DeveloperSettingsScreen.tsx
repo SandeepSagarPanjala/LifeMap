@@ -1,6 +1,7 @@
 import { View } from 'react-native';
 
 import { SettingsScreenLayout } from '@/components/settings/SettingsScreenLayout';
+import { AppStartDateSettings } from '@/components/settings/app-start-date-settings';
 import { DevSettings } from '@/components/settings/dev-settings';
 import { ExportSettings } from '@/components/settings/export-settings';
 import { TripRebuildSettings } from '@/components/settings/trip-rebuild-settings';
@@ -20,6 +21,7 @@ export function DeveloperSettingsScreen() {
       <View>
         <SettingsGroupLabel title="Developer tools" />
         <DevSettings />
+        <AppStartDateSettings />
         <TripRebuildSettings />
       </View>
     </SettingsScreenLayout>

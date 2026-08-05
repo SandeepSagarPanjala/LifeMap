@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import { runWhenIdle } from '@/lib/run-when-idle';
-import { CalendarDays, Database, Eye, Trash2 } from 'lucide-react-native';
+import { CalendarDays, Database, Eye } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -22,7 +22,6 @@ import {
   fetchDatabaseExportTables,
   type ExportTableStats,
 } from '@/db/repositories/database-export';
-import { deleteAllTrackingEvents } from '@/db/repositories/tracking-events';
 import { vacuumDatabase } from '@/db/repositories/storage-stats';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import {
@@ -37,7 +36,6 @@ import {
   sumExportTableRowCounts,
   sumOriginalDataExportRowCounts,
   sumOriginalDataExportStorageBytes,
-  type AlgorithmDataExportTableName,
   type DatabaseExportTableName,
 } from '@/lib/database-export';
 import { getTodayDateKey, parseDateKey } from '@/lib/day-utils';
@@ -55,8 +53,6 @@ type ExportPickerTarget =
   | 'all_tables'
   | 'original_data';
 
-type DeletingTarget = 'tracking_events' | null;
-
 export function ExportSettings() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -65,7 +61,6 @@ export function ExportSettings() {
   const [tableStats, setTableStats] = useState<ExportTableStats | null>(null);
   const [calculatedAt, setCalculatedAt] = useState<Date | null>(null);
   const [exporting, setExporting] = useState(false);
-  const [deletingTarget, setDeletingTarget] = useState<DeletingTarget>(null);
   const [compacting, setCompacting] = useState(false);
   const [dayPickerVisible, setDayPickerVisible] = useState(false);
   const [pickerTarget, setPickerTarget] = useState<ExportPickerTarget | null>(
@@ -195,55 +190,6 @@ export function ExportSettings() {
     setDayPickerVisible(true);
   };
 
-  const confirmDeleteTable = (tableName: AlgorithmDataExportTableName) => {
-    if (tableName !== 'tracking_events') {
-      return;
-    }
-    const rowCount = tableStats?.counts.tracking_events ?? 0;
-    Alert.alert(
-      'Delete tracking events?',
-      deleteTrackingEventsMessage(rowCount),
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            void runDeleteTrackingEvents();
-          },
-        },
-      ],
-    );
-  };
-
-  const runDeleteTrackingEvents = async () => {
-    setDeletingTarget('tracking_events');
-    try {
-      const deleted = await deleteAllTrackingEvents();
-      let compactMessage = '';
-      if (deleted > 0) {
-        setCompacting(true);
-        const compacted = await vacuumDatabase();
-        compactMessage = `\n\nDatabase compacted from ${formatStorageBytes(
-          compacted.beforeBytes,
-        )} to ${formatStorageBytes(compacted.afterBytes)}.`;
-      }
-      await calculate();
-      Alert.alert(
-        'Deleted',
-        `Removed ${deleted.toLocaleString()} tracking_events rows.${compactMessage}`,
-      );
-    } catch (error) {
-      Alert.alert(
-        APP_COPY.alerts.couldNotDeleteDiagnostics,
-        errorMessageOr(error),
-      );
-    } finally {
-      setDeletingTarget(null);
-      setCompacting(false);
-    }
-  };
-
   const confirmCompactDatabase = () => {
     const reclaimable = tableStats?.freeDbBytes ?? 0;
     Alert.alert(
@@ -294,9 +240,7 @@ export function ExportSettings() {
       : 0;
   const totalDbBytes = tableStats?.totalDbBytes ?? 0;
   const freeDbBytes = tableStats?.freeDbBytes ?? 0;
-  const tableActionsDisabled =
-    exporting || deletingTarget != null || compacting || calculating;
-  const hasTrackingEventRows = (tableStats?.counts.tracking_events ?? 0) > 0;
+  const tableActionsDisabled = exporting || compacting || calculating;
 
   return (
     <>
@@ -348,21 +292,12 @@ export function ExportSettings() {
                   count={tableStats.counts[tableName] ?? 0}
                   storageBytes={tableStats.storageBytes[tableName] ?? 0}
                   disabled={tableActionsDisabled}
-                  deleting={
-                    tableName === 'tracking_events'
-                      ? deletingTarget === 'tracking_events'
-                      : false
-                  }
-                  showDelete={
-                    tableName === 'tracking_events' && hasTrackingEventRows
-                  }
                   showView={
                     tableName === 'trips' && (tableStats.counts.trips ?? 0) > 0
                   }
                   onView={() => navigation.navigate('ExportTripDays')}
                   onPickDay={() => openDayPicker(tableName)}
                   onExportAll={() => void shareExport(tableName, 'all')}
-                  onDelete={() => confirmDeleteTable(tableName)}
                 />
               ))}
             </ExportSection>
@@ -470,28 +405,20 @@ function ExportDataRow({
   storageBytes,
   disabled,
   emphasized = false,
-  showDelete = false,
-  deleteLabel = 'Delete',
   showView = false,
-  deleting = false,
   onPickDay,
   onExportAll,
   onView,
-  onDelete,
 }: {
   label: string;
   count: number;
   storageBytes: number;
   disabled: boolean;
   emphasized?: boolean;
-  showDelete?: boolean;
-  deleteLabel?: string;
   showView?: boolean;
-  deleting?: boolean;
   onPickDay: () => void;
   onExportAll: () => void;
   onView?: () => void;
-  onDelete?: () => void;
 }) {
   const colors = useThemeColors();
 
@@ -536,17 +463,6 @@ function ExportDataRow({
           emphasized={emphasized}
           onPress={onExportAll}
         />
-        {showDelete && onDelete != null ? (
-          <ExportActionButton
-            label={deleteLabel}
-            icon={Trash2}
-            iconColor="#dc2626"
-            disabled={disabled}
-            destructive
-            loading={deleting}
-            onPress={onDelete}
-          />
-        ) : null}
       </View>
     </View>
   );
@@ -600,14 +516,6 @@ function ExportActionButton({
       <Text className={`text-xs font-medium ${textClass}`}>{label}</Text>
     </Pressable>
   );
-}
-
-function deleteTrackingEventsMessage(rowCount: number): string {
-  const countLabel =
-    rowCount > 0
-      ? `This removes ${rowCount.toLocaleString()} debug log rows. `
-      : '';
-  return `${countLabel}Your map, visits, drives, and GPS points are not affected.`;
 }
 
 function formatTableLabel(tableName: DatabaseExportTableName): string {

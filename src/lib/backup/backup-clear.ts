@@ -2,19 +2,7 @@ import { sql } from 'drizzle-orm';
 import ReactNativeBlobUtil from 'react-native-blob-util';
 
 import { getDatabase, getSqlite } from '@/db/client';
-import {
-  activities,
-  locationPoints,
-  materializedDays,
-  moments,
-  placeLookupCache,
-  savedPlaces,
-  settings,
-  settingsStatsCache,
-  trackingEvents,
-  tripPoints,
-  trips,
-} from '@/db/schema';
+import { locationPoints, moments } from '@/db/schema';
 import { getDocumentDirectory } from '@/lib/moments/moment-media-uri';
 import {
   ensureMomentsDirectory,
@@ -23,42 +11,6 @@ import {
 
 import { ensureDirectory, yieldToUi } from './backup-fs';
 import type { BackupProgress } from './backup-types';
-
-export async function clearAllUserData(): Promise<void> {
-  const db = await getDatabase();
-  await db.transaction(async tx => {
-    await tx.delete(tripPoints);
-    await tx.delete(trips);
-    await tx.delete(materializedDays);
-    await tx.delete(moments);
-    await tx.delete(trackingEvents);
-    await tx.delete(locationPoints);
-    await tx.delete(placeLookupCache);
-    await tx.delete(savedPlaces);
-    await tx.delete(activities);
-    await tx.delete(settings);
-    await tx.delete(settingsStatsCache);
-  });
-
-  await clearMomentMediaFiles();
-}
-
-async function clearMomentMediaFiles(): Promise<void> {
-  const fs = ReactNativeBlobUtil.fs;
-  const momentsDir = `${getDocumentDirectory()}/moments`;
-  if (!(await fs.exists(momentsDir))) {
-    return;
-  }
-
-  const entries = await fs.ls(momentsDir);
-  for (const entry of entries) {
-    if (entry === '.tmp') {
-      continue;
-    }
-    const path = `${momentsDir}/${entry}`;
-    await fs.unlink(path);
-  }
-}
 
 export async function hasLocalUserData(): Promise<boolean> {
   const db = await getDatabase();
@@ -149,7 +101,6 @@ export async function resetSqliteAutoIncrementCounters(): Promise<void> {
     'settings',
     'trips',
     'trip_points',
-    'tracking_events',
   ];
   for (const table of tables) {
     await sqlite.execute(`DELETE FROM sqlite_sequence WHERE name = ?`, [table]);

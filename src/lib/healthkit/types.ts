@@ -4,6 +4,12 @@ export const SETTINGS_KEY_HEALTHKIT_MASTER = 'healthkit_master';
 export const SETTINGS_KEY_HEALTHKIT_SLEEP = 'healthkit_sleep';
 export const SETTINGS_KEY_HEALTHKIT_ACTIVITY = 'healthkit_activity';
 export const SETTINGS_KEY_HEALTHKIT_STEPS = 'healthkit_steps';
+/** Opt-in: sync when HealthKit reports sleep/steps changes. Default off. */
+export const SETTINGS_KEY_HEALTHKIT_SYNC_ON_CHANGES =
+  'healthkit_sync_on_changes';
+/** Opt-in: sync when opening Sleep/Steps detail. Default off. */
+export const SETTINGS_KEY_HEALTHKIT_SYNC_ON_DETAIL_OPEN =
+  'healthkit_sync_on_detail_open';
 export const SETTINGS_KEY_HEALTHKIT_LAST_SYNC_AT = 'healthkit_last_sync_at';
 
 /** Routine foreground window: enough to catch late Apple Watch samples. */

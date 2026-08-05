@@ -1,14 +1,10 @@
-import { and, eq, isNull, or, sql } from 'drizzle-orm';
-
 import { listSavedPlaces } from '@/db/repositories/saved-places';
 import {
   findPlaceLookupNearAnchor,
   listPlaceLookupCacheRows,
 } from '@/db/repositories/place-lookup-cache';
-import { getTodayDateKey } from '@/lib/day-utils';
-import { buildTodayDisplayHistory } from '@/lib/today-live-history';
+import { listTripsForDay, type TripRow } from '@/db/repositories/trips';
 import { getCurrentOpenVisit } from '@/lib/today-history';
-import { getDefaultTripDetectionConfig } from '@/lib/trip-materialization';
 import {
   stayQualifiesForPlaceLookup,
   shouldSkipPlaceLookupForStay,
@@ -19,9 +15,12 @@ import {
   isWithinPlaceLookupVenue,
 } from '@/lib/place-lookup-venue';
 import type { PlaceLookupRow } from '@/lib/place-lookup-types';
-import { listTripsForDay, type TripRow } from '@/db/repositories/trips';
-import { getDatabase } from '@/db/client';
-import { trips } from '@/db/schema';
+import type { DayTimelineEntry } from '@/lib/trip-detection';
+import type { TripDetectionConfig } from '@/lib/trip-settings';
+import {
+  delayBetweenPlaceCacheItems,
+  runPlaceCacheWorkItem,
+} from '@/lib/place-cache-work';
 
 export type PlaceCacheTripWork = {
   kind: 'trip';
@@ -39,56 +38,30 @@ export type PlaceCacheOpenVisitWork = {
 
 export type PlaceCacheWorkItem = PlaceCacheTripWork | PlaceCacheOpenVisitWork;
 
-/**
- * Only stays that still need an address fetch.
- * Do NOT queue "has address, missing poi" forever — that caused Looking up
- * places (1/1) on every launch when MapKit had no POI to attach.
- */
-function placeCacheBacklogConditions() {
-  return and(
-    eq(trips.kind, 'stay'),
-    isNull(trips.placeId),
-    isNull(trips.poiId),
-    or(isNull(trips.placeLabel), eq(trips.placeLabel, '')),
-  );
-}
-
-export async function hasPlaceCacheBacklog(): Promise<boolean> {
-  const db = await getDatabase();
-  const rows = await db
-    .select({ id: trips.id })
-    .from(trips)
-    .where(placeCacheBacklogConditions())
-    .limit(1);
-  if (rows.length > 0) {
-    return true;
+export function tripNeedsPlaceCache(trip: TripRow): boolean {
+  if (trip.kind !== 'stay') {
+    return false;
   }
-  const openVisit = await detectOpenVisitNeedingPlaceCache();
-  return openVisit != null;
+  if (trip.placeId != null || trip.poiId != null) {
+    return false;
+  }
+  if (trip.placeLabel?.trim()) {
+    return false;
+  }
+  return true;
 }
 
-export async function listUnlabeledStayTripsForPlaceCache(): Promise<
-  PlaceCacheTripWork[]
-> {
-  const db = await getDatabase();
-  const rows = await db
-    .select({
-      tripId: trips.id,
-      eventKey: trips.eventKey,
-      dateKey: trips.dateKey,
-      centroidLat: trips.centroidLat,
-      centroidLng: trips.centroidLng,
-    })
-    .from(trips)
-    .where(placeCacheBacklogConditions())
-    .orderBy(sql`${trips.dateKey} asc`, sql`${trips.startAt} asc`);
-
-  const items: PlaceCacheTripWork[] = [];
-  // One cache load — avoid N× full-table scans via findPlaceLookupNearAnchor.
+/** Unlabeled sealed stays for one day — skip anchors that already failed MapKit. */
+export async function buildPlaceCacheItemsForDate(
+  dateKey: string,
+): Promise<PlaceCacheTripWork[]> {
+  const rows = await listTripsForDay(dateKey);
   const cacheRows = await listPlaceLookupCacheRows();
+  const items: PlaceCacheTripWork[] = [];
   for (const row of rows) {
-    // Skip anchors that already failed MapKit — retrying every launch only
-    // shows a stuck banner.
+    if (!tripNeedsPlaceCache(row)) {
+      continue;
+    }
     const cache = findNearestPlaceLookupMatch(
       { lat: row.centroidLat, lng: row.centroidLng },
       cacheRows,
@@ -98,7 +71,7 @@ export async function listUnlabeledStayTripsForPlaceCache(): Promise<
     }
     items.push({
       kind: 'trip',
-      tripId: row.tripId,
+      tripId: row.id,
       eventKey: row.eventKey,
       dateKey: row.dateKey,
     });
@@ -106,18 +79,14 @@ export async function listUnlabeledStayTripsForPlaceCache(): Promise<
   return items;
 }
 
-async function detectOpenVisitNeedingPlaceCache(): Promise<PlaceCacheOpenVisitWork | null> {
-  const dateKey = getTodayDateKey();
-  const config = getDefaultTripDetectionConfig();
+/** Open visit from an already-built timeline (no second today detect). */
+export async function buildOpenVisitPlaceCacheItemFromEntries(
+  entries: readonly DayTimelineEntry[],
+  dateKey: string,
+  config: TripDetectionConfig,
+): Promise<PlaceCacheOpenVisitWork | null> {
   const savedPlaces = await listSavedPlaces();
-  const todayTrips = await listTripsForDay(dateKey);
-  const history = await buildTodayDisplayHistory(
-    dateKey,
-    config,
-    new Date(),
-    todayTrips,
-  );
-  const openVisit = getCurrentOpenVisit(history.entries, { config });
+  const openVisit = getCurrentOpenVisit([...entries], { config });
   if (openVisit == null) {
     return null;
   }
@@ -142,11 +111,7 @@ async function detectOpenVisitNeedingPlaceCache(): Promise<PlaceCacheOpenVisitWo
   }
   const anchor = { lat, lng };
   const cache = await findPlaceLookupNearAnchor(anchor);
-  // Complete: nothing to do. Failed: do not re-queue every launch.
-  if (
-    cache?.lookupStatus === 'complete' ||
-    cache?.lookupStatus === 'failed'
-  ) {
+  if (cache?.lookupStatus === 'complete' || cache?.lookupStatus === 'failed') {
     return null;
   }
   return {
@@ -157,29 +122,46 @@ async function detectOpenVisitNeedingPlaceCache(): Promise<PlaceCacheOpenVisitWo
   };
 }
 
-export async function buildPlaceCacheWorkQueue(): Promise<PlaceCacheWorkItem[]> {
-  const items: PlaceCacheWorkItem[] =
-    await listUnlabeledStayTripsForPlaceCache();
-
-  const openVisit = await detectOpenVisitNeedingPlaceCache();
-  if (openVisit != null) {
-    items.push(openVisit);
+export async function runPlaceCacheForItems(
+  items: readonly PlaceCacheWorkItem[],
+): Promise<void> {
+  for (const item of items) {
+    await runPlaceCacheWorkItem(item);
+    await delayBetweenPlaceCacheItems();
   }
-
-  return items;
 }
 
-export function tripNeedsPlaceCache(trip: TripRow): boolean {
-  if (trip.kind !== 'stay') {
-    return false;
+/**
+ * Place lookups for stays on a day (and optional open visit from known entries).
+ * Call after seal / today display merge — no global trips scan.
+ */
+export async function runPlaceCacheForDate(
+  dateKey: string,
+  options?: {
+    openVisitEntries?: readonly DayTimelineEntry[];
+    detectionConfig?: TripDetectionConfig;
+  },
+): Promise<number> {
+  const items: PlaceCacheWorkItem[] =
+    await buildPlaceCacheItemsForDate(dateKey);
+  if (
+    options?.openVisitEntries != null &&
+    options.detectionConfig != null
+  ) {
+    const openVisit = await buildOpenVisitPlaceCacheItemFromEntries(
+      options.openVisitEntries,
+      dateKey,
+      options.detectionConfig,
+    );
+    if (openVisit != null) {
+      items.push(openVisit);
+    }
   }
-  if (trip.placeId != null || trip.poiId != null) {
-    return false;
+  if (items.length === 0) {
+    return 0;
   }
-  if (trip.placeLabel?.trim()) {
-    return false;
-  }
-  return true;
+  await runPlaceCacheForItems(items);
+  return items.length;
 }
 
 export async function openVisitHasCompleteCache(anchor: {

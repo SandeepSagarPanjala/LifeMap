@@ -18,6 +18,7 @@ import {
   ensureVisitLabelOverrideAnchorColumns,
 } from './migrate';
 import { getOrCreateDatabaseKey } from './keychain';
+import { ensureAppStartDateAtDatabaseInit } from '@/lib/history-calendar-bounds';
 
 export type Database = ReturnType<typeof drizzle>;
 
@@ -46,6 +47,14 @@ export function resetDatabaseClientForTests(): void {
   initPromise = null;
 }
 
+async function tableExists(sqlite: DB, tableName: string): Promise<boolean> {
+  const result = await sqlite.execute(
+    `SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?`,
+    [tableName],
+  );
+  return (result.rows?.length ?? 0) > 0;
+}
+
 async function initDatabase(): Promise<{ db: Database; sqlite: DB }> {
   const key = await getOrCreateDatabaseKey();
 
@@ -57,6 +66,9 @@ async function initDatabase(): Promise<{ db: Database; sqlite: DB }> {
   await sqlite.execute('PRAGMA busy_timeout = 5000');
 
   const db = drizzle(sqlite);
+
+  // Before migrations: empty file has no app tables yet → true install.
+  const virginDatabase = !(await tableExists(sqlite, 'location_points'));
 
   await runMigrations(sqlite);
   await ensureTripSegmentMetadataColumns(sqlite);
@@ -72,6 +84,9 @@ async function initDatabase(): Promise<{ db: Database; sqlite: DB }> {
   await ensureMaterializedDayExcludedDriveColumn(sqlite);
   await ensureVisitLabelOverrideAnchorColumns(sqlite);
   await repairLocationPointsDedupeUniqueIndex(sqlite);
+
+  // Stamp calendar floor when the DB is first created (not on later cold starts).
+  await ensureAppStartDateAtDatabaseInit(db, { virginDatabase });
 
   return { db, sqlite };
 }

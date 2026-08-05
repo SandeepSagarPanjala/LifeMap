@@ -1,5 +1,7 @@
 import {
   DEFAULT_STOP_DETECTION_CONFIG,
+  ENDPOINT_JUMP_MIN_GAP_MS,
+  STAY_BLACKOUT_SAME_AREA_MAX_M,
   TRAVEL_MODE_ACTIVITY_CONFIDENCE_MIN,
 } from '@lifemap/constants';
 import {
@@ -68,13 +70,17 @@ function canSparseBridge(
   if (gapMs < config.minDwellMs) {
     return false;
   }
+  // Phone off > 12h even at the same place → break the stay (missing, not bridge).
+  if (gapMs > ENDPOINT_JUMP_MIN_GAP_MS) {
+    return false;
+  }
   const toCentre = haversineM(centre, next);
   const toAnchor = haversineM(anchor, next);
   const slack = pointAccuracyM(next);
-  return (
-    toCentre <= config.sparseBridgeMaxDistanceM + slack ||
-    toAnchor <= config.sparseBridgeMaxDistanceM + slack
-  );
+  // GPS warm-up after a blackout can land hundreds of meters off — still the
+  // same place up to 1 mile (Windhaven 1:49→2:58 pattern).
+  const maxM = STAY_BLACKOUT_SAME_AREA_MAX_M + slack;
+  return toCentre <= maxM || toAnchor <= maxM;
 }
 
 /**
@@ -378,6 +384,8 @@ export function detectStopsFromPrepared(
     let sparseAnchored = false;
     let j = i + 1;
     let departureAt: Date | null = null;
+    /** When GPS resumes in-place after a blackout, stay end extends to that moment. */
+    let blackoutExtendedLeftAt: Date | null = null;
     let handled = false;
 
     while (j < n) {
@@ -402,6 +410,18 @@ export function detectStopsFromPrepared(
         if (inferred != null) {
           stops.push(inferred);
           handled = true;
+          break;
+        }
+        const anchor = cluster[cluster.length - 1]!;
+        const gapMs = candidate.at.getTime() - anchor.at.getTime();
+        // Phone off ≤12h, next fix within 1 mi (often already moving) — still
+        // the same place; extend the stay through the silence (Windhaven).
+        if (
+          gapMs > config.sparseBridgeMinGapMs &&
+          canSparseBridge(centre, anchor, candidate, config)
+        ) {
+          blackoutExtendedLeftAt = candidate.at;
+          departureAt = candidate.at;
           break;
         }
         departureAt = candidate.at;
@@ -481,9 +501,10 @@ export function detectStopsFromPrepared(
     }
 
     if (cluster.length > 0 && (j > i + 1 || departureAt != null)) {
-      // Stay end = last cluster GPS. Moving departure time must not extend
-      // leftAt past that point — trailing drive starts on the same vertex.
-      const leftAt = cluster[cluster.length - 1]!.at;
+      // Stay end = last cluster GPS, unless a same-place GPS blackout extended
+      // the visit through silence until movement resumed.
+      const leftAt =
+        blackoutExtendedLeftAt ?? cluster[cluster.length - 1]!.at;
       pushStop(stops, cluster, centre, leftAt, config, departureAt != null);
       i = departureAt != null ? j + 1 : j;
     } else {

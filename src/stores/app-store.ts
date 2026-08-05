@@ -21,6 +21,8 @@ type AppState = {
   tripDwellMinutes: TripDwellMinutes;
   tripDwellRadiusMeters: TripRadiusMeters;
   historyEarliestDateKey: string | null;
+  /** Blue bullseye also runs refreshToday when enabled. */
+  refreshMapOnBullseye: boolean;
   completePrivacyOnboarding: () => void;
   setAccentTheme: (theme: AccentThemeId) => void;
   setSlowSplashEnabled: (enabled: boolean) => void;
@@ -29,6 +31,7 @@ type AppState = {
   setTripDwellMinutes: (minutes: TripDwellMinutes) => void;
   setTripDwellRadiusMeters: (meters: TripRadiusMeters) => void;
   setHistoryEarliestDateKey: (dateKey: string) => void;
+  setRefreshMapOnBullseye: (enabled: boolean) => void;
 };
 
 function persistedAppState(state: AppState) {
@@ -40,6 +43,7 @@ function persistedAppState(state: AppState) {
     tripDwellMinutes: state.tripDwellMinutes,
     tripDwellRadiusMeters: state.tripDwellRadiusMeters,
     historyEarliestDateKey: state.historyEarliestDateKey,
+    refreshMapOnBullseye: state.refreshMapOnBullseye,
     ...(__DEV__ ? { devShowOnboarding: state.devShowOnboarding } : {}),
   };
 }
@@ -55,6 +59,7 @@ export const useAppStore = create<AppState>()(
       tripDwellMinutes: DEFAULT_TRIP_DWELL_MINUTES,
       tripDwellRadiusMeters: DEFAULT_TRIP_DWELL_RADIUS_METERS,
       historyEarliestDateKey: null,
+      refreshMapOnBullseye: false,
       completePrivacyOnboarding: () =>
         set({ hasCompletedPrivacyOnboarding: true }),
       setAccentTheme: theme => set({ accentTheme: theme }),
@@ -71,6 +76,8 @@ export const useAppStore = create<AppState>()(
         set({ tripDwellRadiusMeters }),
       setHistoryEarliestDateKey: historyEarliestDateKey =>
         set({ historyEarliestDateKey }),
+      setRefreshMapOnBullseye: refreshMapOnBullseye =>
+        set({ refreshMapOnBullseye }),
     }),
     {
       name: 'lifemap-app',

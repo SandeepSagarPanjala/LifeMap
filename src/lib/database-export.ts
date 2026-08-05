@@ -6,7 +6,6 @@ export type DatabaseExportTables = {
   trips: unknown[];
   trip_points: unknown[];
   materialized_days: unknown[];
-  tracking_events: unknown[];
   saved_places: unknown[];
   place_lookup_cache: unknown[];
   place_pois: unknown[];
@@ -21,7 +20,6 @@ export const DATABASE_EXPORT_TABLE_NAMES: DatabaseExportTableName[] = [
   'trips',
   'trip_points',
   'materialized_days',
-  'tracking_events',
   'saved_places',
   'place_lookup_cache',
   'place_pois',
@@ -49,10 +47,9 @@ export const MATERIALIZED_TRIP_EXPORT_TABLE_NAMES = [
 export type MaterializedTripExportTableName =
   (typeof MATERIALIZED_TRIP_EXPORT_TABLE_NAMES)[number];
 
-/** Materialized / derived tables — trips, seal metadata, diagnostics. */
+/** Materialized / derived tables — trips, seal metadata. */
 export const ALGORITHM_DATA_EXPORT_TABLE_NAMES = [
   ...MATERIALIZED_TRIP_EXPORT_TABLE_NAMES,
-  'tracking_events',
 ] as const satisfies readonly DatabaseExportTableName[];
 
 export type AlgorithmDataExportTableName =
@@ -72,7 +69,6 @@ export function emptyDatabaseExportTables(): DatabaseExportTables {
     trips: [],
     trip_points: [],
     materialized_days: [],
-    tracking_events: [],
     saved_places: [],
     place_lookup_cache: [],
     place_pois: [],

@@ -36,13 +36,15 @@ function installMockDatabase({
     }
 
     return {
-      from: () =>
-        Promise.resolve([
-          {
-            timestamp:
-              earliestDateKey != null ? parseDateKey(earliestDateKey) : null,
-          },
-        ]),
+      from: () => ({
+        where: () =>
+          Promise.resolve([
+            {
+              timestamp:
+                earliestDateKey != null ? parseDateKey(earliestDateKey) : null,
+            },
+          ]),
+      }),
     };
   });
 

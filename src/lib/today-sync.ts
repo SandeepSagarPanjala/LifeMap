@@ -2,10 +2,10 @@ import {
   getLocationPointsForDay,
   type LocationPointRow,
 } from '@/db/repositories/location-days';
+import { getMomentsForDay, type MomentRow } from '@/db/repositories/moments';
 import { listTripsForDay, type TripRow } from '@/db/repositories/trips';
 import { getDayRange, getTodayDateKey } from '@/lib/day-utils';
 import type { HistoryData } from '@/lib/history-data-types';
-import { buildExplorerDayTimelineFromGps } from '@/lib/explorer-day-trips';
 import { getSealableTodayEntries } from '@/lib/today-seal-policy';
 import {
   buildTodayTailDisplayHistory,
@@ -25,6 +25,7 @@ import {
 import { TODAY_LIVE_BUFFER_MAX_SEGMENTS } from '@/lib/app-constants';
 import type { TripDetectionConfig } from '@/lib/trip-settings';
 import { resetTodayPreloadMountSkip } from '@/lib/today-preload-coordination';
+import { runPlaceCacheForDate } from '@/lib/place-cache-backlog';
 
 /** Withholds last 2 live segments — need ≥3 tail segments before seal can persist anything. */
 export const TODAY_OPEN_SILENT_SEAL_MIN_TAIL_SEGMENTS =
@@ -36,6 +37,7 @@ export type TodayDisplayMeta = {
 };
 
 let lastTodayDisplayMeta: TodayDisplayMeta | null = null;
+let lastTodayMergedEntries: DayTimelineEntry[] | null = null;
 
 export function getLastTodayDisplayMeta(): TodayDisplayMeta | null {
   return lastTodayDisplayMeta;
@@ -49,7 +51,7 @@ export function countPlayableTimelineSegments(
   ).length;
 }
 
-/** Skip silent seal when DB is empty and tail has too few segments to seal (X − 2 ≤ 0). */
+/** Skip seal when DB is empty and tail has too few segments to seal (X − 2 ≤ 0). */
 export function shouldRunTodayOpenSilentSeal(
   storedTripCount: number,
   tailPlayableCount: number,
@@ -58,6 +60,27 @@ export function shouldRunTodayOpenSilentSeal(
     return true;
   }
   return tailPlayableCount >= TODAY_OPEN_SILENT_SEAL_MIN_TAIL_SEGMENTS;
+}
+
+function sealedMomentIds(tripRows: readonly TripRow[]): Set<number> {
+  const ids = new Set<number>();
+  for (const row of tripRows) {
+    for (const ref of row.momentRefs ?? []) {
+      ids.add(ref.momentId);
+    }
+  }
+  return ids;
+}
+
+function unsealedMomentsForLive(
+  dayMoments: readonly MomentRow[],
+  tripRows: readonly TripRow[],
+): MomentRow[] {
+  const sealedIds = sealedMomentIds(tripRows);
+  if (sealedIds.size === 0) {
+    return [...dayMoments];
+  }
+  return dayMoments.filter(moment => !sealedIds.has(moment.id));
 }
 
 async function loadHistoryFromStoredTripsToday(
@@ -151,10 +174,13 @@ async function mergeTodayDisplayFromDbAndTail(
   referenceNow: Date,
   onPartial?: (data: HistoryData) => void,
 ): Promise<HistoryData> {
-  const { start: dayStart } = getDayRange(dateKey);
+  const { start: dayStart, end: dayEnd } = getDayRange(dateKey);
   const dayStartMs = dayStart.getTime();
   const sealedMs = sealedThroughMs(tripRows) ?? dayStartMs;
   const tailStart = new Date(tailGpsStartMs(sealedMs, dayStartMs));
+
+  const dayMoments = await getMomentsForDay(dayStart, dayEnd);
+  const liveMoments = unsealedMomentsForLive(dayMoments, tripRows);
 
   const [sealedData, liveHistory] = await Promise.all([
     tripRows.length > 0
@@ -168,6 +194,7 @@ async function mergeTodayDisplayFromDbAndTail(
       detectionConfig,
       referenceNow,
       tripRows,
+      liveMoments,
     ),
   ]);
 
@@ -183,58 +210,38 @@ async function mergeTodayDisplayFromDbAndTail(
     referenceNow,
     mergedEntries,
     liveHistory.dayPointCount,
+    dayMoments,
   );
 
   lastTodayDisplayMeta = {
     storedTripCount: tripRows.length,
     tailPlayableCount: countPlayableTimelineSegments(liveHistory.entries),
   };
+  lastTodayMergedEntries = mergedEntries;
 
   onPartial?.(merged);
   return merged;
 }
 
 /**
- * Today display: trips from DB + tail detect on GPS since last trip end.
- * Read-only — no DB writes. Does not run silent seal (see scheduleTodayOpenSilentSeal).
+ * Persist sealable prefix from the last today display merge (hard X − 2).
+ * No second full-day GPS detect.
  */
-export async function syncTodayDisplay(
+export async function sealTodayFromDisplayMerge(
   detectionConfig: TripDetectionConfig,
   referenceNow: Date = new Date(),
-  options: SyncTodayTripsOptions = {},
-): Promise<HistoryData> {
-  const dateKey = getTodayDateKey();
-  const tripRows = await listTripsForDay(dateKey);
-
-  return mergeTodayDisplayFromDbAndTail(
-    dateKey,
-    tripRows,
-    detectionConfig,
-    referenceNow,
-    options.onPartial,
-  );
-}
-
-/**
- * Full-day silent detect; persist sealable prefix (hard X − 2: never seal last 2).
- * Remaining tail finalizes next day via sealYesterdayIfNeeded.
- * Skips when nothing is sealable or signatures are unchanged.
- */
-export async function silentTripSealToday(
-  detectionConfig: TripDetectionConfig,
-  referenceNow: Date = new Date(),
+  entries: readonly DayTimelineEntry[] | null = lastTodayMergedEntries,
 ): Promise<number> {
+  if (entries == null || entries.length === 0) {
+    return 0;
+  }
+
   const dateKey = getTodayDateKey();
-  const { entries, dayPointCount } = await buildExplorerDayTimelineFromGps(
-    dateKey,
-    detectionConfig,
-  );
   const sealable = getSealableTodayEntries(
     entries,
     referenceNow,
     detectionConfig,
   );
-
   if (sealable.length === 0) {
     return 0;
   }
@@ -247,16 +254,36 @@ export async function silentTripSealToday(
     return 0;
   }
 
-  const tripsSaved = await persistClosedTripsIncremental(
+  return persistClosedTripsIncremental(
     dateKey,
     detectionConfig,
     sealable,
-    {
-      pointCount: dayPointCount,
-    },
+    {},
   );
-  // Yesterday's excludedCrossMidnightFromMs stays set — lookback is gated on empty today trips.
-  return tripsSaved;
+}
+
+/**
+ * Today display: trips from DB + tail detect on GPS since last trip end.
+ * After merge, once per open: seal delta from merge + place lookups for unlabeled stays.
+ */
+export async function syncTodayDisplay(
+  detectionConfig: TripDetectionConfig,
+  referenceNow: Date = new Date(),
+  options: SyncTodayTripsOptions = {},
+): Promise<HistoryData> {
+  const dateKey = getTodayDateKey();
+  const tripRows = await listTripsForDay(dateKey);
+
+  const merged = await mergeTodayDisplayFromDbAndTail(
+    dateKey,
+    tripRows,
+    detectionConfig,
+    referenceNow,
+    options.onPartial,
+  );
+
+  scheduleTodaySealAndPlacesFromMerge(detectionConfig, referenceNow);
+  return merged;
 }
 
 let sealPromise: Promise<void> | null = null;
@@ -267,8 +294,11 @@ export function beginTodayOpenCycle(): void {
   resetTodayPreloadMountSkip();
 }
 
-/** One silent seal per app open — after display sync, not on GPS refresh. */
-export function scheduleTodayOpenSilentSeal(
+/**
+ * One seal + places pass per app open — after display sync, not on every GPS refresh.
+ * Seal reuses the display merge; places use sealed trips + open visit from that merge.
+ */
+export function scheduleTodaySealAndPlacesFromMerge(
   detectionConfig: TripDetectionConfig,
   referenceNow: Date = new Date(),
   meta: TodayDisplayMeta | null = lastTodayDisplayMeta,
@@ -277,52 +307,75 @@ export function scheduleTodayOpenSilentSeal(
     return;
   }
 
-  if (
-    meta != null &&
-    !shouldRunTodayOpenSilentSeal(meta.storedTripCount, meta.tailPlayableCount)
-  ) {
-    openCycleSilentSealDone = true;
-    return;
-  }
-
   openCycleSilentSealDone = true;
 
   sealPromise = (async () => {
     try {
-      await silentTripSealToday(detectionConfig, referenceNow);
+      const shouldSeal =
+        meta == null ||
+        shouldRunTodayOpenSilentSeal(
+          meta.storedTripCount,
+          meta.tailPlayableCount,
+        );
+      if (shouldSeal) {
+        await sealTodayFromDisplayMerge(detectionConfig, referenceNow);
+      }
+
+      const dateKey = getTodayDateKey();
+      await runPlaceCacheForDate(dateKey, {
+        openVisitEntries: lastTodayMergedEntries ?? undefined,
+        detectionConfig,
+      });
     } catch {
-      // Best-effort seal.
+      // Best-effort seal / places.
     } finally {
       sealPromise = null;
     }
   })();
 }
 
-/** @internal — legacy alias; prefer scheduleTodayOpenSilentSeal on app open only. */
+/** @deprecated Use scheduleTodaySealAndPlacesFromMerge */
+export function scheduleTodayOpenSilentSeal(
+  detectionConfig: TripDetectionConfig,
+  referenceNow: Date = new Date(),
+  meta: TodayDisplayMeta | null = lastTodayDisplayMeta,
+): void {
+  scheduleTodaySealAndPlacesFromMerge(detectionConfig, referenceNow, meta);
+}
+
+/** @internal — legacy alias */
 export function scheduleSilentTripSeal(
   detectionConfig: TripDetectionConfig,
   referenceNow: Date = new Date(),
 ): void {
-  scheduleTodayOpenSilentSeal(detectionConfig, referenceNow);
+  scheduleTodaySealAndPlacesFromMerge(detectionConfig, referenceNow);
 }
 
-/** @deprecated Use silentTripSealToday */
+/** @deprecated Use sealTodayFromDisplayMerge */
+export async function silentTripSealToday(
+  detectionConfig: TripDetectionConfig,
+  referenceNow: Date = new Date(),
+): Promise<number> {
+  return sealTodayFromDisplayMerge(detectionConfig, referenceNow);
+}
+
+/** @deprecated Use sealTodayFromDisplayMerge */
 export async function repairTodayInDb(
   detectionConfig: TripDetectionConfig,
   referenceNow: Date = new Date(),
 ): Promise<number> {
-  return silentTripSealToday(detectionConfig, referenceNow);
+  return sealTodayFromDisplayMerge(detectionConfig, referenceNow);
 }
 
-/** @deprecated Use scheduleTodayOpenSilentSeal */
+/** @deprecated Use scheduleTodaySealAndPlacesFromMerge */
 export function scheduleTodayRepair(
   detectionConfig: TripDetectionConfig,
 ): void {
-  scheduleTodayOpenSilentSeal(detectionConfig);
+  scheduleTodaySealAndPlacesFromMerge(detectionConfig);
 }
 
 /**
- * Today sync: show trips immediately from DB + live tail; seal in background.
+ * Today sync: show trips immediately from DB + live tail; seal + places after merge.
  */
 export async function syncTodayTrips(
   detectionConfig: TripDetectionConfig,
@@ -332,11 +385,11 @@ export async function syncTodayTrips(
   return syncTodayDisplay(detectionConfig, referenceNow, options);
 }
 
-/** @deprecated Use scheduleTodayOpenSilentSeal */
+/** @deprecated Use scheduleTodaySealAndPlacesFromMerge */
 export function scheduleSyncTodayTrips(
   detectionConfig: TripDetectionConfig,
 ): void {
-  scheduleTodayOpenSilentSeal(detectionConfig);
+  scheduleTodaySealAndPlacesFromMerge(detectionConfig);
 }
 
 /** @internal */
@@ -344,4 +397,5 @@ export function resetTodaySyncStateForTests(): void {
   sealPromise = null;
   openCycleSilentSealDone = false;
   lastTodayDisplayMeta = null;
+  lastTodayMergedEntries = null;
 }

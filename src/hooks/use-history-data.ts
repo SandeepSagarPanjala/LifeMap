@@ -45,6 +45,7 @@ function emptyForDateKey(dateKey: string): HistoryData {
     points: [],
     entries: [],
     range: { startAt: dayStart, endAt: dayStart },
+    moments: [],
   };
 }
 

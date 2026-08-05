@@ -52,6 +52,7 @@ export const APP_COPY = {
     couldNotCompactDatabase: 'Could not compact database',
     couldNotRebuildToday: 'Could not rebuild today',
     couldNotRebuildTrips: 'Could not rebuild trips',
+    couldNotSaveAppStartDate: 'Could not save app start date',
     couldNotLoadBackup: 'Could not load your backup.',
     couldNotRestore: 'Could not restore',
     couldNotLoadDay: 'Could not load this day',
@@ -174,6 +175,9 @@ export const APP_COPY = {
     moodReasonPlaceholder: 'What made you feel this?',
     removeMood: 'Remove mood',
   },
+
+
+
 
   onboarding: {
     slides: {

@@ -300,7 +300,13 @@ function rebuildStop(
   }
   const core = stayCoreCenter(cluster);
   const arrivedAt = cluster[0]!.at;
-  const leftAt = cluster[cluster.length - 1]!.at;
+  const clusterLeftAt = cluster[cluster.length - 1]!.at;
+  // Keep GPS-blackout extensions (stay end after last cluster fix when the
+  // next in-range fix was already moving — Windhaven warm-up).
+  const leftAt =
+    prior.leftAt.getTime() > clusterLeftAt.getTime()
+      ? prior.leftAt
+      : clusterLeftAt;
   const durationMs = leftAt.getTime() - arrivedAt.getTime();
   if (durationMs < config.minDwellMs) {
     return prior;

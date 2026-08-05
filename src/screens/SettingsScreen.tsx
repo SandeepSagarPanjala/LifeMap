@@ -9,6 +9,7 @@ import {
   SettingsGroup,
   SettingsGroupDivider,
   SettingsGroupLabel,
+  SettingsIosToggle,
   SettingsLinkRow,
 } from '@/components/settings/settings-group';
 import { TrackingSettings } from '@/components/settings/tracking-settings';
@@ -28,6 +29,10 @@ export function SettingsScreen() {
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const accentTheme = useAppStore(state => state.accentTheme);
   const distanceUnit = useAppStore(state => state.distanceUnit);
+  const refreshMapOnBullseye = useAppStore(state => state.refreshMapOnBullseye);
+  const setRefreshMapOnBullseye = useAppStore(
+    state => state.setRefreshMapOnBullseye,
+  );
   const [storageSummary, setStorageSummary] = useState<string | undefined>();
   const [cachedPlacesSummary, setCachedPlacesSummary] = useState<
     string | undefined
@@ -111,6 +116,12 @@ export function SettingsScreen() {
           onPress={() => navigation.navigate('DistanceUnitSettings')}
         />
       </SettingsGroup>
+      <SettingsIosToggle
+        label="Refresh map on bullseye"
+        description="When on, the blue locate button also rebuilds today's timeline."
+        value={refreshMapOnBullseye}
+        onValueChange={setRefreshMapOnBullseye}
+      />
 
       <SettingsGroupLabel title="Tracking" />
       <TrackingSettings />

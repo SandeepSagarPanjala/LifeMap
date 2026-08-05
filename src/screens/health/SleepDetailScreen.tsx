@@ -248,7 +248,7 @@ export function SleepDetailScreen() {
     };
   }, [loadChart]);
 
-  // On-demand sync only on focus/blur — not when the chart range changes.
+  // Screen opens first (loading spinner). Then HealthKit sync, then chart.
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;

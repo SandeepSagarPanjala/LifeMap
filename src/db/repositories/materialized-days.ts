@@ -9,8 +9,6 @@ export type MaterializedDayRow = {
   dateKey: string;
   status: MaterializedDayStatus;
   detectionVersion: number;
-  tripCount: number;
-  pointCount: number;
   geometryFingerprint: string | null;
   excludedCrossMidnightFromMs: number | null;
   sealedAt: Date | null;
@@ -22,8 +20,6 @@ function mapRow(row: typeof materializedDays.$inferSelect): MaterializedDayRow {
     dateKey: row.dateKey,
     status: row.status as MaterializedDayStatus,
     detectionVersion: row.detectionVersion,
-    tripCount: row.tripCount,
-    pointCount: row.pointCount,
     geometryFingerprint: row.geometryFingerprint ?? null,
     excludedCrossMidnightFromMs: row.excludedCrossMidnightFromMs ?? null,
     sealedAt: row.sealedAt,
@@ -48,8 +44,6 @@ export async function upsertMaterializedDay(
   patch: {
     status: MaterializedDayStatus;
     detectionVersion: number;
-    tripCount: number;
-    pointCount: number;
     geometryFingerprint?: string | null;
     excludedCrossMidnightFromMs?: number | null;
     sealedAt?: Date | null;
@@ -63,8 +57,6 @@ export async function upsertMaterializedDay(
       dateKey,
       status: patch.status,
       detectionVersion: patch.detectionVersion,
-      tripCount: patch.tripCount,
-      pointCount: patch.pointCount,
       geometryFingerprint: patch.geometryFingerprint ?? null,
       excludedCrossMidnightFromMs: patch.excludedCrossMidnightFromMs ?? null,
       sealedAt: patch.sealedAt ?? null,
@@ -75,8 +67,6 @@ export async function upsertMaterializedDay(
       set: {
         status: patch.status,
         detectionVersion: patch.detectionVersion,
-        tripCount: patch.tripCount,
-        pointCount: patch.pointCount,
         geometryFingerprint: patch.geometryFingerprint ?? null,
         excludedCrossMidnightFromMs: patch.excludedCrossMidnightFromMs ?? null,
         sealedAt: patch.sealedAt ?? null,
@@ -95,8 +85,6 @@ export async function clearExcludedCrossMidnightDrive(
   await upsertMaterializedDay(dateKey, {
     status: existing.status,
     detectionVersion: existing.detectionVersion,
-    tripCount: existing.tripCount,
-    pointCount: existing.pointCount,
     geometryFingerprint: existing.geometryFingerprint,
     excludedCrossMidnightFromMs: null,
     sealedAt: existing.sealedAt,
@@ -127,8 +115,6 @@ export async function markMaterializedDayFailed(
   await upsertMaterializedDay(dateKey, {
     status: 'failed',
     detectionVersion,
-    tripCount: existing?.tripCount ?? 0,
-    pointCount: existing?.pointCount ?? 0,
     geometryFingerprint: existing?.geometryFingerprint ?? null,
     excludedCrossMidnightFromMs: existing?.excludedCrossMidnightFromMs ?? null,
     sealedAt: existing?.sealedAt ?? null,
