@@ -7,6 +7,9 @@ import {
 import * as schema from '../src/db/schema';
 
 jest.mock('@op-engineering/op-sqlite');
+jest.mock('../src/lib/history-calendar-bounds', () => ({
+  ensureAppStartDateAtDatabaseInit: jest.fn().mockResolvedValue('2026-01-01'),
+}));
 jest.mock('../src/db/migrate', () => ({
   runMigrations: jest.fn().mockResolvedValue(undefined),
   ensureTripSegmentMetadataColumns: jest.fn().mockResolvedValue(undefined),
