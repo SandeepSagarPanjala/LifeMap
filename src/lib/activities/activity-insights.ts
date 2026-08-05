@@ -372,6 +372,38 @@ export function buildInsightCalendarMonth(input: {
   };
 }
 
+/**
+ * Month header next to the calendar title (logs metric only).
+ * Good habit → days logged; bad habit → clean days; track → log count.
+ */
+export function formatInsightCalendarMonthSummary(
+  intent: ActivityIntent,
+  cells: readonly InsightCalendarCell[],
+): string {
+  if (intent === 'less') {
+    const clean = cells.reduce(
+      (n, cell) => (cell.state === 'success' ? n + 1 : n),
+      0,
+    );
+    return `${clean} clean day${clean === 1 ? '' : 's'} this month`;
+  }
+  if (intent === 'more') {
+    const logged = cells.reduce(
+      (n, cell) => (cell.state === 'success' ? n + 1 : n),
+      0,
+    );
+    return `${logged} logged this month`;
+  }
+  let logs = 0;
+  for (const cell of cells) {
+    if (cell.state === 'empty' || cell.state === 'future') {
+      continue;
+    }
+    logs += cell.logCount;
+  }
+  return `${logs} Logs this Month`;
+}
+
 export function parseMonthKey(monthKey: string): Date {
   const [y, m] = monthKey.split('-').map(Number);
   return startOfMonth(new TZDate(y!, m! - 1, 1, APP_TIMEZONE));

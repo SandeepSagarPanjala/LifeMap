@@ -9,14 +9,14 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ChevronLeft, NotebookPen, X } from 'lucide-react-native';
+import { AudioLines, ChevronLeft, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 
 import { MomentLogInsightsPeriods } from '@/components/capture/MomentLogInsightsPeriods';
 import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
 import { Text } from '@/components/ui/text';
-import { listNoteMoments, type MomentRow } from '@/db/repositories/moments';
+import { listVoiceMoments, type MomentRow } from '@/db/repositories/moments';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { APP_COPY } from '@/lib/app-copy';
 import {
@@ -27,11 +27,12 @@ import { ensureHistoryCalendarBounds } from '@/lib/history-calendar-bounds';
 import type { RootStackParamList } from '@/navigation/types';
 import { useClosesToMap } from '@/navigation/use-closes-to-map';
 
+/** Matches CAPTURE_BUTTON_THEMES.voice. */
 const THEME = {
-  tint: '#FFF7ED',
-  strong: '#EA580C',
-  soft: '#FED7AA',
-  chipBg: '#FFEDD5',
+  tint: '#F7F2FF',
+  strong: '#AF52DE',
+  soft: '#E9D5FF',
+  chipBg: '#EDE4FF',
 };
 
 function WidgetCard({
@@ -57,10 +58,10 @@ function WidgetCard({
 }
 
 /**
- * Diary insights — today / week / month / year (same pattern as activity).
+ * Voice insights — today / week / month / year (same pattern as diary).
  * Also embeds in You → Insights (no close button).
  */
-export function DiaryInsightsScreen({
+export function VoiceInsightsScreen({
   embedded = false,
   contentBottomInset,
 }: {
@@ -81,7 +82,7 @@ export function DiaryInsightsScreen({
     setLoading(true);
     try {
       const [rows] = await Promise.all([
-        listNoteMoments(),
+        listVoiceMoments(),
         ensureHistoryCalendarBounds(),
       ]);
       setMoments(rows);
@@ -128,7 +129,7 @@ export function DiaryInsightsScreen({
         >
           <View style={[styles.hero, { backgroundColor: THEME.tint }]}>
             <View style={[styles.heroIcon, { backgroundColor: THEME.chipBg }]}>
-              <NotebookPen size={22} color={THEME.strong} strokeWidth={2.25} />
+              <AudioLines size={22} color={THEME.strong} strokeWidth={2.25} />
             </View>
             <View style={styles.heroText}>
               <RNText
@@ -136,12 +137,12 @@ export function DiaryInsightsScreen({
                 numberOfLines={1}
                 allowFontScaling={false}
               >
-                {APP_COPY.diary.insightsTitle}
+                {APP_COPY.voice.insightsTitle}
               </RNText>
               <Text
                 style={[styles.heroSubtitle, { color: colors.mutedForeground }]}
               >
-                {APP_COPY.diary.insightsSubtitle}
+                {APP_COPY.voice.insightsSubtitle}
               </Text>
             </View>
           </View>
@@ -153,13 +154,13 @@ export function DiaryInsightsScreen({
               soft={THEME.soft}
               muted={colors.mutedForeground}
               foreground={colors.foreground}
-              momentKind="note"
+              momentKind="voice"
             />
           </WidgetCard>
 
           {isEmpty ? (
             <Text style={[styles.emptyHint, { color: colors.mutedForeground }]}>
-              {APP_COPY.diary.insightsEmpty}
+              {APP_COPY.voice.insightsEmpty}
             </Text>
           ) : null}
         </ScrollView>

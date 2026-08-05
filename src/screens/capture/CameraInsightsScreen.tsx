@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   ScrollView,
@@ -9,14 +9,19 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ChevronLeft, NotebookPen, X } from 'lucide-react-native';
+import { Camera, ChevronLeft, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 
+import { InsightSegmentBar } from '@/components/capture/InsightSegmentBar';
 import { MomentLogInsightsPeriods } from '@/components/capture/MomentLogInsightsPeriods';
 import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
 import { Text } from '@/components/ui/text';
-import { listNoteMoments, type MomentRow } from '@/db/repositories/moments';
+import {
+  listPhotoMoments,
+  listVideoMoments,
+  type MomentRow,
+} from '@/db/repositories/moments';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { APP_COPY } from '@/lib/app-copy';
 import {
@@ -27,12 +32,23 @@ import { ensureHistoryCalendarBounds } from '@/lib/history-calendar-bounds';
 import type { RootStackParamList } from '@/navigation/types';
 import { useClosesToMap } from '@/navigation/use-closes-to-map';
 
+/** Matches CAPTURE_BUTTON_THEMES.camera. */
 const THEME = {
-  tint: '#FFF7ED',
-  strong: '#EA580C',
-  soft: '#FED7AA',
-  chipBg: '#FFEDD5',
+  tint: '#F2F8FF',
+  strong: '#007AFF',
+  soft: '#BFDBFE',
+  chipBg: '#DCEBFF',
 };
+
+type CameraMediaKind = 'photo' | 'video';
+
+const MEDIA_SEGMENTS = [
+  { id: 'photo' as const, label: APP_COPY.camera.photo },
+  { id: 'video' as const, label: APP_COPY.camera.video },
+];
+
+/** Survives leaving Camera for other insight categories in the same session. */
+let persistedCameraMediaKind: CameraMediaKind = 'photo';
 
 function WidgetCard({
   title,
@@ -57,10 +73,10 @@ function WidgetCard({
 }
 
 /**
- * Diary insights — today / week / month / year (same pattern as activity).
- * Also embeds in You → Insights (no close button).
+ * Camera insights — diary-style periods with a Photo / Video segment bar
+ * (same chrome as activity field metrics). Embeds in You → Insights.
  */
-export function DiaryInsightsScreen({
+export function CameraInsightsScreen({
   embedded = false,
   contentBottomInset,
 }: {
@@ -74,17 +90,28 @@ export function DiaryInsightsScreen({
   const closesToMap = useClosesToMap();
   const { width: windowWidth } = useWindowDimensions();
 
-  const [moments, setMoments] = useState<MomentRow[]>([]);
+  const [photoMoments, setPhotoMoments] = useState<MomentRow[]>([]);
+  const [videoMoments, setVideoMoments] = useState<MomentRow[]>([]);
+  const [mediaKind, setMediaKind] = useState<CameraMediaKind>(
+    () => persistedCameraMediaKind,
+  );
   const [loading, setLoading] = useState(true);
+
+  const handleMediaKindChange = useCallback((kind: CameraMediaKind) => {
+    persistedCameraMediaKind = kind;
+    setMediaKind(kind);
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [rows] = await Promise.all([
-        listNoteMoments(),
+      const [photos, videos] = await Promise.all([
+        listPhotoMoments(),
+        listVideoMoments(),
         ensureHistoryCalendarBounds(),
       ]);
-      setMoments(rows);
+      setPhotoMoments(photos);
+      setVideoMoments(videos);
     } finally {
       setLoading(false);
     }
@@ -94,7 +121,15 @@ export function DiaryInsightsScreen({
     void load();
   }, [load]);
 
+  const moments = mediaKind === 'photo' ? photoMoments : videoMoments;
   const isEmpty = moments.length === 0;
+  const emptyHint = useMemo(
+    () =>
+      mediaKind === 'photo'
+        ? APP_COPY.camera.insightsEmptyPhoto
+        : APP_COPY.camera.insightsEmptyVideo,
+    [mediaKind],
+  );
 
   const handleClose = useCallback(() => {
     if (navigation.canGoBack()) {
@@ -128,7 +163,7 @@ export function DiaryInsightsScreen({
         >
           <View style={[styles.hero, { backgroundColor: THEME.tint }]}>
             <View style={[styles.heroIcon, { backgroundColor: THEME.chipBg }]}>
-              <NotebookPen size={22} color={THEME.strong} strokeWidth={2.25} />
+              <Camera size={22} color={THEME.strong} strokeWidth={2.25} />
             </View>
             <View style={styles.heroText}>
               <RNText
@@ -136,15 +171,23 @@ export function DiaryInsightsScreen({
                 numberOfLines={1}
                 allowFontScaling={false}
               >
-                {APP_COPY.diary.insightsTitle}
+                {APP_COPY.camera.insightsTitle}
               </RNText>
               <Text
                 style={[styles.heroSubtitle, { color: colors.mutedForeground }]}
               >
-                {APP_COPY.diary.insightsSubtitle}
+                {APP_COPY.camera.insightsSubtitle}
               </Text>
             </View>
           </View>
+
+          <InsightSegmentBar
+            options={MEDIA_SEGMENTS}
+            valueId={mediaKind}
+            onChange={handleMediaKindChange}
+            accent={THEME.strong}
+            muted={colors.mutedForeground}
+          />
 
           <WidgetCard title="Logs" tint={THEME.tint} accent={THEME.strong}>
             <MomentLogInsightsPeriods
@@ -153,13 +196,13 @@ export function DiaryInsightsScreen({
               soft={THEME.soft}
               muted={colors.mutedForeground}
               foreground={colors.foreground}
-              momentKind="note"
+              momentKind={mediaKind}
             />
           </WidgetCard>
 
           {isEmpty ? (
             <Text style={[styles.emptyHint, { color: colors.mutedForeground }]}>
-              {APP_COPY.diary.insightsEmpty}
+              {emptyHint}
             </Text>
           ) : null}
         </ScrollView>

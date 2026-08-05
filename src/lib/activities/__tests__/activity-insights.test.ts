@@ -3,6 +3,7 @@ import { TZDate } from '@date-fns/tz';
 import {
   buildInsightCalendarMonth,
   calendarCellState,
+  formatInsightCalendarMonthSummary,
   listMonthsInclusive,
   resolveInsightCalendarStartDate,
   shiftMonth,
@@ -149,6 +150,24 @@ describe('activity insights calendar', () => {
     expect(day9?.state).toBe('relapse');
     expect(day8?.state).toBe('success');
     expect(canGoNextMonth).toBe(false);
+    // Days 1–8 clean + today (10) still clean; day 9 relapsed.
+    expect(formatInsightCalendarMonthSummary('less', cells)).toBe(
+      '9 clean days this month',
+    );
+  });
+
+  it('summarizes good-habit month as days logged', () => {
+    const { cells } = buildInsightCalendarMonth({
+      intent: 'more',
+      reminderEnabled: true,
+      reminderRepeat: 'daily',
+      loggedKeys: new Set(['2026-06-08', '2026-06-09']),
+      monthDate: now,
+      now,
+    });
+    expect(formatInsightCalendarMonthSummary('more', cells)).toBe(
+      '2 logged this month',
+    );
   });
 
   it('allows next month only when viewing a past month', () => {
