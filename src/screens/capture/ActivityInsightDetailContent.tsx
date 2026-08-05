@@ -40,6 +40,8 @@ import {
 import { TZDate } from '@date-fns/tz';
 
 import { ActivityInsightMonthCalendar } from '@/components/capture/ActivityInsightMonthCalendar';
+import { ActivityInsightShopSpendWidget } from '@/components/capture/ActivityInsightShopSpendWidget';
+import { ActivityInsightTimingWidget } from '@/components/capture/ActivityInsightTimingWidget';
 import {
   ActivityInsightYearBars,
   sameMonthInYear,
@@ -62,24 +64,35 @@ import type { ActivityIntent } from '@/lib/activities/activity-intent';
 import {
   resolveInsightCalendarStartDate,
 } from '@/lib/activities/activity-insights';
+import { activityReminderSummary } from '@/lib/activities/activity-tile-style';
 import {
+  resolveAmountFieldId,
+  summarizeSpendByShop,
+  type ShopSpendRow,
+} from '@/lib/activities/activity-insight-shop-spend';
+import {
+  defaultInsightPeriodMetric,
   formatMetricCompact,
-  metricFieldsFromDefinition,
+  insightPeriodMetricOptions,
   sumMetricInMonth,
   sumMetricInRange,
   type InsightPeriodMetric,
 } from '@/lib/activities/insight-period-metric';
 import { formatRelativeLoggedAt } from '@/lib/activities/insight-providers';
 import {
+  summarizeReminderTiming,
+  type ReminderTimingKind,
+} from '@/lib/activities/activity-reminder-timing';
+import {
   MAP_MOMENTS_BAR_GAP,
   MAP_MOMENTS_BAR_HEIGHT,
 } from '@/lib/app-constants';
 import { parseDateKey } from '@/lib/day-utils';
+import { reminderConfigFromRow } from '@/lib/notifications/activity-reminders';
 import { APP_TIMEZONE } from '@/lib/timezone';
 import type { RootStackParamList } from '@/navigation/types';
 import { useAppStore } from '@/stores/app-store';
 
-const LOGS_METRIC: InsightPeriodMetric = { id: 'logs', kind: 'logs' };
 /** Compact glass metric bar (smaller than You tab bar). */
 const METRIC_BAR_HEIGHT = 36;
 const METRIC_H_PADDING = 5;
@@ -364,30 +377,20 @@ export function ActivityInsightDetailContent({
       new Date(startOfMonth(new TZDate(new Date(), APP_TIMEZONE))),
     ),
   );
-  const [selectedMetric, setSelectedMetric] =
-    useState<InsightPeriodMetric>(LOGS_METRIC);
+  const metricOptions = useMemo(
+    () => insightPeriodMetricOptions(activity.fields),
+    [activity.fields],
+  );
 
-  const metricOptions = useMemo((): InsightPeriodMetric[] => {
-    const fields = metricFieldsFromDefinition(activity.fields);
-    if (fields.length === 0) {
-      return [LOGS_METRIC];
-    }
-    return [
-      LOGS_METRIC,
-      ...fields.map(field => ({
-        id: field.fieldId,
-        kind: field.kind,
-        fieldId: field.fieldId,
-        label: field.label,
-      })),
-    ];
-  }, [activity.fields]);
+  const [selectedMetric, setSelectedMetric] = useState<InsightPeriodMetric>(
+    () => defaultInsightPeriodMetric(insightPeriodMetricOptions(activity.fields)),
+  );
 
   useEffect(() => {
     if (metricOptions.some(option => option.id === selectedMetric.id)) {
       return;
     }
-    setSelectedMetric(LOGS_METRIC);
+    setSelectedMetric(defaultInsightPeriodMetric(metricOptions));
   }, [metricOptions, selectedMetric.id]);
 
   const calendarBounds = useMemo(() => {
@@ -413,6 +416,16 @@ export function ActivityInsightDetailContent({
     return formatRelativeLoggedAt(latest, new Date());
   }, [moments]);
 
+  const notifySummary = useMemo(
+    () => activityReminderSummary(activity),
+    [activity],
+  );
+
+  const shopSpendRows = useMemo(
+    () => summarizeSpendByShop(moments, activity.fields),
+    [activity.fields, moments],
+  );
+
   const monthTotalLabel = useMemo(() => {
     const value = sumMetricInMonth(moments, selectedMetric, visibleMonthDate);
     return formatMetricCompact(selectedMetric, value);
@@ -436,6 +449,22 @@ export function ActivityInsightDetailContent({
       end: endOfDay(today),
     };
   }, [moments, selectedMetric]);
+
+  const reminderTimingYear = useMemo(
+    () => new TZDate(visibleMonthDate, APP_TIMEZONE).getFullYear(),
+    [visibleMonthDate],
+  );
+
+  const reminderTiming = useMemo(() => {
+    if (!activity.reminderEnabled) {
+      return null;
+    }
+    return summarizeReminderTiming(
+      moments,
+      reminderConfigFromRow(activity),
+      { year: reminderTimingYear },
+    );
+  }, [activity, moments, reminderTimingYear]);
 
   const openPeriodDetail = useCallback(
     (input: {
@@ -503,6 +532,64 @@ export function ActivityInsightDetailContent({
       });
     },
     [openPeriodDetail],
+  );
+
+  const handlePressTiming = useCallback(
+    (kind: ReminderTimingKind) => {
+      const yearStart = startOfYear(
+        new TZDate(reminderTimingYear, 0, 1, 0, 0, 0, 0, APP_TIMEZONE),
+      );
+      navigation.navigate('ActivityInsightPeriodDetail', {
+        activityId: activity.id,
+        period: 'year',
+        periodTitle: String(reminderTimingYear),
+        startMs: yearStart.getTime(),
+        endMs: endOfYear(yearStart).getTime(),
+        metric: { kind: 'logs' },
+        timingKind: kind,
+      });
+    },
+    [activity.id, navigation, reminderTimingYear],
+  );
+
+  const handlePressShopSpend = useCallback(
+    (row: ShopSpendRow) => {
+      const amountFieldId = resolveAmountFieldId(activity.fields);
+      const moneyMetric =
+        amountFieldId != null
+          ? ({
+              kind: 'money' as const,
+              fieldId: amountFieldId,
+              label: 'Amount',
+            } as const)
+          : ({ kind: 'logs' as const } as const);
+      let earliest = Number.POSITIVE_INFINITY;
+      let latest = 0;
+      for (const moment of moments) {
+        const t = moment.timestamp.getTime();
+        if (t < earliest) {
+          earliest = t;
+        }
+        if (t > latest) {
+          latest = t;
+        }
+      }
+      const startMs =
+        Number.isFinite(earliest) && earliest !== Number.POSITIVE_INFINITY
+          ? earliest
+          : Date.now();
+      const endMs = latest > 0 ? latest : Date.now();
+      navigation.navigate('ActivityInsightPeriodDetail', {
+        activityId: activity.id,
+        period: 'year',
+        periodTitle: row.shopName,
+        startMs,
+        endMs,
+        metric: moneyMetric,
+        shopNameFilter: row.shopKey,
+      });
+    },
+    [activity.fields, activity.id, moments, navigation],
   );
 
   const skipNextMonthToWeekSyncRef = useRef(false);
@@ -639,6 +726,18 @@ export function ActivityInsightDetailContent({
                 {activityExperienceIntentLabel(activity.intent)}
               </Text>
             </View>
+            {notifySummary != null ? (
+              <View
+                style={[styles.intentChip, { backgroundColor: theme.chipBg }]}
+              >
+                <Text
+                  style={[styles.intentChipLabel, { color: colors.foreground }]}
+                  numberOfLines={1}
+                >
+                  {notifySummary}
+                </Text>
+              </View>
+            ) : null}
             <Text
               style={[styles.heroLastLogged, { color: colors.mutedForeground }]}
             >
@@ -755,6 +854,26 @@ export function ActivityInsightDetailContent({
               onPressYearTotal={handlePressYear}
             />
           </SectionCard>
+          {shopSpendRows.length > 0 ? (
+            <ActivityInsightShopSpendWidget
+              rows={shopSpendRows}
+              tint={theme.tint}
+              accent={theme.strong}
+              muted={colors.mutedForeground}
+              foreground={colors.foreground}
+              onPressShop={handlePressShopSpend}
+            />
+          ) : null}
+          {reminderTiming != null ? (
+            <ActivityInsightTimingWidget
+              summary={reminderTiming}
+              year={reminderTimingYear}
+              tint={theme.tint}
+              accent={theme.strong}
+              muted={colors.mutedForeground}
+              onPressKind={handlePressTiming}
+            />
+          ) : null}
         </>
       )}
     </ScrollView>

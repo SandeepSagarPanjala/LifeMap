@@ -12,7 +12,7 @@ import {
 import { getDayRange, parseDateKey, toDateKey } from '@/lib/day-utils';
 import { APP_TIMEZONE } from '@/lib/timezone';
 
-export type MapInsightTab = 'overview' | 'week' | 'month' | 'year';
+export type MapInsightTab = 'overview' | 'today' | 'week' | 'month' | 'year';
 
 export type MapInsightFilterOption = {
   id: string;
@@ -117,11 +117,15 @@ export function contextFromFilterOption(option: MapInsightFilterOption): {
   };
 }
 
-/** Default selection for a period tab (current week / month / year so far). */
+/** Default selection for a period tab (current day / week / month / year so far). */
 export function defaultMapInsightFilterOption(
   tab: Exclude<MapInsightTab, 'overview'>,
   now: Date = new Date(),
 ): MapInsightFilterOption {
+  if (tab === 'today') {
+    return todayOption(now);
+  }
+
   if (tab === 'week') {
     const weeks = listWeekOptionsForMonth(startOfMonth(zoned(now)), now);
     return weeks.find(option => option.isCurrent) ?? weeks[weeks.length - 1]!;
@@ -153,6 +157,10 @@ export function resolveFilterForTabChange(input: {
   const now = input.now ?? new Date();
   if (input.nextTab === 'overview') {
     return null;
+  }
+
+  if (input.nextTab === 'today') {
+    return todayOption(now);
   }
 
   const previous = input.previousFilter;
@@ -239,7 +247,7 @@ function yearOptionForYear(year: number, now: Date): MapInsightFilterOption {
  * - Year: years that have trip data (no future).
  */
 export function listMapInsightFilterOptions(input: {
-  period: Exclude<MapInsightTab, 'overview'>;
+  period: Exclude<MapInsightTab, 'overview' | 'today'>;
   dateKeysWithData: readonly string[];
   /** When listing weeks, scope to this month (YYYY-MM). */
   monthKey?: string;
@@ -256,6 +264,18 @@ export function listMapInsightFilterOptions(input: {
     case 'year':
       return listYearOptions(input.dateKeysWithData, now);
   }
+}
+
+/** Single-day window for the Today tab. */
+export function todayOption(now: Date = new Date()): MapInsightFilterOption {
+  const key = toDateKey(now);
+  return {
+    id: `today:${key}`,
+    label: formatDayLabel(now),
+    startDateKey: key,
+    endDateKey: key,
+    isCurrent: true,
+  };
 }
 
 export function listWeekOptionsForMonth(

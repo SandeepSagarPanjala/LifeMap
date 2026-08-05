@@ -60,12 +60,15 @@ export type MapWorkWeekdayCount = {
   count: number;
 };
 
-export type MapWorkOverview = {
+/** Work or favorite destination — stay + home→place commute stats. */
+export type MapDestinationOverview = {
   configured: boolean;
+  placeId: number | null;
+  kind: 'work' | 'favorite';
   label: string;
   visitCount: number;
   totalMs: number;
-  distanceToWorkKm: number | null;
+  distanceFromHomeKm: number | null;
   commuteCount: number;
   commuteMinMs: number | null;
   commuteMaxMs: number | null;
@@ -82,18 +85,60 @@ export type MapWorkOverview = {
   commuteTravelIds: number[];
 };
 
+/** @deprecated Prefer MapDestinationOverview — same shape for work. */
+export type MapWorkOverview = MapDestinationOverview;
+
 export type MapOverviewInsights = {
   home: MapHomeOverview;
-  work: MapWorkOverview;
+  work: MapDestinationOverview;
+  favorites: MapDestinationOverview[];
 };
 
 type PlaceKind = 'home' | 'work' | 'favorite';
 
 type CommuteEdge = {
   travel: TripRow;
-  workStay: TripRow;
+  destStay: TripRow;
   speedKmh: number | null;
+  destLabel: string;
 };
+
+function emptyDestination(
+  kind: 'work' | 'favorite',
+  label: string,
+): MapDestinationOverview {
+  return {
+    configured: false,
+    placeId: null,
+    kind,
+    label,
+    visitCount: 0,
+    totalMs: 0,
+    distanceFromHomeKm: null,
+    commuteCount: 0,
+    commuteMinMs: null,
+    commuteMaxMs: null,
+    commuteAvgMs: null,
+    stayMinMs: null,
+    stayMaxMs: null,
+    stayAvgMs: null,
+    speedMinKmh: null,
+    speedMaxKmh: null,
+    speedAvgKmh: null,
+    typicalArriveMinutes: null,
+    typicalLeaveMinutes: null,
+    weekdayCounts: [],
+    commuteTravelIds: [],
+  };
+}
+
+function isStayAtSavedPlace(trip: TripRow, placeId: number): boolean {
+  return (
+    trip.kind === 'stay' &&
+    trip.placeKind === 'saved' &&
+    trip.placeId === placeId
+  );
+}
 
 function zoned(date: Date): TZDate {
   return new TZDate(date, APP_TIMEZONE);
@@ -284,7 +329,7 @@ function commuteDrillRow(edge: CommuteEdge): MapOverviewDrillRow {
   return {
     id: `commute:${edge.travel.id}`,
     tripId: edge.travel.id,
-    title: 'Commute to work',
+    title: `Home → ${edge.destLabel}`,
     subtitle: `${formatStayRange(edge.travel.startAt, edge.travel.endAt)}${speed}`,
     valueLabel: formatDurationLabel(edge.travel.durationMs),
     dateKey: edge.travel.dateKey,
@@ -293,9 +338,15 @@ function commuteDrillRow(edge: CommuteEdge): MapOverviewDrillRow {
   };
 }
 
-function collectCommutes(
+/**
+ * Home → travel → destination only. Travels from other places are ignored
+ * for fastest/slowest/average commute stats.
+ */
+function collectCommutesToPlace(
   sorted: readonly TripRow[],
   savedById: Map<number, SavedPlaceRow>,
+  destPlaceId: number,
+  destLabel: string,
 ): CommuteEdge[] {
   const edges: CommuteEdge[] = [];
   for (let i = 0; i < sorted.length; i++) {
@@ -303,14 +354,19 @@ function collectCommutes(
     if (trip.kind !== 'travel') {
       continue;
     }
+    const prev = sorted[i - 1];
     const next = sorted[i + 1];
-    if (next == null || stayKind(next, savedById) !== 'work') {
+    if (prev == null || stayKind(prev, savedById) !== 'home') {
+      continue;
+    }
+    if (next == null || !isStayAtSavedPlace(next, destPlaceId)) {
       continue;
     }
     edges.push({
       travel: trip,
-      workStay: next,
+      destStay: next,
       speedKmh: tripAvgSpeedKmh(trip),
+      destLabel,
     });
   }
   return edges;
@@ -353,44 +409,21 @@ function buildHomeOverview(
   };
 }
 
-function buildWorkOverview(
+function buildDestinationOverview(
   trips: readonly TripRow[],
   savedById: Map<number, SavedPlaceRow>,
   home: SavedPlaceRow | undefined,
-  work: SavedPlaceRow | undefined,
+  place: SavedPlaceRow,
   gpsTopSpeedMs: number | null,
-): MapWorkOverview {
-  if (work == null) {
-    return {
-      configured: false,
-      label: 'Work',
-      visitCount: 0,
-      totalMs: 0,
-      distanceToWorkKm: null,
-      commuteCount: 0,
-      commuteMinMs: null,
-      commuteMaxMs: null,
-      commuteAvgMs: null,
-      stayMinMs: null,
-      stayMaxMs: null,
-      stayAvgMs: null,
-      speedMinKmh: null,
-      speedMaxKmh: null,
-      speedAvgKmh: null,
-      typicalArriveMinutes: null,
-      typicalLeaveMinutes: null,
-      weekdayCounts: [],
-      commuteTravelIds: [],
-    };
-  }
-
+): MapDestinationOverview {
+  const kind = place.kind === 'work' ? 'work' : 'favorite';
+  const label =
+    place.label.trim() || (kind === 'work' ? 'Work' : 'Saved place');
   const sorted = sortTrips(trips);
-  const workStays = sorted.filter(
-    trip => stayKind(trip, savedById) === 'work',
-  );
-  const stayDurations = workStays.map(stay => Math.max(0, stay.durationMs));
+  const stays = sorted.filter(trip => isStayAtSavedPlace(trip, place.id));
+  const stayDurations = stays.map(stay => Math.max(0, stay.durationMs));
   const totalMs = stayDurations.reduce((sum, ms) => sum + ms, 0);
-  const commutes = collectCommutes(sorted, savedById);
+  const commutes = collectCommutesToPlace(sorted, savedById, place.id, label);
   const commuteDurations = commutes.map(edge =>
     Math.max(0, edge.travel.durationMs),
   );
@@ -398,19 +431,19 @@ function buildWorkOverview(
     .map(edge => edge.speedKmh)
     .filter((speed): speed is number => speed != null && Number.isFinite(speed));
 
-  const arriveMinutes = workStays.map(stay => localMinutesOf(stay.startAt));
-  const leaveMinutes = workStays.map(stay => localMinutesOf(stay.endAt));
+  const arriveMinutes = stays.map(stay => localMinutesOf(stay.startAt));
+  const leaveMinutes = stays.map(stay => localMinutesOf(stay.endAt));
   const weekdayTally = new Map<number, number>();
-  for (const stay of workStays) {
+  for (const stay of stays) {
     const day = localWeekday(stay.startAt);
     weekdayTally.set(day, (weekdayTally.get(day) ?? 0) + 1);
   }
 
-  const distanceToWorkKm =
+  const distanceFromHomeKm =
     home != null
       ? distanceKm(
           { lat: home.lat, lng: home.lng },
-          { lat: work.lat, lng: work.lng },
+          { lat: place.lat, lng: place.lng },
         )
       : null;
 
@@ -431,10 +464,12 @@ function buildWorkOverview(
 
   return {
     configured: true,
-    label: work.label.trim() || 'Work',
-    visitCount: workStays.length,
+    placeId: place.id,
+    kind,
+    label,
+    visitCount: stays.length,
     totalMs,
-    distanceToWorkKm,
+    distanceFromHomeKm,
     commuteCount: commuteDurations.length,
     commuteMinMs:
       commuteDurations.length > 0 ? Math.min(...commuteDurations) : null,
@@ -460,7 +495,7 @@ function buildWorkOverview(
 }
 
 /**
- * All-time Home + Work overview insights from sealed trips and saved places.
+ * All-time Home + Work + favorite overview insights from sealed trips.
  */
 export function buildMapOverviewInsights(input: {
   trips: readonly TripRow[];
@@ -472,20 +507,22 @@ export function buildMapOverviewInsights(input: {
   );
   const home = input.savedPlaces.find(place => place.kind === 'home');
   const work = input.savedPlaces.find(place => place.kind === 'work');
+  const favorites = input.savedPlaces.filter(place => place.kind === 'favorite');
   const sorted = sortTrips(input.trips);
   const homeStays = sorted.filter(
     trip => stayKind(trip, savedById) === 'home',
   );
   const incompleteDateKeys = incompleteLocationDateKeys(sorted);
+  const gpsTop = input.commuteGpsTopSpeedMs ?? null;
 
   return {
     home: buildHomeOverview(homeStays, home, incompleteDateKeys),
-    work: buildWorkOverview(
-      sorted,
-      savedById,
-      home,
-      work,
-      input.commuteGpsTopSpeedMs ?? null,
+    work:
+      work != null
+        ? buildDestinationOverview(sorted, savedById, home, work, gpsTop)
+        : emptyDestination('work', 'Work'),
+    favorites: favorites.map(place =>
+      buildDestinationOverview(sorted, savedById, home, place, null),
     ),
   };
 }
@@ -517,6 +554,8 @@ export function listMapOverviewDrillRows(input: {
   trips: readonly TripRow[];
   savedPlaces: readonly SavedPlaceRow[];
   weekday?: number;
+  /** When set, place drills use this saved place instead of Work. */
+  placeId?: number;
 }): MapOverviewDrillRow[] {
   const savedById = new Map(
     input.savedPlaces.map(place => [place.id, place] as const),
@@ -525,10 +564,22 @@ export function listMapOverviewDrillRows(input: {
   const homeStays = sorted.filter(
     trip => stayKind(trip, savedById) === 'home',
   );
-  const workStays = sorted.filter(
-    trip => stayKind(trip, savedById) === 'work',
-  );
-  const commutes = collectCommutes(sorted, savedById);
+  const workPlace =
+    input.placeId != null
+      ? savedById.get(input.placeId)
+      : input.savedPlaces.find(place => place.kind === 'work');
+  const destPlaceId = workPlace?.id ?? null;
+  const destLabel =
+    workPlace?.label.trim() ||
+    (workPlace?.kind === 'favorite' ? 'Saved place' : 'Work');
+  const destStays =
+    destPlaceId != null
+      ? sorted.filter(trip => isStayAtSavedPlace(trip, destPlaceId))
+      : [];
+  const commutes =
+    destPlaceId != null
+      ? collectCommutesToPlace(sorted, savedById, destPlaceId, destLabel)
+      : [];
   const incompleteDateKeys = incompleteLocationDateKeys(sorted);
 
   switch (input.kind) {
@@ -542,7 +593,7 @@ export function listMapOverviewDrillRows(input: {
         .filter(stay => stay.durationMs >= DAY_MS)
         .slice()
         .reverse()
-        .map(stay => stayDrillRow(stay, '24+ hour stay'));
+        .map(stay => stayDrillRow(stay, '24 hour stay'));
     case 'home_stay_longest': {
       if (homeStays.length === 0) {
         return [];
@@ -567,27 +618,27 @@ export function listMapOverviewDrillRows(input: {
       ];
     }
     case 'work_stays_all':
-      return workStays
+      return destStays
         .slice()
         .reverse()
-        .map(stay => stayDrillRow(stay, 'At work'));
+        .map(stay => stayDrillRow(stay, `At ${destLabel}`));
     case 'work_stay_longest': {
-      if (workStays.length === 0) {
+      if (destStays.length === 0) {
         return [];
       }
-      const longest = workStays.reduce((best, stay) =>
+      const longest = destStays.reduce((best, stay) =>
         stay.durationMs > best.durationMs ? stay : best,
       );
-      return [stayDrillRow(longest, 'Longest work stay')];
+      return [stayDrillRow(longest, `Longest stay · ${destLabel}`)];
     }
     case 'work_stay_shortest': {
-      if (workStays.length === 0) {
+      if (destStays.length === 0) {
         return [];
       }
-      const shortest = workStays.reduce((best, stay) =>
+      const shortest = destStays.reduce((best, stay) =>
         stay.durationMs < best.durationMs ? stay : best,
       );
-      return [stayDrillRow(shortest, 'Shortest work stay')];
+      return [stayDrillRow(shortest, `Shortest stay · ${destLabel}`)];
     }
     case 'work_commute_fastest': {
       if (commutes.length === 0) {
@@ -632,12 +683,12 @@ export function listMapOverviewDrillRows(input: {
       if (weekday == null) {
         return [];
       }
-      return workStays
+      return destStays
         .filter(stay => localWeekday(stay.startAt) === weekday)
         .slice()
         .reverse()
         .map(stay =>
-          stayDrillRow(stay, WEEKDAY_LABELS[weekday] ?? 'Work visit'),
+          stayDrillRow(stay, WEEKDAY_LABELS[weekday] ?? 'Visit'),
         );
     }
   }

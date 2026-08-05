@@ -48,7 +48,7 @@ export function MapOverviewDrillDownScreen() {
     useRoute<RouteProp<RootStackParamList, 'MapOverviewDrillDown'>>();
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
-  const { kind, title, weekday } = route.params;
+  const { kind, title, weekday, placeId } = route.params;
 
   const [rows, setRows] = useState<MapOverviewDrillRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,6 +71,7 @@ export function MapOverviewDrillDownScreen() {
             trips,
             savedPlaces,
             weekday,
+            placeId,
           }),
         );
       } finally {
@@ -82,7 +83,7 @@ export function MapOverviewDrillDownScreen() {
     return () => {
       cancelled = true;
     };
-  }, [kind, weekday]);
+  }, [kind, weekday, placeId]);
 
   const handleClose = useCallback(() => {
     if (navigation.canGoBack()) {

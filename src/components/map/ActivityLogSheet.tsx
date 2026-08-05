@@ -61,6 +61,7 @@ import {
   type ActivityRow,
 } from '@/db/repositories/activities';
 import type { ActivityFieldDefinition } from '@/lib/activities/activity-definition';
+import { ACTIVITY_MAX_LABEL_LENGTH } from '@/lib/activities/activity-definition';
 import { ACTIVITY_TINT_ONE_TAP } from '@/lib/activities/activity-tile-style';
 import { saveActivityMoment } from '@/lib/moments/capture-activity';
 
@@ -650,6 +651,7 @@ export function ActivityForm({
           ref={labelInputRef}
           value={label}
           onChangeText={onChangeLabel}
+          maxLength={ACTIVITY_MAX_LABEL_LENGTH}
           placeholder="Gym"
           placeholderTextColor="#8E8E93"
           style={styles.input}

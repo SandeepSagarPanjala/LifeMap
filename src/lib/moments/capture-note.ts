@@ -1,6 +1,8 @@
 import { insertMoment, type MomentRow } from '@/db/repositories/moments';
 import {
   IMAGE_COMPRESS_FORMAT,
+  NOTE_BODY_MAX_LENGTH,
+  NOTE_TITLE_MAX_LENGTH,
   VOICE_CONTENT_FORMAT,
 } from '@/lib/app-constants';
 import {
@@ -13,6 +15,20 @@ import {
   deleteMomentContentFile,
   moveFileToMomentSandbox,
 } from '@/lib/moments/moment-storage';
+
+function clipNoteTitle(title: string): string {
+  const trimmed = title.trim();
+  return trimmed.length > NOTE_TITLE_MAX_LENGTH
+    ? trimmed.slice(0, NOTE_TITLE_MAX_LENGTH)
+    : trimmed;
+}
+
+function clipNoteBody(textBody: string): string {
+  const trimmed = textBody.trim();
+  return trimmed.length > NOTE_BODY_MAX_LENGTH
+    ? trimmed.slice(0, NOTE_BODY_MAX_LENGTH)
+    : trimmed;
+}
 
 export type CaptureNotePhotoInput = {
   uri: string;
@@ -140,8 +156,8 @@ export async function saveNoteMoment(
     type: 'note',
     timestamp: input.openedAt,
     finishedAt: input.finishedAt,
-    title: input.title.trim() || null,
-    textBody: input.textBody.trim() || null,
+    title: clipNoteTitle(input.title) || null,
+    textBody: clipNoteBody(input.textBody) || null,
     moodLabel,
     moodReason,
     moodVariant,

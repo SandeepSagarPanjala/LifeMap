@@ -46,6 +46,7 @@ import {
   MAP_MOMENTS_SIDE_BTN_GAP,
   MAP_STACK_BUTTON_SIZE,
   MAX_SAVED_PLACE_LABEL_LENGTH,
+  MAX_ADDRESS_QUERY_LENGTH,
 } from '@/lib/app-constants';
 import type { SavedPlaceAddByAddressOptions } from '@/lib/saved-places';
 
@@ -299,9 +300,10 @@ function AddSavedPlaceByAddressPanel({
               ref={addressInputRef}
               value={address}
               onChangeText={text => {
-                setAddress(text);
+                setAddress(text.slice(0, MAX_ADDRESS_QUERY_LENGTH));
                 setLookupError(null);
               }}
+              maxLength={MAX_ADDRESS_QUERY_LENGTH}
               placeholder="3925 N Elm St, Denton, TX"
               placeholderTextColor="#8E8E93"
               style={styles.input}

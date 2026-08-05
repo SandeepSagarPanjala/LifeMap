@@ -11,7 +11,7 @@ import {
 } from '@/lib/day-utils';
 import { APP_TIMEZONE } from '@/lib/timezone';
 
-export type MapInsightPeriod = 'week' | 'month' | 'year';
+export type MapInsightPeriod = 'today' | 'week' | 'month' | 'year';
 
 export type MapPlaceTimeRow = {
   key: string;

@@ -44,6 +44,8 @@ import {
   MAP_MOMENTS_SIDE_BTN_GAP,
   MAP_STACK_BUTTON_SIZE,
   MAX_NOTE_PHOTO_ATTACHMENTS,
+  NOTE_BODY_MAX_LENGTH,
+  NOTE_TITLE_MAX_LENGTH,
 } from '@/lib/app-constants';
 import {
   canSaveNoteDraft,
@@ -394,6 +396,7 @@ export function CaptureNoteScreen() {
               placeholderTextColor="#C7C7CC"
               value={title}
               onChangeText={setTitle}
+              maxLength={NOTE_TITLE_MAX_LENGTH}
               onFocus={() => {
                 lastFocusedFieldRef.current = 'title';
               }}
@@ -411,6 +414,7 @@ export function CaptureNoteScreen() {
               placeholderTextColor="#C7C7CC"
               value={textBody}
               onChangeText={setTextBody}
+              maxLength={NOTE_BODY_MAX_LENGTH}
               onFocus={() => {
                 lastFocusedFieldRef.current = 'body';
               }}
