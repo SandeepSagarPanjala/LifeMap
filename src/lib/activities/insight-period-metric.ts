@@ -66,6 +66,17 @@ function fieldContribution(
   return 0;
 }
 
+/** Per-log contribution for the selected insights metric. */
+export function momentMetricContribution(
+  moment: MomentRow,
+  metric: InsightPeriodMetric,
+): number {
+  if (metric.kind === 'logs') {
+    return 1;
+  }
+  return fieldContribution(moment, metric.fieldId, metric.kind);
+}
+
 export function sumMetricInRange(
   moments: readonly MomentRow[],
   metric: InsightPeriodMetric,
@@ -80,11 +91,7 @@ export function sumMetricInRange(
     if (t < startMs || t > endMs) {
       continue;
     }
-    if (metric.kind === 'logs') {
-      total += 1;
-      continue;
-    }
-    total += fieldContribution(moment, metric.fieldId, metric.kind);
+    total += momentMetricContribution(moment, metric);
   }
   return total;
 }

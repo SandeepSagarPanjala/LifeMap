@@ -16,6 +16,8 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   Easing,
@@ -27,7 +29,14 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { endOfDay, startOfDay, startOfMonth } from 'date-fns';
+import {
+  endOfDay,
+  endOfMonth,
+  endOfYear,
+  startOfDay,
+  startOfMonth,
+  startOfYear,
+} from 'date-fns';
 import { TZDate } from '@date-fns/tz';
 
 import { ActivityInsightMonthCalendar } from '@/components/capture/ActivityInsightMonthCalendar';
@@ -37,8 +46,8 @@ import {
 } from '@/components/capture/ActivityInsightYearBars';
 import {
   ActivityInsightWeekPager,
-  preferredMonthForWeek,
   preferredWeekForMonth,
+  weekBoundsForAnchor,
   weekStartInAppTz,
 } from '@/components/capture/ActivityInsightWeekPager';
 import { AdaptiveGlassSurface } from '@/components/glass/AdaptiveGlassSurface';
@@ -47,18 +56,14 @@ import type { ActivityRow } from '@/db/repositories/activities';
 import type { MomentRow } from '@/db/repositories/moments';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import {
-  buildActivityFieldWidgets,
-  type ActivityFieldWidget,
-  type RankedToken,
-} from '@/lib/activities/activity-field-widgets';
-import {
   activityExperienceIntentLabel,
 } from '@/lib/activities/activity-intent';
 import type { ActivityIntent } from '@/lib/activities/activity-intent';
-import { resolveInsightCalendarStartDate } from '@/lib/activities/activity-insights';
 import {
-  formatMetricPeriodPhrase,
-  formatMetricShortPhrase,
+  resolveInsightCalendarStartDate,
+} from '@/lib/activities/activity-insights';
+import {
+  formatMetricCompact,
   metricFieldsFromDefinition,
   sumMetricInMonth,
   sumMetricInRange,
@@ -71,6 +76,7 @@ import {
 } from '@/lib/app-constants';
 import { parseDateKey } from '@/lib/day-utils';
 import { APP_TIMEZONE } from '@/lib/timezone';
+import type { RootStackParamList } from '@/navigation/types';
 import { useAppStore } from '@/stores/app-store';
 
 const LOGS_METRIC: InsightPeriodMetric = { id: 'logs', kind: 'logs' };
@@ -97,19 +103,6 @@ function metricTabWidth(optionCount: number): number {
   return 64;
 }
 
-function formatDurationShort(seconds: number): string {
-  const minutes = Math.round(seconds / 60);
-  if (minutes < 1) {
-    return '<1m';
-  }
-  if (minutes < 60) {
-    return `${minutes}m`;
-  }
-  const hours = Math.floor(minutes / 60);
-  const rem = minutes % 60;
-  return rem === 0 ? `${hours}h` : `${hours}h ${rem}m`;
-}
-
 const INTENT_THEME: Record<
   ActivityIntent,
   { tint: string; strong: string; soft: string; chipBg: string }
@@ -133,6 +126,19 @@ const INTENT_THEME: Record<
     chipBg: '#DBEAFE',
   },
 };
+
+function metricToRouteParam(
+  metric: InsightPeriodMetric,
+): RootStackParamList['ActivityInsightPeriodDetail']['metric'] {
+  if (metric.kind === 'logs') {
+    return { kind: 'logs' };
+  }
+  return {
+    kind: metric.kind,
+    fieldId: metric.fieldId,
+    label: metric.label,
+  };
+}
 
 function SectionCard({
   title,
@@ -325,196 +331,22 @@ function MetricSelectorBar({
   );
 }
 
-function RankBars({
-  items,
-  accent,
-  soft,
-  muted,
-  foreground,
-}: {
-  items: RankedToken[];
-  accent: string;
-  soft: string;
-  muted: string;
-  foreground: string;
-}) {
-  return (
-    <View style={styles.rankList}>
-      {items.map((item, index) => (
-        <View key={item.label} style={styles.rankRow}>
-          <View style={styles.rankMeta}>
-            <Text
-              style={[styles.rankLabel, { color: foreground }]}
-              numberOfLines={1}
-            >
-              {item.label}
-            </Text>
-            <Text style={[styles.rankCount, { color: muted }]}>
-              {item.count} · {Math.round(item.share * 100)}%
-            </Text>
-          </View>
-          <View style={[styles.rankTrack, { backgroundColor: soft }]}>
-            <View
-              style={[
-                styles.rankFill,
-                {
-                  width: `${Math.max(8, Math.round(item.share * 100))}%`,
-                  backgroundColor: index === 0 ? accent : muted,
-                  opacity: index === 0 ? 1 : 0.45,
-                },
-              ]}
-            />
-          </View>
-        </View>
-      ))}
-    </View>
-  );
-}
-
-function ToggleSplit({
-  yesShare,
-  accent,
-  soft,
-}: {
-  yesShare: number;
-  accent: string;
-  soft: string;
-}) {
-  const yesPct = Math.round(yesShare * 100);
-  const noPct = 100 - yesPct;
-  return (
-    <View style={styles.toggleTrack}>
-      {yesPct > 0 ? (
-        <View
-          style={[
-            styles.toggleYes,
-            { flex: yesPct, backgroundColor: accent },
-          ]}
-        />
-      ) : null}
-      {noPct > 0 ? (
-        <View
-          style={[styles.toggleNo, { flex: noPct, backgroundColor: soft }]}
-        />
-      ) : null}
-    </View>
-  );
-}
-
-function FieldWidgetCard({
-  widget,
-  accent,
-  soft,
-  tint,
-  muted,
-  foreground,
-}: {
-  widget: ActivityFieldWidget;
-  accent: string;
-  soft: string;
-  tint: string;
-  muted: string;
-  foreground: string;
-}) {
-  return (
-    <SectionCard title={widget.title} tint={tint} accent={accent}>
-      <Text style={[styles.sentence, { color: foreground }]}>
-        {widget.sentence}
-      </Text>
-      <Text style={[styles.subtitle, { color: muted }]}>{widget.subtitle}</Text>
-
-      {widget.kind === 'number' ? (
-        <View style={styles.statRow}>
-          <View style={styles.statCell}>
-            <Text style={[styles.statLabel, { color: muted }]}>Average</Text>
-            <RNText
-              style={[styles.statValue, { color: foreground }]}
-              allowFontScaling={false}
-            >
-              {widget.average.toLocaleString(undefined, {
-                maximumFractionDigits: 2,
-              })}
-            </RNText>
-          </View>
-          <View style={styles.statCell}>
-            <Text style={[styles.statLabel, { color: muted }]}>Latest</Text>
-            <RNText
-              style={[styles.statValue, { color: foreground }]}
-              allowFontScaling={false}
-            >
-              {widget.latest.toLocaleString(undefined, {
-                maximumFractionDigits: 2,
-              })}
-            </RNText>
-          </View>
-        </View>
-      ) : null}
-
-      {widget.kind === 'duration' ? (
-        <View style={styles.statRow}>
-          <View style={styles.statCell}>
-            <Text style={[styles.statLabel, { color: muted }]}>Typical</Text>
-            <RNText
-              style={[styles.statValue, { color: foreground }]}
-              allowFontScaling={false}
-            >
-              {formatDurationShort(widget.averageSeconds)}
-            </RNText>
-          </View>
-          <View style={styles.statCell}>
-            <Text style={[styles.statLabel, { color: muted }]}>Total</Text>
-            <RNText
-              style={[styles.statValue, { color: foreground }]}
-              allowFontScaling={false}
-            >
-              {formatDurationShort(widget.totalSeconds)}
-            </RNText>
-          </View>
-        </View>
-      ) : null}
-
-      {widget.kind === 'choice' || widget.kind === 'list' ? (
-        <RankBars
-          items={widget.kind === 'choice' ? widget.options : widget.topItems}
-          accent={accent}
-          soft={soft}
-          muted={muted}
-          foreground={foreground}
-        />
-      ) : null}
-
-      {widget.kind === 'toggle' ? (
-        <>
-          <ToggleSplit
-            yesShare={widget.yesShare}
-            accent={accent}
-            soft={soft}
-          />
-          <View style={styles.toggleLegend}>
-            <Text style={[styles.subtitle, { color: muted }]}>
-              Yes {Math.round(widget.yesShare * 100)}%
-            </Text>
-            <Text style={[styles.subtitle, { color: muted }]}>
-              No {Math.round((1 - widget.yesShare) * 100)}%
-            </Text>
-          </View>
-        </>
-      ) : null}
-    </SectionCard>
-  );
-}
-
 /**
- * Activity insights v3 — calendar + year bars, plus field widgets for number /
- * list / choice / duration / toggle. Hidden when a field has no logged values.
+ * Activity insights — calendar + year bars. Period totals open a drill-down
+ * list of logs for that range.
  */
 export function ActivityInsightDetailContent({
   activity,
   moments,
+  contentBottomInset,
 }: {
   activity: ActivityRow;
   moments: readonly MomentRow[];
+  /** Overrides default padding reserved for the floating close button. */
+  contentBottomInset?: number;
 }) {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
@@ -558,14 +390,6 @@ export function ActivityInsightDetailContent({
     setSelectedMetric(LOGS_METRIC);
   }, [metricOptions, selectedMetric.id]);
 
-  const widgets = useMemo(
-    () =>
-      buildActivityFieldWidgets({ activity, moments }).filter(
-        widget => widget.kind !== 'money',
-      ),
-    [activity, moments],
-  );
-
   const calendarBounds = useMemo(() => {
     const now = new Date();
     const earliestDate = resolveInsightCalendarStartDate({
@@ -591,7 +415,7 @@ export function ActivityInsightDetailContent({
 
   const monthTotalLabel = useMemo(() => {
     const value = sumMetricInMonth(moments, selectedMetric, visibleMonthDate);
-    return formatMetricPeriodPhrase(selectedMetric, value, 'Month');
+    return formatMetricCompact(selectedMetric, value);
   }, [moments, selectedMetric, visibleMonthDate]);
 
   const todayStats = useMemo(() => {
@@ -603,13 +427,83 @@ export function ActivityInsightDetailContent({
       endOfDay(today),
     );
     return {
-      valueLabel: formatMetricShortPhrase(selectedMetric, value),
+      valueLabel: formatMetricCompact(selectedMetric, value),
       dateLabel: today.toLocaleDateString(undefined, {
         month: 'short',
         day: 'numeric',
       }),
+      start: today,
+      end: endOfDay(today),
     };
   }, [moments, selectedMetric]);
+
+  const openPeriodDetail = useCallback(
+    (input: {
+      period: 'today' | 'week' | 'month' | 'year';
+      periodTitle: string;
+      start: Date;
+      end: Date;
+    }) => {
+      navigation.navigate('ActivityInsightPeriodDetail', {
+        activityId: activity.id,
+        period: input.period,
+        periodTitle: input.periodTitle,
+        startMs: input.start.getTime(),
+        endMs: input.end.getTime(),
+        metric: metricToRouteParam(selectedMetric),
+      });
+    },
+    [activity.id, navigation, selectedMetric],
+  );
+
+  const handlePressToday = useCallback(() => {
+    openPeriodDetail({
+      period: 'today',
+      periodTitle: 'Today',
+      start: todayStats.start,
+      end: todayStats.end,
+    });
+  }, [openPeriodDetail, todayStats.end, todayStats.start]);
+
+  const handlePressWeek = useCallback(() => {
+    const { start, end } = weekBoundsForAnchor(weekAnchorDate);
+    openPeriodDetail({
+      period: 'week',
+      periodTitle: 'Week',
+      start,
+      end,
+    });
+  }, [openPeriodDetail, weekAnchorDate]);
+
+  const handlePressMonth = useCallback(() => {
+    const monthStart = startOfMonth(
+      new TZDate(visibleMonthDate, APP_TIMEZONE),
+    );
+    openPeriodDetail({
+      period: 'month',
+      periodTitle: monthStart.toLocaleDateString(undefined, {
+        month: 'long',
+        year: 'numeric',
+      }),
+      start: monthStart,
+      end: endOfMonth(monthStart),
+    });
+  }, [openPeriodDetail, visibleMonthDate]);
+
+  const handlePressYear = useCallback(
+    (year: number) => {
+      const yearStart = startOfYear(
+        new TZDate(year, 0, 1, 0, 0, 0, 0, APP_TIMEZONE),
+      );
+      openPeriodDetail({
+        period: 'year',
+        periodTitle: String(year),
+        start: yearStart,
+        end: endOfYear(yearStart),
+      });
+    },
+    [openPeriodDetail],
+  );
 
   const skipNextMonthToWeekSyncRef = useRef(false);
   const monthToWeekSyncReadyRef = useRef(false);
@@ -642,7 +536,7 @@ export function ActivityInsightDetailContent({
     );
   }, []);
 
-  /** User pressed month arrow / year month bar. */
+  /** User swiped month calendar / tapped year bar. */
   const handleVisibleMonthChange = useCallback(
     (monthDate: Date) => {
       setMonthAndWeek(monthDate);
@@ -650,20 +544,39 @@ export function ActivityInsightDetailContent({
     [setMonthAndWeek],
   );
 
-  /** User tapped year-chart month. */
+  /** User tapped a year-chart month bar. */
   const handleYearBarMonthSelect = useCallback(
     (monthDate: Date) => {
-      setMonthAndWeek(monthDate);
+      const year = new TZDate(monthDate, APP_TIMEZONE).getFullYear();
+      // Clamp to months the calendar pager actually contains (no future months).
+      setMonthAndWeek(
+        sameMonthInYear(
+          year,
+          monthDate,
+          calendarBounds.earliestMonth,
+          calendarBounds.currentMonth,
+        ),
+      );
     },
-    [setMonthAndWeek],
+    [
+      calendarBounds.currentMonth,
+      calendarBounds.earliestMonth,
+      setMonthAndWeek,
+    ],
   );
 
-  /** User pressed year arrow. */
+  /** User swiped year chart → same month in that year. */
   const handleYearBarsYearChange = useCallback(
     (year: number) => {
+      const current = visibleMonthDateRef.current;
+      // Bar tap already moved us into this year — don't clobber that month when
+      // the year pager's momentum settle fires right after the press.
+      if (new TZDate(current, APP_TIMEZONE).getFullYear() === year) {
+        return;
+      }
       const monthDate = sameMonthInYear(
         year,
-        visibleMonthDateRef.current,
+        current,
         calendarBounds.earliestMonth,
         calendarBounds.currentMonth,
       );
@@ -676,21 +589,7 @@ export function ActivityInsightDetailContent({
     ],
   );
 
-  /** User pressed week arrow → month that owns that week. */
-  const handleVisibleWeekChange = useCallback((weekStart: Date) => {
-    const nextWeek = new Date(weekStartInAppTz(weekStart).getTime());
-    skipNextMonthToWeekSyncRef.current = true;
-    setWeekAnchorDate(prev =>
-      weekStartInAppTz(prev).getTime() === nextWeek.getTime()
-        ? prev
-        : nextWeek,
-    );
-    const month = preferredMonthForWeek(nextWeek);
-    setVisibleMonthDate(prev =>
-      prev.getTime() === month.getTime() ? prev : new Date(month.getTime()),
-    );
-  }, []);
-
+  /** User tapped a calendar day → show that day's week. */
   const handleCalendarDayPress = useCallback((dateKey: string) => {
     const day = new Date(parseDateKey(dateKey));
     const nextWeek = weekStartInAppTz(day);
@@ -703,6 +602,7 @@ export function ActivityInsightDetailContent({
   }, []);
 
   const bottomPad =
+    contentBottomInset ??
     MAP_MOMENTS_BAR_HEIGHT + Math.max(insets.bottom, MAP_MOMENTS_BAR_GAP) + 16;
 
   return (
@@ -733,7 +633,9 @@ export function ActivityInsightDetailContent({
             <View
               style={[styles.intentChip, { backgroundColor: theme.chipBg }]}
             >
-              <Text style={[styles.intentChipLabel, { color: theme.strong }]}>
+              <Text
+                style={[styles.intentChipLabel, { color: colors.foreground }]}
+              >
                 {activityExperienceIntentLabel(activity.intent)}
               </Text>
             </View>
@@ -746,86 +648,115 @@ export function ActivityInsightDetailContent({
         </View>
       </View>
 
-      {metricOptions.length > 1 ? (
-        <View style={styles.metricSelectorWrap}>
-          <MetricSelectorBar
-            options={metricOptions}
-            value={selectedMetric}
-            onChange={setSelectedMetric}
-            accent={theme.strong}
-            muted={colors.mutedForeground}
-          />
+      {moments.length === 0 ? (
+        <View style={[styles.emptyCard, { backgroundColor: theme.tint }]}>
+          <RNText style={styles.emptyEmoji} allowFontScaling={false}>
+            {activity.emoji}
+          </RNText>
+          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
+            No logs yet
+          </Text>
+          <Text style={[styles.emptyBody, { color: colors.mutedForeground }]}>
+            Log this activity and your insights will show up here.
+          </Text>
         </View>
-      ) : null}
-
-      <SectionCard tint={theme.tint} accent={theme.strong}>
-        <View style={styles.periodBlock}>
-          <View style={styles.periodRow}>
-            <View style={styles.periodCell}>
-              <Text
-                style={[styles.periodLabel, { color: colors.mutedForeground }]}
-              >
-                Today
-              </Text>
-              <Text style={[styles.periodRange, { color: theme.strong }]}>
-                {todayStats.dateLabel}
-              </Text>
-              <RNText
-                style={[styles.periodValue, { color: colors.foreground }]}
-                allowFontScaling={false}
-                numberOfLines={1}
-              >
-                {todayStats.valueLabel}
-              </RNText>
+      ) : (
+        <>
+          {metricOptions.length > 1 ? (
+            <View style={styles.metricSelectorWrap}>
+              <MetricSelectorBar
+                options={metricOptions}
+                value={selectedMetric}
+                onChange={setSelectedMetric}
+                accent={theme.strong}
+                muted={colors.mutedForeground}
+              />
             </View>
-            <ActivityInsightWeekPager
+          ) : null}
+
+          <SectionCard tint={theme.tint} accent={theme.strong}>
+            <View style={styles.periodBlock}>
+              <View style={styles.periodRow}>
+                <View style={styles.periodCell}>
+                  <View style={styles.periodLabelRow}>
+                    <Text
+                      style={[
+                        styles.periodLabel,
+                        { color: colors.mutedForeground },
+                      ]}
+                    >
+                      Today
+                    </Text>
+                    <Text
+                      style={[
+                        styles.periodRange,
+                        { color: colors.mutedForeground },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {todayStats.dateLabel}
+                    </Text>
+                  </View>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Today ${todayStats.valueLabel}`}
+                    onPress={handlePressToday}
+                    hitSlop={6}
+                    style={({ pressed }) => [
+                      styles.periodValueHit,
+                      pressed ? { opacity: 0.72 } : null,
+                    ]}
+                  >
+                    <RNText
+                      style={[styles.periodValue, { color: theme.strong }]}
+                      allowFontScaling={false}
+                      numberOfLines={1}
+                    >
+                      {todayStats.valueLabel}
+                    </RNText>
+                  </Pressable>
+                </View>
+                <ActivityInsightWeekPager
+                  moments={moments}
+                  metric={selectedMetric}
+                  accent={theme.strong}
+                  muted={colors.mutedForeground}
+                  foreground={colors.foreground}
+                  earliestDate={calendarBounds.earliestDate}
+                  weekAnchorDate={weekAnchorDate}
+                  onPressValue={handlePressWeek}
+                />
+              </View>
+            </View>
+            <ActivityInsightMonthCalendar
+              moments={moments}
+              intent={activity.intent}
+              createdAt={activity.createdAt}
+              reminderEnabled={activity.reminderEnabled}
+              reminderRepeat={activity.reminderRepeat}
+              monthTotalLabel={monthTotalLabel}
+              accent={theme.strong}
+              selectedMonthDate={visibleMonthDate}
+              onVisibleMonthChange={handleVisibleMonthChange}
+              onDayPress={handleCalendarDayPress}
+              onPressMonthTotal={handlePressMonth}
+            />
+            <ActivityInsightYearBars
               moments={moments}
               metric={selectedMetric}
+              createdAt={activity.createdAt}
               accent={theme.strong}
+              soft={theme.soft}
               muted={colors.mutedForeground}
               foreground={colors.foreground}
-              earliestDate={calendarBounds.earliestDate}
-              weekAnchorDate={weekAnchorDate}
-              onVisibleWeekChange={handleVisibleWeekChange}
+              selectedMonthDate={visibleMonthDate}
+              onSelectMonthDate={handleYearBarMonthSelect}
+              onVisibleYearChange={handleYearBarsYearChange}
+              onPressYearTotal={handlePressYear}
             />
-          </View>
-        </View>
-        <ActivityInsightMonthCalendar
-          activity={activity}
-          moments={moments}
-          intent={activity.intent}
-          monthTotalLabel={monthTotalLabel}
-          accent={theme.strong}
-          selectedMonthDate={visibleMonthDate}
-          onVisibleMonthChange={handleVisibleMonthChange}
-          onDayPress={handleCalendarDayPress}
-        />
-        <ActivityInsightYearBars
-          activity={activity}
-          moments={moments}
-          metric={selectedMetric}
-          accent={theme.strong}
-          soft={theme.soft}
-          muted={colors.mutedForeground}
-          foreground={colors.foreground}
-          selectedMonthDate={visibleMonthDate}
-          onSelectMonthDate={handleYearBarMonthSelect}
-          onVisibleYearChange={handleYearBarsYearChange}
-        />
-      </SectionCard>
-
-      {widgets.map(widget => (
-        <FieldWidgetCard
-          key={`${widget.kind}.${widget.fieldId}`}
-          widget={widget}
-          accent={theme.strong}
-          soft={theme.soft}
-          tint={theme.tint}
-          muted={colors.mutedForeground}
-          foreground={colors.foreground}
-        />
-      ))}
-
+          </SectionCard>
+        </>
+      )}
     </ScrollView>
   );
 }
@@ -953,93 +884,55 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 2,
   },
+  periodLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
   periodLabel: {
-    fontSize: 12,
+    fontSize: 15,
     fontWeight: '700',
   },
   periodRange: {
-    fontSize: 12,
+    fontSize: 15,
     fontWeight: '700',
+    flexShrink: 1,
+  },
+  periodValueHit: {
+    alignSelf: 'flex-start',
+    marginTop: 2,
+    paddingVertical: 2,
   },
   periodValue: {
-    fontSize: 18,
-    fontWeight: '800',
-    ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
-  },
-  sentence: {
-    fontSize: 17,
-    lineHeight: 24,
-    fontWeight: '700',
-  },
-  subtitle: {
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: '500',
-  },
-  statRow: {
-    flexDirection: 'row',
-    gap: 16,
-    marginTop: 4,
-  },
-  statCell: {
-    flex: 1,
-    gap: 2,
-  },
-  statLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  statValue: {
     fontSize: 20,
-    lineHeight: 26,
     fontWeight: '800',
     ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
   },
-  rankList: {
-    gap: 10,
-    marginTop: 4,
-  },
-  rankRow: {
-    gap: 4,
-  },
-  rankMeta: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  emptyCard: {
+    borderRadius: 18,
+    paddingHorizontal: 24,
+    paddingVertical: 36,
+    alignItems: 'center',
     gap: 8,
   },
-  rankLabel: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: '700',
+  emptyEmoji: {
+    fontSize: 40,
+    lineHeight: 48,
+    marginBottom: 4,
+    opacity: 0.55,
+    ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
   },
-  rankCount: {
-    fontSize: 12,
-    fontWeight: '600',
+  emptyTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    textAlign: 'center',
   },
-  rankTrack: {
-    height: 6,
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  rankFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  toggleTrack: {
-    height: 10,
-    borderRadius: 5,
-    overflow: 'hidden',
-    flexDirection: 'row',
-    marginTop: 4,
-  },
-  toggleYes: {
-    height: '100%',
-  },
-  toggleNo: {
-    height: '100%',
-  },
-  toggleLegend: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  emptyBody: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '500',
+    textAlign: 'center',
+    maxWidth: 260,
   },
 });

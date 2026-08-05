@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
@@ -23,17 +23,31 @@ import { useClosesToMap } from '@/navigation/use-closes-to-map';
 import { ActivityInsightDetailContent } from '@/screens/capture/ActivityInsightDetailContent';
 
 /**
- * Activity insights — loads activity logs and shows the insights UI.
+ * Loads one activity's logs and shows the insights UI.
+ * Used as a stack screen and embedded in the You → Insights hub.
  */
-export function ActivityInsightDetailScreen() {
-  const navigation =
-    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const route =
-    useRoute<RouteProp<RootStackParamList, 'ActivityInsightDetail'>>();
+export function ActivityInsightDetailView({
+  activityId,
+  contentBottomInset,
+  footerBottomInset,
+  footerAccessibilityLabel,
+  footerIcon,
+  showFooter = true,
+  onClose,
+}: {
+  activityId: number;
+  /** Extra scroll padding above floating chrome (You + category bars). */
+  contentBottomInset?: number;
+  /** Absolute footer button offset from the screen bottom. */
+  footerBottomInset?: number;
+  footerAccessibilityLabel?: string;
+  footerIcon?: ReactNode;
+  /** When false, omit the floating back/close control (hub supplies its own). */
+  showFooter?: boolean;
+  onClose: () => void;
+}) {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
-  const closesToMap = useClosesToMap();
-  const activityId = route.params.activityId;
 
   const [activity, setActivity] = useState<ActivityRow | null>(null);
   const [moments, setMoments] = useState<MomentRow[]>([]);
@@ -58,13 +72,8 @@ export function ActivityInsightDetailScreen() {
     void load();
   }, [load]);
 
-  const handleClose = useCallback(() => {
-    if (navigation.canGoBack()) {
-      navigation.goBack();
-      return;
-    }
-    navigation.navigate('Map');
-  }, [navigation]);
+  const footerPad =
+    footerBottomInset ?? Math.max(insets.bottom, MAP_MOMENTS_BAR_GAP);
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -76,28 +85,59 @@ export function ActivityInsightDetailScreen() {
         <ActivityInsightDetailContent
           activity={activity}
           moments={moments}
+          contentBottomInset={contentBottomInset}
         />
       )}
 
-      <View
-        pointerEvents="box-none"
-        style={[
-          styles.footer,
-          { paddingBottom: Math.max(insets.bottom, MAP_MOMENTS_BAR_GAP) },
-        ]}
-      >
-        <MapGlassCircleButton
-          accessibilityLabel={closesToMap ? 'Close' : 'Back'}
-          onPress={handleClose}
+      {showFooter && footerIcon != null && footerAccessibilityLabel != null ? (
+        <View
+          pointerEvents="box-none"
+          style={[styles.footer, { paddingBottom: footerPad }]}
         >
-          {closesToMap ? (
-            <X size={20} color={colors.primary} strokeWidth={2.25} />
-          ) : (
-            <ChevronLeft size={22} color={colors.primary} strokeWidth={2.25} />
-          )}
-        </MapGlassCircleButton>
-      </View>
+          <MapGlassCircleButton
+            accessibilityLabel={footerAccessibilityLabel}
+            onPress={onClose}
+          >
+            {footerIcon}
+          </MapGlassCircleButton>
+        </View>
+      ) : null}
     </View>
+  );
+}
+
+/**
+ * Activity insights — stack entry that reads `activityId` from the route.
+ */
+export function ActivityInsightDetailScreen() {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route =
+    useRoute<RouteProp<RootStackParamList, 'ActivityInsightDetail'>>();
+  const colors = useThemeColors();
+  const closesToMap = useClosesToMap();
+
+  const handleClose = useCallback(() => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+    navigation.navigate('Map');
+  }, [navigation]);
+
+  return (
+    <ActivityInsightDetailView
+      activityId={route.params.activityId}
+      footerAccessibilityLabel={closesToMap ? 'Close' : 'Back'}
+      footerIcon={
+        closesToMap ? (
+          <X size={20} color={colors.primary} strokeWidth={2.25} />
+        ) : (
+          <ChevronLeft size={22} color={colors.primary} strokeWidth={2.25} />
+        )
+      }
+      onClose={handleClose}
+    />
   );
 }
 

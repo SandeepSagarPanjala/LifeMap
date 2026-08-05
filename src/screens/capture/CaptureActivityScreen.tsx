@@ -7,8 +7,7 @@ import { ActivityLogSheet } from '@/components/map/ActivityLogSheet';
 import type { ActivityRow } from '@/db/repositories/activities';
 import { NativeHalfSheetShell } from '@/components/ui/NativeHalfSheetShell';
 import { useNativeHalfSheetClose } from '@/components/ui/native-half-sheet-context';
-import { useDayMoments } from '@/hooks/use-day-moments';
-import { getTodayDateKey } from '@/lib/day-utils';
+import { markNeedsTodayRefreshOnMapFocus } from '@/lib/foreground-heavy-resume';
 import { ACTIVITY_SHEET_HEIGHT_RATIO } from '@/navigation/activity-capture-screen-options';
 import type { RootStackParamList } from '@/navigation/types';
 import { useSheetCaptureClose } from '@/screens/sheets/use-sheet-capture-close';
@@ -22,7 +21,6 @@ export function CaptureActivityScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const navigationClose = useSheetCaptureClose();
-  const { refreshDayMoments } = useDayMoments(getTodayDateKey());
 
   const [reloadNonce, setReloadNonce] = useState(0);
   const [shellClosed, setShellClosed] = useState(false);
@@ -68,7 +66,6 @@ export function CaptureActivityScreen() {
       >
         <View style={styles.panelHost}>
           <CaptureActivityList
-            refreshDayMoments={refreshDayMoments}
             reloadNonce={reloadNonce}
             onBeginCreateFirst={handleBeginCreateFirst}
             onBeginManage={handleBeginManage}
@@ -82,14 +79,12 @@ export function CaptureActivityScreen() {
 }
 
 function CaptureActivityList({
-  refreshDayMoments,
   onBeginCreateFirst,
   onBeginManage,
   onBeginInsights,
   onBeginStructuredLog,
   reloadNonce,
 }: {
-  refreshDayMoments: () => Promise<void>;
   onBeginCreateFirst: () => void;
   onBeginManage: () => void;
   onBeginInsights: () => void;
@@ -104,7 +99,7 @@ function CaptureActivityList({
         visible
         onClose={closeSheet}
         onLogged={async () => {
-          await refreshDayMoments();
+          markNeedsTodayRefreshOnMapFocus();
         }}
         onBeginCreateFirst={onBeginCreateFirst}
         onBeginManage={onBeginManage}
