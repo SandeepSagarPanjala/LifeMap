@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   Platform,
   Pressable,
   StyleSheet,
@@ -12,7 +13,7 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ChevronLeft } from 'lucide-react-native';
+import { Camera, ChevronLeft, Play, Video } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
@@ -33,8 +34,11 @@ import {
 } from '@/lib/app-constants';
 import { toDateKey } from '@/lib/day-utils';
 import { resolveGalleryPlaceLabelsForMoments } from '@/lib/moments/gallery-moment-place-labels';
+import { momentImageUri } from '@/lib/moments/moment-media-uri';
 import { queueMomentPreview } from '@/lib/moments/moment-preview-navigation';
 import type { RootStackParamList } from '@/navigation/types';
+
+const MEDIA_THUMB_SIZE = 56;
 
 export type MomentInsightKind =
   RootStackParamList['MomentInsightPeriodDetail']['momentKind'];
@@ -156,6 +160,52 @@ type DrilldownRow = {
   placeLabel: string;
 };
 
+function MediaThumb({
+  moment,
+  mutedForeground,
+  borderColor,
+}: {
+  moment: MomentRow;
+  mutedForeground: string;
+  borderColor: string;
+}) {
+  const thumbUri =
+    moment.thumbnailPath != null
+      ? momentImageUri(moment.thumbnailPath)
+      : null;
+  const isVideo = moment.type === 'video';
+
+  return (
+    <View
+      style={[
+        styles.thumb,
+        { backgroundColor: '#E8EEF5', borderColor },
+      ]}
+    >
+      {thumbUri != null ? (
+        <Image
+          source={{ uri: thumbUri }}
+          style={styles.thumbImage}
+          resizeMode="cover"
+        />
+      ) : (
+        <View style={styles.thumbFallback}>
+          {isVideo ? (
+            <Video size={22} color={mutedForeground} strokeWidth={2} />
+          ) : (
+            <Camera size={22} color={mutedForeground} strokeWidth={2} />
+          )}
+        </View>
+      )}
+      {isVideo ? (
+        <View style={styles.videoBadge} pointerEvents="none">
+          <Play size={10} color="#FFFFFF" fill="#FFFFFF" />
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 /**
  * Period drill-down for mood / diary / voice / camera logs.
  */
@@ -234,6 +284,8 @@ export function MomentInsightPeriodDetailScreen() {
   const bottomPad =
     MAP_MOMENTS_BAR_HEIGHT + Math.max(insets.bottom, MAP_MOMENTS_BAR_GAP) + 16;
 
+  const showMediaThumb = momentKind === 'photo' || momentKind === 'video';
+
   const renderItem = useCallback<ListRenderItem<DrilldownRow>>(
     ({ item }) => (
       <Pressable
@@ -242,6 +294,7 @@ export function MomentInsightPeriodDetailScreen() {
         onPress={() => handleOpenPreview(item.moment)}
         style={({ pressed }) => [
           styles.row,
+          showMediaThumb ? styles.rowWithThumb : null,
           {
             backgroundColor: colors.card,
             borderColor: colors.border,
@@ -249,23 +302,32 @@ export function MomentInsightPeriodDetailScreen() {
           },
         ]}
       >
-        <View style={styles.rowTop}>
+        {showMediaThumb ? (
+          <MediaThumb
+            moment={item.moment}
+            mutedForeground={colors.mutedForeground}
+            borderColor={colors.border}
+          />
+        ) : null}
+        <View style={styles.rowBody}>
+          <View style={styles.rowTop}>
+            <Text
+              style={[styles.rowTitle, { color: colors.foreground }]}
+              numberOfLines={2}
+            >
+              {item.title}
+            </Text>
+          </View>
+          <Text style={[styles.meta, { color: colors.mutedForeground }]}>
+            {item.whenLabel}
+          </Text>
           <Text
-            style={[styles.rowTitle, { color: colors.foreground }]}
+            style={[styles.meta, { color: colors.mutedForeground }]}
             numberOfLines={2}
           >
-            {item.title}
+            {item.placeLabel}
           </Text>
         </View>
-        <Text style={[styles.meta, { color: colors.mutedForeground }]}>
-          {item.whenLabel}
-        </Text>
-        <Text
-          style={[styles.meta, { color: colors.mutedForeground }]}
-          numberOfLines={2}
-        >
-          {item.placeLabel}
-        </Text>
       </Pressable>
     ),
     [
@@ -274,6 +336,7 @@ export function MomentInsightPeriodDetailScreen() {
       colors.foreground,
       colors.mutedForeground,
       handleOpenPreview,
+      showMediaThumb,
     ],
   );
 
@@ -437,6 +500,45 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: 14,
     paddingVertical: 12,
+    gap: 4,
+  },
+  rowWithThumb: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 10,
+    paddingLeft: 10,
+  },
+  thumb: {
+    width: MEDIA_THUMB_SIZE,
+    height: MEDIA_THUMB_SIZE,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  thumbImage: {
+    width: '100%',
+    height: '100%',
+  },
+  thumbFallback: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  videoBadge: {
+    position: 'absolute',
+    right: 5,
+    bottom: 5,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowBody: {
+    flex: 1,
+    minWidth: 0,
     gap: 4,
   },
   rowTop: {
