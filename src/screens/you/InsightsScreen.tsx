@@ -43,7 +43,7 @@ import { MapInsightsScreen } from '@/screens/map/MapInsightsScreen';
 import {
   getYouTabBeforeInsights,
   type YouTabParamList,
-} from '@/screens/you/YouScreen';
+} from '@/screens/you/you-tabs';
 
 export type InsightsCategoryId =
   | 'map'

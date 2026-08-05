@@ -23,16 +23,18 @@ import { Text } from '@/components/ui/text';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import type { PhosphorIcon } from '@/lib/profile/phosphor-icon';
 import { ProfileScreen } from '@/screens/you/ProfileScreen';
+import {
+  getYouTabBeforeInsights,
+  isYouTabName,
+  readLastYouTab,
+  rememberTabBeforeInsightsPress,
+  rememberYouTab,
+  type YouTabName,
+  type YouTabParamList,
+} from '@/screens/you/you-tabs';
 
-export type YouTabParamList = {
-  Profile: undefined;
-  Gallery: undefined;
-  Insights: undefined;
-  Friends: undefined;
-  Achievements: undefined;
-};
-
-type YouTabName = keyof YouTabParamList;
+export type { YouTabParamList } from '@/screens/you/you-tabs';
+export { getYouTabBeforeInsights } from '@/screens/you/you-tabs';
 
 type TabBarIconProps = {
   color: string;
@@ -159,35 +161,6 @@ const TABS: {
 
 const Tab = createBottomTabNavigator<YouTabParamList>();
 
-const YOU_TAB_NAMES = new Set<string>(TABS.map(tab => tab.name));
-
-/** Survives You screen unmount so reopen restores the last tab. */
-let lastYouTab: YouTabName = 'Profile';
-/** Tab that was focused immediately before navigating to Insights. */
-let youTabBeforeInsights: YouTabName = 'Profile';
-
-function readLastYouTab(): YouTabName {
-  return YOU_TAB_NAMES.has(lastYouTab) ? lastYouTab : 'Profile';
-}
-
-function rememberYouTab(next: YouTabName) {
-  if (next === 'Insights' && lastYouTab !== 'Insights') {
-    youTabBeforeInsights = lastYouTab;
-  }
-  lastYouTab = next;
-}
-
-/** Where Insights back should go (never Insights itself). */
-export function getYouTabBeforeInsights(): YouTabName {
-  if (
-    youTabBeforeInsights !== 'Insights' &&
-    YOU_TAB_NAMES.has(youTabBeforeInsights)
-  ) {
-    return youTabBeforeInsights;
-  }
-  return 'Profile';
-}
-
 export function YouScreen() {
   const screenOptions = useMemo(
     () => ({
@@ -217,18 +190,16 @@ export function YouScreen() {
   const screenListeners = useCallback(
     ({ route }: { route: { name: string } }) => ({
       focus: () => {
-        if (!YOU_TAB_NAMES.has(route.name)) {
+        if (!isYouTabName(route.name)) {
           return;
         }
-        rememberYouTab(route.name as YouTabName);
+        rememberYouTab(route.name);
       },
       tabPress: () => {
         if (route.name !== 'Insights') {
           return;
         }
-        if (lastYouTab !== 'Insights') {
-          youTabBeforeInsights = lastYouTab;
-        }
+        rememberTabBeforeInsightsPress();
       },
     }),
     [],
