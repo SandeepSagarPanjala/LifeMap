@@ -32,7 +32,6 @@ import {
   MAP_MOMENTS_BAR_HEIGHT,
 } from '@/lib/app-constants';
 import { toDateKey } from '@/lib/day-utils';
-import { formatVoiceDurationMs } from '@/lib/moments/format-voice-duration';
 import { resolveGalleryPlaceLabelsForMoments } from '@/lib/moments/gallery-moment-place-labels';
 import { queueMomentPreview } from '@/lib/moments/moment-preview-navigation';
 import type { RootStackParamList } from '@/navigation/types';
@@ -155,20 +154,7 @@ type DrilldownRow = {
   title: string;
   whenLabel: string;
   placeLabel: string;
-  /** Trailing value when meaningful (e.g. voice duration); omit for plain logs. */
-  valueLabel: string | null;
 };
-
-function momentValueLabel(moment: MomentRow): string | null {
-  if (moment.kind === 'voice') {
-    const sec = moment.voiceDurationSec;
-    if (sec != null && Number.isFinite(sec) && sec > 0) {
-      return formatVoiceDurationMs(Math.round(sec * 1000));
-    }
-    return null;
-  }
-  return null;
-}
 
 /**
  * Period drill-down for mood / diary / voice / camera logs.
@@ -220,7 +206,6 @@ export function MomentInsightPeriodDetailScreen() {
         title: momentPrimaryLabel(moment),
         whenLabel: formatLoggedAt(moment.timestamp),
         placeLabel: place ?? 'No place',
-        valueLabel: momentValueLabel(moment),
       };
     });
   }, [moments, placeLabels, rangeEnd, rangeStart]);
@@ -253,11 +238,7 @@ export function MomentInsightPeriodDetailScreen() {
     ({ item }) => (
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={
-          item.valueLabel != null
-            ? `${item.title}, ${item.valueLabel}, ${item.whenLabel}`
-            : `${item.title}, ${item.whenLabel}`
-        }
+        accessibilityLabel={`${item.title}, ${item.whenLabel}`}
         onPress={() => handleOpenPreview(item.moment)}
         style={({ pressed }) => [
           styles.row,
@@ -275,14 +256,6 @@ export function MomentInsightPeriodDetailScreen() {
           >
             {item.title}
           </Text>
-          {item.valueLabel != null ? (
-            <RNText
-              style={[styles.rowValue, { color: colors.foreground }]}
-              allowFontScaling={false}
-            >
-              {item.valueLabel}
-            </RNText>
-          ) : null}
         </View>
         <Text style={[styles.meta, { color: colors.mutedForeground }]}>
           {item.whenLabel}
@@ -476,11 +449,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: '800',
-  },
-  rowValue: {
-    fontSize: 16,
-    fontWeight: '800',
-    ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
   },
   meta: {
     fontSize: 13,

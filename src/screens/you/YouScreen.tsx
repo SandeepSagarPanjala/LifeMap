@@ -24,7 +24,6 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import type { PhosphorIcon } from '@/lib/profile/phosphor-icon';
 import { ProfileScreen } from '@/screens/you/ProfileScreen';
 import {
-  getYouTabBeforeInsights,
   isYouTabName,
   readLastYouTab,
   rememberTabBeforeInsightsPress,
