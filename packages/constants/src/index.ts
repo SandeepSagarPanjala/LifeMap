@@ -41,7 +41,7 @@ export const TRIP_RADIUS_CHOICES = [20, 25, 50, 75, 100, 150] as const;
 export const SAVED_PLACE_MIN_DWELL_MINUTES = 1;
 
 /** Bump when visit/drive detection rules change — invalidates sealed day cache. */
-export const TRIP_DETECTION_VERSION = 25;
+export const TRIP_DETECTION_VERSION = 26;
 
 /** Bump when stored route/visit geometry rules change — invalidates fast load path. */
 export const TRIP_GEOMETRY_VERSION = 4;
@@ -319,7 +319,8 @@ export const EXPORT_SHARE_DELAY_MS = 360;
 // ——— Segmentation / trip detection engine ———
 
 export const MIN_DRIVE_DISTANCE_M = 30;
-export const SAVED_PLACE_MIN_DWELL_MS = 5 * 60 * 1000;
+/** Same as {@link SAVED_PLACE_MIN_DWELL_MINUTES} — used by the segmentation engine. */
+export const SAVED_PLACE_MIN_DWELL_MS = SAVED_PLACE_MIN_DWELL_MINUTES * 60 * 1000;
 export const MERGE_STAY_MAX_DISTANCE_M = 200;
 export const MISSING_MIN_DISTANCE_M = 500;
 export const MISSING_MIN_GAP_MS = 15 * 60 * 1000;

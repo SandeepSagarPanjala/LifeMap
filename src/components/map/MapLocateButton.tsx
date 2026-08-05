@@ -18,6 +18,11 @@ const HEAVY_WORK_ORB = require('../../../assets/lottie/heavy-work-orb.json');
 const MAP_USER_LOCATION_BLUE = '#007AFF';
 const MAP_TRIPS_OVERVIEW_RED = '#FF3B30';
 
+/** Normal bullseye puck — keep fixed; do not share with busy orb. */
+const PUCK_RING = 23;
+const PUCK_CORE = 14;
+
+/** Busy Lottie only — sized independently of the bullseye. */
 const ORB_RING = 32;
 const ORB_SIZE = 28;
 
@@ -213,9 +218,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   puckRing: {
-    width: ORB_RING,
-    height: ORB_RING,
-    borderRadius: ORB_RING / 2,
+    width: PUCK_RING,
+    height: PUCK_RING,
+    borderRadius: PUCK_RING / 2,
     backgroundColor: 'rgba(255,255,255,0.95)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -226,9 +231,9 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   puckCore: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    width: PUCK_CORE,
+    height: PUCK_CORE,
+    borderRadius: PUCK_CORE / 2,
     backgroundColor: MAP_USER_LOCATION_BLUE,
   },
   orbRing: {

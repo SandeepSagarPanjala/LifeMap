@@ -858,7 +858,12 @@ export async function sealYesterdayIfNeeded(): Promise<void> {
   const todayKey = getTodayDateKey();
   const yesterdayKey = toDateKey(subDays(parseDateKey(todayKey), 1));
   const materializedDay = await getMaterializedDay(yesterdayKey);
-  if (materializedDay?.status === 'complete') {
+  const geometryFingerprint = await getGeometryPersistFingerprint();
+  if (
+    materializedDay?.status === 'complete' &&
+    materializedDay.detectionVersion === TRIP_DETECTION_VERSION &&
+    materializedDay.geometryFingerprint === geometryFingerprint
+  ) {
     return;
   }
 
