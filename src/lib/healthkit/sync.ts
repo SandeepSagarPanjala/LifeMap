@@ -482,7 +482,7 @@ export async function bootstrapHealthKit(): Promise<void> {
   bootstrapped = true;
 
   // Change observers stay here. FG resume no longer syncs HealthKit —
-  // Sleep detail awaits syncHealthKit() on open, then loads the chart.
+  // Sleep/Steps detail await syncHealthKitOnDemand() on open (gated by setting).
   try {
     const { subscribeToChanges } =
       require('@kingstinct/react-native-healthkit') as typeof import('@kingstinct/react-native-healthkit');

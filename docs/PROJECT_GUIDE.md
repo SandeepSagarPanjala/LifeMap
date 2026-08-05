@@ -500,7 +500,7 @@ flowchart TD
 | Merge nearby stays | `MERGE_STAY_MAX_DISTANCE_M` | 200 m |
 | Gap threshold | `MISSING_MIN_DISTANCE_M` / `MISSING_MIN_GAP_MS` | 500 m / 15 min |
 | Saved place dwell | `SAVED_PLACE_MIN_DWELL_MINUTES` | 1 min |
-| Detection version | `TRIP_DETECTION_VERSION` | 25 |
+| Detection version | `TRIP_DETECTION_VERSION` | 26 |
 
 > **`TRIP_DETECTION_VERSION`** is the magic number: bump it whenever detection rules change, and
 > every sealed day auto-rebuilds because its stored version no longer matches.

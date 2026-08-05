@@ -1,4 +1,4 @@
-                  # Dealbreaks
+# Dealbreaks
 
 Hard constraints. Changing these without understanding the dependency **breaks the app** — wrong today timeline, missing cross-midnight drives, or silent data loss.
 

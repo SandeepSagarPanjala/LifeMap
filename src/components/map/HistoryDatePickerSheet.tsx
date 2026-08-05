@@ -165,6 +165,7 @@ export function HistoryDatePickerPanel({
             accessibilityRole="button"
             accessibilityLabel="Previous month"
             accessibilityState={{ disabled: !canGoPrevMonth }}
+            disabled={!canGoPrevMonth}
             onPress={goPrevMonth}
             hitSlop={{ top: 0, bottom: 10, left: 10, right: 10 }}
             style={[
@@ -183,6 +184,7 @@ export function HistoryDatePickerPanel({
             accessibilityRole="button"
             accessibilityLabel="Next month"
             accessibilityState={{ disabled: !canGoNextMonth }}
+            disabled={!canGoNextMonth}
             onPress={goNextMonth}
             hitSlop={{ top: 0, bottom: 10, left: 10, right: 10 }}
             style={[

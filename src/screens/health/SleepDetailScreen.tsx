@@ -66,7 +66,7 @@ import {
   buildSleepTimelineModel,
   timelineLeftPct,
 } from '@/lib/healthkit/sleep-timeline';
-import { syncHealthKit } from '@/lib/healthkit/sync';
+import { syncHealthKitOnDemand } from '@/lib/healthkit/sync';
 import { APP_TIMEZONE } from '@/lib/timezone';
 import type { RootStackParamList } from '@/navigation/types';
 import { useClosesToMap } from '@/navigation/use-closes-to-map';
@@ -255,7 +255,7 @@ export function SleepDetailScreen() {
       setSyncing(true);
       void (async () => {
         try {
-          await syncHealthKit();
+          await syncHealthKitOnDemand();
         } catch {
           // Detail screen still shows last cached rollups.
         }

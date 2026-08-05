@@ -87,12 +87,13 @@ export function MapLocateButton({
   }, [size]);
 
   if (busy) {
+    // Intercept presses (do not pass through to the map under the modal loader).
     return (
       <View
         accessibilityRole="progressbar"
         accessibilityLabel="Updating map"
         accessibilityState={{ busy: true }}
-        pointerEvents="none"
+        pointerEvents="box-only"
         style={[styles.wrap, { bottom }]}
       >
         <View style={styles.shadow}>
