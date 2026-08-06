@@ -911,18 +911,26 @@ export function MapInsightsScreen({
 
   useEffect(() => {
     let cancelled = false;
-    void loadPersistedMapInsightSelection().then(saved => {
-      if (cancelled) {
-        return;
-      }
-      persistedMapInsightTab = saved.tab;
-      persistedMapInsightFilter = saved.filter;
-      persistedWeekFocus = saved.weekFocus;
-      setTab(saved.tab);
-      setFilterOption(saved.filter);
-      setWeekFocus(saved.weekFocus);
-      setSelectionReady(true);
-    });
+    void loadPersistedMapInsightSelection()
+      .then(saved => {
+        if (cancelled) {
+          return;
+        }
+        persistedMapInsightTab = saved.tab;
+        persistedMapInsightFilter = saved.filter;
+        persistedWeekFocus = saved.weekFocus;
+        setTab(saved.tab);
+        setFilterOption(saved.filter);
+        setWeekFocus(saved.weekFocus);
+      })
+      .catch(() => {
+        // Keep session defaults; still unblock the screen.
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setSelectionReady(true);
+        }
+      });
     return () => {
       cancelled = true;
     };

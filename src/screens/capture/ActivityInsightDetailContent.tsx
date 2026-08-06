@@ -383,7 +383,7 @@ export function ActivityInsightDetailContent({
   );
 
   const [selectedMetric, setSelectedMetric] = useState<InsightPeriodMetric>(
-    () => defaultInsightPeriodMetric(insightPeriodMetricOptions(activity.fields)),
+    () => defaultInsightPeriodMetric(metricOptions),
   );
 
   useEffect(() => {
