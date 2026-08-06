@@ -18,8 +18,18 @@ export const ACTIVITY_MAX_FIELDS = 24;
 export const ACTIVITY_MAX_LABEL_LENGTH = 80;
 export const ACTIVITY_MAX_FIELD_ID_LENGTH = 64;
 export const ACTIVITY_MAX_CHOICE_OPTIONS = 20;
+/** Per choice-option chip label. */
+export const ACTIVITY_MAX_CHOICE_OPTION_LENGTH = 40;
 /** Max photos or bills stored on a single photo/scan field while logging. */
 export const ACTIVITY_MAX_MEDIA_URIS = 3;
+/** Free-text activity field value. */
+export const ACTIVITY_MAX_TEXT_VALUE_LENGTH = 120;
+/** Money amount ceiling (USD-style major units). */
+export const ACTIVITY_MAX_MONEY_AMOUNT = 1_000_000_000;
+/** Generic number field ceiling. */
+export const ACTIVITY_MAX_NUMBER_VALUE = 1_000_000_000;
+/** Duration field ceiling in minutes (one week). */
+export const ACTIVITY_MAX_DURATION_MINUTES = 7 * 24 * 60;
 
 export type ActivityFieldExtract = 'amount';
 

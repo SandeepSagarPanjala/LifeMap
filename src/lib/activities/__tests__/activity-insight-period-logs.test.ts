@@ -1,4 +1,5 @@
 import {
+  activityInsightRowTitle,
   momentsInRange,
   resolveShopNameFieldId,
   shopNameFromMoment,
@@ -71,6 +72,29 @@ describe('activity insight period logs', () => {
     });
     expect(shopNameFromMoment(moment, 'shop_name')).toBe('Chipotle');
     expect(shopNameFromMoment(moment, null)).toBeNull();
+  });
+
+  it('row title uses shop name only when the activity has a shop field', () => {
+    const withShop = momentStub({
+      id: 1,
+      timestamp: new Date('2026-08-01T12:00:00Z'),
+      activityValuesJson: JSON.stringify({
+        shop_name: { type: 'text', value: 'Chipotle' },
+      }),
+    });
+    const withoutValue = momentStub({
+      id: 2,
+      timestamp: new Date('2026-08-01T12:00:00Z'),
+    });
+    expect(activityInsightRowTitle(withShop, 'shop_name', 'Mon, Aug 1')).toBe(
+      'Chipotle',
+    );
+    expect(
+      activityInsightRowTitle(withoutValue, 'shop_name', 'Mon, Aug 1'),
+    ).toBe('No shop name');
+    expect(
+      activityInsightRowTitle(withoutValue, null, 'Mon, Aug 1 at 9:10 PM'),
+    ).toBe('Mon, Aug 1 at 9:10 PM');
   });
 
   it('filters and sorts moments in range newest first', () => {

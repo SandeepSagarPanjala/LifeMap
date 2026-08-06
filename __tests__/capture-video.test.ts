@@ -1,7 +1,9 @@
 import {
+  isVideoRecordingTooLong,
   isVideoRecordingTooShort,
   saveVideoMoment,
 } from '@/lib/moments/capture-video';
+import { VIDEO_MAX_DURATION_MS } from '@/lib/app-constants';
 
 jest.mock('@/lib/moments/capture-photo', () => ({
   saveMomentToGallery: jest.fn().mockResolvedValue(undefined),
@@ -31,6 +33,11 @@ describe('capture-video', () => {
     expect(isVideoRecordingTooShort(500)).toBe(false);
   });
 
+  it('rejects recordings longer than the 2-minute cap', () => {
+    expect(isVideoRecordingTooLong(VIDEO_MAX_DURATION_MS)).toBe(false);
+    expect(isVideoRecordingTooLong(VIDEO_MAX_DURATION_MS + 1)).toBe(true);
+  });
+
   it('saves compressed video moments with optional caption', async () => {
     const onProgress = jest.fn();
     const { insertMoment } = jest.requireMock('@/db/repositories/moments') as {
@@ -51,5 +58,11 @@ describe('capture-video', () => {
         tagsJson: JSON.stringify(['Lake', 'Water']),
       }),
     );
+  });
+
+  it('refuses to save videos over the duration cap', async () => {
+    await expect(
+      saveVideoMoment('file:///tmp/video.mp4', VIDEO_MAX_DURATION_MS + 1),
+    ).rejects.toThrow('Video is too long to save.');
   });
 });

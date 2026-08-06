@@ -23,11 +23,14 @@ import {
   VoicePlaybackMeter,
 } from '@/components/voice/VoiceMeter';
 import { Text } from '@/components/ui/text';
-import { BOTTOM_SHEET_SURFACE } from '@/lib/app-constants';
+import {
+  BOTTOM_SHEET_SURFACE,
+  VOICE_MAX_DURATION_MS,
+  VOICE_NOTE_MAX_LENGTH,
+} from '@/lib/app-constants';
 import { AppBottomSheet } from '@/components/ui/app-bottom-sheet';
 import type { VoiceMemoPreviewDraft } from '@/components/map/VoiceMemoPreviewSheet';
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import { VOICE_MAX_DURATION_MS } from '@/lib/app-constants';
 import {
   formatVoiceDurationCap,
   formatVoiceDurationMs,
@@ -771,7 +774,7 @@ export function VoiceMemoSheet({
           placeholderTextColor="#9CA3AF"
           style={styles.noteInput}
           multiline
-          maxLength={280}
+          maxLength={VOICE_NOTE_MAX_LENGTH}
           editable={phase === 'preview'}
           returnKeyType="done"
           blurOnSubmit

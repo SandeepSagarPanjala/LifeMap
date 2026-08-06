@@ -37,6 +37,11 @@ import type {
   ActivityFieldDefinition,
   ActivityFieldType,
 } from '@/lib/activities/activity-definition';
+import {
+  ACTIVITY_MAX_CHOICE_OPTION_LENGTH,
+  ACTIVITY_MAX_CHOICE_OPTIONS,
+  ACTIVITY_MAX_LABEL_LENGTH,
+} from '@/lib/activities/activity-definition';
 import type { PhosphorIcon } from '@/lib/profile/phosphor-icon';
 
 const ACTIVITY_TINT = '#F0FDF4';
@@ -607,6 +612,7 @@ export const ActivityFieldsEditor = forwardRef<
             value={item.label}
             onChangeText={text => updateField(index, { label: text })}
             onFocus={onInputFocus}
+            maxLength={ACTIVITY_MAX_LABEL_LENGTH}
             style={styles.labelInput}
             placeholder="Label"
             placeholderTextColor="#8E8E93"
@@ -621,11 +627,18 @@ export const ActivityFieldsEditor = forwardRef<
                 updateField(index, {
                   options: text
                     .split(',')
-                    .map(part => part.trim())
-                    .filter(Boolean),
+                    .map(part =>
+                      part.trim().slice(0, ACTIVITY_MAX_CHOICE_OPTION_LENGTH),
+                    )
+                    .filter(Boolean)
+                    .slice(0, ACTIVITY_MAX_CHOICE_OPTIONS),
                 })
               }
               onFocus={onInputFocus}
+              maxLength={
+                ACTIVITY_MAX_CHOICE_OPTIONS *
+                (ACTIVITY_MAX_CHOICE_OPTION_LENGTH + 2)
+              }
               style={styles.optionsInput}
               placeholder="Options: Back, Chest, Legs"
               placeholderTextColor="#8E8E93"

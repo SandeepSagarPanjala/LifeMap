@@ -45,6 +45,41 @@ export function metricFieldsFromDefinition(
   return out;
 }
 
+const LOGS_PERIOD_METRIC: InsightPeriodMetric = { id: 'logs', kind: 'logs' };
+
+/**
+ * Metric tabs for an activity: money fields first, then number/duration,
+ * then Logs last.
+ */
+export function insightPeriodMetricOptions(
+  fields: readonly ActivityFieldDefinition[],
+): InsightPeriodMetric[] {
+  const fieldMetrics = metricFieldsFromDefinition(fields).map(field => ({
+    id: field.fieldId,
+    kind: field.kind,
+    fieldId: field.fieldId,
+    label: field.label,
+  }));
+  const money = fieldMetrics.filter(metric => metric.kind === 'money');
+  const other = fieldMetrics.filter(metric => metric.kind !== 'money');
+  return [...money, ...other, LOGS_PERIOD_METRIC];
+}
+
+/** Prefer Amount (money), else first other field metric, else Logs. */
+export function defaultInsightPeriodMetric(
+  options: readonly InsightPeriodMetric[],
+): InsightPeriodMetric {
+  const money = options.find(option => option.kind === 'money');
+  if (money != null) {
+    return money;
+  }
+  const field = options.find(option => option.kind !== 'logs');
+  if (field != null) {
+    return field;
+  }
+  return options[0] ?? LOGS_PERIOD_METRIC;
+}
+
 function fieldContribution(
   moment: MomentRow,
   fieldId: string,

@@ -4,6 +4,7 @@ import { BottomSheetTextInput } from '@gorhom/bottom-sheet';
 
 import { Text } from '@/components/ui/text';
 import { AppBottomSheet } from '@/components/ui/app-bottom-sheet';
+import { MAX_SAVED_PLACE_LABEL_LENGTH } from '@/lib/app-constants';
 
 type VisitPlaceCustomLabelSheetProps = {
   visible: boolean;
@@ -22,7 +23,7 @@ export function VisitPlaceCustomLabelSheet({
 
   useEffect(() => {
     if (visible) {
-      setValue(initialValue);
+      setValue(initialValue.slice(0, MAX_SAVED_PLACE_LABEL_LENGTH));
     }
   }, [initialValue, visible]);
 
@@ -36,12 +37,13 @@ export function VisitPlaceCustomLabelSheet({
         autoFocus
         value={value}
         onChangeText={setValue}
+        maxLength={MAX_SAVED_PLACE_LABEL_LENGTH}
         placeholder="e.g. Client office"
         placeholderTextColor="#8E8E93"
         style={styles.input}
         returnKeyType="done"
         onSubmitEditing={() => {
-          const trimmed = value.trim();
+          const trimmed = value.trim().slice(0, MAX_SAVED_PLACE_LABEL_LENGTH);
           if (trimmed) {
             onSave(trimmed);
           }
@@ -60,7 +62,9 @@ export function VisitPlaceCustomLabelSheet({
           accessibilityRole="button"
           accessibilityLabel="Save custom label"
           disabled={!value.trim()}
-          onPress={() => onSave(value.trim())}
+          onPress={() =>
+            onSave(value.trim().slice(0, MAX_SAVED_PLACE_LABEL_LENGTH))
+          }
           style={[
             styles.button,
             styles.saveButton,

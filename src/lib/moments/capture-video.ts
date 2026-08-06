@@ -4,12 +4,16 @@ import { APP_COPY } from '@/lib/app-copy';
 import { insertMoment, type MomentRow } from '@/db/repositories/moments';
 import { saveMomentToGallery } from '@/lib/moments/capture-photo';
 import { compressMomentVideo } from '@/lib/moments/compress-video';
-import { VIDEO_CONTENT_FORMAT } from '@/lib/app-constants';
+import {
+  MIN_VIDEO_DURATION_MS,
+  PHOTO_CAPTION_MAX_LENGTH,
+  VIDEO_CONTENT_FORMAT,
+  VIDEO_MAX_DURATION_MS,
+} from '@/lib/app-constants';
 import { persistFileToMomentSandbox } from '@/lib/moments/moment-storage';
 import { serializeMomentTagsJson } from '@/lib/moments/moment-tags';
 import { scheduleMomentThumbnailGeneration } from '@/lib/moments/schedule-moment-thumbnail';
 
-const MIN_VIDEO_DURATION_MS = 500;
 const MOMENT_VIDEO_FILE_EXTENSION = 'mp4';
 
 export type SaveVideoMomentProgress = {
@@ -19,6 +23,20 @@ export type SaveVideoMomentProgress = {
 
 export function isVideoRecordingTooShort(durationMs: number): boolean {
   return durationMs < MIN_VIDEO_DURATION_MS;
+}
+
+export function isVideoRecordingTooLong(durationMs: number): boolean {
+  return durationMs > VIDEO_MAX_DURATION_MS;
+}
+
+function clipCaption(caption: string | null | undefined): string | null {
+  const trimmed = caption?.trim() || null;
+  if (trimmed == null) {
+    return null;
+  }
+  return trimmed.length > PHOTO_CAPTION_MAX_LENGTH
+    ? trimmed.slice(0, PHOTO_CAPTION_MAX_LENGTH)
+    : trimmed;
 }
 
 export async function saveVideoMoment(
@@ -31,6 +49,9 @@ export async function saveVideoMoment(
 ): Promise<MomentRow> {
   if (isVideoRecordingTooShort(durationMs)) {
     throw new Error('Video is too short to save.');
+  }
+  if (isVideoRecordingTooLong(durationMs)) {
+    throw new Error('Video is too long to save.');
   }
 
   onProgress?.({ label: 'Saving to Photos…' });
@@ -71,7 +92,7 @@ export async function saveVideoMoment(
       contentPath: sandboxFile.contentPath,
       contentBytes: sandboxFile.contentBytes,
       contentFormat: VIDEO_CONTENT_FORMAT,
-      caption: caption?.trim() || null,
+      caption: clipCaption(caption),
       tagsJson: serializeMomentTagsJson(tags),
       moodLabel,
       moodVariant,

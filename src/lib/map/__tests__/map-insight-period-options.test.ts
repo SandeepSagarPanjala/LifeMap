@@ -73,12 +73,26 @@ describe('map-insight-period-options', () => {
   });
 
   it('defaults to the current period window', () => {
+    const today = defaultMapInsightFilterOption('today', now);
+    expect(today.id).toBe('today:2026-08-03');
+    expect(today.isCurrent).toBe(true);
     const week = defaultMapInsightFilterOption('week', now);
     expect(week.isCurrent).toBe(true);
     const month = defaultMapInsightFilterOption('month', now);
     expect(month.id).toBe('month:2026-08');
     const year = defaultMapInsightFilterOption('year', now);
     expect(year.id).toBe('year:2026');
+  });
+
+  it('resolves Today without a filter menu', () => {
+    const today = resolveFilterForTabChange({
+      nextTab: 'today',
+      previousTab: 'overview',
+      previousFilter: null,
+      dateKeysWithData: ['2026-08-02'],
+      now,
+    });
+    expect(today?.id).toBe('today:2026-08-03');
   });
 
   it('preserves year when switching year → month', () => {

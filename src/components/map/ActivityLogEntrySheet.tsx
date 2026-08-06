@@ -32,7 +32,11 @@ import { Text } from '@/components/ui/text';
 import type { ActivityRow } from '@/db/repositories/activities';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import {
+  ACTIVITY_MAX_DURATION_MINUTES,
   ACTIVITY_MAX_MEDIA_URIS,
+  ACTIVITY_MAX_MONEY_AMOUNT,
+  ACTIVITY_MAX_NUMBER_VALUE,
+  ACTIVITY_MAX_TEXT_VALUE_LENGTH,
   activityMediaValue,
   getActivityMediaUris,
   type ActivityFieldDefinition,
@@ -97,9 +101,10 @@ function parseMoneyInput(text: string): number | null {
   }
   const value = Number(cleaned);
   // Accept 0; reject negatives (strip already prevents '-').
-  return Number.isFinite(value) && value >= 0
-    ? Math.round(value * 100) / 100
-    : null;
+  if (!Number.isFinite(value) || value < 0 || value > ACTIVITY_MAX_MONEY_AMOUNT) {
+    return null;
+  }
+  return Math.round(value * 100) / 100;
 }
 
 /** Structured activity log form — prefer fullPage for keyboard reliability. */
@@ -718,6 +723,7 @@ export function ActivityLogEntryPanel({
           }}
           onFocus={handleInputFocus}
           keyboardType="decimal-pad"
+          maxLength={16}
           inputAccessoryViewID={
             Platform.OS === 'ios' ? NUMERIC_KEYBOARD_ACCESSORY_ID : undefined
           }
@@ -740,13 +746,14 @@ export function ActivityLogEntryPanel({
               return;
             }
             const value = Number(cleaned);
-            if (!Number.isFinite(value)) {
+            if (!Number.isFinite(value) || value > ACTIVITY_MAX_NUMBER_VALUE) {
               return;
             }
             setFieldValue(field.id, { type: 'number', value });
           }}
           onFocus={handleInputFocus}
           keyboardType="decimal-pad"
+          maxLength={16}
           inputAccessoryViewID={
             Platform.OS === 'ios' ? NUMERIC_KEYBOARD_ACCESSORY_ID : undefined
           }
@@ -765,11 +772,16 @@ export function ActivityLogEntryPanel({
           onChangeText={text =>
             setFieldValue(
               field.id,
-              text.trim() ? { type: 'text', value: text } : undefined,
+              text.trim()
+                ? {
+                    type: 'text',
+                    value: text.slice(0, ACTIVITY_MAX_TEXT_VALUE_LENGTH),
+                  }
+                : undefined,
             )
           }
           onFocus={handleInputFocus}
-          maxLength={120}
+          maxLength={ACTIVITY_MAX_TEXT_VALUE_LENGTH}
           returnKeyType="done"
           onSubmitEditing={Keyboard.dismiss}
           placeholder={`${field.label} of ${activity.label}`}
@@ -837,13 +849,15 @@ export function ActivityLogEntryPanel({
               setFieldValue(field.id, undefined);
               return;
             }
+            const clamped = Math.min(mins, ACTIVITY_MAX_DURATION_MINUTES);
             setFieldValue(field.id, {
               type: 'duration',
-              seconds: mins * 60,
+              seconds: clamped * 60,
             });
           }}
           onFocus={handleInputFocus}
           keyboardType="number-pad"
+          maxLength={5}
           inputAccessoryViewID={
             Platform.OS === 'ios' ? NUMERIC_KEYBOARD_ACCESSORY_ID : undefined
           }

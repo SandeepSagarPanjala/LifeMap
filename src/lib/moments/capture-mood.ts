@@ -1,11 +1,23 @@
 import { insertMoment, type MomentRow } from '@/db/repositories/moments';
-import { VOICE_CONTENT_FORMAT } from '@/lib/app-constants';
+import {
+  VOICE_CONTENT_FORMAT,
+  VOICE_TRANSCRIPT_MAX_LENGTH,
+} from '@/lib/app-constants';
+import { MAX_MOOD_REASON_LENGTH } from '@/lib/moments/mood-art';
 import {
   deleteMomentContentFile,
   moveFileToMomentSandbox,
 } from '@/lib/moments/moment-storage';
 
 const MIN_VOICE_DURATION_MS = 500;
+
+function clipText(value: string | null | undefined, max: number): string | null {
+  const trimmed = value?.trim() || null;
+  if (trimmed == null) {
+    return null;
+  }
+  return trimmed.length > max ? trimmed.slice(0, max) : trimmed;
+}
 
 export type CaptureMoodVoiceInput = {
   uri: string;
@@ -29,7 +41,7 @@ export async function saveMoodMoment(
   }
 
   const moodVariant = input.moodVariant.trim() || null;
-  let moodReason = input.moodReason?.trim() || null;
+  let moodReason = clipText(input.moodReason, MAX_MOOD_REASON_LENGTH);
   let voiceAttachmentPath: string | null = null;
   let voiceAttachmentBytes: number | null = null;
   let voiceDurationSec: number | null = null;
@@ -42,7 +54,10 @@ export async function saveMoodMoment(
     }
     // Voice reason replaces text reason — keep moodReason null in the row.
     moodReason = null;
-    voiceTranscript = input.voice.transcript?.trim() || null;
+    voiceTranscript = clipText(
+      input.voice.transcript,
+      VOICE_TRANSCRIPT_MAX_LENGTH,
+    );
     try {
       const sandboxFile = await moveFileToMomentSandbox(input.voice.uri, 'm4a');
       voiceAttachmentPath = sandboxFile.contentPath;

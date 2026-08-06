@@ -283,9 +283,22 @@ export const MOOD_VOICE_MAX_DURATION_MS = 60_000;
 export const PHOTO_VOICE_MAX_DURATION_MS = 60_000;
 /** Optional text attached on camera review. */
 export const PHOTO_CAPTION_MAX_LENGTH = 500;
+/** Optional note on a standalone voice memo. */
+export const VOICE_NOTE_MAX_LENGTH = 280;
+/** Mood / voice STT transcript clipped before persist. */
+export const VOICE_TRANSCRIPT_MAX_LENGTH = 500;
+/** Diary note title. */
+export const NOTE_TITLE_MAX_LENGTH = 120;
+/** Diary note body. */
+export const NOTE_BODY_MAX_LENGTH = 5_000;
+/** Address lookup query for saved places. */
+export const MAX_ADDRESS_QUERY_LENGTH = 250;
+/** Per photo/video tag label length. */
+export const MAX_PHOTO_TAG_LENGTH = 40;
 export const VOICE_CONTENT_FORMAT = 'aac' as const;
 
-export const VIDEO_MAX_DURATION_MS = 5 * 60_000;
+/** Camera video moments — hard stop at 2 minutes. */
+export const VIDEO_MAX_DURATION_MS = 2 * 60_000;
 export const VIDEO_CONTENT_FORMAT = 'mp4' as const;
 export const VIDEO_COMPRESS_MAX_SIZE = 1280;
 

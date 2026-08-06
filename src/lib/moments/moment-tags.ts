@@ -1,4 +1,7 @@
+import { MAX_PHOTO_TAG_LENGTH } from '@/lib/app-constants';
+
 export const MAX_PHOTO_TAGS = 8;
+export { MAX_PHOTO_TAG_LENGTH };
 
 export type PhotoTagCandidate = {
   label: string;
@@ -17,7 +20,13 @@ const USELESS_TAG_KEYS = new Set([
 ]);
 
 export function normalizePhotoTag(raw: string): string | null {
-  const trimmed = raw.trim().replace(/\s+/g, ' ');
+  let trimmed = raw.trim().replace(/\s+/g, ' ');
+  if (!trimmed) {
+    return null;
+  }
+  if (trimmed.length > MAX_PHOTO_TAG_LENGTH) {
+    trimmed = trimmed.slice(0, MAX_PHOTO_TAG_LENGTH).trim();
+  }
   if (!trimmed) {
     return null;
   }

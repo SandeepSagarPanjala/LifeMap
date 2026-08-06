@@ -311,11 +311,165 @@ describe('buildMapOverviewInsights', () => {
     expect(overview.work.commuteCount).toBe(2);
     expect(overview.work.commuteMinMs).toBe(15 * 60_000);
     expect(overview.work.commuteMaxMs).toBe(20 * 60_000);
-    expect(overview.work.distanceToWorkKm).toBeGreaterThan(0);
+    expect(overview.work.distanceFromHomeKm).toBeGreaterThan(0);
     expect(overview.work.speedAvgKmh).toBeGreaterThan(0);
     expect(overview.work.weekdayCounts.length).toBeGreaterThan(0);
     expect(overview.work.typicalArriveMinutes).not.toBeNull();
     expect(overview.work.typicalLeaveMinutes).not.toBeNull();
+  });
+
+  it('counts only home → work travels as commutes', () => {
+    const savedPlaces = [
+      saved({ id: 1, kind: 'home', label: 'Home', lat: 33.2, lng: -97.1 }),
+      saved({ id: 2, kind: 'work', label: 'Office', lat: 33.25, lng: -97.12 }),
+      saved({
+        id: 3,
+        kind: 'favorite',
+        label: 'Gym',
+        lat: 33.22,
+        lng: -97.11,
+      }),
+    ];
+    const trips = [
+      // Gym → Work (should NOT count as commute)
+      trip({
+        id: 1,
+        kind: 'stay',
+        dateKey: '2026-08-05',
+        placeId: 3,
+        placeKind: 'saved',
+        startAt: new Date('2026-08-05T12:00:00Z'),
+        endAt: new Date('2026-08-05T13:00:00Z'),
+        durationMs: 3_600_000,
+        segmentOrder: 0,
+      }),
+      trip({
+        id: 2,
+        kind: 'travel',
+        dateKey: '2026-08-05',
+        distanceKm: 4,
+        durationMs: 5 * 60_000,
+        startAt: new Date('2026-08-05T13:00:00Z'),
+        endAt: new Date('2026-08-05T13:05:00Z'),
+        segmentOrder: 1,
+      }),
+      trip({
+        id: 3,
+        kind: 'stay',
+        dateKey: '2026-08-05',
+        placeId: 2,
+        placeKind: 'saved',
+        startAt: new Date('2026-08-05T13:05:00Z'),
+        endAt: new Date('2026-08-05T17:00:00Z'),
+        durationMs: 4 * 3_600_000 - 5 * 60_000,
+        segmentOrder: 2,
+      }),
+      // Home → Work (should count)
+      trip({
+        id: 4,
+        kind: 'stay',
+        dateKey: '2026-08-06',
+        placeId: 1,
+        placeKind: 'saved',
+        startAt: new Date('2026-08-06T12:00:00Z'),
+        endAt: new Date('2026-08-06T13:00:00Z'),
+        durationMs: 3_600_000,
+        segmentOrder: 0,
+      }),
+      trip({
+        id: 5,
+        kind: 'travel',
+        dateKey: '2026-08-06',
+        distanceKm: 10,
+        durationMs: 25 * 60_000,
+        startAt: new Date('2026-08-06T13:00:00Z'),
+        endAt: new Date('2026-08-06T13:25:00Z'),
+        segmentOrder: 1,
+      }),
+      trip({
+        id: 6,
+        kind: 'stay',
+        dateKey: '2026-08-06',
+        placeId: 2,
+        placeKind: 'saved',
+        startAt: new Date('2026-08-06T13:25:00Z'),
+        endAt: new Date('2026-08-06T18:00:00Z'),
+        durationMs: 4 * 3_600_000 + 35 * 60_000,
+        segmentOrder: 2,
+      }),
+    ];
+
+    const overview = buildMapOverviewInsights({ savedPlaces, trips });
+    expect(overview.work.visitCount).toBe(2);
+    expect(overview.work.commuteCount).toBe(1);
+    expect(overview.work.commuteMinMs).toBe(25 * 60_000);
+    expect(overview.work.commuteMaxMs).toBe(25 * 60_000);
+
+    const fastest = listMapOverviewDrillRows({
+      kind: 'work_commute_fastest',
+      savedPlaces,
+      trips,
+    });
+    expect(fastest).toHaveLength(1);
+    expect(fastest[0]!.tripId).toBe(5);
+    expect(fastest[0]!.title).toBe('Home → Office');
+  });
+
+  it('builds favorite place overview with home→place commute', () => {
+    const savedPlaces = [
+      saved({ id: 1, kind: 'home', label: 'Home', lat: 33.2, lng: -97.1 }),
+      saved({ id: 3, kind: 'favorite', label: 'Gym', lat: 33.21, lng: -97.12 }),
+    ];
+    const trips = [
+      trip({
+        id: 1,
+        kind: 'stay',
+        dateKey: '2026-08-04',
+        placeId: 1,
+        placeKind: 'saved',
+        startAt: new Date('2026-08-04T12:00:00Z'),
+        endAt: new Date('2026-08-04T13:00:00Z'),
+        durationMs: 3_600_000,
+        segmentOrder: 0,
+      }),
+      trip({
+        id: 2,
+        kind: 'travel',
+        dateKey: '2026-08-04',
+        startAt: new Date('2026-08-04T13:00:00Z'),
+        endAt: new Date('2026-08-04T13:20:00Z'),
+        durationMs: 20 * 60_000,
+        distanceKm: 5,
+        segmentOrder: 1,
+      }),
+      trip({
+        id: 3,
+        kind: 'stay',
+        dateKey: '2026-08-04',
+        placeId: 3,
+        placeKind: 'saved',
+        startAt: new Date('2026-08-04T13:20:00Z'),
+        endAt: new Date('2026-08-04T14:20:00Z'),
+        durationMs: 3_600_000,
+        segmentOrder: 2,
+      }),
+    ];
+    const overview = buildMapOverviewInsights({ savedPlaces, trips });
+    expect(overview.favorites).toHaveLength(1);
+    expect(overview.favorites[0]!.label).toBe('Gym');
+    expect(overview.favorites[0]!.visitCount).toBe(1);
+    expect(overview.favorites[0]!.commuteCount).toBe(1);
+    expect(overview.favorites[0]!.commuteMinMs).toBe(20 * 60_000);
+    expect(overview.favorites[0]!.distanceFromHomeKm).toBeGreaterThan(0);
+
+    const fastest = listMapOverviewDrillRows({
+      kind: 'work_commute_fastest',
+      savedPlaces,
+      trips,
+      placeId: 3,
+    });
+    expect(fastest).toHaveLength(1);
+    expect(fastest[0]!.title).toBe('Home → Gym');
   });
 
   it('lists full-day home stays for drill-down', () => {

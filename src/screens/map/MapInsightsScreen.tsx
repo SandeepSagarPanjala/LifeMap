@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,9 +11,8 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Check, ChevronLeft, ListFilter, Map as MapIcon, X } from 'lucide-react-native';
+import { Check, ChevronDown, ChevronLeft, ChevronUp, ListFilter, Map as MapIcon, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { LinearTransition } from 'react-native-reanimated';
 
 import { InsightSegmentBar } from '@/components/capture/InsightSegmentBar';
 import { MapGlassCircleButton } from '@/components/map/MapGlassCircleButton';
@@ -38,7 +38,6 @@ import {
 import { formatDistance, type DistanceUnit } from '@/lib/location-geo';
 import {
   contextFromFilterOption,
-  defaultMapInsightFilterOption,
   listMapInsightFilterOptions,
   listWeekOptionsForMonth,
   mapInsightMonthBarLabel,
@@ -54,6 +53,11 @@ import {
   type MapInsightTab,
 } from '@/lib/map/map-insight-period-options';
 import {
+  defaultPersistedMapInsightSelection,
+  loadPersistedMapInsightSelection,
+  persistMapInsightSelection,
+} from '@/lib/map/map-insight-selection';
+import {
   buildMapInsightsSummary,
   mapInsightFetchStartForRange,
   type MapFrequentTravel,
@@ -66,6 +70,7 @@ import {
 import {
   buildMapOverviewInsights,
   withCommuteGpsTopSpeed,
+  type MapDestinationOverview,
   type MapOverviewDrillKind,
   type MapOverviewInsights,
 } from '@/lib/map/map-overview-insights';
@@ -85,11 +90,11 @@ const THEME = {
 const FILTER_BUTTON_SIZE = 36;
 
 /** Survives leaving Map for other insight categories in the same session. */
-let persistedMapInsightTab: MapInsightTab = 'week';
+const sessionDefaults = defaultPersistedMapInsightSelection();
+let persistedMapInsightTab: MapInsightTab = sessionDefaults.tab;
 let persistedMapInsightFilter: MapInsightFilterOption | null =
-  defaultMapInsightFilterOption('week');
-let persistedWeekFocus: MapInsightFilterOption =
-  defaultMapInsightFilterOption('week');
+  sessionDefaults.filter;
+let persistedWeekFocus: MapInsightFilterOption = sessionDefaults.weekFocus;
 
 function tabToSummaryPeriod(tab: MapInsightTab): MapInsightPeriod | null {
   if (tab === 'overview') {
@@ -109,8 +114,8 @@ function weekFocusFromSelection(
   if (selection.weekIndex != null) {
     return selection;
   }
-  // Year range starts Jan 1 — do not drag Month/Week chrome to January.
-  if (selection.id.startsWith('year:')) {
+  // Year / Today ranges should not drag Month/Week chrome to Jan 1 / today-only.
+  if (selection.id.startsWith('year:') || selection.id.startsWith('today:')) {
     return fallback;
   }
   const monthKey = monthKeyFromDateKey(selection.startDateKey);
@@ -128,20 +133,75 @@ function WidgetCard({
   children,
   tint,
   accent,
+  collapsible,
+  expanded = true,
+  onToggleExpand,
 }: {
   title: string;
   children: ReactNode;
   tint: string;
   accent: string;
+  collapsible?: boolean;
+  expanded?: boolean;
+  onToggleExpand?: () => void;
 }) {
+  const isExpanded = !collapsible || expanded;
+
   return (
-    <Animated.View
-      layout={LinearTransition.duration(220)}
-      style={[styles.widget, { backgroundColor: tint }]}
-    >
-      <Text style={[styles.widgetTitle, { color: accent }]}>{title}</Text>
-      {children}
-    </Animated.View>
+    <View style={[styles.widget, { backgroundColor: tint }]}>
+      {collapsible && onToggleExpand != null ? (
+        <View style={styles.widgetHeaderRow}>
+          <View style={styles.widgetTitleWrap}>
+            <RNText
+              style={[styles.widgetTitle, { color: accent }]}
+              numberOfLines={1}
+              allowFontScaling={false}
+            >
+              {title}
+            </RNText>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ expanded: isExpanded }}
+            accessibilityLabel={
+              isExpanded
+                ? `${title}. ${APP_COPY.mapInsights.overviewCollapse}`
+                : `${title}. ${APP_COPY.mapInsights.overviewExpand}`
+            }
+            hitSlop={8}
+            onPress={onToggleExpand}
+            style={({ pressed }) =>
+              pressed ? styles.collapseChipPressed : null
+            }
+          >
+            <View style={styles.collapseChipRow}>
+              <RNText
+                style={[styles.collapseChipLabel, { color: accent }]}
+                allowFontScaling={false}
+              >
+                {isExpanded
+                  ? APP_COPY.mapInsights.overviewCollapse
+                  : APP_COPY.mapInsights.overviewExpand}
+              </RNText>
+              {isExpanded ? (
+                <ChevronUp size={16} color={accent} strokeWidth={2.25} />
+              ) : (
+                <ChevronDown size={16} color={accent} strokeWidth={2.25} />
+              )}
+            </View>
+          </Pressable>
+        </View>
+      ) : (
+        <RNText
+          style={[styles.widgetTitle, { color: accent }]}
+          numberOfLines={1}
+          allowFontScaling={false}
+        >
+          {title}
+        </RNText>
+      )}
+      {isExpanded ? children : null}
+    </View>
   );
 }
 
@@ -162,11 +222,15 @@ function StatCell({
   onPress?: () => void;
 }) {
   const valueColor = onPress != null && highlight != null ? highlight : foreground;
-  const body = (
-    <>
-      <Text style={[styles.statLabel, { color: muted }]} numberOfLines={1}>
+  const row = (
+    <View style={styles.statRowInner}>
+      <RNText
+        style={[styles.statLabel, { color: muted }]}
+        numberOfLines={1}
+        allowFontScaling={false}
+      >
         {label}
-      </Text>
+      </RNText>
       <RNText
         style={[styles.statValue, { color: valueColor }]}
         allowFontScaling={false}
@@ -174,22 +238,26 @@ function StatCell({
       >
         {value}
       </RNText>
-    </>
+    </View>
   );
 
   if (onPress != null) {
     return (
       <Pressable
         accessibilityRole="button"
+        accessibilityLabel={`${label} ${value}`}
         onPress={onPress}
-        style={styles.statCell}
+        style={({ pressed }) => [
+          styles.statRow,
+          pressed ? { opacity: 0.72 } : null,
+        ]}
       >
-        {body}
+        {row}
       </Pressable>
     );
   }
 
-  return <View style={styles.statCell}>{body}</View>;
+  return <View style={styles.statRow}>{row}</View>;
 }
 
 function OverviewSection({
@@ -197,16 +265,330 @@ function OverviewSection({
   accent,
   children,
 }: {
-  title: string;
+  title?: string;
   accent: string;
   children: ReactNode;
 }) {
   return (
     <View style={styles.overviewSection}>
-      <Text style={[styles.overviewSectionTitle, { color: accent }]}>
-        {title}
+      {title != null ? (
+        <Text style={[styles.overviewSectionTitle, { color: accent }]}>
+          {title}
+        </Text>
+      ) : null}
+      <View style={styles.statsList}>{children}</View>
+    </View>
+  );
+}
+
+function destinationCopy(kind: 'work' | 'favorite') {
+  if (kind === 'work') {
+    return {
+      hours: APP_COPY.mapInsights.hoursAtWork,
+      distance: APP_COPY.mapInsights.distanceToWork,
+      stayMin: APP_COPY.mapInsights.workStayMin,
+      stayMax: APP_COPY.mapInsights.workStayMax,
+      stayAvg: APP_COPY.mapInsights.workStayAvg,
+      weekdays: APP_COPY.mapInsights.workWeekdays,
+    };
+  }
+  return {
+    hours: APP_COPY.mapInsights.hoursAtPlace,
+    distance: APP_COPY.mapInsights.distanceFromHome,
+    stayMin: APP_COPY.mapInsights.placeStayMin,
+    stayMax: APP_COPY.mapInsights.placeStayMax,
+    stayAvg: APP_COPY.mapInsights.placeStayAvg,
+    weekdays: APP_COPY.mapInsights.placeWeekdays,
+  };
+}
+
+function DestinationOverviewBody({
+  destination,
+  muted,
+  foreground,
+  accent,
+  soft,
+  distanceUnit,
+  onDrill,
+}: {
+  destination: MapDestinationOverview;
+  muted: string;
+  foreground: string;
+  accent: string;
+  soft: string;
+  distanceUnit: DistanceUnit;
+  onDrill: (
+    kind: MapOverviewDrillKind,
+    title: string,
+    weekday?: number,
+  ) => void;
+}) {
+  const copy = destinationCopy(destination.kind);
+
+  if (destination.visitCount <= 0) {
+    return (
+      <Text style={[styles.emptyBlock, { color: muted }]}>
+        {APP_COPY.mapInsights.overviewNoVisitData}
       </Text>
-      <View style={styles.statsGrid}>{children}</View>
+    );
+  }
+
+  return (
+    <View style={styles.overviewSections}>
+      <OverviewSection accent={accent}>
+        <StatCell
+          label={APP_COPY.mapInsights.workVisits}
+          value={String(destination.visitCount)}
+          muted={muted}
+          foreground={foreground}
+          highlight={accent}
+          onPress={() =>
+            onDrill('work_stays_all', APP_COPY.mapInsights.workVisits)
+          }
+        />
+        <StatCell
+          label={copy.hours}
+          value={formatTripDuration(destination.totalMs)}
+          muted={muted}
+          foreground={foreground}
+          highlight={accent}
+          onPress={() => onDrill('work_stays_all', copy.hours)}
+        />
+        <StatCell
+          label={copy.distance}
+          value={
+            destination.distanceFromHomeKm != null
+              ? formatDistance(destination.distanceFromHomeKm, distanceUnit)
+              : '—'
+          }
+          muted={muted}
+          foreground={foreground}
+        />
+      </OverviewSection>
+
+      <View style={[styles.overviewDivider, { backgroundColor: soft }]} />
+
+      <OverviewSection accent={accent}>
+        <StatCell
+          label={APP_COPY.mapInsights.commuteMin}
+          value={
+            destination.commuteMinMs != null
+              ? formatTripDuration(destination.commuteMinMs)
+              : '—'
+          }
+          muted={muted}
+          foreground={foreground}
+          highlight={accent}
+          onPress={
+            destination.commuteMinMs != null
+              ? () =>
+                  onDrill(
+                    'work_commute_fastest',
+                    APP_COPY.mapInsights.commuteMin,
+                  )
+              : undefined
+          }
+        />
+        <StatCell
+          label={APP_COPY.mapInsights.commuteMax}
+          value={
+            destination.commuteMaxMs != null
+              ? formatTripDuration(destination.commuteMaxMs)
+              : '—'
+          }
+          muted={muted}
+          foreground={foreground}
+          highlight={accent}
+          onPress={
+            destination.commuteMaxMs != null
+              ? () =>
+                  onDrill(
+                    'work_commute_slowest',
+                    APP_COPY.mapInsights.commuteMax,
+                  )
+              : undefined
+          }
+        />
+        <StatCell
+          label={APP_COPY.mapInsights.commuteAvg}
+          value={
+            destination.commuteAvgMs != null
+              ? formatTripDuration(destination.commuteAvgMs)
+              : '—'
+          }
+          muted={muted}
+          foreground={foreground}
+        />
+      </OverviewSection>
+
+      <View style={[styles.overviewDivider, { backgroundColor: soft }]} />
+
+      <OverviewSection accent={accent}>
+        <StatCell
+          label={copy.stayMin}
+          value={
+            destination.stayMinMs != null
+              ? formatTripDuration(destination.stayMinMs)
+              : '—'
+          }
+          muted={muted}
+          foreground={foreground}
+          highlight={accent}
+          onPress={
+            destination.stayMinMs != null
+              ? () => onDrill('work_stay_shortest', copy.stayMin)
+              : undefined
+          }
+        />
+        <StatCell
+          label={copy.stayMax}
+          value={
+            destination.stayMaxMs != null
+              ? formatTripDuration(destination.stayMaxMs)
+              : '—'
+          }
+          muted={muted}
+          foreground={foreground}
+          highlight={accent}
+          onPress={
+            destination.stayMaxMs != null
+              ? () => onDrill('work_stay_longest', copy.stayMax)
+              : undefined
+          }
+        />
+        <StatCell
+          label={copy.stayAvg}
+          value={
+            destination.stayAvgMs != null
+              ? formatTripDuration(destination.stayAvgMs)
+              : '—'
+          }
+          muted={muted}
+          foreground={foreground}
+        />
+      </OverviewSection>
+
+      <View style={[styles.overviewDivider, { backgroundColor: soft }]} />
+
+      <OverviewSection accent={accent}>
+        <StatCell
+          label={APP_COPY.mapInsights.commuteSpeedMin}
+          value={
+            destination.speedMinKmh != null
+              ? formatSpeedKmh(destination.speedMinKmh, distanceUnit)
+              : '—'
+          }
+          muted={muted}
+          foreground={foreground}
+          highlight={accent}
+          onPress={
+            destination.speedMinKmh != null
+              ? () =>
+                  onDrill(
+                    'work_commute_speed_min',
+                    APP_COPY.mapInsights.commuteSpeedMin,
+                  )
+              : undefined
+          }
+        />
+        <StatCell
+          label={APP_COPY.mapInsights.commuteSpeedMax}
+          value={
+            destination.speedMaxKmh != null
+              ? formatSpeedKmh(destination.speedMaxKmh, distanceUnit)
+              : '—'
+          }
+          muted={muted}
+          foreground={foreground}
+          highlight={accent}
+          onPress={
+            destination.speedMaxKmh != null
+              ? () =>
+                  onDrill(
+                    'work_commute_speed_max',
+                    APP_COPY.mapInsights.commuteSpeedMax,
+                  )
+              : undefined
+          }
+        />
+        <StatCell
+          label={APP_COPY.mapInsights.commuteSpeedAvg}
+          value={
+            destination.speedAvgKmh != null
+              ? formatSpeedKmh(destination.speedAvgKmh, distanceUnit)
+              : '—'
+          }
+          muted={muted}
+          foreground={foreground}
+        />
+      </OverviewSection>
+
+      <View style={[styles.overviewDivider, { backgroundColor: soft }]} />
+
+      <OverviewSection accent={accent}>
+        <StatCell
+          label={APP_COPY.mapInsights.typicalArriveWork}
+          value={
+            destination.typicalArriveMinutes != null
+              ? formatTimeMinutes(destination.typicalArriveMinutes)
+              : '—'
+          }
+          muted={muted}
+          foreground={foreground}
+        />
+        <StatCell
+          label={APP_COPY.mapInsights.typicalLeaveWork}
+          value={
+            destination.typicalLeaveMinutes != null
+              ? formatTimeMinutes(destination.typicalLeaveMinutes)
+              : '—'
+          }
+          muted={muted}
+          foreground={foreground}
+        />
+      </OverviewSection>
+
+      {destination.weekdayCounts.length > 0 ? (
+        <>
+          <View style={[styles.overviewDivider, { backgroundColor: soft }]} />
+          <View style={styles.overviewSection}>
+            <Text style={[styles.overviewSectionTitle, { color: accent }]}>
+              {copy.weekdays}
+            </Text>
+            <View style={styles.statsList}>
+              {destination.weekdayCounts.map(day => (
+                <Pressable
+                  key={day.weekday}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${day.label} ${day.count}`}
+                  onPress={() => onDrill('work_weekday', day.label, day.weekday)}
+                  style={({ pressed }) => [
+                    styles.statRow,
+                    pressed ? { opacity: 0.72 } : null,
+                  ]}
+                >
+                  <View style={styles.statRowInner}>
+                    <RNText
+                      style={[styles.statLabel, { color: muted }]}
+                      numberOfLines={1}
+                      allowFontScaling={false}
+                    >
+                      {day.label}
+                    </RNText>
+                    <RNText
+                      style={[styles.statValue, { color: accent }]}
+                      allowFontScaling={false}
+                      numberOfLines={1}
+                    >
+                      {String(day.count)}
+                    </RNText>
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        </>
+      ) : null}
     </View>
   );
 }
@@ -365,11 +747,19 @@ export function MapInsightsScreen({
   const [summary, setSummary] = useState<MapInsightsSummary | null>(null);
   const [overview, setOverview] = useState<MapOverviewInsights | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectionReady, setSelectionReady] = useState(false);
+  const [collapsedOverviewIds, setCollapsedOverviewIds] = useState<
+    ReadonlySet<string>
+  >(() => new Set());
   const [filterMenuPos, setFilterMenuPos] = useState<{
     top: number;
     right: number;
   } | null>(null);
   const filterAnchorRef = useRef<View>(null);
+  const overviewRef = useRef<MapOverviewInsights | null>(null);
+  const summaryRef = useRef<MapInsightsSummary | null>(null);
+  overviewRef.current = overview;
+  summaryRef.current = summary;
 
   const focusContext = useMemo(() => {
     const fromWeek = contextFromFilterOption(weekFocus);
@@ -394,29 +784,34 @@ export function MapInsightsScreen({
       {
         id: 'overview' as const,
         label: APP_COPY.mapInsights.overview,
-        width: 88,
+        width: 78,
+      },
+      {
+        id: 'today' as const,
+        label: APP_COPY.mapInsights.today,
+        width: 56,
       },
       {
         id: 'week' as const,
         label: mapInsightWeekBarLabel(weekFocus.weekIndex ?? 1),
-        width: 70,
+        width: 68,
       },
       {
         id: 'month' as const,
         label: mapInsightMonthBarLabel(focusContext.monthKey),
-        width: 58,
+        width: 54,
       },
       {
         id: 'year' as const,
         label: mapInsightYearBarLabel(focusContext.year),
-        width: 58,
+        width: 54,
       },
     ],
     [focusContext.monthKey, focusContext.year, weekFocus.weekIndex],
   );
 
   const filterOptions = useMemo(() => {
-    if (tab === 'overview') {
+    if (tab === 'overview' || tab === 'today') {
       return [];
     }
     return listMapInsightFilterOptions({
@@ -427,7 +822,7 @@ export function MapInsightsScreen({
   }, [dateKeysWithData, focusContext.monthKey, tab]);
 
   const showFilterButton =
-    tab === 'overview'
+    tab === 'overview' || tab === 'today'
       ? false
       : tab === 'year'
         ? mapInsightYearFilterAvailable(dateKeysWithData)
@@ -443,7 +838,10 @@ export function MapInsightsScreen({
     ) => {
       const summaryPeriod = tabToSummaryPeriod(nextTab);
       if (nextTab === 'overview') {
-        setLoading(true);
+        // Keep prior overview on screen while refreshing — avoids full wipe flicker.
+        if (overviewRef.current == null) {
+          setLoading(true);
+        }
         try {
           const [trips, savedPlaces, daySummaries] = await Promise.all([
             listAllTrips(),
@@ -456,7 +854,6 @@ export function MapInsightsScreen({
             base.work.commuteTravelIds,
           );
           setOverview(withCommuteGpsTopSpeed(base, gpsTop));
-          setSummary(null);
         } finally {
           setLoading(false);
         }
@@ -464,15 +861,15 @@ export function MapInsightsScreen({
       }
 
       if (summaryPeriod == null || selection == null) {
-        setSummary(null);
-        setOverview(null);
         setLoading(false);
         const daySummaries = await listTripDaySummaries();
         setDateKeysWithData(daySummaries.map(day => day.dateKey));
         return;
       }
 
-      setLoading(true);
+      if (summaryRef.current == null) {
+        setLoading(true);
+      }
       try {
         const bounds = resolveMapInsightFilterBounds(selection);
         const fetchStart = mapInsightFetchStartForRange(
@@ -505,7 +902,6 @@ export function MapInsightsScreen({
             sleepSessions,
           }),
         );
-        setOverview(null);
       } finally {
         setLoading(false);
       }
@@ -514,8 +910,38 @@ export function MapInsightsScreen({
   );
 
   useEffect(() => {
+    let cancelled = false;
+    void loadPersistedMapInsightSelection()
+      .then(saved => {
+        if (cancelled) {
+          return;
+        }
+        persistedMapInsightTab = saved.tab;
+        persistedMapInsightFilter = saved.filter;
+        persistedWeekFocus = saved.weekFocus;
+        setTab(saved.tab);
+        setFilterOption(saved.filter);
+        setWeekFocus(saved.weekFocus);
+      })
+      .catch(() => {
+        // Keep session defaults; still unblock the screen.
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setSelectionReady(true);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!selectionReady) {
+      return;
+    }
     void load(tab, filterOption);
-  }, [filterOption, load, tab]);
+  }, [filterOption, load, selectionReady, tab]);
 
   // After trip-day keys load, if the focused week has no data, jump to one that does.
   useEffect(() => {
@@ -542,6 +968,11 @@ export function MapInsightsScreen({
       persistedWeekFocus = picked;
       setFilterOption(picked);
       setWeekFocus(picked);
+      void persistMapInsightSelection({
+        tab: 'week',
+        filter: picked,
+        weekFocus: picked,
+      });
     }
   }, [dateKeysWithData, filterOption, tab]);
 
@@ -569,6 +1000,11 @@ export function MapInsightsScreen({
       setTab(next);
       setFilterOption(nextFilter);
       setWeekFocus(nextWeek);
+      void persistMapInsightSelection({
+        tab: next,
+        filter: nextFilter,
+        weekFocus: nextWeek,
+      });
     },
     [dateKeysWithData, filterOption, tab, weekFocus],
   );
@@ -586,8 +1022,13 @@ export function MapInsightsScreen({
       setWeekFocus(nextWeek);
       setFilterMenuOpen(false);
       setFilterMenuPos(null);
+      void persistMapInsightSelection({
+        tab,
+        filter: option,
+        weekFocus: nextWeek,
+      });
     },
-    [dateKeysWithData, weekFocus],
+    [dateKeysWithData, tab, weekFocus],
   );
 
   const handleCloseFilterMenu = useCallback(() => {
@@ -618,15 +1059,48 @@ export function MapInsightsScreen({
   }, [navigation]);
 
   const openOverviewDrill = useCallback(
-    (kind: MapOverviewDrillKind, title: string, weekday?: number) => {
+    (
+      kind: MapOverviewDrillKind,
+      title: string,
+      weekday?: number,
+      placeId?: number,
+    ) => {
       navigation.navigate('MapOverviewDrillDown', {
         kind,
         title,
         weekday,
+        placeId,
       });
     },
     [navigation],
   );
+
+  const toggleOverviewCollapsed = useCallback((id: string) => {
+    setCollapsedOverviewIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  /** Work + favorites with visits first; “no data” cards last. */
+  const overviewDestinations = useMemo(() => {
+    if (overview == null) {
+      return [];
+    }
+    const items: MapDestinationOverview[] = [];
+    if (overview.work.configured) {
+      items.push(overview.work);
+    }
+    items.push(...overview.favorites);
+    const withData = items.filter(item => item.visitCount > 0);
+    const noData = items.filter(item => item.visitCount <= 0);
+    return [...withData, ...noData];
+  }, [overview]);
 
   const bottomPad =
     contentBottomInset ??
@@ -639,8 +1113,8 @@ export function MapInsightsScreen({
       summary.rhythm.typicalReturnHomeMinutes != null);
   const hasComparison = summary != null && summary.daysWithData > 0;
   const showInitialLoading =
-    loading &&
-    (tab === 'overview' ? overview == null : summary == null);
+    !selectionReady ||
+    (loading && (tab === 'overview' ? overview == null : summary == null));
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -655,7 +1129,7 @@ export function MapInsightsScreen({
             {
               paddingTop: Math.max(insets.top, 12),
               paddingBottom: bottomPad,
-              maxWidth: windowWidth,
+              width: windowWidth,
             },
           ]}
           showsVerticalScrollIndicator={false}
@@ -724,6 +1198,9 @@ export function MapInsightsScreen({
                   title={overview.home.label || APP_COPY.mapInsights.overviewHome}
                   tint={THEME.tint}
                   accent={THEME.strong}
+                  collapsible
+                  expanded={!collapsedOverviewIds.has('home')}
+                  onToggleExpand={() => toggleOverviewCollapsed('home')}
                 >
                   {!overview.home.configured ? (
                     <Text
@@ -735,7 +1212,7 @@ export function MapInsightsScreen({
                       {APP_COPY.mapInsights.overviewHomeEmpty}
                     </Text>
                   ) : (
-                    <View style={styles.statsGrid}>
+                    <View style={styles.statsList}>
                       <StatCell
                         label={APP_COPY.mapInsights.hoursAtHome}
                         value={formatTripDuration(overview.home.totalMs)}
@@ -812,12 +1289,15 @@ export function MapInsightsScreen({
                   )}
                 </WidgetCard>
 
-                <WidgetCard
-                  title={overview.work.label || APP_COPY.mapInsights.overviewWork}
-                  tint={THEME.tint}
-                  accent={THEME.strong}
-                >
-                  {!overview.work.configured ? (
+                {!overview.work.configured ? (
+                  <WidgetCard
+                    title={overview.work.label || APP_COPY.mapInsights.overviewWork}
+                    tint={THEME.tint}
+                    accent={THEME.strong}
+                    collapsible
+                    expanded={!collapsedOverviewIds.has('work')}
+                    onToggleExpand={() => toggleOverviewCollapsed('work')}
+                  >
                     <Text
                       style={[
                         styles.emptyBlock,
@@ -826,364 +1306,47 @@ export function MapInsightsScreen({
                     >
                       {APP_COPY.mapInsights.overviewWorkEmpty}
                     </Text>
-                  ) : (
-                    <View style={styles.overviewSections}>
-                      <OverviewSection
-                        title={APP_COPY.mapInsights.workSectionSummary}
-                        accent={THEME.strong}
-                      >
-                        <StatCell
-                          label={APP_COPY.mapInsights.workVisits}
-                          value={String(overview.work.visitCount)}
-                          muted={colors.mutedForeground}
-                          foreground={colors.foreground}
-                          highlight={THEME.strong}
-                          onPress={
-                            overview.work.visitCount > 0
-                              ? () =>
-                                  openOverviewDrill(
-                                    'work_stays_all',
-                                    APP_COPY.mapInsights.workVisits,
-                                  )
-                              : undefined
-                          }
-                        />
-                        <StatCell
-                          label={APP_COPY.mapInsights.hoursAtWork}
-                          value={formatTripDuration(overview.work.totalMs)}
-                          muted={colors.mutedForeground}
-                          foreground={colors.foreground}
-                          highlight={THEME.strong}
-                          onPress={
-                            overview.work.visitCount > 0
-                              ? () =>
-                                  openOverviewDrill(
-                                    'work_stays_all',
-                                    APP_COPY.mapInsights.hoursAtWork,
-                                  )
-                              : undefined
-                          }
-                        />
-                        <StatCell
-                          label={APP_COPY.mapInsights.distanceToWork}
-                          value={
-                            overview.work.distanceToWorkKm != null
-                              ? formatDistance(
-                                  overview.work.distanceToWorkKm,
-                                  distanceUnit,
-                                )
-                              : '—'
-                          }
-                          muted={colors.mutedForeground}
-                          foreground={colors.foreground}
-                        />
-                      </OverviewSection>
+                  </WidgetCard>
+                ) : null}
 
-                      <View
-                        style={[
-                          styles.overviewDivider,
-                          { backgroundColor: THEME.soft },
-                        ]}
+                {overviewDestinations.map(place => {
+                  const collapseId =
+                    place.kind === 'work'
+                      ? 'work'
+                      : `place:${place.placeId}`;
+                  return (
+                    <WidgetCard
+                      key={collapseId}
+                      title={
+                        place.kind === 'work'
+                          ? place.label || APP_COPY.mapInsights.overviewWork
+                          : place.label
+                      }
+                      tint={THEME.tint}
+                      accent={THEME.strong}
+                      collapsible
+                      expanded={!collapsedOverviewIds.has(collapseId)}
+                      onToggleExpand={() => toggleOverviewCollapsed(collapseId)}
+                    >
+                      <DestinationOverviewBody
+                        destination={place}
+                        muted={colors.mutedForeground}
+                        foreground={colors.foreground}
+                        accent={THEME.strong}
+                        soft={THEME.soft}
+                        distanceUnit={distanceUnit}
+                        onDrill={(kind, title, weekday) =>
+                          openOverviewDrill(
+                            kind,
+                            title,
+                            weekday,
+                            place.placeId ?? undefined,
+                          )
+                        }
                       />
-
-                      <OverviewSection
-                        title={APP_COPY.mapInsights.workSectionCommute}
-                        accent={THEME.strong}
-                      >
-                        <StatCell
-                          label={APP_COPY.mapInsights.commuteMin}
-                          value={
-                            overview.work.commuteMinMs != null
-                              ? formatTripDuration(overview.work.commuteMinMs)
-                              : '—'
-                          }
-                          muted={colors.mutedForeground}
-                          foreground={colors.foreground}
-                          highlight={THEME.strong}
-                          onPress={
-                            overview.work.commuteMinMs != null
-                              ? () =>
-                                  openOverviewDrill(
-                                    'work_commute_fastest',
-                                    APP_COPY.mapInsights.commuteMin,
-                                  )
-                              : undefined
-                          }
-                        />
-                        <StatCell
-                          label={APP_COPY.mapInsights.commuteMax}
-                          value={
-                            overview.work.commuteMaxMs != null
-                              ? formatTripDuration(overview.work.commuteMaxMs)
-                              : '—'
-                          }
-                          muted={colors.mutedForeground}
-                          foreground={colors.foreground}
-                          highlight={THEME.strong}
-                          onPress={
-                            overview.work.commuteMaxMs != null
-                              ? () =>
-                                  openOverviewDrill(
-                                    'work_commute_slowest',
-                                    APP_COPY.mapInsights.commuteMax,
-                                  )
-                              : undefined
-                          }
-                        />
-                        <StatCell
-                          label={APP_COPY.mapInsights.commuteAvg}
-                          value={
-                            overview.work.commuteAvgMs != null
-                              ? formatTripDuration(overview.work.commuteAvgMs)
-                              : '—'
-                          }
-                          muted={colors.mutedForeground}
-                          foreground={colors.foreground}
-                        />
-                      </OverviewSection>
-
-                      <View
-                        style={[
-                          styles.overviewDivider,
-                          { backgroundColor: THEME.soft },
-                        ]}
-                      />
-
-                      <OverviewSection
-                        title={APP_COPY.mapInsights.workSectionStay}
-                        accent={THEME.strong}
-                      >
-                        <StatCell
-                          label={APP_COPY.mapInsights.workStayMin}
-                          value={
-                            overview.work.stayMinMs != null
-                              ? formatTripDuration(overview.work.stayMinMs)
-                              : '—'
-                          }
-                          muted={colors.mutedForeground}
-                          foreground={colors.foreground}
-                          highlight={THEME.strong}
-                          onPress={
-                            overview.work.stayMinMs != null
-                              ? () =>
-                                  openOverviewDrill(
-                                    'work_stay_shortest',
-                                    APP_COPY.mapInsights.workStayMin,
-                                  )
-                              : undefined
-                          }
-                        />
-                        <StatCell
-                          label={APP_COPY.mapInsights.workStayMax}
-                          value={
-                            overview.work.stayMaxMs != null
-                              ? formatTripDuration(overview.work.stayMaxMs)
-                              : '—'
-                          }
-                          muted={colors.mutedForeground}
-                          foreground={colors.foreground}
-                          highlight={THEME.strong}
-                          onPress={
-                            overview.work.stayMaxMs != null
-                              ? () =>
-                                  openOverviewDrill(
-                                    'work_stay_longest',
-                                    APP_COPY.mapInsights.workStayMax,
-                                  )
-                              : undefined
-                          }
-                        />
-                        <StatCell
-                          label={APP_COPY.mapInsights.workStayAvg}
-                          value={
-                            overview.work.stayAvgMs != null
-                              ? formatTripDuration(overview.work.stayAvgMs)
-                              : '—'
-                          }
-                          muted={colors.mutedForeground}
-                          foreground={colors.foreground}
-                        />
-                      </OverviewSection>
-
-                      <View
-                        style={[
-                          styles.overviewDivider,
-                          { backgroundColor: THEME.soft },
-                        ]}
-                      />
-
-                      <OverviewSection
-                        title={APP_COPY.mapInsights.workSectionSpeed}
-                        accent={THEME.strong}
-                      >
-                        <StatCell
-                          label={APP_COPY.mapInsights.commuteSpeedMin}
-                          value={
-                            overview.work.speedMinKmh != null
-                              ? formatSpeedKmh(
-                                  overview.work.speedMinKmh,
-                                  distanceUnit,
-                                )
-                              : '—'
-                          }
-                          muted={colors.mutedForeground}
-                          foreground={colors.foreground}
-                          highlight={THEME.strong}
-                          onPress={
-                            overview.work.speedMinKmh != null
-                              ? () =>
-                                  openOverviewDrill(
-                                    'work_commute_speed_min',
-                                    APP_COPY.mapInsights.commuteSpeedMin,
-                                  )
-                              : undefined
-                          }
-                        />
-                        <StatCell
-                          label={APP_COPY.mapInsights.commuteSpeedMax}
-                          value={
-                            overview.work.speedMaxKmh != null
-                              ? formatSpeedKmh(
-                                  overview.work.speedMaxKmh,
-                                  distanceUnit,
-                                )
-                              : '—'
-                          }
-                          muted={colors.mutedForeground}
-                          foreground={colors.foreground}
-                          highlight={THEME.strong}
-                          onPress={
-                            overview.work.speedMaxKmh != null
-                              ? () =>
-                                  openOverviewDrill(
-                                    'work_commute_speed_max',
-                                    APP_COPY.mapInsights.commuteSpeedMax,
-                                  )
-                              : undefined
-                          }
-                        />
-                        <StatCell
-                          label={APP_COPY.mapInsights.commuteSpeedAvg}
-                          value={
-                            overview.work.speedAvgKmh != null
-                              ? formatSpeedKmh(
-                                  overview.work.speedAvgKmh,
-                                  distanceUnit,
-                                )
-                              : '—'
-                          }
-                          muted={colors.mutedForeground}
-                          foreground={colors.foreground}
-                        />
-                      </OverviewSection>
-
-                      <View
-                        style={[
-                          styles.overviewDivider,
-                          { backgroundColor: THEME.soft },
-                        ]}
-                      />
-
-                      <OverviewSection
-                        title={APP_COPY.mapInsights.workSectionSchedule}
-                        accent={THEME.strong}
-                      >
-                        <StatCell
-                          label={APP_COPY.mapInsights.typicalArriveWork}
-                          value={
-                            overview.work.typicalArriveMinutes != null
-                              ? formatTimeMinutes(
-                                  overview.work.typicalArriveMinutes,
-                                )
-                              : '—'
-                          }
-                          muted={colors.mutedForeground}
-                          foreground={colors.foreground}
-                        />
-                        <StatCell
-                          label={APP_COPY.mapInsights.typicalLeaveWork}
-                          value={
-                            overview.work.typicalLeaveMinutes != null
-                              ? formatTimeMinutes(
-                                  overview.work.typicalLeaveMinutes,
-                                )
-                              : '—'
-                          }
-                          muted={colors.mutedForeground}
-                          foreground={colors.foreground}
-                        />
-                      </OverviewSection>
-
-                      {overview.work.weekdayCounts.length > 0 ? (
-                        <>
-                          <View
-                            style={[
-                              styles.overviewDivider,
-                              { backgroundColor: THEME.soft },
-                            ]}
-                          />
-                          <View style={styles.overviewSection}>
-                            <Text
-                              style={[
-                                styles.overviewSectionTitle,
-                                { color: THEME.strong },
-                              ]}
-                            >
-                              {APP_COPY.mapInsights.workWeekdays}
-                            </Text>
-                            <View style={styles.list}>
-                              {overview.work.weekdayCounts.map(day => (
-                                <Pressable
-                                  key={day.weekday}
-                                  accessibilityRole="button"
-                                  onPress={() =>
-                                    openOverviewDrill(
-                                      'work_weekday',
-                                      day.label,
-                                      day.weekday,
-                                    )
-                                  }
-                                  style={styles.listRow}
-                                >
-                                  <View style={styles.listRowText}>
-                                    <Text
-                                      style={[
-                                        styles.listRowTitle,
-                                        { color: colors.foreground },
-                                      ]}
-                                      numberOfLines={1}
-                                    >
-                                      {day.label}
-                                    </Text>
-                                    <Text
-                                      style={[
-                                        styles.listRowMeta,
-                                        { color: colors.mutedForeground },
-                                      ]}
-                                      numberOfLines={1}
-                                    >
-                                      {APP_COPY.mapInsights.visits(day.count)}
-                                    </Text>
-                                  </View>
-                                  <RNText
-                                    style={[
-                                      styles.listRowValue,
-                                      { color: THEME.strong },
-                                    ]}
-                                    allowFontScaling={false}
-                                    numberOfLines={1}
-                                  >
-                                    {String(day.count)}
-                                  </RNText>
-                                </Pressable>
-                              ))}
-                            </View>
-                          </View>
-                        </>
-                      ) : null}
-                    </View>
-                  )}
-                </WidgetCard>
+                    </WidgetCard>
+                  );
+                })}
               </>
             )
           ) : null}
@@ -1204,7 +1367,7 @@ export function MapInsightsScreen({
                 tint={THEME.tint}
                 accent={THEME.strong}
               >
-                <View style={styles.statsGrid}>
+                <View style={styles.statsList}>
                   <StatCell
                     label={APP_COPY.mapInsights.distance}
                     value={formatDistance(summary.distanceKm, distanceUnit)}
@@ -1302,7 +1465,7 @@ export function MapInsightsScreen({
                 accent={THEME.strong}
               >
                 {hasRhythm ? (
-                  <View style={styles.statsGrid}>
+                  <View style={styles.statsList}>
                     {summary.rhythm.typicalLeaveHomeMinutes != null ? (
                       <StatCell
                         label={APP_COPY.mapInsights.leaveHome}
@@ -1360,7 +1523,7 @@ export function MapInsightsScreen({
                   tint={THEME.tint}
                   accent={THEME.strong}
                 >
-                  <View style={styles.statsGrid}>
+                  <View style={styles.statsList}>
                     <StatCell
                       label={APP_COPY.mapInsights.distanceChange}
                       value={formatSignedDistance(
@@ -1522,8 +1685,10 @@ const styles = StyleSheet.create({
   },
   content: {
     flexGrow: 1,
+    width: '100%',
     paddingHorizontal: 16,
     gap: 12,
+    alignItems: 'stretch',
   },
   periodRow: {
     height: FILTER_BUTTON_SIZE,
@@ -1648,46 +1813,86 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     overflow: 'hidden',
     gap: 10,
+    alignSelf: 'stretch',
+    width: '100%',
+  },
+  widgetHeaderRow: {
+    flexDirection: 'row',
+    flexWrap: 'nowrap',
+    alignItems: 'center',
+    width: '100%',
+  },
+  widgetTitleWrap: {
+    flex: 1,
+    minWidth: 0,
+    marginRight: 12,
+    justifyContent: 'center',
   },
   widgetTitle: {
     fontSize: 12,
     fontWeight: '800',
+    letterSpacing: 0.4,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
-  statsGrid: {
+  collapseChipRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
+    alignItems: 'center',
+    gap: 2,
+  },
+  collapseChipPressed: {
+    opacity: 0.72,
+  },
+  collapseChipLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  statsList: {
+    gap: 0,
   },
   overviewSections: {
-    gap: 14,
+    gap: 12,
   },
   overviewSection: {
-    gap: 10,
+    gap: 4,
   },
   overviewSectionTitle: {
     fontSize: 11,
     fontWeight: '800',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+    marginBottom: 2,
   },
   overviewDivider: {
     height: StyleSheet.hairlineWidth,
     alignSelf: 'stretch',
   },
-  statCell: {
-    width: '47%',
-    gap: 2,
+  statRow: {
+    alignSelf: 'stretch',
+    height: 34,
+  },
+  statRowInner: {
+    flex: 1,
+    height: 34,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
   },
   statLabel: {
-    fontSize: 11,
+    flex: 1,
+    minWidth: 0,
+    fontSize: 14,
+    lineHeight: 18,
     fontWeight: '600',
+    ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
   },
   statValue: {
-    fontSize: 18,
-    lineHeight: 24,
+    flexShrink: 0,
+    fontSize: 14,
+    lineHeight: 18,
     fontWeight: '800',
+    textAlign: 'right',
+    ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
   },
   list: {
     gap: 12,

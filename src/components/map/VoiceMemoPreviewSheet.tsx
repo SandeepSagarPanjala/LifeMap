@@ -32,6 +32,7 @@ import {
   MAP_MOMENTS_BAR_HEIGHT,
   MAP_MOMENTS_SIDE_BTN_GAP,
   MAP_STACK_BUTTON_SIZE,
+  VOICE_NOTE_MAX_LENGTH,
 } from '@/lib/app-constants';
 import { saveVoiceMoment } from '@/lib/moments/capture-voice';
 import { formatVoiceDurationMs } from '@/lib/moments/format-voice-duration';
@@ -294,7 +295,7 @@ export function VoiceMemoPreviewSheet({
                 placeholderTextColor="#9CA3AF"
                 style={styles.noteInput}
                 multiline
-                maxLength={280}
+                maxLength={VOICE_NOTE_MAX_LENGTH}
                 returnKeyType="done"
                 blurOnSubmit
                 onSubmitEditing={() => {

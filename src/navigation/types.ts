@@ -19,6 +19,7 @@ export type RootStackParamList = {
       | 'work_weekday';
     title: string;
     weekday?: number;
+    placeId?: number;
   };
   Settings: undefined;
   ThemeSettings: undefined;
@@ -63,6 +64,13 @@ export type RootStackParamList = {
           fieldId: string;
           label: string;
         };
+    /** When set, only logs in this notify timing bucket. */
+    timingKind?: 'on_time' | 'early' | 'late';
+    /**
+     * When set, only logs for this shop key (lowercase name, or `__none__`
+     * when the shop field is empty).
+     */
+    shopNameFilter?: string;
   };
   MomentInsightPeriodDetail: {
     momentKind: 'mood' | 'note' | 'voice' | 'photo' | 'video';

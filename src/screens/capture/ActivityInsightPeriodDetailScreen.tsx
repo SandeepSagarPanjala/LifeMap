@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   Platform,
   Pressable,
   StyleSheet,
@@ -27,10 +28,22 @@ import {
 } from '@/db/repositories/moments';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import {
+  getActivityMediaUris,
+  parseActivityValuesJson,
+} from '@/lib/activities/activity-definition';
+import {
+  activityInsightRowTitle,
   momentsInRange,
   resolveShopNameFieldId,
   shopNameFromMoment,
 } from '@/lib/activities/activity-insight-period-logs';
+import {
+  filterMomentsByReminderTiming,
+  formatReminderTimingOffset,
+  reminderFireOnDay,
+  reminderTimingLabel,
+  type ReminderTimingKind,
+} from '@/lib/activities/activity-reminder-timing';
 import {
   activityExperienceIntentLabel,
   type ActivityIntent,
@@ -46,9 +59,13 @@ import {
   MAP_MOMENTS_BAR_HEIGHT,
 } from '@/lib/app-constants';
 import { toDateKey } from '@/lib/day-utils';
+import { reminderConfigFromRow } from '@/lib/notifications/activity-reminders';
 import { resolveGalleryPlaceLabelsForMoments } from '@/lib/moments/gallery-moment-place-labels';
+import { momentImageUri } from '@/lib/moments/moment-media-uri';
 import { queueMomentPreview } from '@/lib/moments/moment-preview-navigation';
 import type { RootStackParamList } from '@/navigation/types';
+
+const ACTIVITY_THUMB_SIZE = 56;
 
 type PeriodMetricParam = RootStackParamList['ActivityInsightPeriodDetail']['metric'];
 
@@ -95,17 +112,41 @@ function formatLoggedAt(date: Date): string {
   });
 }
 
+/** First photo or scan URI on an activity log, if any. */
+function firstActivityImageUri(moment: MomentRow): string | null {
+  const values = parseActivityValuesJson(moment.activityValuesJson);
+  let firstScan: string | null = null;
+  for (const value of Object.values(values)) {
+    const uris = getActivityMediaUris(value);
+    const first = uris[0]?.trim() || null;
+    if (first == null) {
+      continue;
+    }
+    if (value.type === 'photo') {
+      return first;
+    }
+    if (value.type === 'scan' && firstScan == null) {
+      firstScan = first;
+    }
+  }
+  return firstScan;
+}
+
 type DrilldownRow = {
   moment: MomentRow;
-  shopName: string;
+  title: string;
+  /** When the activity has a shop field, show time under the title. */
+  showWhenUnderTitle: boolean;
   valueLabel: string;
   whenLabel: string;
   placeLabel: string;
+  imageUri: string | null;
 };
 
 /**
  * Period drill-down: every activity log in Today / Week / Month / Year with
- * shop name, metric total, date/time, POI, and a footer matching the period sum.
+ * title (shop name when applicable), metric total, date/time, POI, and a
+ * footer matching the period sum.
  */
 export function ActivityInsightPeriodDetailScreen() {
   const navigation =
@@ -121,9 +162,21 @@ export function ActivityInsightPeriodDetailScreen() {
     startMs,
     endMs,
     metric: metricParam,
+    timingKind: timingKindParam,
+    shopNameFilter,
   } = route.params;
 
   const metric = useMemo(() => metricFromParam(metricParam), [metricParam]);
+  const timingKind = useMemo((): ReminderTimingKind | null => {
+    if (
+      timingKindParam === 'on_time' ||
+      timingKindParam === 'early' ||
+      timingKindParam === 'late'
+    ) {
+      return timingKindParam;
+    }
+    return null;
+  }, [timingKindParam]);
   const rangeStart = useMemo(() => new Date(startMs), [startMs]);
   const rangeEnd = useMemo(() => new Date(endMs), [endMs]);
 
@@ -166,18 +219,50 @@ export function ActivityInsightPeriodDetailScreen() {
 
   const theme = INTENT_THEME[activity?.intent ?? 'track'];
 
+  const reminderConfig = useMemo(
+    () => (activity != null ? reminderConfigFromRow(activity) : null),
+    [activity],
+  );
+
   const rows = useMemo((): DrilldownRow[] => {
-    const inRange = momentsInRange(moments, rangeStart, rangeEnd);
+    let inRange = momentsInRange(moments, rangeStart, rangeEnd);
+    if (timingKind != null && reminderConfig != null) {
+      inRange = filterMomentsByReminderTiming(
+        inRange,
+        reminderConfig,
+        timingKind,
+      );
+    }
+    if (shopNameFilter != null && shopNameFieldId != null) {
+      inRange = inRange.filter(moment => {
+        const name = shopNameFromMoment(moment, shopNameFieldId);
+        if (shopNameFilter === '__none__') {
+          return name == null;
+        }
+        return name != null && name.toLowerCase() === shopNameFilter;
+      });
+    }
+    const hasShopField = shopNameFieldId != null;
     return inRange.map(moment => {
-      const shop = shopNameFromMoment(moment, shopNameFieldId);
       const contribution = momentMetricContribution(moment, metric);
       const place = placeLabels.get(moment.id)?.trim() || null;
+      const whenLabel = formatLoggedAt(moment.timestamp);
+      let valueLabel = formatMetricCompact(metric, contribution);
+      if (timingKind != null && reminderConfig != null) {
+        const scheduledAt = reminderFireOnDay(
+          moment.timestamp,
+          reminderConfig.timeMinutes,
+        );
+        valueLabel = formatReminderTimingOffset(moment.timestamp, scheduledAt);
+      }
       return {
         moment,
-        shopName: shop ?? 'No shop name',
-        valueLabel: formatMetricCompact(metric, contribution),
-        whenLabel: formatLoggedAt(moment.timestamp),
+        title: activityInsightRowTitle(moment, shopNameFieldId, whenLabel),
+        showWhenUnderTitle: hasShopField,
+        valueLabel,
+        whenLabel,
         placeLabel: place ?? 'No place',
+        imageUri: firstActivityImageUri(moment),
       };
     });
   }, [
@@ -186,15 +271,39 @@ export function ActivityInsightPeriodDetailScreen() {
     placeLabels,
     rangeEnd,
     rangeStart,
+    reminderConfig,
     shopNameFieldId,
+    shopNameFilter,
+    timingKind,
   ]);
 
-  const periodTotal = useMemo(
-    () => sumMetricInRange(moments, metric, rangeStart, rangeEnd),
-    [metric, moments, rangeEnd, rangeStart],
-  );
+  const periodTotalLabel = useMemo(() => {
+    if (timingKind != null) {
+      return String(rows.length);
+    }
+    if (shopNameFilter != null) {
+      return formatMetricCompact(
+        metric,
+        rows.reduce(
+          (sum, row) => sum + momentMetricContribution(row.moment, metric),
+          0,
+        ),
+      );
+    }
+    return formatMetricCompact(
+      metric,
+      sumMetricInRange(moments, metric, rangeStart, rangeEnd),
+    );
+  }, [
+    metric,
+    moments,
+    rangeEnd,
+    rangeStart,
+    rows,
+    shopNameFilter,
+    timingKind,
+  ]);
 
-  const periodTotalLabel = formatMetricCompact(metric, periodTotal);
 
   const handleClose = useCallback(() => {
     if (navigation.canGoBack()) {
@@ -221,45 +330,102 @@ export function ActivityInsightPeriodDetailScreen() {
     MAP_MOMENTS_BAR_HEIGHT + Math.max(insets.bottom, MAP_MOMENTS_BAR_GAP) + 16;
 
   const renderItem = useCallback<ListRenderItem<DrilldownRow>>(
-    ({ item }) => (
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`${item.shopName}, ${item.valueLabel}, ${item.whenLabel}`}
-        onPress={() => handleOpenPreview(item.moment)}
-        style={({ pressed }) => [
-          styles.row,
-          {
-            backgroundColor: colors.card,
-            borderColor: colors.border,
-            opacity: pressed ? 0.82 : 1,
-          },
-        ]}
-      >
-        <View style={styles.rowTop}>
-          <Text
-            style={[styles.shopName, { color: colors.foreground }]}
-            numberOfLines={1}
-          >
-            {item.shopName}
-          </Text>
-          <RNText
-            style={[styles.rowValue, { color: theme.strong }]}
-            allowFontScaling={false}
-          >
-            {item.valueLabel}
-          </RNText>
-        </View>
-        <Text style={[styles.meta, { color: colors.mutedForeground }]}>
-          {item.whenLabel}
-        </Text>
-        <Text
-          style={[styles.meta, { color: colors.mutedForeground }]}
-          numberOfLines={2}
+    ({ item }) => {
+      const hasImage = item.imageUri != null;
+      return (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${item.title}, ${item.valueLabel}, ${item.whenLabel}`}
+          onPress={() => handleOpenPreview(item.moment)}
+          style={({ pressed }) => [
+            hasImage ? styles.mediaCard : styles.row,
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              opacity: pressed ? 0.82 : 1,
+            },
+          ]}
         >
-          {item.placeLabel}
-        </Text>
-      </Pressable>
-    ),
+          {hasImage ? (
+            <View style={styles.mediaRowInner}>
+              <View
+                style={[
+                  styles.thumb,
+                  { backgroundColor: '#E8EEF5', borderColor: colors.border },
+                ]}
+              >
+                <Image
+                  source={{ uri: momentImageUri(item.imageUri!) }}
+                  style={styles.thumbImage}
+                  resizeMode="cover"
+                />
+              </View>
+              <View style={styles.mediaRowBody}>
+                <View style={styles.rowTop}>
+                  <RNText
+                    style={[styles.rowTitle, { color: colors.foreground }]}
+                    numberOfLines={1}
+                    allowFontScaling={false}
+                  >
+                    {item.title}
+                  </RNText>
+                  <RNText
+                    style={[styles.rowValue, { color: theme.strong }]}
+                    allowFontScaling={false}
+                  >
+                    {item.valueLabel}
+                  </RNText>
+                </View>
+                {item.showWhenUnderTitle ? (
+                  <RNText
+                    style={[styles.meta, { color: colors.mutedForeground }]}
+                    numberOfLines={1}
+                    allowFontScaling={false}
+                  >
+                    {item.whenLabel}
+                  </RNText>
+                ) : null}
+                <RNText
+                  style={[styles.meta, { color: colors.mutedForeground }]}
+                  numberOfLines={2}
+                  allowFontScaling={false}
+                >
+                  {item.placeLabel}
+                </RNText>
+              </View>
+            </View>
+          ) : (
+            <>
+              <View style={styles.rowTop}>
+                <Text
+                  style={[styles.rowTitle, { color: colors.foreground }]}
+                  numberOfLines={1}
+                >
+                  {item.title}
+                </Text>
+                <RNText
+                  style={[styles.rowValue, { color: theme.strong }]}
+                  allowFontScaling={false}
+                >
+                  {item.valueLabel}
+                </RNText>
+              </View>
+              {item.showWhenUnderTitle ? (
+                <Text style={[styles.meta, { color: colors.mutedForeground }]}>
+                  {item.whenLabel}
+                </Text>
+              ) : null}
+              <Text
+                style={[styles.meta, { color: colors.mutedForeground }]}
+                numberOfLines={2}
+              >
+                {item.placeLabel}
+              </Text>
+            </>
+          )}
+        </Pressable>
+      );
+    },
     [
       colors.border,
       colors.card,
@@ -274,10 +440,12 @@ export function ActivityInsightPeriodDetailScreen() {
     if (activity == null) {
       return null;
     }
-    const periodLine =
-      metric.kind !== 'logs' && metric.label
-        ? `${periodTitle} · ${metric.label}`
-        : periodTitle;
+    let periodLine = periodTitle;
+    if (timingKind != null) {
+      periodLine = `${reminderTimingLabel(timingKind)} · ${periodTitle}`;
+    } else if (metric.kind !== 'logs' && metric.label) {
+      periodLine = `${periodTitle} · ${metric.label}`;
+    }
     return (
       <View style={[styles.hero, { backgroundColor: theme.tint }]}>
         <RNText style={styles.heroEmoji} allowFontScaling={false}>
@@ -319,6 +487,7 @@ export function ActivityInsightPeriodDetailScreen() {
     periodTitle,
     theme.chipBg,
     theme.tint,
+    timingKind,
   ]);
 
   const listFooter = useMemo(
@@ -458,13 +627,41 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     gap: 4,
   },
+  mediaCard: {
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+  },
+  mediaRowInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  thumb: {
+    width: ACTIVITY_THUMB_SIZE,
+    height: ACTIVITY_THUMB_SIZE,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth,
+    marginRight: 12,
+  },
+  thumbImage: {
+    width: ACTIVITY_THUMB_SIZE,
+    height: ACTIVITY_THUMB_SIZE,
+  },
+  mediaRowBody: {
+    flex: 1,
+    justifyContent: 'center',
+    gap: 2,
+    minWidth: 0,
+  },
   rowTop: {
     flexDirection: 'row',
     alignItems: 'baseline',
     justifyContent: 'space-between',
     gap: 12,
   },
-  shopName: {
+  rowTitle: {
     flex: 1,
     fontSize: 16,
     fontWeight: '800',

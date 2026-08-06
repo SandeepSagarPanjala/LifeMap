@@ -1,5 +1,6 @@
 import {
   ACTIVITY_FIELD_TYPES,
+  ACTIVITY_MAX_CHOICE_OPTION_LENGTH,
   ACTIVITY_MAX_CHOICE_OPTIONS,
   ACTIVITY_MAX_FIELD_ID_LENGTH,
   ACTIVITY_MAX_FIELDS,
@@ -118,7 +119,7 @@ function validateField(
       };
     }
     const options = record.options
-      .map(item => String(item).trim())
+      .map(item => String(item).trim().slice(0, ACTIVITY_MAX_CHOICE_OPTION_LENGTH))
       .filter(Boolean);
     if (options.length === 0) {
       return {

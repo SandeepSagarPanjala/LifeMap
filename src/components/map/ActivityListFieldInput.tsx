@@ -12,6 +12,7 @@ import { X } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
 import {
   ACTIVITY_MAX_LIST_ITEMS,
+  ACTIVITY_MAX_LIST_ITEM_LENGTH,
   parseListItemsFromText,
   sanitizeListItems,
 } from '@/lib/activities/parse-items-from-ocr';
@@ -110,6 +111,7 @@ export function ActivityListFieldInput({
           onSubmitEditing={handleSubmit}
           returnKeyType="done"
           blurOnSubmit
+          maxLength={ACTIVITY_MAX_LIST_ITEM_LENGTH}
           placeholder={items.length > 0 ? 'Add more…' : placeholder}
           placeholderTextColor="#8E8E93"
           style={styles.input}

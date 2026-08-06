@@ -35,6 +35,21 @@ export function shopNameFromMoment(
   return trimmed || null;
 }
 
+/**
+ * Primary drill-down row title: shop name when the activity has a bill-linked
+ * shop field; otherwise the caller-supplied fallback (usually the log time).
+ */
+export function activityInsightRowTitle(
+  moment: MomentRow,
+  shopNameFieldId: string | null,
+  fallbackTitle: string,
+): string {
+  if (shopNameFieldId == null) {
+    return fallbackTitle;
+  }
+  return shopNameFromMoment(moment, shopNameFieldId) ?? 'No shop name';
+}
+
 /** Moments in [start, end], newest first. */
 export function momentsInRange(
   moments: readonly MomentRow[],
