@@ -196,6 +196,10 @@ function inferSparseGapStop(
  *
  * Bare `isMoving: true` is not enough when activity is still/unknown/missing/
  * foot and speed is low — indoor GPS often flips that flag during jitter.
+ *
+ * Confident `in_vehicle` with a known low speed is not moving either — Core
+ * Motion often keeps the car activity for minutes after parking (speed ≈ 0).
+ * Null speed still trusts `isMoving` so mid-drive gaps without speed stay travel.
  */
 export function isMovingPoint(
   point: ParsedPoint,
@@ -210,7 +214,11 @@ export function isMovingPoint(
     return false;
   }
   if (confident && isWheeledMotionActivity(activity)) {
-    return true;
+    if (point.speed != null) {
+      return point.speed >= config.movingSpeedMps;
+    }
+    // No speed reading: keep treating SDK "moving" as travel; otherwise still.
+    return point.isMoving === true;
   }
   if (point.isMoving === true) {
     if (

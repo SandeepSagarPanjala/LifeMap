@@ -8,6 +8,8 @@ import {
   Text as RNText,
   useWindowDimensions,
   View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -88,6 +90,7 @@ const THEME = {
 };
 
 const FILTER_BUTTON_SIZE = 36;
+const CONTENT_H_PADDING = 16;
 
 /** Survives leaving Map for other insight categories in the same session. */
 const sessionDefaults = defaultPersistedMapInsightSelection();
@@ -468,86 +471,6 @@ function DestinationOverviewBody({
         />
       </OverviewSection>
 
-      <View style={[styles.overviewDivider, { backgroundColor: soft }]} />
-
-      <OverviewSection accent={accent}>
-        <StatCell
-          label={APP_COPY.mapInsights.commuteSpeedMin}
-          value={
-            destination.speedMinKmh != null
-              ? formatSpeedKmh(destination.speedMinKmh, distanceUnit)
-              : '—'
-          }
-          muted={muted}
-          foreground={foreground}
-          highlight={accent}
-          onPress={
-            destination.speedMinKmh != null
-              ? () =>
-                  onDrill(
-                    'work_commute_speed_min',
-                    APP_COPY.mapInsights.commuteSpeedMin,
-                  )
-              : undefined
-          }
-        />
-        <StatCell
-          label={APP_COPY.mapInsights.commuteSpeedMax}
-          value={
-            destination.speedMaxKmh != null
-              ? formatSpeedKmh(destination.speedMaxKmh, distanceUnit)
-              : '—'
-          }
-          muted={muted}
-          foreground={foreground}
-          highlight={accent}
-          onPress={
-            destination.speedMaxKmh != null
-              ? () =>
-                  onDrill(
-                    'work_commute_speed_max',
-                    APP_COPY.mapInsights.commuteSpeedMax,
-                  )
-              : undefined
-          }
-        />
-        <StatCell
-          label={APP_COPY.mapInsights.commuteSpeedAvg}
-          value={
-            destination.speedAvgKmh != null
-              ? formatSpeedKmh(destination.speedAvgKmh, distanceUnit)
-              : '—'
-          }
-          muted={muted}
-          foreground={foreground}
-        />
-      </OverviewSection>
-
-      <View style={[styles.overviewDivider, { backgroundColor: soft }]} />
-
-      <OverviewSection accent={accent}>
-        <StatCell
-          label={APP_COPY.mapInsights.typicalArriveWork}
-          value={
-            destination.typicalArriveMinutes != null
-              ? formatTimeMinutes(destination.typicalArriveMinutes)
-              : '—'
-          }
-          muted={muted}
-          foreground={foreground}
-        />
-        <StatCell
-          label={APP_COPY.mapInsights.typicalLeaveWork}
-          value={
-            destination.typicalLeaveMinutes != null
-              ? formatTimeMinutes(destination.typicalLeaveMinutes)
-              : '—'
-          }
-          muted={muted}
-          foreground={foreground}
-        />
-      </OverviewSection>
-
       {destination.weekdayCounts.length > 0 ? (
         <>
           <View style={[styles.overviewDivider, { backgroundColor: soft }]} />
@@ -588,6 +511,161 @@ function DestinationOverviewBody({
             </View>
           </View>
         </>
+      ) : null}
+    </View>
+  );
+}
+
+function SavedPlacesPager({
+  pages,
+  pageWidth,
+  muted,
+  foreground,
+  accent,
+  soft,
+  distanceUnit,
+  onDrill,
+}: {
+  pages: readonly {
+    key: string;
+    title: string;
+    destination: MapDestinationOverview | null;
+    emptyMessage?: string;
+  }[];
+  pageWidth: number;
+  muted: string;
+  foreground: string;
+  accent: string;
+  soft: string;
+  distanceUnit: DistanceUnit;
+  onDrill: (
+    placeId: number | undefined,
+    kind: MapOverviewDrillKind,
+    title: string,
+    weekday?: number,
+  ) => void;
+}) {
+  const pagerRef = useRef<ScrollView>(null);
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageHeights, setPageHeights] = useState<Readonly<Record<string, number>>>(
+    {},
+  );
+  const pagesKey = pages.map(page => page.key).join('|');
+
+  useEffect(() => {
+    setPageIndex(0);
+    setPageHeights({});
+    pagerRef.current?.scrollTo({ x: 0, animated: false });
+  }, [pagesKey]);
+
+  const handleScrollEnd = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const next = Math.round(event.nativeEvent.contentOffset.x / pageWidth);
+      const clamped = Math.max(0, Math.min(pages.length - 1, next));
+      setPageIndex(clamped);
+    },
+    [pageWidth, pages.length],
+  );
+
+  const handlePageLayout = useCallback((key: string, height: number) => {
+    const nextHeight = Math.ceil(height);
+    if (nextHeight <= 0) {
+      return;
+    }
+    setPageHeights(prev => {
+      if (prev[key] === nextHeight) {
+        return prev;
+      }
+      return { ...prev, [key]: nextHeight };
+    });
+  }, []);
+
+  if (pages.length === 0) {
+    return null;
+  }
+
+  const activeKey = pages[pageIndex]?.key;
+  const activeHeight =
+    activeKey != null ? pageHeights[activeKey] : undefined;
+
+  return (
+    <View style={styles.savedPlacesPager}>
+      <View
+        style={[
+          styles.savedPlacesViewport,
+          { width: pageWidth },
+          activeHeight != null ? { height: activeHeight } : null,
+        ]}
+      >
+        <ScrollView
+          ref={pagerRef}
+          horizontal
+          pagingEnabled
+          nestedScrollEnabled
+          decelerationRate="fast"
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={handleScrollEnd}
+          style={styles.savedPlacesScroll}
+          contentContainerStyle={styles.savedPlacesScrollContent}
+        >
+          {pages.map(page => (
+            <View key={page.key} style={{ width: pageWidth }}>
+              <View
+                collapsable={false}
+                style={styles.savedPlacesPageInner}
+                onLayout={event =>
+                  handlePageLayout(page.key, event.nativeEvent.layout.height)
+                }
+              >
+                <WidgetCard title={page.title} tint={THEME.tint} accent={accent}>
+                  {page.destination != null ? (
+                    <DestinationOverviewBody
+                      destination={page.destination}
+                      muted={muted}
+                      foreground={foreground}
+                      accent={accent}
+                      soft={soft}
+                      distanceUnit={distanceUnit}
+                      onDrill={(kind, title, weekday) =>
+                        onDrill(
+                          page.destination?.placeId ?? undefined,
+                          kind,
+                          title,
+                          weekday,
+                        )
+                      }
+                    />
+                  ) : (
+                    <Text style={[styles.emptyBlock, { color: muted }]}>
+                      {page.emptyMessage ??
+                        APP_COPY.mapInsights.overviewNoVisitData}
+                    </Text>
+                  )}
+                </WidgetCard>
+              </View>
+            </View>
+          ))}
+        </ScrollView>
+      </View>
+      {pages.length > 1 ? (
+        <View
+          style={styles.savedPlacesDotsRow}
+          accessibilityLabel={`Place ${pageIndex + 1} of ${pages.length}`}
+        >
+          {pages.map((page, index) => {
+            const active = index === pageIndex;
+            return (
+              <View
+                key={page.key}
+                style={[
+                  styles.savedPlacesDot,
+                  active ? styles.savedPlacesDotActive : null,
+                  { backgroundColor: active ? accent : soft },
+                ]}
+              />
+            );
+          })}
+        </View>
       ) : null}
     </View>
   );
@@ -660,14 +738,6 @@ function formatSignedDistance(
     return `−${abs}`;
   }
   return abs;
-}
-
-function formatSpeedKmh(kmh: number, unit: DistanceUnit): string {
-  if (unit === 'mi') {
-    const mph = kmh * 0.621371;
-    return `${mph < 10 ? mph.toFixed(1) : Math.round(mph)} mph`;
-  }
-  return `${kmh < 10 ? kmh.toFixed(1) : Math.round(kmh)} km/h`;
 }
 
 function formatSignedCount(delta: number): string {
@@ -1087,20 +1157,39 @@ export function MapInsightsScreen({
     });
   }, []);
 
-  /** Work + favorites with visits first; “no data” cards last. */
-  const overviewDestinations = useMemo(() => {
+  /** Work first, then favorites (visits first, no-data last). */
+  const overviewSavedPages = useMemo(() => {
     if (overview == null) {
       return [];
     }
-    const items: MapDestinationOverview[] = [];
-    if (overview.work.configured) {
-      items.push(overview.work);
+    const pages: {
+      key: string;
+      title: string;
+      destination: MapDestinationOverview | null;
+      emptyMessage?: string;
+    }[] = [];
+    pages.push({
+      key: 'work',
+      title: overview.work.label || APP_COPY.mapInsights.overviewWork,
+      destination: overview.work.configured ? overview.work : null,
+      emptyMessage: overview.work.configured
+        ? undefined
+        : APP_COPY.mapInsights.overviewWorkEmpty,
+    });
+    const favorites = [...overview.favorites];
+    const withData = favorites.filter(item => item.visitCount > 0);
+    const noData = favorites.filter(item => item.visitCount <= 0);
+    for (const place of [...withData, ...noData]) {
+      pages.push({
+        key: `place:${place.placeId}`,
+        title: place.label,
+        destination: place,
+      });
     }
-    items.push(...overview.favorites);
-    const withData = items.filter(item => item.visitCount > 0);
-    const noData = items.filter(item => item.visitCount <= 0);
-    return [...withData, ...noData];
+    return pages;
   }, [overview]);
+
+  const savedPlacesPageWidth = windowWidth - CONTENT_H_PADDING * 2;
 
   const bottomPad =
     contentBottomInset ??
@@ -1289,64 +1378,18 @@ export function MapInsightsScreen({
                   )}
                 </WidgetCard>
 
-                {!overview.work.configured ? (
-                  <WidgetCard
-                    title={overview.work.label || APP_COPY.mapInsights.overviewWork}
-                    tint={THEME.tint}
-                    accent={THEME.strong}
-                    collapsible
-                    expanded={!collapsedOverviewIds.has('work')}
-                    onToggleExpand={() => toggleOverviewCollapsed('work')}
-                  >
-                    <Text
-                      style={[
-                        styles.emptyBlock,
-                        { color: colors.mutedForeground },
-                      ]}
-                    >
-                      {APP_COPY.mapInsights.overviewWorkEmpty}
-                    </Text>
-                  </WidgetCard>
-                ) : null}
-
-                {overviewDestinations.map(place => {
-                  const collapseId =
-                    place.kind === 'work'
-                      ? 'work'
-                      : `place:${place.placeId}`;
-                  return (
-                    <WidgetCard
-                      key={collapseId}
-                      title={
-                        place.kind === 'work'
-                          ? place.label || APP_COPY.mapInsights.overviewWork
-                          : place.label
-                      }
-                      tint={THEME.tint}
-                      accent={THEME.strong}
-                      collapsible
-                      expanded={!collapsedOverviewIds.has(collapseId)}
-                      onToggleExpand={() => toggleOverviewCollapsed(collapseId)}
-                    >
-                      <DestinationOverviewBody
-                        destination={place}
-                        muted={colors.mutedForeground}
-                        foreground={colors.foreground}
-                        accent={THEME.strong}
-                        soft={THEME.soft}
-                        distanceUnit={distanceUnit}
-                        onDrill={(kind, title, weekday) =>
-                          openOverviewDrill(
-                            kind,
-                            title,
-                            weekday,
-                            place.placeId ?? undefined,
-                          )
-                        }
-                      />
-                    </WidgetCard>
-                  );
-                })}
+                <SavedPlacesPager
+                  pages={overviewSavedPages}
+                  pageWidth={savedPlacesPageWidth}
+                  muted={colors.mutedForeground}
+                  foreground={colors.foreground}
+                  accent={THEME.strong}
+                  soft={THEME.soft}
+                  distanceUnit={distanceUnit}
+                  onDrill={(placeId, kind, title, weekday) =>
+                    openOverviewDrill(kind, title, weekday, placeId)
+                  }
+                />
               </>
             )
           ) : null}
@@ -1686,9 +1729,43 @@ const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
     width: '100%',
-    paddingHorizontal: 16,
+    paddingHorizontal: CONTENT_H_PADDING,
     gap: 12,
     alignItems: 'stretch',
+  },
+  savedPlacesPager: {
+    gap: 10,
+    alignSelf: 'stretch',
+  },
+  savedPlacesViewport: {
+    overflow: 'hidden',
+  },
+  savedPlacesScroll: {
+    flexGrow: 0,
+  },
+  savedPlacesScrollContent: {
+    alignItems: 'flex-start',
+  },
+  savedPlacesPageInner: {
+    alignSelf: 'flex-start',
+    width: '100%',
+  },
+  savedPlacesDotsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 2,
+  },
+  savedPlacesDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  savedPlacesDotActive: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   periodRow: {
     height: FILTER_BUTTON_SIZE,

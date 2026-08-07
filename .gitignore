@@ -48,6 +48,9 @@ yarn-error.log
 __personal__/
 .pnpm-store/
 
+# Achievement badge working scenes (full-bleed, pre-gold-frame). Shipped art is assets/achievements/
+assets/achievements-scenes/
+
 # Local secrets
 src/config/env.local.ts
 .env

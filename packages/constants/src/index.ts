@@ -19,20 +19,21 @@ export const GEOFENCE_WAKE_MIN_RADIUS_METERS = 100;
 // ——— Trip detection ———
 
 export const DEFAULT_TRIP_GAP_MINUTES = 10;
-export const DEFAULT_TRIP_DWELL_MINUTES = 5;
+/** Generic stop dwell — long enough to ignore lights; short enough for shops. */
+export const DEFAULT_TRIP_DWELL_MINUTES = 4;
 /** Fixed same-place radius for visit detection (not exposed in Settings). */
-export const HISTORY_SAME_PLACE_RADIUS_METERS = 75;
+export const HISTORY_SAME_PLACE_RADIUS_METERS = 100;
 export const DEFAULT_TRIP_DWELL_RADIUS_METERS =
   HISTORY_SAME_PLACE_RADIUS_METERS;
 
 /** Stops during a drive (Whataburger, charger, etc.) — lower than home dwell. */
-export const MIN_TRIP_STOP_MINUTES = 5;
+export const MIN_TRIP_STOP_MINUTES = 4;
 
 /** Minimum radius when grouping pings at a stop (GPS drift in parking lots). */
 export const MIN_STOP_CLUSTER_RADIUS_METERS = 50;
 
 /** Minimum time at one place before it counts as a visit (stay). */
-export const TRIP_DWELL_CHOICES = [5, 10, 20, 30, 40, 50, 60] as const;
+export const TRIP_DWELL_CHOICES = [4, 5, 10, 20, 30, 40, 50, 60] as const;
 
 /** How close saves must be to count as the same place. */
 export const TRIP_RADIUS_CHOICES = [20, 25, 50, 75, 100, 150] as const;
@@ -41,7 +42,7 @@ export const TRIP_RADIUS_CHOICES = [20, 25, 50, 75, 100, 150] as const;
 export const SAVED_PLACE_MIN_DWELL_MINUTES = 1;
 
 /** Bump when visit/drive detection rules change — invalidates sealed day cache. */
-export const TRIP_DETECTION_VERSION = 26;
+export const TRIP_DETECTION_VERSION = 27;
 
 /** Bump when stored route/visit geometry rules change — invalidates fast load path. */
 export const TRIP_GEOMETRY_VERSION = 4;
@@ -364,8 +365,8 @@ export const ENDPOINT_JUMP_MIN_GAP_MS = 12 * 60 * 60 * 1000;
 export const MIN_VALID_LOCATION_DATE_KEY = '2020-01-01';
 
 export const DEFAULT_STOP_DETECTION_CONFIG = {
-  radiusM: 75,
-  minDwellMs: 5 * 60 * 1000,
+  radiusM: HISTORY_SAME_PLACE_RADIUS_METERS,
+  minDwellMs: DEFAULT_TRIP_DWELL_MINUTES * 60 * 1000,
   maxAccuracyM: 100,
   movingSpeedMps: 2,
   sparseBridgeMinGapMs: 15 * 60 * 1000,

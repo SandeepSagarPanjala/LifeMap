@@ -6,6 +6,7 @@ import { settingsStatsCache } from '../schema';
 export const SETTINGS_STATS_CACHE_KEYS = {
   storageBreakdown: 'storage_breakdown',
   exportTableStats: 'export_table_stats',
+  achievementsProgress: 'achievements_progress',
 } as const;
 
 export type SettingsStatsCacheKey =
