@@ -29,7 +29,6 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { APP_COPY } from '@/lib/app-copy';
 import {
   ACHIEVEMENT_BADGES,
-  ACHIEVEMENT_IMAGES,
   achievementImageSource,
   achievementUnlockInstruction,
   emptyAchievementsProgress,
@@ -98,16 +97,7 @@ function formatProgressValue(value: number): string {
   return value.toFixed(1);
 }
 
-/** Decode all badge PNGs so the pop-up never waits on first decode. */
-function preloadAchievementImages() {
-  for (const id of Object.keys(ACHIEVEMENT_IMAGES) as AchievementBadgeId[]) {
-    const resolved = Image.resolveAssetSource(ACHIEVEMENT_IMAGES[id]);
-    if (resolved?.uri) {
-      void Image.prefetch(resolved.uri);
-    }
-  }
-}
-
+/** Offscreen decode so the detail pop-up never waits on first paint. */
 function AchievementImagePreloader({ size }: { size: number }) {
   return (
     <View
@@ -227,6 +217,7 @@ function BadgeDetailOverlay({
       <Pressable
         style={StyleSheet.absoluteFill}
         onPress={onClose}
+        accessibilityRole="button"
         accessibilityLabel={APP_COPY.common.close}
       />
       <View
@@ -326,10 +317,6 @@ export function AchievementsScreen() {
   useEffect(() => {
     void load();
   }, [load]);
-
-  useEffect(() => {
-    preloadAchievementImages();
-  }, []);
 
   useEffect(() => {
     if (selectedId == null) {

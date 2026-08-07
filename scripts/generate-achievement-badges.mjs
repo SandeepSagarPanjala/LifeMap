@@ -1,5 +1,7 @@
 /**
- * Generates LifeMap achievement badge PNGs (512×512) via SVG → sharp.
+ * Generates LifeMap achievement scene PNGs (512×512, full-bleed) via SVG → sharp.
+ * Writes to assets/achievements-scenes/ (gitignored). Frame with:
+ *   node scripts/apply-achievement-badge-frame.mjs --in assets/achievements-scenes --out assets/achievements
  * Run: node scripts/generate-achievement-badges.mjs
  */
 import fs from 'node:fs';
@@ -8,7 +10,8 @@ import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const OUT = path.join(__dirname, '../assets/achievements');
+/** Scene-only working folder (gitignored). Frame with apply-achievement-badge-frame.mjs. */
+const OUT = path.join(__dirname, '../assets/achievements-scenes');
 
 const BG = '#F7F3EC';
 const TEAL = '#2A9D8F';
@@ -22,7 +25,7 @@ const MOON = '#F4F1DE';
 function svg(inner, bg = BG) {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="${bg}"/>
+  <rect width="512" height="512" fill="${bg}"/>
   <circle cx="256" cy="256" r="200" fill="#fff" opacity="0.55"/>
   ${inner}
 </svg>`;
