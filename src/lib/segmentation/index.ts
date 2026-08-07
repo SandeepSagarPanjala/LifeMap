@@ -8,7 +8,10 @@ import {
   type TimelineGap,
   type TripTimelineOptions,
 } from '@/lib/trip-detection';
-import { HISTORY_SAME_PLACE_RADIUS_METERS } from '@/lib/app-constants';
+import {
+  DEFAULT_TRIP_DWELL_MINUTES,
+  HISTORY_SAME_PLACE_RADIUS_METERS,
+} from '@/lib/app-constants';
 import type { TripDetectionConfig } from '@/lib/trip-settings';
 
 import {
@@ -153,7 +156,7 @@ export function detectSegmentsForDay(
   allPoints: readonly LocationPointRow[],
   config: TripDetectionConfig = {
     gapMinutes: 10,
-    dwellMinutes: 5,
+    dwellMinutes: DEFAULT_TRIP_DWELL_MINUTES,
     dwellRadiusMeters: HISTORY_SAME_PLACE_RADIUS_METERS,
   },
   savedPlaces: readonly SavedPlaceRow[] = [],

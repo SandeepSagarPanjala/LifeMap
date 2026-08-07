@@ -119,6 +119,14 @@ function InsightsTabScreen() {
   return <InsightsScreen />;
 }
 
+function AchievementsTabScreen() {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const AchievementsScreen =
+    require('@/screens/you/AchievementsScreen')
+      .AchievementsScreen as ComponentType;
+  return <AchievementsScreen />;
+}
+
 const TABS: {
   name: YouTabName;
   label: string;
@@ -154,7 +162,7 @@ const TABS: {
     name: 'Achievements',
     label: 'Achievements',
     tabBarIcon: AchievementsTabIcon,
-    component: YouTabPlaceholder,
+    component: AchievementsTabScreen,
   },
 ];
 

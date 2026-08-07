@@ -1,0 +1,67 @@
+import type { ImageSourcePropType } from 'react-native';
+
+import type { AchievementBadgeId } from './types';
+
+export const ACHIEVEMENT_IMAGES: Record<AchievementBadgeId, ImageSourcePropType> =
+  {
+    travel_10: require('../../../assets/achievements/travel_10.png'),
+    travel_50: require('../../../assets/achievements/travel_50.png'),
+    travel_100: require('../../../assets/achievements/travel_100.png'),
+    travel_250: require('../../../assets/achievements/travel_250.png'),
+    travel_500: require('../../../assets/achievements/travel_500.png'),
+    travel_1000: require('../../../assets/achievements/travel_1000.png'),
+    travel_2500: require('../../../assets/achievements/travel_2500.png'),
+    travel_5000: require('../../../assets/achievements/travel_5000.png'),
+    travel_10000: require('../../../assets/achievements/travel_10000.png'),
+    travel_25000: require('../../../assets/achievements/travel_25000.png'),
+    places_5: require('../../../assets/achievements/places_5.png'),
+    places_10: require('../../../assets/achievements/places_10.png'),
+    places_25: require('../../../assets/achievements/places_25.png'),
+    places_50: require('../../../assets/achievements/places_50.png'),
+    places_100: require('../../../assets/achievements/places_100.png'),
+    places_250: require('../../../assets/achievements/places_250.png'),
+    places_500: require('../../../assets/achievements/places_500.png'),
+    cat_cafe: require('../../../assets/achievements/cat_cafe.png'),
+    cat_restaurant: require('../../../assets/achievements/cat_restaurant.png'),
+    cat_bakery: require('../../../assets/achievements/cat_bakery.png'),
+    cat_park: require('../../../assets/achievements/cat_park.png'),
+    cat_beach: require('../../../assets/achievements/cat_beach.png'),
+    cat_airport: require('../../../assets/achievements/cat_airport.png'),
+    cat_hotel: require('../../../assets/achievements/cat_hotel.png'),
+    cat_gym: require('../../../assets/achievements/cat_gym.png'),
+    cat_store: require('../../../assets/achievements/cat_store.png'),
+    cat_gas: require('../../../assets/achievements/cat_gas.png'),
+    cat_hospital: require('../../../assets/achievements/cat_hospital.png'),
+    cat_library: require('../../../assets/achievements/cat_library.png'),
+    days_7: require('../../../assets/achievements/days_7.png'),
+    days_30: require('../../../assets/achievements/days_30.png'),
+    days_100: require('../../../assets/achievements/days_100.png'),
+    days_365: require('../../../assets/achievements/days_365.png'),
+    nights_1: require('../../../assets/achievements/nights_1.png'),
+    moments_1: require('../../../assets/achievements/moments_1.png'),
+    moments_10: require('../../../assets/achievements/moments_10.png'),
+    moments_25: require('../../../assets/achievements/moments_25.png'),
+    moments_50: require('../../../assets/achievements/moments_50.png'),
+    moments_100: require('../../../assets/achievements/moments_100.png'),
+    moments_250: require('../../../assets/achievements/moments_250.png'),
+    moment_photo_1: require('../../../assets/achievements/moment_photo_1.png'),
+    moment_video_1: require('../../../assets/achievements/moment_video_1.png'),
+    moment_note_1: require('../../../assets/achievements/moment_note_1.png'),
+    moment_voice_1: require('../../../assets/achievements/moment_voice_1.png'),
+    moment_mood_1: require('../../../assets/achievements/moment_mood_1.png'),
+    moment_activity_1: require('../../../assets/achievements/moment_activity_1.png'),
+    activities_10: require('../../../assets/achievements/activities_10.png'),
+    activities_50: require('../../../assets/achievements/activities_50.png'),
+    home_set: require('../../../assets/achievements/home_set.png'),
+    work_set: require('../../../assets/achievements/work_set.png'),
+    home_fullday_1: require('../../../assets/achievements/home_fullday_1.png'),
+    home_fullday_5: require('../../../assets/achievements/home_fullday_5.png'),
+    home_fullday_10: require('../../../assets/achievements/home_fullday_10.png'),
+    home_fullday_25: require('../../../assets/achievements/home_fullday_25.png'),
+  };
+
+export function achievementImageSource(
+  id: AchievementBadgeId,
+): ImageSourcePropType {
+  return ACHIEVEMENT_IMAGES[id];
+}

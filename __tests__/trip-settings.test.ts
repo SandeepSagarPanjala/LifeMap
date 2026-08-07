@@ -8,12 +8,12 @@ import { formatTripDwellLabel } from '../src/lib/app-copy';
 describe('trip-settings', () => {
   it('normalizes dwell minutes to allowed choices', () => {
     expect(normalizeTripDwellMinutes(30)).toBe(30);
-    expect(normalizeTripDwellMinutes(99)).toBe(5);
+    expect(normalizeTripDwellMinutes(99)).toBe(4);
   });
 
   it('normalizes radius to allowed choices', () => {
     expect(normalizeTripRadiusMeters(50)).toBe(50);
-    expect(normalizeTripRadiusMeters(200)).toBe(75);
+    expect(normalizeTripRadiusMeters(200)).toBe(100);
   });
 
   it('builds detection config from preferences', () => {

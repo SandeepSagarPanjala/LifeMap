@@ -41,7 +41,7 @@ describe('isMovingPoint without foot detection', () => {
     ).toBe(false);
   });
 
-  it('still treats in_vehicle as moving', () => {
+  it('treats confident in_vehicle with driving speed as moving', () => {
     expect(
       isMovingPoint(
         point({
@@ -50,6 +50,52 @@ describe('isMovingPoint without foot detection', () => {
           activityType: 'in_vehicle',
           activityConfidence: 100,
           isMoving: true,
+          speed: 8,
+        }),
+        DEFAULT_STOP_CONFIG,
+      ),
+    ).toBe(true);
+  });
+
+  it('does not treat parked in_vehicle (speed ≈ 0) as moving', () => {
+    expect(
+      isMovingPoint(
+        point({
+          id: 1,
+          at: new Date('2026-07-15T10:00:00Z'),
+          activityType: 'in_vehicle',
+          activityConfidence: 100,
+          isMoving: true,
+          speed: 0,
+        }),
+        DEFAULT_STOP_CONFIG,
+      ),
+    ).toBe(false);
+    expect(
+      isMovingPoint(
+        point({
+          id: 2,
+          at: new Date('2026-07-15T10:00:01Z'),
+          activityType: 'in_vehicle',
+          activityConfidence: 100,
+          isMoving: true,
+          speed: 0.11,
+        }),
+        DEFAULT_STOP_CONFIG,
+      ),
+    ).toBe(false);
+  });
+
+  it('keeps in_vehicle moving when speed is missing but SDK says moving', () => {
+    expect(
+      isMovingPoint(
+        point({
+          id: 1,
+          at: new Date('2026-07-15T10:00:00Z'),
+          activityType: 'in_vehicle',
+          activityConfidence: 100,
+          isMoving: true,
+          speed: null,
         }),
         DEFAULT_STOP_CONFIG,
       ),

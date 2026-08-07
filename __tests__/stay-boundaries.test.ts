@@ -336,7 +336,12 @@ describe('refineStopBoundaries', () => {
     ];
 
     const geometric = stopFromIds(points, 2, 6);
-    const refined = refineStopBoundaries(geometric, points, DEFAULT_STOP_CONFIG);
+    const refined = refineStopBoundaries(geometric, points, {
+      ...DEFAULT_STOP_CONFIG,
+      // Outbound trim is a fraction of radius — pin 75 m so this fixture stays stable
+      // when the product default radius changes.
+      radiusM: 75,
+    });
     expect(refined.pointIds[0]).toBe(2);
     expect(refined.pointIds[refined.pointIds.length - 1]).toBe(4);
   });
